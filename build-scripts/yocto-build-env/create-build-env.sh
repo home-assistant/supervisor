@@ -19,7 +19,7 @@ fi
 docker build --pull --tag ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION} -f ${SCRIPTPATH}/Dockerfile ${SCRIPTPATH}
 
 # Tag
-docker tag -f ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION} ${DOCKER_REPO}/${DOCKER_IMAGE}:latest
+docker tag ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION} ${DOCKER_REPO}/${DOCKER_IMAGE}:latest
 
 # Push
 docker push ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION}
