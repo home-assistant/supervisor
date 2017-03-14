@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
@@ -60,7 +60,7 @@ echo "[INFO] Docker was initialized."
 
 # Start barys with all the arguments requested
 echo "[INFO] Running build as builder user..."
-sudo -H -u builder /yocto/resin-board/resin-yocto-scripts/build/barys $@ &
+sudo -H -u builder /yocto/image/resin-yocto-scripts/build/barys $@ &
 barys_pid=$!
 wait $barys_pid || true
 

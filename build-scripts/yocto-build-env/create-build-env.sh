@@ -1,6 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 
 set -ev
+
+DOCKER_REPO=pvizeli
+DOCKER_IMAGE=yocto-build-env
 
 # Get the absolute script location
 pushd `dirname $0` > /dev/null 2>&1
@@ -13,11 +16,11 @@ if [ -z "${REVISION}" ]; then
 fi
 
 # Build
-docker build --pull --tag pvizeli/yocto-build-env:${REVISION} -f ${SCRIPTPATH}/Dockerfile ${SCRIPTPATH}
+docker build --pull --tag ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION} -f ${SCRIPTPATH}/Dockerfile ${SCRIPTPATH}
 
 # Tag
-docker tag -f pvizeli/yocto-build-env:${REVISION} resin/yocto-build-env:latest
+docker tag -f ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION} ${DOCKER_REPO}/${DOCKER_IMAGE}:latest
 
 # Push
-docker push pvizeli/yocto-build-env:${REVISION}
-docker push pvizeli/yocto-build-env:latest
+docker push ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION}
+docker push ${DOCKER_REPO}/${DOCKER_IMAGE}:latest
