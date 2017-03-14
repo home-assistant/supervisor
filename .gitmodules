@@ -1,6 +1,11 @@
 [submodule "supervisor-base/openembedded-core"]
 	path = supervisor-base/openembedded-core
 	url = git://git.openembedded.org/openembedded-core
+    branch = morty
 [submodule "supervisor-base/bitbake"]
 	path = supervisor-base/bitbake
 	url = git://git.openembedded.org/bitbake
+[submodule "supervisor-base/meta-openembedded"]
+	path = supervisor-base/meta-openembedded
+	url = git://git.openembedded.org/meta-openembedded
+    branch = morty
