@@ -1,0 +1,6 @@
+[submodule "supervisor/openembedded-core"]
+	path = supervisor/openembedded-core
+	url = git://git.openembedded.org/openembedded-core
+[submodule "supervisor/bitbake"]
+	path = supervisor/bitbake
+	url = git://git.openembedded.org/bitbake
