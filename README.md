@@ -1,2 +1,2 @@
 # HassIO
-First private cloud OS for home automation based on ResinOS and Yocto Linux.
+First private cloud OS for home automation. Based on ResinOS and Yocto Linux.
