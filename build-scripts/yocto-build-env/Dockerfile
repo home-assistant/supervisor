@@ -25,6 +25,6 @@ RUN add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubunt
 RUN apt-get update && apt-get install -y docker-ce && rm -rf /var/lib/apt/lists/*
 
 COPY src/run-resinos.sh /
-COPY src/run-supervisor-base.sh /
+COPY src/run-supervisor.sh /
 
 WORKDIR /yocto/image

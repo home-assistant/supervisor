@@ -1,0 +1,1 @@
+FROM %%BASE_IMAGE%%
