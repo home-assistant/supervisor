@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 VOLUME /var/lib/docker
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 RUN add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 RUN apt-get update && apt-get install -y docker-ce && rm -rf /var/lib/apt/lists/*
 
@@ -21,9 +21,7 @@ RUN apt-get update && apt-get install -y \
     qemu-user-static \
     binfmt-support \
     && rm -rf /var/lib/apt/lists/*
-RUN mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc \
-    && update-binfmts --enable qemu-arm
 
-COPY run-docker.sh
+COPY run-docker.sh /
 
 WORKDIR /docker

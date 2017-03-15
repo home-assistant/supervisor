@@ -36,6 +36,11 @@ cleanup() {
 trap 'cleanup fail' SIGINT SIGTERM
 
 # Start docker
+echo "[INFO] Setup qemu-arm."
+mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
+update-binfmts --enable qemu-arm
+
+# Start docker
 echo "[INFO] Starting docker."
 dockerd 2> /dev/null &
 echo "[INFO] Waiting for docker to initialize..."
