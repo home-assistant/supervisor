@@ -62,7 +62,7 @@ fi
 cd $WORKSPACE && git submodule update --init --recursive
 
 # Additional variables
-BARYS_ARGUMENTS_VAR="-a RESIN_CONNECTABLE=0 -a DEVELOPMENT_IMAGE=0 -a $HASSIO_SUPERVISOR"
+BARYS_ARGUMENTS_VAR="-a RESIN_CONNECTABLE=0 -a DEVELOPMENT_IMAGE=0 -a TARGET_REPOSITORY=$HASSIO_SUPERVISOR"
 
 # Make sure shared directories are in place
 mkdir -p $DOWNLOAD_DIR
