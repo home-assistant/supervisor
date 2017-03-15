@@ -26,4 +26,4 @@ RUN apt-get update && apt-get install -y docker-ce && rm -rf /var/lib/apt/lists/
 
 COPY run-resinos.sh /
 
-WORKDIR /yocto/image
+WORKDIR /yocto/resin-board
