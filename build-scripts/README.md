@@ -2,6 +2,11 @@
 
 You need a linux with [AUFS](https://docs.docker.com/engine/userguide/storagedriver/aufs-driver/) and docker support. You need to have the build user in docker group for he can run docker. It is not possible to run this process as root! You need also install `jq`
 
+## Build env
+
+- yocto-build-env: Allow us to build yocto resinos images
+- docker-build-env: Allow us to build docker image for all archs
+
 ## Create a server
 
 First install ubuntu server 16.04.
