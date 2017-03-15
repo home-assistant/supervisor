@@ -20,7 +20,7 @@ cleanup() {
 trap 'cleanup fail' SIGINT SIGTERM
 
 # Sanity checks
-if [ "$#" -ne 2 ]; then
+if [ "$#" -ne 1 ]; then
     echo "Usage: create_resinos.sh <MACHINE>"
     echo "Optional environment: BUILD_DIR, PERSISTENT_WORKDIR, RESIN_BRANCH"
     exit 1
@@ -34,18 +34,18 @@ popd > /dev/null 2>&1
 MACHINE=$1
 PERSISTENT_WORKDIR=${PERSISTENT_WORKDIR:=~/yocto}
 BUILD_DIR=${BUILD_DIR:=$SCRIPTPATH}
-WORKDIR=${BUILD_DIR:=$SCRIPTPATH}/resin-board
+WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/resin-board
 DOWNLOAD_DIR=$PERSISTENT_WORKDIR/shared-downloads
 SSTATE_DIR=$PERSISTENT_WORKDIR/$MACHINE/sstate
 ENABLE_TESTS=${ENABLE_TESTS:=false}
-RESIN_BRANCH={RESIN_BRANCH:=master}
+RESIN_BRANCH=${RESIN_BRANCH:=master}
 
 # evaluate git repo and arch
 case $MACHINE in
-    "raspberry-pi3" | "raspberry-pi2" | "raspberry-pi")
-        $ARCH = "armhf"
-        $RESIN_REPO = "https://github.com/resin-os/"
-        ;;
+    "raspberrypi3" | "raspberrypi2" | "raspberrypi")
+        ARCH="armhf"
+        RESIN_REPO="https://github.com/resin-os/resin-raspberrypi"
+    ;;
     *)
         echo "[ERROR] ${MACHINE} unknown!"
         exit 1
@@ -56,9 +56,9 @@ echo "[INFO] Checkout repository"
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR && git clone $RESIN_REPO resin-board
 if [ $RESIN_BRANCH != "master" ]; then
-    cd $WORKDIR && git checkout $RESIN_BRANCH
+    cd $WORKSPACE && git checkout $RESIN_BRANCH
 fi
-cd $WORKDIR && git submodule update --init --recursive
+cd $WORKSPACE && git submodule update --init --recursive
 
 # When supervisorTag is provided, you the appropiate barys argument
 if [ "$supervisorTag" != "" ]; then
@@ -70,6 +70,7 @@ mkdir -p $DOWNLOAD_DIR
 mkdir -p $SSTATE_DIR
 
 # Run build
+echo "[INFO] Init docker build."
 docker stop $BUILD_CONTAINER_NAME 2> /dev/null || true
 docker rm --volumes $BUILD_CONTAINER_NAME 2> /dev/null || true
 docker run --rm \
