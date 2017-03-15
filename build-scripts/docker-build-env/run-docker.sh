@@ -39,6 +39,7 @@ trap 'cleanup fail' SIGINT SIGTERM
 echo "[INFO] Setup qemu-arm."
 mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
 update-binfmts --enable qemu-arm
+update-binfmts --enable qemu-aarch64
 
 # Start docker
 echo "[INFO] Starting docker."
