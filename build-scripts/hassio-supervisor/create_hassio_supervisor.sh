@@ -36,9 +36,9 @@ SCRIPTPATH=`pwd`
 popd > /dev/null 2>&1
 
 ARCH=$1
-BASE_IMAGE=resin/${ARCH}-alpine:3.5
+BASE_IMAGE="resin\/${ARCH}-alpine:3.5"
 DOCKER_TAG=$2
-DOKER_IMAGE=${ARCH}-hassio-supervisor
+DOCKER_IMAGE=${ARCH}-hassio-supervisor
 BUILD_DIR=${BUILD_DIR:=$SCRIPTPATH}
 WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/hassio-supervisor
 
@@ -47,7 +47,7 @@ echo "[INFO] Setup docker for supervisor"
 mkdir -p $BUILD_DIR
 mkdir -p $WORKSPACE
 
-sed 's/%%BASE_TEMPLATE%%/$(BASE_IMAGE)/g' ../../supervisor/Dockerfile  > $WORKSPACE/Dockerfile
+sed "s/%%BASE_IMAGE%%/${BASE_IMAGE}/g" ../../supervisor/Dockerfile  > $WORKSPACE/Dockerfile
 
 # Run build
 echo "[INFO] start docker build"
