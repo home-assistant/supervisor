@@ -25,7 +25,7 @@ if [ "$#" -ne 2 ]; then
     echo "Optional environment: BUILD_DIR"
     exit 1
 fi
-if [ $1 != 'arm' ] && [ $1 != 'aarch64' ] && [ $1 != 'i386' ] && [ $1 != 'amd64' ]; then
+if [ $1 != 'armhf' ] && [ $1 != 'aarch64' ] && [ $1 != 'i386' ] && [ $1 != 'amd64' ]; then
     echo "Error: $1 is not a supported platform for hassio-supervisor!"
     exit 1
 fi
