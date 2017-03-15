@@ -51,6 +51,8 @@ case $MACHINE in
     ;;
 esac
 
+HASSIO_SUPERVISOR=pvizeli/${ARCH}-hassio-supervisor
+
 echo "[INFO] Checkout repository"
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR && git clone $RESIN_REPO resin-board
@@ -59,10 +61,8 @@ if [ $RESIN_BRANCH != "master" ]; then
 fi
 cd $WORKSPACE && git submodule update --init --recursive
 
-# When supervisorTag is provided, you the appropiate barys argument
-if [ "$supervisorTag" != "" ]; then
-    BARYS_ARGUMENTS_VAR="$BARYS_ARGUMENTS_VAR --supervisor-tag $supervisorTag"
-fi
+# Additional variables
+BARYS_ARGUMENTS_VAR="-a RESIN_CONNECTABLE=0 -a DEVELOPMENT_IMAGE=0 -a $HASSIO_SUPERVISOR"
 
 # Make sure shared directories are in place
 mkdir -p $DOWNLOAD_DIR
