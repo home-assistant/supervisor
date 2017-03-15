@@ -24,7 +24,7 @@ docker build --pull --tag ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION} -f ${SCRIPT
 # Tag
 docker tag ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION} ${DOCKER_REPO}/${DOCKER_IMAGE}:latest
 
-if [${REVISION} -ne "NONE"]; then
+if [ ${REVISION} != "NONE" ]; then
     # push
     docker push ${DOCKER_REPO}/${DOCKER_IMAGE}:${REVISION}
     docker push ${DOCKER_REPO}/${DOCKER_IMAGE}:latest
