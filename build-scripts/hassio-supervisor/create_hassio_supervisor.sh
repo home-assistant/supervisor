@@ -2,7 +2,7 @@
 
 set -e
 
-BUILD_CONTAINER_NAME=yocto-build-$$
+BUILD_CONTAINER_NAME=hassio-build-$$
 DOCKER_REPO=pvizeli
 
 cleanup() {
@@ -20,9 +20,13 @@ cleanup() {
 trap 'cleanup fail' SIGINT SIGTERM
 
 # Sanity checks
-if [ "$#" -ne 1 ]; then
-    echo "Usage: create_resinos.sh <MACHINE>"
-    echo "Optional environment: BUILD_DIR, PERSISTENT_WORKDIR, RESIN_BRANCH"
+if [ "$#" -ne 2 ]; then
+    echo "Usage: create_hassio_supervisor.sh <MACHINE> <TAG>|NONE"
+    echo "Optional environment: BUILD_DIR"
+    exit 1
+fi
+if [ $1 != 'arm' ] && [ $1 != 'aarch64' ] && [ $1 != 'i386' ] && [ $1 != 'amd64' ]; then
+    echo "Error: $1 is not a supported platform for hassio-supervisor!"
     exit 1
 fi
 
@@ -31,64 +35,34 @@ pushd `dirname $0` > /dev/null 2>&1
 SCRIPTPATH=`pwd`
 popd > /dev/null 2>&1
 
-MACHINE=$1
-PERSISTENT_WORKDIR=${PERSISTENT_WORKDIR:=~/yocto}
+ARCH=$1
+BASE_IMAGE=resin/${ARCH}-alpine:3.5
+DOCKER_TAG=$2
+DOKER_IMAGE=${ARCH}-hassio-supervisor
 BUILD_DIR=${BUILD_DIR:=$SCRIPTPATH}
-WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/resin-board
-DOWNLOAD_DIR=$PERSISTENT_WORKDIR/shared-downloads
-SSTATE_DIR=$PERSISTENT_WORKDIR/$MACHINE/sstate
-RESIN_BRANCH=${RESIN_BRANCH:=master}
+WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/hassio-supervisor
 
-# evaluate git repo and arch
-case $MACHINE in
-    "raspberrypi3" | "raspberrypi2" | "raspberrypi")
-        ARCH="armhf"
-        RESIN_REPO="https://github.com/resin-os/resin-raspberrypi"
-    ;;
-    *)
-        echo "[ERROR] ${MACHINE} unknown!"
-        exit 1
-    ;;
-esac
-
-echo "[INFO] Checkout repository"
+# setup docker
+echo "[INFO] Setup docker for supervisor"
 mkdir -p $BUILD_DIR
-cd $BUILD_DIR && git clone $RESIN_REPO resin-board
-if [ $RESIN_BRANCH != "master" ]; then
-    cd $WORKSPACE && git checkout $RESIN_BRANCH
-fi
-cd $WORKSPACE && git submodule update --init --recursive
+mkdir -p $WORKSPACE
 
-# When supervisorTag is provided, you the appropiate barys argument
-if [ "$supervisorTag" != "" ]; then
-    BARYS_ARGUMENTS_VAR="$BARYS_ARGUMENTS_VAR --supervisor-tag $supervisorTag"
-fi
-
-# Make sure shared directories are in place
-mkdir -p $DOWNLOAD_DIR
-mkdir -p $SSTATE_DIR
+sed 's/%%BASE_TEMPLATE%%/$(BASE_IMAGE)/g' ../../supervisor/Dockerfile  > $WORKSPACE/Dockerfile
 
 # Run build
-echo "[INFO] Init docker build."
+echo "[INFO] start docker build"
 docker stop $BUILD_CONTAINER_NAME 2> /dev/null || true
 docker rm --volumes $BUILD_CONTAINER_NAME 2> /dev/null || true
 docker run --rm \
-    -v $WORKSPACE:/yocto/resin-board \
-    -v $DOWNLOAD_DIR:/yocto/shared-downloads \
-    -v $SSTATE_DIR:/yocto/shared-sstate \
-    -e BUILDER_UID=$(id -u) \
-    -e BUILDER_GID=$(id -g) \
+    -v $WORKSPACE:/docker \
+    -v ~/.docker:/root/.docker \
+    -e DOCKER_REPO=$DOCKER_REPO \
+    -e DOCKER_IMAGE=$DOCKER_IMAGE \
+    -e DOCKER_TAG=$DOCKER_TAG \
     --name $BUILD_CONTAINER_NAME \
     --privileged \
-    pvizeli/yocto-build-env \
-    /run-resinos.sh \
-        --log \
-        --remove-build \
-        --machine "$MACHINE" \
-        ${BARYS_ARGUMENTS_VAR} \
-        --shared-downloads /yocto/shared-downloads \
-        --shared-sstate /yocto/shared-sstate \
-        --rm-work
+    pvizeli/docker-build-env \
+    /run-docker.sh
 
 exit
 # Write deploy artifacts

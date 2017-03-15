@@ -59,6 +59,17 @@ echo "[INFO] Docker was initialized."
 
 # Start barys with all the arguments requested
 echo "[INFO] Running build..."
+# Build
+docker build --pull --tag ${DOCKER_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG} .
+# Tag
+docker tag ${DOCKER_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_REPO}/${DOCKER_IMAGE}:latest
+
+echo "[INFO] Push image"
+if [ ${DOCKER_TAG} != "NONE" ]; then
+    # push
+    docker push ${DOCKER_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}
+    docker push ${DOCKER_REPO}/${DOCKER_IMAGE}:latest
+fi
 
 cleanup
 exit 0
