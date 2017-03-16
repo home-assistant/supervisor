@@ -1,0 +1,27 @@
+#!/bin/sh -e
+
+source /usr/sbin/resin-vars
+
+SUPERVISOR_IMAGE_ID=$(docker inspect --format='{{.Id}}' $SUPERVISOR_IMAGE)
+SUPERVISOR_CONTAINER_IMAGE_ID=$(docker inspect --format='{{.Image}}' resin_supervisor || echo "")
+
+runSupervisor() {
+    docker rm --force resin_supervisor || true
+    docker run --privileged --name resin_supervisor \
+        --net=host \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v $CONFIG_PATH:/boot/config.json  \
+        -v /resin-data/resin-supervisor:/data \
+        -v /proc/net/fib_trie:/mnt/fib_trie \
+        -v /var/log/supervisor-log:/var/log \
+        -v /:/mnt/root \
+        -e DOCKER_ROOT=/mnt/root/var/lib/docker \
+        -e DOCKER_SOCKET=/var/run/docker.sock \
+        -e BOOT_MOUNTPOINT=$BOOT_MOUNTPOINT \
+        -e LED_FILE=${LED_FILE} \
+        -e LISTEN_PORT=$LISTEN_PORT \
+        -e SUPERVISOR_IMAGE=${SUPERVISOR_IMAGE} \
+        ${SUPERVISOR_IMAGE}
+}
+
+([ "$SUPERVISOR_IMAGE_ID" == "$SUPERVISOR_CONTAINER_IMAGE_ID" ] && docker start --attach resin_supervisor) || runSupervisor

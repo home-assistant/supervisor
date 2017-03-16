@@ -1,0 +1,129 @@
+#!/bin/bash
+set -o pipefail
+
+# Help function
+function update-resin-supervisor-help {
+    cat << EOF
+Wrapper to run supervisor agent updates on resin distributions.
+$0 <OPTION>
+
+Options:
+  -h, --help
+        Display this help and exit.
+
+  -i <SUPERVISOR IMAGE>, --supervisor-image <SUPERVISOR IMAGE>
+        Set supervisor image to update to.
+
+  -t <SUPERVISOR TAG>, --supervisor-tag <SUPERVISOR TAG>
+        Set supervisor tag to update to.
+EOF
+}
+
+# Parse arguments
+while [[ $# > 0 ]]; do
+    arg="$1"
+
+    case $arg in
+        -h|--help)
+            update-resin-supervisor-help
+            exit 0
+            ;;
+        -i|--supervisor-image)
+            if [ -z "$2" ]; then
+                log ERROR "\"$1\" argument needs a value."
+            fi
+            UPDATER_SUPERVISOR_IMAGE=$2
+            shift
+            ;;
+        -t|--supervisor-tag)
+            if [ -z "$2" ]; then
+                log ERROR "\"$1\" argument needs a value."
+            fi
+            UPDATER_SUPERVISOR_TAG=$2
+            shift
+            ;;
+        *)
+            log ERROR "Unrecognized option $1."
+            ;;
+    esac
+    shift
+done
+
+# Don't souce before parsing args - resin-vars parses args too
+source /usr/sbin/resin-vars
+
+# A temporary file used until next reboot
+UPDATECONF=/tmp/update-supervisor.conf
+
+if [ -z "$API_ENDPOINT" -o -z "$CONFIG_PATH" ]; then
+    echo "Environment variables API_ENDPOINT and CONFIG_PATH must be set."
+    exit 1
+fi
+
+function error_handler {
+    # If docker pull fails, start the old supervisor again and exit
+    rm -rf $UPDATECONF
+    systemctl start resin-supervisor
+    exit 1
+}
+
+trap 'error_handler $LINENO' ERR
+
+# Detect containers engine
+if which docker &>/dev/null; then
+    DOCKER=docker
+elif which rce &>/dev/null; then
+    DOCKER=rce
+else
+    error_handler $LINENO "no container engine detected"
+fi
+
+source /etc/resin-supervisor/supervisor.conf
+if [ -z "$UPDATER_SUPERVISOR_TAG" ]; then
+    # Try to get the tag from supervisor.conf
+    if [ -n "$SUPERVISOR_TAG" ]; then
+        UPDATER_SUPERVISOR_TAG=$SUPERVISOR_TAG
+    else
+        echo "ERROR: No tag argument provided."
+        error_handler $LINENO "no tag argument provided"
+    fi
+fi
+if [ -z "$UPDATER_SUPERVISOR_IMAGE" ]; then
+    UPDATER_SUPERVISOR_IMAGE=$SUPERVISOR_IMAGE
+fi
+echo "Set based on arguments image=$UPDATER_SUPERVISOR_IMAGE and tag=$UPDATER_SUPERVISOR_TAG."
+image_name=$UPDATER_SUPERVISOR_IMAGE
+tag=$UPDATER_SUPERVISOR_TAG
+
+# Get image id of tag. This will be non-empty only in case it's already downloaded.
+echo "Getting image id..."
+imageid=$($DOCKER inspect -f '{{.Id}}' "$image_name:$tag") || imageid=""
+
+if [ -n "$imageid" ]; then
+    echo "Supervisor $image_name:$tag already downloaded."
+    exit 0
+fi
+
+# Try to stop old supervisor to prevent it deleting the intermediate images while downloading the new one
+echo "Stop supervisor..."
+systemctl stop resin-supervisor
+
+# Pull target version.
+echo "Pulling supervisor $image_name:$tag..."
+$DOCKER pull "$image_name:$tag"
+
+$DOCKER rm --force resin_supervisor || true
+
+# Store the tagged image string so resin-supervisor.service can pick it up
+echo "SUPERVISOR_IMAGE=$image_name:$tag" > $UPDATECONF
+
+# Run supervisor with the device-type-specific options.
+# We give a specific name to the container to guarantee only one running.
+echo "Start supervisor..."
+systemctl start resin-supervisor
+
+# Mark supervisor as working. This version will run when the device reboots.
+echo "Mark pulled tag as latest..."
+$DOCKER tag -f "$image_name:$tag" "$image_name:latest"
+sed --in-place "s|SUPERVISOR_IMAGE=.*|SUPERVISOR_IMAGE=$image_name|" /etc/resin-supervisor/supervisor.conf
+sed --in-place "s|SUPERVISOR_TAG=.*|SUPERVISOR_TAG=$tag|" /etc/resin-supervisor/supervisor.conf

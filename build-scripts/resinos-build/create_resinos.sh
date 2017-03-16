@@ -20,8 +20,8 @@ cleanup() {
 trap 'cleanup fail' SIGINT SIGTERM
 
 # Sanity checks
-if [ "$#" -ne 1 ]; then
-    echo "Usage: create_resinos.sh <MACHINE>"
+if [ "$#" -ne 2 ]; then
+    echo "Usage: create_resinos.sh <MACHINE> <SUPERVISOR_TAG>"
     echo "Optional environment: BUILD_DIR, PERSISTENT_WORKDIR, RESIN_BRANCH"
     exit 1
 fi
@@ -51,8 +51,6 @@ case $MACHINE in
     ;;
 esac
 
-HASSIO_SUPERVISOR=pvizeli/${ARCH}-hassio-supervisor
-
 echo "[INFO] Checkout repository"
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR && git clone $RESIN_REPO resin-board
@@ -62,7 +60,7 @@ fi
 cd $WORKSPACE && git submodule update --init --recursive
 
 # Additional variables
-BARYS_ARGUMENTS_VAR="-a RESIN_CONNECTABLE=0 -a DEVELOPMENT_IMAGE=0 -a TARGET_REPOSITORY=$HASSIO_SUPERVISOR"
+BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG"
 
 # Make sure shared directories are in place
 mkdir -p $DOWNLOAD_DIR
