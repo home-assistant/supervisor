@@ -8,7 +8,7 @@ RUN apk del --no-cache python*
 ENV LANG C.UTF-8
 
 # setup base
-RUN apk add --no-cache python3 docker
+RUN apk add --no-cache python3
 
 # install aiohttp
-RUN pip3 install pip --no-cache --upgrade && pip3 install --no-cache aiohttp
+RUN pip3 install pip --no-cache --upgrade && pip3 install --no-cache aiohttp && pip3 install --no-cache docker
