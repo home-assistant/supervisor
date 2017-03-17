@@ -62,7 +62,7 @@ fi
 cd $WORKSPACE && git submodule update --init --recursive
 
 echo "[INFO] Inject HassIO yocto layer"
-cp -r $HASSIO_ROOT/meta-hassio $WORKSPACE/layer/
+cp -r $HASSIO_ROOT/meta-hassio $WORKSPACE/layers/
 
 # Additional variables
 BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG"
