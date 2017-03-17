@@ -22,7 +22,7 @@ trap 'cleanup fail' SIGINT SIGTERM
 # Sanity checks
 if [ "$#" -ne 2 ]; then
     echo "Usage: create_resinos.sh <MACHINE> <SUPERVISOR_TAG>"
-    echo "Optional environment: BUILD_DIR, PERSISTENT_WORKDIR, RESIN_BRANCH"
+    echo "Optional environment: BUILD_DIR, PERSISTENT_WORKDIR, RESIN_BRANCH, HASSIO_ROOT"
     exit 1
 fi
 
@@ -32,9 +32,11 @@ SCRIPTPATH=`pwd`
 popd > /dev/null 2>&1
 
 MACHINE=$1
+SUPERVISOR_TAG=$2
 PERSISTENT_WORKDIR=${PERSISTENT_WORKDIR:=~/yocto}
 BUILD_DIR=${BUILD_DIR:=$SCRIPTPATH}
 WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/resin-board
+HASSIO_ROOT=${HASSIO_ROOT:=$SCRIPTPATH/../..}
 DOWNLOAD_DIR=$PERSISTENT_WORKDIR/shared-downloads
 SSTATE_DIR=$PERSISTENT_WORKDIR/$MACHINE/sstate
 RESIN_BRANCH=${RESIN_BRANCH:=master}
@@ -60,7 +62,7 @@ fi
 cd $WORKSPACE && git submodule update --init --recursive
 
 echo "[INFO] Inject HassIO yocto layer"
-cp -r ../../meta-hassio $WORKSPACE/layer/
+cp -r $HASSIO_ROOT/meta-hassio $WORKSPACE/layer/
 
 # Additional variables
 BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG"
