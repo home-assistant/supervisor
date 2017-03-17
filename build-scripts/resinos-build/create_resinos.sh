@@ -54,15 +54,17 @@ case $MACHINE in
 esac
 
 echo "[INFO] Checkout repository"
-mkdir -p $BUILD_DIR
-cd $BUILD_DIR && git clone $RESIN_REPO resin-board
-if [ $RESIN_BRANCH != "master" ]; then
-    cd $WORKSPACE && git checkout $RESIN_BRANCH
+if [ ! -d $WORKSPACE ]; then
+    mkdir -p $BUILD_DIR
+    cd $BUILD_DIR && git clone $RESIN_REPO resin-board
+    if [ $RESIN_BRANCH != "master" ]; then
+        cd $WORKSPACE && git checkout $RESIN_BRANCH
+    fi
+    cd $WORKSPACE && git submodule update --init --recursive
 fi
-cd $WORKSPACE && git submodule update --init --recursive
 
 echo "[INFO] Inject HassIO yocto layer"
-cp -r $HASSIO_ROOT/meta-hassio $WORKSPACE/layers/
+cp -fr $HASSIO_ROOT/meta-hassio $WORKSPACE/layers/
 
 # Additional variables
 BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG"
