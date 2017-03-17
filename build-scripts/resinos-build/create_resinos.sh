@@ -86,12 +86,10 @@ docker run --rm \
     pvizeli/yocto-build-env \
     /run-resinos.sh \
         --log \
-        --remove-build \
         --machine "$MACHINE" \
         ${BARYS_ARGUMENTS_VAR} \
         --shared-downloads /yocto/shared-downloads \
-        --shared-sstate /yocto/shared-sstate \
-        --rm-work
+        --shared-sstate /yocto/shared-sstate
 
 exit
 # Write deploy artifacts
