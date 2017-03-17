@@ -78,6 +78,12 @@ else
     error_handler $LINENO "no container engine detected"
 fi
 
+request=$(curl $API_ENDPOINT/update_supervisor | jq -e -r '.message')
+if [ request != "ok" ]; then
+    error_handler $LINENO $request
+fi
+
+# reload supervisor config
 source /etc/resin-supervisor/supervisor.conf
 if [ -z "$UPDATER_SUPERVISOR_TAG" ]; then
     # Try to get the tag from supervisor.conf

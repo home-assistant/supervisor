@@ -19,8 +19,8 @@ runSupervisor() {
         -e DOCKER_SOCKET=/var/run/docker.sock \
         -e BOOT_MOUNTPOINT=$BOOT_MOUNTPOINT \
         -e LED_FILE=${LED_FILE} \
-        -e LISTEN_PORT=$LISTEN_PORT \
         -e SUPERVISOR_IMAGE=${SUPERVISOR_IMAGE} \
+        -e SUPERVISOR_TAG=${SUPERVISOR_TAG} \
         ${SUPERVISOR_IMAGE}
 }
 
