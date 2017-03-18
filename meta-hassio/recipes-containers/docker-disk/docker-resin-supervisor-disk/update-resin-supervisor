@@ -78,7 +78,7 @@ else
     error_handler $LINENO "no container engine detected"
 fi
 
-request=$(curl $API_ENDPOINT/update_supervisor | jq -e -r '.message')
+request=$(curl -X PUT $API_ENDPOINT/supervisor | jq -e -r '.message')
 if [ request != "ok" ]; then
     error_handler $LINENO $request
 fi

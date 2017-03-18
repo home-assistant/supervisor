@@ -8,7 +8,6 @@ SUPERVISOR_CONTAINER_IMAGE_ID=$(docker inspect --format='{{.Image}}' resin_super
 runSupervisor() {
     docker rm --force resin_supervisor || true
     docker run --privileged --name resin_supervisor \
-        --net=host \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v $CONFIG_PATH:/boot/config.json  \
         -v /resin-data/resin-supervisor:/data \
