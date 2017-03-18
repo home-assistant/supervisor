@@ -69,15 +69,6 @@ function error_handler {
 
 trap 'error_handler $LINENO' ERR
 
-# Detect containers engine
-if which docker &>/dev/null; then
-    DOCKER=docker
-elif which rce &>/dev/null; then
-    DOCKER=rce
-else
-    error_handler $LINENO "no container engine detected"
-fi
-
 request=$(curl -X PUT $API_ENDPOINT/supervisor | jq -e -r '.message')
 if [ request != "ok" ]; then
     error_handler $LINENO $request
@@ -103,7 +94,7 @@ tag=$UPDATER_SUPERVISOR_TAG
 
 # Get image id of tag. This will be non-empty only in case it's already downloaded.
 echo "Getting image id..."
-imageid=$($DOCKER inspect -f '{{.Id}}' "$image_name:$tag") || imageid=""
+imageid=$(docker inspect -f '{{.Id}}' "$image_name:$tag") || imageid=""
 
 if [ -n "$imageid" ]; then
     echo "Supervisor $image_name:$tag already downloaded."
@@ -116,9 +107,9 @@ systemctl stop resin-supervisor
 
 # Pull target version.
 echo "Pulling supervisor $image_name:$tag..."
-$DOCKER pull "$image_name:$tag"
+docker pull "$image_name:$tag"
 
-$DOCKER rm --force resin_supervisor || true
+docker rm --force resin_supervisor || true
 
 # Store the tagged image string so resin-supervisor.service can pick it up
 echo "SUPERVISOR_IMAGE=$image_name:$tag" > $UPDATECONF
@@ -130,6 +121,6 @@ systemctl start resin-supervisor
 
 # Mark supervisor as working. This version will run when the device reboots.
 echo "Mark pulled tag as latest..."
-$DOCKER tag -f "$image_name:$tag" "$image_name:latest"
+docker tag -f "$image_name:$tag" "$image_name:latest"
 sed --in-place "s|SUPERVISOR_IMAGE=.*|SUPERVISOR_IMAGE=$image_name|" /etc/resin-supervisor/supervisor.conf
 sed --in-place "s|SUPERVISOR_TAG=.*|SUPERVISOR_TAG=$tag|" /etc/resin-supervisor/supervisor.conf
