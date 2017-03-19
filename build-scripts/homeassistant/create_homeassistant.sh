@@ -2,14 +2,14 @@
 
 set -e
 
-BUILD_CONTAINER_NAME=hassio-build-$$
+BUILD_CONTAINER_NAME=homeassistant-build-$$
 DOCKER_REPO=pvizeli
 
 cleanup() {
     echo "[INFO] Cleanup."
 
     # Stop docker container
-    echo "[INFO] Cleaning up hassio-build container."
+    echo "[INFO] Cleaning up homeassistant-build container."
     docker stop $BUILD_CONTAINER_NAME 2> /dev/null || true
     docker rm --volumes $BUILD_CONTAINER_NAME 2> /dev/null || true
 
@@ -21,12 +21,8 @@ trap 'cleanup fail' SIGINT SIGTERM
 
 # Sanity checks
 if [ "$#" -ne 2 ]; then
-    echo "Usage: create_hassio_supervisor.sh <ARCH> <TAG>|NONE"
+    echo "Usage: create_homeassistant.sh <HASS_VERS> <MACHINE>"
     echo "Optional environment: BUILD_DIR"
-    exit 1
-fi
-if [ $1 != 'armhf' ] && [ $1 != 'aarch64' ] && [ $1 != 'i386' ] && [ $1 != 'amd64' ]; then
-    echo "Error: $1 is not a supported platform for hassio-supervisor!"
     exit 1
 fi
 
@@ -35,19 +31,23 @@ pushd `dirname $0` > /dev/null 2>&1
 SCRIPTPATH=`pwd`
 popd > /dev/null 2>&1
 
-ARCH=$1
-BASE_IMAGE="resin\/${ARCH}-alpine:3.5"
-DOCKER_TAG=$2
-DOCKER_IMAGE=${ARCH}-hassio-supervisor
+HASS_VERS=$1
+MACHINE=$2
+BASE_IMAGE="resin\/${MACHINE}-python:3.6"
+DOCKER_TAG=$1
+DOCKER_IMAGE=${MACHINE}-homeassistant
 BUILD_DIR=${BUILD_DIR:=$SCRIPTPATH}
-WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/hassio-supervisor
+WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/hass
 
 # setup docker
-echo "[INFO] Setup docker for supervisor"
+echo "[INFO] Setup docker for homeassistant"
 mkdir -p $BUILD_DIR
-mkdir -p $WORKSPACE
 
-sed "s/%%BASE_IMAGE%%/${BASE_IMAGE}/g" ../../supervisor/Dockerfile  > $WORKSPACE/Dockerfile
+echo "[INFO] load homeassistant"
+cd $BUILD_DIR && git clone https://github.com/home-assistant/home-assistant hass
+cd hass && git checkout $HASS_VERS
+
+sed -i "s/FROM.*/${BASE_IMAGE}/g" Dockerfile
 
 # Run build
 echo "[INFO] start docker build"
