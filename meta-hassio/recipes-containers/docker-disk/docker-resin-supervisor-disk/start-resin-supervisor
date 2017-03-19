@@ -1,6 +1,7 @@
 #!/bin/sh -e
 
 source /usr/sbin/resin-vars
+source /etc/hassio.conf
 
 SUPERVISOR_IMAGE_ID=$(docker inspect --format='{{.Id}}' $SUPERVISOR_IMAGE)
 SUPERVISOR_CONTAINER_IMAGE_ID=$(docker inspect --format='{{.Image}}' resin_supervisor || echo "")
@@ -11,6 +12,7 @@ runSupervisor() {
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v $CONFIG_PATH:/boot/config.json  \
         -v /resin-data/resin-supervisor:/data \
+        -v /resin-data:/resin-data \
         -v /proc/net/fib_trie:/mnt/fib_trie \
         -v /var/log/supervisor-log:/var/log \
         -v /:/mnt/root \
@@ -20,6 +22,7 @@ runSupervisor() {
         -e LED_FILE=${LED_FILE} \
         -e SUPERVISOR_IMAGE=${SUPERVISOR_IMAGE} \
         -e SUPERVISOR_TAG=${SUPERVISOR_TAG} \
+        -e HOMEASSISTANT_REPOSITORY=${HOMEASSISTANT_REPOSITORY} \
         ${SUPERVISOR_IMAGE}
 }
 

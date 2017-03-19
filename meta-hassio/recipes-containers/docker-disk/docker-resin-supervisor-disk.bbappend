@@ -12,3 +12,16 @@ SUPERVISOR_REPOSITORY_x86-64 = "pvizeli/amd64-hassio-supervisor"
 SUPERVISOR_TAG = "${HASSIO_SUPERVISOR_TAG}"
 TARGET_REPOSITORY = "${SUPERVISOR_REPOSITORY}"
 TARGET_TAG = "${SUPERVISOR_TAG}"
+
+SRC_URI += " \
+    file://hassio.conf \
+    "
+
+FILES_${PN} += " \
+    ${sysconfdir} \
+    "
+
+do_install_append () {
+    install -m 0755 ${WORKDIR}/hassio.conf ${D}${sysconfdir}/
+    sed -i -e 's:@HOMEASSISTANT_REPOSITORY@:${HOMEASSISTANT_REPOSITORY}:g' ${D}${sysconfdir}/hassio.conf
+}

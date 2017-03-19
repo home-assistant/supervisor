@@ -43,9 +43,20 @@ RESIN_BRANCH=${RESIN_BRANCH:=master}
 
 # evaluate git repo and arch
 case $MACHINE in
-    "raspberrypi3" | "raspberrypi2" | "raspberrypi")
+    "raspberrypi")
         ARCH="armhf"
         RESIN_REPO="https://github.com/resin-os/resin-raspberrypi"
+        HOMEASSISTANT_REPOSITORY="$DOCKER_REPO/raspberrypi-homeassistant"
+    ;;
+    "raspberrypi2")
+        ARCH="armhf"
+        RESIN_REPO="https://github.com/resin-os/resin-raspberrypi"
+        HOMEASSISTANT_REPOSITORY="$DOCKER_REPO/raspberrypi2-homeassistant"
+    ;;
+    "raspberrypi3")
+        ARCH="armhf"
+        RESIN_REPO="https://github.com/resin-os/resin-raspberrypi"
+        HOMEASSISTANT_REPOSITORY="$DOCKER_REPO/raspberrypi3-homeassistant"
     ;;
     *)
         echo "[ERROR] ${MACHINE} unknown!"
@@ -67,7 +78,7 @@ echo "[INFO] Inject HassIO yocto layer"
 cp -fr $HASSIO_ROOT/meta-hassio $WORKSPACE/layers/
 
 # Additional variables
-BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG"
+BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG -a HOMEASSISTANT_REPOSITORY=$HOMEASSISTANT_REPOSITORY"
 
 # Make sure shared directories are in place
 mkdir -p $DOWNLOAD_DIR

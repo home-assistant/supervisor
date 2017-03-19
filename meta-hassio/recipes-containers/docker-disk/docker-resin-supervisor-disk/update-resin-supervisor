@@ -69,28 +69,14 @@ function error_handler {
 
 trap 'error_handler $LINENO' ERR
 
-request=$(curl -X PUT $API_ENDPOINT/supervisor | jq -e -r '.message')
-if [ request != "ok" ]; then
-    error_handler $LINENO $request
-fi
+if request=$(curl -X PUT $API_ENDPOINT/supervisor | jq -e -r '.image,.tag')
+    read image_name, tag <<<$request
 
-# reload supervisor config
-source /etc/resin-supervisor/supervisor.conf
-if [ -z "$UPDATER_SUPERVISOR_TAG" ]; then
-    # Try to get the tag from supervisor.conf
-    if [ -n "$SUPERVISOR_TAG" ]; then
-        UPDATER_SUPERVISOR_TAG=$SUPERVISOR_TAG
-    else
-        echo "ERROR: No tag argument provided."
-        error_handler $LINENO "no tag argument provided"
+    # Check that we didn't somehow get an empty tag version.
+    if [ -z "$tag" ]; then
+        error_handler $LINENO "no tag received"
     fi
 fi
-if [ -z "$UPDATER_SUPERVISOR_IMAGE" ]; then
-    UPDATER_SUPERVISOR_IMAGE=$SUPERVISOR_IMAGE
-fi
-echo "Set based on arguments image=$UPDATER_SUPERVISOR_IMAGE and tag=$UPDATER_SUPERVISOR_TAG."
-image_name=$UPDATER_SUPERVISOR_IMAGE
-tag=$UPDATER_SUPERVISOR_TAG
 
 # Get image id of tag. This will be non-empty only in case it's already downloaded.
 echo "Getting image id..."
