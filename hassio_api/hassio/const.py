@@ -1,4 +1,6 @@
 """Const file for HassIO."""
+import os
+
 URL_SUPERVISOR_VERSION = \
     'https://raw.githubusercontent.com/pvizeli/hassio/master/version.json'
 
@@ -8,7 +10,8 @@ FILE_RESIN_CONFIG = '/boot/config.json'
 FILE_HASSIO_ADDONS = '/data/addons.json'
 FILE_HASSIO_VERSION = '/data/version.json'
 
-HOMEASSISTANT_CONFIG = '/resin-data/config'
+HOMEASSISTANT_SHARE = os.environ['SUPERVISOR_SHARE']
+HOMEASSISTANT_CONFIG = "{}/config".format(HOMEASSISTANT_SHARE)
 
 HTTP_PORT = 9123
 

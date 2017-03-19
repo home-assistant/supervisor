@@ -11,4 +11,7 @@ ENV LANG C.UTF-8
 RUN apk add --no-cache python3 git
 
 # install aiohttp
-RUN pip3 install pip --no-cache --upgrade && pip3 install --no-cache aiohttp && pip3 install --no-cache docker
+RUN pip3 install pip --no-cache --upgrade \
+    && pip3 install --no-cache aiohttp \
+    && pip3 install --no-cache docker \
+    && pip3 install --no-cache colorlog

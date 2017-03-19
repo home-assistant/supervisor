@@ -12,7 +12,7 @@ runSupervisor() {
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v $CONFIG_PATH:/boot/config.json  \
         -v /resin-data/resin-supervisor:/data \
-        -v /resin-data:/resin-data \
+        -v /resin-data:/shared-data \
         -v /proc/net/fib_trie:/mnt/fib_trie \
         -v /var/log/supervisor-log:/var/log \
         -v /:/mnt/root \
@@ -22,6 +22,8 @@ runSupervisor() {
         -e LED_FILE=${LED_FILE} \
         -e SUPERVISOR_IMAGE=${SUPERVISOR_IMAGE} \
         -e SUPERVISOR_TAG=${SUPERVISOR_TAG} \
+        -e SUPERVISOR_SHARE=/shared-data \
+        -e SUPERVISOR_NAME=resin_supervisor \
         -e HOMEASSISTANT_REPOSITORY=${HOMEASSISTANT_REPOSITORY} \
         ${SUPERVISOR_IMAGE}
 }
