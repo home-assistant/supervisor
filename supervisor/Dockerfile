@@ -1,5 +1,8 @@
 FROM %%BASE_IMAGE%%
 
+# Add version
+ENV VERSION %%SUPERVISOR_TAG%%
+
 # remove several traces of python
 RUN apk del --no-cache python*
 
