@@ -43,7 +43,7 @@ RESIN_BRANCH=${RESIN_BRANCH:=master}
 
 # evaluate git repo and arch
 case $MACHINE in
-    "raspberrypi", "raspberrypi2", "raspberrypi3")
+    "raspberrypi" | "raspberrypi2" | "raspberrypi3")
         ARCH="armhf"
         RESIN_REPO="https://github.com/resin-os/resin-raspberrypi"
         HOMEASSISTANT_REPOSITORY="$DOCKER_REPO/$MACHINE-homeassistant"
