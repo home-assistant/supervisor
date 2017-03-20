@@ -1,0 +1,60 @@
+#!/bin/bash
+
+help () {
+    cat << EOF
+Script for setting resin shell environment
+resin-vars [options]
+
+Options:
+    -h, --help
+        Display this help and exit.
+
+    -c, --config-path CONFIG_PATH
+        Use a non default config.json file.
+        Default: /mnt/boot/config.json
+EOF
+}
+
+# Parse arguments
+while [[ $# > 0 ]]; do
+    key=$1
+    case $key in
+        -h|--help)
+            help
+            exit 0
+            ;;
+        -c|--config-path)
+            CONFIG_PATH=$2
+            shift
+            ;;
+        *)
+            echo "[WARNING] $0 : Argument '$1' unknown. Ignoring."
+            ;;
+    esac
+    shift
+done
+
+# Resin-boot mountpoint
+BOOT_MOUNTPOINT="/mnt/boot"
+
+# Default values
+if [ -z "$CONFIG_PATH" ]; then
+    CONFIG_PATH=$BOOT_MOUNTPOINT/config.json
+fi
+
+# Resin supervisor variables
+source /etc/resin-supervisor/supervisor.conf
+
+# If config.json provides redefinitions for our vars let us rewrite their
+# runtime value
+if [ -f $CONFIG_PATH ]
+then
+    API_ENDPOINT=$(jq --raw-output ".apiEndpoint // empty" $CONFIG_PATH)
+    CONFIG_HOSTNAME=$(jq --raw-output ".hostname // empty" $CONFIG_PATH)
+    PERSISTENT_LOGGING=$(jq --raw-output ".persistentLogging // empty" $CONFIG_PATH)
+    if [ -z "$PERSISTENT_LOGGING" ]; then
+        PERSISTENT_LOGGING=false
+    fi
+else
+    echo "[WARNING] $0 : '$CONFIG_PATH' not found."
+fi
