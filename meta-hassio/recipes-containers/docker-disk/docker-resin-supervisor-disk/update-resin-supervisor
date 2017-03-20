@@ -78,6 +78,13 @@ if request=$(curl -X PUT $API_ENDPOINT/supervisor | jq -e -r '.image,.tag')
     fi
 fi
 
+if [ -z $UPDATER_SUPERVISOR_TAG ]; then
+    tag=$UPDATER_SUPERVISOR_TAG
+fi
+if [ -z $UPDATER_SUPERVISOR_IMAGE ]; then
+    image_name=$UPDATER_SUPERVISOR_IMAGE
+fi
+
 # Get image id of tag. This will be non-empty only in case it's already downloaded.
 echo "Getting image id..."
 imageid=$(docker inspect -f '{{.Id}}' "$image_name:$tag") || imageid=""

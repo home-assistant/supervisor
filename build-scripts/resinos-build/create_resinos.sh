@@ -139,10 +139,6 @@ if [[ "$sourceBranch" == production* ]] && [ "$metaResinBranch" == "__ignore__" 
         docker import $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar $DOCKER_REPO:$DOCKER_TAG
         docker push $DOCKER_REPO:$DOCKER_TAG
         docker rmi $DOCKER_REPO:$DOCKER_TAG # cleanup
-
-        docker import $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar $RESINREG_REPO:$RESINREG_TAG
-        docker push $RESINREG_REPO:$RESINREG_TAG
-        docker rmi $RESINREG_REPO:$RESINREG_TAG # cleanup
     else
         echo "ERROR: The build didn't produce a resinhup package."
         exit 1
