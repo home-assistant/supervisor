@@ -1,0 +1,342 @@
+﻿#!/bin/bash
+
+# Default values
+TAG=1.0
+LOGFILE=/tmp/`basename "$0"`.log
+LOG=yes
+ONLY_SUPERVISOR=no
+NOREBOOT=no
+DOCKER_REPO=pvizeli
+
+# Don't run anything before this source as it sets PATH here
+source /etc/profile
+
+# Help function
+function help {
+    cat << EOF
+Wrapper to run host OS updates on resin distributions.
+$0 <OPTION>
+
+Options:
+  -h, --help
+        Display this help and exit.
+
+  -f, --force
+        Run the resinhup tool without fingerprints check and validation.
+
+  --staging
+        Do this update for devices in staging.
+        By default resinhup assumes the devices are in production.
+
+  -t <TAG>, --tag <TAG>
+        Use a specific tag for resinhup image.
+        Default: 1.0 .
+
+  --remote <REMOTE>
+        Run the updater with this remote configuration.
+        This argument will be passed to resinhup and will be used as the location from
+        which the update bundles will be downloaded.
+
+  --hostos-version <HOSTOS_VERSION>
+        Run the updater for this specific HostOS version.
+        This is a mandatory argument.
+
+  --supervisor-registry <SUPERVISOR REGISTRY>
+        Update supervisor getting the image from this registry.
+
+  --supervisor-tag <SUPERVISOR TAG>
+        In the case of a successful host OS update, bring in a newer supervisor too
+        using this tag.
+
+  --only-supervisor
+        Update only the supervisor.
+
+  -n, --nolog
+        By default tool logs to stdout and file. This flag deactivates log to
+        $LOGFILE file.
+
+  --no-reboot
+        Don't reboot if update is successful. This is useful when debugging.
+EOF
+}
+
+# If things fail try to bring board back to the initial state
+function tryup {
+    systemctl start resin-supervisor > /dev/null 2>&1
+    systemctl start update-resin-supervisor.timer > /dev/null 2>&1
+    /etc/init.d/crond start > /dev/null 2>&1
+}
+
+# Catch INT signals and try to bring things back
+trap ctrl_c INT
+function ctrl_c() {
+    log "Trapped INT signal"
+    tryup
+    exit 1
+}
+
+# Log function helper
+function log {
+    # Address log levels
+    case $1 in
+        ERROR)
+            loglevel=ERROR
+            shift
+            ;;
+        WARN)
+            loglevel=WARNING
+            shift
+            ;;
+        *)
+            loglevel=LOG
+            ;;
+    esac
+    ENDTIME=$(date +%s)
+    if [ "z$LOG" == "zyes" ]; then
+        printf "[%09d%s%s\n" "$(($ENDTIME - $STARTTIME))" "][$loglevel]" "$1" | tee -a $LOGFILE
+    else
+        printf "[%09d%s%s\n" "$(($ENDTIME - $STARTTIME))" "][$loglevel]" "$1"
+    fi
+    if [ "$loglevel" == "ERROR" ]; then
+        exit 1
+    fi
+}
+
+function runPreHacks {
+    local _boot_mountpoint="$(grep $(blkid | grep resin-boot | cut -d ":" -f 1) /proc/mounts | cut -d ' ' -f 2)"
+
+    # we might need to repartition this so make sure it is unmounted
+    log "Make sure resin-boot is unmounted..."
+    if [ -z $_boot_mountpoint ]; then
+        log WARN "Mount point for resin-boot partition could not be found. It is probably already unmounted."
+    # XXX support old devices
+    elif [ $_boot_mountpoint = "/boot" ]; then
+        umount $_boot_mountpoint &> /dev/null
+    fi
+
+    # can't fix label of data partition from container
+    e2label $DATA_MOUNTPOINT resin-data
+
+    # Some devices never actually update /etc/timestamp because they are hard-rebooted.
+    # Force a /etc/timestamp update so we don't get into TLS issues.
+    # This assumes that current date is valid - which should be because we can't remotely
+    # update a device with outdated time (vpn would not be available so ssh would not
+    # work).
+    # Only applies on sysvinit systems
+    if [[ $(readlink /sbin/init) == *"sysvinit"* ]]; then
+        log "Save timestamp..."
+        date -u +%4Y%2m%2d%2H%2M%2S > /etc/timestamp
+    fi
+}
+
+# Test if a version is greater than another
+function version_gt() {
+    test "$(echo "$@" | tr " " "\n" | sort -V | head -n 1)" != "$1"
+}
+
+#
+# MAIN
+#
+
+# Log timer
+STARTTIME=$(date +%s)
+
+# Parse arguments
+while [[ $# > 0 ]]; do
+    arg="$1"
+
+    case $arg in
+        -h|--help)
+            help
+            exit 0
+            ;;
+        -t|--tag)
+            if [ -z "$2" ]; then
+                log ERROR "\"$1\" argument needs a value."
+            fi
+            TAG=$2
+            shift
+            ;;
+        --hostos-version)
+            if [ -z "$2" ]; then
+                log ERROR "\"$1\" argument needs a value."
+            fi
+            HOSTOS_VERSION=$2
+            shift
+            ;;
+        --remote)
+            if [ -z "$2" ]; then
+                log ERROR "\"$1\" argument needs a value."
+            fi
+            REMOTE=$2
+            shift
+            ;;
+        --supervisor-registry)
+            if [ -z "$2" ]; then
+                log ERROR "\"$1\" argument needs a value."
+            fi
+            SUPERVISOR_REGISTRY=$2
+            shift
+            ;;
+        --supervisor-tag)
+            if [ -z "$2" ]; then
+                log ERROR "\"$1\" argument needs a value."
+            fi
+            UPDATER_SUPERVISOR_TAG=$2
+            shift
+            ;;
+        --only-supervisor)
+            ONLY_SUPERVISOR=yes
+            ;;
+        -n|--nolog)
+            LOG=no
+            ;;
+        --no-reboot)
+            NOREBOOT=yes
+            ;;
+        *)
+            log ERROR "Unrecognized option $1."
+            ;;
+    esac
+    shift
+done
+
+# Check that HostOS version was provided
+if [ -z "$HOSTOS_VERSION" ]; then
+    log ERROR "--hostos-version is required."
+fi
+
+# Init log file
+# LOGFILE init and header
+if [ "$LOG" == "yes" ]; then
+    echo "================"`basename "$0"`" HEADER START====================" > $LOGFILE
+    date >> $LOGFILE
+fi
+
+# Detect DATA_MOUNTPOINT
+if [ -d /mnt/data ]; then
+    DATA_MOUNTPOINT=/mnt/data
+elif [ -d /mnt/data-disk ]; then
+    DATA_MOUNTPOINT=/mnt/data-disk
+else
+    log ERROR "Can't find the resin-data mountpoint."
+fi
+
+# Run pre hacks
+runPreHacks
+
+# Detect arch
+source /etc/resin-supervisor/supervisor.conf
+arch=`echo "$SUPERVISOR_IMAGE" | sed -n "s/.*\/\([a-zA-Z0-9]*\)-.*/\1/p"`
+if [ -z "$arch" ]; then
+    log ERROR "Can't detect arch from /etc/resin-supervisor/supervisor.conf ."
+else
+    log "Detected arch: $arch ."
+fi
+
+# Detect slug
+source /etc/resinhub.conf
+slug=$RESINHUB_MACHINE
+if [ -z $slug ]; then
+    log ERROR "Can't detect slug from /etc/resinhub.conf"
+else
+    log "Detected slug: $slug ."
+fi
+
+# We need to stop update-resin-supervisor.timer otherwise it might restart supervisor which
+# will delete downloaded layers. Same for cron jobs.
+systemctl stop update-resin-supervisor.timer > /dev/null 2>&1
+/etc/init.d/crond stop > /dev/null 2>&1 # We might have cron jobs which restart supervisor
+
+# Supervisor update
+if [ ! -z "$UPDATER_SUPERVISOR_TAG" ]; then
+    log "Supervisor update requested through arguments ."
+
+    # Default UPDATER_SUPERVISOR_IMAGE to the one in /etc/supervisor.conf
+    if [ -z "$SUPERVISOR_REGISTRY" ]; then
+        UPDATER_SUPERVISOR_IMAGE=$SUPERVISOR_IMAGE
+    else
+        UPDATER_SUPERVISOR_IMAGE="$SUPERVISOR_REGISTRY/resin/$arch-supervisor"
+    fi
+
+    log "Update to supervisor $UPDATER_SUPERVISOR_IMAGE:$UPDATER_SUPERVISOR_TAG..."
+
+    log "Updating supervisor..."
+    if [[ $(readlink /sbin/init) == *"sysvinit"* ]]; then
+        # Supervisor update on sysvinit based OS
+        docker pull "$UPDATER_SUPERVISOR_IMAGE:$UPDATER_SUPERVISOR_TAG"
+        if [ $? -ne 0 ]; then
+            tryup
+            log ERROR "Could not update supervisor to $UPDATER_SUPERVISOR_IMAGE:$UPDATER_SUPERVISOR_TAG ."
+
+        fi
+        docker tag -f "$SUPERVISOR_IMAGE:$SUPERVISOR_TAG" "$SUPERVISOR_IMAGE:latest"
+    else
+        # Supervisor update on systemd based OS
+        /usr/bin/update-resin-supervisor --supervisor-image $UPDATER_SUPERVISOR_IMAGE --supervisor-tag $UPDATER_SUPERVISOR_TAG
+        if [ $? -ne 0 ]; then
+            tryup
+            log ERROR "Could not update supervisor to $UPDATER_SUPERVISOR_IMAGE:$UPDATER_SUPERVISOR_TAG ."
+        fi
+    fi
+else
+    log "Supervisor update not requested through arguments ."
+fi
+
+# That's it if we only wanted supervisor update
+if [ "$ONLY_SUPERVISOR" == "yes" ]; then
+    log "Update only of the supervisor requested."
+    exit 0
+fi
+
+# Avoid supervisor cleaning up resinhup and stop containers
+log "Stopping all containers..."
+systemctl stop resin-supervisor > /dev/null 2>&1
+docker stop $(docker ps -a -q) > /dev/null 2>&1
+log "Removing all containers..."
+docker rm $(docker ps -a -q) > /dev/null 2>&1
+
+# Pull resinhup and tag it accordingly
+log "Pulling resinhup..."
+docker pull $DOCKER_REPO/resinhup-$slug:$TAG
+if [ $? -ne 0 ]; then
+    tryup
+    log ERROR "Could not pull $DOCKER_REPO/resinhup-$slug:$TAG ."
+fi
+
+# Run resinhup
+log "Running resinhup for version $HOSTOS_VERSION ..."
+RESINHUP_STARTTIME=$(date +%s)
+
+# Set options
+RESINHUP_ENV="-e VERSION=$HOSTOS_VERSION -e REMOTE=$DOCKER_REPO/resinos"
+
+docker run --privileged --rm --net=host $RESINHUP_ENV \
+    -v /:/host \
+    -v /lib/modules:/lib/modules:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    $DOCKER_REPO/resinhup-$slug:$TAG
+RESINHUP_EXIT=$?
+# RESINHUP_EXIT
+#   0 - update done
+#   2 - only intermediate step was done and will continue after reboot
+#   3 - device already updated at a requested version or later
+if [ $RESINHUP_EXIT -eq 0 ] || [ $RESINHUP_EXIT -eq 2 ] || [ $RESINHUP_EXIT -eq 3 ]; then
+    RESINHUP_ENDTIME=$(date +%s)
+    log "Update suceeded in $(($RESINHUP_ENDTIME - $RESINHUP_STARTTIME)) seconds."
+
+    # Everything is fine - Reboot
+    if [ "$NOREBOOT" == "no" ]; then
+        log "Rebooting board in 5 seconds..."
+        nohup bash -c " /bin/sleep 5 ; /sbin/reboot " &
+    else
+        log "'No-reboot' requested."
+    fi
+else
+    RESINHUP_ENDTIME=$(date +%s)
+    # Don't tryup so support can have a chance to see what went wrong and how to recover
+    log ERROR "Update failed after $(($RESINHUP_ENDTIME - $RESINHUP_STARTTIME)) seconds. Check the logs."
+fi
+
+# Success
+exit $RESINHUP_EXIT
