@@ -1,7 +1,6 @@
 #!/bin/sh -e
 
 source /usr/sbin/resin-vars
-source /etc/hassio.conf
 
 SUPERVISOR_IMAGE_ID=$(docker inspect --format='{{.Id}}' $SUPERVISOR_IMAGE)
 SUPERVISOR_CONTAINER_IMAGE_ID=$(docker inspect --format='{{.Image}}' resin_supervisor || echo "")

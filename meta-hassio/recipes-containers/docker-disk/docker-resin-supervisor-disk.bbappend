@@ -13,15 +13,8 @@ SUPERVISOR_TAG = "${HASSIO_SUPERVISOR_TAG}"
 TARGET_REPOSITORY = "${SUPERVISOR_REPOSITORY}"
 TARGET_TAG = "${SUPERVISOR_TAG}"
 
-SRC_URI += " \
-    file://hassio.conf \
-    "
-
-FILES_${PN} += " \
-    ${sysconfdir} \
-    "
-
 do_install_append () {
-    install -m 0755 ${WORKDIR}/hassio.conf ${D}${sysconfdir}/
-    sed -i -e 's:@HOMEASSISTANT_REPOSITORY@:${HOMEASSISTANT_REPOSITORY}:g' ${D}${sysconfdir}/hassio.conf
+    install -d ${D}${sysconfdir}/resin-supervisor
+    sed -i -e 's:@HOMEASSISTANT_REPOSITORY@:${HOMEASSISTANT_REPOSITORY}:g' ${D}${sysconfdir}/resin-supervisor/supervisor.conf
+    sed -i -e 's:@MACHINE@:${MACHINE}:g' ${D}${sysconfdir}/resin-supervisor/supervisor.conf
 }

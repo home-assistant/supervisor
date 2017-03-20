@@ -235,10 +235,9 @@ else
 fi
 
 # Detect slug
-source /etc/resinhub.conf
-slug=$RESINHUB_MACHINE
+slug=$MACHINE
 if [ -z $slug ]; then
-    log ERROR "Can't detect slug from /etc/resinhub.conf"
+    log ERROR "Can't detect slug from /etc/resin-supervisor/supervisor.conf ."
 else
     log "Detected slug: $slug ."
 fi
