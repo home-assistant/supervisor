@@ -1,0 +1,19 @@
+﻿[Unit]
+Description=Resinhup updater
+Requires=\
+    docker.service \
+    etc-resin\x2dsupervisor.mount \
+    tmp.mount
+Wants=\
+    mnt-boot.mount \
+    resin-supervisor.service
+After=\
+    docker.service \
+    tmp.mount \
+    mnt-boot.mount \
+    etc-resin\x2dsupervisor.mount \
+    resin-supervisor.service
+
+[Service]
+Type=simple
+ExecStart=@BASE_BINDIR@/bash @BINDIR@/run-resinhub.sh
