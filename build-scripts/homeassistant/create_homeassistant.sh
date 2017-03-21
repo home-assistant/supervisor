@@ -42,12 +42,13 @@ WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/hass
 # setup docker
 echo "[INFO] Setup docker for homeassistant"
 mkdir -p $BUILD_DIR
+mkdir -p $WORKSPACE
 
 echo "[INFO] load homeassistant"
-cd $BUILD_DIR && git clone https://github.com/home-assistant/home-assistant hass
-cd hass && git checkout $HASS_VERS
+cp ../../homeassistant/Dockerfile $WORKSPACE/Dockerfile
 
-sed -i "s/FROM.*/${BASE_IMAGE}/g" Dockerfile
+sed -i "s/%%BASE_IMAGE%%/${BASE_IMAGE}/g" $WORKSPACE/Dockerfile
+sed -i "s/%%HASS_VERSION%%/${HASS_VERS}/g" $WORKSPACE/Dockerfile
 
 # Run build
 echo "[INFO] start docker build"

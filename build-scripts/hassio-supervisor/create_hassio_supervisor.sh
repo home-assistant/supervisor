@@ -47,7 +47,6 @@ echo "[INFO] Setup docker for supervisor"
 mkdir -p $BUILD_DIR
 mkdir -p $WORKSPACE
 
-
 cp ../../supervisor/Dockerfile $WORKSPACE/Dockerfile
 sed -i "s/%%BASE_IMAGE%%/${BASE_IMAGE}/g" $WORKSPACE/Dockerfile
 sed -i "s/%%SUPERVISOR_TAG%%/${DOCKER_TAG}/g" $WORKSPACE/Dockerfile
