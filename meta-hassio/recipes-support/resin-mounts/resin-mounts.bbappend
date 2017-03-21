@@ -1,11 +1,11 @@
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-SRC_URI = " \
+SRC_URI += " \
     file://home-root-.ssh.mount \
     "
 
-SYSTEMD_SERVICE_${PN} = " \
+SYSTEMD_SERVICE_${PN} += " \
     home-root-.ssh.mount \
     "
 
