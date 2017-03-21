@@ -28,7 +28,7 @@ do_install_append() {
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
         install -d ${D}${systemd_unitdir}/system
         install -c -m 0644 ${WORKDIR}/resinhup.service ${D}${systemd_unitdir}/system
-        install -c -m 0644 ${WORKDIR}/resinhup.time ${D}${systemd_unitdir}/system
+        install -c -m 0644 ${WORKDIR}/resinhup.timer ${D}${systemd_unitdir}/system
 
         sed -i -e 's,@BASE_BINDIR@,${base_bindir},g' \
             -e 's,@SBINDIR@,${sbindir},g' \
