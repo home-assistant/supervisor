@@ -10,7 +10,7 @@ SYSTEMD_SERVICE_${PN} += "sync-authorized-keys.service"
 FILES_${PN} += " \
      ${systemd_unitdir} \
      ${bindir} \
-     "/home" \
+     "/home/root/.ssh/" \
      "
 
 do_install_append() {
