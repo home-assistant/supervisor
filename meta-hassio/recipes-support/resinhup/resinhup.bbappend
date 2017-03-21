@@ -7,7 +7,7 @@ SRC_URI += " \
     file://resinhup.service \
     "
 
-SYSTEMD_SERVICE_${PN} += "
+SYSTEMD_SERVICE_${PN} += " \
     resinhup.service \
     resinhup.timer \
     "
