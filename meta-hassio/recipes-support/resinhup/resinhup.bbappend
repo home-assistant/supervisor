@@ -21,6 +21,7 @@ FILES_${PN} += " \
      "
 
 do_install_append() {
+    install -d ${D}${sysconfdir}
     install -m 0755 ${WORKDIR}/hassio.conf ${D}${sysconfdir}
     sed -i -e 's:@HASSIO_VERSION@:${HASSIO_VERSION}:g' ${D}${sysconfdir}/hassio.conf
 
