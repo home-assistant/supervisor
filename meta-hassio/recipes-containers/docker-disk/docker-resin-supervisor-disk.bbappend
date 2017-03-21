@@ -13,6 +13,8 @@ SUPERVISOR_TAG = "${HASSIO_SUPERVISOR_TAG}"
 TARGET_REPOSITORY = "${SUPERVISOR_REPOSITORY}"
 TARGET_TAG = "${SUPERVISOR_TAG}"
 
+SYSTEMD_AUTO_ENABLE = "enable"
+
 do_install_append () {
     install -d ${D}${sysconfdir}/resin-supervisor
     sed -i -e 's:@HOMEASSISTANT_REPOSITORY@:${HOMEASSISTANT_REPOSITORY}:g' ${D}${sysconfdir}/resin-supervisor/supervisor.conf
