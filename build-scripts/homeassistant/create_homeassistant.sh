@@ -47,7 +47,7 @@ echo "[INFO] load homeassistant"
 cd $BUILD_DIR && git clone https://github.com/home-assistant/home-assistant hass
 cd hass && git checkout $HASS_VERS
 
-sed -i "s/FROM.*/${BASE_IMAGE}/g" Dockerfile
+sed -i "s/FROM.*/FROM ${BASE_IMAGE}/g" Dockerfile
 
 # Run build
 echo "[INFO] start docker build"
