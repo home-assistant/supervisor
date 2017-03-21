@@ -37,7 +37,8 @@ BASE_IMAGE="resin\/${MACHINE}-alpine-python:3.6"
 DOCKER_TAG=$1
 DOCKER_IMAGE=${MACHINE}-homeassistant
 BUILD_DIR=${BUILD_DIR:=$SCRIPTPATH}
-WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/hass
+WORKSPACE=${BUILD_DIR}/hass
+HASS_GIT=${BUILD_DIR}/hass_git
 
 # setup docker
 echo "[INFO] Setup docker for homeassistant"
@@ -49,6 +50,10 @@ cp ../../homeassistant/Dockerfile $WORKSPACE/Dockerfile
 
 sed -i "s/%%BASE_IMAGE%%/${BASE_IMAGE}/g" $WORKSPACE/Dockerfile
 sed -i "s/%%HASS_VERSION%%/${HASS_VERS}/g" $WORKSPACE/Dockerfile
+
+git https://github.com/home-assistant/home-assistant $HASS_GIT
+cd $HASS_GIT && git checkout $HASS_VERS
+cp $HASS_GIT/requirements.txt $WORKSPACE/
 
 # Run build
 echo "[INFO] start docker build"
@@ -68,6 +73,7 @@ docker run --rm \
 echo "[INFO] cleanup WORKSPACE"
 cd $BUILD_DIR
 rm -rf $WORKSPACE
+rm -rf $HASS_GIT
 
 cleanup
 exit 0
