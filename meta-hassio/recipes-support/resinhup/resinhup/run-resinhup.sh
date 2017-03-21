@@ -56,7 +56,7 @@ Options:
         $LOGFILE file.
 
   --no-reboot
-        Don't reboot if update is successful. This is useful when debugging.
+        Dont reboot if update is successful. This is useful when debugging.
 EOF
 }
 
@@ -116,17 +116,6 @@ function runPreHacks {
 
     # can't fix label of data partition from container
     e2label $DATA_MOUNTPOINT resin-data
-
-    # Some devices never actually update /etc/timestamp because they are hard-rebooted.
-    # Force a /etc/timestamp update so we don't get into TLS issues.
-    # This assumes that current date is valid - which should be because we can't remotely
-    # update a device with outdated time (vpn would not be available so ssh would not
-    # work).
-    # Only applies on sysvinit systems
-    if [[ $(readlink /sbin/init) == *"sysvinit"* ]]; then
-        log "Save timestamp..."
-        date -u +%4Y%2m%2d%2H%2M%2S > /etc/timestamp
-    fi
 }
 
 # Test if a version is greater than another
@@ -296,7 +285,7 @@ log "Running resinhup for version $HOSTOS_VERSION ..."
 RESINHUP_STARTTIME=$(date +%s)
 
 # Set options
-RESINHUP_ENV="-e VERSION=$HOSTOS_VERSION -e REMOTE=$DOCKER_REPO/resinos"
+RESINHUP_ENV="-e VERSION=$HOSTOS_VERSION -e REMOTE=$DOCKER_REPO/hassio"
 
 docker run --privileged --rm --net=host $RESINHUP_ENV \
     -v /:/host \
