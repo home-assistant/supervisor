@@ -67,6 +67,7 @@ fi
 
 echo "[INFO] Inject HassIO yocto layer"
 cp -fr $HASSIO_ROOT/meta-hassio $WORKSPACE/layers/
+sed -i 's%${TOPDIR}/../layers/meta-resin/meta-resin-common \\%${TOPDIR}/../layers/meta-resin/meta-resin-common \\\n${TOPDIR}/../layers/meta-resin/meta-hassio \\%g' $WORKSPACE/layers/*/conf/samples/bblayers.conf.sample 
 
 # Additional variables
 BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG -a HOMEASSISTANT_REPOSITORY=$HOMEASSISTANT_REPOSITORY -a HASSIO_VERSION=$HASSIO_VERSION"
