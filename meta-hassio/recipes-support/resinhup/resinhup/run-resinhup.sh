@@ -227,7 +227,7 @@ runPreHacks
 
 # Detect arch
 source /etc/resin-supervisor/supervisor.conf
-arch=`echo "$SUPERVISOR_IMAGE" | sed -n "s/.*\/\([a-zA-Z0-9]*\)-.*/\1/p"`
+arch=$MACHINE
 if [ -z "$arch" ]; then
     log ERROR "Can't detect arch from /etc/resin-supervisor/supervisor.conf ."
 else
@@ -261,22 +261,10 @@ if [ ! -z "$UPDATER_SUPERVISOR_TAG" ]; then
     log "Update to supervisor $UPDATER_SUPERVISOR_IMAGE:$UPDATER_SUPERVISOR_TAG..."
 
     log "Updating supervisor..."
-    if [[ $(readlink /sbin/init) == *"sysvinit"* ]]; then
-        # Supervisor update on sysvinit based OS
-        docker pull "$UPDATER_SUPERVISOR_IMAGE:$UPDATER_SUPERVISOR_TAG"
-        if [ $? -ne 0 ]; then
-            tryup
-            log ERROR "Could not update supervisor to $UPDATER_SUPERVISOR_IMAGE:$UPDATER_SUPERVISOR_TAG ."
-
-        fi
-        docker tag -f "$SUPERVISOR_IMAGE:$SUPERVISOR_TAG" "$SUPERVISOR_IMAGE:latest"
-    else
-        # Supervisor update on systemd based OS
-        /usr/bin/update-resin-supervisor --supervisor-image $UPDATER_SUPERVISOR_IMAGE --supervisor-tag $UPDATER_SUPERVISOR_TAG
-        if [ $? -ne 0 ]; then
-            tryup
-            log ERROR "Could not update supervisor to $UPDATER_SUPERVISOR_IMAGE:$UPDATER_SUPERVISOR_TAG ."
-        fi
+    /usr/bin/update-resin-supervisor --supervisor-image $UPDATER_SUPERVISOR_IMAGE --supervisor-tag $UPDATER_SUPERVISOR_TAG
+    if [ $? -ne 0 ]; then
+        tryup
+        log ERROR "Could not update supervisor to $UPDATER_SUPERVISOR_IMAGE:$UPDATER_SUPERVISOR_TAG ."
     fi
 else
     log "Supervisor update not requested through arguments ."

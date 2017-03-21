@@ -49,11 +49,14 @@ source /etc/resin-supervisor/supervisor.conf
 # runtime value
 if [ -f $CONFIG_PATH ]
 then
-    API_ENDPOINT=$(jq --raw-output ".apiEndpoint // empty" $CONFIG_PATH)
+    ENDPOINT=$(jq --raw-output ".apiEndpoint // empty" $CONFIG_PATH)
     CONFIG_HOSTNAME=$(jq --raw-output ".hostname // empty" $CONFIG_PATH)
     PERSISTENT_LOGGING=$(jq --raw-output ".persistentLogging // empty" $CONFIG_PATH)
     if [ -z "$PERSISTENT_LOGGING" ]; then
         PERSISTENT_LOGGING=false
+    fi
+    if [ -z "$ENDPOINT" ]; then
+        ENDPOINT="https://raw.githubusercontent.com/pvizeli/hassio/master/version.json"
     fi
 else
     echo "[WARNING] $0 : '$CONFIG_PATH' not found."

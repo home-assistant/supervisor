@@ -55,7 +55,7 @@ source /usr/sbin/resin-vars
 # A temporary file used until next reboot
 UPDATECONF=/tmp/update-supervisor.conf
 
-if [ -z "$API_ENDPOINT" -o -z "$CONFIG_PATH" ]; then
+if [ -z "$ENDPOINT" -o -z "$CONFIG_PATH" ]; then
     echo "Environment variables API_ENDPOINT and CONFIG_PATH must be set."
     exit 1
 fi
@@ -69,11 +69,11 @@ function error_handler {
 
 trap 'error_handler $LINENO' ERR
 
-if request=$(curl -X PUT $API_ENDPOINT/supervisor | jq -e -r '.image,.tag')
-    read image_name, tag <<<$request
+if tag=$(curl $ENDPOINT | jq -e -r '.supervisor_tag')
+    image_name=$SUPERVISOR_IMAGE
 
     # Check that we didn't somehow get an empty tag version.
-    if [ -z "$tag" ]; then
+    if [ -z $tag ] || [ -z $image_name ]; then
         error_handler $LINENO "no tag received"
     fi
 fi

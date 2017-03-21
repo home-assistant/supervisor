@@ -1,0 +1,9 @@
+﻿[Unit]
+Description=SSH authorized_keys state bind mount
+Requires=home-root-.ssh.mount mnt-boot.mount
+After=home-root-.ssh.mount mnt-boot.mount
+Before=etc-dropbear.mount dropbearkey.service
+
+[Service]
+Type=simple
+ExecStart=@BASE_BINDIR@/bash @BINDIR@/sync-authorized-keys.sh
