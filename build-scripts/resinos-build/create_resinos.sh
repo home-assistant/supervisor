@@ -95,7 +95,6 @@ docker run --rm \
         --shared-downloads /yocto/shared-downloads \
         --shared-sstate /yocto/shared-sstate
 
-exit
 # Write deploy artifacts
 BUILD_DEPLOY_DIR=$WORKSPACE/deploy
 DEVICE_TYPE_JSON=$WORKSPACE/$MACHINE.json
@@ -127,25 +126,17 @@ cp $DEVICE_TYPE_JSON $BUILD_DEPLOY_DIR/device-type.json
 # move to deploy directory the kernel modules headers so we have it as a build artifact in jenkins
 mv -v $WORKSPACE/build/tmp/deploy/images/$MACHINE/kernel_modules_headers.tar.gz $BUILD_DEPLOY_DIR
 
-# If this is a clean production build, push a resinhup package to dockerhub
-# and registry.resinstaging.io.
-if [[ "$sourceBranch" == production* ]] && [ "$metaResinBranch" == "__ignore__" ] && [ "$supervisorTag" == "__ignore__" ]; then
-    echo "INFO: Pushing resinhup package to dockerhub and registry.resinstaging.io."
-    SLUG=$(jq --raw-output '.slug' $DEVICE_TYPE_JSON)
-    DOCKER_REPO="resin/resinos"
-    DOCKER_TAG="$VERSION_HOSTOS-$SLUG"
-    RESINREG_REPO="registry.resinstaging.io/resin/resinos"
-    RESINREG_TAG="$VERSION_HOSTOS-$SLUG"
-    if [ -f $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar ]; then
-        docker import $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar $DOCKER_REPO:$DOCKER_TAG
-        docker push $DOCKER_REPO:$DOCKER_TAG
-        docker rmi $DOCKER_REPO:$DOCKER_TAG # cleanup
-    else
-        echo "ERROR: The build didn't produce a resinhup package."
-        exit 1
-    fi
+exit
+echo "INFO: Pushing resinhup package to dockerhub"
+DOCKER_IMAGE="$DOCKER_REPO/hassio"
+DOCKER_TAG="$HASSIO_VERSION-$MACHINE"
+if [ -f $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar ]; then
+    docker import $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar $DOCKER_IMAGE:$DOCKER_TAG
+    docker push $DOCKER_IMAGE:$DOCKER_TAG
+    docker rmi $DOCKER_IMAGE:$DOCKER_TAG # cleanup
 else
-    echo "WARNING: There is no need to upload resinhup package for a non production clean build."
+    echo "ERROR: The build didn't produce a resinhup package."
+    exit 1
 fi
 
 # Cleanup the build directory
