@@ -45,7 +45,7 @@ case $MACHINE in
         DOCKER_FILE_NAME="Dockerfile.raspberrypi3"
     ;;
     "raspberrypi2")
-        DOCKER_FILE_NAME="Dockerfile.raspberryp-i2"
+        DOCKER_FILE_NAME="Dockerfile.raspberryp-pi2"
     ;;
     "raspberrypi")
         DOCKER_FILE_NAME="Dockerfile.raspberry-pi"
@@ -61,7 +61,7 @@ echo "[INFO] Setup workspace"
 mkdir -p $BUILD_DIR
 
 git clone https://github.com/resin-os/resinhup $WORKSPACE
-cd $WORKSPACE && git checkout $DOCKER_TAG
+cd $WORKSPACE && git checkout $RESINHUB_VER
 
 cp $DOCKER_FILE_NAME Dockerfile
 
