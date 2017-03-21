@@ -3,7 +3,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 SRC_URI += " \
     file://hassio.conf \
-    file://resinhup.sh \
+    file://resinhup.timer \
     file://resinhup.service \
     "
 
