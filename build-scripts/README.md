@@ -8,6 +8,11 @@ Builds are published on: https://hub.docker.com/r/pvizeli/
 
 - yocto-build-env: Allow us to build yocto resinos images
 - docker-build-env: Allow us to build docker image for all archs
+- resinhup-build: Create docker image for inplace update perform
+- resinos-build: Create image for SD and docker for inplace update
+- hassio-supervisor: Create our supervisor update
+- homeassistant: Create docker image with homeassistant
+
 
 ## Create a server
 

@@ -11,6 +11,9 @@ DOCKER_REPO=pvizeli
 # Don't run anything before this source as it sets PATH here
 source /etc/profile
 
+# load config
+source /usr/sbin/resin-vars
+
 # Help function
 function help {
     cat << EOF
@@ -139,11 +142,11 @@ while [[ $# > 0 ]]; do
             help
             exit 0
             ;;
-        -t|--tag)
+        -t|--resinhup-version)
             if [ -z "$2" ]; then
                 log ERROR "\"$1\" argument needs a value."
             fi
-            TAG=$2
+            RESINHUP_VERSION=$2
             shift
             ;;
         --hostos-version)
@@ -192,7 +195,19 @@ done
 
 # Check that HostOS version was provided
 if [ -z "$HOSTOS_VERSION" ]; then
-    log ERROR "--hostos-version is required."
+    if version=$(curl $ENDPOINT | jq -e -r '.hassio_version')
+        HOSTOS_VERSION=version
+    else
+        log ERROR "--hostos-version is required."
+    fi
+fi
+
+if [ -z $RESINHUP_VERSION ]; then
+    if version=$(curl $ENDPOINT | jq -e -r '.resinhub_version')
+        HOSTOS_VERSION=version
+    else
+        log ERROR "--hostos-version is required."
+    fi
 fi
 
 # Init log file
@@ -200,6 +215,12 @@ fi
 if [ "$LOG" == "yes" ]; then
     echo "================"`basename "$0"`" HEADER START====================" > $LOGFILE
     date >> $LOGFILE
+fi
+
+# Check if update is needed
+if [ $HASSIO_VERSION == $HOSTOS_VERSION ]; then
+    log "Version $HOSTOS_VERSION is already installed."
+    exit 0
 fi
 
 # Detect DATA_MOUNTPOINT
@@ -215,20 +236,10 @@ fi
 runPreHacks
 
 # Detect arch
-source /etc/resin-supervisor/supervisor.conf
-arch=$MACHINE
-if [ -z "$arch" ]; then
-    log ERROR "Can't detect arch from /etc/resin-supervisor/supervisor.conf ."
+if [ -z "$MACHINE" ]; then
+    log ERROR "Can't detect machine from resin-vars ."
 else
-    log "Detected arch: $arch ."
-fi
-
-# Detect slug
-slug=$MACHINE
-if [ -z $slug ]; then
-    log ERROR "Can't detect slug from /etc/resin-supervisor/supervisor.conf ."
-else
-    log "Detected slug: $slug ."
+    log "Detected arch: $MACHINE ."
 fi
 
 # We need to stop update-resin-supervisor.timer otherwise it might restart supervisor which
@@ -274,10 +285,10 @@ docker rm $(docker ps -a -q) > /dev/null 2>&1
 
 # Pull resinhup and tag it accordingly
 log "Pulling resinhup..."
-docker pull $DOCKER_REPO/resinhup-$slug:$TAG
+docker pull $DOCKER_REPO/resinhup:$MACHINE-$RESINHUP_VERSION
 if [ $? -ne 0 ]; then
     tryup
-    log ERROR "Could not pull $DOCKER_REPO/resinhup-$slug:$TAG ."
+    log ERROR "Could not pull $DOCKER_REPO/resinhup:$MACHINE-$RESINHUP_VERSION ."
 fi
 
 # Run resinhup
@@ -291,7 +302,7 @@ docker run --privileged --rm --net=host $RESINHUP_ENV \
     -v /:/host \
     -v /lib/modules:/lib/modules:ro \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    $DOCKER_REPO/resinhup-$slug:$TAG
+    $DOCKER_REPO/resinhup:$MACHINE-$RESINHUP_VERSION
 RESINHUP_EXIT=$?
 # RESINHUP_EXIT
 #   0 - update done

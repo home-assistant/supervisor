@@ -45,6 +45,9 @@ fi
 # Resin supervisor variables
 source /etc/resin-supervisor/supervisor.conf
 
+# ResinOS variables
+source /etc/hassio.conf
+
 # If config.json provides redefinitions for our vars let us rewrite their
 # runtime value
 if [ -f $CONFIG_PATH ]

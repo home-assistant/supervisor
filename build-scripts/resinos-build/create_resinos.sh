@@ -20,8 +20,8 @@ cleanup() {
 trap 'cleanup fail' SIGINT SIGTERM
 
 # Sanity checks
-if [ "$#" -ne 2 ]; then
-    echo "Usage: create_resinos.sh <MACHINE> <SUPERVISOR_TAG>"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: create_resinos.sh <MACHINE> <SUPERVISOR_TAG> <HASSIO_VERSION>"
     echo "Optional environment: BUILD_DIR, PERSISTENT_WORKDIR, RESIN_BRANCH, HASSIO_ROOT"
     exit 1
 fi
@@ -33,6 +33,7 @@ popd > /dev/null 2>&1
 
 MACHINE=$1
 SUPERVISOR_TAG=$2
+HASSIO_VERSION=$3
 PERSISTENT_WORKDIR=${PERSISTENT_WORKDIR:=~/yocto}
 BUILD_DIR=${BUILD_DIR:=$SCRIPTPATH}
 WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/resin-board
@@ -68,7 +69,7 @@ echo "[INFO] Inject HassIO yocto layer"
 cp -fr $HASSIO_ROOT/meta-hassio $WORKSPACE/layers/
 
 # Additional variables
-BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG -a HOMEASSISTANT_REPOSITORY=$HOMEASSISTANT_REPOSITORY"
+BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG -a HOMEASSISTANT_REPOSITORY=$HOMEASSISTANT_REPOSITORY -a HASSIO_VERSION=$HASSIO_VERSION"
 
 # Make sure shared directories are in place
 mkdir -p $DOWNLOAD_DIR

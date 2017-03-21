@@ -2,6 +2,7 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 SRC_URI += " \
+    file://hassio.conf \
     file://resinhup.sh \
     file://resinhup.service \
     "
@@ -16,9 +17,13 @@ SYSTEMD_AUTO_ENABLE = "enable"
 FILES_${PN} += " \
      ${systemd_unitdir} \
      ${bindir} \
+     ${sysconfdir} \
      "
 
 do_install_append() {
+    install -m 0755 ${WORKDIR}/hassio.conf ${D}${sysconfdir}
+    sed -i -e 's:@HASSIO_VERSION@:${HASSIO_VERSION}:g' ${D}${sysconfdir}/hassio.conf
+
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
         install -d ${D}${systemd_unitdir}/system
         install -c -m 0644 ${WORKDIR}/resinhup.service ${D}${systemd_unitdir}/system
