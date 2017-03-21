@@ -33,7 +33,7 @@ popd > /dev/null 2>&1
 
 HASS_VERS=$1
 MACHINE=$2
-BASE_IMAGE="resin\/${MACHINE}-python:3.6"
+BASE_IMAGE="resin\/${MACHINE}-alpine-python:3.6"
 DOCKER_TAG=$1
 DOCKER_IMAGE=${MACHINE}-homeassistant
 BUILD_DIR=${BUILD_DIR:=$SCRIPTPATH}
