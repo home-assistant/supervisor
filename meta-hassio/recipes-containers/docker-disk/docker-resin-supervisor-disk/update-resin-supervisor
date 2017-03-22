@@ -51,6 +51,7 @@ done
 
 # Don't souce before parsing args - resin-vars parses args too
 source /usr/sbin/resin-vars
+source /etc/resin-supervisor/supervisor.conf
 
 # A temporary file used until next reboot
 UPDATECONF=/tmp/update-supervisor.conf

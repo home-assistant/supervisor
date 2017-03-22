@@ -13,6 +13,8 @@ source /etc/profile
 
 # load config
 source /usr/sbin/resin-vars
+source /etc/resin-supervisor/supervisor.conf
+source /etc/hassio.conf
 
 # Help function
 function help {
