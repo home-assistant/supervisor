@@ -1,20 +1,36 @@
 # HassIO Server
 
-## REST API
+## REST API Supervisor
 
-### /supervisor
+### /supervisor_info
 
-- GET: Return running version back
-- PUT: Read last avilable version and write it to ResinOS config
+### /supervisor_network
+- Payload: {'hostname': ''}
 
-### /homeassistant
+## REST API HomeAssistant
 
-- GET: get avilable version
-- PUT: performe homeassistant update
+### /homeassistant_info
 
-### /addons
+### /homeassistant_update
+- Payload: {'version': '0.XX.Y'}
+If version is None it read last version from server.
 
-- GET: get list of avilable addons and installed addons back
-- PUT: get or performe a update of a addon
-- POST: install a addon
-- DEL: remove a addon
+## REST API addons
+
+### /addons_info
+
+### /addons_run
+- Payload: {'addon': 'xy', 'options': {}}
+
+### /addons_stop
+- Payload: {'addon': 'xy'}
+
+### /addons_install
+- Payload: {'addon': 'xy'}
+
+### /addons_delete
+- Payload: {'addon': 'xy'}
+
+### /addons_update
+- Payload: {'addon': 'xy', 'version': 'x.x'}
+If version is None it read last version from server.
