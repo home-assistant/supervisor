@@ -46,14 +46,33 @@ class DockerBase(object):
             return False
         return True
 
-    def run():
+    def is_running(self):
+        """Return True if docker is Running.
+
+        Return a Future.
+        """
+        return self.loop.run_in_executor(None, self._is_running)
+
+    def _is_running(self):
+        """Return True if docker is Running.
+
+        Need run inside executor.
+        """
+        if not self.container:
+            try:
+                self.container = self.dock.containers.get(self.docker_name)
+            except docker.errors.DockerException:
+                return False
+        return self.container.status == 'running'
+
+    def run(self):
         """Run docker image.
 
         Return a Future.
         """
         return self.loop.run_in_executor(None, self._run, tag)
 
-    def _run():
+    def _run(self):
         """Run docker image.
 
         Need run inside executor.

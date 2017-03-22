@@ -7,6 +7,8 @@ import async_timeout
 
 from .const import URL_SUPERVISOR_VERSION
 
+_LOGGER = logging.getLogger(__name__)
+
 
 async def fetch_current_versions(websession):
     """Fetch current versions from github."""
@@ -15,5 +17,6 @@ async def fetch_current_versions(websession):
             async with websession.get(URL_SUPERVISOR_VERSION) as request:
                 return (await request.json())
 
-    except Exception:  # pylint: disable=broad-except
+    except Exception as err:  # pylint: disable=broad-except
+        _LOGGER.warning("Can't fetch versions from github! %s", err)
         return None

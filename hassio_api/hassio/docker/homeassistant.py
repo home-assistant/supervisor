@@ -18,11 +18,14 @@ class DockerHomeAssistant(DockerBase):
         """Return name of docker container."""
         return HASS_DOCKER_NAME
 
-    def _run():
+    def _run(self):
         """Run docker image.
 
         Need run inside executor.
         """
+        if self._is_running():
+            return
+
         try:
             self.container = self.dock.containers.run(
                 self.image,
@@ -40,7 +43,7 @@ class DockerHomeAssistant(DockerBase):
                     self.config.path_ssl_docker:
                         {'bind': '/ssl', 'mode': 'rw'},
                 })
-        except docker.errors.APIError as err:
+        except docker.errors.DockerException as err:
             _LOGGER.error("Can't run %s", self.image)
             return False
 

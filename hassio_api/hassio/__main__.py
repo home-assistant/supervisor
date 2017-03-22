@@ -14,12 +14,11 @@ from .const import CONF_HOMEASSISTANT_TAG
 _LOGGER = logging.getLogger(__name__)
 
 
-def main():
+async def main(loop):
     """Start HassIO."""
     bootstrap.initialize_logging()
 
     # init asyncio & aiohttp client
-    loop = asyncio.get_event_loop()
     websession = aiohttp.ClientSession(loop=loop)
     dock = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
 
@@ -41,7 +40,7 @@ def main():
         while True:
             current = await tools.fetch_current_versions(websession)
             if current and CONF_HOMEASSISTANT_TAG in current:
-                if docker_hass.install(current[CONF_SUPERVISOR_TAG]):
+                if await docker_hass.install(current[CONF_SUPERVISOR_TAG]):
                     break
             _LOGGER.waring("Can't fetch info from github. Retry in 60")
             await asyncio.sleep(60, loop=loop)
@@ -49,10 +48,10 @@ def main():
         config.homeassistant_tag = current[CONF_HOMEASSISTANT_TAG]
 
     # run HomeAssistant
-    docker_hass.run()
-
-    await loop.run_forever()
+    await docker_hass.run()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    loop = asyncio.get_event_loop()
+    loop.create_task(main(loop))
+    loop.run_forever()
