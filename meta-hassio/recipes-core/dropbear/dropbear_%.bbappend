@@ -20,8 +20,8 @@ do_install_append() {
     install -m 0755 ${WORKDIR}/sync-authorized-keys.sh ${D}${bindir}
 
     if [ "${RESIN_CONNECTABLE_ENABLE_SERVICES}" = "1" ]; then
-        rm -r ${D}${localstatedir}/lib/dropbear/
-        rm  ${D}/home/root/.ssh/authorized_keys
+        rm -fr ${D}${localstatedir}/lib/dropbear/
+        rm -f ${D}/home/root/.ssh/authorized_keys
     fi
 
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then

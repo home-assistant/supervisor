@@ -9,12 +9,25 @@ import . from DockerBase
 class DockerHomeAssistant(DockerBase):
     """Docker hassio wrapper for HomeAssistant."""
 
-    async def run():
-        """Run docker image."""
+    def _run():
+        """Run docker image.
+
+        Need run inside executor.
+        """
         try:
-            self.docker.images.pull(self.image, tag=tag)
+            self.container = self.dock.containers.run(
+                self.image,
+                remove=True,
+                network_mode='host',
+                restart_policy={
+                    "Name": "always",
+                    "MaximumRetryCount": 10,
+                },
+                volumes={
+                    '/data': {'bind': '/data', 'mode': 'rw'}
+                })
         except docker.errors.APIError as err:
-            _LOGGER.error("Can't pull %s:%s", self.image, tag)
+            _LOGGER.error("Can't run %s", self.image)
             return False
 
         return True
