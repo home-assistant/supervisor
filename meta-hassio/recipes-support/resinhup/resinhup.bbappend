@@ -7,6 +7,8 @@ SRC_URI += " \
     file://resinhup.service \
     "
 
+inherit systemd
+
 SYSTEMD_SERVICE_${PN} += " \
     resinhup.service \
     resinhup.timer \
