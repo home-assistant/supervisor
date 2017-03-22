@@ -96,7 +96,8 @@ docker run --rm \
         --machine "$MACHINE" \
         ${BARYS_ARGUMENTS_VAR} \
         --shared-downloads /yocto/shared-downloads \
-        --shared-sstate /yocto/shared-sstate
+        --shared-sstate /yocto/shared-sstate \
+        --resinio
 
 # Write deploy artifacts
 BUILD_DEPLOY_DIR=$WORKSPACE/deploy
