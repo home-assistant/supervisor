@@ -10,8 +10,11 @@ FILE_RESIN_CONFIG = '/boot/config.json'
 FILE_HASSIO_ADDONS = '/data/addons.json'
 FILE_HASSIO_VERSION = '/data/version.json'
 
-HOMEASSISTANT_SHARE = os.environ['SUPERVISOR_SHARE']
-HOMEASSISTANT_CONFIG = "{}/config".format(HOMEASSISTANT_SHARE)
+HASSIO_SHARE = os.environ['SUPERVISOR_SHARE']
+HASSIO_DOCKER = os.environ['SUPERVISOR_NAME']
+
+HOMEASSISTANT_CONFIG = "{}/homeassistant_config".format(HASSIO_SHARE)
+HOMEASSISTANT_SSL = "{}/homeassistant_ssl".format(HASSIO_SHARE)
 
 HTTP_PORT = 9123
 

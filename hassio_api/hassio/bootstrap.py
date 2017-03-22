@@ -6,9 +6,8 @@ import os
 
 from colorlog import ColoredFormatter
 
-from .const import (
-    FILE_HASSIO_ADDONS, FILE_HASSIO_VERSION, FILE_RESIN_CONFIG,
-    HOMEASSISTANT_CONFIG, CONF_SUPERVISOR_TAG, CONF_SUPERVISOR_IMAGE)
+from .const import FILE_HASSIO_ADDONS, HOMEASSISTANT_CONFIG, HOMEASSISTANT_SSL
+from .version import Version
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,33 +20,21 @@ def initialize_system_data():
             "Create Home-Assistant config folder %s", HOMEASSISTANT_CONFIG)
         os.mkdir(HOMEASSISTANT_CONFIG)
 
+    # homeassistant ssl folder
+    if not os.path.isdir(HOMEASSISTANT_SSL):
+        _LOGGER.info(
+            "Create Home-Assistant ssl folder %s", HOMEASSISTANT_SSL)
+        os.mkdir(HOMEASSISTANT_SSL)
+
     # installed addons
     if not os.path.isfile(FILE_HASSIO_ADDONS):
         with open(FILE_HASSIO_ADDONS) as addons_file:
             addons_file.write(json.dumps({}))
 
     # supervisor/homeassistant image/tag versions
-    versions = {}
-    if not os.path.isfile(FILE_HASSIO_VERSION):
-        versions.update({
-            CONF_HOMEASSISTANT_IMAGE: os.environ['HOMEASSISTANT_REPOSITORY'],
-            CONF_HOMEASSISTANT_TAG: '',
-        })
-    else:
-        with open(FILE_HASSIO_VERSION, 'r') as conf_file:
-            versions = json.loads(conf_file.read())
+    conf_version = Version()
 
-    # update version
-    versions.update({
-        CONF_SUPERVISOR_IMAGE: os.environ['SUPERVISOR_IMAGE'],
-        CONF_SUPERVISOR_TAG: os.environ['SUPERVISOR_TAG'],
-    })
-
-    with open(FILE_HASSIO_VERSION, 'w') as conf_file:
-        conf_file.write(json.dumps(versions))
-
-    _LOGGER("initialize system done: %s", versions)
-    return versions
+    return conf_version
 
 
 def initialize_logging():

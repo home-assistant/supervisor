@@ -3,6 +3,7 @@ import asyncio
 
 import docker
 
+_LOGGER = logging.getLogger(__name__)
 
 class DockerBase(object):
     """Docker hassio wrapper."""
