@@ -5,7 +5,10 @@
 ### /supervisor_info
 
 ### /supervisor_network
-- Payload: {'hostname': ''}
+- Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask': '', 'gateway': ''}
+
+### /supervisor_power
+- Payload: {'action': 'reboot|shutdown'}
 
 ## REST API HomeAssistant
 
