@@ -1,11 +1,11 @@
 ﻿[Unit]
 Description=SSH authorized_keys state bind mount
-Requires=mnt-conf.mount resin-conf-reset.service
-After=mnt-conf.mount resin-conf-reset.service
-Before=etc-dropbear.mount dropbearkey.service
+Requires=mnt-state.mount resin-state-reset.service
+After=mnt-state.mount resin-state-reset.service
+Before=etc-dropbear.mount
 
 [Mount]
-What=/mnt/conf/root-overlay/home/root/.ssh
+What=/mnt/state/root-overlay/home/root/.ssh
 Where=/home/root/.ssh
 Type=none
 Options=bind
