@@ -1,20 +1,27 @@
 """Init file for HassIO docker object."""
-import asyncio
+import logging
 
 import docker
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class DockerBase(object):
     """Docker hassio wrapper."""
 
-    def __init__(self, loop, dock, image, tag=None):
+    def __init__(self, config, loop, dock, image, tag=None):
         """Initialize docker base wrapper."""
+        self.config = config
         self.loop = loop
         self.dock = dock
         self.image = image
         self.tag = tag
         self.container = None
+
+    @property
+    def docker_name(self):
+        """Return name of docker container."""
+        return None
 
     def install(self, tag='latest'):
         """Pull docker image.

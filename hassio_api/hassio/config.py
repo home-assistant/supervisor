@@ -1,28 +1,26 @@
 """Bootstrap HassIO."""
-import asyncio
 import json
 import logging
 import os
 
-from colorlog import ColoredFormatter
-
 from .const import (
-    FILE_HASSIO_VERSION, CONF_SUPERVISOR_TAG, CONF_SUPERVISOR_IMAGE,
-    CONF_HOMEASSISTANT_TAG, CONF_HOMEASSISTANT_IMAGE)
+    FILE_HASSIO_CONFIG, CONF_SUPERVISOR_TAG, CONF_SUPERVISOR_IMAGE,
+    CONF_HOMEASSISTANT_TAG, CONF_HOMEASSISTANT_IMAGE, HOMEASSISTANT_SSL,
+    HOMEASSISTANT_CONFIG, HASSIO_SHARE_EXT, HASSIO_SHARE_INT)
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Version(Object):
-    """Hold all version data."""
+class CoreConfig(Object):
+    """Hold all config data."""
 
-    def __init__(self, config_file=FILE_HASSIO_VERSION):
-        """Initialize version object."""
+    def __init__(self, config_file=FILE_HASSIO_CONFIG):
+        """Initialize config object."""
         self._data = {}
         self._filename = config_file
 
         # init or load data
-        if os.path.isfile(FILE_HASSIO_VERSION):
+        if os.path.isfile(self._filename):
             try:
                 with open(self._filename 'r') as cfile:
                     self._data = json.loads(cfile.read())
@@ -77,3 +75,23 @@ class Version(Object):
     def supervisor_tag(self):
         """Return docker supervisor tag."""
         return self._data.get(CONF_SUPERVISOR_TAG)
+
+    @property
+    def path_config_docker(self):
+        """Return config path extern for docker."""
+        return HOMEASSISTANT_CONFIG.format(HASSIO_SHARE_EXT)
+
+    @property
+    def path_config(self):
+        """Return config path inside supervisor."""
+        return HOMEASSISTANT_CONFIG.format(HASSIO_SHARE_INT)
+
+    @property
+    def path_ssl_docker(self):
+        """Return SSL path extern for docker."""
+        return HOMEASSISTANT_SSL.format(HASSIO_SHARE_EXT)
+
+    @property
+    def path_ssl(self):
+        """Return SSL path inside supervisor."""
+        return HOMEASSISTANT_SSL.format(HASSIO_SHARE_INT)

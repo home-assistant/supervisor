@@ -4,13 +4,19 @@ import asyncio
 import docker
 
 import . from DockerBase
-from ..const.py import HOMEASSISTANT_CONFIG, HOMEASSISTANT_SSL, HASSIO_DOCKER
+from ..const.py import HASSIO_DOCKER
 
 _LOGGER = logging.getLogger(__name__)
 HASS_DOCKER_NAME = 'homeassistant'
 
+
 class DockerHomeAssistant(DockerBase):
     """Docker hassio wrapper for HomeAssistant."""
+
+    @property
+    def docker_name(self):
+        """Return name of docker container."""
+        return HASS_DOCKER_NAME
 
     def _run():
         """Run docker image.
@@ -20,7 +26,7 @@ class DockerHomeAssistant(DockerBase):
         try:
             self.container = self.dock.containers.run(
                 self.image,
-                name=HASS_DOCKER_NAME,
+                name=self.docker_nme,
                 remove=True,
                 network_mode='host',
                 restart_policy={
@@ -29,8 +35,10 @@ class DockerHomeAssistant(DockerBase):
                 },
                 links={HASSIO_DOCKER: 'HASSIO'},
                 volumes={
-                    HOMEASSISTANT_CONFIG: {'bind': '/config', 'mode': 'rw'},
-                    HOMEASSISTANT_SSL: {'bind': '/ssl', 'mode': 'rw'},
+                    self.config.path_config_docker:
+                        {'bind': '/config', 'mode': 'rw'},
+                    self.config.path_ssl_docker:
+                        {'bind': '/ssl', 'mode': 'rw'},
                 })
         except docker.errors.APIError as err:
             _LOGGER.error("Can't run %s", self.image)

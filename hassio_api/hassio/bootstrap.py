@@ -6,35 +6,33 @@ import os
 
 from colorlog import ColoredFormatter
 
-from .const import FILE_HASSIO_ADDONS, HOMEASSISTANT_CONFIG, HOMEASSISTANT_SSL
-from .version import Version
+from .const import FILE_HASSIO_ADDONS
+from .version import CoreConfig
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def initialize_system_data():
     """Setup default config and create folders."""
+    config = CoreConfig()
+
     # homeassistant config folder
-    if not os.path.isdir(HOMEASSISTANT_CONFIG):
+    if not os.path.isdir(config.path_config):
         _LOGGER.info(
-            "Create Home-Assistant config folder %s", HOMEASSISTANT_CONFIG)
-        os.mkdir(HOMEASSISTANT_CONFIG)
+            "Create Home-Assistant config folder %s", config.path_config)
+        os.mkdir(config.path_config)
 
     # homeassistant ssl folder
-    if not os.path.isdir(HOMEASSISTANT_SSL):
-        _LOGGER.info(
-            "Create Home-Assistant ssl folder %s", HOMEASSISTANT_SSL)
-        os.mkdir(HOMEASSISTANT_SSL)
+    if not os.path.isdir(config.path_ssl):
+        _LOGGER.info("Create Home-Assistant ssl folder %s", config.path_ssl)
+        os.mkdir(config.path_ssl)
 
     # installed addons
     if not os.path.isfile(FILE_HASSIO_ADDONS):
         with open(FILE_HASSIO_ADDONS) as addons_file:
             addons_file.write(json.dumps({}))
 
-    # supervisor/homeassistant image/tag versions
-    conf_version = Version()
-
-    return conf_version
+    return config
 
 
 def initialize_logging():

@@ -24,16 +24,16 @@ def main():
     dock = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
 
     # init system
-    conf_version = bootstrap.initialize_system_data()
+    config = bootstrap.initialize_system_data()
 
     # init HomeAssistant Docker
     docker_hass = DockerHomeAssistant(
-        loop, dock, conf_version.homeassistant_image,
-        conf_version.homeassistant_tag
+        config, loop, dock, config.homeassistant_image,
+        config.homeassistant_tag
     )
 
     # first start of supervisor?
-    if conf_version.homeassistant_tag is None:
+    if config.homeassistant_tag is None:
         _LOGGER.info("First start of supervisor, read version from github.")
 
         # read homeassistant tag and install it
@@ -46,7 +46,7 @@ def main():
             _LOGGER.waring("Can't fetch info from github. Retry in 60")
             await asyncio.sleep(60, loop=loop)
 
-        conf_version.homeassistant_tag = current[CONF_HOMEASSISTANT_TAG]
+        config.homeassistant_tag = current[CONF_HOMEASSISTANT_TAG]
 
     # run HomeAssistant
     docker_hass.run()

@@ -6,15 +6,17 @@ URL_SUPERVISOR_VERSION = \
 
 URL_ADDONS_REPO = 'https://github.com/pvizeli/hassio-addons'
 
-FILE_RESIN_CONFIG = '/boot/config.json'
+FILE_HOST_CONFIG = '/boot/config.json'
+FILE_HOST_NETWORK = '/boot/network'
 FILE_HASSIO_ADDONS = '/data/addons.json'
-FILE_HASSIO_VERSION = '/data/version.json'
+FILE_HASSIO_CONFIG = '/data/config.json'
 
-HASSIO_SHARE = os.environ['SUPERVISOR_SHARE']
+HASSIO_SHARE_EXT = os.environ['SUPERVISOR_SHARE']
+HASSIO_SHARE_INT = '/shared-data'
 HASSIO_DOCKER = os.environ['SUPERVISOR_NAME']
 
-HOMEASSISTANT_CONFIG = "{}/homeassistant_config".format(HASSIO_SHARE)
-HOMEASSISTANT_SSL = "{}/homeassistant_ssl".format(HASSIO_SHARE)
+HOMEASSISTANT_CONFIG = "{}/homeassistant_config"
+HOMEASSISTANT_SSL = "{}/homeassistant_ssl"
 
 HTTP_PORT = 9123
 
