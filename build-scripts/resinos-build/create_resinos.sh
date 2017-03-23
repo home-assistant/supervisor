@@ -124,13 +124,12 @@ else
     echo "WARNING: No resinhup package found."
 fi
 
-mv -v $WORKSPACE/build/tmp/deploy/images/$MACHINE/VERSION $BUILD_DEPLOY_DIR
-mv -v $WORKSPACE/build/tmp/deploy/images/$MACHINE/VERSION_HOSTOS $BUILD_DEPLOY_DIR
+cp $WORKSPACE/build/tmp/deploy/images/$MACHINE/VERSION $BUILD_DEPLOY_DIR || true
+cp $WORKSPACE/build/tmp/deploy/images/$MACHINE/VERSION_HOSTOS $BUILD_DEPLOY_DIR || true
 cp $DEVICE_TYPE_JSON $BUILD_DEPLOY_DIR/device-type.json
 # move to deploy directory the kernel modules headers so we have it as a build artifact in jenkins
 mv -v $WORKSPACE/build/tmp/deploy/images/$MACHINE/kernel_modules_headers.tar.gz $BUILD_DEPLOY_DIR
 
-exit
 echo "INFO: Pushing resinhup package to dockerhub"
 DOCKER_IMAGE="$DOCKER_REPO/hassio"
 DOCKER_TAG="$HASSIO_VERSION-$MACHINE"
@@ -145,4 +144,5 @@ fi
 
 # Cleanup the build directory
 # Keep this after writing all artifacts
+exit 0
 rm -rf $WORKSPACE/build
