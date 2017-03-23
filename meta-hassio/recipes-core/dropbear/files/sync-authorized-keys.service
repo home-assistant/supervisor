@@ -5,7 +5,7 @@ After=home-root-.ssh.mount mnt-boot.mount
 Before=etc-dropbear.mount
 
 [Service]
-Type=simple
+Type=oneshot
 ExecStart=@BASE_BINDIR@/bash @BINDIR@/sync-authorized-keys.sh
 
 [Install]
