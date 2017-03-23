@@ -14,7 +14,7 @@ FILES_${PN} += " \
      "
 
 do_install_append() {
-    mkdir -p ${D}/home/root/.ssh
+    install -d ${D}/home/root/.ssh
 
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/sync-authorized-keys.sh ${D}${bindir}
