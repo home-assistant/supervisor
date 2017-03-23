@@ -2,38 +2,40 @@
 
 ## REST API Supervisor
 
-### /supervisor_info
+### /supervisor/info
 
-### /supervisor_network
+### /supervisor/network
 - Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask': '', 'gateway': ''}
 
-### /supervisor_power
-- Payload: {'action': 'reboot|shutdown'}
+### /supervisor/reboot
+
+### /supervisor/shutdown
 
 ## REST API HomeAssistant
 
-### /homeassistant_info
+### /homeassistant/info
 
-### /homeassistant_update
+### /homeassistant/update
 - Payload: {'version': '0.XX.Y'}
 If version is None it read last version from server.
 
 ## REST API addons
 
-### /addons_info
+### /addons/info
 
-### /addons_run
-- Payload: {'addon': 'xy', 'options': {}}
+### /addons/reload
 
-### /addons_stop
-- Payload: {'addon': 'xy'}
+### /addons/{addon}/start
+- Payload: {'options': {}}
 
-### /addons_install
-- Payload: {'addon': 'xy'}
+### /addons/{addon}/stop
 
-### /addons_delete
-- Payload: {'addon': 'xy'}
+### /addons/{addon}/install
+- Payload: {'version': 'x.x'}
 
-### /addons_update
-- Payload: {'addon': 'xy', 'version': 'x.x'}
+### /addons/{addon}/uninstall
+
+### /addons/{addon}/update
+- Payload: {'version': 'x.x'}
+
 If version is None it read last version from server.
