@@ -60,10 +60,8 @@ esac
 echo "[INFO] Setup workspace"
 mkdir -p $BUILD_DIR
 
-git clone https://github.com/resin-os/resinhup $WORKSPACE
-cd $WORKSPACE && git checkout $RESINHUB_VER
-
-cp $DOCKER_FILE_NAME Dockerfile
+git clone https://github.com/pvizeli/resinhup $WORKSPACE
+cd $WORKSPACE && cp $DOCKER_FILE_NAME Dockerfile
 
 # Run build
 echo "[INFO] start docker build"
