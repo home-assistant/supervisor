@@ -46,7 +46,7 @@ fi
 # runtime value
 if [ -f $CONFIG_PATH ]
 then
-    ENDPOINT=$(jq --raw-output ".apiEndpoint // empty" $CONFIG_PATH)
+    ENDPOINT=$(jq --raw-output ".endpoint // empty" $CONFIG_PATH)
     CONFIG_HOSTNAME=$(jq --raw-output ".hostname // empty" $CONFIG_PATH)
     PERSISTENT_LOGGING=$(jq --raw-output ".persistentLogging // empty" $CONFIG_PATH)
     if [ -z "$PERSISTENT_LOGGING" ]; then
