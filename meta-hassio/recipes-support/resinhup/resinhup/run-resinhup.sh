@@ -307,6 +307,8 @@ docker run --privileged --rm --net=host $RESINHUP_ENV \
     -v /var/run/docker.sock:/var/run/docker.sock \
     $DOCKER_REPO/resinhup:$MACHINE-$RESINHUP_VERSION
 RESINHUP_EXIT=$?
+
+docker rmi $DOCKER_REPO/resinhup:$MACHINE-$RESINHUP_VERSION || true
 # RESINHUP_EXIT
 #   0 - update done
 #   2 - only intermediate step was done and will continue after reboot
