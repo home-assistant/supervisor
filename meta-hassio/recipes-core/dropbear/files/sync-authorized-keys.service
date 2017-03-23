@@ -1,5 +1,5 @@
 ﻿[Unit]
-Description=SSH authorized_keys state bind mount
+Description=SSH authorized_keys sync
 Requires=home-root-.ssh.mount mnt-boot.mount
 After=home-root-.ssh.mount mnt-boot.mount
 Before=etc-dropbear.mount
