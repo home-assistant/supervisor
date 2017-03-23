@@ -10,11 +10,6 @@ DOCKER_REPO=pvizeli
 # Don't run anything before this source as it sets PATH here
 source /etc/profile
 
-# load config
-source /usr/sbin/resin-vars
-source /etc/resin-supervisor/supervisor.conf
-source /etc/hassio.conf
-
 # Help function
 function help {
     cat << EOF
@@ -193,6 +188,11 @@ while [[ $# > 0 ]]; do
     esac
     shift
 done
+
+# load config
+source /usr/sbin/resin-vars
+source /etc/resin-supervisor/supervisor.conf
+source /etc/hassio.conf
 
 # Check that HostOS version was provided
 if [ -z "$HOSTOS_VERSION" ]; then
