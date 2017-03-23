@@ -79,10 +79,10 @@ if tag=$(curl --silent $ENDPOINT | jq -e -r '.supervisor_tag'); then
     fi
 fi
 
-if [ -z $UPDATER_SUPERVISOR_TAG ]; then
+if [ ! -z $UPDATER_SUPERVISOR_TAG ]; then
     tag=$UPDATER_SUPERVISOR_TAG
 fi
-if [ -z $UPDATER_SUPERVISOR_IMAGE ]; then
+if [ ! -z $UPDATER_SUPERVISOR_IMAGE ]; then
     image_name=$UPDATER_SUPERVISOR_IMAGE
 fi
 
@@ -115,6 +115,10 @@ systemctl start resin-supervisor
 
 # Mark supervisor as working. This version will run when the device reboots.
 echo "Mark pulled tag as latest..."
-docker tag -f "$image_name:$tag" "$image_name:latest"
+docker tag "$image_name:$tag" "$image_name:latest"
 sed --in-place "s|SUPERVISOR_IMAGE=.*|SUPERVISOR_IMAGE=$image_name|" /etc/resin-supervisor/supervisor.conf
 sed --in-place "s|SUPERVISOR_TAG=.*|SUPERVISOR_TAG=$tag|" /etc/resin-supervisor/supervisor.conf
+
+# cleanup old image
+echo "Cleanup old supervisor"
+docker rmi $SUPERVISOR_IMAGE:$SUPERVISOR_TAG || true

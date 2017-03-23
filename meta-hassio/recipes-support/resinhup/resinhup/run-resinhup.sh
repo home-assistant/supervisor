@@ -1,7 +1,6 @@
-﻿#!/bin/bash
+#!/bin/bash
 
 # Default values
-TAG=1.0
 LOGFILE=/tmp/`basename "$0"`.log
 LOG=yes
 ONLY_SUPERVISOR=no
@@ -197,18 +196,18 @@ done
 
 # Check that HostOS version was provided
 if [ -z "$HOSTOS_VERSION" ]; then
-    if version=$(curl $ENDPOINT | jq -e -r '.hassio_version')
-        HOSTOS_VERSION=version
+    if version=$(curl --silent $ENDPOINT | jq -e -r '.hassio_version'); then
+        HOSTOS_VERSION=$version
     else
         log ERROR "--hostos-version is required."
     fi
 fi
 
 if [ -z $RESINHUP_VERSION ]; then
-    if version=$(curl $ENDPOINT | jq -e -r '.resinhub_version')
-        HOSTOS_VERSION=version
+    if version=$(curl --silent $ENDPOINT | jq -e -r '.resinhup_version'); then
+        RESINHUP_VERSION=$version
     else
-        log ERROR "--hostos-version is required."
+        log ERROR "--resinhup-version is required."
     fi
 fi
 
@@ -220,6 +219,8 @@ if [ "$LOG" == "yes" ]; then
 fi
 
 # Check if update is needed
+log "Detected HassIO version: $HASSIO_VERSION ."
+log "Update HassIO to version: $HOSTOS_VERSION ."
 if [ $HASSIO_VERSION == $HOSTOS_VERSION ]; then
     log "Version $HOSTOS_VERSION is already installed."
     exit 0
