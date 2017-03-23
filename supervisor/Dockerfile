@@ -18,3 +18,5 @@ RUN pip3 install pip --no-cache-dir --upgrade \
     && pip3 install --no-cache-dir aiohttp \
     && pip3 install --no-cache-dir docker \
     && pip3 install --no-cache-dir colorlog
+
+CMD [ "bash" ]
