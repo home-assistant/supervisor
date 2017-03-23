@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 BOOT_SSH_KEY=/mnt/boot/authorized_keys
 HOME_SSH_KEY=/home/root/.ssh/authorized_keys
 

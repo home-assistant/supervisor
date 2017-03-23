@@ -1,7 +1,7 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 SRC_URI += " \
-    file://sync-authorized-keys.sh \
+    file://sync-authorized-keys \
     file://sync-authorized-keys.service \
     "
 
@@ -17,7 +17,7 @@ do_install_append() {
     install -d ${D}/home/root/.ssh
 
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/sync-authorized-keys.sh ${D}${bindir}
+    install -m 0755 ${WORKDIR}/sync-authorized-keys ${D}${bindir}
 
     if [ "${RESIN_CONNECTABLE_ENABLE_SERVICES}" = "1" ]; then
         rm -fr ${D}${localstatedir}/lib/dropbear/

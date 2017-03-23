@@ -6,7 +6,8 @@ Before=etc-dropbear.mount
 
 [Service]
 Type=oneshot
-ExecStart=@BASE_BINDIR@/bash @BINDIR@/sync-authorized-keys.sh
+RemainAfterExit=yes
+ExecStart=@BASE_BINDIR@/bash @BINDIR@/sync-authorized-keys
 
 [Install]
 WantedBy=multi-user.target
