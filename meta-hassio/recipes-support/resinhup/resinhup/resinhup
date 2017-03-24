@@ -329,7 +329,7 @@ if [ $RESINHUP_EXIT -eq 0 ] || [ $RESINHUP_EXIT -eq 2 ] || [ $RESINHUP_EXIT -eq 
     # Everything is fine - Reboot
     if [ "$NOREBOOT" == "no" ]; then
         log "Rebooting board in 5 seconds..."
-        nohup bash -c " /bin/sleep 5 ; /sbin/reboot " &
+        nohup bash -c " /bin/sleep 5 ; /sbin/reboot " > /dev/null 2>&1 &
     else
         log "'No-reboot' requested."
     fi
