@@ -109,7 +109,7 @@ COMPRESSED=$(jq --raw-output '.yocto.compressed' $DEVICE_TYPE_JSON)
 ARCHIVE=$(jq --raw-output '.yocto.archive' $DEVICE_TYPE_JSON)
 mkdir -p $BUILD_DEPLOY_DIR
 rm -rf $BUILD_DEPLOY_DIR/* # do we have anything there?
-mv -v $(readlink --canonicalize $WORKSPACE/build/tmp/deploy/images/$MACHINE/$DEPLOY_ARTIFACT) $BUILD_DEPLOY_DIR/$DEPLOY_ARTIFACT
+cp $(readlink --canonicalize $WORKSPACE/build/tmp/deploy/images/$MACHINE/$DEPLOY_ARTIFACT) $BUILD_DEPLOY_DIR/$DEPLOY_ARTIFACT
 if [ "${COMPRESSED}" == 'true' ]; then
 	if [ "${ARCHIVE}" == 'true' ]; then
 		(cd $BUILD_DEPLOY_DIR && tar --remove-files  --use-compress-program pigz --directory=$DEPLOY_ARTIFACT -cvf ${DEPLOY_ARTIFACT}.tar.gz .)
@@ -128,7 +128,7 @@ cp $WORKSPACE/build/tmp/deploy/images/$MACHINE/VERSION $BUILD_DEPLOY_DIR || true
 cp $WORKSPACE/build/tmp/deploy/images/$MACHINE/VERSION_HOSTOS $BUILD_DEPLOY_DIR || true
 cp $DEVICE_TYPE_JSON $BUILD_DEPLOY_DIR/device-type.json
 # move to deploy directory the kernel modules headers so we have it as a build artifact in jenkins
-mv -v $WORKSPACE/build/tmp/deploy/images/$MACHINE/kernel_modules_headers.tar.gz $BUILD_DEPLOY_DIR
+cp $WORKSPACE/build/tmp/deploy/images/$MACHINE/kernel_modules_headers.tar.gz $BUILD_DEPLOY_DIR || true
 
 echo "INFO: Pushing resinhup package to dockerhub"
 DOCKER_IMAGE="$DOCKER_REPO/hassio"
