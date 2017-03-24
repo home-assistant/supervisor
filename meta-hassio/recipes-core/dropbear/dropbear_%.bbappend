@@ -13,6 +13,8 @@ FILES_${PN} += " \
      "/home/root/.ssh/" \
      "
 
+RDEPENDS_${PN} += "bash"
+
 do_install_append() {
     install -d ${D}/home/root/.ssh
 
