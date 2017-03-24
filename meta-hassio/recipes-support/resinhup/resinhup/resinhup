@@ -326,6 +326,10 @@ if [ $RESINHUP_EXIT -eq 0 ] || [ $RESINHUP_EXIT -eq 2 ] || [ $RESINHUP_EXIT -eq 
     RESINHUP_ENDTIME=$(date +%s)
     log "Update suceeded in $(($RESINHUP_ENDTIME - $RESINHUP_STARTTIME)) seconds."
 
+    # Restore config
+    cp /mnt/boot/config.json.hup.old /mnt/boot/config.json || true
+    cp /mnt/boot/system-connections/resin-sample.hup.old /mnt/boot/config.json || true
+
     # Everything is fine - Reboot
     if [ "$NOREBOOT" == "no" ]; then
         log "Rebooting board in 5 seconds..."
