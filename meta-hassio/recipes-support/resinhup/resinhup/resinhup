@@ -228,6 +228,13 @@ if [ $HASSIO_VERSION == $HOSTOS_VERSION ]; then
     exit 0
 fi
 
+# protect downgrade
+downgrade=$(awk -vn1=$HASSIO_VERSION -vn2=$HOSTOS_VERSION 'BEGIN{print (n1<n2) ? 0:1}')
+if [ $downgrade == 1 ]; then
+    log ERROR "Downgrade are not supported"
+    exit 0
+fi
+
 # Detect DATA_MOUNTPOINT
 if [ -d /mnt/data ]; then
     DATA_MOUNTPOINT=/mnt/data
