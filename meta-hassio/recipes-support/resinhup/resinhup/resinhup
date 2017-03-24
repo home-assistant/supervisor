@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # Default values
 LOGFILE=/tmp/`basename "$0"`.log
 LOG=yes
@@ -299,7 +301,7 @@ log "Running resinhup for version $HOSTOS_VERSION ..."
 RESINHUP_STARTTIME=$(date +%s)
 
 # Set options
-RESINHUP_ENV="-e VERSION=$HOSTOS_VERSION -e REMOTE=$DOCKER_REPO/hassio"
+RESINHUP_ENV="-e VERSION=$HOSTOS_VERSION-$MACHINE -e REMOTE=$DOCKER_REPO/hassio"
 
 docker run --privileged --rm --net=host $RESINHUP_ENV \
     -v /:/host \

@@ -1,7 +1,8 @@
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-SRC_URI += " \
+SRC_URI = " \
+    file://resinhup \
     file://hassio.conf \
     file://resinhup.timer \
     file://resinhup.service \
@@ -26,6 +27,9 @@ do_install_append() {
     install -d ${D}${sysconfdir}
     install -m 0755 ${WORKDIR}/hassio.conf ${D}${sysconfdir}
     sed -i -e 's:@HASSIO_VERSION@:${HASSIO_VERSION}:g' ${D}${sysconfdir}/hassio.conf
+
+    install -d ${D}${bindir}
+    install -m 0755 ${WORKDIR}/resinhup ${D}${bindir}
 
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
         install -d ${D}${systemd_unitdir}/system

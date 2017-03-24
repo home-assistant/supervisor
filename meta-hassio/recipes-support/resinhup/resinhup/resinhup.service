@@ -16,4 +16,4 @@ After=\
 
 [Service]
 Type=simple
-ExecStart=@BASE_BINDIR@/bash @BINDIR@/run-resinhub.sh
+ExecStart=@BASE_BINDIR@/bash @BINDIR@/resinhub
