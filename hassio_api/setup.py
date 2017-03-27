@@ -1,6 +1,6 @@
 from setuptools import setup
 
-VERSION = "1.5"
+VERSION = "0.1"
 
 setup(
     name='HassIO',
