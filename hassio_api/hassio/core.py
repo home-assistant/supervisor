@@ -5,8 +5,8 @@ import logging
 import aiohttp
 import docker
 
-import .bootstrap
-import .tools
+import hassio.bootstrap as bootstrap
+import hassio.tools as tools
 from .const import CONF_HOMEASSISTANT_TAG
 from .docker.homeassistant import DockerHomeAssistant
 from .docker.supervisor import DockerSupervisor
@@ -29,8 +29,8 @@ async def run_hassio(loop):
 
     # init HomeAssistant Docker
     docker_hass = DockerHomeAssistant(
-        config, loop, dock, config.homeassistant_image,
-        config.homeassistant_tag
+        config, loop, dock, image=config.homeassistant_image,
+        tag=config.homeassistant_tag
     )
 
     # first start of supervisor?
@@ -44,10 +44,12 @@ async def run_hassio(loop):
             if current and CONF_HOMEASSISTANT_TAG in current:
                 if await docker_hass.install(current[CONF_HOMEASSISTANT_TAG]):
                     break
-            _LOGGER.warning("Can't fetch info from github. Retry in 60")
+            _LOGGER.warning("Can't fetch info from github. Retry in 60.")
             await asyncio.sleep(60, loop=loop)
 
         config.homeassistant_tag = current[CONF_HOMEASSISTANT_TAG]
+    else:
+        _LOGGER.info("HomeAssistant docker is exists.")
 
     # run HomeAssistant
     await docker_hass.run()

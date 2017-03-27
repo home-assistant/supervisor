@@ -33,6 +33,7 @@ def get_version_from_env(env_list):
     _LOGGER.error("Can't find VERSION in env")
     return None
 
+
 def extract_image_name(image):
     """Extract image name and tag from docker attrs."""
     data = _RE_IMAGE.match(image)

@@ -8,6 +8,7 @@ import hassio.core as core
 _LOGGER = logging.getLogger(__name__)
 
 
+# pylint: disable=invalid-name
 if __name__ == "__main__":
     bootstrap.initialize_logging()
 

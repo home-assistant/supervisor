@@ -68,7 +68,7 @@ def check_environment():
             _LOGGER.fatal("Can't find %s in env!", key)
             return False
 
-    if not os.path.isFile(os.environ['DOCKER_SOCKET']):
+    if not os.path.isfile(os.environ['DOCKER_SOCKET']):
         _LOGGER.fatal("Can't find docker socket!")
         return False
 

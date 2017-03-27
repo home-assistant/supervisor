@@ -3,13 +3,15 @@ import logging
 
 import docker
 
+from ..tools import get_version_from_env, extract_image_name
+
 _LOGGER = logging.getLogger(__name__)
 
 
 class DockerBase(object):
     """Docker hassio wrapper."""
 
-    def __init__(self, config, loop, dock, image, tag=None):
+    def __init__(self, config, loop, dock, image=None, tag=None):
         """Initialize docker base wrapper."""
         self.config = config
         self.loop = loop
@@ -65,6 +67,40 @@ class DockerBase(object):
             except docker.errors.DockerException:
                 return False
         return self.container.status == 'running'
+
+    def attach(self):
+        """Attach to running docker container.
+
+        Return a Future.
+        """
+        return self.loop.run_in_executor(None, self._attach)
+
+    def _attach(self):
+        """Attach to running docker container.
+
+        Need run inside executor.
+        """
+        try:
+            self.container = self.dock.containers.get(self.docker_name)
+            self.image, self.tag = self.image = extract_image_name(
+                self.container.attrs['Config']['Image'])
+        except (docker.errors.DockerException, KeyError):
+            _LOGGER.fatal(
+                "Can't attach to %s docker container!", self.docker_name)
+
+    async def get_version(self):
+        """Read VERSION tag from ENV docker.
+
+        Is a coroutine.
+        """
+        if self.container:
+            try:
+                self.version = get_version_from_env(
+                    self.container.attrs['Config']['Env'])
+            except KeyError:
+                _LOGGER.error("Can't read VERSION from docker env.")
+
+        return None
 
     def run(self):
         """Run docker image.
