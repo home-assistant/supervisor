@@ -51,6 +51,8 @@ cp ../../supervisor/Dockerfile $WORKSPACE/Dockerfile
 sed -i "s/%%BASE_IMAGE%%/${BASE_IMAGE}/g" $WORKSPACE/Dockerfile
 sed -i "s/%%SUPERVISOR_TAG%%/${DOCKER_TAG}/g" $WORKSPACE/Dockerfile
 
+cp -r ../../hassio_api $WORKSPACE/
+
 # Run build
 echo "[INFO] start docker build"
 docker stop $BUILD_CONTAINER_NAME 2> /dev/null || true
