@@ -9,6 +9,7 @@ import .bootstrap
 import .tools
 from .const import CONF_HOMEASSISTANT_TAG
 from .docker.homeassistant import DockerHomeAssistant
+from .docker.supervisor import DockerSupervisor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,10 +17,15 @@ _LOGGER = logging.getLogger(__name__)
 async def run_hassio(loop):
     """Start HassIO."""
     websession = aiohttp.ClientSession(loop=loop)
-    dock = docker.Client(base_url='unix://var/run/docker.sock', version='auto')
+    dock = docker.DockerClient(
+        base_url='unix://var/run/docker.sock', version='auto')
 
     # init system
     config = bootstrap.initialize_system_data()
+
+    # init Supervisor Docker
+    docker_super = DockerSupervisor(config, loop, dock)
+    await docker_super.attach()
 
     # init HomeAssistant Docker
     docker_hass = DockerHomeAssistant(

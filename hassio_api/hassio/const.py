@@ -12,7 +12,7 @@ FILE_HASSIO_ADDONS = '/data/addons.json'
 FILE_HASSIO_CONFIG = '/data/config.json'
 
 HASSIO_SHARE_EXT = os.environ['SUPERVISOR_SHARE']
-HASSIO_SHARE_INT = '/shared-data'
+HASSIO_SHARE_INT = '/data'
 HASSIO_DOCKER = os.environ['SUPERVISOR_NAME']
 
 HOMEASSISTANT_CONFIG = "{}/homeassistant_config"

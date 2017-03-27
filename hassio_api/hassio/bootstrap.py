@@ -57,3 +57,19 @@ def initialize_logging():
             'CRITICAL': 'red',
         }
     ))
+
+
+def check_environment():
+    """Check if all environment are exists."""
+    for key in ('SUPERVISOR_SHARE', 'SUPERVISOR_NAME', 'DOCKER_SOCKET'):
+        try:
+            os.environ[key]
+        except KeyError:
+            _LOGGER.fatal("Can't find %s in env!", key)
+            return False
+
+    if not os.path.isFile(os.environ['DOCKER_SOCKET']):
+        _LOGGER.fatal("Can't find docker socket!")
+        return False
+
+    return True

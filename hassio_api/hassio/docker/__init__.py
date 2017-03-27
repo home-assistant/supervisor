@@ -17,6 +17,7 @@ class DockerBase(object):
         self.image = image
         self.tag = tag
         self.container = None
+        self.version = None
 
     @property
     def docker_name(self):

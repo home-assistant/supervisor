@@ -33,7 +33,7 @@ setup(
     install_requires=[
         'async_timeout',
         'aiohttp',
-        'docker-py',
+        'docker',
         'colorlog',
     ]
 )
