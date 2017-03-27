@@ -1,10 +1,10 @@
 """Init file for HassIO docker object."""
-import asyncio
+import logging
 
 import docker
 
-import . from DockerBase
-from ..const.py import HASSIO_DOCKER
+from . import DockerBase
+from ..const import HASSIO_DOCKER
 
 _LOGGER = logging.getLogger(__name__)
 HASS_DOCKER_NAME = 'homeassistant'
@@ -29,7 +29,7 @@ class DockerHomeAssistant(DockerBase):
         try:
             self.container = self.dock.containers.run(
                 self.image,
-                name=self.docker_nme,
+                name=self.docker_name,
                 remove=True,
                 network_mode='host',
                 restart_policy={
@@ -43,7 +43,7 @@ class DockerHomeAssistant(DockerBase):
                     self.config.path_ssl_docker:
                         {'bind': '/ssl', 'mode': 'rw'},
                 })
-        except docker.errors.DockerException as err:
+        except docker.errors.DockerException:
             _LOGGER.error("Can't run %s", self.image)
             return False
 

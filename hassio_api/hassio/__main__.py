@@ -3,13 +3,12 @@ import asyncio
 import logging
 
 import aiohttp
-from aiohttp import web
 import docker
 
-import .bootstrap
-import .tools
-from .docker.homeassistant import DockerHomeAssistant
-from .const import CONF_HOMEASSISTANT_TAG
+import hassio.bootstrap as bootstrap
+import hassio.tools as tools
+from hassio.const import CONF_HOMEASSISTANT_TAG
+from hassio.docker.homeassistant import DockerHomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,9 +39,9 @@ async def main(loop):
         while True:
             current = await tools.fetch_current_versions(websession)
             if current and CONF_HOMEASSISTANT_TAG in current:
-                if await docker_hass.install(current[CONF_SUPERVISOR_TAG]):
+                if await docker_hass.install(current[CONF_HOMEASSISTANT_TAG]):
                     break
-            _LOGGER.waring("Can't fetch info from github. Retry in 60")
+            _LOGGER.warning("Can't fetch info from github. Retry in 60")
             await asyncio.sleep(60, loop=loop)
 
         config.homeassistant_tag = current[CONF_HOMEASSISTANT_TAG]

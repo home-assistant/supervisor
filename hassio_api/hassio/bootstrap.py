@@ -1,5 +1,4 @@
 """Bootstrap HassIO."""
-import asyncio
 import json
 import logging
 import os
@@ -7,7 +6,7 @@ import os
 from colorlog import ColoredFormatter
 
 from .const import FILE_HASSIO_ADDONS
-from .version import CoreConfig
+from .config import CoreConfig
 
 _LOGGER = logging.getLogger(__name__)
 

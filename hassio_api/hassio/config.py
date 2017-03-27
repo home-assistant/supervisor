@@ -11,7 +11,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class CoreConfig(Object):
+class CoreConfig(object):
     """Hold all config data."""
 
     def __init__(self, config_file=FILE_HASSIO_CONFIG):
@@ -22,10 +22,10 @@ class CoreConfig(Object):
         # init or load data
         if os.path.isfile(self._filename):
             try:
-                with open(self._filename 'r') as cfile:
+                with open(self._filename, 'r') as cfile:
                     self._data = json.loads(cfile.read())
             except OSError:
-                _LOGGER.waring("Can't read %s", self._filename)
+                _LOGGER.warning("Can't read %s", self._filename)
 
         if not self._data:
             self._data.update({
@@ -35,7 +35,7 @@ class CoreConfig(Object):
             })
 
         # update version
-        versions.update({
+        self._data.update({
             CONF_SUPERVISOR_IMAGE: os.environ['SUPERVISOR_IMAGE'],
             CONF_SUPERVISOR_TAG: os.environ['SUPERVISOR_TAG'],
         })
@@ -64,7 +64,7 @@ class CoreConfig(Object):
     def homeassistant_tag(self, value):
         """Set docker homeassistant tag."""
         self._data[CONF_HOMEASSISTANT_TAG] = value
-        self.store()
+        self.save()
 
     @property
     def supervisor_image(self):

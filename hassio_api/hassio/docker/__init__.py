@@ -41,7 +41,7 @@ class DockerBase(object):
             if tag != "latest":
                 image = self.dock.images.get("{}:{}".format(self.image, tag))
                 image.tag(self.image, tag='latest')
-        except docker.errors.APIError as err:
+        except docker.errors.APIError:
             _LOGGER.error("Can't pull %s:%s", self.image, tag)
             return False
         return True
@@ -70,7 +70,7 @@ class DockerBase(object):
 
         Return a Future.
         """
-        return self.loop.run_in_executor(None, self._run, tag)
+        return self.loop.run_in_executor(None, self._run)
 
     def _run(self):
         """Run docker image.

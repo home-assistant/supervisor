@@ -34,6 +34,6 @@ setup(
         'async_timeout',
         'aiohttp',
         'docker-py',
-        'colorlog'
+        'colorlog',
     ]
 )
