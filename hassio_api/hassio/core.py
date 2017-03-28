@@ -6,6 +6,7 @@ import aiohttp
 import docker
 
 from . import bootstrap, tools
+from .host_controll import HostControll
 from .const import HOMEASSISTANT_TAG, SOCKET_DOCKER
 from .docker.homeassistant import DockerHomeAssistant
 from .docker.supervisor import DockerSupervisor
@@ -32,6 +33,10 @@ async def run_hassio(loop):
         tag=config.homeassistant_tag
     )
 
+    # init hostcontroll
+    host_controll = HostControll(loop)
+    await host_controll.info()
+
     # first start of supervisor?
     if config.homeassistant_tag is None:
         _LOGGER.info("First start of supervisor, read version from github.")
@@ -40,7 +45,7 @@ async def run_hassio(loop):
         current = None
         while True:
             current = await tools.fetch_current_versions(websession)
-            if current and CONF_HOMEASSISTANT_TAG in current:
+            if current and HOMEASSISTANT_TAG in current:
                 if await docker_hass.install(current[HOMEASSISTANT_TAG]):
                     break
             _LOGGER.warning("Can't fetch info from github. Retry in 60.")
