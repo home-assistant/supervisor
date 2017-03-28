@@ -220,15 +220,15 @@ if [ "$LOG" == "yes" ]; then
 fi
 
 # Check if update is needed
-log "Detected HassIO version: $RESINOS_VERSION ."
-log "Update HassIO to version: $HOSTOS_VERSION ."
-if [ $RESINOS_VERSION == $HOSTOS_VERSION ]; then
+log "Detected HassIO version: $RESINOS_HASSIO_VERSION ."
+log "Update HassIO to version: $HOSTOS_HASSIO_VERSION ."
+if [ $RESINOS_HASSIO_VERSION == $HOSTOS_VERSION ]; then
     log "Version $HOSTOS_VERSION is already installed."
     exit 0
 fi
 
 # protect downgrade
-downgrade=$(awk -vn1=$RESINOS_VERSION -vn2=$HOSTOS_VERSION 'BEGIN{print (n1<n2) ? 0:1}')
+downgrade=$(awk -vn1=$RESINOS_HASSIO_VERSION -vn2=$HOSTOS_VERSION 'BEGIN{print (n1<n2) ? 0:1}')
 if [ $downgrade == 1 ]; then
     log ERROR "Downgrade are not supported"
     exit 0
@@ -307,7 +307,7 @@ log "Running resinhup for version $HOSTOS_VERSION ..."
 RESINHUP_STARTTIME=$(date +%s)
 
 # Set options
-RESINHUP_ENV="-e VERSION=$HOSTOS_VERSION-$MACHINE -e REMOTE=$DOCKER_REPO/hassio"
+RESINHUP_ENV="-e VERSION=$HOSTOS_VERSION-$MACHINE -e REMOTE=$DOCKER_REPO/resinos-hassio"
 
 docker run --privileged --rm --net=host $RESINHUP_ENV \
     -v /:/host \

@@ -20,8 +20,8 @@ cleanup() {
 trap 'cleanup fail' SIGINT SIGTERM
 
 # Sanity checks
-if [ "$#" -ne 2 ]; then
-    echo "Usage: create_resinos.sh <MACHINE> <HASSIO_VERSION>"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: create_resinos.sh <MACHINE> <HASSIO_VERSION> <RESINOS_HASSIO_VERSION>"
     echo "Optional environment: BUILD_DIR, PERSISTENT_WORKDIR, RESIN_BRANCH, HASSIO_ROOT"
     exit 1
 fi
@@ -32,8 +32,8 @@ SCRIPTPATH=`pwd`
 popd > /dev/null 2>&1
 
 MACHINE=$1
-SUPERVISOR_TAG=$2
 HASSIO_VERSION=$2
+RESINOS_HASSIO_VERSION=$3
 PERSISTENT_WORKDIR=${PERSISTENT_WORKDIR:=~/yocto}
 BUILD_DIR=${BUILD_DIR:=$SCRIPTPATH}
 WORKSPACE=${BUILD_DIR:=$SCRIPTPATH}/resin-board
@@ -72,7 +72,7 @@ if [ ! -d $WORKSPACE/build/conf ]; then
 fi
 
 # Additional variables
-BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$SUPERVISOR_TAG -a HOMEASSISTANT_REPOSITORY=$HOMEASSISTANT_REPOSITORY"
+BARYS_ARGUMENTS_VAR="-a HASSIO_SUPERVISOR_TAG=$HASSIO_VERSION -a HOMEASSISTANT_REPOSITORY=$HOMEASSISTANT_REPOSITORY -a RESINOS_HASSIO_VERSION=$RESINOS_HASSIO_VERSION"
 
 # Make sure shared directories are in place
 mkdir -p $DOWNLOAD_DIR
@@ -131,8 +131,8 @@ cp $DEVICE_TYPE_JSON $BUILD_DEPLOY_DIR/device-type.json
 cp $WORKSPACE/build/tmp/deploy/images/$MACHINE/kernel_modules_headers.tar.gz $BUILD_DEPLOY_DIR || true
 
 echo "INFO: Pushing resinhup package to dockerhub"
-DOCKER_IMAGE="$DOCKER_REPO/resinos"
-DOCKER_TAG="$VERSION_HOSTOS-$MACHINE"
+DOCKER_IMAGE="$DOCKER_REPO/resinos-hassio"
+DOCKER_TAG="$RESINOS_HASSIO_VERSION-$MACHINE"
 if [ -f $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar ]; then
     docker import $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar $DOCKER_IMAGE:$DOCKER_TAG
     docker push $DOCKER_IMAGE:$DOCKER_TAG
