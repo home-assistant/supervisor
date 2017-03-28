@@ -70,7 +70,7 @@ function error_handler {
 
 trap 'error_handler $LINENO' ERR
 
-if tag=$(curl --silent $ENDPOINT | jq -e -r '.supervisor_tag'); then
+if tag=$(curl --silent $ENDPOINT | jq -e -r '.hassio_tag'); then
     image_name=$SUPERVISOR_IMAGE
 
     # Check that we didn't somehow get an empty tag version.

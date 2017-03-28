@@ -34,14 +34,6 @@ class CoreConfig(object):
                 CONF_HOMEASSISTANT_TAG: '',
             })
 
-        # update version
-        self._data.update({
-            CONF_SUPERVISOR_IMAGE: os.environ['SUPERVISOR_IMAGE'],
-            CONF_SUPERVISOR_TAG: os.environ['SUPERVISOR_TAG'],
-        })
-
-        self.save()
-
     def save(self):
         """Store data to config file."""
         try:
@@ -65,16 +57,6 @@ class CoreConfig(object):
         """Set docker homeassistant tag."""
         self._data[CONF_HOMEASSISTANT_TAG] = value
         self.save()
-
-    @property
-    def supervisor_image(self):
-        """Return docker supervisor repository."""
-        return self._data.get(CONF_SUPERVISOR_IMAGE)
-
-    @property
-    def supervisor_tag(self):
-        """Return docker supervisor tag."""
-        return self._data.get(CONF_SUPERVISOR_TAG)
 
     @property
     def path_config_docker(self):

@@ -61,7 +61,8 @@ def initialize_logging():
 
 def check_environment():
     """Check if all environment are exists."""
-    for key in ('SUPERVISOR_SHARE', 'SUPERVISOR_NAME', 'DOCKER_SOCKET'):
+    for key in ('SUPERVISOR_SHARE', 'SUPERVISOR_NAME', 'DOCKER_SOCKET',
+                'HOMEASSISTANT_REPOSITORY'):
         try:
             os.environ[key]
         except KeyError:

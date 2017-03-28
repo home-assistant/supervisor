@@ -10,11 +10,11 @@ runSupervisor() {
     docker rm --force resin_supervisor || true
     docker run --privileged --name resin_supervisor \
         -v /var/run/docker.sock:/var/run/docker.sock \
-        -v $CONFIG_PATH:/boot/config.json  \
-        -v $BOOT_MOUNTPOINT/system-connections/resin-sample:/boot/network \
+        -v /var/run/hassio_hc.sock:/var/run/hassio_hc.sock \
         -v /resin-data:/data \
         -v /var/log/supervisor-log:/var/log \
         -e DOCKER_SOCKET=/var/run/docker.sock \
+        -e HASSIO_HC_SOCKET=/var/run/hassio_hc.sock \
         -e SUPERVISOR_SHARE=/resin-data \
         -e SUPERVISOR_NAME=resin_supervisor \
         -e HOMEASSISTANT_REPOSITORY=${HOMEASSISTANT_REPOSITORY} \

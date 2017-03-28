@@ -19,4 +19,5 @@ do_install_append () {
     install -d ${D}${sysconfdir}/resin-supervisor
     sed -i -e 's:@HOMEASSISTANT_REPOSITORY@:${HOMEASSISTANT_REPOSITORY}:g' ${D}${sysconfdir}/resin-supervisor/supervisor.conf
     sed -i -e 's:@MACHINE@:${MACHINE}:g' ${D}${sysconfdir}/resin-supervisor/supervisor.conf
+    sed -i -e 's:@RESINOS_VERSION@:${HOSTOS_VERSION}:g' ${D}${sysconfdir}/resin-supervisor/supervisor.conf
 }

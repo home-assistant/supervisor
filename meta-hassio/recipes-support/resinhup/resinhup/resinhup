@@ -194,11 +194,10 @@ done
 # load config
 source /usr/sbin/resin-vars
 source /etc/resin-supervisor/supervisor.conf
-source /etc/hassio.conf
 
 # Check that HostOS version was provided
 if [ -z "$HOSTOS_VERSION" ]; then
-    if version=$(curl --silent $ENDPOINT | jq -e -r '.hassio_version'); then
+    if version=$(curl --silent $ENDPOINT | jq -e -r '.resinos_version'); then
         HOSTOS_VERSION=$version
     else
         log ERROR "--hostos-version is required."
@@ -221,15 +220,15 @@ if [ "$LOG" == "yes" ]; then
 fi
 
 # Check if update is needed
-log "Detected HassIO version: $HASSIO_VERSION ."
+log "Detected HassIO version: $RESINOS_VERSION ."
 log "Update HassIO to version: $HOSTOS_VERSION ."
-if [ $HASSIO_VERSION == $HOSTOS_VERSION ]; then
+if [ $RESINOS_VERSION == $HOSTOS_VERSION ]; then
     log "Version $HOSTOS_VERSION is already installed."
     exit 0
 fi
 
 # protect downgrade
-downgrade=$(awk -vn1=$HASSIO_VERSION -vn2=$HOSTOS_VERSION 'BEGIN{print (n1<n2) ? 0:1}')
+downgrade=$(awk -vn1=$RESINOS_VERSION -vn2=$HOSTOS_VERSION 'BEGIN{print (n1<n2) ? 0:1}')
 if [ $downgrade == 1 ]; then
     log ERROR "Downgrade are not supported"
     exit 0
