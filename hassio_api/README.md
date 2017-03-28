@@ -32,7 +32,7 @@ Interface for HomeAssistant to controll things from supervisor.
 
 ### HassIO
 
-- `/host/update`
+- `/update`
 Payload: {'version': '0.XX'}
 If version is None it read last version from server.
 
