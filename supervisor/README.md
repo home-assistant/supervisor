@@ -8,7 +8,7 @@
 ## Run supervisor on a normal docker host
 
 ```bash
-docker run --privileged --name resin_supervisor \
+docker run --name resin_supervisor \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /var/run/hassio-hc.sock:/var/run/hassio-hc.sock \
     -v /resin-data:/data \
