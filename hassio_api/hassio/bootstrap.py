@@ -5,7 +5,7 @@ import os
 
 from colorlog import ColoredFormatter
 
-from .const import FILE_HASSIO_ADDONS
+from .const import FILE_HASSIO_ADDONS, SOCKET_DOCKER
 from .config import CoreConfig
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ def initialize_logging():
 
 def check_environment():
     """Check if all environment are exists."""
-    for key in ('SUPERVISOR_SHARE', 'SUPERVISOR_NAME', 'DOCKER_SOCKET',
+    for key in ('SUPERVISOR_SHARE', 'SUPERVISOR_NAME',
                 'HOMEASSISTANT_REPOSITORY'):
         try:
             os.environ[key]
@@ -69,7 +69,7 @@ def check_environment():
             _LOGGER.fatal("Can't find %s in env!", key)
             return False
 
-    if not os.path.isfile(os.environ['DOCKER_SOCKET']):
+    if not os.path.isfile(SOCKET_DOCKER):
         _LOGGER.fatal("Can't find docker socket!")
         return False
 

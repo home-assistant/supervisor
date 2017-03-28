@@ -13,8 +13,6 @@ docker run --privileged --name resin_supervisor \
     -v /var/run/hassio-hc.sock:/var/run/hassio-hc.sock \
     -v /resin-data:/data \
     -v /var/log/supervisor-log:/var/log \
-    -e DOCKER_SOCKET=/var/run/docker.sock \
-    -e HASSIO_HC_SOCKET=/var/run/hassio-hc.sock \
     -e SUPERVISOR_SHARE=/resin-data \
     -e SUPERVISOR_NAME=resin_supervisor \
     -e HOMEASSISTANT_REPOSITORY=${HOMEASSISTANT_REPOSITORY} \

@@ -4,9 +4,9 @@ import logging
 import os
 
 from .const import (
-    FILE_HASSIO_CONFIG, CONF_SUPERVISOR_TAG, CONF_SUPERVISOR_IMAGE,
-    CONF_HOMEASSISTANT_TAG, CONF_HOMEASSISTANT_IMAGE, HOMEASSISTANT_SSL,
-    HOMEASSISTANT_CONFIG, HASSIO_SHARE_EXT, HASSIO_SHARE_INT)
+    FILE_HASSIO_CONFIG, HOMEASSISTANT_TAG, HOMEASSISTANT_IMAGE,
+    HOMEASSISTANT_SSL, HOMEASSISTANT_CONFIG, HASSIO_SHARE_EXT,
+    HASSIO_SHARE_INT)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,9 +29,8 @@ class CoreConfig(object):
 
         if not self._data:
             self._data.update({
-                CONF_HOMEASSISTANT_IMAGE:
-                    os.environ['HOMEASSISTANT_REPOSITORY'],
-                CONF_HOMEASSISTANT_TAG: '',
+                HOMEASSISTANT_IMAGE: os.environ['HOMEASSISTANT_REPOSITORY'],
+                HOMEASSISTANT_TAG: '',
             })
 
     def save(self):
@@ -45,17 +44,17 @@ class CoreConfig(object):
     @property
     def homeassistant_image(self):
         """Return docker homeassistant repository."""
-        return self._data.get(CONF_HOMEASSISTANT_IMAGE)
+        return self._data.get(HOMEASSISTANT_IMAGE)
 
     @property
     def homeassistant_tag(self):
         """Return docker homeassistant tag."""
-        return self._data.get(CONF_HOMEASSISTANT_TAG)
+        return self._data.get(HOMEASSISTANT_TAG)
 
     @homeassistant_tag.setter
     def homeassistant_tag(self, value):
         """Set docker homeassistant tag."""
-        self._data[CONF_HOMEASSISTANT_TAG] = value
+        self._data[HOMEASSISTANT_TAG] = value
         self.save()
 
     @property

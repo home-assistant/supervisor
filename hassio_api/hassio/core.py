@@ -5,9 +5,8 @@ import logging
 import aiohttp
 import docker
 
-import hassio.bootstrap as bootstrap
-import hassio.tools as tools
-from .const import CONF_HOMEASSISTANT_TAG
+from . import bootstrap, tools
+from .const import HOMEASSISTANT_TAG, SOCKET_DOCKER
 from .docker.homeassistant import DockerHomeAssistant
 from .docker.supervisor import DockerSupervisor
 
@@ -18,7 +17,7 @@ async def run_hassio(loop):
     """Start HassIO."""
     websession = aiohttp.ClientSession(loop=loop)
     dock = docker.DockerClient(
-        base_url='unix://var/run/docker.sock', version='auto')
+        base_url="unix:/{}".format(SOCKET_DOCKER), version='auto')
 
     # init system
     config = bootstrap.initialize_system_data()
@@ -42,12 +41,12 @@ async def run_hassio(loop):
         while True:
             current = await tools.fetch_current_versions(websession)
             if current and CONF_HOMEASSISTANT_TAG in current:
-                if await docker_hass.install(current[CONF_HOMEASSISTANT_TAG]):
+                if await docker_hass.install(current[HOMEASSISTANT_TAG]):
                     break
             _LOGGER.warning("Can't fetch info from github. Retry in 60.")
             await asyncio.sleep(60, loop=loop)
 
-        config.homeassistant_tag = current[CONF_HOMEASSISTANT_TAG]
+        config.homeassistant_tag = current[HOMEASSISTANT_TAG]
     else:
         _LOGGER.info("HomeAssistant docker is exists.")
 

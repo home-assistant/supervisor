@@ -23,15 +23,20 @@ Communicate over unix socket with a host daemon.
 
 - Answer
 ```
-[{}]
-OK|ERROR
+{}|OK|ERROR
 ```
 
 ## HassIO REST API
 
 Interface for HomeAssistant to controll things from supervisor.
 
-### host
+### HassIO
+
+- `/host/update`
+Payload: {'version': '0.XX'}
+If version is None it read last version from server.
+
+### Host
 - `/host/network`
 Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask': '', 'gateway': ''}
 
@@ -41,30 +46,33 @@ Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask':
 
 - `/host/info`
 
+- `/host/update`
+On some device we support host upates. Like ResinOS.
 
-### /homeassistant/info
+### HomeAssistant
 
-### /homeassistant/update
-- Payload: {'version': '0.XX.Y'}
+- `/homeassistant/info`
+
+- `/homeassistant/update`
+Payload: {'version': '0.XX.Y'}
 If version is None it read last version from server.
 
-## REST API addons
+### REST API addons
 
-### /addons/info
+- `/addons/info`
 
-### /addons/reload
+- `/addons/reload`
 
-### /addons/{addon}/start
-- Payload: {'options': {}}
+- `/addons/{addon}/start`
+Payload: {'options': {}}
 
-### /addons/{addon}/stop
+- `/addons/{addon}/stop`
 
-### /addons/{addon}/install
-- Payload: {'version': 'x.x'}
+- `/addons/{addon}/install`
+Payload: {'version': 'x.x'}
 
-### /addons/{addon}/uninstall
+- `/addons/{addon}/uninstall`
 
-### /addons/{addon}/update
-- Payload: {'version': 'x.x'}
-
+- `/addons/{addon}/update`
+Payload: {'version': 'x.x'}
 If version is None it read last version from server.
