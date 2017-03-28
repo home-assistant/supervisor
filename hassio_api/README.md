@@ -7,6 +7,7 @@ Communicate over unix socket with a host daemon.
 - commands
 ```
 # info
+-> {'host', 'version'}
 # reboot
 # shutdown
 # host-update [v]

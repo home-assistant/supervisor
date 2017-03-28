@@ -26,6 +26,9 @@ async def run_hassio(loop):
     # init Supervisor Docker
     docker_super = DockerSupervisor(config, loop, dock)
     await docker_super.attach()
+    _LOGGER.info(
+        "Attach to supervisor image %s tag %s", docker_super.image,
+        docker_super.tag)
 
     # init HomeAssistant Docker
     docker_hass = DockerHomeAssistant(
@@ -33,9 +36,13 @@ async def run_hassio(loop):
         tag=config.homeassistant_tag
     )
 
-    # init hostcontroll
+    # init HostControll
     host_controll = HostControll(loop)
-    await host_controll.info()
+    host_info = await host_controll.info()
+    if host_info:
+        _LOGGER.info(
+            "Connected to host controll daemon. OS: %s Version: %s",
+            host_info.get('host'), host_info.get('version'))
 
     # first start of supervisor?
     if config.homeassistant_tag is None:
