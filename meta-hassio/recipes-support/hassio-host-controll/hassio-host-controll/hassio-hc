@@ -31,7 +31,7 @@ do
         continue
     fi
     if [ ${parse[0]} == "host-update" ]; then
-        if [ ${parse[@]} -eq 2]; then
+        if [ ! -z ${parse[1]} ]; then
             resinhub --hostos-version ${parse[1]} || true
         else
             resinhub || true
@@ -39,8 +39,8 @@ do
         echo "OK"
         continue
     fi
-    if [ ${parse[0]} == "supevisor-update" ]; then
-        if [ ${parse[@]} -eq 2]; then
+    if [ ${parse[0]} == "supervisor-update" ]; then
+        if [ ! -z ${parse[1]} ]; then
             update-resin-supervisor --supervisor-tag ${parse[1]} || true
         else
             update-resin-supervisor || true
