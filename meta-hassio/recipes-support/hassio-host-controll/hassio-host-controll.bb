@@ -1,7 +1,7 @@
 DESCRIPTION = "hassio device controll"
 SECTION = "console/utils"
 
-SRC_URI = "
+SRC_URI = " \
     file://hassio-hc \
     file://hassio-hc.service \
     "
