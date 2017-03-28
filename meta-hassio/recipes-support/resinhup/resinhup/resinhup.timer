@@ -1,9 +1,0 @@
-﻿[Unit]
-Description=Resinhup updater timer
-
-[Timer]
-OnBootSec=15min
-OnUnitInactiveSec=1d
-
-[Install]
-WantedBy=resin.target

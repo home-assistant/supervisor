@@ -1,0 +1,11 @@
+﻿[Unit]
+Description=HassIO HostControll
+Wants=resin-supervisor.service
+Before=resin-supervisor.service
+
+[Service]
+Type=simple
+ExecStart=@BINDIR@/socat UNIX:/var/run/hassio-hc.sock,fork EXEC:@BINDIR@/hassio-hc
+
+[Install]
+WantedBy=resin.target

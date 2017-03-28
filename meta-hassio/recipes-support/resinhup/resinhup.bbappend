@@ -1,44 +1,9 @@
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-SRC_URI = " \
-    file://resinhup \
-    file://hassio.conf \
-    file://resinhup.timer \
-    file://resinhup.service \
-    "
-
-inherit systemd
-
-SYSTEMD_SERVICE_${PN} += " \
-    resinhup.service \
-    resinhup.timer \
-    "
-
-SYSTEMD_AUTO_ENABLE = "enable"
-
-FILES_${PN} += " \
-     ${systemd_unitdir} \
-     ${bindir} \
-     ${sysconfdir} \
-     "
+SRC_URI += "file://resinhup"
 
 do_install_append() {
-    install -d ${D}${sysconfdir}
-    install -m 0755 ${WORKDIR}/hassio.conf ${D}${sysconfdir}
-    sed -i -e 's:@HASSIO_VERSION@:${HASSIO_VERSION}:g' ${D}${sysconfdir}/hassio.conf
-
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/resinhup ${D}${bindir}
-
-    if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
-        install -d ${D}${systemd_unitdir}/system
-        install -c -m 0644 ${WORKDIR}/resinhup.service ${D}${systemd_unitdir}/system
-        install -c -m 0644 ${WORKDIR}/resinhup.timer ${D}${systemd_unitdir}/system
-
-        sed -i -e 's,@BASE_BINDIR@,${base_bindir},g' \
-            -e 's,@SBINDIR@,${sbindir},g' \
-            -e 's,@BINDIR@,${bindir},g' \
-            ${D}${systemd_unitdir}/system/*.service
-    fi
 }

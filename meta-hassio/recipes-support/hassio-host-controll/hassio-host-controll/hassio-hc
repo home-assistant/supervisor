@@ -1,0 +1,53 @@
+#!/bin/bash
+
+set -e
+
+# Don't run anything before this source as it sets PATH here
+source /etc/profile
+
+# load config
+source /usr/sbin/resin-vars
+source /etc/resin-supervisor/supervisor.conf
+
+#
+# MAIN
+#
+while read cmd
+do
+    IFS=" " read -r -a parse <<< $cmd
+
+    if [ ${parse[0]} == "info" ]; then
+        echo "{'host': 'resinos', 'version': '$RESINOS_VERSION'}"
+        continue
+    fi
+    if [ ${parse[0]} == "reboot" ]; then
+        systemctl reboot
+        echo "OK"
+        continue
+    fi
+    if [ ${parse[0]} == "shutdown" ]; then
+        systemctl poweroff
+        echo "OK"
+        continue
+    fi
+    if [ ${parse[0]} == "host-update" ]; then
+        if [ ${parse[@]} -eq 2]; then
+            resinhub --hostos-version ${parse[1]}
+        else
+            resinhub
+        fi
+        echo "OK"
+        continue
+    fi
+    if [ ${parse[0]} == "supevisor-update" ]; then
+        if [ ${parse[@]} -eq 2]; then
+            update-resin-supervisor --supervisor-tag ${parse[1]}
+        else
+            update-resin-supervisor
+        fi
+        echo "OK"
+        continue
+    fi
+
+    echo "ERROR"
+done

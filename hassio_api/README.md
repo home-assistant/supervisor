@@ -1,17 +1,46 @@
 # HassIO Server
 
-## REST API Supervisor
+## Host Controll
 
-### /supervisor/info
+Communicate over unix socket with a host daemon.
 
-### /supervisor/network
-- Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask': '', 'gateway': ''}
+- commands
+```
+# info
+# reboot
+# shutdown
+# host-update [v]
+# supervisor-update [v]
 
-### /supervisor/reboot
+# network info
+# network hostname xy
+# network wlan ssd xy
+# network wlan password xy
+# network int ip xy
+# network int netmask xy
+# network int route xy
+```
 
-### /supervisor/shutdown
+- Answer
+```
+[{}]
+OK|ERROR
+```
 
-## REST API HomeAssistant
+## HassIO REST API
+
+Interface for HomeAssistant to controll things from supervisor.
+
+### host
+- `/host/network`
+Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask': '', 'gateway': ''}
+
+- `/host/reboot`
+
+- `/host/shutdown`
+
+- `/host/info`
+
 
 ### /homeassistant/info
 
