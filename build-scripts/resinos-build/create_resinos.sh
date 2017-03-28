@@ -131,8 +131,8 @@ cp $DEVICE_TYPE_JSON $BUILD_DEPLOY_DIR/device-type.json
 cp $WORKSPACE/build/tmp/deploy/images/$MACHINE/kernel_modules_headers.tar.gz $BUILD_DEPLOY_DIR || true
 
 echo "INFO: Pushing resinhup package to dockerhub"
-DOCKER_IMAGE="$DOCKER_REPO/hassio"
-DOCKER_TAG="$HASSIO_VERSION-$MACHINE"
+DOCKER_IMAGE="$DOCKER_REPO/resinos"
+DOCKER_TAG="$VERSION_HOSTOS-$MACHINE"
 if [ -f $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar ]; then
     docker import $BUILD_DEPLOY_DIR/resinhup-$VERSION_HOSTOS.tar $DOCKER_IMAGE:$DOCKER_TAG
     docker push $DOCKER_IMAGE:$DOCKER_TAG
