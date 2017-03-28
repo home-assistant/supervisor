@@ -10,7 +10,7 @@ runSupervisor() {
     docker rm --force resin_supervisor || true
     docker run --privileged --name resin_supervisor \
         -v /var/run/docker.sock:/var/run/docker.sock \
-        -v /var/run/hassio_hc.sock:/var/run/hassio-hc.sock \
+        -v /var/run/hassio-hc.sock:/var/run/hassio-hc.sock \
         -v /resin-data:/data \
         -v /var/log/supervisor-log:/var/log \
         -e DOCKER_SOCKET=/var/run/docker.sock \

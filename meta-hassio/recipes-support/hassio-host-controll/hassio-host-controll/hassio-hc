@@ -21,29 +21,29 @@ do
         continue
     fi
     if [ ${parse[0]} == "reboot" ]; then
-        systemctl reboot
+        systemctl reboot || true
         echo "OK"
         continue
     fi
     if [ ${parse[0]} == "shutdown" ]; then
-        systemctl poweroff
+        systemctl poweroff || true
         echo "OK"
         continue
     fi
     if [ ${parse[0]} == "host-update" ]; then
         if [ ${parse[@]} -eq 2]; then
-            resinhub --hostos-version ${parse[1]}
+            resinhub --hostos-version ${parse[1]} || true
         else
-            resinhub
+            resinhub || true
         fi
         echo "OK"
         continue
     fi
     if [ ${parse[0]} == "supevisor-update" ]; then
         if [ ${parse[@]} -eq 2]; then
-            update-resin-supervisor --supervisor-tag ${parse[1]}
+            update-resin-supervisor --supervisor-tag ${parse[1]} || true
         else
-            update-resin-supervisor
+            update-resin-supervisor || true
         fi
         echo "OK"
         continue
