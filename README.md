@@ -13,6 +13,7 @@ Based on ResinOS and Yocto Linux. It have a preinstall HassIO supervisor and sup
 https://drive.google.com/drive/folders/0B2o1Uz6l1wVNbFJnb2gwNXJja28?usp=sharing
 
 ## History
+- **0.2**: Fix some bugs and update it to HassIO 0.2
 - **0.1**: First techpreview with dumy supervisor (ResinOS 2.0.0-RC5)
 
 ## Developer access to ResinOS host
@@ -23,4 +24,5 @@ You can put your authorized_keys file into boot partition. After a boot it, you 
 Read logoutput from supervisor:
 ```bash
 journalctl -f -u resin-supervisor.service
+docker logs homeassistant
 ```
