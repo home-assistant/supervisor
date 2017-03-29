@@ -8,7 +8,7 @@ It is a docker image (supervisor) they manage HomeAssistant docker and give a in
 - **0.2**: Support for basic HostControll
 
 # Hardware Image
-Based on ResinOS and Yocto Linux. It have a preinstall HassIO supervisor and support OTA Updates. That make it maintenanceless.
+Based on ResinOS and Yocto Linux. It have a preinstall HassIO supervisor and support OTA Updates. That make it maintenanceless. The image have no homeassistant included and they will downloaded after first setup. That need some times and internet brandwith.
 
 https://drive.google.com/drive/folders/0B2o1Uz6l1wVNbFJnb2gwNXJja28?usp=sharing
 
