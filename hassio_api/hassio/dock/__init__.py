@@ -40,10 +40,9 @@ class DockerBase(object):
         """
         try:
             _LOGGER.info("Pull image %s tag %s", self.image, tag)
-            self.dock.images.pull(self.image, tag=tag)
+            image = self.dock.images.pull(self.image, tag=tag)
 
-            if tag != "latest":
-                image = self.dock.images.get("{}:{}".format(self.image, tag))
+            if tag != 'latest':
                 image.tag(self.image, tag='latest')
         except docker.errors.APIError:
             _LOGGER.error("Can't pull %s:%s", self.image, tag)

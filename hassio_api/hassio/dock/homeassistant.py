@@ -5,6 +5,7 @@ import docker
 
 from . import DockerBase
 from ..const import HASSIO_DOCKER
+from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
 HASS_DOCKER_NAME = 'homeassistant'
@@ -51,6 +52,9 @@ class DockerHomeAssistant(DockerBase):
                     self.config.path_ssl_docker:
                         {'bind': '/ssl', 'mode': 'rw'},
                 })
+
+            self.version = get_version_from_env(
+                self.container.attrs['Config']['Env'])
         except docker.errors.DockerException:
             _LOGGER.error("Can't run %s", self.image)
             return False
