@@ -1,4 +1,5 @@
 """Host controll for HassIO."""
+import asyncio
 import json
 import logging
 import os
@@ -29,7 +30,8 @@ class HostControll(object):
         if not self.active:
             return
 
-        reader, writer = await self.loop.open_unix_connection(SOCKET_HC)
+        reader, writer = await asyncio.open_unix_connection(
+            SOCKET_HC, loop=self.loop)
 
         # send
         _LOGGER.info("Send '%s' to HostControll.", command)
