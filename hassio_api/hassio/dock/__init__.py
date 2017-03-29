@@ -3,7 +3,7 @@ import logging
 
 import docker
 
-from ..tools import get_version_from_env, extract_image_name
+from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
 
