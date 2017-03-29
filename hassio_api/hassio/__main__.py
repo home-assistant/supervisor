@@ -16,8 +16,10 @@ if __name__ == "__main__":
         exit(1)
 
     loop = asyncio.get_event_loop()
+    hassio = core.HassIO(loop)
+
     _LOGGER.info("Start Hassio task")
-    loop.create_task(core.run_hassio(loop))
+    loop.create_task(hassio.start())
 
     loop.run_forever()
     _LOGGER.info("Close Hassio")

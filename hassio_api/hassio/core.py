@@ -14,53 +14,58 @@ from .docker.supervisor import DockerSupervisor
 _LOGGER = logging.getLogger(__name__)
 
 
-async def run_hassio(loop):
-    """Start HassIO."""
-    websession = aiohttp.ClientSession(loop=loop)
-    dock = docker.DockerClient(
-        base_url="unix:/{}".format(SOCKET_DOCKER), version='auto')
+class HassIO(object):
+    """Main object of hassio."""
 
-    # init system
-    config = bootstrap.initialize_system_data()
+    def __init__(self, loop):
+        """Initialize hassio object."""
+        self.loop = loop
+        self.config = bootstrap.initialize_system_data()
+        self.websession = aiohttp.ClientSession(loop=self.loop)
+        self.dock = docker.DockerClient(
+            base_url="unix:/{}".format(SOCKET_DOCKER), version='auto')
 
-    # init Supervisor Docker
-    docker_super = DockerSupervisor(config, loop, dock)
-    await docker_super.attach()
-    _LOGGER.info(
-        "Attach to supervisor image %s tag %s", docker_super.image,
-        docker_super.tag)
+        # init basic docker container
+        self.supervisor = DockerSupervisor(
+            self.config, self.loop, self.dock)
+        self.homeassistant = DockerHomeAssistant(
+            self.config, self.loop, self.dock)
 
-    # init HomeAssistant Docker
-    docker_hass = DockerHomeAssistant(
-        config, loop, dock, image=config.homeassistant_image,
-        tag=config.homeassistant_tag
-    )
+        # init HostControll
+        self.host_controll = HostControll(self.loop)
 
-    # init HostControll
-    host_controll = HostControll(loop)
-    host_info = await host_controll.info()
-    if host_info:
+    async def start(self):
+        """Start HassIO."""
+        await self.supervisor.attach()
         _LOGGER.info(
-            "Connected to host controll daemon. OS: %s Version: %s",
-            host_info.get('host'), host_info.get('version'))
+            "Attach to supervisor image %s tag %s", self.supervisor.image,
+            self.supervisor.tag)
 
-    # first start of supervisor?
-    if config.homeassistant_tag is None:
-        _LOGGER.info("First start of supervisor, read version from github.")
+        host_info = await self.host_controll.info()
+        if host_info:
+            _LOGGER.info(
+                "Connected to host controll daemon. OS: %s Version: %s",
+                host_info.get('host'), host_info.get('version'))
 
-        # read homeassistant tag and install it
-        current = None
-        while True:
-            current = await tools.fetch_current_versions(websession)
-            if current and HOMEASSISTANT_TAG in current:
-                if await docker_hass.install(current[HOMEASSISTANT_TAG]):
-                    break
-            _LOGGER.warning("Can't fetch info from github. Retry in 60.")
-            await asyncio.sleep(60, loop=loop)
+        # first start of supervisor?
+        if self.config.homeassistant_tag is None:
+            _LOGGER.info("First start of supervisor, read version from github.")
 
-        config.homeassistant_tag = current[HOMEASSISTANT_TAG]
-    else:
-        _LOGGER.info("HomeAssistant docker is exists.")
+            # read homeassistant tag and install it
+            current = None
+            while True:
+                current = await tools.fetch_current_versions(self.websession)
+                if current and HOMEASSISTANT_TAG in current:
+                    resp = await self.homeassistant.install(
+                        current[HOMEASSISTANT_TAG]):
+                    if resp:
+                        break
+                _LOGGER.warning("Can't fetch info from github. Retry in 60.")
+                await asyncio.sleep(60, loop=loop)
 
-    # run HomeAssistant
-    await docker_hass.run()
+            self.config.homeassistant_tag = current[HOMEASSISTANT_TAG]
+        else:
+            _LOGGER.info("HomeAssistant docker is exists.")
+
+        # run HomeAssistant
+        await self.homeassistant.run()

@@ -13,6 +13,13 @@ HASS_DOCKER_NAME = 'homeassistant'
 class DockerHomeAssistant(DockerBase):
     """Docker hassio wrapper for HomeAssistant."""
 
+    def __init__(self, config, loop, dock):
+        """Initialize docker homeassistant wrapper."""
+        super().__init__(
+            config, loop, dock, image=config.homeassistant_image,
+            tag=config.homeassistant_tag
+        )
+
     @property
     def docker_name(self):
         """Return name of docker container."""
