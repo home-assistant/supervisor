@@ -49,7 +49,7 @@ class HassIO(object):
 
         # first start of supervisor?
         if self.config.homeassistant_tag is None:
-            _LOGGER.info("First start of supervisor, read version from github.")
+            _LOGGER.info("No HomeAssistant docker found. Install it now")
 
             # read homeassistant tag and install it
             current = None
@@ -57,7 +57,7 @@ class HassIO(object):
                 current = await tools.fetch_current_versions(self.websession)
                 if current and HOMEASSISTANT_TAG in current:
                     resp = await self.homeassistant.install(
-                        current[HOMEASSISTANT_TAG]):
+                        current[HOMEASSISTANT_TAG])
                     if resp:
                         break
                 _LOGGER.warning("Can't fetch info from github. Retry in 60.")
