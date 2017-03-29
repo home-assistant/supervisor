@@ -29,7 +29,7 @@ class HostControll(object):
         if not self.active:
             return
 
-        reader, writer = await self.loop.create_unix_connection(SOCKET_HC)
+        reader, writer = await self.loop.open_unix_connection(SOCKET_HC)
 
         # send
         _LOGGER.info("Send '%s' to HostControll.", command)
