@@ -82,25 +82,12 @@ class DockerBase(object):
         """
         try:
             self.container = self.dock.containers.get(self.docker_name)
-            self.image, self.tag = self.image = extract_image_name(
-                self.container.attrs['Config']['Image'])
+            self.image = self.container.attrs['Config']['Image']
+            self.version = get_version_from_env(
+                self.container.attrs['Config']['Env'])
         except (docker.errors.DockerException, KeyError):
             _LOGGER.fatal(
                 "Can't attach to %s docker container!", self.docker_name)
-
-    async def get_version(self):
-        """Read VERSION tag from ENV docker.
-
-        Is a coroutine.
-        """
-        if self.container:
-            try:
-                self.version = get_version_from_env(
-                    self.container.attrs['Config']['Env'])
-            except KeyError:
-                _LOGGER.error("Can't read VERSION from docker env.")
-
-        return None
 
     def run(self):
         """Run docker image.

@@ -9,7 +9,6 @@ from .const import URL_HASSIO_VERSION
 _LOGGER = logging.getLogger(__name__)
 
 _RE_VERSION = re.compile(r"VERSION=(.*)")
-_RE_IMAGE = re.compile(r"(.*):(.*)")
 
 
 async def fetch_current_versions(websession):
@@ -32,13 +31,3 @@ def get_version_from_env(env_list):
 
     _LOGGER.error("Can't find VERSION in env")
     return None
-
-
-def extract_image_name(image):
-    """Extract image name and tag from docker attrs."""
-    data = _RE_IMAGE.match(image)
-    if not data:
-        _LOGGER.error("Invalid docker information: %s", image)
-        return (None, None)
-
-    return (data.group(1), data.group(2))

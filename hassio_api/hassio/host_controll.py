@@ -40,11 +40,11 @@ class HostControll(object):
         try:
             # send
             _LOGGER.info("Send '%s' to HostControll.", command)
-            writer.write("{}\n".format(command).encode())
 
-            # receive
             with async_timeout.timeout(TIMEOUT, loop=self.loop):
+                writer.write("{}\n".format(command).encode())
                 data = await reader.readline()
+
             response = data.decode().Upper()
             _LOGGER.info("Receive from HostControll: %s.", response)
 

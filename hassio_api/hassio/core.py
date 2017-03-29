@@ -38,8 +38,8 @@ class HassIO(object):
         """Start HassIO."""
         await self.supervisor.attach()
         _LOGGER.info(
-            "Attach to supervisor image %s tag %s", self.supervisor.image,
-            self.supervisor.tag)
+            "Attach to supervisor image %s version %s", self.supervisor.image,
+            self.supervisor.version)
 
         host_info = await self.host_controll.info()
         if host_info:
