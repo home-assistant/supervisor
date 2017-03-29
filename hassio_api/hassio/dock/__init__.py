@@ -39,13 +39,13 @@ class DockerBase(object):
         Need run inside executor.
         """
         try:
-            _LOGGER.info("Pull image %s tag %s", self.image, tag)
+            _LOGGER.info("Pull image %s tag %s.", self.image, tag)
             image = self.dock.images.pull(self.image, tag=tag)
 
             if tag != 'latest':
                 image.tag(self.image, tag='latest')
-        except docker.errors.APIError:
-            _LOGGER.error("Can't pull %s:%s", self.image, tag)
+        except docker.errors.APIError as err:
+            _LOGGER.error("Can't pull %s:%s -> %s.", self.image, tag, err)
             return False
         return True
 
