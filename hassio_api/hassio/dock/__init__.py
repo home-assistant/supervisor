@@ -39,6 +39,7 @@ class DockerBase(object):
         Need run inside executor.
         """
         try:
+            _LOGGER.info("Pull image %s tag %s", self.image, tag)
             self.dock.images.pull(self.image, tag=tag)
 
             if tag != "latest":
