@@ -8,8 +8,8 @@ import docker
 from . import bootstrap, tools
 from .host_controll import HostControll
 from .const import HOMEASSISTANT_TAG, SOCKET_DOCKER
-from .docker.homeassistant import DockerHomeAssistant
-from .docker.supervisor import DockerSupervisor
+from .dock.homeassistant import DockerHomeAssistant
+from .dock.supervisor import DockerSupervisor
 
 _LOGGER = logging.getLogger(__name__)
 
