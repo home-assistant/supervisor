@@ -17,7 +17,7 @@ do
     IFS=" " read -r -a parse <<< $cmd
 
     if [ ${parse[0]} == "info" ]; then
-        echo "{'host': 'resinos', 'version': '$RESINOS_HASSIO_VERSION'}"
+        echo "{ \"host\": \"resinos\", \"version\": \"$RESINOS_HASSIO_VERSION\" }"
         continue
     fi
     if [ ${parse[0]} == "reboot" ]; then

@@ -53,7 +53,10 @@ class HostControll(object):
             elif response == "ERROR":
                 return False
             else:
-                return json.loads(response)
+                try:
+                    return json.loads(response)
+                except ValueError:
+                    _LOGGER.warning("Json parse error from HostControll.")
 
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout from HostControll!")
