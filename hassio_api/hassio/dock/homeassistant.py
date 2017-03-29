@@ -45,7 +45,6 @@ class DockerHomeAssistant(DockerBase):
                     "Name": "always",
                     "MaximumRetryCount": 10,
                 },
-                links={HASSIO_DOCKER: 'HASSIO'},
                 volumes={
                     self.config.path_config_docker:
                         {'bind': '/config', 'mode': 'rw'},
