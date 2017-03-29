@@ -45,7 +45,7 @@ class HostControll(object):
                 writer.write("{}\n".format(command).encode())
                 data = await reader.readline()
 
-            response = data.decode().Upper()
+            response = data.decode().upper()
             _LOGGER.info("Receive from HostControll: %s.", response)
 
             if response == "OK":
