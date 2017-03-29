@@ -30,7 +30,7 @@ class CoreConfig(object):
         if not self._data:
             self._data.update({
                 HOMEASSISTANT_IMAGE: os.environ['HOMEASSISTANT_REPOSITORY'],
-                HOMEASSISTANT_TAG: '',
+                HOMEASSISTANT_TAG: None,
             })
 
     def save(self):

@@ -65,7 +65,7 @@ class HassIO(object):
 
             self.config.homeassistant_tag = current[HOMEASSISTANT_TAG]
         else:
-            _LOGGER.info("HomeAssistant docker is exists.")
+            _LOGGER.info("HomeAssistant docker exists. Run it now")
 
         # run HomeAssistant
         await self.homeassistant.run()
