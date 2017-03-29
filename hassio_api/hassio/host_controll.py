@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import stat
 
 from .const import SOCKET_HC
 
@@ -14,13 +15,18 @@ class HostControll(object):
     def __init__(self, loop):
         """Initialize HostControll socket client."""
         self.loop = loop
+        self.active = False
+
+        mode = os.stat(SOCKET_HC)[stat.ST_MODE]
+        if stat.S_ISSOCK(mode):
+            self.active = True
 
     async def _send_command(self, command):
         """Send command to host.
 
         Is a coroutine.
         """
-        if not os.path.isfile(SOCKET_HC):
+        if not self.active:
             return
 
         reader, writer = await self.loop.create_unix_connection(SOCKET_HC)

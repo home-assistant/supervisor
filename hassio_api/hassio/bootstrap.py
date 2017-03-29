@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import stat
 
 from colorlog import ColoredFormatter
 
@@ -69,7 +70,8 @@ def check_environment():
             _LOGGER.fatal("Can't find %s in env!", key)
             return False
 
-    if not os.path.isfile(SOCKET_DOCKER):
+    mode = os.stat(SOCKET_DOCKER)[stat.ST_MODE]
+    if not stat.S_ISSOCK(mode):
         _LOGGER.fatal("Can't find docker socket!")
         return False
 
