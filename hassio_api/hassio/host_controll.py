@@ -9,6 +9,8 @@ from .const import SOCKET_HC
 
 _LOGGER = logging.getLogger(__name__)
 
+TIMEOUT = 15
+
 
 class HostControll(object):
     """Client for host controll."""
@@ -33,21 +35,29 @@ class HostControll(object):
         reader, writer = await asyncio.open_unix_connection(
             SOCKET_HC, loop=self.loop)
 
-        # send
-        _LOGGER.info("Send '%s' to HostControll.", command)
-        writer.write(command.encode())
+        try:
+            # send
+            _LOGGER.info("Send '%s' to HostControll.", command)
+            writer.write("{}\n".format(command).encode())
 
-        # receive
-        data = await reader.readline()
-        response = data.decode().Upper()
-        _LOGGER.info("Receive from HostControll: %s.", response)
+            # receive
+            with async_timeout.timeout(TIMEOUT, loop=self.loop):
+                data = await reader.readline()
+            response = data.decode().Upper()
+            _LOGGER.info("Receive from HostControll: %s.", response)
 
-        if response == "OK":
-            return True
-        elif response == "ERROR":
-            return False
-        else:
-            return json.loads(response)
+            if response == "OK":
+                return True
+            elif response == "ERROR":
+                return False
+            else:
+                return json.loads(response)
+
+        except asyncio.TimeoutError:
+            _LOGGER.error("Timeout from HostControll!")
+
+        finally:
+            writer.close()
 
     def info(self):
         """Return Info from host.
@@ -76,7 +86,7 @@ class HostControll(object):
         Return a coroutine.
         """
         if version:
-            return self._send_command("host-update " + version)
+            return self._send_command("host-update {}".format(version))
         return self._send_command("host-update")
 
     def supervisor_update(self, version=None):
@@ -85,5 +95,5 @@ class HostControll(object):
         Return a coroutine.
         """
         if version:
-            return self._send_command("supervisor-update " + version)
+            return self._send_command("supervisor-update {}".format(version))
         return self._send_command("supervisor-update")
