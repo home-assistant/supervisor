@@ -5,6 +5,8 @@ import logging
 import os
 import stat
 
+import async_timeout
+
 from .const import SOCKET_HC
 
 _LOGGER = logging.getLogger(__name__)
