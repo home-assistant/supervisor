@@ -6,7 +6,7 @@ import stat
 
 from colorlog import ColoredFormatter
 
-from .const import FILE_HASSIO_ADDONS, SOCKET_DOCKER
+from .const import SOCKET_DOCKER
 from .config import CoreConfig
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,11 +26,6 @@ def initialize_system_data():
     if not os.path.isdir(config.path_ssl):
         _LOGGER.info("Create Home-Assistant ssl folder %s", config.path_ssl)
         os.mkdir(config.path_ssl)
-
-    # installed addons
-    if not os.path.isfile(FILE_HASSIO_ADDONS):
-        with open(FILE_HASSIO_ADDONS) as addons_file:
-            addons_file.write(json.dumps({}))
 
     return config
 
