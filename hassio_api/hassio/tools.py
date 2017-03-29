@@ -2,6 +2,7 @@
 import logging
 import re
 
+import aiohttp
 import async_timeout
 
 from .const import URL_HASSIO_VERSION
@@ -16,9 +17,10 @@ async def fetch_current_versions(websession):
     try:
         with async_timeout.timeout(10, loop=websession.loop):
             async with websession.get(URL_HASSIO_VERSION) as request:
-                return await request.json()
+                data = await request.text()
+                return json.loads(data)
 
-    except Exception as err:  # pylint: disable=broad-except
+    except (ValueError, aiohttp.ClientError, asyncio.TimeoutError) as err:
         _LOGGER.warning("Can't fetch versions from github! %s", err)
 
 
