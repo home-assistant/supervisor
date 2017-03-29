@@ -4,10 +4,10 @@ import logging
 import docker
 
 from . import DockerBase
-from ..const import HASSIO_DOCKER
 from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
+
 HASS_DOCKER_NAME = 'homeassistant'
 
 

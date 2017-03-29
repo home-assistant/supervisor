@@ -17,3 +17,10 @@ https://drive.google.com/drive/folders/0B2o1Uz6l1wVNbFJnb2gwNXJja28?usp=sharing
 
 ## Developer access to ResinOS host
 You can put your authorized_keys file into boot partition. After a boot it, you can acces to your device over ssh port 22222
+
+## Troubleshooting
+
+Read logoutput from supervisor:
+```bash
+journalctl -f -u resin-supervisor.service
+```
