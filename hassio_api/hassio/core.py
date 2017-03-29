@@ -61,7 +61,7 @@ class HassIO(object):
                     if resp:
                         break
                 _LOGGER.warning("Can't fetch info from github. Retry in 60.")
-                await asyncio.sleep(60, loop=loop)
+                await asyncio.sleep(60, loop=self.loop)
 
             self.config.homeassistant_tag = current[HOMEASSISTANT_TAG]
         else:
