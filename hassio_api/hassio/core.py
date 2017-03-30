@@ -6,6 +6,7 @@ import aiohttp
 import docker
 
 from . import bootstrap, tools
+from .api import RestAPI
 from .host_controll import HostControll
 from .const import HOMEASSISTANT_TAG, SOCKET_DOCKER
 from .dock.homeassistant import DockerHomeAssistant
@@ -22,6 +23,7 @@ class HassIO(object):
         self.loop = loop
         self.config = bootstrap.initialize_system_data()
         self.websession = aiohttp.ClientSession(loop=self.loop)
+        self.api = RestAPI(self.config, self.loop)
         self.dock = docker.DockerClient(
             base_url="unix:/{}".format(SOCKET_DOCKER), version='auto')
 
@@ -36,30 +38,38 @@ class HassIO(object):
 
     async def start(self):
         """Start HassIO orchestration."""
+        # supervisor
         await self.supervisor.attach()
         _LOGGER.info(
             "Attach to supervisor image %s version %s", self.supervisor.image,
             self.supervisor.version)
 
+        # hostcontroll
         host_info = await self.host_controll.info()
         if host_info:
             _LOGGER.info(
                 "Connected to host controll daemon. OS: %s Version: %s",
                 host_info.get('host'), host_info.get('version'))
 
+        # api views
+        self.api.registerHost(self.host_controll)
+        self.api.registerHomeAssistant(self.homeassistant)
+
         # first start of supervisor?
         if self.config.homeassistant_tag is None:
-            _LOGGER.info("No HomeAssistant docker found. Install it now")
+            _LOGGER.info("No HomeAssistant docker found.")
             await self._setup_homeassistant()
-        else:
-            _LOGGER.info("HomeAssistant docker exists. Run it now")
+
+        # start api
+        self.api.start()
 
         # run HomeAssistant
+        _LOGGER.info("Run HomeAssistant now.")
         await self.homeassistant.run()
 
     async def stop(self):
         """Stop a running orchestration."""
-        tasks = [self.websession.close()]
+        tasks = [self.websession.close(), self.api.stop()]
         await asyncio.wait(tasks, loop=self.loop)
 
         self.loop.close()

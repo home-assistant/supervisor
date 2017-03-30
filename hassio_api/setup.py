@@ -28,7 +28,7 @@ setup(
     keywords=['docker', 'home-assistant', 'api'],
     zip_safe=False,
     platforms='any',
-    packages=['hassio', 'hassio.dock'],
+    packages=['hassio', 'hassio.dock', 'hassio.api'],
     include_package_data=True,
     install_requires=[
         'async_timeout',
