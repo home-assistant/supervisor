@@ -2,8 +2,9 @@
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPOk, HTTPNotAcceptable
+from aiohttp.web_exceptions import HTTPServiceUnavailable
 
+from .util import api_return_ok, api_return_not_supported
 from ..const import ATTR_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,34 +21,52 @@ class APIHost(object):
 
     async def info(self, request):
         """Return host information."""
+        if not self.host_controll.active:
+            raise HTTPServiceUnavailable()
+
         host_info = await self.host_controll.info()
         if host_info:
             return web.json_response(host_info)
-        raise HTTPNotAcceptable()
+        return api_return_not_supported()
 
     async def reboot(self, request):
         """Reboot host."""
+        if not self.host_controll.active:
+            raise HTTPServiceUnavailable()
+
         if await self.host_controll.reboot():
-            raise HTTPOk()
-        raise HTTPNotAcceptable()
+            return api_return_ok()
+        return api_return_not_supported()
 
     async def shutdown(self, request):
         """Poweroff host."""
+        if not self.host_controll.active:
+            raise HTTPServiceUnavailable()
+
         if await self.host_controll.shutdown():
-            raise HTTPOk()
-        raise HTTPNotAcceptable()
+            return api_return_ok()
+        return api_return_not_supported()
 
     async def network_info(self, request):
         """Edit network settings."""
-        raise HTTPNotAcceptable()
+        if not self.host_controll.active:
+            raise HTTPServiceUnavailable()
+
+        return api_return_not_supported()
 
     async def network_update(self, request):
         """Edit network settings."""
-        raise HTTPNotAcceptable()
+        if not self.host_controll.active:
+            raise HTTPServiceUnavailable()
+
+        return api_return_not_supported()
 
     async def update(self, request):
         """Update host OS."""
+        if not self.host_controll.active:
+            raise HTTPServiceUnavailable()
+
         body = await request.json() or {}
         if await self.host_controll.host_update(body.get(ATTR_VERSION)):
-            raise HTTPOk()
-        raise HTTPNotAcceptable()
+            return api_return_ok()
+        return api_return_not_supported()

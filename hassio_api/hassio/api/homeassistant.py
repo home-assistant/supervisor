@@ -1,9 +1,9 @@
 """Init file for HassIO homeassistant rest api."""
 import logging
 
-from aiohttp import web
-from aiohttp.web_exceptions import HTTPNotAcceptable
+from aiohttp.web_exceptions import HTTPServiceUnavailable
 
+from .util import api_return_ok
 from ..const import ATTR_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,10 +20,10 @@ class APIHomeAssistant(object):
 
     async def info(self, request):
         """Return host information."""
-        return web.json_response({
+        return api_return_ok({
             ATTR_VERSION: self.dock_hass.version,
         })
 
     async def update(self, request):
         """Update host OS."""
-        raise HTTPNotAcceptable()
+        raise HTTPServiceUnavailable()

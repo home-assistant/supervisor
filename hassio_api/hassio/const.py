@@ -24,4 +24,13 @@ HTTP_PORT = 9123
 HOMEASSISTANT_IMAGE = 'homeassistant_image'
 HOMEASSISTANT_TAG = 'homeassistant_tag'
 
+JSON_RESULT = 'result'
+JSON_DATA = 'data'
+JSON_MESSAGE = 'message'
+
+RESULT_ERROR = 'error'
+RESULT_OK = 'ok'
+
 ATTR_VERSION = 'version'
+ATTR_NEED_UPDATE = 'need_update'
+ATTR_NEXT_VERSION = 'next_version'

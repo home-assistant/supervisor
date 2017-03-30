@@ -19,6 +19,7 @@ class RestAPI(object):
         self.loop = loop
         self.webapp = web.Application(loop=self.loop)
 
+        # service stuff
         self._handler = None
         self.server = None
 

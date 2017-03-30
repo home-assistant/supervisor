@@ -1,9 +1,9 @@
 """Init file for HassIO supervisor rest api."""
 import logging
 
-from aiohttp import web
-from aiohttp.web_exceptions import HTTPOk, HTTPNotAcceptable
+from aiohttp.web_exceptions import HTTPServiceUnavailable
 
+from .util import api_return_ok, api_return_not_supported
 from ..const import ATTR_VERSION, HASSIO_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,13 +20,16 @@ class APISupervisor(object):
 
     async def info(self, request):
         """Return host information."""
-        return web.json_response({
+        return api_return_ok({
             ATTR_VERSION: HASSIO_VERSION,
         })
 
     async def update(self, request):
         """Update host OS."""
+        if not self.host_controll.active:
+            raise HTTPServiceUnavailable()
+
         body = await request.json() or {}
         if await self.host_controll.supervisor_update(body.get(ATTR_VERSION)):
-            raise HTTPOk()
-        raise HTTPNotAcceptable()
+            return api_return_ok()
+        return api_return_not_supported()
