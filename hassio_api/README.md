@@ -37,6 +37,22 @@ level:
 
 Interface for HomeAssistant to controll things from supervisor.
 
+On error:
+```json
+{
+    "result": "error",
+    "message": ""
+}
+```
+
+On success
+```json
+{
+    "result": "ok",
+    "data": { }
+}
+```
+
 ### HassIO
 
 - `/supervisor/info`
