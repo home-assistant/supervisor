@@ -54,9 +54,9 @@ class HassIO(object):
                 host_info.get('level'))
 
         # rest api views
-        self.api.registerHost(self.host_controll)
-        self.api.registerSupervisor(self.host_controll)
-        self.api.registerHomeAssistant(self.homeassistant)
+        self.api.register_host(self.host_controll)
+        self.api.register_supervisor(self.host_controll)
+        self.api.register_homeassistant(self.homeassistant)
 
         # first start of supervisor?
         if self.config.homeassistant_tag is None:

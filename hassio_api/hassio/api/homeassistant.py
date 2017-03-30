@@ -2,7 +2,7 @@
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPMethodNotAllowed
+from aiohttp.web_exceptions import HTTPNotAcceptable
 
 from ..const import ATTR_VERSION
 
@@ -16,7 +16,7 @@ class APIHomeAssistant(object):
         """Initialize homeassistant rest api part."""
         self.config = config
         self.loop = loop
-        self.dock_hass = hass
+        self.dock_hass = dock_hass
 
     async def info(self, request):
         """Return host information."""
@@ -26,4 +26,4 @@ class APIHomeAssistant(object):
 
     async def update(self, request):
         """Update host OS."""
-        raise HTTPMethodNotAllowed()
+        raise HTTPNotAcceptable()

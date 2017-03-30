@@ -40,6 +40,7 @@ def get_version_from_env(env_list):
     _LOGGER.error("Can't find VERSION in env")
     return None
 
+
 def get_local_ip(loop):
     """Retrieve local IP address.
 

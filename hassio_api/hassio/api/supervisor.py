@@ -2,7 +2,7 @@
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPOk, HTTPMethodNotAllowed
+from aiohttp.web_exceptions import HTTPOk, HTTPNotAcceptable
 
 from ..const import ATTR_VERSION, HASSIO_VERSION
 
@@ -21,7 +21,7 @@ class APISupervisor(object):
     async def info(self, request):
         """Return host information."""
         return web.json_response({
-            ATTR_VERSION: HASSIO_DOCKER,
+            ATTR_VERSION: HASSIO_VERSION,
         })
 
     async def update(self, request):
@@ -29,4 +29,4 @@ class APISupervisor(object):
         body = await request.json() or {}
         if await self.host_controll.supervisor_update(body.get(ATTR_VERSION)):
             raise HTTPOk()
-        raise HTTPMethodNotAllowed()
+        raise HTTPNotAcceptable()

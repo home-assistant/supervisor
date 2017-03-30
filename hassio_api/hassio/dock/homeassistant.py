@@ -46,7 +46,7 @@ class DockerHomeAssistant(DockerBase):
                 },
                 environment={
                     'HASSIO': api_endpoint,
-                }
+                },
                 volumes={
                     self.config.path_config_docker:
                         {'bind': '/config', 'mode': 'rw'},

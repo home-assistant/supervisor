@@ -2,7 +2,7 @@
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPOk, HTTPMethodNotAllowed
+from aiohttp.web_exceptions import HTTPOk, HTTPNotAcceptable
 
 from ..const import ATTR_VERSION
 
@@ -23,31 +23,31 @@ class APIHost(object):
         host_info = await self.host_controll.info()
         if host_info:
             return web.json_response(host_info)
-        raise HTTPMethodNotAllowed()
+        raise HTTPNotAcceptable()
 
     async def reboot(self, request):
         """Reboot host."""
         if await self.host_controll.reboot():
             raise HTTPOk()
-        raise HTTPMethodNotAllowed()
+        raise HTTPNotAcceptable()
 
     async def shutdown(self, request):
         """Poweroff host."""
         if await self.host_controll.shutdown():
             raise HTTPOk()
-        raise HTTPMethodNotAllowed()
+        raise HTTPNotAcceptable()
 
     async def network_info(self, request):
         """Edit network settings."""
-        raise HTTPMethodNotAllowed()
+        raise HTTPNotAcceptable()
 
     async def network_update(self, request):
         """Edit network settings."""
-        raise HTTPMethodNotAllowed()
+        raise HTTPNotAcceptable()
 
     async def update(self, request):
         """Update host OS."""
         body = await request.json() or {}
         if await self.host_controll.host_update(body.get(ATTR_VERSION)):
             raise HTTPOk()
-        raise HTTPMethodNotAllowed()
+        raise HTTPNotAcceptable()

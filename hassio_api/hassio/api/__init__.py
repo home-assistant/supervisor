@@ -22,7 +22,7 @@ class RestAPI(object):
         self._handler = None
         self.server = None
 
-    def registerHost(self, host_controll):
+    def register_host(self, host_controll):
         """Register hostcontroll function."""
         api_host = APIHost(self.config, self.loop, host_controll)
 
@@ -35,14 +35,14 @@ class RestAPI(object):
         self.webapp.router.add_get(
             '/host/network/update', api_host.network_update)
 
-    def registerSupervisor(self, host_controll):
+    def register_supervisor(self, host_controll):
         """Register supervisor function."""
         api_supervisor = APISupervisor(self.config, self.loop, host_controll)
 
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
         self.webapp.router.add_get('/supervisor/update', api_supervisor.update)
 
-    def registerHomeAssistant(self, dock_homeassistant):
+    def register_homeassistant(self, dock_homeassistant):
         """Register homeassistant function."""
         api_hass = APIHomeAssistant(self.config, self.loop, dock_homeassistant)
 
@@ -57,7 +57,8 @@ class RestAPI(object):
             self.server = await self.loop.create_server(
                 self._handler, "0.0.0.0", "80")
         except OSError as err:
-            _LOGGER.fatal("Failed to create HTTP server at 0.0.0.0:80")
+            _LOGGER.fatal(
+                "Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
 
     async def stop(self):
         """Stop rest api webserver."""
