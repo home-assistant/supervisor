@@ -1,6 +1,6 @@
 from setuptools import setup
 
-from .hassio.const import HASSIO_VERSION
+from hassio.const import HASSIO_VERSION
 
 
 setup(
