@@ -32,18 +32,18 @@ do
     fi
     if [ ${parse[0]} == "host-update" ]; then
         if [ ! -z ${parse[1]} ]; then
-            resinhub --hostos-version ${parse[1]} || true
+            nohup resinhub --hostos-version ${parse[1]} > /dev/null 2>&1 &
         else
-            resinhub || true
+            nohup resinhub > /dev/null 2>&1 &
         fi
         echo "OK"
         continue
     fi
     if [ ${parse[0]} == "supervisor-update" ]; then
         if [ ! -z ${parse[1]} ]; then
-            update-resin-supervisor --supervisor-tag ${parse[1]} || true
+            nohup update-resin-supervisor --supervisor-tag ${parse[1]} > /dev/null 2>&1 &
         else
-            update-resin-supervisor || true
+            nohup update-resin-supervisor > /dev/null 2>&1 &
         fi
         echo "OK"
         continue
