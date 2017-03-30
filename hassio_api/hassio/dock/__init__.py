@@ -11,13 +11,12 @@ _LOGGER = logging.getLogger(__name__)
 class DockerBase(object):
     """Docker hassio wrapper."""
 
-    def __init__(self, config, loop, dock, image=None, tag=None):
+    def __init__(self, config, loop, dock, image=None):
         """Initialize docker base wrapper."""
         self.config = config
         self.loop = loop
         self.dock = dock
         self.image = image
-        self.tag = tag
         self.container = None
         self.version = None
 
@@ -64,6 +63,8 @@ class DockerBase(object):
         if not self.container:
             try:
                 self.container = self.dock.containers.get(self.docker_name)
+                self.version = get_version_from_env(
+                    self.container.attrs['Config']['Env'])
             except docker.errors.DockerException:
                 return False
         return self.container.status == 'running'

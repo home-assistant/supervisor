@@ -16,10 +16,7 @@ class DockerHomeAssistant(DockerBase):
 
     def __init__(self, config, loop, dock):
         """Initialize docker homeassistant wrapper."""
-        super().__init__(
-            config, loop, dock, image=config.homeassistant_image,
-            tag=config.homeassistant_tag
-        )
+        super().__init__(config, loop, dock, image=config.homeassistant_image)
 
     @property
     def docker_name(self):

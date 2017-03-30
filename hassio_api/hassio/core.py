@@ -35,7 +35,7 @@ class HassIO(object):
         self.host_controll = HostControll(self.loop)
 
     async def start(self):
-        """Start HassIO."""
+        """Start HassIO orchestration."""
         await self.supervisor.attach()
         _LOGGER.info(
             "Attach to supervisor image %s version %s", self.supervisor.image,
@@ -50,22 +50,34 @@ class HassIO(object):
         # first start of supervisor?
         if self.config.homeassistant_tag is None:
             _LOGGER.info("No HomeAssistant docker found. Install it now")
-
-            # read homeassistant tag and install it
-            current = None
-            while True:
-                current = await tools.fetch_current_versions(self.websession)
-                if current and HOMEASSISTANT_TAG in current:
-                    resp = await self.homeassistant.install(
-                        current[HOMEASSISTANT_TAG])
-                    if resp:
-                        break
-                _LOGGER.warning("Can't fetch info from github. Retry in 60.")
-                await asyncio.sleep(60, loop=self.loop)
-
-            self.config.homeassistant_tag = current[HOMEASSISTANT_TAG]
+            await self._setup_homeassistant()
         else:
             _LOGGER.info("HomeAssistant docker exists. Run it now")
 
         # run HomeAssistant
         await self.homeassistant.run()
+
+    async def stop(self):
+        """Stop a running orchestration."""
+        tasks = [self.websession.close()]
+        await asyncio.wait(tasks, loop=self.loop)
+
+        self.loop.close()
+
+    async def _setup_homeassistant(self):
+        """Install a homeassistant docker container."""
+        current = None
+        while True:
+            # read homeassistant tag and install it
+            current = await tools.fetch_current_versions(self.websession)
+            if current and HOMEASSISTANT_TAG in current:
+                resp = await self.homeassistant.install(
+                    current[HOMEASSISTANT_TAG])
+                if resp:
+                    break
+            _LOGGER.warning("Error on setup HomeAssistant. Retry in 60.")
+            await asyncio.sleep(60, loop=self.loop)
+
+        # store version
+        self.config.homeassistant_tag = current[HOMEASSISTANT_TAG]
+        _LOGGER.info("HomeAssistant docker now exists.")
