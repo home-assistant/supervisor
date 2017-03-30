@@ -4,7 +4,7 @@ import logging
 import docker
 
 from . import DockerBase
-from ..tools import get_version_from_env
+from ..tools import get_version_from_env, get_local_ip
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +31,8 @@ class DockerHomeAssistant(DockerBase):
         if self._is_running():
             return
 
+        api_endpoint = get_local_ip(self.loop)
+
         try:
             self.container = self.dock.containers.run(
                 self.image,
@@ -42,6 +44,9 @@ class DockerHomeAssistant(DockerBase):
                     "Name": "always",
                     "MaximumRetryCount": 10,
                 },
+                environment={
+                    'HASSIO': api_endpoint,
+                }
                 volumes={
                     self.config.path_config_docker:
                         {'bind': '/config', 'mode': 'rw'},

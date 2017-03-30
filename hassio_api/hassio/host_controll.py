@@ -13,6 +13,11 @@ _LOGGER = logging.getLogger(__name__)
 
 TIMEOUT = 15
 
+LEVEL_POWER = 1
+LEVEL_UPDATE_SUPERVISOR = 2
+LEVEL_UPDATE_HOST = 4
+LEVEL_NETWORK = 8
+
 
 class HostControll(object):
     """Client for host controll."""

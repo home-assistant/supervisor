@@ -48,8 +48,10 @@ class HassIO(object):
         host_info = await self.host_controll.info()
         if host_info:
             _LOGGER.info(
-                "Connected to host controll daemon. OS: %s Version: %s",
-                host_info.get('host'), host_info.get('version'))
+                "Connected to HostControll. OS: %s Version: %s Hostname: %s "
+                "Feature-lvl: %d", host_info.get('os'),
+                host_info.get('version'), host_info.get('hostname'),
+                host_info.get('level'))
 
         # api views
         self.api.registerHost(self.host_controll)
@@ -61,7 +63,7 @@ class HassIO(object):
             await self._setup_homeassistant()
 
         # start api
-        self.api.start()
+        await self.api.start()
 
         # run HomeAssistant
         _LOGGER.info("Run HomeAssistant now.")

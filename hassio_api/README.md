@@ -7,7 +7,7 @@ Communicate over unix socket with a host daemon.
 - commands
 ```
 # info
--> {'host', 'version'}
+-> {'os', 'version', 'level', 'hostname'}
 # reboot
 # shutdown
 # host-update [v]
@@ -22,6 +22,12 @@ Communicate over unix socket with a host daemon.
 # network int route xy
 ```
 
+level:
+- 1: power functions
+- 2: supervisor update
+- 4: host update
+- 8: network functions
+
 - Answer
 ```
 {}|OK|ERROR
@@ -33,15 +39,13 @@ Interface for HomeAssistant to controll things from supervisor.
 
 ### HassIO
 
-- `/update`
+- `/supervisor/info`
+
+- `/supervisor/update`
 Payload: {'version': '0.XX'}
 If version is None it read last version from server.
 
 ### Host
-- `/host/network`
-Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask': '', 'gateway': ''}
-
-- `/host/reboot`
 
 - `/host/shutdown`
 
@@ -49,6 +53,13 @@ Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask':
 
 - `/host/update`
 On some device we support host upates. Like ResinOS.
+
+- `/host/network/info`
+
+- `/host/network/update`
+Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask': '', 'gateway': ''}
+
+- `/host/reboot`
 
 ### HomeAssistant
 
