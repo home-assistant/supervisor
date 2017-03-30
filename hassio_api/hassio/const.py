@@ -1,6 +1,4 @@
 """Const file for HassIO."""
-import os
-
 HASSIO_VERSION = '0.3'
 
 URL_HASSIO_VERSION = \
@@ -13,9 +11,7 @@ FILE_HOST_NETWORK = '/boot/network'
 FILE_HASSIO_ADDONS = '/data/addons.json'
 FILE_HASSIO_CONFIG = '/data/config.json'
 
-HASSIO_SHARE_EXT = os.environ['SUPERVISOR_SHARE']
-HASSIO_SHARE_INT = '/data'
-HASSIO_DOCKER = os.environ['SUPERVISOR_NAME']
+HASSIO_SHARE = '/data'
 
 SOCKET_DOCKER = "/var/run/docker.sock"
 SOCKET_HC = "/var/run/hassio-hc.sock"

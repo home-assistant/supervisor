@@ -5,8 +5,7 @@ import os
 
 from .const import (
     FILE_HASSIO_CONFIG, HOMEASSISTANT_TAG, HOMEASSISTANT_IMAGE,
-    HOMEASSISTANT_SSL, HOMEASSISTANT_CONFIG, HASSIO_SHARE_EXT,
-    HASSIO_SHARE_INT)
+    HOMEASSISTANT_SSL, HOMEASSISTANT_CONFIG, HASSIO_SHARE)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,19 +59,19 @@ class CoreConfig(object):
     @property
     def path_config_docker(self):
         """Return config path extern for docker."""
-        return HOMEASSISTANT_CONFIG.format(HASSIO_SHARE_EXT)
+        return HOMEASSISTANT_CONFIG.format(os.environ['SUPERVISOR_NAME'])
 
     @property
     def path_config(self):
         """Return config path inside supervisor."""
-        return HOMEASSISTANT_CONFIG.format(HASSIO_SHARE_INT)
+        return HOMEASSISTANT_CONFIG.format(HASSIO_SHARE)
 
     @property
     def path_ssl_docker(self):
         """Return SSL path extern for docker."""
-        return HOMEASSISTANT_SSL.format(HASSIO_SHARE_EXT)
+        return HOMEASSISTANT_SSL.format(os.environ['SUPERVISOR_NAME'])
 
     @property
     def path_ssl(self):
         """Return SSL path inside supervisor."""
-        return HOMEASSISTANT_SSL.format(HASSIO_SHARE_INT)
+        return HOMEASSISTANT_SSL.format(HASSIO_SHARE)

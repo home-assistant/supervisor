@@ -1,6 +1,7 @@
 """Init file for HassIO docker object."""
+import os
+
 from . import DockerBase
-from ..const import HASSIO_DOCKER
 
 
 class DockerSupervisor(DockerBase):
@@ -9,7 +10,7 @@ class DockerSupervisor(DockerBase):
     @property
     def docker_name(self):
         """Return name of docker container."""
-        return HASSIO_DOCKER
+        return os.environ['SUPERVISOR_NAME']
 
     async def run(self):
         """Run docker image."""
