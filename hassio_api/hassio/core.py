@@ -53,8 +53,9 @@ class HassIO(object):
                 host_info.get('version'), host_info.get('hostname'),
                 host_info.get('level'))
 
-        # api views
+        # rest api views
         self.api.registerHost(self.host_controll)
+        self.api.registerSupervisor(self.host_controll)
         self.api.registerHomeAssistant(self.homeassistant)
 
         # first start of supervisor?

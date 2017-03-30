@@ -1,10 +1,11 @@
 from setuptools import setup
 
-VERSION = "0.2"
+from .hassio.const import HASSIO_VERSION
+
 
 setup(
     name='HassIO',
-    version=VERSION,
+    version=HASSIO_VERSION,
     license='BSD License',
     author='The Home Assistant Authors',
     author_email='hello@home-assistant.io',

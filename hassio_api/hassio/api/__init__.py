@@ -3,8 +3,9 @@ import logging
 
 from aiohttp import web
 
-from .homeassistant import APIHomeAssistant
 from .host import APIHost
+from .supervisor import APISupervisor
+from .homeassistant import APIHomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,11 +29,18 @@ class RestAPI(object):
         self.webapp.router.add_get('/host/info', api_host.info)
         self.webapp.router.add_get('/host/reboot', api_host.reboot)
         self.webapp.router.add_get('/host/shutdown', api_host.shutdown)
-        self.webapp.router.add_get('/host/update', api_host.update_host)
+        self.webapp.router.add_get('/host/update', api_host.update)
         self.webapp.router.add_get(
             '/host/network/info', api_host.network_info)
         self.webapp.router.add_get(
             '/host/network/update', api_host.network_update)
+
+    def registerSupervisor(self, host_controll):
+        """Register supervisor function."""
+        api_supervisor = APISupervisor(self.config, self.loop, host_controll)
+
+        self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
+        self.webapp.router.add_get('/supervisor/update', api_supervisor.update)
 
     def registerHomeAssistant(self, dock_homeassistant):
         """Register homeassistant function."""

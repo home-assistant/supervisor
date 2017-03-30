@@ -1,8 +1,10 @@
-"""Init file for HassIO rest api."""
+"""Init file for HassIO host rest api."""
 import logging
 
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPOk, HTTPMethodNotAllowed
+
+from ..const import ATTR_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -11,10 +13,10 @@ class APIHost(object):
     """Handle rest api for host functions."""
 
     def __init__(self, config, loop, host_controll):
-        """Initialize docker base wrapper."""
+        """Initialize host rest api part."""
         self.config = config
         self.loop = loop
-        self.host_controll
+        self.host_controll = host_controll
 
     async def info(self, request):
         """Return host information."""
@@ -43,8 +45,9 @@ class APIHost(object):
         """Edit network settings."""
         raise HTTPMethodNotAllowed()
 
-    async def update_host(self, request):
+    async def update(self, request):
         """Update host OS."""
-        if await self.host_controll.host_update():
+        body = await request.json() or {}
+        if await self.host_controll.host_update(body.get(ATTR_VERSION)):
             raise HTTPOk()
         raise HTTPMethodNotAllowed()

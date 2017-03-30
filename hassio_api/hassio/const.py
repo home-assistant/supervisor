@@ -1,6 +1,8 @@
 """Const file for HassIO."""
 import os
 
+HASSIO_VERSION = '0.3'
+
 URL_HASSIO_VERSION = \
     'https://raw.githubusercontent.com/pvizeli/hassio/master/version.json'
 
@@ -25,3 +27,5 @@ HTTP_PORT = 9123
 
 HOMEASSISTANT_IMAGE = 'homeassistant_image'
 HOMEASSISTANT_TAG = 'homeassistant_tag'
+
+ATTR_VERSION = 'version'
