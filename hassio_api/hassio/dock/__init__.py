@@ -123,7 +123,7 @@ class DockerBase(object):
             return
 
         self.container.reload()
-        if self.container.status == 'running'
+        if self.container.status == 'running':
             with suppress(docker.errors.DockerException):
                 self.container.stop()
 

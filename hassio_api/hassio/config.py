@@ -6,7 +6,6 @@ import os
 from .const import (
     FILE_HASSIO_CONFIG, HOMEASSISTANT_TAG, HOMEASSISTANT_IMAGE,
     HOMEASSISTANT_SSL, HOMEASSISTANT_CONFIG, HASSIO_SHARE)
-from .tools import fetch_current_versions
 
 _LOGGER = logging.getLogger(__name__)
 
