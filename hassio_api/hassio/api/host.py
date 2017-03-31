@@ -24,12 +24,12 @@ class APIHost(object):
     @api_process_hostcontroll
     def reboot(self, request):
         """Reboot host."""
-        return self.host_controll.reboot():
+        return self.host_controll.reboot()
 
     @api_process_hostcontroll
     def shutdown(self, request):
         """Poweroff host."""
-        return self.host_controll.shutdown():
+        return self.host_controll.shutdown()
 
     @api_process_hostcontroll
     def network_info(self, request):

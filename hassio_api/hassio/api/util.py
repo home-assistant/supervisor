@@ -11,6 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def api_process_hostcontroll(method):
+    """Wrap HostControll calls to rest api."""
     async def wrap_hostcontroll(api, *args, **kwargs):
         """Return host information."""
         if not api.host_controll.active:
