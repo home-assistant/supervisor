@@ -16,6 +16,14 @@ class DockerSupervisor(DockerBase):
         """Run docker image."""
         raise RuntimeError("Not support on supervisor docker container!")
 
-    async def install(self, tag='latest'):
+    async def install(self, tag):
         """Pull docker image."""
+        raise RuntimeError("Not support on supervisor docker container!")
+
+    async def stop(self):
+        """Stop/remove docker container."""
+        raise RuntimeError("Not support on supervisor docker container!")
+
+    async def update(self, tag):
+        """Update docker image."""
         raise RuntimeError("Not support on supervisor docker container!")

@@ -1,4 +1,5 @@
 """Init file for HassIO docker object."""
+from contextlib import suppress
 import logging
 
 import docker
@@ -25,14 +26,14 @@ class DockerBase(object):
         """Return name of docker container."""
         return None
 
-    def install(self, tag='latest'):
+    def install(self, tag):
         """Pull docker image.
 
         Return a Future.
         """
         return self.loop.run_in_executor(None, self._install, tag)
 
-    def _install(self, tag='latest'):
+    def _install(self, tag):
         """Pull docker image.
 
         Need run inside executor.
@@ -41,8 +42,8 @@ class DockerBase(object):
             _LOGGER.info("Pull image %s tag %s.", self.image, tag)
             image = self.dock.images.pull("{}:{}".format(self.image, tag))
 
-            if tag != 'latest':
-                image.tag(self.image, tag='latest')
+            image.tag(self.image, tag='latest')
+            self.version = get_version_from_env(image.attrs['Config']['Env'])
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", self.image, tag, err)
             return False
@@ -67,6 +68,8 @@ class DockerBase(object):
                     self.container.attrs['Config']['Env'])
             except docker.errors.DockerException:
                 return False
+
+        self.container.reload()
         return self.container.status == 'running'
 
     def attach(self):
@@ -103,3 +106,51 @@ class DockerBase(object):
         Need run inside executor.
         """
         raise NotImplementedError()
+
+    def stop(self):
+        """Stop/remove docker container.
+
+        Return a Future.
+        """
+        return self.loop.run_in_executor(None, self._stop)
+
+    def _stop(self):
+        """Stop/remove and remove docker container.
+
+        Need run inside executor.
+        """
+        if not self.container:
+            return
+
+        self.container.reload()
+        if self.container.status == 'running'
+            with suppress(docker.errors.DockerException):
+                self.container.stop()
+
+        with suppress(docker.errors.DockerException):
+            self.container.remove(force=True)
+
+        self.container = None
+
+    def update(self, tag):
+        """Update a docker image.
+
+        Return a Future.
+        """
+        return self.loop.run_in_executor(None, self._update, tag)
+
+    def _update(self, tag):
+        """Update a docker image.
+
+        Need run inside executor.
+        """
+        if self.container:
+            self._stop()
+
+        old_image = "{}:{}".format(self.image, self.version)
+        if self._install(tag):
+            try:
+                self.dock.images.remove(image=old_image, force=True)
+            except docker.errors.DockerException as err:
+                _LOGGER.warning(
+                    "Can't remove old image %s -> %s.", old_image, err)

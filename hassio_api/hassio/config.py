@@ -6,6 +6,7 @@ import os
 from .const import (
     FILE_HASSIO_CONFIG, HOMEASSISTANT_TAG, HOMEASSISTANT_IMAGE,
     HOMEASSISTANT_SSL, HOMEASSISTANT_CONFIG, HASSIO_SHARE)
+from .tools import fetch_current_versions
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,8 +16,8 @@ class CoreConfig(object):
 
     def __init__(self, config_file=FILE_HASSIO_CONFIG):
         """Initialize config object."""
-        self._data = {}
         self._filename = config_file
+        self._data = {}
 
         # init or load data
         if os.path.isfile(self._filename):
