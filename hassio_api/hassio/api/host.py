@@ -1,10 +1,7 @@
 """Init file for HassIO host rest api."""
 import logging
 
-from aiohttp import web
-from aiohttp.web_exceptions import HTTPServiceUnavailable
-
-from .util import api_return_ok, api_return_not_supported
+from .util import api_process_hostcontroll
 from ..const import ATTR_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -19,54 +16,33 @@ class APIHost(object):
         self.loop = loop
         self.host_controll = host_controll
 
-    async def info(self, request):
+    @api_process_hostcontroll
+    def info(self, request):
         """Return host information."""
-        if not self.host_controll.active:
-            raise HTTPServiceUnavailable()
+        return self.host_controll.info()
 
-        host_info = await self.host_controll.info()
-        if host_info:
-            return web.json_response(host_info)
-        return api_return_not_supported()
-
-    async def reboot(self, request):
+    @api_process_hostcontroll
+    def reboot(self, request):
         """Reboot host."""
-        if not self.host_controll.active:
-            raise HTTPServiceUnavailable()
+        return self.host_controll.reboot():
 
-        if await self.host_controll.reboot():
-            return api_return_ok()
-        return api_return_not_supported()
-
-    async def shutdown(self, request):
+    @api_process_hostcontroll
+    def shutdown(self, request):
         """Poweroff host."""
-        if not self.host_controll.active:
-            raise HTTPServiceUnavailable()
+        return self.host_controll.shutdown():
 
-        if await self.host_controll.shutdown():
-            return api_return_ok()
-        return api_return_not_supported()
-
-    async def network_info(self, request):
+    @api_process_hostcontroll
+    def network_info(self, request):
         """Edit network settings."""
-        if not self.host_controll.active:
-            raise HTTPServiceUnavailable()
+        pass
 
-        return api_return_not_supported()
-
-    async def network_update(self, request):
+    @api_process_hostcontroll
+    def network_update(self, request):
         """Edit network settings."""
-        if not self.host_controll.active:
-            raise HTTPServiceUnavailable()
+        pass
 
-        return api_return_not_supported()
-
+    @api_process_hostcontroll
     async def update(self, request):
         """Update host OS."""
-        if not self.host_controll.active:
-            raise HTTPServiceUnavailable()
-
         body = await request.json() or {}
-        if await self.host_controll.host_update(body.get(ATTR_VERSION)):
-            return api_return_ok()
-        return api_return_not_supported()
+        return await self.host_controll.host_update(body.get(ATTR_VERSION))

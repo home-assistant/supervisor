@@ -21,13 +21,11 @@ do
         continue
     fi
     if [ ${parse[0]} == "reboot" ]; then
-        systemctl reboot || true
-        echo "OK"
+        systemctl reboot && echo "OK" || echo "ERROR"
         continue
     fi
     if [ ${parse[0]} == "shutdown" ]; then
-        systemctl poweroff || true
-        echo "OK"
+        systemctl poweroff && echo "OK" || echo "ERROR"
         continue
     fi
     if [ ${parse[0]} == "host-update" ]; then
@@ -49,5 +47,5 @@ do
         continue
     fi
 
-    echo "ERROR"
+    echo "WRONG"
 done

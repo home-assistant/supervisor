@@ -57,6 +57,8 @@ class HostControll(object):
                 return True
             elif response == "ERROR":
                 return False
+            elif response == "WRONG":
+                return None
             else:
                 try:
                     return json.loads(response)

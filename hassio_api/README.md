@@ -28,10 +28,15 @@ level:
 - 4: host update
 - 8: network functions
 
-- Answer
+Answer:
 ```
-{}|OK|ERROR
+{}|OK|ERROR|WRONG
 ```
+
+- {}: json
+- OK: call was successfully
+- ERROR: error on call
+- WRONG: not supported
 
 ## HassIO REST API
 
