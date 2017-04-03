@@ -35,7 +35,7 @@ class Scheduler(object):
 
         # schedule task
         if first_run:
-            _run_task(idx)
+            self._run_task(idx)
         else:
             task = self.loop.call_later(seconds, self._run_task, idx)
             self._data[idx][TASK] = task
