@@ -82,7 +82,7 @@ class HassIO(object):
         while True:
             # read homeassistant tag and install it
             if not self.config.current_homeassistant:
-                await self.config.fetch_update_infos():
+                await self.config.fetch_update_infos()
 
             tag = self.config.current_homeassistant
             if tag and await self.homeassistant.install(tag):

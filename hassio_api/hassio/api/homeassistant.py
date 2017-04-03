@@ -33,4 +33,4 @@ class APIHomeAssistant(object):
         body = await request.json(loads=json_loads)
         version = body.get(ATTR_VERSION, self.config.current_homeassistant)
 
-        return await self.dock_hass.update(version):
+        return await self.dock_hass.update(version)

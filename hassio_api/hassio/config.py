@@ -48,9 +48,9 @@ class CoreConfig(object):
         except OSError:
             _LOGGER.exception("Can't store config in %s", self._filename)
 
-    async def fetch_update_infos():
+    async def fetch_update_infos(self):
         """Read current versions from web."""
-        avilable_updates = await fetch_current_versions(self.websession)
+        current = await fetch_current_versions(self.websession)
 
         if avilable_updates:
             self._data.update({
