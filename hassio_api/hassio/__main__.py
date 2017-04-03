@@ -18,6 +18,9 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     hassio = core.HassIO(loop)
 
+    _LOGGER.info("Run Hassio setup")
+    loop.run_until_complete(hassio.setup())
+
     _LOGGER.info("Start Hassio task")
     loop.create_task(hassio.start())
 

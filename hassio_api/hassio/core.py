@@ -38,8 +38,8 @@ class HassIO(object):
         # init HostControll
         self.host_controll = HostControll(self.loop)
 
-    async def start(self):
-        """Start HassIO orchestration."""
+    async def setup(self):
+        """Setup HassIO orchestration."""
         # supervisor
         await self.supervisor.attach()
         _LOGGER.info(
@@ -70,6 +70,8 @@ class HassIO(object):
             _LOGGER.info("No HomeAssistant docker found.")
             await self._setup_homeassistant()
 
+    async def start(self):
+        """Start HassIO orchestration."""
         # start api
         await self.api.start()
 
