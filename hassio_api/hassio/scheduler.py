@@ -1,5 +1,4 @@
 """Schedule for HassIO."""
-import asyncio
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -9,6 +8,7 @@ REPEAT = 'repeat'
 CALL = 'callback'
 TASK = 'task'
 
+
 class Scheduler(object):
     """Schedule task inside HassIO."""
 
@@ -17,7 +17,8 @@ class Scheduler(object):
         self.loop = loop
         self._data = {}
 
-    def register_task(coro_callback, seconds, repeat=True, first_run=False):
+    def register_task(self, coro_callback, seconds, repeat=True,
+                      first_run=False):
         """Schedule a coroutine.
 
         The coroutien need to be a callback without arguments.
