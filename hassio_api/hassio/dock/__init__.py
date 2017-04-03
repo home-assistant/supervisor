@@ -144,11 +144,10 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        if self.container:
-            self._stop()
-
         old_image = "{}:{}".format(self.image, self.version)
+
         if self._install(tag):
+            self._stop()
             try:
                 self.dock.images.remove(image=old_image, force=True)
                 return True
