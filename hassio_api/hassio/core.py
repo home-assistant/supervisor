@@ -5,10 +5,10 @@ import logging
 import aiohttp
 import docker
 
-from . import bootstrap, tools
+from . import bootstrap
 from .api import RestAPI
 from .host_controll import HostControll
-from .const import HOMEASSISTANT_TAG, SOCKET_DOCKER
+from .const import SOCKET_DOCKER
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
 

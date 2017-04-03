@@ -52,7 +52,7 @@ class CoreConfig(object):
         """Read current versions from web."""
         current = await fetch_current_versions(self.websession)
 
-        if avilable_updates:
+        if current:
             self._data.update({
                 HOMEASSISTANT_CURRENT: current.get('homeassistant_tag'),
                 HASSIO_CURRENT: current.get('hassio_tag'),

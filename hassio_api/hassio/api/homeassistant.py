@@ -1,8 +1,6 @@
 """Init file for HassIO homeassistant rest api."""
 import logging
 
-from aiohttp.web_exceptions import HTTPServiceUnavailable
-
 from .util import api_process, json_loads
 from ..const import ATTR_VERSION
 
