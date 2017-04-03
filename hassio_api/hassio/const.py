@@ -8,6 +8,8 @@ URL_ADDONS_REPO = 'https://github.com/pvizeli/hassio-addons'
 
 HASSIO_SHARE = "/data"
 
+RUN_UPDATE_INFO_TASKS = 28800
+
 FILE_HASSIO_ADDONS = "{}/addons.json".format(HASSIO_SHARE)
 FILE_HASSIO_CONFIG = "{}/config.json".format(HASSIO_SHARE)
 

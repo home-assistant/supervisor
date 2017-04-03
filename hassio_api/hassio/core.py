@@ -8,7 +8,8 @@ import docker
 from . import bootstrap
 from .api import RestAPI
 from .host_controll import HostControll
-from .const import SOCKET_DOCKER
+from .const import SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS
+from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
 
@@ -23,6 +24,7 @@ class HassIO(object):
         self.loop = loop
         self.websession = aiohttp.ClientSession(loop=self.loop)
         self.config = bootstrap.initialize_system_data(self.websession)
+        self.scheduler = Scheduler(self.loop)
         self.api = RestAPI(self.config, self.loop)
         self.dock = docker.DockerClient(
             base_url="unix:/{}".format(SOCKET_DOCKER), version='auto')
@@ -57,6 +59,11 @@ class HassIO(object):
         self.api.register_host(self.host_controll)
         self.api.register_supervisor(self.host_controll)
         self.api.register_homeassistant(self.homeassistant)
+
+        # schedule update info tasks
+        self.scheduler.register_task(
+            self.config.fetch_update_infos, RUN_UPDATE_INFO_TASKS,
+            first_run=True)
 
         # first start of supervisor?
         if self.config.homeassistant_tag is None:
