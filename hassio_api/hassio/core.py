@@ -21,8 +21,8 @@ class HassIO(object):
     def __init__(self, loop):
         """Initialize hassio object."""
         self.loop = loop
-        self.config = bootstrap.initialize_system_data()
         self.websession = aiohttp.ClientSession(loop=self.loop)
+        self.config = bootstrap.initialize_system_data(self.websession)
         self.api = RestAPI(self.config, self.loop)
         self.dock = docker.DockerClient(
             base_url="unix:/{}".format(SOCKET_DOCKER), version='auto')
@@ -79,18 +79,17 @@ class HassIO(object):
 
     async def _setup_homeassistant(self):
         """Install a homeassistant docker container."""
-        current = None
         while True:
             # read homeassistant tag and install it
-            current = await tools.fetch_current_versions(self.websession)
-            if current and HOMEASSISTANT_TAG in current:
-                resp = await self.homeassistant.install(
-                    current[HOMEASSISTANT_TAG])
-                if resp:
-                    break
+            if not self.config.current_homeassistant:
+                await self.config.fetch_update_infos():
+
+            tag = self.config.current_homeassistant
+            if tag and await self.homeassistant.install(tag):
+                break
             _LOGGER.warning("Error on setup HomeAssistant. Retry in 60.")
             await asyncio.sleep(60, loop=self.loop)
 
         # store version
-        self.config.homeassistant_tag = current[HOMEASSISTANT_TAG]
+        self.config.homeassistant_tag = self.config.current_homeassistant
         _LOGGER.info("HomeAssistant docker now exists.")

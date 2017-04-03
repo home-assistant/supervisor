@@ -1,7 +1,7 @@
 """Init file for HassIO supervisor rest api."""
 import logging
 
-from .util import api_return_ok, api_process_hostcontroll
+from .util import api_process, api_process_hostcontroll, json_loads
 from ..const import ATTR_VERSION, HASSIO_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -16,15 +16,19 @@ class APISupervisor(object):
         self.loop = loop
         self.host_controll = host_controll
 
+    @api_process
     async def info(self, request):
         """Return host information."""
-        return api_return_ok({
+        info = {
             ATTR_VERSION: HASSIO_VERSION,
-        })
+        }
+
+        return info
 
     @api_process_hostcontroll
     async def update(self, request):
         """Update host OS."""
-        body = await request.json() or {}
-        return await self.host_controll.supervisor_update(
-            body.get(ATTR_VERSION))
+        body = await request.json(loads=json_loads)
+        version = body.get(ATTR_VERSION, self.config.current_hassio)
+
+        return await self.host_controll.supervisor_update(version=version)

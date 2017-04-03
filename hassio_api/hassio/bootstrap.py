@@ -11,9 +11,9 @@ from .config import CoreConfig
 _LOGGER = logging.getLogger(__name__)
 
 
-def initialize_system_data():
+def initialize_system_data(websession):
     """Setup default config and create folders."""
-    config = CoreConfig()
+    config = CoreConfig(websession)
 
     # homeassistant config folder
     if not os.path.isdir(config.path_config):

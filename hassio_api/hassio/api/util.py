@@ -1,4 +1,5 @@
 """Init file for HassIO util for rest api."""
+import json
 import logging
 
 from aiohttp import web
@@ -10,6 +11,28 @@ from ..const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def json_loads(data):
+    """Extract json from string with support for '' and None."""
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        return {}
+
+
+def api_process(method):
+    """Wrap function with true/false calls to rest api."""
+    async def wrap_api(api, *args, **kwargs):
+        """Return api information."""
+        answer = await method(api, *args, **kwargs)
+        if isinstance(answer, dict):
+            return api_return_ok(data=answer)
+        elif answer:
+            return api_return_ok()
+        return api_return_error()
+
+    return wrap_api
+
+
 def api_process_hostcontroll(method):
     """Wrap HostControll calls to rest api."""
     async def wrap_hostcontroll(api, *args, **kwargs):
@@ -19,7 +42,7 @@ def api_process_hostcontroll(method):
 
         answer = await method(api, *args, **kwargs)
         if isinstance(answer, dict):
-            return web.json_response(answer)
+            return api_return_ok(data=answer)
         elif answer is None:
             return api_not_supported()
         elif answer:

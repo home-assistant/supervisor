@@ -3,7 +3,7 @@ import logging
 
 from aiohttp.web_exceptions import HTTPServiceUnavailable
 
-from .util import api_return_ok
+from .util import api_process, json_loads
 from ..const import ATTR_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,12 +18,19 @@ class APIHomeAssistant(object):
         self.loop = loop
         self.dock_hass = dock_hass
 
+    @api_process
     async def info(self, request):
         """Return host information."""
-        return api_return_ok({
+        info = {
             ATTR_VERSION: self.dock_hass.version,
-        })
+        }
 
+        return info
+
+    @api_process
     async def update(self, request):
         """Update host OS."""
-        raise HTTPServiceUnavailable()
+        body = await request.json(loads=json_loads)
+        version = body.get(ATTR_VERSION, self.config.current_homeassistant)
+
+        return await self.dock_hass.update(version):

@@ -151,6 +151,8 @@ class DockerBase(object):
         if self._install(tag):
             try:
                 self.dock.images.remove(image=old_image, force=True)
+                return True
             except docker.errors.DockerException as err:
                 _LOGGER.warning(
                     "Can't remove old image %s -> %s.", old_image, err)
+                return False

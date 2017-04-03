@@ -1,7 +1,6 @@
 """Tools file for HassIO."""
 import asyncio
 import logging
-import json
 import re
 import socket
 
@@ -23,8 +22,7 @@ async def fetch_current_versions(websession):
     try:
         with async_timeout.timeout(10, loop=websession.loop):
             async with websession.get(URL_HASSIO_VERSION) as request:
-                data = await request.text()
-                return json.loads(data)
+                return await request.json(content_type=None)
 
     except (ValueError, aiohttp.ClientError, asyncio.TimeoutError) as err:
         _LOGGER.warning("Can't fetch versions from github! %s", err)

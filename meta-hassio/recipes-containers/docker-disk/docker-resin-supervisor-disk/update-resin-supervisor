@@ -1,6 +1,8 @@
 #!/bin/bash
 set -o pipefail
 
+SUPERVISOR_CONFIG="/resin-data/config.json"
+
 # Help function
 function update-resin-supervisor-help {
     cat << EOF
@@ -70,20 +72,22 @@ function error_handler {
 
 trap 'error_handler $LINENO' ERR
 
-if tag=$(curl --silent $ENDPOINT | jq -e -r '.hassio_tag'); then
+if [ -f $SUPERVISOR_CONFIG ]; then
+    tag=$(jq --raw-output ".hassio_current // empty" $SUPERVISOR_CONFIG)
     image_name=$SUPERVISOR_IMAGE
-
-    # Check that we didn't somehow get an empty tag version.
-    if [ -z $tag ] || [ -z $image_name ]; then
-        error_handler $LINENO "no tag received"
-    fi
 fi
 
+# override from params
 if [ ! -z $UPDATER_SUPERVISOR_TAG ]; then
     tag=$UPDATER_SUPERVISOR_TAG
 fi
 if [ ! -z $UPDATER_SUPERVISOR_IMAGE ]; then
     image_name=$UPDATER_SUPERVISOR_IMAGE
+fi
+
+# Check that we didn't somehow get an empty tag version.
+if [ -z $tag ] || [ -z $image_name ]; then
+    error_handler $LINENO "no tag received"
 fi
 
 # Get image id of tag. This will be non-empty only in case it's already downloaded.

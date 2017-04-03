@@ -44,5 +44,7 @@ class APIHost(object):
     @api_process_hostcontroll
     async def update(self, request):
         """Update host OS."""
-        body = await request.json() or {}
-        return await self.host_controll.host_update(body.get(ATTR_VERSION))
+        body = await request.json(loads=json_loads)
+        version = body.get(ATTR_VERSION)
+
+        return await self.host_controll.host_update(version=version)

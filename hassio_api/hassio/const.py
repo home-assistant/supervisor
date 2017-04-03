@@ -6,23 +6,13 @@ URL_HASSIO_VERSION = \
 
 URL_ADDONS_REPO = 'https://github.com/pvizeli/hassio-addons'
 
-FILE_HOST_CONFIG = '/boot/config.json'
-FILE_HOST_NETWORK = '/boot/network'
-FILE_HASSIO_ADDONS = '/data/addons.json'
-FILE_HASSIO_CONFIG = '/data/config.json'
+HASSIO_SHARE = "/data"
 
-HASSIO_SHARE = '/data'
+FILE_HASSIO_ADDONS = "{}/addons.json".format(HASSIO_SHARE)
+FILE_HASSIO_CONFIG = "{}/config.json".format(HASSIO_SHARE)
 
 SOCKET_DOCKER = "/var/run/docker.sock"
 SOCKET_HC = "/var/run/hassio-hc.sock"
-
-HOMEASSISTANT_CONFIG = "{}/homeassistant_config"
-HOMEASSISTANT_SSL = "{}/homeassistant_ssl"
-
-HTTP_PORT = 9123
-
-HOMEASSISTANT_IMAGE = 'homeassistant_image'
-HOMEASSISTANT_TAG = 'homeassistant_tag'
 
 JSON_RESULT = 'result'
 JSON_DATA = 'data'

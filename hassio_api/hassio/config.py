@@ -3,18 +3,26 @@ import json
 import logging
 import os
 
-from .const import (
-    FILE_HASSIO_CONFIG, HOMEASSISTANT_TAG, HOMEASSISTANT_IMAGE,
-    HOMEASSISTANT_SSL, HOMEASSISTANT_CONFIG, HASSIO_SHARE)
+from .const import FILE_HASSIO_CONFIG, HASSIO_SHARE
+from .tools import fetch_current_versions
 
 _LOGGER = logging.getLogger(__name__)
+
+HOMEASSISTANT_CONFIG = "{}/homeassistant_config"
+HOMEASSISTANT_SSL = "{}/homeassistant_ssl"
+HOMEASSISTANT_IMAGE = 'homeassistant_image'
+HOMEASSISTANT_TAG = 'homeassistant_tag'
+HOMEASSISTANT_CURRENT = 'homeassistant_current'
+
+HASSIO_CURRENT = 'hassio_current'
 
 
 class CoreConfig(object):
     """Hold all config data."""
 
-    def __init__(self, config_file=FILE_HASSIO_CONFIG):
+    def __init__(self, websession, config_file=FILE_HASSIO_CONFIG):
         """Initialize config object."""
+        self.websession = websession
         self._filename = config_file
         self._data = {}
 
@@ -40,6 +48,20 @@ class CoreConfig(object):
         except OSError:
             _LOGGER.exception("Can't store config in %s", self._filename)
 
+    async def fetch_update_infos():
+        """Read current versions from web."""
+        avilable_updates = await fetch_current_versions(self.websession)
+
+        if avilable_updates:
+            self._data.update({
+                HOMEASSISTANT_CURRENT: current.get('homeassistant_tag'),
+                HASSIO_CURRENT: current.get('hassio_tag'),
+            })
+            self.save()
+            return True
+
+        return False
+
     @property
     def homeassistant_image(self):
         """Return docker homeassistant repository."""
@@ -55,6 +77,16 @@ class CoreConfig(object):
         """Set docker homeassistant tag."""
         self._data[HOMEASSISTANT_TAG] = value
         self.save()
+
+    @property
+    def current_homeassistant(self):
+        """Actual version of homeassistant."""
+        return self._data.get(HOMEASSISTANT_CURRENT)
+
+    @property
+    def current_hassio(self):
+        """Actual version of hassio."""
+        return self._data.get(HASSIO_CURRENT)
 
     @property
     def path_config_docker(self):
