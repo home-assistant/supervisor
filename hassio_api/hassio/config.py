@@ -14,6 +14,7 @@ HOMEASSISTANT_IMAGE = 'homeassistant_image'
 HOMEASSISTANT_CURRENT = 'homeassistant_current'
 
 HASSIO_CURRENT = 'hassio_current'
+UPSTREAM_BETA = 'upstream_beta'
 
 
 class CoreConfig(object):
@@ -37,7 +38,9 @@ class CoreConfig(object):
         if not self._data:
             self._data.update({
                 HOMEASSISTANT_IMAGE: os.environ['HOMEASSISTANT_REPOSITORY'],
+                UPSTREAM_BETA: False,
             })
+            self.save()
 
     def save(self):
         """Store data to config file."""
@@ -46,10 +49,14 @@ class CoreConfig(object):
                 conf_file.write(json.dumps(self._data))
         except OSError:
             _LOGGER.exception("Can't store config in %s", self._filename)
+            return False
+
+        return True
 
     async def fetch_update_infos(self):
         """Read current versions from web."""
-        current = await fetch_current_versions(self.websession)
+        current = await fetch_current_versions(
+            self.websession, beta=self.upstream_beta)
 
         if current:
             self._data.update({
@@ -60,6 +67,16 @@ class CoreConfig(object):
             return True
 
         return False
+
+    @property
+    def upstream_beta(self):
+        """Return True if we run in beta upstream."""
+        return self._data.get(UPSTREAM_BETA, False)
+
+    @upstream_beta.setter
+    def upstream_beta(self, value):
+        """Set beta upstream mode."""
+        self._data[UPSTREAM_BETA] = bool(value)
 
     @property
     def homeassistant_image(self):

@@ -70,8 +70,11 @@ On success
 ```
 
 - `/supervisor/update`
-Payload: {'version': '0.XX'}
+Payload: {"version": "0.XX"}
 If version is None it read last version from server.
+
+- `/supervisor/option`
+Payload: {"beta": true|false}
 
 ### Host
 
@@ -103,7 +106,7 @@ Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask':
 ```
 
 - `/homeassistant/update`
-Payload: {'version': '0.XX.Y'}
+Payload: {"version": "0.XX.Y"}
 If version is None it read last version from server.
 
 ### REST API addons
@@ -118,10 +121,10 @@ Payload: {'options': {}}
 - `/addons/{addon}/stop`
 
 - `/addons/{addon}/install`
-Payload: {'version': 'x.x'}
+Payload: {"version": "x.x"}
 
 - `/addons/{addon}/uninstall`
 
 - `/addons/{addon}/update`
-Payload: {'version': 'x.x'}
+Payload: {"version": "x.x"}
 If version is None it read last version from server.

@@ -3,6 +3,8 @@ HASSIO_VERSION = '0.3'
 
 URL_HASSIO_VERSION = \
     'https://raw.githubusercontent.com/pvizeli/hassio/master/version.json'
+URL_HASSIO_VERSION_BETA = \
+    'https://raw.githubusercontent.com/pvizeli/hassio/master/version_beta.json'
 
 URL_ADDONS_REPO = 'https://github.com/pvizeli/hassio-addons'
 
@@ -25,3 +27,4 @@ RESULT_OK = 'ok'
 
 ATTR_VERSION = 'version'
 ATTR_CURRENT = 'current'
+ATTR_BETA = 'beta'
