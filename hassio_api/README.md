@@ -62,6 +62,13 @@ On success
 
 - `/supervisor/info`
 
+```json
+{
+    "version": INSTALL_VERSION,
+    "current": CURRENT_VERSION
+}
+```
+
 - `/supervisor/update`
 Payload: {'version': '0.XX'}
 If version is None it read last version from server.
@@ -71,6 +78,8 @@ If version is None it read last version from server.
 - `/host/shutdown`
 
 - `/host/info`
+
+See HostControll info command.
 
 - `/host/update`
 On some device we support host upates. Like ResinOS.
@@ -85,6 +94,13 @@ Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask':
 ### HomeAssistant
 
 - `/homeassistant/info`
+
+```json
+{
+    "version": INSTALL_VERSION,
+    "current": CURRENT_VERSION
+}
+```
 
 - `/homeassistant/update`
 Payload: {'version': '0.XX.Y'}

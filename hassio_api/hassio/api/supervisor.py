@@ -2,7 +2,7 @@
 import logging
 
 from .util import api_process, api_process_hostcontroll, json_loads
-from ..const import ATTR_VERSION, HASSIO_VERSION
+from ..const import ATTR_VERSION, ATTR_CURRENT, HASSIO_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ class APISupervisor(object):
         """Return host information."""
         info = {
             ATTR_VERSION: HASSIO_VERSION,
+            ATTR_CURRENT: self.config.current_hassio,
         }
 
         return info

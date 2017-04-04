@@ -24,5 +24,4 @@ RESULT_ERROR = 'error'
 RESULT_OK = 'ok'
 
 ATTR_VERSION = 'version'
-ATTR_NEED_UPDATE = 'need_update'
-ATTR_NEXT_VERSION = 'next_version'
+ATTR_CURRENT = 'current'

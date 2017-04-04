@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from .util import api_process, json_loads
-from ..const import ATTR_VERSION
+from ..const import ATTR_VERSION, ATTR_CURRENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ class APIHomeAssistant(object):
         """Return host information."""
         info = {
             ATTR_VERSION: self.dock_hass.version,
+            ATTR_CURRENT: self.config.current_homeassistant,
         }
 
         return info
