@@ -64,7 +64,7 @@ class HassIO(object):
             first_run=True)
 
         # first start of supervisor?
-        if await self.homeassistant.exists():
+        if not await self.homeassistant.exists():
             _LOGGER.info("No HomeAssistant docker found.")
             await self._setup_homeassistant()
 
