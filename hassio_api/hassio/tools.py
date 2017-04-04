@@ -19,7 +19,7 @@ async def fetch_current_versions(websession, beta=False):
 
     Is a coroutine.
     """
-    url = URL_HASSIO_VERSION_BETA if beta or URL_HASSIO_VERSION
+    url = URL_HASSIO_VERSION_BETA if beta else URL_HASSIO_VERSION
     try:
         with async_timeout.timeout(10, loop=websession.loop):
             async with websession.get(url) as request:

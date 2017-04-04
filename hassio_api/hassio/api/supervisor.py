@@ -30,7 +30,6 @@ class APISupervisor(object):
     @api_process
     async def options(self, request):
         """Set supervisor options."""
-        update = False
         body = await request.json(loads=json_loads)
 
         if ATTR_BETA in body:
