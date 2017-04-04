@@ -81,7 +81,7 @@ class HassIO(object):
         tasks = [self.websession.close(), self.api.stop()]
         await asyncio.wait(tasks, loop=self.loop)
 
-        self.loop.close()
+        self.loop.stop()
 
     async def _setup_homeassistant(self):
         """Install a homeassistant docker container."""
