@@ -38,6 +38,7 @@ class DockerHomeAssistant(DockerBase):
                 self.image,
                 name=self.docker_name,
                 remove=True,
+                detach=True,
                 privileged=True,
                 network_mode='host',
                 restart_policy={
