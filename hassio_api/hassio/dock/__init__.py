@@ -31,11 +31,11 @@ class DockerBase(object):
     @property
     def in_progress(self):
         """Return True if a task is in progress."""
-        return self._lock.locked
+        return self._lock.locked()
 
     async def install(self, tag):
         """Pull docker image."""
-        if self._lock.locked:
+        if self._lock.locked():
             _LOGGER.error("Can't excute install while a task is in progress")
             return False
 
@@ -105,7 +105,7 @@ class DockerBase(object):
 
     async def attach(self):
         """Attach to running docker container."""
-        if self._lock.locked:
+        if self._lock.locked():
             _LOGGER.error("Can't excute attach while a task is in progress")
             return False
 
@@ -133,7 +133,7 @@ class DockerBase(object):
 
     async def run(self):
         """Run docker image."""
-        if self._lock.locked:
+        if self._lock.locked():
             _LOGGER.error("Can't excute run while a task is in progress")
             return False
 
@@ -151,7 +151,7 @@ class DockerBase(object):
 
     async def stop(self):
         """Stop/remove docker container."""
-        if self._lock.locked:
+        if self._lock.locked():
             _LOGGER.error("Can't excute stop while a task is in progress")
             return False
 
@@ -182,7 +182,7 @@ class DockerBase(object):
 
         Return a Future.
         """
-        if self._lock.locked:
+        if self._lock.locked():
             _LOGGER.error("Can't excute update while a task is in progress")
             return False
 
