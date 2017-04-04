@@ -66,7 +66,7 @@ class HassIO(object):
             first_run=True)
 
         # first start of supervisor?
-        if self.config.homeassistant_tag is None:
+        if await self.homeassistant.exists():
             _LOGGER.info("No HomeAssistant docker found.")
             await self._setup_homeassistant()
 
@@ -100,5 +100,4 @@ class HassIO(object):
             await asyncio.sleep(60, loop=self.loop)
 
         # store version
-        self.config.homeassistant_tag = self.config.current_homeassistant
-        _LOGGER.info("HomeAssistant docker now exists.")
+        _LOGGER.info("HomeAssistant docker now installed.")

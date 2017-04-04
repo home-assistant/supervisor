@@ -11,7 +11,6 @@ _LOGGER = logging.getLogger(__name__)
 HOMEASSISTANT_CONFIG = "{}/homeassistant_config"
 HOMEASSISTANT_SSL = "{}/homeassistant_ssl"
 HOMEASSISTANT_IMAGE = 'homeassistant_image'
-HOMEASSISTANT_TAG = 'homeassistant_tag'
 HOMEASSISTANT_CURRENT = 'homeassistant_current'
 
 HASSIO_CURRENT = 'hassio_current'
@@ -66,17 +65,6 @@ class CoreConfig(object):
     def homeassistant_image(self):
         """Return docker homeassistant repository."""
         return self._data.get(HOMEASSISTANT_IMAGE)
-
-    @property
-    def homeassistant_tag(self):
-        """Return docker homeassistant tag."""
-        return self._data.get(HOMEASSISTANT_TAG)
-
-    @homeassistant_tag.setter
-    def homeassistant_tag(self, value):
-        """Set docker homeassistant tag."""
-        self._data[HOMEASSISTANT_TAG] = value
-        self.save()
 
     @property
     def current_homeassistant(self):

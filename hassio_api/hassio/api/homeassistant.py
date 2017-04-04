@@ -33,6 +33,9 @@ class APIHomeAssistant(object):
         version = body.get(ATTR_VERSION, self.config.current_homeassistant)
 
         if self.dock_hass.in_progress:
-            raise RuntimeError("Other task is in progress!")
+            raise RuntimeError("Other task is in progress.")
+
+        if version == self.dock_hass.version:
+            raise RuntimeError("%s is already in use.", version)
 
         return await asyncio.shield(self.dock_hass.update(version))

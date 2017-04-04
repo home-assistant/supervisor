@@ -60,6 +60,26 @@ class DockerBase(object):
             return False
         return True
 
+    def exists(self):
+        """Return True if docker image exists in local repo.
+
+        Return a Future.
+        """
+        return self.loop.run_in_executor(None, self._is_running)
+
+    def _exists(self):
+        """Return True if docker image exists in local repo.
+
+        Need run inside executor.
+        """
+        try:
+            image = self.dock.images.get(self.image)
+            self.version = get_version_from_env(image.attrs['Config']['Env'])
+        except docker.errors.DockerException:
+            return False
+
+        return True
+
     def is_running(self):
         """Return True if docker is Running.
 
@@ -118,8 +138,8 @@ class DockerBase(object):
             return False
 
         async with self._lock:
-            _LOGGER.info("Run docker image %s.",
-                         self.image)
+            _LOGGER.info("Run docker image %s with version %s.",
+                         self.image, self.version)
             return await self.loop.run_in_executor(None, self._run)
 
     def _run(self):
