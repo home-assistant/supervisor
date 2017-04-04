@@ -65,7 +65,7 @@ class DockerBase(object):
 
         Return a Future.
         """
-        return self.loop.run_in_executor(None, self._is_running)
+        return self.loop.run_in_executor(None, self._exists)
 
     def _exists(self):
         """Return True if docker image exists in local repo.
