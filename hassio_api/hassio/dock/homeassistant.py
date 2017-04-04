@@ -33,11 +33,13 @@ class DockerHomeAssistant(DockerBase):
 
         api_endpoint = get_local_ip(self.loop)
 
+        # cleanup old container
+        self._stop()
+
         try:
             self.container = self.dock.containers.run(
                 self.image,
                 name=self.docker_name,
-                remove=True,
                 detach=True,
                 privileged=True,
                 network_mode='host',
