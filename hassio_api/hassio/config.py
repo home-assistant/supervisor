@@ -79,7 +79,7 @@ class CoreConfig(object):
     @property
     def path_config_docker(self):
         """Return config path extern for docker."""
-        return HOMEASSISTANT_CONFIG.format(os.environ['SUPERVISOR_NAME'])
+        return HOMEASSISTANT_CONFIG.format(os.environ['SUPERVISOR_SHARE'])
 
     @property
     def path_config(self):
@@ -89,7 +89,7 @@ class CoreConfig(object):
     @property
     def path_ssl_docker(self):
         """Return SSL path extern for docker."""
-        return HOMEASSISTANT_SSL.format(os.environ['SUPERVISOR_NAME'])
+        return HOMEASSISTANT_SSL.format(os.environ['SUPERVISOR_SHARE'])
 
     @property
     def path_ssl(self):

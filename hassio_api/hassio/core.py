@@ -42,9 +42,6 @@ class HassIO(object):
         """Setup HassIO orchestration."""
         # supervisor
         await self.supervisor.attach()
-        _LOGGER.info(
-            "Attach to supervisor image %s version %s", self.supervisor.image,
-            self.supervisor.version)
 
         # hostcontroll
         host_info = await self.host_controll.info()
@@ -77,7 +74,6 @@ class HassIO(object):
         await self.api.start()
 
         # run HomeAssistant
-        _LOGGER.info("Run HomeAssistant now.")
         await self.homeassistant.run()
 
     async def stop(self):
