@@ -26,6 +26,7 @@ class HostControll(object):
         """Initialize HostControll socket client."""
         self.loop = loop
         self.active = False
+        self.version = None
 
         mode = os.stat(SOCKET_HC)[stat.ST_MODE]
         if stat.S_ISSOCK(mode):

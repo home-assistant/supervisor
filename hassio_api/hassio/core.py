@@ -49,6 +49,7 @@ class HassIO(object):
         # hostcontroll
         host_info = await self.host_controll.info()
         if host_info:
+            self.host_controll.version = host_info.get('version')
             _LOGGER.info(
                 "Connected to HostControll. OS: %s Version: %s Hostname: %s "
                 "Feature-lvl: %d", host_info.get('os'),

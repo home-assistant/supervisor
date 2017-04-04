@@ -31,4 +31,7 @@ class APISupervisor(object):
         body = await request.json(loads=json_loads)
         version = body.get(ATTR_VERSION, self.config.current_hassio)
 
+        if version == HASSIO_VERSION:
+            raise RuntimeError("%s is already in use.", version)
+
         return await self.host_controll.supervisor_update(version=version)

@@ -33,10 +33,10 @@ class CoreConfig(object):
             except OSError:
                 _LOGGER.warning("Can't read %s", self._filename)
 
+        # init data
         if not self._data:
             self._data.update({
                 HOMEASSISTANT_IMAGE: os.environ['HOMEASSISTANT_REPOSITORY'],
-                HOMEASSISTANT_TAG: None,
             })
 
     def save(self):

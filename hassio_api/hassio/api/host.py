@@ -47,4 +47,7 @@ class APIHost(object):
         body = await request.json(loads=json_loads)
         version = body.get(ATTR_VERSION)
 
+        if version == self.host_controll.version:
+            raise RuntimeError("%s is already in use.", version)
+
         return await self.host_controll.host_update(version=version)
