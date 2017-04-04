@@ -1,4 +1,5 @@
 """Init file for HassIO docker object."""
+import asyncio
 from contextlib import suppress
 import logging
 
@@ -20,18 +21,26 @@ class DockerBase(object):
         self.image = image
         self.container = None
         self.version = None
+        self._lock = asyncio.Lock(loop=loop)
 
     @property
     def docker_name(self):
         """Return name of docker container."""
         return None
 
-    def install(self, tag):
-        """Pull docker image.
+    @property
+    def in_progress(self):
+        """Return True if a task is in progress."""
+        return self._lock.locked
 
-        Return a Future.
-        """
-        return self.loop.run_in_executor(None, self._install, tag)
+    async def install(self, tag):
+        """Pull docker image."""
+        if self._lock.locked:
+            _LOGGER.error("Can't excute install while a task is in progress")
+            return False
+
+        async with self._lock:
+            return await self.loop.run_in_executor(None, self._install, tag)
 
     def _install(self, tag):
         """Pull docker image.
@@ -44,6 +53,8 @@ class DockerBase(object):
 
             image.tag(self.image, tag='latest')
             self.version = get_version_from_env(image.attrs['Config']['Env'])
+            _LOGGER.info("Tag image %s with version %s as latest.",
+                         self.image, self.version)
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", self.image, tag, err)
             return False
@@ -72,12 +83,14 @@ class DockerBase(object):
         self.container.reload()
         return self.container.status == 'running'
 
-    def attach(self):
-        """Attach to running docker container.
+    async def attach(self):
+        """Attach to running docker container."""
+        if self._lock.locked:
+            _LOGGER.error("Can't excute stop while a task is in progress")
+            return False
 
-        Return a Future.
-        """
-        return self.loop.run_in_executor(None, self._attach)
+        async with self._lock:
+            return await self.loop.run_in_executor(None, self._attach)
 
     def _attach(self):
         """Attach to running docker container.
@@ -89,16 +102,25 @@ class DockerBase(object):
             self.image = self.container.attrs['Config']['Image']
             self.version = get_version_from_env(
                 self.container.attrs['Config']['Env'])
+            _LOGGER.info("Attach to image %s with version %s.",
+                         self.image, self.version)
         except (docker.errors.DockerException, KeyError):
             _LOGGER.fatal(
                 "Can't attach to %s docker container!", self.docker_name)
+            return False
 
-    def run(self):
-        """Run docker image.
+        return True
 
-        Return a Future.
-        """
-        return self.loop.run_in_executor(None, self._run)
+    async def run(self):
+        """Run docker image."""
+        if self._lock.locked:
+            _LOGGER.error("Can't excute run while a task is in progress")
+            return False
+
+        async with self._lock:
+            _LOGGER.info("Run docker image %s.",
+                         self.image)
+            return await self.loop.run_in_executor(None, self._run)
 
     def _run(self):
         """Run docker image.
@@ -107,12 +129,15 @@ class DockerBase(object):
         """
         raise NotImplementedError()
 
-    def stop(self):
-        """Stop/remove docker container.
+    async def stop(self):
+        """Stop/remove docker container."""
+        if self._lock.locked:
+            _LOGGER.error("Can't excute stop while a task is in progress")
+            return False
 
-        Return a Future.
-        """
-        return self.loop.run_in_executor(None, self._stop)
+        async with self._lock:
+            await self.loop.run_in_executor(None, self._stop)
+            return True
 
     def _stop(self):
         """Stop/remove and remove docker container.
@@ -132,12 +157,17 @@ class DockerBase(object):
 
         self.container = None
 
-    def update(self, tag):
+    async def update(self, tag):
         """Update a docker image.
 
         Return a Future.
         """
-        return self.loop.run_in_executor(None, self._update, tag)
+        if self._lock.locked:
+            _LOGGER.error("Can't excute update while a task is in progress")
+            return False
+
+        async with self._lock:
+            return await self.loop.run_in_executor(None, self._update, tag)
 
     def _update(self, tag):
         """Update a docker image.
@@ -145,13 +175,22 @@ class DockerBase(object):
         Need run inside executor.
         """
         old_image = "{}:{}".format(self.image, self.version)
+        old_run = self._is_running()
 
+        _LOGGER.info("Update docker %s with {}:{}.", self.image, tag)
+
+        # update docker image
         if self._install(tag):
+            _LOGGER.info("Cleanup old %s docker.", old_image)
             self._stop()
             try:
                 self.dock.images.remove(image=old_image, force=True)
-                return True
             except docker.errors.DockerException as err:
                 _LOGGER.warning(
                     "Can't remove old image %s -> %s.", old_image, err)
-                return False
+            # restore
+            if old_run:
+                self._run()
+            return True
+
+        return False

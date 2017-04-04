@@ -31,4 +31,7 @@ class APIHomeAssistant(object):
         body = await request.json(loads=json_loads)
         version = body.get(ATTR_VERSION, self.config.current_homeassistant)
 
-        return await self.dock_hass.update(version)
+        if self.dock_hass.in_progress:
+            raise RuntimeError("Other task is in progress!")
+
+        return await asyncio.shield(self.dock_hass.update(version))

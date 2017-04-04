@@ -23,7 +23,11 @@ def api_process(method):
     """Wrap function with true/false calls to rest api."""
     async def wrap_api(api, *args, **kwargs):
         """Return api information."""
-        answer = await method(api, *args, **kwargs)
+        try:
+            answer = await method(api, *args, **kwargs)
+        except RuntimeError as err:
+            return api_return_error(message=str(err))
+            
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
         elif answer:
