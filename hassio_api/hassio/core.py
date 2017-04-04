@@ -54,7 +54,7 @@ class HassIO(object):
                 "Connected to HostControll. OS: %s Version: %s Hostname: %s "
                 "Feature-lvl: %d", host_info.get('os'),
                 host_info.get('version'), host_info.get('hostname'),
-                host_info.get('level'))
+                host_info.get('level', 0))
 
         # rest api views
         self.api.register_host(self.host_controll)

@@ -106,7 +106,7 @@ class DockerBase(object):
     async def attach(self):
         """Attach to running docker container."""
         if self._lock.locked:
-            _LOGGER.error("Can't excute stop while a task is in progress")
+            _LOGGER.error("Can't excute attach while a task is in progress")
             return False
 
         async with self._lock:
