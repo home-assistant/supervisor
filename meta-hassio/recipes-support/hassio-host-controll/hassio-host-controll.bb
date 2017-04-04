@@ -16,7 +16,6 @@ SYSTEMD_AUTO_ENABLE = "enable"
 RDEPENDS_${PN} = " \
     bash \
     socat \
-    nohup \
     "
 
 FILES_${PN} += " \
