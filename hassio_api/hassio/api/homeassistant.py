@@ -1,4 +1,5 @@
 """Init file for HassIO homeassistant rest api."""
+import asyncio
 import logging
 
 from .util import api_process, json_loads

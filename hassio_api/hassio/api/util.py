@@ -27,7 +27,7 @@ def api_process(method):
             answer = await method(api, *args, **kwargs)
         except RuntimeError as err:
             return api_return_error(message=str(err))
-            
+
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
         elif answer:

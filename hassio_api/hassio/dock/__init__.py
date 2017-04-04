@@ -177,7 +177,8 @@ class DockerBase(object):
         old_image = "{}:{}".format(self.image, self.version)
         old_run = self._is_running()
 
-        _LOGGER.info("Update docker %s with {}:{}.", self.image, tag)
+        _LOGGER.info("Update docker %s with %s:%s.",
+                     old_image, self.image, tag)
 
         # update docker image
         if self._install(tag):
