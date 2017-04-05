@@ -4,6 +4,7 @@ import logging
 from aiohttp import web
 
 from .host import APIHost
+from .network import APINetwork
 from .supervisor import APISupervisor
 from .homeassistant import APIHomeAssistant
 
@@ -31,10 +32,13 @@ class RestAPI(object):
         self.webapp.router.add_get('/host/reboot', api_host.reboot)
         self.webapp.router.add_get('/host/shutdown', api_host.shutdown)
         self.webapp.router.add_get('/host/update', api_host.update)
-        self.webapp.router.add_get(
-            '/host/network/info', api_host.network_info)
-        self.webapp.router.add_get(
-            '/host/network/update', api_host.network_update)
+
+    def register_network(self, host_controll):
+        """Register network function."""
+        api_net = APINetwork(self.config, self.loop, host_controll)
+
+        self.webapp.router.add_get('/network/info', api_net.info)
+        self.webapp.router.add_get('/network/options', api_net.options)
 
     def register_supervisor(self, host_controll):
         """Register supervisor function."""

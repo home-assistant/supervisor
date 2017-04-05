@@ -55,6 +55,7 @@ class HassIO(object):
 
         # rest api views
         self.api.register_host(self.host_controll)
+        self.api.register_network(self.host_controll)
         self.api.register_supervisor(self.host_controll)
         self.api.register_homeassistant(self.homeassistant)
 

@@ -80,6 +80,8 @@ Payload: {"beta": true|false}
 
 - `/host/shutdown`
 
+- `/host/reboot`
+
 - `/host/info`
 
 See HostControll info command.
@@ -87,12 +89,13 @@ See HostControll info command.
 - `/host/update`
 On some device we support host upates. Like ResinOS.
 
-- `/host/network/info`
+### Network
 
-- `/host/network/update`
+- `/network/info`
+
+- `/network/options`
 Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask': '', 'gateway': ''}
 
-- `/host/reboot`
 
 ### HomeAssistant
 

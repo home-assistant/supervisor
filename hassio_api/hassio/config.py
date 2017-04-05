@@ -9,10 +9,10 @@ from .tools import fetch_current_versions
 _LOGGER = logging.getLogger(__name__)
 
 HOMEASSISTANT_CONFIG = "{}/homeassistant_config"
-HOMEASSISTANT_SSL = "{}/homeassistant_ssl"
 HOMEASSISTANT_IMAGE = 'homeassistant_image'
 HOMEASSISTANT_CURRENT = 'homeassistant_current'
 
+HASSIO_SSL = "{}/ssl"
 HASSIO_CURRENT = 'hassio_current'
 UPSTREAM_BETA = 'upstream_beta'
 
@@ -106,9 +106,9 @@ class CoreConfig(object):
     @property
     def path_ssl_docker(self):
         """Return SSL path extern for docker."""
-        return HOMEASSISTANT_SSL.format(os.environ['SUPERVISOR_SHARE'])
+        return HASSIO_SSL.format(os.environ['SUPERVISOR_SHARE'])
 
     @property
     def path_ssl(self):
         """Return SSL path inside supervisor."""
-        return HOMEASSISTANT_SSL.format(HASSIO_SHARE)
+        return HASSIO_SSL.format(HASSIO_SHARE)
