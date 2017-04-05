@@ -1,7 +1,7 @@
 """Init file for HassIO network rest api."""
 import logging
 
-from .util import api_process_hostcontroll, json_loads
+from .util import api_process_hostcontroll
 
 _LOGGER = logging.getLogger(__name__)
 
