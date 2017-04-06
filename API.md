@@ -7,7 +7,7 @@ Communicate over unix socket with a host daemon.
 - commands
 ```
 # info
--> {'os', 'version', 'level', 'hostname'}
+-> {'os', 'version', 'current', 'level', 'hostname'}
 # reboot
 # shutdown
 # host-update [v]
@@ -98,6 +98,7 @@ See HostControll info command.
 {
     "os": "",
     "version": "",
+    "current": "",
     "level": "",
     "hostname": "",
 }
