@@ -64,17 +64,27 @@ On success
 
 ```json
 {
-    "version": INSTALL_VERSION,
-    "current": CURRENT_VERSION
+    "version": "INSTALL_VERSION",
+    "current": "CURRENT_VERSION",
+    "beta": "true|false",
+    "addons": {}
 }
 ```
 
 - `/supervisor/update`
-Payload: {"version": "0.XX"}
-If version is None it read last version from server.
+Optional:
+```json
+{
+    "version": "VERSION"
+}
+```
 
 - `/supervisor/option`
-Payload: {"beta": true|false}
+```json
+{
+    "beta": "true|false"
+}
+```
 
 ### Host
 
@@ -83,19 +93,39 @@ Payload: {"beta": true|false}
 - `/host/reboot`
 
 - `/host/info`
-
 See HostControll info command.
+```json
+{
+    "os": "",
+    "version": "",
+    "level": "",
+    "hostname": "",
+}
+```
 
 - `/host/update`
-On some device we support host upates. Like ResinOS.
+Optional:
+```json
+{
+    "version": "VERSION"
+}
+```
 
 ### Network
 
 - `/network/info`
 
 - `/network/options`
-Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask': '', 'gateway': ''}
-
+```json
+{
+    "hostname": "",
+    "mode": "dhcp|fixed",
+    "ssid": "",
+    "ip": "",
+    "netmask": "",
+    "gateway": ""
+}
+```
 
 ### HomeAssistant
 
@@ -103,31 +133,55 @@ Payload: {'hostname': '', 'mode': 'dhcp|fixed', 'ssid': '', 'ip': '', 'netmask':
 
 ```json
 {
-    "version": INSTALL_VERSION,
-    "current": CURRENT_VERSION
+    "version": "INSTALL_VERSION",
+    "current": "CURRENT_VERSION"
 }
 ```
 
 - `/homeassistant/update`
-Payload: {"version": "0.XX.Y"}
-If version is None it read last version from server.
+Optional:
+```json
+{
+    "version": "VERSION"
+}
+```
 
 ### REST API addons
 
-- `/addons/info`
+- `/addons/{addon}/info`
+```json
+{
+    "version": "VERSION",
+    "current": "CURRENT_VERSION",
+    "state": "started|stopped",
+    "boot": "auto|manual",
+    "options": {},
+}
+```
 
 - `/addons/{addon}/options`
-Payload: {'options': {}}
+```json
+{ }
+```
 
 - `/addons/{addon}/start`
 
 - `/addons/{addon}/stop`
 
 - `/addons/{addon}/install`
-Payload: {"version": "x.x"}
+Optional:
+```json
+{
+    "version": "VERSION"
+}
+```
 
 - `/addons/{addon}/uninstall`
 
 - `/addons/{addon}/update`
-Payload: {"version": "x.x"}
-If version is None it read last version from server.
+Optional:
+```json
+{
+    "version": "VERSION"
+}
+```
