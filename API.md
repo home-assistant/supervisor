@@ -64,7 +64,8 @@ On success
 ```json
 {
     "uptime": 0,
- }
+}
+```
 
 - `/supervisor/info`
 
