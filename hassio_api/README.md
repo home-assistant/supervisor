@@ -116,10 +116,10 @@ If version is None it read last version from server.
 
 - `/addons/info`
 
-- `/addons/reload`
+- `/addons/{addon}/options`
+Payload: {'options': {}}
 
 - `/addons/{addon}/start`
-Payload: {'options': {}}
 
 - `/addons/{addon}/stop`
 
