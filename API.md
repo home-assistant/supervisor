@@ -61,11 +61,6 @@ On success
 ### HassIO
 
 - `/supervisor/ping`
-```json
-{
-    "uptime": 0,
-}
-```
 
 - `/supervisor/info`
 
