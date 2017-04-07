@@ -14,6 +14,10 @@ HOMEASSISTANT_CURRENT = 'homeassistant_current'
 
 HASSIO_SSL = "{}/ssl"
 HASSIO_CURRENT = 'hassio_current'
+
+ADDONS_REPO = "{}/addons"
+ADDONS_DATA = "{}/addons_data"
+
 UPSTREAM_BETA = 'upstream_beta'
 
 
@@ -112,3 +116,18 @@ class CoreConfig(object):
     def path_ssl(self):
         """Return SSL path inside supervisor."""
         return HASSIO_SSL.format(HASSIO_SHARE)
+
+    @property
+    def path_addons_repo(self):
+        """Return git repo path for addons."""
+        return ADDONS_REPO.format(HASSIO_SHARE)
+
+    @property
+    def path_addons_data(self):
+        """Return root addon data folder."""
+        return ADDONS_DATA.format(HASSIO_SHARE)
+
+    @property
+    def path_addons_data_docker(self):
+        """Return root addon data folder extern for docker."""
+        return ADDONS_DATA.format(os.environ['SUPERVISOR_SHARE'])

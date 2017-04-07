@@ -6,7 +6,7 @@ URL_HASSIO_VERSION = \
 URL_HASSIO_VERSION_BETA = \
     'https://raw.githubusercontent.com/pvizeli/hassio/master/version_beta.json'
 
-URL_ADDONS_REPO = 'https://github.com/pvizeli/hassio-addons'
+URL_HASSIO_ADDONS = 'https://github.com/pvizeli/hassio-addons'
 
 HASSIO_SHARE = "/data"
 
