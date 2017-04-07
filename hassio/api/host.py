@@ -1,10 +1,18 @@
 """Init file for HassIO host rest api."""
 import logging
 
-from .util import api_process_hostcontroll, json_loads
+import voluptuous as vol
+
+from .util import api_process_hostcontroll, api_process, api_validate
 from ..const import ATTR_VERSION
 
 _LOGGER = logging.getLogger(__name__)
+
+UNKNOWN = 'unknown'
+
+SCHEMA_VERSION = vol.Schema({
+    vol.Optional(ATTR_VERSION): vol.Coerce(str),
+})
 
 
 class APIHost(object):
@@ -16,10 +24,20 @@ class APIHost(object):
         self.loop = loop
         self.host_controll = host_controll
 
-    @api_process_hostcontroll
-    def info(self, request):
+    @api_process
+    async def info(self, request):
         """Return host information."""
-        return self.host_controll.info()
+        if not self.host_controll.active:
+            info = {
+                'os': UNKNOWN,
+                'version': UNKNOWN,
+                'current': UNKNOWN,
+                'level': 0,
+                'hostname': UNKNOWN,
+            }
+            return info
+
+        return await self.host_controll.info()
 
     @api_process_hostcontroll
     def reboot(self, request):
@@ -32,19 +50,9 @@ class APIHost(object):
         return self.host_controll.shutdown()
 
     @api_process_hostcontroll
-    def network_info(self, request):
-        """Edit network settings."""
-        pass
-
-    @api_process_hostcontroll
-    def network_update(self, request):
-        """Edit network settings."""
-        pass
-
-    @api_process_hostcontroll
     async def update(self, request):
         """Update host OS."""
-        body = await request.json(loads=json_loads)
+        body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION)
 
         if version == self.host_controll.version:

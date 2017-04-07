@@ -23,7 +23,7 @@ if __name__ == "__main__":
     loop.run_until_complete(hassio.setup())
 
     _LOGGER.info("Start Hassio task")
-    loop.create_task(hassio.start())
+    loop.call_soon_threadsafe(asyncio.ensure_future, hassio.start(), loop)
 
     try:
         loop.add_signal_handler(
@@ -32,4 +32,5 @@ if __name__ == "__main__":
         _LOGGER.warning("Could not bind to SIGTERM")
 
     loop.run_forever()
+    loop.close()
     _LOGGER.info("Close Hassio")

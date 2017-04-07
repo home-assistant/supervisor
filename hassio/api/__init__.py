@@ -44,6 +44,7 @@ class RestAPI(object):
         """Register supervisor function."""
         api_supervisor = APISupervisor(self.config, self.loop, host_controll)
 
+        self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
         self.webapp.router.add_get('/supervisor/update', api_supervisor.update)
         self.webapp.router.add_get(

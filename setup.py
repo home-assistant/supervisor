@@ -36,5 +36,6 @@ setup(
         'aiohttp',
         'docker',
         'colorlog',
+        'voluptuous',
     ]
 )

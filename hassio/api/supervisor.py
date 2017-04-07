@@ -1,10 +1,21 @@
 """Init file for HassIO supervisor rest api."""
 import logging
 
-from .util import api_process, api_process_hostcontroll, json_loads
+import voluptuous as vol
+
+from .util import api_process, api_process_hostcontroll, api_validate
 from ..const import ATTR_VERSION, ATTR_CURRENT, ATTR_BETA, HASSIO_VERSION
 
 _LOGGER = logging.getLogger(__name__)
+
+SCHEMA_OPTIONS = vol.Schema({
+    # pylint: disable=no-value-for-parameter
+    vol.Optional(ATTR_BETA): vol.Boolean(),
+})
+
+SCHEMA_VERSION = vol.Schema({
+    vol.Optional(ATTR_VERSION): vol.Coerce(str),
+})
 
 
 class APISupervisor(object):
@@ -15,6 +26,11 @@ class APISupervisor(object):
         self.config = config
         self.loop = loop
         self.host_controll = host_controll
+
+    @api_process
+    async def ping(self, request):
+        """Return ok for signal that the api is ready."""
+        return True
 
     @api_process
     async def info(self, request):
@@ -30,7 +46,7 @@ class APISupervisor(object):
     @api_process
     async def options(self, request):
         """Set supervisor options."""
-        body = await request.json(loads=json_loads)
+        body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_BETA in body:
             self.config.upstream_beta = body[ATTR_BETA]
@@ -40,7 +56,7 @@ class APISupervisor(object):
     @api_process_hostcontroll
     async def update(self, request):
         """Update host OS."""
-        body = await request.json(loads=json_loads)
+        body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.config.current_hassio)
 
         if version == HASSIO_VERSION:

@@ -4,6 +4,8 @@ import logging
 
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPServiceUnavailable
+import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from ..const import (
     JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR)
@@ -52,7 +54,7 @@ def api_process_hostcontroll(method):
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
         elif answer is None:
-            return api_not_supported()
+            return api_return_error("Function is not supported")
         elif answer:
             return api_return_ok()
         return api_return_error()
@@ -72,10 +74,16 @@ def api_return_ok(data=None):
     """Return a API ok answer."""
     return web.json_response({
         JSON_RESULT: RESULT_OK,
-        JSON_DATA: data,
+        JSON_DATA: data or {},
     })
 
 
-def api_not_supported():
-    """Return a api error with not supported."""
-    return api_return_error("Function is not supported")
+async def api_validate(schema, request):
+    """Validate request data with schema."""
+    data = await request.json(loads=json_loads)
+    try:
+        schema(data)
+    except vol.Invalid as ex:
+        raise RuntimeError(humanize_error(data, ex)) from None
+
+    return data
