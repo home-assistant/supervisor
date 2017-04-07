@@ -68,7 +68,7 @@ def api_return_error(message=None):
     })
 
 
-def api_return_ok(data={}):
+def api_return_ok(data=dict()):
     """Return a API ok answer."""
     return web.json_response({
         JSON_RESULT: RESULT_OK,
