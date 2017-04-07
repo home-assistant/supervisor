@@ -52,7 +52,7 @@ def api_process_hostcontroll(method):
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
         elif answer is None:
-            return api_not_supported()
+            return api_return_error("Function is not supported")
         elif answer:
             return api_return_ok()
         return api_return_error()
@@ -68,14 +68,9 @@ def api_return_error(message=None):
     })
 
 
-def api_return_ok(data=None):
+def api_return_ok(data={}):
     """Return a API ok answer."""
     return web.json_response({
         JSON_RESULT: RESULT_OK,
         JSON_DATA: data,
     })
-
-
-def api_not_supported():
-    """Return a api error with not supported."""
-    return api_return_error("Function is not supported")

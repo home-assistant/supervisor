@@ -1,10 +1,12 @@
 """Init file for HassIO host rest api."""
 import logging
 
-from .util import api_process_hostcontroll, json_loads
+from .util import api_process_hostcontroll, api_process, json_loads
 from ..const import ATTR_VERSION
 
 _LOGGER = logging.getLogger(__name__)
+
+UNKNOWN = 'unknown'
 
 
 class APIHost(object):
@@ -16,10 +18,20 @@ class APIHost(object):
         self.loop = loop
         self.host_controll = host_controll
 
-    @api_process_hostcontroll
-    def info(self, request):
+    @api_process
+    async def info(self, request):
         """Return host information."""
-        return self.host_controll.info()
+        if not self.host_controll.active:
+            info = {
+                'os': UNKNOWN,
+                'version': UNKNOWN,
+                'current': UNKNOWN,
+                'level': 0,
+                'hostname': UNKNOWN,
+            }
+            return info
+
+        return await self.host_controll.info()
 
     @api_process_hostcontroll
     def reboot(self, request):
@@ -30,16 +42,6 @@ class APIHost(object):
     def shutdown(self, request):
         """Poweroff host."""
         return self.host_controll.shutdown()
-
-    @api_process_hostcontroll
-    def network_info(self, request):
-        """Edit network settings."""
-        pass
-
-    @api_process_hostcontroll
-    def network_update(self, request):
-        """Edit network settings."""
-        pass
 
     @api_process_hostcontroll
     async def update(self, request):

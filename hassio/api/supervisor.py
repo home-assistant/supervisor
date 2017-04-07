@@ -17,6 +17,11 @@ class APISupervisor(object):
         self.host_controll = host_controll
 
     @api_process
+    async def ping(self, request):
+        """Return ok for signal that the api is ready."""
+        return True
+
+    @api_process
     async def info(self, request):
         """Return host information."""
         info = {
