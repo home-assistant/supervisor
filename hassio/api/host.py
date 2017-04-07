@@ -1,12 +1,18 @@
 """Init file for HassIO host rest api."""
 import logging
 
-from .util import api_process_hostcontroll, api_process, json_loads
+import voluptuous as vol
+
+from .util import api_process_hostcontroll, api_process, api_validate
 from ..const import ATTR_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
 UNKNOWN = 'unknown'
+
+SCHEMA_VERSION = vol.Schema({
+    vol.Optional(ATTR_VERSION): vol.Coerce(str),
+})
 
 
 class APIHost(object):
@@ -46,7 +52,7 @@ class APIHost(object):
     @api_process_hostcontroll
     async def update(self, request):
         """Update host OS."""
-        body = await request.json(loads=json_loads)
+        body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION)
 
         if version == self.host_controll.version:

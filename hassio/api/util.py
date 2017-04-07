@@ -4,6 +4,8 @@ import logging
 
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPServiceUnavailable
+import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from ..const import (
     JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR)
@@ -74,3 +76,14 @@ def api_return_ok(data=None):
         JSON_RESULT: RESULT_OK,
         JSON_DATA: data or {},
     })
+
+
+async def api_validate(schema, request):
+    """Validate request data with schema."""
+    data = await request.json(loads=json_loads)
+    try:
+        schema(data)
+    except vol.Invalid as ex:
+        raise RuntimeError(humanize_error(data, ex)) from None
+
+    return data
