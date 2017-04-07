@@ -9,6 +9,7 @@ from ..const import ATTR_VERSION, ATTR_CURRENT, ATTR_BETA, HASSIO_VERSION
 _LOGGER = logging.getLogger(__name__)
 
 SCHEMA_OPTIONS = vol.Schema({
+    # pylint: disable=no-value-for-parameter
     vol.Optional(ATTR_BETA): vol.Boolean(),
 })
 
