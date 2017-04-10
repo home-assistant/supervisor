@@ -61,11 +61,38 @@ class AddonsConfig(Config):
                 _LOGGER.warnign("Can't read %s -> %s.", addon,
                                 humanize_error(addon_config, ex))
 
+    @property
+    def list_installed(self):
+        """Return a list of installed addons."""
+        return self._data.keys()
+
+    def exists_addon(self, addon):
+        """Return True if a addon exists."""
+        return addon in self._addons_data
+
+    def is_installed(self, addon):
+        """Return True if a addon is installed."""
+        return addon in self._data
+
+    def set_install_addon(self, addon, version):
+        """Set addon as installed."""
+        self._data[addon] = {ATTR_VERSION: version}
+        self.save()
+
+    def set_uninstall_addon(self, addon, version):
+        """Set addon as uninstalled."""
+        self._data.pop(addon, None)
+        self.save()
+
     def get_image(self, addon):
         """Return name of addon docker image."""
         return "{}/{}-addon-{}".format(
             DOCKER_REPO, self.config.hassio_arch,
             self._addons_data[addon][ATTR_SLUG])
+
+    def get_version(self, addon):
+        """Return version of addon."""
+        return self._addons_data[addon][ATTR_VERSION]
 
     def get_slug(self, addon):
         """Return slug of addon."""

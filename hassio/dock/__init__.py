@@ -184,11 +184,10 @@ class DockerBase(object):
             return False
 
         async with self._lock:
-            await self.loop.run_in_executor(None, self._remove)
-            return True
+            return await self.loop.run_in_executor(None, self._remove)
 
-    def _stop(self):
-        """Stop/remove and remove docker container.
+    def _remove(self):
+        """remove docker container.
 
         Need run inside executor.
         """
@@ -200,6 +199,9 @@ class DockerBase(object):
             self.dock.images.remove(image=image, force=True)
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't remove image %s -> %s.", image, err)
+            return False
+
+        return True
 
     async def update(self, tag):
         """Update a docker image.
