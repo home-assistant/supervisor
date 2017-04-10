@@ -82,7 +82,7 @@ async def api_validate(schema, request):
     """Validate request data with schema."""
     data = await request.json(loads=json_loads)
     try:
-        schema(data)
+        data = schema(data)
     except vol.Invalid as ex:
         raise RuntimeError(humanize_error(data, ex)) from None
 

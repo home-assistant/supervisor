@@ -20,7 +20,7 @@ class AddonsRepo(object):
         self.repo = None
         self._lock = asyncio.Lock(loop=loop)
 
-    async def init(self):
+    async def load(self):
         """Init git addon repo."""
         if not os.path.isdir(self.config.path_addons_repo):
             return await self.clone()
@@ -32,6 +32,9 @@ class AddonsRepo(object):
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:
                 _LOGGER.error("Can't load addons repo: %s.", err)
+                return False
+
+            return True
 
     async def clone(self):
         """Clone git addon repo."""
@@ -43,12 +46,15 @@ class AddonsRepo(object):
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:
                 _LOGGER.error("Can't clone addons repo: %s.", err)
+                return False
+
+            return True
 
     async def pull(self):
         """Pull git addon repo."""
         if self._lock.locked():
             _LOGGER.warning("It is already a task in progress.")
-            return
+            return False
 
         await with self._lock:
             try:
@@ -57,3 +63,6 @@ class AddonsRepo(object):
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:
                 _LOGGER.error("Can't pull addons repo: %s.", err)
+                return False
+
+            return True

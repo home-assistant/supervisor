@@ -21,12 +21,11 @@ ADDONS_DATA = "{}/addons_data"
 UPSTREAM_BETA = 'upstream_beta'
 
 
-class CoreConfig(object):
+class Config(object):
     """Hold all config data."""
 
-    def __init__(self, websession, config_file=FILE_HASSIO_CONFIG):
+    def __init__(self, config_file):
         """Initialize config object."""
-        self.websession = websession
         self._filename = config_file
         self._data = {}
 
@@ -38,14 +37,6 @@ class CoreConfig(object):
             except OSError:
                 _LOGGER.warning("Can't read %s", self._filename)
 
-        # init data
-        if not self._data:
-            self._data.update({
-                HOMEASSISTANT_IMAGE: os.environ['HOMEASSISTANT_REPOSITORY'],
-                UPSTREAM_BETA: False,
-            })
-            self.save()
-
     def save(self):
         """Store data to config file."""
         try:
@@ -56,6 +47,24 @@ class CoreConfig(object):
             return False
 
         return True
+
+
+class CoreConfig(Config):
+    """Hold all core config data."""
+
+    def __init__(self, websession):
+        """Initialize config object."""
+        self.websession = websession
+
+        super().__ini__(FILE_HASSIO_CONFIG)
+
+        # init data
+        if not self._data:
+            self._data.update({
+                HOMEASSISTANT_IMAGE: os.environ['HOMEASSISTANT_REPOSITORY'],
+                UPSTREAM_BETA: False,
+            })
+            self.save()
 
     async def fetch_update_infos(self):
         """Read current versions from web."""
