@@ -10,10 +10,11 @@ _LOGGER = logging.getLogger(__name__)
 class AddonsManager(object):
     """Manage addons inside HassIO."""
 
-    def __init__(self, config, loop):
+    def __init__(self, config, loop, dock):
         """Initialize docker base wrapper."""
         self.config = config
         self.loop = loop
+        self.dock = dock
         self.repo = AddonsRepo(config, loop)
         self.addons = AddonsConfig(config)
         self.dockers = {}

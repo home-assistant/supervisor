@@ -9,8 +9,8 @@ from voluptuous.humanize import humanize_error
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_MAP_DATA,
-    ATTR_OPTIONS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE, BOOT_START,
-    BOOT_STOP, BOOT_MANUAL)
+    ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE,
+    BOOT_AUTO, BOOT_MANUAL)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +25,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_STARTUP):
         vol.In([STARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
     vol.Required(ATTR_BOOT):
-        vol.IN([BOOT_START, BOOT_STOP, BOOT_MANUAL]),
+        vol.IN([BOOT_AUTO, BOOT_MANUAL]),
+    vol.Optional(ATTR_PORTS): dict,
     vol.Required(ATTR_MAP_CONFIG): vol.Boolean(),
     vol.Required(ATTR_MAP_SSL): vol.Boolean(),
     vol.Required(ATTR_MAP_DATA): vol.Boolean(),
