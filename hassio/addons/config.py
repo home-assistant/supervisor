@@ -29,7 +29,6 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_PORTS): dict,
     vol.Required(ATTR_MAP_CONFIG): vol.Boolean(),
     vol.Required(ATTR_MAP_SSL): vol.Boolean(),
-    vol.Required(ATTR_MAP_DATA): vol.Boolean(),
     vol.Required(ATTR_OPTIONS): dict,
 })
 
@@ -61,3 +60,30 @@ class AddonsConfig(Config):
             except vol.Invalid as ex:
                 _LOGGER.warnign("Can't read %s -> %s.", addon,
                                 humanize_error(addon_config, ex))
+
+    def get_slug(self, addon):
+        """Return slug of addon."""
+        return self._addons_data[addon][ATTR_SLUG]
+
+    def get_ports(self, addon):
+        """Return ports of addon."""
+        return self._addons_data[addon].get(ATTR_PORTS)
+
+    def need_config(self, addon):
+        """Return True if config map is needed."""
+        return self._addons_data[addon][ATTR_MAP_CONFIG]
+
+    def need_ssl(self, addon):
+        """Return True if ssl map is needed."""
+        return self._addons_data[addon][ATTR_MAP_SSL]
+
+    def need_data(self, addon):
+        """Return True if data map is needed."""
+        return self._addons_data[addon][ATTR_MAP_DATA]
+
+    def path_data(self, addon):
+        """Return addon data path inside supervisor."""
+
+
+    def path_data_docker(self, addon):
+        """Return addon data path external for docker."""
