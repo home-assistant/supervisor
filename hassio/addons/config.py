@@ -10,7 +10,7 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_MAP_DATA,
     ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE,
-    BOOT_AUTO, BOOT_MANUAL)
+    BOOT_AUTO, BOOT_MANUAL, DOCKER_REPO)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,6 +61,12 @@ class AddonsConfig(Config):
                 _LOGGER.warnign("Can't read %s -> %s.", addon,
                                 humanize_error(addon_config, ex))
 
+    def get_image(self, addon):
+        """Return name of addon docker image."""
+        return "{}/{}-addon-{}".format(
+            DOCKER_REPO, self.config.hassio_arch,
+            self._addons_data[addon][ATTR_SLUG])
+
     def get_slug(self, addon):
         """Return slug of addon."""
         return self._addons_data[addon][ATTR_SLUG]
@@ -83,7 +89,10 @@ class AddonsConfig(Config):
 
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
-
+        return "{}/{}".format(
+            self.config.path_addons_data, self._addons_data[addon][ATTR_SLUG])
 
     def path_data_docker(self, addon):
         """Return addon data path external for docker."""
+        return "{}/{}".format(self.config.path_addons_data_docker,
+                              self._addons_data[addon][ATTR_SLUG])

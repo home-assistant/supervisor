@@ -3,6 +3,7 @@ import logging
 
 from .config import AddonsConfig
 from .git import AddonsRepo
+from ..docker.addon import DockerAddon
 
 _LOGGER = logging.getLogger(__name__)
 

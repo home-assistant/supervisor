@@ -8,6 +8,8 @@ URL_HASSIO_VERSION_BETA = \
 
 URL_HASSIO_ADDONS = 'https://github.com/pvizeli/hassio-addons'
 
+DOCKER_REPO = "pvizeli"
+
 HASSIO_SHARE = "/data"
 
 RUN_UPDATE_INFO_TASKS = 28800

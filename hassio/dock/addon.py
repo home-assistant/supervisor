@@ -11,12 +11,13 @@ _LOGGER = logging.getLogger(__name__)
 HASS_DOCKER_NAME = 'homeassistant'
 
 
-class DockerHomeAssistant(DockerBase):
+class DockerAddon(DockerBase):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, dock, addon_config, addon, image):
+    def __init__(self, config, loop, dock, addon_config, addon):
         """Initialize docker homeassistant wrapper."""
-        super().__init__(config, loop, dock, image=image)
+        super().__init__(
+            config, loop, dock, image=addon_config.get_image(addon))
         self.addon = addon
         self.addon_config
 
@@ -45,12 +46,12 @@ class DockerHomeAssistant(DockerBase):
             volumes.update({
                 self.config.path_config_docker: {
                     'bind': '/config', 'mode': 'rw'
-            }})
+                }})
         if self.addon_config.need_ssl(self.addon):
             volumes.update({
                 self.config.path_ssl_docker: {
                     'bind': '/ssl', 'mode': 'rw'
-            }})
+                }})
 
         try:
             self.container = self.dock.containers.run(
