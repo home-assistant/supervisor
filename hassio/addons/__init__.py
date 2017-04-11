@@ -10,7 +10,7 @@ from ..docker.addon import DockerAddon
 _LOGGER = logging.getLogger(__name__)
 
 
-class AddonsManager(object):
+class AddonManager(object):
     """Manage addons inside HassIO."""
 
     def __init__(self, config, loop, dock):
@@ -46,7 +46,7 @@ class AddonsManager(object):
             return False
 
         if self.addons.is_installed(addon):
-            _LOGGER.error("Addon %s is allready installed.", addon)
+            _LOGGER.error("Addon %s is already installed.", addon)
             return False
 
         if not os.path.isdir(self.addons.path_data(addon)):
@@ -59,7 +59,6 @@ class AddonsManager(object):
 
         version = version or self.addons.get_version(addon)
         if not await addon_docker.install(version):
-            _LOGGER.error("Can't install addon %s version %s.", addon, version)
             return False
 
         self.dockers[addon] = addon_docker
@@ -68,8 +67,8 @@ class AddonsManager(object):
 
     async def uninstall_addon(self, addon):
         """Remove a addon."""
-        if self.addons.is_installed(addon):
-            _LOGGER.error("Addon %s is allready installed.", addon)
+        if not self.addons.is_installed(addon):
+            _LOGGER.error("Addon %s is already uninstalled.", addon)
             return False
 
         if addon not in self.dockers:
@@ -77,7 +76,6 @@ class AddonsManager(object):
             return False
 
         if not await self.dockers[addon].remove(version):
-            _LOGGER.error("Can't install addon %s.", addon)
             return False
 
         if os.path.isdir(self.addons.path_data(addon)):
@@ -87,4 +85,30 @@ class AddonsManager(object):
 
         self.dockers.pop(addon)
         self.addons.set_uninstall_addon(addon)
+        return True
+
+    async def start_addon(self, addon):
+        """Set options and start addon."""
+        if addon not in self.dockers:
+            _LOGGER.error("No docker found for addon %s.", addon)
+            return False
+
+        if not self.write_addon_options(addon):
+            _LOGGER.error("Can't write options for addon %s.", addon)
+            return False
+
+        if not await self.dockers[addon].run():
+            return False
+
+        return True
+
+    async def stop_addon(self, addon):
+        """Stop addon."""
+        if addon not in self.dockers:
+            _LOGGER.error("No docker found for addon %s.", addon)
+            return False
+
+        if not await self.dockers[addon].stop():
+            return False
+
         return True

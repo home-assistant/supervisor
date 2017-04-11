@@ -1,5 +1,6 @@
 """Tools file for HassIO."""
 import asyncio
+import json
 import logging
 import re
 import socket
@@ -64,3 +65,20 @@ def get_local_ip(loop):
         return socket.gethostbyname(socket.gethostname())
     finally:
         sock.close()
+
+
+def write_json_file(jsonfile, data):
+    """Write a json file."""
+    try:
+        with open(jsonfile, 'w') as conf_file:
+            conf_file.write(json.dumps(data))
+    except OSError:
+        return False
+
+    return True
+
+
+def read_json_file(jsonfile):
+    """Read a json file and return a dict."""
+    with open(jsonfile, 'r') as cfile:
+        return json.loads(cfile.read())

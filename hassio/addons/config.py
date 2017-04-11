@@ -1,7 +1,6 @@
 """Init file for HassIO addons."""
 import logging
 import glob
-import json
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -11,6 +10,7 @@ from ..const import (
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_MAP_DATA,
     ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE,
     BOOT_AUTO, BOOT_MANUAL, DOCKER_REPO)
+from ..tools import read_json_file, write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,8 +48,7 @@ class AddonsConfig(Config):
 
         for addon in glob.iglob(pattern):
             try:
-                with open(addon, 'r') as cfile:
-                    addon_config = json.loads(cfile.read())
+                addon_config = read_json_file(addon)
 
                 addon_config = SCHEMA_ADDON_CONFIG(addon_config)
                 self._addons_data[addon_config[ATTR_SLUG]] = addon_config
@@ -76,13 +75,23 @@ class AddonsConfig(Config):
 
     def set_install_addon(self, addon, version):
         """Set addon as installed."""
-        self._data[addon] = {ATTR_VERSION: version}
+        self._data[addon] = {
+            ATTR_VERSION: version,
+            ATTR_OPTIONS: {}
+        }
         self.save()
 
     def set_uninstall_addon(self, addon, version):
         """Set addon as uninstalled."""
         self._data.pop(addon, None)
         self.save()
+
+    def get_options(self, addon):
+        """Return options with local changes."""
+        opt = self._addons_data[addon][ATTR_OPTIONS]
+        if addon in self._data:
+            opt.update(self._data[addon][ATTR_OPTIONS])
+        return opt
 
     def get_image(self, addon):
         """Return name of addon docker image."""
@@ -123,3 +132,12 @@ class AddonsConfig(Config):
         """Return addon data path external for docker."""
         return "{}/{}".format(self.config.path_addons_data_docker,
                               self._addons_data[addon][ATTR_SLUG])
+
+    def path_addon_options(self, addon):
+        """Return path to addons options."""
+        return "{}/options.json".format(self.path_data(addon))
+
+    def write_addon_options(self, addon):
+        """Return True if addon options is written to data."""
+        return write_json_file(
+            self.path_addon_options(addon), self.get_options(addon))

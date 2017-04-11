@@ -4,7 +4,9 @@ import logging
 import os
 
 from .const import FILE_HASSIO_CONFIG, HASSIO_SHARE
-from .tools import fetch_current_versions, get_arch_from_image
+from .tools import (
+    fetch_current_versions, get_arch_from_image, write_json_file,
+    read_json_file)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,20 +34,15 @@ class Config(object):
         # init or load data
         if os.path.isfile(self._filename):
             try:
-                with open(self._filename, 'r') as cfile:
-                    self._data = json.loads(cfile.read())
+                self._data = read_json_file(self._filename)
             except OSError:
                 _LOGGER.warning("Can't read %s", self._filename)
 
     def save(self):
         """Store data to config file."""
-        try:
-            with open(self._filename, 'w') as conf_file:
-                conf_file.write(json.dumps(self._data))
-        except OSError:
+        if not write_json_file(self._filename, self._data)
             _LOGGER.exception("Can't store config in %s", self._filename)
             return False
-
         return True
 
 

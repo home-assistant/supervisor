@@ -6,6 +6,7 @@ import aiohttp
 import docker
 
 from . import bootstrap
+from .addons import AddonManager
 from .api import RestAPI
 from .host_controll import HostControll
 from .const import SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS
@@ -38,6 +39,9 @@ class HassIO(object):
         # init HostControll
         self.host_controll = HostControll(self.loop)
 
+        # init addon system
+        self.addon_manager = AddonManager(self.config, self.loop, self.dock)
+
     async def setup(self):
         """Setup HassIO orchestration."""
         # supervisor
@@ -68,6 +72,9 @@ class HassIO(object):
         if not await self.homeassistant.exists():
             _LOGGER.info("No HomeAssistant docker found.")
             await self._setup_homeassistant()
+
+        # Load addons
+        await self.addon_manager.prepare()
 
     async def start(self):
         """Start HassIO orchestration."""
