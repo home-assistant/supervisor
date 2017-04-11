@@ -9,7 +9,7 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_MAP_DATA,
     ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE,
-    BOOT_AUTO, BOOT_MANUAL, DOCKER_REPO)
+    BOOT_AUTO, BOOT_MANUAL, DOCKER_REPO, ATTR_INSTALLED)
 from ..tools import read_json_file, write_json_file
 
 _LOGGER = logging.getLogger(__name__)
@@ -65,6 +65,26 @@ class AddonsConfig(Config):
         """Return a list of installed addons."""
         return self._data.keys()
 
+    @property
+    def list_all(self):
+        """Return a list of available addons."""
+        return self._addons_data.keys()
+
+    @property
+    def list(self):
+        """Return a list of available addons."""
+        data = []
+        for addon, values in self._addons.items():
+            data.append({
+                ATTR_NAME: values[ATTR_NAME],
+                ATTR_SLUG: values[ATTR_SLUG],
+                ATTR_DESCRIPTON: values[ATTR_DESCRIPTON],
+                ATTR_VERSION: values[ATTR_VERSION],
+                ATTR_INSTALLED: self._data.get(addon, {}).get(ATTR_VERSION),
+            })
+
+        return data
+
     def exists_addon(self, addon):
         """Return True if a addon exists."""
         return addon in self._addons_data
@@ -72,6 +92,10 @@ class AddonsConfig(Config):
     def is_installed(self, addon):
         """Return True if a addon is installed."""
         return addon in self._data
+
+    def version_installed(self, addon):
+        """Return installed version."""
+        return self._data[addon][ATTR_VERSION]
 
     def set_install_addon(self, addon, version):
         """Set addon as installed."""
@@ -93,11 +117,26 @@ class AddonsConfig(Config):
             opt.update(self._data[addon][ATTR_OPTIONS])
         return opt
 
+    def get_boot(self, addon):
+        """Return boot config with prio local settings."""
+        if ATTR_BOOT in self._data[addon]:
+            return self._data[addon][ATTR_BOOT]
+
+        return self._addons_data[addon][ATTR_BOOT]
+
     def get_image(self, addon):
         """Return name of addon docker image."""
         return "{}/{}-addon-{}".format(
             DOCKER_REPO, self.config.hassio_arch,
             self._addons_data[addon][ATTR_SLUG])
+
+    def get_name(self, addon):
+        """Return name of addon."""
+        return self._addons_data[addon][ATTR_NAME]
+
+    def get_description(self, addon):
+        """Return description of addon."""
+        return self._addons_data[addon][ATTR_DESCRIPTON]
 
     def get_version(self, addon):
         """Return version of addon."""

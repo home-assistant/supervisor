@@ -112,3 +112,19 @@ class AddonManager(object):
             return False
 
         return True
+
+    async def update_addon(self, addon, version=None):
+        """Update addon."""
+        if self.addons.is_installed(addon):
+            _LOGGER.error("Addon %s is not installed.", addon)
+            return False
+
+        if addon not in self.dockers:
+            _LOGGER.error("No docker found for addon %s.", addon)
+            return False
+
+        version = version or self.addons.get_version(addon)
+        if not await self.dockers[addon].update(version):
+            return False
+
+        return True

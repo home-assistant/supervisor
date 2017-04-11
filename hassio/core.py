@@ -60,8 +60,9 @@ class HassIO(object):
         # rest api views
         self.api.register_host(self.host_controll)
         self.api.register_network(self.host_controll)
-        self.api.register_supervisor(self.host_controll)
+        self.api.register_supervisor(self.host_controll, self.addon_manager)
         self.api.register_homeassistant(self.homeassistant)
+        self.api.register_addons(self.addon_manager)
 
         # schedule update info tasks
         self.scheduler.register_task(

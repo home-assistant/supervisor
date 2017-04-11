@@ -3,10 +3,11 @@ import logging
 
 from aiohttp import web
 
+from .addons import APIAddonManager
+from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .network import APINetwork
 from .supervisor import APISupervisor
-from .homeassistant import APIHomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,9 +41,10 @@ class RestAPI(object):
         self.webapp.router.add_get('/network/info', api_net.info)
         self.webapp.router.add_get('/network/options', api_net.options)
 
-    def register_supervisor(self, host_controll):
+    def register_supervisor(self, host_controll, addon_manager):
         """Register supervisor function."""
-        api_supervisor = APISupervisor(self.config, self.loop, host_controll)
+        api_supervisor = APISupervisor(
+            self.config, self.loop, host_controll, addon_manager)
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
@@ -56,6 +58,21 @@ class RestAPI(object):
 
         self.webapp.router.add_get('/homeassistant/info', api_hass.info)
         self.webapp.router.add_get('/homeassistant/update', api_hass.update)
+
+    def register_addons(self, addon_manager):
+        """Register homeassistant function."""
+        api_addons = APIAddons(self.config, self.loop, addon_manager)
+
+        self.webapp.router.add_get('/addons/{addon}/info', api_addons.info)
+        self.webapp.router.add_get(
+            '/addons/{addon}/install', api_addons.install)
+        self.webapp.router.add_get(
+            '/addons/{addon}/uninstall', api_addons.uninstall)
+        self.webapp.router.add_get('/addons/{addon}/start', api_addons.start)
+        self.webapp.router.add_get('/addons/{addon}/stop', api_addons.stop)
+        self.webapp.router.add_get('/addons/{addon}/update', api_addons.update)
+        self.webapp.router.add_get(
+            '/addons/{addon}/options', api_addons.options)
 
     async def start(self):
         """Run rest api webserver."""

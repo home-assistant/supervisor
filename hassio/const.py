@@ -27,6 +27,7 @@ JSON_MESSAGE = 'message'
 RESULT_ERROR = 'error'
 RESULT_OK = 'ok'
 
+ATTR_ADDONS = 'addons'
 ATTR_VERSION = 'version'
 ATTR_CURRENT = 'current'
 ATTR_BETA = 'beta'
