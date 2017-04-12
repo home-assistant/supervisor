@@ -3,7 +3,7 @@ import logging
 
 from aiohttp import web
 
-from .addons import APIAddonManager
+from .addons import APIAddons
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .network import APINetwork

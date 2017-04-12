@@ -6,7 +6,8 @@ import voluptuous as vol
 
 from .util import api_process, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_CURRENT, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS)
+    ATTR_VERSION, ATTR_CURRENT, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
+    STATE_STOPPED, STATE_STARTED)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ class APIAddons(object):
             ATTR_VERSION, self.addons.get_version(addon))
 
         return await asyncio.shield(
-            self.addons.addon_install(addon, version))
+            self.addons.addon_install(addon, version), loop=self.loop)
 
     @api_process
     async def uninstall(self, request):
@@ -77,7 +78,7 @@ class APIAddons(object):
         addon = self._extract_addon(request)
 
         return await asyncio.shield(
-            self.addons.addon_uninstall(addon))
+            self.addons.addon_uninstall(addon), loop=self.loop)
 
     @api_process
     async def start(self, request):
@@ -88,18 +89,18 @@ class APIAddons(object):
             raise RuntimeError("Addon is already running.")
 
         return await asyncio.shield(
-            self.addons.addon_start(addon))
+            self.addons.addon_start(addon), loop=self.loop)
 
     @api_process
     async def stop(self, request):
         """Stop addon."""
         addon = self._extract_addon(request)
 
-        if await self.addons.state_addon(addon) == STATE_STOPED:
+        if await self.addons.state_addon(addon) == STATE_STOPPED:
             raise RuntimeError("Addon is already stoped.")
 
         return await asyncio.shield(
-            self.addons.addon_stop(addon))
+            self.addons.addon_stop(addon), loop=self.loop)
 
     @api_process
     async def update(self, request):
@@ -113,4 +114,4 @@ class APIAddons(object):
             raise RuntimeError("Version is already in use.")
 
         return await asyncio.shield(
-            self.addons.addon_update(addon, version))
+            self.addons.addon_update(addon, version), loop=self.loop)

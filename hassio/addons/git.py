@@ -25,7 +25,7 @@ class AddonsRepo(object):
         if not os.path.isdir(self.config.path_addons_repo):
             return await self.clone()
 
-        await with self._lock:
+        async with self._lock:
             try:
                 self.repo = await self.loop.run_in_executor(
                     None, git.Repo(self.config.path_addons_repo))
@@ -38,7 +38,7 @@ class AddonsRepo(object):
 
     async def clone(self):
         """Clone git addon repo."""
-        await with self._lock:
+        async with self._lock:
             try:
                 self.repo = await self.loop.run_in_executor(
                     None, git.Repo.clone_from, URL_HASSIO_ADDONS,
@@ -56,9 +56,9 @@ class AddonsRepo(object):
             _LOGGER.warning("It is already a task in progress.")
             return False
 
-        await with self._lock:
+        async with self._lock:
             try:
-                yield from self.loop.run_in_executor(
+                await self.loop.run_in_executor(
                     None, self.repo.remotes.origin.pull)
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:

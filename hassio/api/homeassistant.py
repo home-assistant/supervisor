@@ -45,4 +45,5 @@ class APIHomeAssistant(object):
         if version == self.dock_hass.version:
             raise RuntimeError("%s is already in use.", version)
 
-        return await asyncio.shield(self.dock_hass.update(version))
+        return await asyncio.shield(
+            self.dock_hass.update(version), loop=self.loop)

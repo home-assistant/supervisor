@@ -19,7 +19,7 @@ class DockerAddon(DockerBase):
         super().__init__(
             config, loop, dock, image=addons_data.get_image(addon))
         self.addon = addon
-        self.addons_data
+        self.addons_data = addons_data
 
     @property
     def docker_name(self):

@@ -7,9 +7,10 @@ from voluptuous.humanize import humanize_error
 
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
-    ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_MAP_DATA,
-    ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE,
-    BOOT_AUTO, BOOT_MANUAL, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA)
+    ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_OPTIONS,
+    ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE, BOOT_AUTO,
+    BOOT_MANUAL, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA)
+from ..config import Config
 from ..tools import read_json_file, write_json_file
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_STARTUP):
         vol.In([STARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
     vol.Required(ATTR_BOOT):
-        vol.IN([BOOT_AUTO, BOOT_MANUAL]),
+        vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): dict,
     vol.Required(ATTR_MAP_CONFIG): vol.Boolean(),
     vol.Required(ATTR_MAP_SSL): vol.Boolean(),
@@ -48,7 +49,7 @@ class AddonsData(Config):
     def __init__(self, config):
         """Initialize data holder."""
         super().__init__(FILE_HASSIO_ADDONS)
-        self.config
+        self.config = config
         self._addons_data = {}
 
     def read_addons_repo(self):
@@ -66,7 +67,7 @@ class AddonsData(Config):
                 _LOGGER.warning("Can't read %s", addon)
 
             except vol.Invalid as ex:
-                _LOGGER.warnign("Can't read %s -> %s.", addon,
+                _LOGGER.warning("Can't read %s -> %s.", addon,
                                 humanize_error(addon_config, ex))
 
     @property
@@ -83,7 +84,7 @@ class AddonsData(Config):
     def list(self):
         """Return a list of available addons."""
         data = []
-        for addon, values in self._addons.items():
+        for addon, values in self._addons_data.items():
             data.append({
                 ATTR_NAME: values[ATTR_NAME],
                 ATTR_SLUG: values[ATTR_SLUG],
@@ -114,7 +115,7 @@ class AddonsData(Config):
         }
         self.save()
 
-    def set_uninstall_addon(self, addon, version):
+    def set_uninstall_addon(self, addon):
         """Set addon as uninstalled."""
         self._data.pop(addon, None)
         self.save()
@@ -172,10 +173,6 @@ class AddonsData(Config):
         """Return True if ssl map is needed."""
         return self._addons_data[addon][ATTR_MAP_SSL]
 
-    def need_data(self, addon):
-        """Return True if data map is needed."""
-        return self._addons_data[addon][ATTR_MAP_DATA]
-
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
         return "{}/{}".format(
@@ -201,7 +198,7 @@ class AddonsData(Config):
 
         def validate(struct):
             """Validate schema."""
-            validated = {}
+            options = {}
             for key, value in struct.items():
                 if key not in raw_schema:
                     raise vol.Invalid("Unknown options {}.".format(key))
@@ -209,18 +206,18 @@ class AddonsData(Config):
                 typ = raw_schema[key]
                 try:
                     if typ == V_STR:
-                        validate[key] = str(value)
+                        options[key] = str(value)
                     elif typ == V_INT:
-                        validate[key] = int(value)
+                        options[key] = int(value)
                     elif typ == V_FLOAT:
-                        validate[key] = float(value)
+                        options[key] = float(value)
                     elif typ == V_BOOL:
-                        validate[key] = vol.Boolean()(value)
+                        options[key] = vol.Boolean()(value)
                 except TypeError:
                     raise vol.Invalid(
                         "Type error for {}.".format(key)) from None
 
-            return validated
+            return options
 
         schema = vol.Schema(vol.All(dict(), validate))
         return schema

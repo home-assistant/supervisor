@@ -28,6 +28,6 @@ class DockerSupervisor(DockerBase):
         """Update docker image."""
         raise RuntimeError("Not support on supervisor docker container!")
 
-    async def remove(self, tag):
+    async def remove(self):
         """Remove docker image."""
         raise RuntimeError("Not support on supervisor docker container!")

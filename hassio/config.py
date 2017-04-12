@@ -1,5 +1,4 @@
 """Bootstrap HassIO."""
-import json
 import logging
 import os
 
@@ -40,7 +39,7 @@ class Config(object):
 
     def save(self):
         """Store data to config file."""
-        if not write_json_file(self._filename, self._data)
+        if not write_json_file(self._filename, self._data):
             _LOGGER.exception("Can't store config in %s", self._filename)
             return False
         return True
@@ -53,7 +52,7 @@ class CoreConfig(Config):
         """Initialize config object."""
         self.websession = websession
 
-        super().__ini__(FILE_HASSIO_CONFIG)
+        super().__init__(FILE_HASSIO_CONFIG)
 
         # init data
         if not self._data:

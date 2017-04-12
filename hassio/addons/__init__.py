@@ -5,8 +5,8 @@ import shutil
 
 from .data import AddonsData
 from .git import AddonsRepo
-from ..const import STATE_STOPED, STATE_STARTED
-from ..docker.addon import DockerAddon
+from ..const import STATE_STOPPED, STATE_STARTED
+from ..dock.addon import DockerAddon
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ class AddonManager(AddonsData):
             _LOGGER.error("No docker found for addon %s.", addon)
             return False
 
-        if not await self.dockers[addon].remove(version):
+        if not await self.dockers[addon].remove():
             return False
 
         if os.path.isdir(self.path_data(addon)):
@@ -96,7 +96,7 @@ class AddonManager(AddonsData):
 
         if await self.dockers[addon].is_running():
             return STATE_STARTED
-        return STATE_STOPED
+        return STATE_STOPPED
 
     async def start_addon(self, addon):
         """Set options and start addon."""
