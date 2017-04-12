@@ -9,7 +9,8 @@ from . import bootstrap
 from .addons import AddonManager
 from .api import RestAPI
 from .host_controll import HostControll
-from .const import SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS
+from .const import (
+    SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
@@ -40,7 +41,7 @@ class HassIO(object):
         self.host_controll = HostControll(self.loop)
 
         # init addon system
-        self.addon_manager = AddonManager(self.config, self.loop, self.dock)
+        self.addons = AddonManager(self.config, self.loop, self.dock)
 
     async def setup(self):
         """Setup HassIO orchestration."""
@@ -60,9 +61,9 @@ class HassIO(object):
         # rest api views
         self.api.register_host(self.host_controll)
         self.api.register_network(self.host_controll)
-        self.api.register_supervisor(self.host_controll, self.addon_manager)
+        self.api.register_supervisor(self.host_controll, self.addons)
         self.api.register_homeassistant(self.homeassistant)
-        self.api.register_addons(self.addon_manager)
+        self.api.register_addons(self.addons)
 
         # schedule update info tasks
         self.scheduler.register_task(
@@ -75,7 +76,11 @@ class HassIO(object):
             await self._setup_homeassistant()
 
         # Load addons
-        await self.addon_manager.prepare()
+        await self.addons.prepare()
+
+        # schedule addon update task
+        self.scheduler.register_task(
+            self.addons.relaod, RUN_RELOAD_ADDONS_TASKS, first_run=True)
 
     async def start(self):
         """Start HassIO orchestration."""

@@ -41,10 +41,10 @@ class RestAPI(object):
         self.webapp.router.add_get('/network/info', api_net.info)
         self.webapp.router.add_get('/network/options', api_net.options)
 
-    def register_supervisor(self, host_controll, addon_manager):
+    def register_supervisor(self, host_controll, addons):
         """Register supervisor function."""
         api_supervisor = APISupervisor(
-            self.config, self.loop, host_controll, addon_manager)
+            self.config, self.loop, host_controll, addons)
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
@@ -59,9 +59,9 @@ class RestAPI(object):
         self.webapp.router.add_get('/homeassistant/info', api_hass.info)
         self.webapp.router.add_get('/homeassistant/update', api_hass.update)
 
-    def register_addons(self, addon_manager):
+    def register_addons(self, addons):
         """Register homeassistant function."""
-        api_addons = APIAddons(self.config, self.loop, addon_manager)
+        api_addons = APIAddons(self.config, self.loop, addons)
 
         self.webapp.router.add_get('/addons/{addon}/info', api_addons.info)
         self.webapp.router.add_get(

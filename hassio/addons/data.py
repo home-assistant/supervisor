@@ -9,12 +9,18 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_MAP_DATA,
     ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE,
-    BOOT_AUTO, BOOT_MANUAL, DOCKER_REPO, ATTR_INSTALLED)
+    BOOT_AUTO, BOOT_MANUAL, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA)
 from ..tools import read_json_file, write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
 ADDONS_REPO_PATTERN = "{}/*/config.json"
+
+V_STR = 'str'
+V_INT = 'int'
+V_FLOAT = 'float'
+V_BOOL = 'bool'
+
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_CONFIG = vol.Schema({
@@ -30,14 +36,17 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_MAP_CONFIG): vol.Boolean(),
     vol.Required(ATTR_MAP_SSL): vol.Boolean(),
     vol.Required(ATTR_OPTIONS): dict,
+    vol.Required(ATTR_SCHEMA): {
+        vol.Any: vol.In([V_STR, V_INT, V_FLOAT, V_BOOL])
+    },
 })
 
 
-class AddonsConfig(Config):
-    """Config for addons inside HassIO."""
+class AddonsData(Config):
+    """Hold data for addons inside HassIO."""
 
     def __init__(self, config):
-        """Initialize docker base wrapper."""
+        """Initialize data holder."""
         super().__init__(FILE_HASSIO_ADDONS)
         self.config
         self._addons_data = {}
@@ -110,6 +119,11 @@ class AddonsConfig(Config):
         self._data.pop(addon, None)
         self.save()
 
+    def set_options(self, addon, options):
+        """Store user addon options."""
+        self._data[addon][ATTR_OPTIONS] = options
+        self.save()
+
     def get_options(self, addon):
         """Return options with local changes."""
         opt = self._addons_data[addon][ATTR_OPTIONS]
@@ -180,3 +194,33 @@ class AddonsConfig(Config):
         """Return True if addon options is written to data."""
         return write_json_file(
             self.path_addon_options(addon), self.get_options(addon))
+
+    def get_schema(self, addon):
+        """Create a schema for addon options."""
+        raw_schema = self._addons_data[addon][ATTR_SCHEMA]
+
+        def validate(struct):
+            """Validate schema."""
+            validated = {}
+            for key, value in struct.items():
+                if key not in raw_schema:
+                    raise vol.Invalid("Unknown options {}.".format(key))
+
+                typ = raw_schema[key]
+                try:
+                    if typ == V_STR:
+                        validate[key] = str(value)
+                    elif typ == V_INT:
+                        validate[key] = int(value)
+                    elif typ == V_FLOAT:
+                        validate[key] = float(value)
+                    elif typ == V_BOOL:
+                        validate[key] = vol.Boolean()(value)
+                except TypeError:
+                    raise vol.Invalid(
+                        "Type error for {}.".format(key)) from None
+
+            return validated
+
+        schema = vol.Schema(vol.All(dict(), validate))
+        return schema

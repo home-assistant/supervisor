@@ -3,71 +3,72 @@ import logging
 import os
 import shutil
 
-from .config import AddonsConfig
+from .data import AddonsData
 from .git import AddonsRepo
+from ..const import STATE_STOPED, STATE_STARTED
 from ..docker.addon import DockerAddon
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class AddonManager(object):
+class AddonManager(AddonsData):
     """Manage addons inside HassIO."""
 
     def __init__(self, config, loop, dock):
         """Initialize docker base wrapper."""
-        self.config = config
+        super().__init__(config)
+
         self.loop = loop
         self.dock = dock
         self.repo = AddonsRepo(config, loop)
-        self.addons = AddonsConfig(config)
         self.dockers = {}
 
     async def prepare(self):
         """Startup addon management."""
         # load addon repository
         if await self.repo.load():
-            self.addons.read_addons_repo()
+            self.read_addons_repo()
 
         # load installed addons
-        for addon in self.addons.list_installed:
+        for addon in self.list_installed:
             self.dockers[addon] = DockerAddon(
-                self.config, self.loop, self.dock, self.addons, addon)
+                self.config, self.loop, self.dock, self, addon)
 
-    async def relaod_addons(self):
+    async def relaod(self):
         """Update addons from repo and reload list."""
         if not await self.repo.pull():
             return
-        self.addons.read_addons_repo()
+        self.read_addons_repo()
 
     async def install_addon(self, addon, version=None):
         """Install a addon."""
-        if not self.addons.exists_addon(addon):
+        if not self.exists_addon(addon):
             _LOGGER.error("Addon %s not exists for install.", addon)
             return False
 
-        if self.addons.is_installed(addon):
+        if self.is_installed(addon):
             _LOGGER.error("Addon %s is already installed.", addon)
             return False
 
-        if not os.path.isdir(self.addons.path_data(addon)):
+        if not os.path.isdir(self.path_data(addon)):
             _LOGGER.info("Create Home-Assistant addon data folder %s",
-                         self.addon.path_data(addon))
-            os.mkdir(self.addons.path_data(addon))
+                         self.path_data(addon))
+            os.mkdir(self.path_data(addon))
 
         addon_docker = DockerAddon(
-            self.config, self.loop, self.dock, self.addons, addon)
+            self.config, self.loop, self.dock, self, addon)
 
-        version = version or self.addons.get_version(addon)
+        version = version or self.get_version(addon)
         if not await addon_docker.install(version):
             return False
 
         self.dockers[addon] = addon_docker
-        self.addons.set_install_addon(addon, version)
+        self.set_install_addon(addon, version)
         return True
 
     async def uninstall_addon(self, addon):
         """Remove a addon."""
-        if not self.addons.is_installed(addon):
+        if not self.is_installed(addon):
             _LOGGER.error("Addon %s is already uninstalled.", addon)
             return False
 
@@ -78,14 +79,24 @@ class AddonManager(object):
         if not await self.dockers[addon].remove(version):
             return False
 
-        if os.path.isdir(self.addons.path_data(addon)):
+        if os.path.isdir(self.path_data(addon)):
             _LOGGER.info("Remove Home-Assistant addon data folder %s",
-                         self.addon.path_data(addon))
-            shutil.rmtree(self.addons.path_data(addon))
+                         self.path_data(addon))
+            shutil.rmtree(self.path_data(addon))
 
         self.dockers.pop(addon)
-        self.addons.set_uninstall_addon(addon)
+        self.set_uninstall_addon(addon)
         return True
+
+    async def state_addon(self, addon):
+        """Return running state of addon."""
+        if addon not in self.dockers:
+            _LOGGER.error("No docker found for addon %s.", addon)
+            return
+
+        if await self.dockers[addon].is_running():
+            return STATE_STARTED
+        return STATE_STOPED
 
     async def start_addon(self, addon):
         """Set options and start addon."""
@@ -115,7 +126,7 @@ class AddonManager(object):
 
     async def update_addon(self, addon, version=None):
         """Update addon."""
-        if self.addons.is_installed(addon):
+        if self.is_installed(addon):
             _LOGGER.error("Addon %s is not installed.", addon)
             return False
 
@@ -123,7 +134,7 @@ class AddonManager(object):
             _LOGGER.error("No docker found for addon %s.", addon)
             return False
 
-        version = version or self.addons.get_version(addon)
+        version = version or self.get_version(addon)
         if not await self.dockers[addon].update(version):
             return False
 

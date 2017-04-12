@@ -14,17 +14,17 @@ HASS_DOCKER_NAME = 'homeassistant'
 class DockerAddon(DockerBase):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, dock, addon_config, addon):
+    def __init__(self, config, loop, dock, addons_data, addon):
         """Initialize docker homeassistant wrapper."""
         super().__init__(
-            config, loop, dock, image=addon_config.get_image(addon))
+            config, loop, dock, image=addons_data.get_image(addon))
         self.addon = addon
-        self.addon_config
+        self.addons_data
 
     @property
     def docker_name(self):
         """Return name of docker container."""
-        return "addon_{}".format(self.addon_config.get_slug(self.addon))
+        return "addon_{}".format(self.addons_data.get_slug(self.addon))
 
     def _run(self):
         """Run docker image.
@@ -39,15 +39,15 @@ class DockerAddon(DockerBase):
 
         # volumes
         volumes = {
-            self.addon_config.path_data_docker(self.addon): {
+            self.addons_data.path_data_docker(self.addon): {
                 'bind': '/data', 'mode': 'rw'
             }}
-        if self.addon_config.need_config(self.addon):
+        if self.addons_data.need_config(self.addon):
             volumes.update({
                 self.config.path_config_docker: {
                     'bind': '/config', 'mode': 'rw'
                 }})
-        if self.addon_config.need_ssl(self.addon):
+        if self.addons_data.need_ssl(self.addon):
             volumes.update({
                 self.config.path_ssl_docker: {
                     'bind': '/ssl', 'mode': 'rw'
@@ -59,7 +59,7 @@ class DockerAddon(DockerBase):
                 name=self.docker_name,
                 detach=True,
                 network_mode='bridge',
-                ports=self.addon_config.get_ports(self.addon),
+                ports=self.addons_data.get_ports(self.addon),
                 restart_policy={
                     "Name": "on-failure",
                     "MaximumRetryCount": 10,
