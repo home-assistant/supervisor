@@ -129,7 +129,7 @@ class AddonManager(AddonsData):
             _LOGGER.error("Can't write options for addon %s", addon)
             return False
 
-        return await self.dockers[addon].run():
+        return await self.dockers[addon].run()
 
     async def stop_addon(self, addon):
         """Stop addon."""
@@ -137,7 +137,7 @@ class AddonManager(AddonsData):
             _LOGGER.error("No docker found for addon %s", addon)
             return False
 
-        return await self.dockers[addon].stop():
+        return await self.dockers[addon].stop()
 
     async def update_addon(self, addon, version=None):
         """Update addon."""
@@ -150,4 +150,4 @@ class AddonManager(AddonsData):
             return False
 
         version = version or self.get_version(addon)
-        return await self.dockers[addon].update(version):
+        return await self.dockers[addon].update(version)

@@ -98,7 +98,7 @@ class AddonsData(Config):
     def list_startup(self, start_type):
         """Get list of installed addon with need start by type."""
         addon_list = set()
-        for addon, value in self._data.items():
+        for addon in self._data.keys():
             if self.get_boot(addon) != BOOT_AUTO:
                 continue
 
