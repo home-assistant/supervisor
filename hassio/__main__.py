@@ -23,7 +23,7 @@ if __name__ == "__main__":
     loop.run_until_complete(hassio.setup())
 
     _LOGGER.info("Start Hassio task")
-    loop.call_soon_threadsafe(asyncio.ensure_future, hassio.start(), loop)
+    loop.call_soon_threadsafe(loop.create_task, hassio.start())
 
     try:
         loop.add_signal_handler(
