@@ -62,6 +62,6 @@ class APISupervisor(object):
         version = body.get(ATTR_VERSION, self.config.current_hassio)
 
         if version == HASSIO_VERSION:
-            raise RuntimeError("%s is already in use.", version)
+            raise RuntimeError("Version is already in use")
 
         return await self.host_controll.supervisor_update(version=version)

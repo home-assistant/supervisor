@@ -56,6 +56,6 @@ class APIHost(object):
         version = body.get(ATTR_VERSION)
 
         if version == self.host_controll.version:
-            raise RuntimeError("%s is already in use.", version)
+            raise RuntimeError("Version is already in use")
 
         return await self.host_controll.host_update(version=version)

@@ -67,7 +67,7 @@ class AddonsData(Config):
                 _LOGGER.warning("Can't read %s", addon)
 
             except vol.Invalid as ex:
-                _LOGGER.warning("Can't read %s -> %s.", addon,
+                _LOGGER.warning("Can't read %s -> %s", addon,
                                 humanize_error(addon_config, ex))
 
     @property
@@ -106,7 +106,18 @@ class AddonsData(Config):
                 if self._addons_data[addon][ATTR_STARTUP] == start_type:
                     addon_list.add(addon)
             except KeyError:
+                _LOGGER.warning("Orphaned addon detect %s", addon)
                 continue
+
+        return addon_list
+
+    @property
+    def list_removed(self):
+        """Return local addons they not support from repo."""
+        addon_list = set()
+        for addon in self._data.keys():
+            if addon not in self._addons_data:
+                addon_list.add(addon)
 
         return addon_list
 

@@ -88,6 +88,11 @@ class HassIO(object):
         # start api
         await self.api.start()
 
+        # HomeAssistant is already running / supervisor have only reboot
+        if await self.homeassistant.is_running():
+            _LOGGER.info("HassIO reboot detected")
+            return
+
         # start addon mark as before
         await self.addons.auto_boot(STARTUP_BEFORE)
 

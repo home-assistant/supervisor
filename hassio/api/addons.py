@@ -31,9 +31,9 @@ class APIAddons(object):
 
         # check data
         if not self.addons.exists_addon(addon):
-            raise RuntimeError("Addon not exists.")
+            raise RuntimeError("Addon not exists")
         if check_installed and not self.addons.is_installed(addon):
-            raise RuntimeError("Addon is not installed.")
+            raise RuntimeError("Addon is not installed")
 
         return addon
 
@@ -86,7 +86,7 @@ class APIAddons(object):
         addon = self._extract_addon(request)
 
         if await self.addons.state_addon(addon) == STATE_STARTED:
-            raise RuntimeError("Addon is already running.")
+            raise RuntimeError("Addon is already running")
 
         return await asyncio.shield(
             self.addons.addon_start(addon), loop=self.loop)
@@ -97,7 +97,7 @@ class APIAddons(object):
         addon = self._extract_addon(request)
 
         if await self.addons.state_addon(addon) == STATE_STOPPED:
-            raise RuntimeError("Addon is already stoped.")
+            raise RuntimeError("Addon is already stoped")
 
         return await asyncio.shield(
             self.addons.addon_stop(addon), loop=self.loop)
@@ -111,7 +111,7 @@ class APIAddons(object):
             ATTR_VERSION, self.addons.get_version(addon))
 
         if version == self.addons.version_installed(addon):
-            raise RuntimeError("Version is already in use.")
+            raise RuntimeError("Version is already in use")
 
         return await asyncio.shield(
             self.addons.addon_update(addon, version), loop=self.loop)
