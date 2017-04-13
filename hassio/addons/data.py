@@ -73,12 +73,12 @@ class AddonsData(Config):
     @property
     def list_installed(self):
         """Return a list of installed addons."""
-        return self._data.keys()
+        return set(self._data.keys())
 
     @property
     def list_all(self):
         """Return a list of available addons."""
-        return self._addons_data.keys()
+        return set(self._addons_data.keys())
 
     @property
     def list(self):
@@ -94,6 +94,21 @@ class AddonsData(Config):
             })
 
         return data
+
+    def list_startup(self, start_type):
+        """Get list of installed addon with need start by type."""
+        addon_list = set()
+        for addon, value in self._data.items():
+            if self.get_boot(addon) != BOOT_AUTO:
+                continue
+
+            try:
+                if self._addons_data[addon][ATTR_STARTUP] == start_type:
+                    addon_list.add(addon)
+            except KeyError:
+                continue
+
+        return addon_list
 
     def exists_addon(self, addon):
         """Return True if a addon exists."""

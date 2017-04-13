@@ -40,6 +40,18 @@ class AddonManager(AddonsData):
             return
         self.read_addons_repo()
 
+    async def auto_boot(self, start_type):
+        """Boot addons with mode auto."""
+        boot_list = self.list_startup(start_type)
+        tasks = []
+
+        for addon in boot_list:
+            tasks.append(self.loop.create_task(self.start_addon(addon)))
+
+        _LOGGER.info("Startup %s run %d addons.", start_type, len(tasks))
+        if tasks:
+            await asyncio.wait(tasks, loop=self.loop)
+
     async def install_addon(self, addon, version=None):
         """Install a addon."""
         if not self.exists_addon(addon):
@@ -108,10 +120,7 @@ class AddonManager(AddonsData):
             _LOGGER.error("Can't write options for addon %s.", addon)
             return False
 
-        if not await self.dockers[addon].run():
-            return False
-
-        return True
+        return await self.dockers[addon].run():
 
     async def stop_addon(self, addon):
         """Stop addon."""
@@ -119,10 +128,7 @@ class AddonManager(AddonsData):
             _LOGGER.error("No docker found for addon %s.", addon)
             return False
 
-        if not await self.dockers[addon].stop():
-            return False
-
-        return True
+        return await self.dockers[addon].stop():
 
     async def update_addon(self, addon, version=None):
         """Update addon."""
@@ -135,7 +141,4 @@ class AddonManager(AddonsData):
             return False
 
         version = version or self.get_version(addon)
-        if not await self.dockers[addon].update(version):
-            return False
-
-        return True
+        return await self.dockers[addon].update(version):

@@ -10,7 +10,8 @@ from .addons import AddonManager
 from .api import RestAPI
 from .host_controll import HostControll
 from .const import (
-    SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS)
+    SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
+    STARTUP_AFTER, STARTUP_BEFORE)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
@@ -87,8 +88,14 @@ class HassIO(object):
         # start api
         await self.api.start()
 
+        # start addon mark as before
+        await self.addons.auto_boot(STARTUP_BEFORE)
+
         # run HomeAssistant
         await self.homeassistant.run()
+
+        # start addon mark as after
+        await self.addons.auto_boot(STARTUP_AFTER)
 
     async def stop(self):
         """Stop a running orchestration."""
