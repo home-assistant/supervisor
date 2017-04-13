@@ -1,6 +1,6 @@
 {
     "hassio_tag": "0.5",
-    "homeassistant_tag": "0.41",
+    "homeassistant_tag": "0.42.3",
     "resinos_version": "0.3",
     "resinhup_version": "0.1"
 }
