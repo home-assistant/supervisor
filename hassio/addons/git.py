@@ -29,7 +29,7 @@ class AddonsRepo(object):
             try:
                 _LOGGER.info("Load addons repository")
                 self.repo = await self.loop.run_in_executor(
-                    None, git.Repo(self.config.path_addons_repo))
+                    None, git.Repo, self.config.path_addons_repo)
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:
                 _LOGGER.error("Can't load addons repo: %s.", err)
