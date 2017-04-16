@@ -27,8 +27,11 @@ async def fetch_current_versions(websession, beta=False):
             async with websession.get(url) as request:
                 return await request.json(content_type=None)
 
-    except (ValueError, aiohttp.ClientError, asyncio.TimeoutError) as err:
+    except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:
         _LOGGER.warning("Can't fetch versions from %s! %s", url, err)
+
+    except json.JSONDecoder as err:
+        _LOGGER.warning("Can't parse versions from %s! %s", url, err)
 
 
 def get_arch_from_image(image):
