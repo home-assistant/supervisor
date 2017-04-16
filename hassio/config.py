@@ -18,6 +18,7 @@ HASSIO_CURRENT = 'hassio_current'
 
 ADDONS_REPO = "{}/addons"
 ADDONS_DATA = "{}/addons_data"
+ADDONS_CUSTOM = "{}/addons_custom"
 
 UPSTREAM_BETA = 'upstream_beta'
 
@@ -131,6 +132,11 @@ class CoreConfig(Config):
     def path_addons_repo(self):
         """Return git repo path for addons."""
         return ADDONS_REPO.format(HASSIO_SHARE)
+
+    @property
+    def path_addons_custom(self):
+        """Return path for customs addons."""
+        return ADDONS_CUSTOM.format(HASSIO_SHARE)
 
     @property
     def path_addons_data(self):

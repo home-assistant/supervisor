@@ -32,6 +32,11 @@ def initialize_system_data(websession):
                      config.path_addons_data)
         os.mkdir(config.path_addons_data)
 
+    if not os.path.isdir(config.path_addons_custom):
+        _LOGGER.info("Create Home-Assistant addon custom folder %s",
+                     config.path_addons_custom)
+        os.mkdir(config.path_addons_custom)
+
     return config
 
 

@@ -44,6 +44,7 @@ ATTR_OPTIONS = 'options'
 ATTR_INSTALLED = 'installed'
 ATTR_STATE = 'state'
 ATTR_SCHEMA = 'schema'
+ATTR_IMAGE = 'image'
 
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'

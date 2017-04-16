@@ -9,7 +9,7 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_OPTIONS,
     ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE, BOOT_AUTO,
-    BOOT_MANUAL, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA)
+    BOOT_MANUAL, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA, ATTR_IMAGE)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -40,6 +40,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_SCHEMA): {
         vol.Any: vol.In([V_STR, V_INT, V_FLOAT, V_BOOL])
     },
+    vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
 })
 
 
@@ -54,7 +55,12 @@ class AddonsData(Config):
 
     def read_addons_repo(self):
         """Read data from addons repository."""
-        pattern = ADDONS_REPO_PATTERN.format(self.config.path_addons_repo)
+        self._read_addons_folder(self.config.path_addons_repo)
+        self._read_addons_folder(self.config.path_addons_custom)
+
+    def _read_addons_folder(self, folder):
+        """Read data from addons folder."""
+        pattern = ADDONS_REPO_PATTERN.format(folder)
 
         for addon in glob.iglob(pattern):
             try:
@@ -190,6 +196,14 @@ class AddonsData(Config):
     def get_ports(self, addon):
         """Return ports of addon."""
         return self._addons_data[addon].get(ATTR_PORTS)
+
+    def get_image(self, addon):
+        """Return image name of addon."""
+        if ATTR_IMAGE is not in self._addons_data[addon]:
+            return "{}/addon_{}".format(
+                DOCKER_REPO, self.addons_data.get_slug(self.addon))
+
+        return self._addons_data[addon][ATTR_IMAGE]
 
     def need_config(self, addon):
         """Return True if config map is needed."""
