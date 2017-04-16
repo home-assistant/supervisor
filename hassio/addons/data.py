@@ -171,12 +171,6 @@ class AddonsData(Config):
 
         return self._addons_data[addon][ATTR_BOOT]
 
-    def get_image(self, addon):
-        """Return name of addon docker image."""
-        return "{}/{}-addon-{}".format(
-            DOCKER_REPO, self.config.hassio_arch,
-            self._addons_data[addon][ATTR_SLUG])
-
     def get_name(self, addon):
         """Return name of addon."""
         return self._addons_data[addon][ATTR_NAME]
