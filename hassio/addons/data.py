@@ -38,7 +38,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_MAP_SSL): vol.Boolean(),
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
-        vol.Any: vol.In([V_STR, V_INT, V_FLOAT, V_BOOL])
+        vol.Coerce(str): vol.In([V_STR, V_INT, V_FLOAT, V_BOOL])
     },
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
 })
