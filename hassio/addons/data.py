@@ -199,7 +199,7 @@ class AddonsData(Config):
 
     def get_image(self, addon):
         """Return image name of addon."""
-        if ATTR_IMAGE is not in self._addons_data[addon]:
+        if ATTR_IMAGE not in self._addons_data[addon]:
             return "{}/addon_{}".format(
                 DOCKER_REPO, self.addons_data.get_slug(self.addon))
 
