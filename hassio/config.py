@@ -4,8 +4,7 @@ import os
 
 from .const import FILE_HASSIO_CONFIG, HASSIO_SHARE
 from .tools import (
-    fetch_current_versions, get_arch_from_image, write_json_file,
-    read_json_file)
+    fetch_current_versions, write_json_file, read_json_file)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,11 +86,6 @@ class CoreConfig(Config):
     def upstream_beta(self, value):
         """Set beta upstream mode."""
         self._data[UPSTREAM_BETA] = bool(value)
-
-    @property
-    def hassio_arch(self):
-        """Return arch they run."""
-        return get_arch_from_image(self.homeassistant_image)
 
     @property
     def homeassistant_image(self):

@@ -15,6 +15,7 @@ from .const import (
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
+from .tools import get_arch_from_image
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,7 +78,8 @@ class HassIO(object):
             await self._setup_homeassistant()
 
         # Load addons
-        await self.addons.prepare()
+        arch = get_arch_from_image(self.supervisor.image)
+        await self.addons.prepare(arch)
 
         # schedule addon update task
         self.scheduler.register_task(

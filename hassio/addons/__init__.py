@@ -24,8 +24,10 @@ class AddonManager(AddonsData):
         self.repo = AddonsRepo(config, loop)
         self.dockers = {}
 
-    async def prepare(self):
+    async def prepare(self, arch):
         """Startup addon management."""
+        self.arch = arch
+
         # load addon repository
         if await self.repo.load():
             self.read_addons_repo()

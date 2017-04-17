@@ -13,7 +13,7 @@ from .const import URL_HASSIO_VERSION, URL_HASSIO_VERSION_BETA
 _LOGGER = logging.getLogger(__name__)
 
 _RE_VERSION = re.compile(r"VERSION=(.*)")
-_IMAGE_ARCH = re.compile(r"([a-z0-9]*)-hassio-supervisor")
+_IMAGE_ARCH = re.compile(r".*/([a-z0-9]*)-hassio-supervisor")
 
 
 async def fetch_current_versions(websession, beta=False):

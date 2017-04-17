@@ -52,6 +52,7 @@ class AddonsData(Config):
         super().__init__(FILE_HASSIO_ADDONS)
         self.config = config
         self._addons_data = {}
+        self.arch = None
 
     def read_addons_repo(self):
         """Read data from addons repository."""
@@ -195,7 +196,7 @@ class AddonsData(Config):
         """Return image name of addon."""
         if ATTR_IMAGE not in self._addons_data[addon]:
             return "{}/{}-addon-{}".format(
-                DOCKER_REPO, self.config.hassio_arch, self.get_slug(addon))
+                DOCKER_REPO, self.arch, self.get_slug(addon))
 
         return self._addons_data[addon][ATTR_IMAGE]
 
