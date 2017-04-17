@@ -144,7 +144,7 @@ class AddonManager(AddonsData):
 
     async def update(self, addon, version=None):
         """Update addon."""
-        if self.is_installed(addon):
+        if not self.is_installed(addon):
             _LOGGER.error("Addon %s is not installed", addon)
             return False
 
