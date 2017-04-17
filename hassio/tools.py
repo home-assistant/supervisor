@@ -30,7 +30,7 @@ async def fetch_current_versions(websession, beta=False):
     except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:
         _LOGGER.warning("Can't fetch versions from %s! %s", url, err)
 
-    except json.JSONDecoder as err:
+    except json.JSONDecodeError as err:
         _LOGGER.warning("Can't parse versions from %s! %s", url, err)
 
 
