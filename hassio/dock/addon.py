@@ -24,7 +24,7 @@ class DockerAddon(DockerBase):
     @property
     def docker_name(self):
         """Return name of docker container."""
-        return self.addons_data.get_image(self.addon)
+        return "addon_{}".format(self.addons_data.get_slug(self.addon))
 
     def _run(self):
         """Run docker image.
