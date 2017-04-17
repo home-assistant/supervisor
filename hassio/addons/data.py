@@ -158,6 +158,11 @@ class AddonsData(Config):
         self._data[addon][ATTR_OPTIONS] = options
         self.save()
 
+    def set_version(self, addon, version):
+        """Update version of addon."""
+        self._data[addon][ATTR_VERSION] = version
+        self.save()
+
     def get_options(self, addon):
         """Return options with local changes."""
         opt = self._addons_data[addon][ATTR_OPTIONS]

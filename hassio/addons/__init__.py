@@ -153,4 +153,7 @@ class AddonManager(AddonsData):
             return False
 
         version = version or self.get_version(addon)
-        return await self.dockers[addon].update(version)
+        if await self.dockers[addon].update(version):
+            self.set_version(addon, version)
+            return True
+        return False
