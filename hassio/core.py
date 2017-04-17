@@ -6,12 +6,16 @@ import aiohttp
 import docker
 
 from . import bootstrap
+from .addons import AddonManager
 from .api import RestAPI
 from .host_controll import HostControll
-from .const import SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS
+from .const import (
+    SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
+    STARTUP_AFTER, STARTUP_BEFORE)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
+from .tools import get_arch_from_image
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,6 +42,9 @@ class HassIO(object):
         # init HostControll
         self.host_controll = HostControll(self.loop)
 
+        # init addon system
+        self.addons = AddonManager(self.config, self.loop, self.dock)
+
     async def setup(self):
         """Setup HassIO orchestration."""
         # supervisor
@@ -56,8 +63,9 @@ class HassIO(object):
         # rest api views
         self.api.register_host(self.host_controll)
         self.api.register_network(self.host_controll)
-        self.api.register_supervisor(self.host_controll)
+        self.api.register_supervisor(self.host_controll, self.addons)
         self.api.register_homeassistant(self.homeassistant)
+        self.api.register_addons(self.addons)
 
         # schedule update info tasks
         self.scheduler.register_task(
@@ -69,13 +77,32 @@ class HassIO(object):
             _LOGGER.info("No HomeAssistant docker found.")
             await self._setup_homeassistant()
 
+        # Load addons
+        arch = get_arch_from_image(self.supervisor.image)
+        await self.addons.prepare(arch)
+
+        # schedule addon update task
+        self.scheduler.register_task(
+            self.addons.relaod, RUN_RELOAD_ADDONS_TASKS, first_run=True)
+
     async def start(self):
         """Start HassIO orchestration."""
         # start api
         await self.api.start()
 
+        # HomeAssistant is already running / supervisor have only reboot
+        if await self.homeassistant.is_running():
+            _LOGGER.info("HassIO reboot detected")
+            return
+
+        # start addon mark as before
+        await self.addons.auto_boot(STARTUP_BEFORE)
+
         # run HomeAssistant
         await self.homeassistant.run()
+
+        # start addon mark as after
+        await self.addons.auto_boot(STARTUP_AFTER)
 
     async def stop(self):
         """Stop a running orchestration."""

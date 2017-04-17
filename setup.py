@@ -29,7 +29,7 @@ setup(
     keywords=['docker', 'home-assistant', 'api'],
     zip_safe=False,
     platforms='any',
-    packages=['hassio', 'hassio.dock', 'hassio.api'],
+    packages=['hassio', 'hassio.dock', 'hassio.api', 'hassio.addons'],
     include_package_data=True,
     install_requires=[
         'async_timeout',
@@ -37,5 +37,6 @@ setup(
         'docker',
         'colorlog',
         'voluptuous',
+        'gitpython',
     ]
 )

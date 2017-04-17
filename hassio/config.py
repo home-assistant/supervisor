@@ -1,10 +1,10 @@
 """Bootstrap HassIO."""
-import json
 import logging
 import os
 
 from .const import FILE_HASSIO_CONFIG, HASSIO_SHARE
-from .tools import fetch_current_versions
+from .tools import (
+    fetch_current_versions, write_json_file, read_json_file)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,25 +14,45 @@ HOMEASSISTANT_CURRENT = 'homeassistant_current'
 
 HASSIO_SSL = "{}/ssl"
 HASSIO_CURRENT = 'hassio_current'
+
+ADDONS_REPO = "{}/addons"
+ADDONS_DATA = "{}/addons_data"
+ADDONS_CUSTOM = "{}/addons_custom"
+
 UPSTREAM_BETA = 'upstream_beta'
 
 
-class CoreConfig(object):
+class Config(object):
     """Hold all config data."""
 
-    def __init__(self, websession, config_file=FILE_HASSIO_CONFIG):
+    def __init__(self, config_file):
         """Initialize config object."""
-        self.websession = websession
         self._filename = config_file
         self._data = {}
 
         # init or load data
         if os.path.isfile(self._filename):
             try:
-                with open(self._filename, 'r') as cfile:
-                    self._data = json.loads(cfile.read())
+                self._data = read_json_file(self._filename)
             except OSError:
                 _LOGGER.warning("Can't read %s", self._filename)
+
+    def save(self):
+        """Store data to config file."""
+        if not write_json_file(self._filename, self._data):
+            _LOGGER.exception("Can't store config in %s", self._filename)
+            return False
+        return True
+
+
+class CoreConfig(Config):
+    """Hold all core config data."""
+
+    def __init__(self, websession):
+        """Initialize config object."""
+        self.websession = websession
+
+        super().__init__(FILE_HASSIO_CONFIG)
 
         # init data
         if not self._data:
@@ -41,17 +61,6 @@ class CoreConfig(object):
                 UPSTREAM_BETA: False,
             })
             self.save()
-
-    def save(self):
-        """Store data to config file."""
-        try:
-            with open(self._filename, 'w') as conf_file:
-                conf_file.write(json.dumps(self._data))
-        except OSError:
-            _LOGGER.exception("Can't store config in %s", self._filename)
-            return False
-
-        return True
 
     async def fetch_update_infos(self):
         """Read current versions from web."""
@@ -112,3 +121,23 @@ class CoreConfig(object):
     def path_ssl(self):
         """Return SSL path inside supervisor."""
         return HASSIO_SSL.format(HASSIO_SHARE)
+
+    @property
+    def path_addons_repo(self):
+        """Return git repo path for addons."""
+        return ADDONS_REPO.format(HASSIO_SHARE)
+
+    @property
+    def path_addons_custom(self):
+        """Return path for customs addons."""
+        return ADDONS_CUSTOM.format(HASSIO_SHARE)
+
+    @property
+    def path_addons_data(self):
+        """Return root addon data folder."""
+        return ADDONS_DATA.format(HASSIO_SHARE)
+
+    @property
+    def path_addons_data_docker(self):
+        """Return root addon data folder extern for docker."""
+        return ADDONS_DATA.format(os.environ['SUPERVISOR_SHARE'])

@@ -53,7 +53,7 @@ class DockerBase(object):
 
             image.tag(self.image, tag='latest')
             self.version = get_version_from_env(image.attrs['Config']['Env'])
-            _LOGGER.info("Tag image %s with version %s as latest.",
+            _LOGGER.info("Tag image %s with version %s as latest",
                          self.image, self.version)
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", self.image, tag, err)
@@ -122,7 +122,7 @@ class DockerBase(object):
             self.image = self.container.attrs['Config']['Image']
             self.version = get_version_from_env(
                 self.container.attrs['Config']['Env'])
-            _LOGGER.info("Attach to image %s with version %s.",
+            _LOGGER.info("Attach to image %s with version %s",
                          self.image, self.version)
         except (docker.errors.DockerException, KeyError):
             _LOGGER.fatal(
@@ -138,7 +138,7 @@ class DockerBase(object):
             return False
 
         async with self._lock:
-            _LOGGER.info("Run docker image %s with version %s.",
+            _LOGGER.info("Run docker image %s with version %s",
                          self.image, self.version)
             return await self.loop.run_in_executor(None, self._run)
 
@@ -177,6 +177,37 @@ class DockerBase(object):
 
         self.container = None
 
+    async def remove(self):
+        """Remove docker container."""
+        if self._lock.locked():
+            _LOGGER.error("Can't excute remove while a task is in progress")
+            return False
+
+        async with self._lock:
+            return await self.loop.run_in_executor(None, self._remove)
+
+    def _remove(self):
+        """remove docker container.
+
+        Need run inside executor.
+        """
+        if self._is_running():
+            self._stop()
+
+        _LOGGER.info("Remove docker %s with latest and %s",
+                     self.image, self.version)
+
+        try:
+            self.dock.images.remove(
+                image="{}:latest".format(self.image), force=True)
+            self.dock.images.remove(
+                image="{}:{}".format(self.image, self.version), force=True)
+        except docker.errors.DockerException as err:
+            _LOGGER.warning("Can't remove image %s -> %s", self.image, err)
+            return False
+
+        return True
+
     async def update(self, tag):
         """Update a docker image.
 
@@ -194,10 +225,10 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        old_image = "{}:{}".format(self.image, self.version)
         old_run = self._is_running()
+        old_image = "{}:{}".format(self.image, self.version)
 
-        _LOGGER.info("Update docker %s with %s:%s.",
+        _LOGGER.info("Update docker %s with %s:%s",
                      old_image, self.image, tag)
 
         # update docker image
@@ -208,7 +239,7 @@ class DockerBase(object):
                 self.dock.images.remove(image=old_image, force=True)
             except docker.errors.DockerException as err:
                 _LOGGER.warning(
-                    "Can't remove old image %s -> %s.", old_image, err)
+                    "Can't remove old image %s -> %s", old_image, err)
             # restore
             if old_run:
                 self._run()

@@ -69,7 +69,15 @@ On success
     "version": "INSTALL_VERSION",
     "current": "CURRENT_VERSION",
     "beta": "true|false",
-    "addons": {}
+    "addons": [
+        {
+            "name": "xy bla",
+            "slug": "xy",
+            "version": "CURRENT_VERSION",
+            "installed": "none|INSTALL_VERSION",
+            "description": "description"
+        }
+    ]
 }
 ```
 

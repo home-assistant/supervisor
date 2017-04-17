@@ -26,6 +26,17 @@ def initialize_system_data(websession):
         _LOGGER.info("Create Home-Assistant ssl folder %s", config.path_ssl)
         os.mkdir(config.path_ssl)
 
+    # homeassistant addon data folder
+    if not os.path.isdir(config.path_addons_data):
+        _LOGGER.info("Create Home-Assistant addon data folder %s",
+                     config.path_addons_data)
+        os.mkdir(config.path_addons_data)
+
+    if not os.path.isdir(config.path_addons_custom):
+        _LOGGER.info("Create Home-Assistant addon custom folder %s",
+                     config.path_addons_custom)
+        os.mkdir(config.path_addons_custom)
+
     return config
 
 
