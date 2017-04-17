@@ -56,13 +56,13 @@ class AddonManager(AddonsData):
         tasks = []
 
         for addon in boot_list:
-            tasks.append(self.loop.create_task(self.start_addon(addon)))
+            tasks.append(self.loop.create_task(self.start(addon)))
 
         _LOGGER.info("Startup %s run %d addons", start_type, len(tasks))
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
 
-    async def install_addon(self, addon, version=None):
+    async def install(self, addon, version=None):
         """Install a addon."""
         if not self.exists_addon(addon):
             _LOGGER.error("Addon %s not exists for install", addon)
@@ -88,7 +88,7 @@ class AddonManager(AddonsData):
         self.set_install_addon(addon, version)
         return True
 
-    async def uninstall_addon(self, addon):
+    async def uninstall(self, addon):
         """Remove a addon."""
         if not self.is_installed(addon):
             _LOGGER.error("Addon %s is already uninstalled", addon)
@@ -110,7 +110,7 @@ class AddonManager(AddonsData):
         self.set_uninstall_addon(addon)
         return True
 
-    async def state_addon(self, addon):
+    async def state(self, addon):
         """Return running state of addon."""
         if addon not in self.dockers:
             _LOGGER.error("No docker found for addon %s", addon)
@@ -120,7 +120,7 @@ class AddonManager(AddonsData):
             return STATE_STARTED
         return STATE_STOPPED
 
-    async def start_addon(self, addon):
+    async def start(self, addon):
         """Set options and start addon."""
         if addon not in self.dockers:
             _LOGGER.error("No docker found for addon %s", addon)
@@ -132,7 +132,7 @@ class AddonManager(AddonsData):
 
         return await self.dockers[addon].run()
 
-    async def stop_addon(self, addon):
+    async def stop(self, addon):
         """Stop addon."""
         if addon not in self.dockers:
             _LOGGER.error("No docker found for addon %s", addon)
@@ -140,7 +140,7 @@ class AddonManager(AddonsData):
 
         return await self.dockers[addon].stop()
 
-    async def update_addon(self, addon, version=None):
+    async def update(self, addon, version=None):
         """Update addon."""
         if self.is_installed(addon):
             _LOGGER.error("Addon %s is not installed", addon)
