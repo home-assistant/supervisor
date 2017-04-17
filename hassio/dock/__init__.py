@@ -194,11 +194,13 @@ class DockerBase(object):
         if self._is_running():
             self._stop()
 
-        image = "{}:latest".format(self.image)
+        _LOGGER.info("Remove docker %s with latest and %s",
+                     self.image, self.version)
+
         try:
             self.dock.images.remove(image=image, force=True)
         except docker.errors.DockerException as err:
-            _LOGGER.warning("Can't remove image %s -> %s", image, err)
+            _LOGGER.warning("Can't remove image %s -> %s", self.image, err)
             return False
 
         return True
