@@ -198,7 +198,10 @@ class DockerBase(object):
                      self.image, self.version)
 
         try:
-            self.dock.images.remove(image=image, force=True)
+            self.dock.images.remove(
+                image="{}:latest".format(self.image), force=True)
+            self.dock.images.remove(
+                image="{}:{}".format(self.image, self.version), force=True)
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't remove image %s -> %s", self.image, err)
             return False
