@@ -6,13 +6,6 @@ It is a docker image (supervisor) they manage HomeAssistant docker and give a in
 [HassIO-Addons](https://github.com/pvizeli/hassio-addons)
 [HassIO-Build](https://github.com/pvizeli/hassio-build)
 
-## History
-- **0.1**: Initial supervisor with setup HomeAssistant docker
-- **0.2**: Support for basic HostControll
-- **0.3**: Refactor code and add basic rest api
-- **0.4**: Move network api code / ssl folder
-- **0.5**: Make api compatible to hass component v1
-
 # Hardware Image
 The image is based on ResinOS and Yocto Linux. It comes with the HassIO supervisor pre-installed. This includes support to update the supervisor over the air. After flashing your host OS will not require any more maintenance! The image does not include Home Assistant, instead it will downloaded when the image boots up for the first time.
 
