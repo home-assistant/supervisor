@@ -62,7 +62,7 @@ class APISupervisor(object):
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.config.current_hassio)
 
-        if version == HASSIO_VERSION:
+        if version == self.supervisor.version:
             raise RuntimeError("Version is already in use")
 
         return await asyncio.shield(self.supervisor.update(version))
