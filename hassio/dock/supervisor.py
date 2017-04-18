@@ -39,7 +39,7 @@ class DockerSupervisor(DockerBase):
         _LOGGER.info("Update supervisor docker to %s:%s", self.image, tag)
 
         # update docker image
-        return self._install(tag):
+        return self._install(tag)
 
     async def run(self):
         """Run docker image."""
