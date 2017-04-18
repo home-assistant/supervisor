@@ -14,9 +14,8 @@ _LOGGER = logging.getLogger(__name__)
 TIMEOUT = 15
 
 LEVEL_POWER = 1
-LEVEL_UPDATE_SUPERVISOR = 2
-LEVEL_UPDATE_HOST = 4
-LEVEL_NETWORK = 8
+LEVEL_UPDATE_HOST = 2
+LEVEL_NETWORK = 4
 
 
 class HostControll(object):
@@ -101,12 +100,3 @@ class HostControll(object):
         if version:
             return self._send_command("host-update {}".format(version))
         return self._send_command("host-update")
-
-    def supervisor_update(self, version=None):
-        """Update the supervisor on host system.
-
-        Return a coroutine.
-        """
-        if version:
-            return self._send_command("supervisor-update {}".format(version))
-        return self._send_command("supervisor-update")
