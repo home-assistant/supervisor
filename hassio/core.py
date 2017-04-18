@@ -50,6 +50,7 @@ class HassIO(object):
         """Setup HassIO orchestration."""
         # supervisor
         await self.supervisor.attach()
+        await self.supervisor.cleanup()
 
         # hostcontroll
         host_info = await self.host_controll.info()
