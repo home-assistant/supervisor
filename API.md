@@ -11,7 +11,6 @@ Communicate over unix socket with a host daemon.
 # reboot
 # shutdown
 # host-update [v]
-# supervisor-update [v]
 
 # network info
 # network hostname xy
@@ -24,9 +23,8 @@ Communicate over unix socket with a host daemon.
 
 level:
 - 1: power functions
-- 2: supervisor update
-- 4: host update
-- 8: network functions
+- 2: host update
+- 4: network functions
 
 Answer:
 ```

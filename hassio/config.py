@@ -14,6 +14,7 @@ HOMEASSISTANT_CURRENT = 'homeassistant_current'
 
 HASSIO_SSL = "{}/ssl"
 HASSIO_CURRENT = 'hassio_current'
+HASSIO_CLEANUP = 'hassio_cleanup'
 
 ADDONS_REPO = "{}/addons"
 ADDONS_DATA = "{}/addons_data"
@@ -86,6 +87,20 @@ class CoreConfig(Config):
     def upstream_beta(self, value):
         """Set beta upstream mode."""
         self._data[UPSTREAM_BETA] = bool(value)
+
+    @property
+    def hassio_cleanup(self):
+        """Return Version they need to cleanup."""
+        return self._data.get(HASSIO_CLEANUP)
+
+    @hassio_cleanup.setter
+    def hassio_cleanup(self, version):
+        """Set or remove cleanup flag."""
+        if version is None:
+            self._data.pop(HASSIO_CLEANUP, None)
+        else:
+            self._data[HASSIO_CLEANUP] = version
+        self.save()
 
     @property
     def homeassistant_image(self):

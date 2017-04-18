@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import signal
+import sys
 
 import hassio.bootstrap as bootstrap
 import hassio.core as core
@@ -33,4 +34,6 @@ if __name__ == "__main__":
 
     loop.run_forever()
     loop.close()
+
     _LOGGER.info("Close Hassio")
+    sys.exit(hassio.exit_code)

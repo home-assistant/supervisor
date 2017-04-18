@@ -209,10 +209,7 @@ class DockerBase(object):
         return True
 
     async def update(self, tag):
-        """Update a docker image.
-
-        Return a Future.
-        """
+        """Update a docker image."""
         if self._lock.locked():
             _LOGGER.error("Can't excute update while a task is in progress")
             return False

@@ -25,6 +25,7 @@ class HassIO(object):
 
     def __init__(self, loop):
         """Initialize hassio object."""
+        self.exit_code = 0
         self.loop = loop
         self.websession = aiohttp.ClientSession(loop=self.loop)
         self.config = bootstrap.initialize_system_data(self.websession)
@@ -35,7 +36,7 @@ class HassIO(object):
 
         # init basic docker container
         self.supervisor = DockerSupervisor(
-            self.config, self.loop, self.dock)
+            self.config, self.loop, self.dock, self)
         self.homeassistant = DockerHomeAssistant(
             self.config, self.loop, self.dock)
 
@@ -49,6 +50,7 @@ class HassIO(object):
         """Setup HassIO orchestration."""
         # supervisor
         await self.supervisor.attach()
+        await self.supervisor.cleanup()
 
         # hostcontroll
         host_info = await self.host_controll.info()
@@ -63,7 +65,7 @@ class HassIO(object):
         # rest api views
         self.api.register_host(self.host_controll)
         self.api.register_network(self.host_controll)
-        self.api.register_supervisor(self.host_controll, self.addons)
+        self.api.register_supervisor(self.supervisor, self.addons)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
 
@@ -104,11 +106,12 @@ class HassIO(object):
         # start addon mark as after
         await self.addons.auto_boot(STARTUP_AFTER)
 
-    async def stop(self):
+    async def stop(self, exit_code=0):
         """Stop a running orchestration."""
         tasks = [self.websession.close(), self.api.stop()]
         await asyncio.wait(tasks, loop=self.loop)
 
+        self.exit_code = exit_code
         self.loop.stop()
 
     async def _setup_homeassistant(self):
