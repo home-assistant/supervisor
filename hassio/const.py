@@ -15,6 +15,8 @@ HASSIO_SHARE = "/data"
 RUN_UPDATE_INFO_TASKS = 28800
 RUN_RELOAD_ADDONS_TASKS = 28800
 
+RESTART_EXIT_CODE = 100
+
 FILE_HASSIO_ADDONS = "{}/addons.json".format(HASSIO_SHARE)
 FILE_HASSIO_CONFIG = "{}/config.json".format(HASSIO_SHARE)
 
@@ -49,7 +51,9 @@ ATTR_IMAGE = 'image'
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'
 STARTUP_ONCE = 'once'
+
 BOOT_AUTO = 'auto'
 BOOT_MANUAL = 'manual'
+
 STATE_STARTED = 'started'
 STATE_STOPPED = 'stopped'

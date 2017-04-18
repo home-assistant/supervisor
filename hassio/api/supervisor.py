@@ -1,9 +1,10 @@
 """Init file for HassIO supervisor rest api."""
+import asyncio
 import logging
 
 import voluptuous as vol
 
-from .util import api_process, api_process_hostcontroll, api_validate
+from .util import api_process, api_validate
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_CURRENT, ATTR_BETA, HASSIO_VERSION)
 
@@ -22,11 +23,11 @@ SCHEMA_VERSION = vol.Schema({
 class APISupervisor(object):
     """Handle rest api for supervisor functions."""
 
-    def __init__(self, config, loop, host_controll, addons):
+    def __init__(self, config, loop, supervisor, addons):
         """Initialize supervisor rest api part."""
         self.config = config
         self.loop = loop
-        self.host_controll = host_controll
+        self.supervisor = supervisor
         self.addons = addons
 
     @api_process
@@ -55,13 +56,13 @@ class APISupervisor(object):
 
         return self.config.save()
 
-    @api_process_hostcontroll
+    @api_process
     async def update(self, request):
-        """Update host OS."""
+        """Update supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.config.current_hassio)
 
         if version == HASSIO_VERSION:
             raise RuntimeError("Version is already in use")
 
-        return await self.host_controll.supervisor_update(version=version)
+        return await asyncio.shield(self.supervisor.update(version))
