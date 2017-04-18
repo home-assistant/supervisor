@@ -89,12 +89,12 @@ class CoreConfig(Config):
         self._data[UPSTREAM_BETA] = bool(value)
 
     @property
-    def cleanup_hassio(self):
+    def hassio_cleanup(self):
         """Return Version they need to cleanup."""
         return self._data.get(HASSIO_CLEANUP)
 
-    @cleanup_hassio.setter
-    def cleanup_hassio(self, version):
+    @hassio_cleanup.setter
+    def hassio_cleanup(self, version):
         """Set or remove cleanup flag."""
         if version is None:
             self._data.pop(HASSIO_CLEANUP, None)
