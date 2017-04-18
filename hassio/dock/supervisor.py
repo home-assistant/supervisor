@@ -1,9 +1,13 @@
 """Init file for HassIO docker object."""
+import logging
 import os
 
 import docker
 
 from . import DockerBase
+from ..const import RESTART_EXIT_CODE
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class DockerSupervisor(DockerBase):
