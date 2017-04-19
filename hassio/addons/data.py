@@ -5,7 +5,7 @@ import glob
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .validate import validate_options, V_STR, V_INT, V_FLOAT, V_BOOL
+from .validate import validate_options, SCHEMA_ADDON_CONFIG
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_OPTIONS,
@@ -18,31 +18,6 @@ from ..tools import read_json_file, write_json_file
 _LOGGER = logging.getLogger(__name__)
 
 ADDONS_REPO_PATTERN = "{}/*/config.json"
-
-ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL])
-
-# pylint: disable=no-value-for-parameter
-SCHEMA_ADDON_CONFIG = vol.Schema({
-    vol.Required(ATTR_NAME): vol.Coerce(str),
-    vol.Required(ATTR_VERSION): vol.Coerce(str),
-    vol.Required(ATTR_SLUG): vol.Coerce(str),
-    vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
-    vol.Required(ATTR_STARTUP):
-        vol.In([STARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
-    vol.Required(ATTR_BOOT):
-        vol.In([BOOT_AUTO, BOOT_MANUAL]),
-    vol.Optional(ATTR_PORTS): dict,
-    vol.Optional(ATTR_MAP_CONFIG, default=False): vol.Boolean(),
-    vol.Optional(ATTR_MAP_SSL, default=False): vol.Boolean(),
-    vol.Optional(ATTR_MAP_HASSIO, default=False): vol.Boolean(),
-    vol.Required(ATTR_OPTIONS): dict,
-    vol.Required(ATTR_SCHEMA): {
-        vol.Coerce(str): vol.Any(ADDON_ELEMENT, [
-            vol.Any(ADDON_ELEMENT, {vol.Coerce(str): ADDON_ELEMENT})
-        ])
-    },
-    vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
-})
 
 
 class AddonsData(Config):

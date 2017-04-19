@@ -5,6 +5,33 @@ V_STR = 'str'
 V_INT = 'int'
 V_FLOAT = 'float'
 V_BOOL = 'bool'
+V_EMAIL = 'email'
+V_URL = 'url'
+
+ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL, V_EMAIL, V_URL])
+
+# pylint: disable=no-value-for-parameter
+SCHEMA_ADDON_CONFIG = vol.Schema({
+    vol.Required(ATTR_NAME): vol.Coerce(str),
+    vol.Required(ATTR_VERSION): vol.Coerce(str),
+    vol.Required(ATTR_SLUG): vol.Coerce(str),
+    vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
+    vol.Required(ATTR_STARTUP):
+        vol.In([STARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
+    vol.Required(ATTR_BOOT):
+        vol.In([BOOT_AUTO, BOOT_MANUAL]),
+    vol.Optional(ATTR_PORTS): dict,
+    vol.Optional(ATTR_MAP_CONFIG, default=False): vol.Boolean(),
+    vol.Optional(ATTR_MAP_SSL, default=False): vol.Boolean(),
+    vol.Optional(ATTR_MAP_HASSIO, default=False): vol.Boolean(),
+    vol.Required(ATTR_OPTIONS): dict,
+    vol.Required(ATTR_SCHEMA): {
+        vol.Coerce(str): vol.Any(ADDON_ELEMENT, [
+            vol.Any(ADDON_ELEMENT, {vol.Coerce(str): ADDON_ELEMENT})
+        ])
+    },
+    vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
+})
 
 
 def validate_options(raw_schema):
@@ -47,6 +74,10 @@ def _single_validate(typ, value):
             return float(value)
         elif typ == V_BOOL:
             return vol.Boolean()(value)
+        elif typ == V_EMAIL:
+            return vol.Email()(value)
+        elif typ == V_URL:
+            return vol.Url()(value)
 
         raise vol.Invalid("Fatal error for {}.".format(value))
     except TypeError:
