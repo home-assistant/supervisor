@@ -11,7 +11,7 @@ from ..const import (
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_OPTIONS,
     ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE, BOOT_AUTO,
     BOOT_MANUAL, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA, ATTR_IMAGE,
-    ATTR_MAP_ROOT)
+    ATTR_MAP_HASSIO)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -39,7 +39,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_PORTS): dict,
     vol.Optional(ATTR_MAP_CONFIG, default=False): vol.Boolean(),
     vol.Optional(ATTR_MAP_SSL, default=False): vol.Boolean(),
-    vol.Optional(ATTR_MAP_ROOT, default=False): vol.Boolean(),
+    vol.Optional(ATTR_MAP_HASSIO, default=False): vol.Boolean(),
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [
@@ -221,9 +221,9 @@ class AddonsData(Config):
         """Return True if ssl map is needed."""
         return self._addons_data[addon][ATTR_MAP_SSL]
 
-    def need_root(self, addon):
-        """Return True if root map is needed."""
-        return self._addons_data[addon][ATTR_MAP_ROOT]
+    def need_hassio(self, addon):
+        """Return True if hassio map is needed."""
+        return self._addons_data[addon][ATTR_MAP_HASSIO]
 
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
