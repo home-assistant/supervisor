@@ -37,6 +37,9 @@ class DockerSupervisor(DockerBase):
             if await self.loop.run_in_executor(None, self._install, tag):
                 self.config.hassio_cleanup = old_version
                 self.loop.create_task(self.hassio.stop(RESTART_EXIT_CODE))
+                return True
+
+            return False
 
     async def cleanup(self):
         """Check if old supervisor version exists and cleanup."""
