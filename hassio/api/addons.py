@@ -92,9 +92,10 @@ class APIAddons(object):
         # validate options
         try:
             schema = self.addons.get_schema(addon)
-            schema(self.addons.get_options(addon))
+            options = self.addons.get_options(addon)
+            schema(options)
         except vol.Invalid as ex:
-            raise RuntimeError(humanize_error(data, ex)) from None
+            raise RuntimeError(humanize_error(options, ex)) from None
 
         return await asyncio.shield(
             self.addons.start(addon), loop=self.loop)

@@ -244,7 +244,7 @@ class AddonsData(Config):
             return write_json_file(self.path_addon_options(addon), options)
         except vol.Invalid as ex:
             _LOGGER.error("Addon %s have wrong options -> %s", addon,
-                          humanize_error(data, ex))
+                          humanize_error(options, ex))
 
         return False
 
