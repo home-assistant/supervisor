@@ -236,8 +236,17 @@ class AddonsData(Config):
 
     def write_addon_options(self, addon):
         """Return True if addon options is written to data."""
-        return write_json_file(
-            self.path_addon_options(addon), self.get_options(addon))
+        schema = self.get_schema(addon)
+        options = self.get_options(addon)
+
+        try:
+            schema(options)
+            return write_json_file(self.path_addon_options(addon), options)
+        except vol.Invalid as ex:
+            _LOGGER.error("Addon %s have wrong options -> %s", addon,
+                          humanize_error(data, ex))
+
+        return False
 
     def get_schema(self, addon):
         """Create a schema for addon options."""
