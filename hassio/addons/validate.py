@@ -47,7 +47,7 @@ def _single_validate(typ, value):
         raise vol.Invalid("Fatal error for {}.".format(value))
     except TypeError:
         raise vol.Invalid(
-            "Type error for {}.".format(key)) from None
+            "Type {} error for {}.".format(typ, value)) from None
 
 
 def _nested_validate(typ, data_list):

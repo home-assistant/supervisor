@@ -43,7 +43,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [
-            vol.Any(ADDON_ELEMENT, {vol.Coerce(str): ADDON_ELEMENT}
+            vol.Any(ADDON_ELEMENT, {vol.Coerce(str): ADDON_ELEMENT})
         ])
     },
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
