@@ -35,6 +35,7 @@ def validate_options(raw_schema):
     return validate
 
 
+# pylint: disable=no-value-for-parameter
 def _single_validate(typ, value):
     """Validate a single element."""
     try:

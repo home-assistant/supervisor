@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 ADDONS_REPO_PATTERN = "{}/*/config.json"
 
-ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL]
+ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL])
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_CONFIG = vol.Schema({
@@ -252,6 +252,5 @@ class AddonsData(Config):
         """Create a schema for addon options."""
         raw_schema = self._addons_data[addon][ATTR_SCHEMA]
 
-        # pylint: disable=no-value-for-parameter
-        schema = vol.Schema(vol.All(dict(), validate_options(raw_schema)))
+        schema = vol.Schema(vol.All(dict, validate_options(raw_schema)))
         return schema
