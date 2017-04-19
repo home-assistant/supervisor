@@ -11,7 +11,7 @@ from .api import RestAPI
 from .host_controll import HostControll
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
-    STARTUP_AFTER, STARTUP_BEFORE)
+    RUN_UPDATE_SUPERVISOR_TASKS, STARTUP_AFTER, STARTUP_BEFORE)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
@@ -87,6 +87,10 @@ class HassIO(object):
         self.scheduler.register_task(
             self.addons.relaod, RUN_RELOAD_ADDONS_TASKS, first_run=True)
 
+        # schedule self update task
+        self.scheduler.register_task(
+            self._hassio_update, RUN_UPDATE_SUPERVISOR_TASKS)
+
     async def start(self):
         """Start HassIO orchestration."""
         # start api
@@ -129,3 +133,12 @@ class HassIO(object):
 
         # store version
         _LOGGER.info("HomeAssistant docker now installed.")
+
+    async def _hassio_update(self):
+        """Check and run update of supervisor hassio."""
+        if self.config.current_hassio == self.supervisor.version:
+            return
+
+        _LOGGER.info(
+            "Found new HassIO version %s.", self.config.current_hassio)
+        await self.supervisor.update(self.config.current_hassio)
