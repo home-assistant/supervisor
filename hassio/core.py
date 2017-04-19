@@ -11,7 +11,7 @@ from .api import RestAPI
 from .host_controll import HostControll
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
-    RUN_UPDATE_SUPERVISOR_TASKS, TARTUP_AFTER, STARTUP_BEFORE)
+    RUN_UPDATE_SUPERVISOR_TASKS, STARTUP_AFTER, STARTUP_BEFORE)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
