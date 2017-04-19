@@ -5,43 +5,18 @@ import glob
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from .validate import validate_options, SCHEMA_ADDON_CONFIG
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_OPTIONS,
-    ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE, BOOT_AUTO,
-    BOOT_MANUAL, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA, ATTR_IMAGE)
+    ATTR_PORTS, BOOT_AUTO, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA,
+    ATTR_IMAGE, ATTR_MAP_HASSIO)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
 ADDONS_REPO_PATTERN = "{}/*/config.json"
-
-V_STR = 'str'
-V_INT = 'int'
-V_FLOAT = 'float'
-V_BOOL = 'bool'
-
-
-# pylint: disable=no-value-for-parameter
-SCHEMA_ADDON_CONFIG = vol.Schema({
-    vol.Required(ATTR_NAME): vol.Coerce(str),
-    vol.Required(ATTR_VERSION): vol.Coerce(str),
-    vol.Required(ATTR_SLUG): vol.Coerce(str),
-    vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
-    vol.Required(ATTR_STARTUP):
-        vol.In([STARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
-    vol.Required(ATTR_BOOT):
-        vol.In([BOOT_AUTO, BOOT_MANUAL]),
-    vol.Optional(ATTR_PORTS): dict,
-    vol.Required(ATTR_MAP_CONFIG): vol.Boolean(),
-    vol.Required(ATTR_MAP_SSL): vol.Boolean(),
-    vol.Required(ATTR_OPTIONS): dict,
-    vol.Required(ATTR_SCHEMA): {
-        vol.Coerce(str): vol.In([V_STR, V_INT, V_FLOAT, V_BOOL])
-    },
-    vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
-})
 
 
 class AddonsData(Config):
@@ -56,6 +31,8 @@ class AddonsData(Config):
 
     def read_addons_repo(self):
         """Read data from addons repository."""
+        self._addons_data = {}
+
         self._read_addons_folder(self.config.path_addons_repo)
         self._read_addons_folder(self.config.path_addons_custom)
 
@@ -213,6 +190,10 @@ class AddonsData(Config):
         """Return True if ssl map is needed."""
         return self._addons_data[addon][ATTR_MAP_SSL]
 
+    def need_hassio(self, addon):
+        """Return True if hassio map is needed."""
+        return self._addons_data[addon][ATTR_MAP_HASSIO]
+
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
         return "{}/{}".format(
@@ -229,35 +210,21 @@ class AddonsData(Config):
 
     def write_addon_options(self, addon):
         """Return True if addon options is written to data."""
-        return write_json_file(
-            self.path_addon_options(addon), self.get_options(addon))
+        schema = self.get_schema(addon)
+        options = self.get_options(addon)
+
+        try:
+            schema(options)
+            return write_json_file(self.path_addon_options(addon), options)
+        except vol.Invalid as ex:
+            _LOGGER.error("Addon %s have wrong options -> %s", addon,
+                          humanize_error(options, ex))
+
+        return False
 
     def get_schema(self, addon):
         """Create a schema for addon options."""
         raw_schema = self._addons_data[addon][ATTR_SCHEMA]
 
-        def validate(struct):
-            """Validate schema."""
-            options = {}
-            for key, value in struct.items():
-                if key not in raw_schema:
-                    raise vol.Invalid("Unknown options {}.".format(key))
-
-                typ = raw_schema[key]
-                try:
-                    if typ == V_STR:
-                        options[key] = str(value)
-                    elif typ == V_INT:
-                        options[key] = int(value)
-                    elif typ == V_FLOAT:
-                        options[key] = float(value)
-                    elif typ == V_BOOL:
-                        options[key] = vol.Boolean()(value)
-                except TypeError:
-                    raise vol.Invalid(
-                        "Type error for {}.".format(key)) from None
-
-            return options
-
-        schema = vol.Schema(vol.All(dict(), validate))
+        schema = vol.Schema(vol.All(dict, validate_options(raw_schema)))
         return schema

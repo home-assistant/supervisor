@@ -52,6 +52,11 @@ class DockerAddon(DockerBase):
                 self.config.path_ssl_docker: {
                     'bind': '/ssl', 'mode': 'rw'
                 }})
+        if self.addons_data.need_hassio(self.addon):
+            volumes.update({
+                self.config.path_hassio_docker: {
+                    'bind': '/hassio', 'mode': 'rw'
+                }})
 
         try:
             self.container = self.dock.containers.run(

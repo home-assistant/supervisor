@@ -47,7 +47,7 @@ class AddonManager(AddonsData):
         tasks = []
         for addon in self.list_removed:
             _LOGGER.info("Old addon %s found")
-            tasks.append(self.loop.create_task(self.dockers[addon].remove()))
+            tasks.append(self.loop.create_task(self.uninstall(addon)))
 
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)

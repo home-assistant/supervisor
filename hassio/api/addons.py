@@ -3,6 +3,7 @@ import asyncio
 import logging
 
 import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from .util import api_process, api_validate
 from ..const import (
@@ -87,6 +88,14 @@ class APIAddons(object):
 
         if await self.addons.state(addon) == STATE_STARTED:
             raise RuntimeError("Addon is already running")
+
+        # validate options
+        try:
+            schema = self.addons.get_schema(addon)
+            options = self.addons.get_options(addon)
+            schema(options)
+        except vol.Invalid as ex:
+            raise RuntimeError(humanize_error(options, ex)) from None
 
         return await asyncio.shield(
             self.addons.start(addon), loop=self.loop)

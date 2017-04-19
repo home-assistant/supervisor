@@ -118,9 +118,14 @@ class CoreConfig(Config):
         return self._data.get(HASSIO_CURRENT)
 
     @property
+    def path_hassio_docker(self):
+        """Return hassio data path extern for docker."""
+        return os.environ['SUPERVISOR_SHARE']
+
+    @property
     def path_config_docker(self):
         """Return config path extern for docker."""
-        return HOMEASSISTANT_CONFIG.format(os.environ['SUPERVISOR_SHARE'])
+        return HOMEASSISTANT_CONFIG.format(self.path_hassio_docker)
 
     @property
     def path_config(self):
@@ -130,7 +135,7 @@ class CoreConfig(Config):
     @property
     def path_ssl_docker(self):
         """Return SSL path extern for docker."""
-        return HASSIO_SSL.format(os.environ['SUPERVISOR_SHARE'])
+        return HASSIO_SSL.format(self.path_hassio_docker)
 
     @property
     def path_ssl(self):
@@ -155,4 +160,4 @@ class CoreConfig(Config):
     @property
     def path_addons_data_docker(self):
         """Return root addon data folder extern for docker."""
-        return ADDONS_DATA.format(os.environ['SUPERVISOR_SHARE'])
+        return ADDONS_DATA.format(self.path_hassio_docker)
