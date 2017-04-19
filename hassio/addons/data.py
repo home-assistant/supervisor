@@ -5,7 +5,7 @@ import glob
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .validate import validate_options
+from .validate import validate_options, V_STR, V_INT, V_FLOAT, V_BOOL
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_OPTIONS,
@@ -18,11 +18,6 @@ from ..tools import read_json_file, write_json_file
 _LOGGER = logging.getLogger(__name__)
 
 ADDONS_REPO_PATTERN = "{}/*/config.json"
-
-V_STR = 'str'
-V_INT = 'int'
-V_FLOAT = 'float'
-V_BOOL = 'bool'
 
 ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL]
 

@@ -1,7 +1,10 @@
 """Validate addons options schema."""
 import voluptuous as vol
 
-from .data import V_STR, V_INT, V_FLOAT, V_BOOL
+V_STR = 'str'
+V_INT = 'int'
+V_FLOAT = 'float'
+V_BOOL = 'bool'
 
 
 def validate_options(raw_schema):
