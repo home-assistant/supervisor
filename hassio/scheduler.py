@@ -16,9 +16,14 @@ class Scheduler(object):
         """Initialize task schedule."""
         self.loop = loop
         self._data = {}
+        self._stop = False
+
+    def stop(self):
+        """Stop to execute tasks in scheduler."""
+        self._stop = True
 
     def register_task(self, coro_callback, seconds, repeat=True,
-                      first_run=False):
+                      now=False):
         """Schedule a coroutine.
 
         The coroutien need to be a callback without arguments.
@@ -34,7 +39,7 @@ class Scheduler(object):
         self._data[idx] = opts
 
         # schedule task
-        if first_run:
+        if now:
             self._run_task(idx)
         else:
             task = self.loop.call_later(seconds, self._run_task, idx)
@@ -45,6 +50,10 @@ class Scheduler(object):
     def _run_task(self, idx):
         """Run a scheduled task."""
         data = self._data.pop(idx)
+
+        # stop execute tasks
+        if self._stop:
+            return
 
         self.loop.create_task(data[CALL]())
 

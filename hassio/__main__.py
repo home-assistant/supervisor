@@ -1,7 +1,6 @@
 """Main file for HassIO."""
 import asyncio
 import logging
-import signal
 import sys
 
 import hassio.bootstrap as bootstrap
@@ -25,12 +24,7 @@ if __name__ == "__main__":
 
     _LOGGER.info("Start Hassio task")
     loop.call_soon_threadsafe(loop.create_task, hassio.start())
-
-    try:
-        loop.add_signal_handler(
-            signal.SIGTERM, lambda: loop.create_task(hassio.stop()))
-    except ValueError:
-        _LOGGER.warning("Could not bind to SIGTERM")
+    loop.call_soon_threadsafe(bootstrap.reg_signal, loop, hassio)
 
     loop.run_forever()
     loop.close()

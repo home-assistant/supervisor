@@ -65,10 +65,6 @@ class DockerAddon(DockerBase):
                 detach=True,
                 network_mode='bridge',
                 ports=self.addons_data.get_ports(self.addon),
-                restart_policy={
-                    "Name": "on-failure",
-                    "MaximumRetryCount": 10,
-                },
                 volumes=volumes,
             )
 

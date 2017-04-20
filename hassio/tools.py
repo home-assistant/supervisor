@@ -55,20 +55,23 @@ def get_version_from_env(env_list):
 def get_local_ip(loop):
     """Retrieve local IP address.
 
-    Need run inside executor.
+    Return a future.
     """
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def local_ip():
+        """Return local ip."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        # Use Google Public DNS server to determine own IP
-        sock.connect(('8.8.8.8', 80))
+            # Use Google Public DNS server to determine own IP
+            sock.connect(('8.8.8.8', 80))
 
-        return sock.getsockname()[0]
-    except socket.error:
-        return socket.gethostbyname(socket.gethostname())
-    finally:
-        sock.close()
+            return sock.getsockname()[0]
+        except socket.error:
+            return socket.gethostbyname(socket.gethostname())
+        finally:
+            sock.close()
 
+    return loop.run_in_executor(None, local_ip)
 
 def write_json_file(jsonfile, data):
     """Write a json file."""

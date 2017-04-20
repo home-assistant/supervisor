@@ -31,8 +31,6 @@ class DockerHomeAssistant(DockerBase):
         if self._is_running():
             return
 
-        api_endpoint = get_local_ip(self.loop)
-
         # cleanup old container
         self._stop()
 
@@ -43,12 +41,8 @@ class DockerHomeAssistant(DockerBase):
                 detach=True,
                 privileged=True,
                 network_mode='host',
-                restart_policy={
-                    "Name": "always",
-                    "MaximumRetryCount": 10,
-                },
                 environment={
-                    'HASSIO': api_endpoint,
+                    'HASSIO': self.config.api_endpoint,
                 },
                 volumes={
                     self.config.path_config_docker:
