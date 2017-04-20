@@ -4,7 +4,7 @@ import logging
 import docker
 
 from . import DockerBase
-from ..tools import get_version_from_env, get_local_ip
+from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
 
