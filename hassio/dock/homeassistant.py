@@ -4,7 +4,7 @@ import logging
 import docker
 
 from . import DockerBase
-from ..tools import get_version_from_env, get_local_ip
+from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,8 +31,6 @@ class DockerHomeAssistant(DockerBase):
         if self._is_running():
             return
 
-        api_endpoint = get_local_ip(self.loop)
-
         # cleanup old container
         self._stop()
 
@@ -43,12 +41,8 @@ class DockerHomeAssistant(DockerBase):
                 detach=True,
                 privileged=True,
                 network_mode='host',
-                restart_policy={
-                    "Name": "always",
-                    "MaximumRetryCount": 10,
-                },
                 environment={
-                    'HASSIO': api_endpoint,
+                    'HASSIO': self.config.api_endpoint,
                 },
                 volumes={
                     self.config.path_config_docker:
@@ -59,6 +53,10 @@ class DockerHomeAssistant(DockerBase):
 
             self.version = get_version_from_env(
                 self.container.attrs['Config']['Env'])
+
+            _LOGGER.info("Start docker addon %s with version %s",
+                         self.image, self.version)
+
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't run %s -> %s", self.image, err)
             return False

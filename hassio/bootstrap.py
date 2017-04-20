@@ -2,6 +2,7 @@
 import logging
 import os
 import stat
+import signal
 
 from colorlog import ColoredFormatter
 
@@ -81,3 +82,24 @@ def check_environment():
         return False
 
     return True
+
+
+def reg_signal(loop, hassio):
+    """Register SIGTERM, SIGKILL to stop system."""
+    try:
+        loop.add_signal_handler(
+            signal.SIGTERM, lambda: loop.create_task(hassio.stop()))
+    except (ValueError, RuntimeError):
+        _LOGGER.warning("Could not bind to SIGTERM")
+
+    try:
+        loop.add_signal_handler(
+            signal.SIGHUP, lambda: loop.create_task(hassio.stop()))
+    except (ValueError, RuntimeError):
+        _LOGGER.warning("Could not bind to SIGHUP")
+
+    try:
+        loop.add_signal_handler(
+            signal.SIGINT, lambda: loop.create_task(hassio.stop()))
+    except (ValueError, RuntimeError):
+        _LOGGER.warning("Could not bind to SIGINT")

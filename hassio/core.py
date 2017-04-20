@@ -15,7 +15,7 @@ from .const import (
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
-from .tools import get_arch_from_image
+from .tools import get_arch_from_image, get_local_ip
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,6 +52,9 @@ class HassIO(object):
         await self.supervisor.attach()
         await self.supervisor.cleanup()
 
+        # set api endpoint
+        self.config.api_endpoint = await get_local_ip(self.loop)
+
         # hostcontroll
         host_info = await self.host_controll.info()
         if host_info:
@@ -72,7 +75,7 @@ class HassIO(object):
         # schedule update info tasks
         self.scheduler.register_task(
             self.config.fetch_update_infos, RUN_UPDATE_INFO_TASKS,
-            first_run=True)
+            now=True)
 
         # first start of supervisor?
         if not await self.homeassistant.exists():
@@ -85,7 +88,7 @@ class HassIO(object):
 
         # schedule addon update task
         self.scheduler.register_task(
-            self.addons.relaod, RUN_RELOAD_ADDONS_TASKS, first_run=True)
+            self.addons.relaod, RUN_RELOAD_ADDONS_TASKS, now=True)
 
         # schedule self update task
         self.scheduler.register_task(
@@ -95,6 +98,7 @@ class HassIO(object):
         """Start HassIO orchestration."""
         # start api
         await self.api.start()
+        _LOGGER.info("Start hassio api on %s", self.config.api_endpoint)
 
         # HomeAssistant is already running / supervisor have only reboot
         if await self.homeassistant.is_running():
@@ -112,6 +116,10 @@ class HassIO(object):
 
     async def stop(self, exit_code=0):
         """Stop a running orchestration."""
+        # don't process scheduler anymore
+        self.scheduler.stop()
+
+        # process stop task pararell
         tasks = [self.websession.close(), self.api.stop()]
         await asyncio.wait(tasks, loop=self.loop)
 

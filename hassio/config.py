@@ -22,6 +22,8 @@ ADDONS_CUSTOM = "{}/addons_custom"
 
 UPSTREAM_BETA = 'upstream_beta'
 
+API_ENDPOINT = 'api_endpoint'
+
 
 class Config(object):
     """Hold all config data."""
@@ -77,6 +79,16 @@ class CoreConfig(Config):
             return True
 
         return False
+
+    @property
+    def api_endpoint(self):
+        """Return IP address of api endpoint."""
+        return self._data[API_ENDPOINT]
+
+    @api_endpoint.setter
+    def api_endpoint(self, value):
+        """Store IP address of api endpoint."""
+        self._data[API_ENDPOINT] = value
 
     @property
     def upstream_beta(self):
