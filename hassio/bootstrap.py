@@ -89,11 +89,17 @@ def reg_signal(loop, hassio):
     try:
         loop.add_signal_handler(
             signal.SIGTERM, lambda: loop.create_task(hassio.stop()))
-    except ValueError:
+    except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGTERM")
 
     try:
         loop.add_signal_handler(
-            signal.SIGKILL, lambda: loop.create_task(hassio.stop()))
-    except ValueError:
-        _LOGGER.warning("Could not bind to SIGKILL")
+            signal.SIGHUP, lambda: loop.create_task(hassio.stop()))
+    except (ValueError, RuntimeError):
+        _LOGGER.warning("Could not bind to SIGHUP")
+
+    try:
+        loop.add_signal_handler(
+            signal.SIGINT, lambda: loop.create_task(hassio.stop()))
+    except (ValueError, RuntimeError):
+        _LOGGER.warning("Could not bind to SIGINT")
