@@ -138,8 +138,6 @@ class DockerBase(object):
             return False
 
         async with self._lock:
-            _LOGGER.info("Run docker image %s with version %s",
-                         self.image, self.version)
             return await self.loop.run_in_executor(None, self._run)
 
     def _run(self):

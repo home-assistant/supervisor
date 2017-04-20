@@ -53,6 +53,10 @@ class DockerHomeAssistant(DockerBase):
 
             self.version = get_version_from_env(
                 self.container.attrs['Config']['Env'])
+
+            _LOGGER.info("Start docker addon %s with version %s",
+                         self.image, self.version)
+
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't run %s -> %s", self.image, err)
             return False
