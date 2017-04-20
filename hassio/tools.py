@@ -73,6 +73,7 @@ def get_local_ip(loop):
 
     return loop.run_in_executor(None, local_ip)
 
+
 def write_json_file(jsonfile, data):
     """Write a json file."""
     try:
