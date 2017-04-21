@@ -88,7 +88,7 @@ class HassIO(object):
 
         # schedule addon update task
         self.scheduler.register_task(
-            self.addons.relaod, RUN_RELOAD_ADDONS_TASKS, now=True)
+            self.addons.reload, RUN_RELOAD_ADDONS_TASKS, now=True)
 
         # schedule self update task
         self.scheduler.register_task(
