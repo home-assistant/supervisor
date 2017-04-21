@@ -1,41 +1,5 @@
 # HassIO Server
 
-## Host Controll
-
-Communicate over unix socket with a host daemon.
-
-- commands
-```
-# info
--> {'os', 'version', 'current', 'level', 'hostname'}
-# reboot
-# shutdown
-# host-update [v]
-
-# network info
-# network hostname xy
-# network wlan ssd xy
-# network wlan password xy
-# network int ip xy
-# network int netmask xy
-# network int route xy
-```
-
-level:
-- 1: power functions
-- 2: host update
-- 4: network functions
-
-Answer:
-```
-{}|OK|ERROR|WRONG
-```
-
-- {}: json
-- OK: call was successfully
-- ERROR: error on call
-- WRONG: not supported
-
 ## HassIO REST API
 
 Interface for HomeAssistant to controll things from supervisor.
@@ -93,6 +57,10 @@ Optional:
     "beta": "true|false"
 }
 ```
+
+- `/supervisor/reload`
+
+Reload addons/version.
 
 ### Host
 
@@ -194,3 +162,39 @@ Optional:
     "version": "VERSION"
 }
 ```
+
+## Host Controll
+
+Communicate over unix socket with a host daemon.
+
+- commands
+```
+# info
+-> {'os', 'version', 'current', 'level', 'hostname'}
+# reboot
+# shutdown
+# host-update [v]
+
+# network info
+# network hostname xy
+# network wlan ssd xy
+# network wlan password xy
+# network int ip xy
+# network int netmask xy
+# network int route xy
+```
+
+level:
+- 1: power functions
+- 2: host update
+- 4: network functions
+
+Answer:
+```
+{}|OK|ERROR|WRONG
+```
+
+- {}: json
+- OK: call was successfully
+- ERROR: error on call
+- WRONG: not supported

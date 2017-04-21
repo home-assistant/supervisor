@@ -49,6 +49,7 @@ class RestAPI(object):
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
         self.webapp.router.add_get('/supervisor/update', api_supervisor.update)
+        self.webapp.router.add_get('/supervisor/reload', api_supervisor.reload)
         self.webapp.router.add_get(
             '/supervisor/options', api_supervisor.options)
 

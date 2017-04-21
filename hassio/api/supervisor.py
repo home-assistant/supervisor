@@ -65,4 +65,18 @@ class APISupervisor(object):
         if version == self.supervisor.version:
             raise RuntimeError("Version is already in use")
 
-        return await asyncio.shield(self.supervisor.update(version))
+        return await asyncio.shield(
+            self.supervisor.update(version), loop=self.loop)
+
+    @api_process
+    async def reload(self, request):
+        """Reload addons, config ect."""
+        tasks = [self.addons.reaload(), self.config.fetch_update_infos()]
+        results, _ = await asyncio.shield(
+            asyncio.wait(tasks, loop=self.loop), loop=self.loop)
+
+        for result in results:
+            if result.exception() is not None:
+                raise RuntimeError("Some reload task fails!")
+
+        return True
