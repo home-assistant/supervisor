@@ -165,7 +165,7 @@ class DockerBase(object):
         if not self.container:
             return
 
-        _LOGGER.info("Stop %s docker application.", self.image)
+        _LOGGER.info("Stop %s docker application", self.image)
 
         self.container.reload()
         if self.container.status == 'running':
@@ -230,7 +230,7 @@ class DockerBase(object):
 
         # update docker image
         if self._install(tag):
-            _LOGGER.info("Cleanup old %s docker.", old_image)
+            _LOGGER.info("Cleanup old %s docker", old_image)
             self._stop()
             try:
                 self.dock.images.remove(image=old_image, force=True)
