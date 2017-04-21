@@ -71,7 +71,7 @@ class APISupervisor(object):
     @api_process
     async def reload(self, request):
         """Reload addons, config ect."""
-        tasks = [self.addons.reaload(), self.config.fetch_update_infos()]
+        tasks = [self.addons.reload(), self.config.fetch_update_infos()]
         results, _ = await asyncio.shield(
             asyncio.wait(tasks, loop=self.loop), loop=self.loop)
 
