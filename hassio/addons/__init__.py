@@ -37,7 +37,7 @@ class AddonManager(AddonsData):
             self.dockers[addon] = DockerAddon(
                 self.config, self.loop, self.dock, self, addon)
 
-    async def relaod(self):
+    async def reload(self):
         """Update addons from repo and reload list."""
         if not await self.repo.pull():
             return
