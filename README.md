@@ -3,8 +3,18 @@ First private cloud solution for home automation.
 
 It is a docker image (supervisor) they manage HomeAssistant docker and give a interface to controll itself over UI. It have a own eco system with addons to extend the functionality in a easy way.
 
-[HassIO-Addons](https://github.com/pvizeli/hassio-addons)
-[HassIO-Build](https://github.com/pvizeli/hassio-build)
+[HassIO-Addons](https://github.com/pvizeli/hassio-addons) | [HassIO-Build](https://github.com/pvizeli/hassio-build)
+
+# HomeAssistant
+
+## SSL
+
+All addons they can create SSL certs do that in same schema. So you can put follow lines to your `configure.json`.
+```yaml
+http:
+  ssl_certificate: /ssl/fullchain.pem
+  ssl_key: /ssl/privkey.pem
+```
 
 # Hardware Image
 The image is based on ResinOS and Yocto Linux. It comes with the HassIO supervisor pre-installed. This includes support to update the supervisor over the air. After flashing your host OS will not require any more maintenance! The image does not include Home Assistant, instead it will downloaded when the image boots up for the first time.
