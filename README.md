@@ -48,3 +48,8 @@ Read logoutput from supervisor:
 journalctl -f -u resin-supervisor.service
 docker logs homeassistant
 ```
+
+## Install on a own System
+
+We have a installer to install HassIO on own linux device without our hardware image:
+https://github.com/pvizeli/hassio-build/tree/master/install
