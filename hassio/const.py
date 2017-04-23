@@ -1,5 +1,5 @@
 """Const file for HassIO."""
-HASSIO_VERSION = '0.10'
+HASSIO_VERSION = '0.11'
 
 URL_HASSIO_VERSION = \
     'https://raw.githubusercontent.com/pvizeli/hassio/master/version.json'
@@ -43,7 +43,6 @@ ATTR_BOOT = 'boot'
 ATTR_PORTS = 'ports'
 ATTR_MAP_CONFIG = 'map_config'
 ATTR_MAP_SSL = 'map_ssl'
-ATTR_MAP_HASSIO = 'map_hassio'
 ATTR_OPTIONS = 'options'
 ATTR_INSTALLED = 'installed'
 ATTR_STATE = 'state'

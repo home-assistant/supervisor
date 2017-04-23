@@ -10,7 +10,7 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_OPTIONS,
     ATTR_PORTS, BOOT_AUTO, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA,
-    ATTR_IMAGE, ATTR_MAP_HASSIO)
+    ATTR_IMAGE)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -189,10 +189,6 @@ class AddonsData(Config):
     def need_ssl(self, addon):
         """Return True if ssl map is needed."""
         return self._addons_data[addon][ATTR_MAP_SSL]
-
-    def need_hassio(self, addon):
-        """Return True if hassio map is needed."""
-        return self._addons_data[addon][ATTR_MAP_HASSIO]
 
     def path_data(self, addon):
         """Return addon data path inside supervisor."""

@@ -5,7 +5,7 @@ from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_STARTUP,
     ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_OPTIONS,
     ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER, STARTUP_BEFORE, BOOT_AUTO,
-    BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE, ATTR_MAP_HASSIO)
+    BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE)
 
 V_STR = 'str'
 V_INT = 'int'
@@ -29,7 +29,6 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_PORTS): dict,
     vol.Optional(ATTR_MAP_CONFIG, default=False): vol.Boolean(),
     vol.Optional(ATTR_MAP_SSL, default=False): vol.Boolean(),
-    vol.Optional(ATTR_MAP_HASSIO, default=False): vol.Boolean(),
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [

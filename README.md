@@ -5,6 +5,12 @@ It is a docker image (supervisor) they manage HomeAssistant docker and give a in
 
 [HassIO-Addons](https://github.com/pvizeli/hassio-addons) | [HassIO-Build](https://github.com/pvizeli/hassio-build)
 
+## Feature in progress
+- Backup/Restore
+- Read docker logs and extend to api
+- MQTT addon
+- DHCP-Server addon
+
 # HomeAssistant
 
 ## SSL
