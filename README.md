@@ -9,7 +9,7 @@ It is a docker image (supervisor) they manage HomeAssistant docker and give a in
 
 ## SSL
 
-All addons they can create SSL certs do that in same schema. So you can put follow lines to your `configure.json`.
+All addons they can create SSL certs do that in same schema. So you can put follow lines to your `configuration.yaml`.
 ```yaml
 http:
   ssl_certificate: /ssl/fullchain.pem
