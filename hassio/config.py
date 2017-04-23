@@ -8,7 +8,7 @@ from .tools import (
 
 _LOGGER = logging.getLogger(__name__)
 
-HOMEASSISTANT_CONFIG = "{}/homeassistant_config"
+HOMEASSISTANT_CONFIG = "{}/homeassistant"
 HOMEASSISTANT_IMAGE = 'homeassistant_image'
 HOMEASSISTANT_CURRENT = 'homeassistant_current'
 
