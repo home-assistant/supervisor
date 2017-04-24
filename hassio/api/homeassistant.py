@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 
-from .util import api_process, api_validate
+from .util import api_process, api_process_raw, api_validate
 from ..const import ATTR_VERSION, ATTR_CURRENT
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class APIHomeAssistant(object):
         return await asyncio.shield(
             self.homeassistant.update(version), loop=self.loop)
 
-    @api_process
+    @api_process_raw
     def logs(self, request):
         """Return homeassistant docker logs.
 

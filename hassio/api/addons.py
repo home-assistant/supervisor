@@ -5,7 +5,7 @@ import logging
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .util import api_process, api_validate
+from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_CURRENT, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
     STATE_STOPPED, STATE_STARTED)
@@ -125,7 +125,7 @@ class APIAddons(object):
         return await asyncio.shield(
             self.addons.update(addon, version), loop=self.loop)
 
-    @api_process
+    @api_process_raw
     def logs(self, request):
         """Return logs from addon."""
         addon = self._extract_addon(request)

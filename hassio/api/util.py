@@ -62,6 +62,18 @@ def api_process_hostcontroll(method):
     return wrap_hostcontroll
 
 
+def api_process_raw(method):
+    """Wrap function with raw output to rest api."""
+    async def wrap_api(api, *args, **kwargs):
+        """Return api information."""
+        try:
+            return await method(api, *args, **kwargs)
+        except RuntimeError as err:
+            return str(err)
+
+    return wrap_api
+
+
 def api_return_error(message=None):
     """Return a API error message."""
     return web.json_response({
