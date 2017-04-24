@@ -129,4 +129,4 @@ class APIAddons(object):
     def logs(self, request):
         """Return logs from addon."""
         addon = self._extract_addon(request)
-        return self.adddons.logs(addon)
+        return self.addons.logs(addon)
