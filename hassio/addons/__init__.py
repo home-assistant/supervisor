@@ -36,6 +36,7 @@ class AddonManager(AddonsData):
         for addon in self.list_installed:
             self.dockers[addon] = DockerAddon(
                 self.config, self.loop, self.dock, self, addon)
+            await self.dockers[addon].attach()
 
     async def reload(self):
         """Update addons from repo and reload list."""

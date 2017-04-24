@@ -99,8 +99,9 @@ class DockerBase(object):
                     self.container.attrs['Config']['Env'])
             except docker.errors.DockerException:
                 return False
+        else:
+            self.container.reload()
 
-        self.container.reload()
         return self.container.status == 'running'
 
     async def attach(self):
