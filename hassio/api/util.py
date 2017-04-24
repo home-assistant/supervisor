@@ -69,9 +69,9 @@ def api_process_raw(method):
         try:
             message = await method(api, *args, **kwargs)
         except RuntimeError as err:
-            message = str(err)
+            message = str(err).encode()
 
-        return web.Response(text=message)
+        return web.Response(body=message)
 
     return wrap_api
 
