@@ -80,3 +80,11 @@ class APISupervisor(object):
                 raise RuntimeError("Some reload task fails!")
 
         return True
+
+    @api_process
+    def logs(self, request):
+        """Return supervisor docker logs.
+
+        Return a coroutine.
+        """
+        return self.supervisor.logs()

@@ -17,17 +17,17 @@ SCHEMA_VERSION = vol.Schema({
 class APIHomeAssistant(object):
     """Handle rest api for homeassistant functions."""
 
-    def __init__(self, config, loop, dock_hass):
+    def __init__(self, config, loop, homeassistant):
         """Initialize homeassistant rest api part."""
         self.config = config
         self.loop = loop
-        self.dock_hass = dock_hass
+        self.homeassistant = homeassistant
 
     @api_process
     async def info(self, request):
         """Return host information."""
         info = {
-            ATTR_VERSION: self.dock_hass.version,
+            ATTR_VERSION: self.homeassistant.version,
             ATTR_CURRENT: self.config.current_homeassistant,
         }
 
@@ -39,11 +39,19 @@ class APIHomeAssistant(object):
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.config.current_homeassistant)
 
-        if self.dock_hass.in_progress:
+        if self.homeassistant.in_progress:
             raise RuntimeError("Other task is in progress")
 
-        if version == self.dock_hass.version:
+        if version == self.homeassistant.version:
             raise RuntimeError("Version is already in use")
 
         return await asyncio.shield(
-            self.dock_hass.update(version), loop=self.loop)
+            self.homeassistant.update(version), loop=self.loop)
+
+    @api_process
+    def logs(self, request):
+        """Return homeassistant docker logs.
+
+        Return a coroutine.
+        """
+        return self.homeassistant.logs()

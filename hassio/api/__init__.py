@@ -52,6 +52,7 @@ class RestAPI(object):
         self.webapp.router.add_get('/supervisor/reload', api_supervisor.reload)
         self.webapp.router.add_get(
             '/supervisor/options', api_supervisor.options)
+        self.webapp.router.add_get('/supervisor/logs', api_supervisor.logs)
 
     def register_homeassistant(self, dock_homeassistant):
         """Register homeassistant function."""
@@ -59,6 +60,7 @@ class RestAPI(object):
 
         self.webapp.router.add_get('/homeassistant/info', api_hass.info)
         self.webapp.router.add_get('/homeassistant/update', api_hass.update)
+        self.webapp.router.add_get('/homeassistant/logs', api_hass.logs)
 
     def register_addons(self, addons):
         """Register homeassistant function."""
@@ -74,6 +76,7 @@ class RestAPI(object):
         self.webapp.router.add_get('/addons/{addon}/update', api_addons.update)
         self.webapp.router.add_get(
             '/addons/{addon}/options', api_addons.options)
+        self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
 
     async def start(self):
         """Run rest api webserver."""

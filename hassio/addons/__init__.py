@@ -144,10 +144,6 @@ class AddonManager(AddonsData):
 
     async def update(self, addon, version=None):
         """Update addon."""
-        if not self.is_installed(addon):
-            _LOGGER.error("Addon %s is not installed", addon)
-            return False
-
         if addon not in self.dockers:
             _LOGGER.error("No docker found for addon %s", addon)
             return False
@@ -157,3 +153,11 @@ class AddonManager(AddonsData):
             self.set_version(addon, version)
             return True
         return False
+
+    async def logs(self, addon):
+        """Return addons log output."""
+        if addon not in self.dockers:
+            _LOGGER.error("No docker found for addon %s", addon)
+            return False
+
+        return await self.dockers[addon].logs()

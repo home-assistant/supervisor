@@ -62,6 +62,10 @@ Optional:
 
 Reload addons/version.
 
+- `/supervisor/logs`
+
+Output the raw docker log
+
 ### Host
 
 - `/host/shutdown`
@@ -123,6 +127,10 @@ Optional:
 }
 ```
 
+- `/homeassistant/logs`
+
+Output the raw docker log
+
 ### REST API addons
 
 - `/addons/{addon}/info`
@@ -162,6 +170,10 @@ Optional:
     "version": "VERSION"
 }
 ```
+
+- `/addons/{addon}/logs`
+
+Output the raw docker log
 
 ## Host Controll
 
