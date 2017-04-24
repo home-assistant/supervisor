@@ -7,7 +7,6 @@ It is a docker image (supervisor) they manage HomeAssistant docker and give a in
 
 ## Feature in progress
 - Backup/Restore
-- Read docker logs and extend to api
 - MQTT addon
 - DHCP-Server addon
 

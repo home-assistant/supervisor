@@ -99,8 +99,9 @@ class DockerBase(object):
                     self.container.attrs['Config']['Env'])
             except docker.errors.DockerException:
                 return False
+        else:
+            self.container.reload()
 
-        self.container.reload()
         return self.container.status == 'running'
 
     async def attach(self):
@@ -243,3 +244,25 @@ class DockerBase(object):
             return True
 
         return False
+
+    async def logs(self):
+        """Return docker logs of container."""
+        if self._lock.locked():
+            _LOGGER.error("Can't excute logs while a task is in progress")
+            return False
+
+        async with self._lock:
+            return await self.loop.run_in_executor(None, self._logs)
+
+    def _logs(self):
+        """Return docker logs of container.
+
+        Need run inside executor.
+        """
+        if not self.container:
+            return
+
+        try:
+            return self.container.logs(tail=100, stdout=True, stderr=True)
+        except docker.errors.DockerException as err:
+            _LOGGER.warning("Can't grap logs from %s -> %s", self.image, err)

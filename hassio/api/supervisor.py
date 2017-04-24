@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 
-from .util import api_process, api_validate
+from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_CURRENT, ATTR_BETA, HASSIO_VERSION)
 
@@ -80,3 +80,11 @@ class APISupervisor(object):
                 raise RuntimeError("Some reload task fails!")
 
         return True
+
+    @api_process_raw
+    def logs(self, request):
+        """Return supervisor docker logs.
+
+        Return a coroutine.
+        """
+        return self.supervisor.logs()

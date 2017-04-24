@@ -74,3 +74,17 @@ class DockerAddon(DockerBase):
             return False
 
         return True
+
+    def _attach(self):
+        """Attach to running docker container.
+
+        Need run inside executor.
+        """
+        try:
+            self.container = self.dock.containers.get(self.docker_name)
+            self.version = get_version_from_env(
+                self.container.attrs['Config']['Env'])
+            _LOGGER.info("Attach to image %s with version %s",
+                         self.image, self.version)
+        except (docker.errors.DockerException, KeyError):
+            pass
