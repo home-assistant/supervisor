@@ -71,7 +71,7 @@ def api_process_raw(method):
         except RuntimeError as err:
             message = str(err)
 
-        return web.Response(message)
+        return web.Response(text=message)
 
     return wrap_api
 
