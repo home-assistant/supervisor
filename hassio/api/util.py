@@ -67,9 +67,11 @@ def api_process_raw(method):
     async def wrap_api(api, *args, **kwargs):
         """Return api information."""
         try:
-            return await method(api, *args, **kwargs)
+            message = await method(api, *args, **kwargs)
         except RuntimeError as err:
-            return str(err)
+            message = str(err)
+
+        return web.Response(message)
 
     return wrap_api
 
