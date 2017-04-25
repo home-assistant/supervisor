@@ -5,6 +5,8 @@ It is a docker image (supervisor) they manage HomeAssistant docker and give a in
 
 [HassIO-Addons](https://github.com/pvizeli/hassio-addons) | [HassIO-Build](https://github.com/pvizeli/hassio-build)
 
+**HassIO is at the moment on development and not ready to use productive!**
+
 ## Feature in progress
 - Backup/Restore
 - MQTT addon
