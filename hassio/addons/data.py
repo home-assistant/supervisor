@@ -202,11 +202,13 @@ class AddonsData(Config):
 
     def get_image(self, addon):
         """Return image name of addon."""
-        if ATTR_IMAGE not in self._addons_data[addon]:
+        addon_data = self._addons_data.get(addon, self._current_data[addon])
+
+        if ATTR_IMAGE not in addon_data:
             return "{}/{}-addon-{}".format(
                 DOCKER_REPO, self.arch, self.get_slug(addon))
 
-        return self._addons_data[addon][ATTR_IMAGE]
+        return addon_data[ATTR_IMAGE]
 
     def need_config(self, addon):
         """Return True if config map is needed."""
