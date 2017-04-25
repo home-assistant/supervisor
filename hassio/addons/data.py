@@ -191,7 +191,10 @@ class AddonsData(Config):
 
     def get_slug(self, addon):
         """Return slug of addon."""
-        return self._addons_data[addon][ATTR_SLUG]
+        if addon not in self._current_data:
+            # dedicated
+            return self._addons_data[addon][ATTR_SLUG]
+        return self._current_data[addon][ATTR_SLUG]
 
     def get_ports(self, addon):
         """Return ports of addon."""
@@ -215,13 +218,11 @@ class AddonsData(Config):
 
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
-        return "{}/{}".format(
-            self.config.path_addons_data, self._addons_data[addon][ATTR_SLUG])
+        return "{}/{}".format(self.config.path_addons_data, addon)
 
     def path_data_docker(self, addon):
         """Return addon data path external for docker."""
-        return "{}/{}".format(self.config.path_addons_data_docker,
-                              self._addons_data[addon][ATTR_SLUG])
+        return "{}/{}".format(self.config.path_addons_data_docker, addon)
 
     def path_addon_options(self, addon):
         """Return path to addons options."""
