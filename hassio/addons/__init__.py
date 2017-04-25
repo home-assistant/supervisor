@@ -45,13 +45,8 @@ class AddonManager(AddonsData):
         self.read_addons_repo()
 
         # remove stalled addons
-        tasks = []
         for addon in self.list_removed:
-            _LOGGER.info("Old addon %s found")
-            tasks.append(self.loop.create_task(self.uninstall(addon)))
-
-        if tasks:
-            await asyncio.wait(tasks, loop=self.loop)
+            _LOGGER.warning("Dedicated addon '%s' found!", addon)
 
     async def auto_boot(self, start_type):
         """Boot addons with mode auto."""
@@ -88,7 +83,7 @@ class AddonManager(AddonsData):
             return False
 
         self.dockers[addon] = addon_docker
-        self.set_install_addon(addon, version)
+        self.set_addon_install(addon, version)
         return True
 
     async def uninstall(self, addon):
@@ -110,7 +105,7 @@ class AddonManager(AddonsData):
             shutil.rmtree(self.path_data(addon))
 
         self.dockers.pop(addon)
-        self.set_uninstall_addon(addon)
+        self.set_addon_uninstall(addon)
         return True
 
     async def state(self, addon):
@@ -150,8 +145,13 @@ class AddonManager(AddonsData):
             return False
 
         version = version or self.get_version(addon)
+        is_running = self.dockers[addon].is_running()
+
+        # update
         if await self.dockers[addon].update(version):
-            self.set_version(addon, version)
+            self.set_addon_update(addon, version)
+            if is_running:
+                await self.start(addon)
             return True
         return False
 

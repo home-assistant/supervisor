@@ -62,3 +62,16 @@ class DockerHomeAssistant(DockerBase):
             return False
 
         return True
+
+    async def update(self, tag):
+        """Update homeassistant docker image."""
+        if self._lock.locked():
+            _LOGGER.error("Can't excute update while a task is in progress")
+            return False
+
+        async with self._lock:
+            if await self.loop.run_in_executor(None, self._update, tag):
+                await self.loop.run_in_executor(None, self._run)
+                return True
+
+            return False

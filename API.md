@@ -37,6 +37,7 @@ On success
             "slug": "xy",
             "version": "CURRENT_VERSION",
             "installed": "none|INSTALL_VERSION",
+            "dedicated": "bool",
             "description": "description"
         }
     ]
@@ -146,7 +147,10 @@ Output the raw docker log
 
 - `/addons/{addon}/options`
 ```json
-{ }
+{
+    "boot": "auto|manual",
+    "options": {}, 
+}
 ```
 
 - `/addons/{addon}/start`
