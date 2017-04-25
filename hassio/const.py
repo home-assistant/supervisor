@@ -1,5 +1,5 @@
 """Const file for HassIO."""
-HASSIO_VERSION = '0.13'
+HASSIO_VERSION = '0.14'
 
 URL_HASSIO_VERSION = \
     'https://raw.githubusercontent.com/pvizeli/hassio/master/version.json'
