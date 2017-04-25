@@ -183,7 +183,11 @@ class AddonsData(Config):
 
     def get_version(self, addon):
         """Return version of addon."""
-        return self._addons_data[addon][ATTR_VERSION]
+        if addon not in self._current_data:
+            # dedicated addon
+            return self._addons_data[addon][ATTR_VERSION]
+
+        return self._current_data[addon][ATTR_VERSION]
 
     def get_slug(self, addon):
         """Return slug of addon."""
