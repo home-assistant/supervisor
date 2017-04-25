@@ -45,13 +45,8 @@ class AddonManager(AddonsData):
         self.read_addons_repo()
 
         # remove stalled addons
-        tasks = []
         for addon in self.list_removed:
-            _LOGGER.info("Old addon %s found")
-            tasks.append(self.loop.create_task(self.uninstall(addon)))
-
-        if tasks:
-            await asyncio.wait(tasks, loop=self.loop)
+            _LOGGER.warning("Old addon %s found!")
 
     async def auto_boot(self, start_type):
         """Boot addons with mode auto."""

@@ -37,6 +37,7 @@ On success
             "slug": "xy",
             "version": "CURRENT_VERSION",
             "installed": "none|INSTALL_VERSION",
+            "dedicated": "bool",
             "description": "description"
         }
     ]

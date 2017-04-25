@@ -71,6 +71,7 @@ class DockerHomeAssistant(DockerBase):
 
         async with self._lock:
             if await self.loop.run_in_executor(None, self._update, tag):
-                return await self.loop.run_in_executor(None, self._run)
+                await self.loop.run_in_executor(None, self._run)
+                return True
 
             return False
