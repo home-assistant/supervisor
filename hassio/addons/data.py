@@ -79,7 +79,7 @@ class AddonsData(Config):
         dedicated = self.list_removed
 
         for addon, values in all_addons.items():
-            i_version = self._addons_data.get(addon, {}).get(ATTR_VERSION)
+            i_version = self._user_data.get(addon, {}).get(ATTR_VERSION)
 
             data.append({
                 ATTR_NAME: values[ATTR_NAME],
@@ -128,13 +128,17 @@ class AddonsData(Config):
 
     def version_installed(self, addon):
         """Return installed version."""
-        return self._addons_data[addon][ATTR_VERSION]
+        if ATTR_VERSION not in self._user_data[addon]:
+            return self._addons_data[addon][ATTR_VERSION]
+
+        return self._user_data[addon][ATTR_VERSION]
 
     def set_addon_install(self, addon, version):
         """Set addon as installed."""
         self._addons_data[addon] = self._current_data[addon]
         self._user_data[addon] = {
             ATTR_OPTIONS: {},
+            ATTR_VERSION: version,
         }
         self.save()
 
@@ -147,6 +151,7 @@ class AddonsData(Config):
     def set_addon_update(self, addon, version):
         """Update version of addon."""
         self._addons_data[addon] = self._current_data[addon]
+        self._user_data[addon][ATTR_VERSION] = version
         self.save()
 
     def set_options(self, addon, options):
