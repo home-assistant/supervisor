@@ -117,17 +117,31 @@ class AddonsData(Config):
         """Return installed version."""
         return self._data[addon][ATTR_VERSION]
 
-    def set_install_addon(self, addon, version):
+    def set_addon_install(self, addon, version):
         """Set addon as installed."""
         self._data[addon] = {
             ATTR_VERSION: version,
-            ATTR_OPTIONS: {}
+            ATTR_OPTIONS: self._addons_data[addon][ATTR_OPTIONS],
+            ATTR_SCHEMA: self._addons_data[addon][ATTR_SCHEMA],
         }
         self.save()
 
-    def set_uninstall_addon(self, addon):
+    def set_addon_uninstall(self, addon):
         """Set addon as uninstalled."""
         self._data.pop(addon, None)
+        self.save()
+
+    def set_addon_update(self, addon, version):
+        """Update version of addon."""
+        self._data[addon][ATTR_VERSION] = version
+        self._data[addon][ATTR_SCHEMA] = self._addons_data[addon][ATTR_SCHEMA]
+
+        # merge options
+        self._data[addon][ATTR_OPTIONS] = {
+            **self._addons_data[addon][ATTR_OPTIONS],
+            **self._data[addon][ATTR_OPTIONS],
+        }
+
         self.save()
 
     def set_options(self, addon, options):
@@ -135,17 +149,9 @@ class AddonsData(Config):
         self._data[addon][ATTR_OPTIONS] = options
         self.save()
 
-    def set_version(self, addon, version):
-        """Update version of addon."""
-        self._data[addon][ATTR_VERSION] = version
-        self.save()
-
     def get_options(self, addon):
         """Return options with local changes."""
-        opt = self._addons_data[addon][ATTR_OPTIONS]
-        if addon in self._data:
-            opt.update(self._data[addon][ATTR_OPTIONS])
-        return opt
+        return self._data[addon][ATTR_OPTIONS]
 
     def get_boot(self, addon):
         """Return boot config with prio local settings."""
@@ -220,7 +226,7 @@ class AddonsData(Config):
 
     def get_schema(self, addon):
         """Create a schema for addon options."""
-        raw_schema = self._addons_data[addon][ATTR_SCHEMA]
+        raw_schema = self._data[addon][ATTR_SCHEMA]
 
         schema = vol.Schema(vol.All(dict, validate_options(raw_schema)))
         return schema

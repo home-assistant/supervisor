@@ -223,7 +223,6 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        old_run = self._is_running()
         old_image = "{}:{}".format(self.image, self.version)
 
         _LOGGER.info("Update docker %s with %s:%s",
@@ -238,9 +237,6 @@ class DockerBase(object):
             except docker.errors.DockerException as err:
                 _LOGGER.warning(
                     "Can't remove old image %s -> %s", old_image, err)
-            # restore
-            if old_run:
-                self._run()
             return True
 
         return False
