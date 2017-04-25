@@ -46,7 +46,7 @@ class AddonManager(AddonsData):
 
         # remove stalled addons
         for addon in self.list_removed:
-            _LOGGER.warning("Old addon %s found!")
+            _LOGGER.warning("Dedicated addon '%s' found!", addon)
 
     async def auto_boot(self, start_type):
         """Boot addons with mode auto."""
