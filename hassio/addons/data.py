@@ -184,17 +184,8 @@ class AddonsData(Config):
     def get_version(self, addon):
         """Return version of addon."""
         if addon not in self._current_data:
-            # dedicated addon
-            return self._addons_data[addon][ATTR_VERSION]
-
+            return self.version_installed(addon)
         return self._current_data[addon][ATTR_VERSION]
-
-    def get_slug(self, addon):
-        """Return slug of addon."""
-        if addon not in self._current_data:
-            # dedicated
-            return self._addons_data[addon][ATTR_SLUG]
-        return self._current_data[addon][ATTR_SLUG]
 
     def get_ports(self, addon):
         """Return ports of addon."""
@@ -205,8 +196,7 @@ class AddonsData(Config):
         addon_data = self._addons_data.get(addon, self._current_data[addon])
 
         if ATTR_IMAGE not in addon_data:
-            return "{}/{}-addon-{}".format(
-                DOCKER_REPO, self.arch, self.get_slug(addon))
+            return "{}/{}-addon-{}".format(DOCKER_REPO, self.arch, addon)
 
         return addon_data[ATTR_IMAGE]
 
