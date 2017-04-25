@@ -147,7 +147,10 @@ Output the raw docker log
 
 - `/addons/{addon}/options`
 ```json
-{ }
+{
+    "boot": "auto|manual",
+    "options": {}, 
+}
 ```
 
 - `/addons/{addon}/start`

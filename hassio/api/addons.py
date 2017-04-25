@@ -8,12 +8,16 @@ from voluptuous.humanize import humanize_error
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_CURRENT, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
-    STATE_STOPPED, STATE_STARTED)
+    STATE_STOPPED, STATE_STARTED, BOOT_AUTO, BOOT_MANUAL)
 
 _LOGGER = logging.getLogger(__name__)
 
 SCHEMA_VERSION = vol.Schema({
     vol.Optional(ATTR_VERSION): vol.Coerce(str),
+})
+
+SCHEMA_OPTIONS = vol.Schema({
+    vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL])
 })
 
 
@@ -56,10 +60,19 @@ class APIAddons(object):
     async def options(self, request):
         """Store user options for addon."""
         addon = self._extract_addon(request)
-        schema = self.addons.get_schema(addon)
+        options_schema = self.addons.get_schema(addon)
 
-        options = await api_validate(schema, request)
-        self.addons.set_options(addon, options)
+        addon_schema = SCHEMA_OPTIONS.extend(
+            vol.Optional(ATTR_OPTIONS): options_schema,
+        )
+
+        addon_config = await api_validate(addon_schema, request)
+
+        if ATTR_OPTIONS in addon_config:
+            self.addons.set_options(addon, addon_config[ATTR_OPTIONS])
+        if ATTR_BOOT in addon_config:
+            self.addons.set_options(addon, addon_config[ATTR_BOOT])
+
         return True
 
     @api_process

@@ -154,6 +154,11 @@ class AddonsData(Config):
         self._user_data[addon][ATTR_OPTIONS] = options
         self.save()
 
+    def set_boot(self, addon, boot):
+        """Store user boot options."""
+        self._user_data[addon][ATTR_BOOT] = boot
+        self.save()
+
     def get_options(self, addon):
         """Return options with local changes."""
         return {
