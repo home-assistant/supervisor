@@ -62,9 +62,9 @@ class APIAddons(object):
         addon = self._extract_addon(request)
         options_schema = self.addons.get_schema(addon)
 
-        addon_schema = SCHEMA_OPTIONS.extend(
+        addon_schema = SCHEMA_OPTIONS.extend({
             vol.Optional(ATTR_OPTIONS): options_schema,
-        )
+        })
 
         addon_config = await api_validate(addon_schema, request)
 
