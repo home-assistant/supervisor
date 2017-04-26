@@ -29,7 +29,7 @@ On success
 ```json
 {
     "version": "INSTALL_VERSION",
-    "last_version": "CURRENT_VERSION",
+    "last_version": "LAST_VERSION",
     "beta_channel": "true|false",
     "addons": [
         {
