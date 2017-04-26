@@ -4,7 +4,8 @@ import logging
 import voluptuous as vol
 
 from .util import api_process_hostcontrol, api_process, api_validate
-from ..const import ATTR_VERSION
+from ..const import (
+    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,17 +28,13 @@ class APIHost(object):
     @api_process
     async def info(self, request):
         """Return host information."""
-        if not self.host_control.active:
-            info = {
-                'os': UNKNOWN,
-                'version': UNKNOWN,
-                'current': UNKNOWN,
-                'level': 0,
-                'hostname': UNKNOWN,
-            }
-            return info
-
-        return await self.host_control.info()
+        return {
+            ATTR_TYPE: self.host_control.type,
+            ATTR_VERSION: self.host_control.version,
+            ATTR_LAST_VERSION: self.host_control.last,
+            ATTR_FEATURES: self.host_control.features,
+            ATTR_HOSTNAME: self.host_control.hostname,
+        }
 
     @api_process_hostcontrol
     def reboot(self, request):
@@ -58,4 +55,4 @@ class APIHost(object):
         if version == self.host_control.version:
             raise RuntimeError("Version is already in use")
 
-        return await self.host_control.host_update(version=version)
+        return await self.host_control.update(version=version)

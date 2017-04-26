@@ -56,19 +56,18 @@ class HassIO(object):
         self.config.api_endpoint = await get_local_ip(self.loop)
 
         # hostcontrol
-        host_info = await self.host_control.info()
-        if host_info:
-            self.host_control.version = host_info.get('version')
-            _LOGGER.info(
-                "Connected to HostControl. OS: %s Version: %s Hostname: %s "
-                "Feature-lvl: %d", host_info.get('os'),
-                host_info.get('version'), host_info.get('hostname'),
-                host_info.get('level', 0))
+        await self.host_control.load()
+        _LOGGER.info(
+            "Connected to HostControl. Type: %s Version: %s Hostname: %s "
+            "Features: %s", self.host_control.type,
+            self.host_control.version, self.host_control.hostname,
+            self.host_control.features)
 
         # rest api views
         self.api.register_host(self.host_control)
         self.api.register_network(self.host_control)
-        self.api.register_supervisor(self.supervisor, self.addons)
+        self.api.register_supervisor(
+            self.supervisor, self.addons, self.host_control)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
 

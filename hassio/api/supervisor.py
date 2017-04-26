@@ -24,12 +24,13 @@ SCHEMA_VERSION = vol.Schema({
 class APISupervisor(object):
     """Handle rest api for supervisor functions."""
 
-    def __init__(self, config, loop, supervisor, addons):
+    def __init__(self, config, loop, supervisor, addons, host_control):
         """Initialize supervisor rest api part."""
         self.config = config
         self.loop = loop
         self.supervisor = supervisor
         self.addons = addons
+        self.host_control = host_control
 
     @api_process
     async def ping(self, request):
@@ -72,7 +73,10 @@ class APISupervisor(object):
     @api_process
     async def reload(self, request):
         """Reload addons, config ect."""
-        tasks = [self.addons.reload(), self.config.fetch_update_infos()]
+        tasks = [
+            self.addons.reload(), self.config.fetch_update_infos(),
+            self.host_control.load()
+        ]
         results, _ = await asyncio.shield(
             asyncio.wait(tasks, loop=self.loop), loop=self.loop)
 
