@@ -72,8 +72,8 @@ class AddonsData(Config):
         return set(self._system_data.keys())
 
     @property
-    def list(self):
-        """Return a list of available addons."""
+    def list_api(self):
+        """Return a list of available addons for api."""
         data = []
         all_addons = {**self._system_data, **self._current_data}
         dedicated = self.list_removed

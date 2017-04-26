@@ -47,14 +47,13 @@ class APIAddons(object):
         """Return addon information."""
         addon = self._extract_addon(request)
 
-        info = {
+        return {
             ATTR_VERSION: self.addons.version_installed(addon),
             ATTR_LAST_VERSION: self.addons.get_last_version(addon),
             ATTR_STATE: await self.addons.state(addon),
             ATTR_BOOT: self.addons.get_boot(addon),
             ATTR_OPTIONS: self.addons.get_options(addon),
         }
-        return info
 
     @api_process
     async def options(self, request):

@@ -40,13 +40,12 @@ class APISupervisor(object):
     @api_process
     async def info(self, request):
         """Return host information."""
-        info = {
+        return {
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
-            ATTR_ADDONS: self.addons.list,
+            ATTR_ADDONS: self.addons.list_api,
         }
-        return info
 
     @api_process
     async def options(self, request):
