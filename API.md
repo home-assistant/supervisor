@@ -2,7 +2,7 @@
 
 ## HassIO REST API
 
-Interface for HomeAssistant to controll things from supervisor.
+Interface for HomeAssistant to control things from supervisor.
 
 On error:
 ```json
@@ -29,13 +29,13 @@ On success
 ```json
 {
     "version": "INSTALL_VERSION",
-    "current": "CURRENT_VERSION",
-    "beta": "true|false",
+    "last_version": "CURRENT_VERSION",
+    "beta_channel": "true|false",
     "addons": [
         {
             "name": "xy bla",
             "slug": "xy",
-            "version": "CURRENT_VERSION",
+            "version": "LAST_VERSION",
             "installed": "none|INSTALL_VERSION",
             "dedicated": "bool",
             "description": "description"
@@ -55,7 +55,7 @@ Optional:
 - `/supervisor/option`
 ```json
 {
-    "beta": "true|false"
+    "beta_channel": "true|false"
 }
 ```
 
@@ -74,13 +74,13 @@ Output the raw docker log
 - `/host/reboot`
 
 - `/host/info`
-See HostControll info command.
+See HostControl info command.
 ```json
 {
-    "os": "",
+    "type": "",
     "version": "",
-    "current": "",
-    "level": "",
+    "last_version": "",
+    "features": ["shutdown", "reboot", "update", "network_info", "network_control"],
     "hostname": "",
 }
 ```
@@ -116,7 +116,7 @@ Optional:
 ```json
 {
     "version": "INSTALL_VERSION",
-    "current": "CURRENT_VERSION"
+    "last_version": "LAST_VERSION"
 }
 ```
 
@@ -138,7 +138,7 @@ Output the raw docker log
 ```json
 {
     "version": "VERSION",
-    "current": "CURRENT_VERSION",
+    "last_version": "LAST_VERSION",
     "state": "started|stopped",
     "boot": "auto|manual",
     "options": {},
@@ -149,7 +149,7 @@ Output the raw docker log
 ```json
 {
     "boot": "auto|manual",
-    "options": {}, 
+    "options": {},
 }
 ```
 
@@ -179,14 +179,14 @@ Optional:
 
 Output the raw docker log
 
-## Host Controll
+## Host Control
 
 Communicate over unix socket with a host daemon.
 
 - commands
 ```
 # info
--> {'os', 'version', 'current', 'level', 'hostname'}
+-> {'type', 'version', 'last_version', 'features', 'hostname'}
 # reboot
 # shutdown
 # host-update [v]
@@ -200,10 +200,12 @@ Communicate over unix socket with a host daemon.
 # network int route xy
 ```
 
-level:
-- 1: power functions
-- 2: host update
-- 4: network functions
+features:
+- shutdown
+- reboot
+- update
+- network_info
+- network_control
 
 Answer:
 ```

@@ -128,9 +128,6 @@ class AddonsData(Config):
 
     def version_installed(self, addon):
         """Return installed version."""
-        if ATTR_VERSION not in self._user_data[addon]:
-            return self._addons_data[addon][ATTR_VERSION]
-
         return self._user_data[addon][ATTR_VERSION]
 
     def set_addon_install(self, addon, version):

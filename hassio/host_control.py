@@ -1,4 +1,4 @@
-"""Host controll for HassIO."""
+"""Host control for HassIO."""
 import asyncio
 import json
 import logging
@@ -18,11 +18,11 @@ LEVEL_UPDATE_HOST = 2
 LEVEL_NETWORK = 4
 
 
-class HostControll(object):
-    """Client for host controll."""
+class HostControl(object):
+    """Client for host control."""
 
     def __init__(self, loop):
-        """Initialize HostControll socket client."""
+        """Initialize HostControl socket client."""
         self.loop = loop
         self.active = False
         self.version = None
@@ -44,14 +44,14 @@ class HostControll(object):
 
         try:
             # send
-            _LOGGER.info("Send '%s' to HostControll.", command)
+            _LOGGER.info("Send '%s' to HostControl.", command)
 
             with async_timeout.timeout(TIMEOUT, loop=self.loop):
                 writer.write("{}\n".format(command).encode())
                 data = await reader.readline()
 
             response = data.decode()
-            _LOGGER.debug("Receive from HostControll: %s.", response)
+            _LOGGER.debug("Receive from HostControl: %s.", response)
 
             if response == "OK":
                 return True
@@ -63,10 +63,10 @@ class HostControll(object):
                 try:
                     return json.loads(response)
                 except json.JSONDecodeError:
-                    _LOGGER.warning("Json parse error from HostControll.")
+                    _LOGGER.warning("Json parse error from HostControl.")
 
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout from HostControll!")
+            _LOGGER.error("Timeout from HostControl!")
 
         finally:
             writer.close()

@@ -39,11 +39,11 @@ def api_process(method):
     return wrap_api
 
 
-def api_process_hostcontroll(method):
-    """Wrap HostControll calls to rest api."""
-    async def wrap_hostcontroll(api, *args, **kwargs):
+def api_process_hostcontrol(method):
+    """Wrap HostControl calls to rest api."""
+    async def wrap_hostcontrol(api, *args, **kwargs):
         """Return host information."""
-        if not api.host_controll.active:
+        if not api.host_control.active:
             raise HTTPServiceUnavailable()
 
         try:
@@ -59,7 +59,7 @@ def api_process_hostcontroll(method):
             return api_return_ok()
         return api_return_error()
 
-    return wrap_hostcontroll
+    return wrap_hostcontrol
 
 
 def api_process_raw(method):

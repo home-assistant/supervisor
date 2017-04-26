@@ -8,7 +8,7 @@ import docker
 from . import bootstrap
 from .addons import AddonManager
 from .api import RestAPI
-from .host_controll import HostControll
+from .host_control import HostControl
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, STARTUP_AFTER, STARTUP_BEFORE)
@@ -40,8 +40,8 @@ class HassIO(object):
         self.homeassistant = DockerHomeAssistant(
             self.config, self.loop, self.dock)
 
-        # init HostControll
-        self.host_controll = HostControll(self.loop)
+        # init HostControl
+        self.host_control = HostControl(self.loop)
 
         # init addon system
         self.addons = AddonManager(self.config, self.loop, self.dock)
@@ -55,19 +55,19 @@ class HassIO(object):
         # set api endpoint
         self.config.api_endpoint = await get_local_ip(self.loop)
 
-        # hostcontroll
-        host_info = await self.host_controll.info()
+        # hostcontrol
+        host_info = await self.host_control.info()
         if host_info:
-            self.host_controll.version = host_info.get('version')
+            self.host_control.version = host_info.get('version')
             _LOGGER.info(
-                "Connected to HostControll. OS: %s Version: %s Hostname: %s "
+                "Connected to HostControl. OS: %s Version: %s Hostname: %s "
                 "Feature-lvl: %d", host_info.get('os'),
                 host_info.get('version'), host_info.get('hostname'),
                 host_info.get('level', 0))
 
         # rest api views
-        self.api.register_host(self.host_controll)
-        self.api.register_network(self.host_controll)
+        self.api.register_host(self.host_control)
+        self.api.register_network(self.host_control)
         self.api.register_supervisor(self.supervisor, self.addons)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
@@ -130,10 +130,10 @@ class HassIO(object):
         """Install a homeassistant docker container."""
         while True:
             # read homeassistant tag and install it
-            if not self.config.current_homeassistant:
+            if not self.config.last_homeassistant:
                 await self.config.fetch_update_infos()
 
-            tag = self.config.current_homeassistant
+            tag = self.config.last_homeassistant
             if tag and await self.homeassistant.install(tag):
                 break
             _LOGGER.warning("Error on setup HomeAssistant. Retry in 60.")
@@ -144,9 +144,9 @@ class HassIO(object):
 
     async def _hassio_update(self):
         """Check and run update of supervisor hassio."""
-        if self.config.current_hassio == self.supervisor.version:
+        if self.config.last_hassio == self.supervisor.version:
             return
 
         _LOGGER.info(
-            "Found new HassIO version %s.", self.config.current_hassio)
-        await self.supervisor.update(self.config.current_hassio)
+            "Found new HassIO version %s.", self.config.last_hassio)
+        await self.supervisor.update(self.config.last_hassio)

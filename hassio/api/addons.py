@@ -7,7 +7,7 @@ from voluptuous.humanize import humanize_error
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_CURRENT, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
+    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
     STATE_STOPPED, STATE_STARTED, BOOT_AUTO, BOOT_MANUAL)
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class APIAddons(object):
 
         info = {
             ATTR_VERSION: self.addons.version_installed(addon),
-            ATTR_CURRENT: self.addons.get_version(addon),
+            ATTR_LAST_VERSION: self.addons.get_version(addon),
             ATTR_STATE: await self.addons.state(addon),
             ATTR_BOOT: self.addons.get_boot(addon),
             ATTR_OPTIONS: self.addons.get_options(addon),
@@ -66,12 +66,12 @@ class APIAddons(object):
             vol.Optional(ATTR_OPTIONS): options_schema,
         })
 
-        addon_config = await api_validate(addon_schema, request)
+        body = await api_validate(addon_schema, request)
 
-        if ATTR_OPTIONS in addon_config:
-            self.addons.set_options(addon, addon_config[ATTR_OPTIONS])
-        if ATTR_BOOT in addon_config:
-            self.addons.set_options(addon, addon_config[ATTR_BOOT])
+        if ATTR_OPTIONS in body:
+            self.addons.set_options(addon, body[ATTR_OPTIONS])
+        if ATTR_BOOT in body:
+            self.addons.set_options(addon, body[ATTR_BOOT])
 
         return True
 

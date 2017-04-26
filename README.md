@@ -1,7 +1,7 @@
 # HassIO
 First private cloud solution for home automation.
 
-It is a docker image (supervisor) they manage HomeAssistant docker and give a interface to controll itself over UI. It have a own eco system with addons to extend the functionality in a easy way.
+It is a docker image (supervisor) they manage HomeAssistant docker and give a interface to control itself over UI. It have a own eco system with addons to extend the functionality in a easy way.
 
 [HassIO-Addons](https://github.com/pvizeli/hassio-addons) | [HassIO-Build](https://github.com/pvizeli/hassio-build)
 
@@ -33,8 +33,8 @@ After extracting the archive, flash it to a drive using [Etcher](https://etcher.
 ## History
 - **0.1**: First techpreview with dumy supervisor (ResinOS 2.0.0-RC5)
 - **0.2**: Fix some bugs and update it to HassIO 0.2
-- **0.3**: Update HostControll and feature for HassIO 0.3 (ResinOS 2.0.0 / need reflash)
-- **0.4**: Update HostControll and bring resinos OTA (resinhub) back (ResinOS 2.0.0-rev3)
+- **0.3**: Update HostControl and feature for HassIO 0.3 (ResinOS 2.0.0 / need reflash)
+- **0.4**: Update HostControl and bring resinos OTA (resinhub) back (ResinOS 2.0.0-rev3)
 
 ## Configuring the image
 You can configure the WiFi network that the image should connect to after flashing using [`resin-device-toolbox`](https://resinos.io/docs/raspberrypi3/gettingstarted/#install-resin-device-toolbox).

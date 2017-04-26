@@ -5,7 +5,7 @@ import logging
 import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
-from ..const import ATTR_VERSION, ATTR_CURRENT
+from ..const import ATTR_VERSION, ATTR_LAST_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class APIHomeAssistant(object):
         """Return host information."""
         info = {
             ATTR_VERSION: self.homeassistant.version,
-            ATTR_CURRENT: self.config.current_homeassistant,
+            ATTR_LAST_VERSION: self.config.last_homeassistant,
         }
 
         return info
@@ -37,7 +37,7 @@ class APIHomeAssistant(object):
     async def update(self, request):
         """Update host OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.config.current_homeassistant)
+        version = body.get(ATTR_VERSION, self.config.last_homeassistant)
 
         if self.homeassistant.in_progress:
             raise RuntimeError("Other task is in progress")

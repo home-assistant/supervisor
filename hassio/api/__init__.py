@@ -25,18 +25,18 @@ class RestAPI(object):
         self._handler = None
         self.server = None
 
-    def register_host(self, host_controll):
-        """Register hostcontroll function."""
-        api_host = APIHost(self.config, self.loop, host_controll)
+    def register_host(self, host_control):
+        """Register hostcontrol function."""
+        api_host = APIHost(self.config, self.loop, host_control)
 
         self.webapp.router.add_get('/host/info', api_host.info)
         self.webapp.router.add_get('/host/reboot', api_host.reboot)
         self.webapp.router.add_get('/host/shutdown', api_host.shutdown)
         self.webapp.router.add_get('/host/update', api_host.update)
 
-    def register_network(self, host_controll):
+    def register_network(self, host_control):
         """Register network function."""
-        api_net = APINetwork(self.config, self.loop, host_controll)
+        api_net = APINetwork(self.config, self.loop, host_control)
 
         self.webapp.router.add_get('/network/info', api_net.info)
         self.webapp.router.add_get('/network/options', api_net.options)

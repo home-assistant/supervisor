@@ -6,13 +6,13 @@ import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
-    ATTR_ADDONS, ATTR_VERSION, ATTR_CURRENT, ATTR_BETA, HASSIO_VERSION)
+    ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL, HASSIO_VERSION)
 
 _LOGGER = logging.getLogger(__name__)
 
 SCHEMA_OPTIONS = vol.Schema({
     # pylint: disable=no-value-for-parameter
-    vol.Optional(ATTR_BETA): vol.Boolean(),
+    vol.Optional(ATTR_BETA_CHANNEL): vol.Boolean(),
 })
 
 SCHEMA_VERSION = vol.Schema({
@@ -40,8 +40,8 @@ class APISupervisor(object):
         """Return host information."""
         info = {
             ATTR_VERSION: HASSIO_VERSION,
-            ATTR_CURRENT: self.config.current_hassio,
-            ATTR_BETA: self.config.upstream_beta,
+            ATTR_LAST_VERSION: self.config.last_hassio,
+            ATTR_BETA_CHANNEL: self.config.upstream_beta,
             ATTR_ADDONS: self.addons.list,
         }
         return info
@@ -51,8 +51,8 @@ class APISupervisor(object):
         """Set supervisor options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_BETA in body:
-            self.config.upstream_beta = body[ATTR_BETA]
+        if ATTR_BETA_CHANNEL in body:
+            self.config.upstream_beta = body[ATTR_BETA_CHANNEL]
 
         return self.config.save()
 
@@ -60,7 +60,7 @@ class APISupervisor(object):
     async def update(self, request):
         """Update supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.config.current_hassio)
+        version = body.get(ATTR_VERSION, self.config.last_hassio)
 
         if version == self.supervisor.version:
             raise RuntimeError("Version is already in use")
