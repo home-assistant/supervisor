@@ -212,11 +212,11 @@ class AddonsData(Config):
 
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
-        return "{}/{}".format(self.config.path_system_data, addon)
+        return "{}/{}".format(self.config.path_addons_data, addon)
 
     def path_data_docker(self, addon):
         """Return addon data path external for docker."""
-        return "{}/{}".format(self.config.path_system_data_docker, addon)
+        return "{}/{}".format(self.config.path_addons_data_docker, addon)
 
     def path_addon_options(self, addon):
         """Return path to addons options."""
