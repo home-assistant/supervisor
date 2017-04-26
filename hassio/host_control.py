@@ -35,7 +35,7 @@ class HostControl(object):
         self.type = UNKNOWN
         self.features = []
         self.hostname = UNKNOWN
-        self.os = UNKNOWN
+        self.os_info = UNKNOWN
 
         mode = os.stat(SOCKET_HC)[stat.ST_MODE]
         if stat.S_ISSOCK(mode):
@@ -95,7 +95,7 @@ class HostControl(object):
         self.type = info.get(ATTR_TYPE, UNKNOWN)
         self.features = info.get(ATTR_FEATURES, [])
         self.hostname = info.get(ATTR_HOSTNAME, UNKNOWN)
-        self.os = info.get(ATTR_OS, UNKNOWN)
+        self.os_info = info.get(ATTR_OS, UNKNOWN)
 
     def reboot(self):
         """Reboot the host system.
