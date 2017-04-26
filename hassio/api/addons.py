@@ -70,7 +70,7 @@ class APIAddons(object):
         if ATTR_OPTIONS in body:
             self.addons.set_options(addon, body[ATTR_OPTIONS])
         if ATTR_BOOT in body:
-            self.addons.set_options(addon, body[ATTR_BOOT])
+            self.addons.set_boot(addon, body[ATTR_BOOT])
 
         return True
 
