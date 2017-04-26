@@ -6,7 +6,8 @@ import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
-    ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL, HASSIO_VERSION)
+    ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
+    HASSIO_VERSION)
 
 _LOGGER = logging.getLogger(__name__)
 
