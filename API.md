@@ -82,6 +82,7 @@ See HostControl info command.
     "last_version": "",
     "features": ["shutdown", "reboot", "update", "network_info", "network_control"],
     "hostname": "",
+    "os": ""
 }
 ```
 

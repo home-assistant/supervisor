@@ -1,12 +1,12 @@
 """Const file for HassIO."""
-HASSIO_VERSION = '0.15'
+HASSIO_VERSION = '0.16'
 
-URL_HASSIO_VERSION = \
-    'https://raw.githubusercontent.com/pvizeli/hassio/master/version.json'
-URL_HASSIO_VERSION_BETA = \
-    'https://raw.githubusercontent.com/pvizeli/hassio/master/version_beta.json'
+URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
+                      'hassio/master/version.json')
+URL_HASSIO_VERSION_BETA = ('https://raw.githubusercontent.com/home-assistant/'
+                           'hassio/master/version_beta.json')
 
-URL_HASSIO_ADDONS = 'https://github.com/pvizeli/hassio-addons'
+URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
 
 DOCKER_REPO = "pvizeli"
 
@@ -32,6 +32,7 @@ RESULT_ERROR = 'error'
 RESULT_OK = 'ok'
 
 ATTR_HOSTNAME = 'hostname'
+ATTR_OS = 'os'
 ATTR_TYPE = 'type'
 ATTR_FEATURES = 'features'
 ATTR_ADDONS = 'addons'
