@@ -3,7 +3,7 @@ First private cloud solution for home automation.
 
 It is a docker image (supervisor) they manage HomeAssistant docker and give a interface to control itself over UI. It have a own eco system with addons to extend the functionality in a easy way.
 
-[HassIO-Addons](https://github.com/pvizeli/hassio-addons) | [HassIO-Build](https://github.com/pvizeli/hassio-build)
+[HassIO-Addons](https://github.com/home-assistant/hassio-addons) | [HassIO-Build](https://github.com/home-assistant/hassio-build)
 
 **HassIO is at the moment on development and not ready to use productive!**
 
@@ -53,4 +53,4 @@ docker logs homeassistant
 ## Install on a own System
 
 We have a installer to install HassIO on own linux device without our hardware image:
-https://github.com/pvizeli/hassio-build/tree/master/install
+https://github.com/home-assistant/hassio-build/tree/master/install
