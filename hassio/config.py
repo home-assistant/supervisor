@@ -10,10 +10,10 @@ _LOGGER = logging.getLogger(__name__)
 
 HOMEASSISTANT_CONFIG = "{}/homeassistant"
 HOMEASSISTANT_IMAGE = 'homeassistant_image'
-HOMEASSISTANT_CURRENT = 'homeassistant_current'
+HOMEASSISTANT_LAST = 'homeassistant_last'
 
 HASSIO_SSL = "{}/ssl"
-HASSIO_CURRENT = 'hassio_current'
+HASSIO_LAST = 'hassio_last'
 HASSIO_CLEANUP = 'hassio_cleanup'
 
 ADDONS_REPO = "{}/addons"
@@ -67,13 +67,13 @@ class CoreConfig(Config):
 
     async def fetch_update_infos(self):
         """Read current versions from web."""
-        current = await fetch_current_versions(
+        last = await fetch_current_versions(
             self.websession, beta=self.upstream_beta)
 
-        if current:
+        if last:
             self._data.update({
-                HOMEASSISTANT_CURRENT: current.get('homeassistant_tag'),
-                HASSIO_CURRENT: current.get('hassio_tag'),
+                HOMEASSISTANT_LAST: last.get('homeassistant'),
+                HASSIO_LAST: last.get('hassio'),
             })
             self.save()
             return True
@@ -120,14 +120,14 @@ class CoreConfig(Config):
         return self._data.get(HOMEASSISTANT_IMAGE)
 
     @property
-    def current_homeassistant(self):
+    def last_homeassistant(self):
         """Actual version of homeassistant."""
-        return self._data.get(HOMEASSISTANT_CURRENT)
+        return self._data.get(HOMEASSISTANT_LAST)
 
     @property
-    def current_hassio(self):
+    def last_hassio(self):
         """Actual version of hassio."""
-        return self._data.get(HASSIO_CURRENT)
+        return self._data.get(HASSIO_LAST)
 
     @property
     def path_hassio_docker(self):

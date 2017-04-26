@@ -1,4 +1,4 @@
-"""Host controll for HassIO."""
+"""Host control for HassIO."""
 import asyncio
 import json
 import logging
@@ -7,25 +7,34 @@ import stat
 
 import async_timeout
 
-from .const import SOCKET_HC
+from .const import (
+    SOCKET_HC, ATTR_LAST_VERSION, ATTR_VERSION, ATTR_TYPE, ATTR_FEATURES,
+    ATTR_HOSTNAME)
 
 _LOGGER = logging.getLogger(__name__)
 
 TIMEOUT = 15
+UNKNOWN = 'unknown'
 
-LEVEL_POWER = 1
-LEVEL_UPDATE_HOST = 2
-LEVEL_NETWORK = 4
+FEATURES_SHUTDOWN = 'shutdown'
+FEATURES_REBOOT = 'reboot'
+FEATURES_UPDATE = 'update'
+FEATURES_NETWORK_INFO = 'network_info'
+FEATURES_NETWORK_CONTROL = 'network_control'
 
 
-class HostControll(object):
-    """Client for host controll."""
+class HostControl(object):
+    """Client for host control."""
 
     def __init__(self, loop):
-        """Initialize HostControll socket client."""
+        """Initialize HostControl socket client."""
         self.loop = loop
         self.active = False
-        self.version = None
+        self.version = UNKNOWN
+        self.last = UNKNOWN
+        self.type = UNKNOWN
+        self.features = []
+        self.hostname = UNKNOWN
 
         mode = os.stat(SOCKET_HC)[stat.ST_MODE]
         if stat.S_ISSOCK(mode):
@@ -44,14 +53,14 @@ class HostControll(object):
 
         try:
             # send
-            _LOGGER.info("Send '%s' to HostControll.", command)
+            _LOGGER.info("Send '%s' to HostControl.", command)
 
             with async_timeout.timeout(TIMEOUT, loop=self.loop):
                 writer.write("{}\n".format(command).encode())
                 data = await reader.readline()
 
             response = data.decode()
-            _LOGGER.debug("Receive from HostControll: %s.", response)
+            _LOGGER.debug("Receive from HostControl: %s.", response)
 
             if response == "OK":
                 return True
@@ -63,20 +72,28 @@ class HostControll(object):
                 try:
                     return json.loads(response)
                 except json.JSONDecodeError:
-                    _LOGGER.warning("Json parse error from HostControll.")
+                    _LOGGER.warning("Json parse error from HostControl.")
 
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout from HostControll!")
+            _LOGGER.error("Timeout from HostControl!")
 
         finally:
             writer.close()
 
-    def info(self):
-        """Return Info from host.
+    async def load(self):
+        """Load Info from host.
 
         Return a coroutine.
         """
-        return self._send_command("info")
+        info = await self._send_command("info")
+        if not info:
+            return
+
+        self.version = info.get(ATTR_VERSION, UNKNOWN)
+        self.last = info.get(ATTR_LAST_VERSION, UNKNOWN)
+        self.type = info.get(ATTR_TYPE, UNKNOWN)
+        self.features = info.get(ATTR_FEATURES, [])
+        self.hostname = info.get(ATTR_HOSTNAME, UNKNOWN)
 
     def reboot(self):
         """Reboot the host system.
@@ -92,11 +109,11 @@ class HostControll(object):
         """
         return self._send_command("shutdown")
 
-    def host_update(self, version=None):
+    def update(self, version=None):
         """Update the host system.
 
         Return a coroutine.
         """
         if version:
-            return self._send_command("host-update {}".format(version))
-        return self._send_command("host-update")
+            return self._send_command("update {}".format(version))
+        return self._send_command("update")

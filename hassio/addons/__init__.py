@@ -78,7 +78,7 @@ class AddonManager(AddonsData):
         addon_docker = DockerAddon(
             self.config, self.loop, self.dock, self, addon)
 
-        version = version or self.get_version(addon)
+        version = version or self.get_last_version(addon)
         if not await addon_docker.install(version):
             return False
 
@@ -144,7 +144,7 @@ class AddonManager(AddonsData):
             _LOGGER.error("No docker found for addon %s", addon)
             return False
 
-        version = version or self.get_version(addon)
+        version = version or self.get_last_version(addon)
         is_running = self.dockers[addon].is_running()
 
         # update

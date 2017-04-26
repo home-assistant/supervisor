@@ -3,12 +3,11 @@ import logging
 
 import voluptuous as vol
 
-from .util import api_process_hostcontroll, api_process, api_validate
-from ..const import ATTR_VERSION
+from .util import api_process_hostcontrol, api_process, api_validate
+from ..const import (
+    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES)
 
 _LOGGER = logging.getLogger(__name__)
-
-UNKNOWN = 'unknown'
 
 SCHEMA_VERSION = vol.Schema({
     vol.Optional(ATTR_VERSION): vol.Coerce(str),
@@ -18,44 +17,40 @@ SCHEMA_VERSION = vol.Schema({
 class APIHost(object):
     """Handle rest api for host functions."""
 
-    def __init__(self, config, loop, host_controll):
+    def __init__(self, config, loop, host_control):
         """Initialize host rest api part."""
         self.config = config
         self.loop = loop
-        self.host_controll = host_controll
+        self.host_control = host_control
 
     @api_process
     async def info(self, request):
         """Return host information."""
-        if not self.host_controll.active:
-            info = {
-                'os': UNKNOWN,
-                'version': UNKNOWN,
-                'current': UNKNOWN,
-                'level': 0,
-                'hostname': UNKNOWN,
-            }
-            return info
+        return {
+            ATTR_TYPE: self.host_control.type,
+            ATTR_VERSION: self.host_control.version,
+            ATTR_LAST_VERSION: self.host_control.last,
+            ATTR_FEATURES: self.host_control.features,
+            ATTR_HOSTNAME: self.host_control.hostname,
+        }
 
-        return await self.host_controll.info()
-
-    @api_process_hostcontroll
+    @api_process_hostcontrol
     def reboot(self, request):
         """Reboot host."""
-        return self.host_controll.reboot()
+        return self.host_control.reboot()
 
-    @api_process_hostcontroll
+    @api_process_hostcontrol
     def shutdown(self, request):
         """Poweroff host."""
-        return self.host_controll.shutdown()
+        return self.host_control.shutdown()
 
-    @api_process_hostcontroll
+    @api_process_hostcontrol
     async def update(self, request):
         """Update host OS."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION)
 
-        if version == self.host_controll.version:
+        if version == self.host_control.version:
             raise RuntimeError("Version is already in use")
 
-        return await self.host_controll.host_update(version=version)
+        return await self.host_control.update(version=version)
