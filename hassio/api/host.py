@@ -9,8 +9,6 @@ from ..const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-UNKNOWN = 'unknown'
-
 SCHEMA_VERSION = vol.Schema({
     vol.Optional(ATTR_VERSION): vol.Coerce(str),
 })
