@@ -28,7 +28,7 @@ class AddonsData(Config):
         """Initialize data holder."""
         super().__init__(FILE_HASSIO_ADDONS)
         self.config = config
-        self._addons_data = self._data.get(SYSTEM, {})
+        self._system_data = self._data.get(SYSTEM, {})
         self._user_data = self._data.get(USER, {})
         self._current_data = {}
         self.arch = None
@@ -37,7 +37,7 @@ class AddonsData(Config):
         """Store data to config file."""
         self._data = {
             USER: self._user_data,
-            SYSTEM: self._addons_data,
+            SYSTEM: self._system_data,
         }
         super().save()
 
@@ -69,13 +69,13 @@ class AddonsData(Config):
     @property
     def list_installed(self):
         """Return a list of installed addons."""
-        return set(self._addons_data.keys())
+        return set(self._system_data.keys())
 
     @property
     def list(self):
         """Return a list of available addons."""
         data = []
-        all_addons = {**self._addons_data, **self._current_data}
+        all_addons = {**self._system_data, **self._current_data}
         dedicated = self.list_removed
 
         for addon, values in all_addons.items():
@@ -95,12 +95,12 @@ class AddonsData(Config):
     def list_startup(self, start_type):
         """Get list of installed addon with need start by type."""
         addon_list = set()
-        for addon in self._addons_data.keys():
+        for addon in self._system_data.keys():
             if self.get_boot(addon) != BOOT_AUTO:
                 continue
 
             try:
-                if self._addons_data[addon][ATTR_STARTUP] == start_type:
+                if self._system_data[addon][ATTR_STARTUP] == start_type:
                     addon_list.add(addon)
             except KeyError:
                 _LOGGER.warning("Orphaned addon detect %s", addon)
@@ -112,7 +112,7 @@ class AddonsData(Config):
     def list_removed(self):
         """Return local addons they not support from repo."""
         addon_list = set()
-        for addon in self._addons_data.keys():
+        for addon in self._system_data.keys():
             if addon not in self._current_data:
                 addon_list.add(addon)
 
@@ -120,11 +120,11 @@ class AddonsData(Config):
 
     def exists_addon(self, addon):
         """Return True if a addon exists."""
-        return addon in self._current_data or addon in self._addons_data
+        return addon in self._current_data or addon in self._system_data
 
     def is_installed(self, addon):
         """Return True if a addon is installed."""
-        return addon in self._addons_data
+        return addon in self._system_data
 
     def version_installed(self, addon):
         """Return installed version."""
@@ -132,7 +132,7 @@ class AddonsData(Config):
 
     def set_addon_install(self, addon, version):
         """Set addon as installed."""
-        self._addons_data[addon] = self._current_data[addon]
+        self._system_data[addon] = self._current_data[addon]
         self._user_data[addon] = {
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
@@ -141,13 +141,13 @@ class AddonsData(Config):
 
     def set_addon_uninstall(self, addon):
         """Set addon as uninstalled."""
-        self._addons_data.pop(addon, None)
+        self._system_data.pop(addon, None)
         self._user_data.pop(addon, None)
         self.save()
 
     def set_addon_update(self, addon, version):
         """Update version of addon."""
-        self._addons_data[addon] = self._current_data[addon]
+        self._system_data[addon] = self._current_data[addon]
         self._user_data[addon][ATTR_VERSION] = version
         self.save()
 
@@ -164,7 +164,7 @@ class AddonsData(Config):
     def get_options(self, addon):
         """Return options with local changes."""
         return {
-            **self._addons_data[addon][ATTR_OPTIONS],
+            **self._system_data[addon][ATTR_OPTIONS],
             **self._user_data[addon][ATTR_OPTIONS],
         }
 
@@ -173,17 +173,17 @@ class AddonsData(Config):
         if ATTR_BOOT in self._user_data[addon]:
             return self._user_data[addon][ATTR_BOOT]
 
-        return self._addons_data[addon][ATTR_BOOT]
+        return self._system_data[addon][ATTR_BOOT]
 
     def get_name(self, addon):
         """Return name of addon."""
-        return self._addons_data[addon][ATTR_NAME]
+        return self._system_data[addon][ATTR_NAME]
 
     def get_description(self, addon):
         """Return description of addon."""
-        return self._addons_data[addon][ATTR_DESCRIPTON]
+        return self._system_data[addon][ATTR_DESCRIPTON]
 
-    def get_version(self, addon):
+    def get_last_version(self, addon):
         """Return version of addon."""
         if addon not in self._current_data:
             return self.version_installed(addon)
@@ -191,11 +191,11 @@ class AddonsData(Config):
 
     def get_ports(self, addon):
         """Return ports of addon."""
-        return self._addons_data[addon].get(ATTR_PORTS)
+        return self._system_data[addon].get(ATTR_PORTS)
 
     def get_image(self, addon):
         """Return image name of addon."""
-        addon_data = self._addons_data.get(addon, self._current_data[addon])
+        addon_data = self._system_data.get(addon, self._current_data[addon])
 
         if ATTR_IMAGE not in addon_data:
             return "{}/{}-addon-{}".format(DOCKER_REPO, self.arch, addon)
@@ -204,19 +204,19 @@ class AddonsData(Config):
 
     def need_config(self, addon):
         """Return True if config map is needed."""
-        return self._addons_data[addon][ATTR_MAP_CONFIG]
+        return self._system_data[addon][ATTR_MAP_CONFIG]
 
     def need_ssl(self, addon):
         """Return True if ssl map is needed."""
-        return self._addons_data[addon][ATTR_MAP_SSL]
+        return self._system_data[addon][ATTR_MAP_SSL]
 
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
-        return "{}/{}".format(self.config.path_addons_data, addon)
+        return "{}/{}".format(self.config.path_system_data, addon)
 
     def path_data_docker(self, addon):
         """Return addon data path external for docker."""
-        return "{}/{}".format(self.config.path_addons_data_docker, addon)
+        return "{}/{}".format(self.config.path_system_data_docker, addon)
 
     def path_addon_options(self, addon):
         """Return path to addons options."""
@@ -238,7 +238,7 @@ class AddonsData(Config):
 
     def get_schema(self, addon):
         """Create a schema for addon options."""
-        raw_schema = self._addons_data[addon][ATTR_SCHEMA]
+        raw_schema = self._system_data[addon][ATTR_SCHEMA]
 
         schema = vol.Schema(vol.All(dict, validate_options(raw_schema)))
         return schema
