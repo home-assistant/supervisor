@@ -1,12 +1,12 @@
 {
-    "hassio_tag": "0.14",
+    "hassio_tag": "0.15",
     "homeassistant_tag": "0.43.1",
     "resinos_version": "0.4",
     "resinhup_version": "0.1",
     "generic_hc_version": "0.1",
-    "hassio": "0.14",
+    "hassio": "0.15",
     "homeassistant": "0.43.1",
     "resinos": "0.4",
     "resinhup": "0.1",
-    "generic_hc": "0.1"
+    "generic": "0.1"
 }
