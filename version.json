@@ -8,5 +8,5 @@
     "homeassistant": "0.43.1",
     "resinos": "0.4",
     "resinhup": "0.1",
-    "generic_hc": "0.1"
+    "generic": "0.1"
 }
