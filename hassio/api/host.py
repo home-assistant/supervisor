@@ -5,7 +5,8 @@ import voluptuous as vol
 
 from .util import api_process_hostcontrol, api_process, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES)
+    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES,
+    ATTR_OS)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class APIHost(object):
             ATTR_LAST_VERSION: self.host_control.last,
             ATTR_FEATURES: self.host_control.features,
             ATTR_HOSTNAME: self.host_control.hostname,
+            ATTR_OS: self.host_control.os,
         }
 
     @api_process_hostcontrol

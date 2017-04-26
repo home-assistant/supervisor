@@ -9,7 +9,7 @@ import async_timeout
 
 from .const import (
     SOCKET_HC, ATTR_LAST_VERSION, ATTR_VERSION, ATTR_TYPE, ATTR_FEATURES,
-    ATTR_HOSTNAME)
+    ATTR_HOSTNAME, ATTR_OS)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +35,7 @@ class HostControl(object):
         self.type = UNKNOWN
         self.features = []
         self.hostname = UNKNOWN
+        self.os = UNKNOWN
 
         mode = os.stat(SOCKET_HC)[stat.ST_MODE]
         if stat.S_ISSOCK(mode):
@@ -94,6 +95,7 @@ class HostControl(object):
         self.type = info.get(ATTR_TYPE, UNKNOWN)
         self.features = info.get(ATTR_FEATURES, [])
         self.hostname = info.get(ATTR_HOSTNAME, UNKNOWN)
+        self.os = info.get(ATTR_OS, UNKNOWN)
 
     def reboot(self):
         """Reboot the host system.

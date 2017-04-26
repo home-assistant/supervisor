@@ -32,6 +32,7 @@ RESULT_ERROR = 'error'
 RESULT_OK = 'ok'
 
 ATTR_HOSTNAME = 'hostname'
+ATTR_OS = 'os'
 ATTR_TYPE = 'type'
 ATTR_FEATURES = 'features'
 ATTR_ADDONS = 'addons'
