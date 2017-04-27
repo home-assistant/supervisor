@@ -31,7 +31,7 @@ class AddonsRepo(object):
 
         async with self._lock:
             try:
-                _LOGGER.info("Load addons repository")
+                _LOGGER.info("Load addon %s repository", self.path)
                 self.repo = await self.loop.run_in_executor(
                     None, git.Repo, self.path)
 
@@ -45,7 +45,7 @@ class AddonsRepo(object):
         """Clone git addon repo."""
         async with self._lock:
             try:
-                _LOGGER.info("Clone addons repository")
+                _LOGGER.info("Clone addon %s repository", self.url)
                 self.repo = await self.loop.run_in_executor(
                     None, git.Repo.clone_from, self.url, self.path)
 
@@ -63,7 +63,7 @@ class AddonsRepo(object):
 
         async with self._lock:
             try:
-                _LOGGER.info("Pull addons repository")
+                _LOGGER.info("Pull addon %s repository", self.url)
                 await self.loop.run_in_executor(
                     None, self.repo.remotes.origin.pull)
 

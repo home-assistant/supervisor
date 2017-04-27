@@ -63,7 +63,7 @@ class AddonManager(AddonsData):
             _LOGGER.error("Can't load from repository %s", url)
             return False
 
-        self.config.addons_repositories = repo
+        self.config.addons_repositories = url
         self.repositories.append(repo)
         return True
 
