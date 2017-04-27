@@ -31,11 +31,11 @@ UPSTREAM_BETA = 'upstream_beta'
 API_ENDPOINT = 'api_endpoint'
 
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_CONFIG = vol.Schema({
-    vol.Optional(
-        HOMEASSISTANT_IMAGE,
-        default=os.environ.get('HOMEASSISTANT_REPOSITORY')):
-            vol.Coerce(str),
+    vol.Optional(HOMEASSISTANT_IMAGE,
+                 default=os.environ.get('HOMEASSISTANT_REPOSITORY')):
+        vol.Coerce(str),
     vol.Optional(UPSTREAM_BETA, default=False): vol.Boolean(),
     vol.Optional(API_ENDPOINT): vol.Coerce(str),
     vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
@@ -213,7 +213,7 @@ class CoreConfig(Config):
 
     def add_addons_repository(self, repo, slug):
         """Add a custom repository to list."""
-        self._data[ADDONS_CUSTOM_LIST][repo][slug]
+        self._data[ADDONS_CUSTOM_LIST][repo] = slug
         self.save()
 
     def drop_addons_repository(self, repo):

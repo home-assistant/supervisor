@@ -29,7 +29,7 @@ class AddonManager(AddonsData):
         self.arch = arch
 
         # init hassio repository
-        self.repository.append(AddonsRepoHassIO(self.config, self.loop))
+        self.repositories.append(AddonsRepoHassIO(self.config, self.loop))
 
         # init custom repositories
         for url, slug in self.config.addons_repositories.items():

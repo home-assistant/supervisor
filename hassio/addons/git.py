@@ -91,7 +91,7 @@ class AddonsRepoCustom(AddonsRepo):
         if slug is None:
             _LOGGER("Init new custom addon repository %s", url)
             with tempfile.TemporaryDirectory(dir=config.path_addons_custom) \
-                    temp_dir:
+                    as temp_dir:
                 slug = temp_dir.name
 
             config.add_addons_repository(url, slug)
