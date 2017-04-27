@@ -31,11 +31,14 @@ UPSTREAM_BETA = 'upstream_beta'
 API_ENDPOINT = 'api_endpoint'
 
 
+def hass_image():
+    """Return HomeAssistant docker Image."""
+    return os.environ.get('HOMEASSISTANT_REPOSITORY')
+
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_CONFIG = vol.Schema({
-    vol.Optional(HOMEASSISTANT_IMAGE,
-                 default=os.environ.get('HOMEASSISTANT_REPOSITORY')):
-        vol.Coerce(str),
+    vol.Optional(HOMEASSISTANT_IMAGE, default=hass_image): vol.Coerce(str),
     vol.Optional(UPSTREAM_BETA, default=False): vol.Boolean(),
     vol.Optional(API_ENDPOINT): vol.Coerce(str),
     vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),

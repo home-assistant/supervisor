@@ -97,7 +97,7 @@ class AddonsRepoCustom(AddonsRepo):
             config.add_addons_repository(url, slug)
 
         path = os.path.join(config.path_addons_custom, slug)
-        super()__init__(config, loop, path, url)
+        super().__init__(config, loop, path, url)
 
     def remove(self):
         """Remove a custom addon."""
