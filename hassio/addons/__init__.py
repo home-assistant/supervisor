@@ -34,7 +34,7 @@ class AddonManager(AddonsData):
         # init custom repositories
         for url, slug in self.config.addons_repositories.items():
             self.repositories.append(
-                AddonsRepoCustom(self.config, self.loop, url, slug))
+                AddonsRepoCustom(self.config, self.loop, url))
 
         # load addon repository
         tasks = [addon.load() for addon in self.repositories]
