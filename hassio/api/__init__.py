@@ -48,8 +48,10 @@ class RestAPI(object):
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
-        self.webapp.router.add_post('/supervisor/update', api_supervisor.update)
-        self.webapp.router.add_post('/supervisor/reload', api_supervisor.reload)
+        self.webapp.router.add_post(
+            '/supervisor/update', api_supervisor.update)
+        self.webapp.router.add_post(
+            '/supervisor/reload', api_supervisor.reload)
         self.webapp.router.add_post(
             '/supervisor/options', api_supervisor.options)
         self.webapp.router.add_get('/supervisor/logs', api_supervisor.logs)
@@ -73,7 +75,8 @@ class RestAPI(object):
             '/addons/{addon}/uninstall', api_addons.uninstall)
         self.webapp.router.add_post('/addons/{addon}/start', api_addons.start)
         self.webapp.router.add_post('/addons/{addon}/stop', api_addons.stop)
-        self.webapp.router.add_post('/addons/{addon}/update', api_addons.update)
+        self.webapp.router.add_post(
+            '/addons/{addon}/update', api_addons.update)
         self.webapp.router.add_post(
             '/addons/{addon}/options', api_addons.options)
         self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
