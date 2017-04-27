@@ -233,5 +233,5 @@ class CoreConfig(Config):
         if repo not in self._data[ADDONS_CUSTOM_LIST]:
             return
 
-        self._data[ADDONS_CUSTOM_LIST].pop(repo)
+        self._data[ADDONS_CUSTOM_LIST].remove(repo)
         self.save()
