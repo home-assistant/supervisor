@@ -20,7 +20,7 @@ def slugify(text):
 def get_hash_from_repository(repo):
     """Generate a hash from repository."""
     key = repo.lower().encode()
-    return hashlib.sha1(key).hexdigest()
+    return hashlib.sha1(key).hexdigest()[:8]
 
 
 def extract_hash_from_path(base_path, options_path):
