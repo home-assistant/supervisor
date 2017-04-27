@@ -1,22 +1,24 @@
 """Init file for HassIO addons."""
+import copy
 import logging
 import glob
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from .util import extract_hash_from_path
 from .validate import validate_options, SCHEMA_ADDON_CONFIG
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
-    ATTR_STARTUP, ATTR_BOOT, ATTR_MAP_SSL, ATTR_MAP_CONFIG, ATTR_OPTIONS,
-    ATTR_PORTS, BOOT_AUTO, DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA,
-    ATTR_IMAGE, ATTR_DEDICATED)
+    ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
+    DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA, ATTR_IMAGE, ATTR_DEDICATED,
+    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
-ADDONS_REPO_PATTERN = "{}/*/config.json"
+ADDONS_REPO_PATTERN = "{}/**/config.json"
 SYSTEM = "system"
 USER = "user"
 
@@ -41,30 +43,59 @@ class AddonsData(Config):
         }
         super().save()
 
-    def read_addons_repo(self):
+    def read_data_from_repositories(self):
         """Read data from addons repository."""
         self._current_data = {}
 
         self._read_addons_folder(self.config.path_addons_repo)
-        self._read_addons_folder(self.config.path_addons_custom)
+        self._read_addons_folder(self.config.path_addons_custom, custom=True)
 
-    def _read_addons_folder(self, folder):
+    def _read_addons_folder(self, folder, custom=False):
         """Read data from addons folder."""
         pattern = ADDONS_REPO_PATTERN.format(folder)
 
-        for addon in glob.iglob(pattern):
+        for addon in glob.iglob(pattern, recursive=True):
             try:
                 addon_config = read_json_file(addon)
 
                 addon_config = SCHEMA_ADDON_CONFIG(addon_config)
-                self._current_data[addon_config[ATTR_SLUG]] = addon_config
+                if custom:
+                    addon_slug = "{}_{}".format(
+                        extract_hash_from_path(folder, addon),
+                        addon_config[ATTR_SLUG],
+                    )
+                else:
+                    addon_slug = addon_config[ATTR_SLUG]
 
-            except (OSError, KeyError):
+                self._current_data[addon_slug] = addon_config
+
+            except OSError:
                 _LOGGER.warning("Can't read %s", addon)
 
             except vol.Invalid as ex:
                 _LOGGER.warning("Can't read %s -> %s", addon,
                                 humanize_error(addon_config, ex))
+
+    def merge_update_config(self):
+        """Update local config if they have update.
+
+        It need to be the same version as the local version is.
+        """
+        have_change = False
+
+        for addon, data in self._system_data.items():
+            # dedicated
+            if addon not in self._current_data:
+                continue
+
+            current = self._current_data[addon]
+            if data[ATTR_VERSION] == current[ATTR_VERSION]:
+                if data != current[addon]:
+                    self._system_data[addon] = copy.deepcopy(current[data])
+                    have_change = True
+
+        if have_change:
+            self.save()
 
     @property
     def list_installed(self):
@@ -83,7 +114,7 @@ class AddonsData(Config):
 
             data.append({
                 ATTR_NAME: values[ATTR_NAME],
-                ATTR_SLUG: values[ATTR_SLUG],
+                ATTR_SLUG: addon,
                 ATTR_DESCRIPTON: values[ATTR_DESCRIPTON],
                 ATTR_VERSION: values[ATTR_VERSION],
                 ATTR_INSTALLED: i_version,
@@ -132,7 +163,7 @@ class AddonsData(Config):
 
     def set_addon_install(self, addon, version):
         """Set addon as installed."""
-        self._system_data[addon] = self._current_data[addon]
+        self._system_data[addon] = copy.deepcopy(self._current_data[addon])
         self._user_data[addon] = {
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
@@ -147,13 +178,13 @@ class AddonsData(Config):
 
     def set_addon_update(self, addon, version):
         """Update version of addon."""
-        self._system_data[addon] = self._current_data[addon]
+        self._system_data[addon] = copy.deepcopy(self._current_data[addon])
         self._user_data[addon][ATTR_VERSION] = version
         self.save()
 
     def set_options(self, addon, options):
         """Store user addon options."""
-        self._user_data[addon][ATTR_OPTIONS] = options
+        self._user_data[addon][ATTR_OPTIONS] = copy.deepcopy(options)
         self.save()
 
     def set_boot(self, addon, boot):
@@ -202,13 +233,21 @@ class AddonsData(Config):
 
         return addon_data[ATTR_IMAGE]
 
-    def need_config(self, addon):
+    def map_config(self, addon):
         """Return True if config map is needed."""
-        return self._system_data[addon][ATTR_MAP_CONFIG]
+        return MAP_CONFIG in self._system_data[addon][ATTR_MAP]
 
-    def need_ssl(self, addon):
+    def map_ssl(self, addon):
         """Return True if ssl map is needed."""
-        return self._system_data[addon][ATTR_MAP_SSL]
+        return MAP_SSL in self._system_data[addon][ATTR_MAP]
+
+    def map_addons(self, addon):
+        """Return True if addons map is needed."""
+        return MAP_ADDONS in self._system_data[addon][ATTR_MAP]
+
+    def map_backup(self, addon):
+        """Return True if backup map is needed."""
+        return MAP_BACKUP in self._system_data[addon][ATTR_MAP]
 
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
