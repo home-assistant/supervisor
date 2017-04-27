@@ -22,9 +22,9 @@ On success
 
 ### HassIO
 
-- `/supervisor/ping`
+- GET `/supervisor/ping`
 
-- `/supervisor/info`
+- GET `/supervisor/info`
 
 ```json
 {
@@ -44,7 +44,7 @@ On success
 }
 ```
 
-- `/supervisor/update`
+- POST `/supervisor/update`
 Optional:
 ```json
 {
@@ -52,28 +52,28 @@ Optional:
 }
 ```
 
-- `/supervisor/option`
+- POST `/supervisor/options`
 ```json
 {
     "beta_channel": "true|false"
 }
 ```
 
-- `/supervisor/reload`
+- POST `/supervisor/reload`
 
 Reload addons/version.
 
-- `/supervisor/logs`
+- GET `/supervisor/logs`
 
 Output the raw docker log
 
 ### Host
 
-- `/host/shutdown`
+- POST `/host/shutdown`
 
-- `/host/reboot`
+- POST `/host/reboot`
 
-- `/host/info`
+- GET `/host/info`
 See HostControl info command.
 ```json
 {
@@ -86,7 +86,7 @@ See HostControl info command.
 }
 ```
 
-- `/host/update`
+- POST `/host/update`
 Optional:
 ```json
 {
@@ -96,9 +96,9 @@ Optional:
 
 ### Network
 
-- `/network/info`
+- GET `/network/info`
 
-- `/network/options`
+- POST `/network/options`
 ```json
 {
     "hostname": "",
@@ -112,7 +112,7 @@ Optional:
 
 ### HomeAssistant
 
-- `/homeassistant/info`
+- GET `/homeassistant/info`
 
 ```json
 {
@@ -121,7 +121,7 @@ Optional:
 }
 ```
 
-- `/homeassistant/update`
+- POST `/homeassistant/update`
 Optional:
 ```json
 {
@@ -129,13 +129,13 @@ Optional:
 }
 ```
 
-- `/homeassistant/logs`
+- GET `/homeassistant/logs`
 
 Output the raw docker log
 
 ### REST API addons
 
-- `/addons/{addon}/info`
+- GET `/addons/{addon}/info`
 ```json
 {
     "version": "VERSION",
@@ -146,7 +146,7 @@ Output the raw docker log
 }
 ```
 
-- `/addons/{addon}/options`
+- POST `/addons/{addon}/options`
 ```json
 {
     "boot": "auto|manual",
@@ -154,11 +154,11 @@ Output the raw docker log
 }
 ```
 
-- `/addons/{addon}/start`
+- POST `/addons/{addon}/start`
 
-- `/addons/{addon}/stop`
+- POST `/addons/{addon}/stop`
 
-- `/addons/{addon}/install`
+- POST `/addons/{addon}/install`
 Optional:
 ```json
 {
@@ -166,9 +166,9 @@ Optional:
 }
 ```
 
-- `/addons/{addon}/uninstall`
+- POST `/addons/{addon}/uninstall`
 
-- `/addons/{addon}/update`
+- POST `/addons/{addon}/update`
 Optional:
 ```json
 {
@@ -176,7 +176,7 @@ Optional:
 }
 ```
 
-- `/addons/{addon}/logs`
+- GET `/addons/{addon}/logs`
 
 Output the raw docker log
 
