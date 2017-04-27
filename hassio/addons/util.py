@@ -4,7 +4,7 @@ import pathlib
 import re
 
 RE_SLUGIFY = re.compile(r'[^a-z0-9_]+')
-RE_SHA1 = re.compile(r"[a-f0-9]{40}")
+RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 
 
 def get_hash_from_repository(repo):
