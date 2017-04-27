@@ -30,16 +30,16 @@ class RestAPI(object):
         api_host = APIHost(self.config, self.loop, host_control)
 
         self.webapp.router.add_get('/host/info', api_host.info)
-        self.webapp.router.add_get('/host/reboot', api_host.reboot)
-        self.webapp.router.add_get('/host/shutdown', api_host.shutdown)
-        self.webapp.router.add_get('/host/update', api_host.update)
+        self.webapp.router.add_post('/host/reboot', api_host.reboot)
+        self.webapp.router.add_post('/host/shutdown', api_host.shutdown)
+        self.webapp.router.add_post('/host/update', api_host.update)
 
     def register_network(self, host_control):
         """Register network function."""
         api_net = APINetwork(self.config, self.loop, host_control)
 
         self.webapp.router.add_get('/network/info', api_net.info)
-        self.webapp.router.add_get('/network/options', api_net.options)
+        self.webapp.router.add_post('/network/options', api_net.options)
 
     def register_supervisor(self, supervisor, addons, host_control):
         """Register supervisor function."""
@@ -48,9 +48,9 @@ class RestAPI(object):
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
-        self.webapp.router.add_get('/supervisor/update', api_supervisor.update)
-        self.webapp.router.add_get('/supervisor/reload', api_supervisor.reload)
-        self.webapp.router.add_get(
+        self.webapp.router.add_post('/supervisor/update', api_supervisor.update)
+        self.webapp.router.add_post('/supervisor/reload', api_supervisor.reload)
+        self.webapp.router.add_post(
             '/supervisor/options', api_supervisor.options)
         self.webapp.router.add_get('/supervisor/logs', api_supervisor.logs)
 
@@ -59,7 +59,7 @@ class RestAPI(object):
         api_hass = APIHomeAssistant(self.config, self.loop, dock_homeassistant)
 
         self.webapp.router.add_get('/homeassistant/info', api_hass.info)
-        self.webapp.router.add_get('/homeassistant/update', api_hass.update)
+        self.webapp.router.add_post('/homeassistant/update', api_hass.update)
         self.webapp.router.add_get('/homeassistant/logs', api_hass.logs)
 
     def register_addons(self, addons):
@@ -67,14 +67,14 @@ class RestAPI(object):
         api_addons = APIAddons(self.config, self.loop, addons)
 
         self.webapp.router.add_get('/addons/{addon}/info', api_addons.info)
-        self.webapp.router.add_get(
+        self.webapp.router.add_post(
             '/addons/{addon}/install', api_addons.install)
-        self.webapp.router.add_get(
+        self.webapp.router.add_post(
             '/addons/{addon}/uninstall', api_addons.uninstall)
-        self.webapp.router.add_get('/addons/{addon}/start', api_addons.start)
-        self.webapp.router.add_get('/addons/{addon}/stop', api_addons.stop)
-        self.webapp.router.add_get('/addons/{addon}/update', api_addons.update)
-        self.webapp.router.add_get(
+        self.webapp.router.add_post('/addons/{addon}/start', api_addons.start)
+        self.webapp.router.add_post('/addons/{addon}/stop', api_addons.stop)
+        self.webapp.router.add_post('/addons/{addon}/update', api_addons.update)
+        self.webapp.router.add_post(
             '/addons/{addon}/options', api_addons.options)
         self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
 
