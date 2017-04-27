@@ -81,7 +81,7 @@ def api_return_error(message=None):
     return web.json_response({
         JSON_RESULT: RESULT_ERROR,
         JSON_MESSAGE: message,
-    })
+    }, status=400)
 
 
 def api_return_ok(data=None):
