@@ -58,7 +58,10 @@ Optional:
 - POST `/supervisor/options`
 ```json
 {
-    "beta_channel": "true|false"
+    "beta_channel": "true|false",
+    "addons_repositories": [
+        "REPO_URL"
+    ]
 }
 ```
 
