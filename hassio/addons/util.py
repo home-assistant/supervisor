@@ -2,19 +2,9 @@
 import hashlib
 import pathlib
 import re
-import unicodedata
 
 RE_SLUGIFY = re.compile(r'[^a-z0-9_]+')
-
-
-def slugify(text):
-    """Slugify a given text."""
-    text = unicodedata.normalize('NFKD', text)
-    text = text.lower()
-    text = text.replace(" ", "_")
-    text = RE_SLUGIFY.sub("", text)
-
-    return text
+RE_SHA1 = re.compile(r"[a-f0-9]{40}")
 
 
 def get_hash_from_repository(repo):
@@ -31,4 +21,8 @@ def extract_hash_from_path(base_path, options_path):
     for obj in dirlist:
         if obj != base_dir:
             continue
-        return slugify(next(dirlist))
+
+        repo_dir = next(dirlist)
+        if not RE_SHA1.match(repo_dir):
+            return get_hash_from_repository(repo_dir)
+        return repo_dir
