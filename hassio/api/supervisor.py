@@ -46,8 +46,7 @@ class APISupervisor(object):
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
             ATTR_ADDONS: self.addons.list_api,
-            ATTR_ADDONS_REPOSITORIES:
-                list(self.config.addons_repositories.keys()),
+            ATTR_ADDONS_REPOSITORIES: list(self.config.addons_repositories),
         }
 
     @api_process
@@ -70,7 +69,7 @@ class APISupervisor(object):
             for url in set(old - new):
                 self.addons.drop_custom_repository(url)
 
-        return self.config.save()
+        return True
 
     @api_process
     async def update(self, request):

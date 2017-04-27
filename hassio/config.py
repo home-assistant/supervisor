@@ -44,9 +44,7 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
     vol.Optional(HASSIO_LAST): vol.Coerce(str),
     vol.Optional(HASSIO_CLEANUP): vol.Coerce(str),
-    vol.Optional(ADDONS_CUSTOM_LIST, default={}): {
-        vol.Url(): vol.Coerce(str),
-    }
+    vol.Optional(ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
 }, extra=vol.REMOVE_EXTRA)
 
 
@@ -214,17 +212,21 @@ class CoreConfig(Config):
         """Return root backup data folder extern for docker."""
         return BACKUP_DATA.format(self.path_hassio_docker)
 
-    def add_addons_repository(self, repo, slug):
+    @addons_repositories.setter
+    def addons_repositories(self, repo):
         """Add a custom repository to list."""
-        self._data[ADDONS_CUSTOM_LIST][repo] = slug
-        self.save()
+        if repo in self._data[ADDONS_CUSTOM_LIST]:
+            return
 
-    def drop_addons_repository(self, repo):
-        """Remove a custom repository from list."""
-        if self._data[ADDONS_CUSTOM_LIST].pop(repo, None):
-            self.save()
+        self._data[ADDONS_CUSTOM_LIST].append(repo)
+        self.save()
 
     @property
     def addons_repositories(self):
         """Return list of addons custom repositories."""
         return self._data[ADDONS_CUSTOM_LIST]
+
+    def drop_addon_repository(self, repo):
+        """Remove a custom repository from list."""
+        if self._data[ADDONS_CUSTOM_LIST].pop(repo, False):
+            self.save()

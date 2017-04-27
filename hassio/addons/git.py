@@ -3,10 +3,10 @@ import asyncio
 import logging
 import os
 import shutil
-import tempfile
 
 import git
 
+from .util import get_hash_from_repository
 from ..const import URL_HASSIO_ADDONS
 
 _LOGGER = logging.getLogger(__name__)
@@ -86,17 +86,11 @@ class AddonsRepoHassIO(AddonsRepo):
 class AddonsRepoCustom(AddonsRepo):
     """Custom addons repository."""
 
-    def __init__(self, config, loop, url, slug=None):
+    def __init__(self, config, loop, url):
         """Initialize git hassio addon repository."""
-        if slug is None:
-            _LOGGER("Init new custom addon repository %s", url)
-            with tempfile.TemporaryDirectory(dir=config.path_addons_custom) \
-                    as temp_dir:
-                slug = temp_dir.name
+        path = os.path.join(
+            config.path_addons_custom, get_hash_from_repository(url))
 
-            config.add_addons_repository(url, slug)
-
-        path = os.path.join(config.path_addons_custom, slug)
         super().__init__(config, loop, path, url)
 
     def remove(self):
@@ -109,5 +103,3 @@ class AddonsRepoCustom(AddonsRepo):
                 _LOGGER.warning("Can't remove %s", path)
 
             shutil.rmtree(self.path, onerror=log_err)
-
-        self.config.drop_addons_repository(self.url)

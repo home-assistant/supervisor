@@ -40,10 +40,10 @@ class AddonManager(AddonsData):
         tasks = [addon.load() for addon in self.repositories]
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
-            self.read_addons_repo()
 
-        # Update config
-        self.merge_local_config()
+            # read data from repositories
+            self.read_data_from_repositories()
+            self.merge_update_config()
 
         # load installed addons
         for addon in self.list_installed:
@@ -53,7 +53,7 @@ class AddonManager(AddonsData):
 
     async def add_custom_repository(self, url):
         """Add a new custom repository."""
-        if url in self.config.addons_repositories.keys():
+        if url in self.config.addons_repositories:
             _LOGGER.warning("Repository already exists %s", url)
             return False
 
@@ -63,6 +63,7 @@ class AddonManager(AddonsData):
             _LOGGER.error("Can't load from repository %s", url)
             return False
 
+        self.config.addons_repositories = repo
         self.repositories.append(repo)
         return True
 
@@ -71,6 +72,7 @@ class AddonManager(AddonsData):
         for repo in self.repositories:
             if repo.url == url:
                 repo = self.repositories.pop(repo, repo)
+                self.config.drop_addon_repository(url)
                 repo.remove()
                 return True
 
@@ -84,9 +86,9 @@ class AddonManager(AddonsData):
 
         await asyncio.wait(tasks, loop=self.loop)
 
-        # Update config
-        self.read_addons_repo()
-        self.merge_local_config()
+        # read data from repositories
+        self.read_data_from_repositories()
+        self.merge_update_config()
 
         # remove stalled addons
         for addon in self.list_removed:

@@ -42,7 +42,7 @@ class AddonsData(Config):
         }
         super().save()
 
-    def read_addons_repo(self):
+    def read_data_from_repositories(self):
         """Read data from addons repository."""
         self._current_data = {}
 
@@ -67,7 +67,7 @@ class AddonsData(Config):
                 _LOGGER.warning("Can't read %s -> %s", addon,
                                 humanize_error(addon_config, ex))
 
-    def merge_local_config(self):
+    def merge_update_config(self):
         """Update local config if they have update.
 
         It need to be the same version as the local version is.
