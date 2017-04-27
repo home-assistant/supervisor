@@ -71,9 +71,8 @@ class AddonManager(AddonsData):
         """Remove a custom repository."""
         for repo in self.repositories:
             if repo.url == url:
-                repo = self.repositories.pop(repo, repo)
+                self.repositories.pop(repo).remove()
                 self.config.drop_addon_repository(url)
-                repo.remove()
                 return True
 
         return False

@@ -1,5 +1,6 @@
 """Bootstrap HassIO."""
 import logging
+import json
 import os
 
 import voluptuous as vol
@@ -60,13 +61,14 @@ class Config(object):
         if os.path.isfile(self._filename):
             try:
                 self._data = read_json_file(self._filename)
-            except OSError:
+            except (OSError, json.JSONDecodeError):
                 _LOGGER.warning("Can't read %s", self._filename)
+                self._data = {}
 
     def save(self):
         """Store data to config file."""
         if not write_json_file(self._filename, self._data):
-            _LOGGER.exception("Can't store config in %s", self._filename)
+            _LOGGER.error("Can't store config in %s", self._filename)
             return False
         return True
 
@@ -228,5 +230,8 @@ class CoreConfig(Config):
 
     def drop_addon_repository(self, repo):
         """Remove a custom repository from list."""
-        if self._data[ADDONS_CUSTOM_LIST].pop(repo, False):
-            self.save()
+        if repo not in self._data[ADDONS_CUSTOM_LIST]:
+            return
+
+        self._data[ADDONS_CUSTOM_LIST].pop(repo)
+        self.save()
