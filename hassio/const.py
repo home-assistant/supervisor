@@ -8,7 +8,7 @@ URL_HASSIO_VERSION_BETA = ('https://raw.githubusercontent.com/home-assistant/'
 
 URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
 
-DOCKER_REPO = "pvizeli"
+DOCKER_REPO = "homeassistant"
 
 HASSIO_SHARE = "/data"
 
