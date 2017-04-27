@@ -79,11 +79,11 @@ class AddonsRepoHassIO(AddonsRepo):
 
     def __init__(self, config, loop):
         """Initialize git hassio addon repository."""
-        super()__init__(
+        super().__init__(
             config, loop, config.path_addons_repo, URL_HASSIO_ADDONS)
 
 
-class AddonsRepoCustom(AddonsRepo)
+class AddonsRepoCustom(AddonsRepo):
     """Custom addons repository."""
 
     def __init__(self, config, loop, url, slug=None):
