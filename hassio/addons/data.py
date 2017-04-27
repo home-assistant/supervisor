@@ -231,7 +231,7 @@ class AddonsData(Config):
         if ATTR_IMAGE not in addon_data:
             return "{}/{}-addon-{}".format(DOCKER_REPO, self.arch, addon)
 
-        return addon_data[ATTR_IMAGE]
+        return addon_data[ATTR_IMAGE].format(arch=self.arch)
 
     def map_config(self, addon):
         """Return True if config map is needed."""
