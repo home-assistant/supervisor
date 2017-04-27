@@ -74,7 +74,7 @@ class AddonsRepo(object):
             return True
 
 
-class AddonsRepoHassIO(AddonsRepo)
+class AddonsRepoHassIO(AddonsRepo):
     """HassIO addons repository."""
 
     def __init__(self, config, loop):
