@@ -212,6 +212,11 @@ class CoreConfig(Config):
         """Return root backup data folder extern for docker."""
         return BACKUP_DATA.format(self.path_hassio_docker)
 
+    @property
+    def addons_repositories(self):
+        """Return list of addons custom repositories."""
+        return self._data[ADDONS_CUSTOM_LIST]
+
     @addons_repositories.setter
     def addons_repositories(self, repo):
         """Add a custom repository to list."""
@@ -220,11 +225,6 @@ class CoreConfig(Config):
 
         self._data[ADDONS_CUSTOM_LIST].append(repo)
         self.save()
-
-    @property
-    def addons_repositories(self):
-        """Return list of addons custom repositories."""
-        return self._data[ADDONS_CUSTOM_LIST]
 
     def drop_addon_repository(self, repo):
         """Remove a custom repository from list."""
