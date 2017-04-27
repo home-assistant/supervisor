@@ -6,6 +6,7 @@ import glob
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from .util import extract_hash_from_path
 from .validate import validate_options, SCHEMA_ADDON_CONFIG
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
@@ -47,9 +48,9 @@ class AddonsData(Config):
         self._current_data = {}
 
         self._read_addons_folder(self.config.path_addons_repo)
-        self._read_addons_folder(self.config.path_addons_custom)
+        self._read_addons_folder(self.config.path_addons_custom, custom=True)
 
-    def _read_addons_folder(self, folder):
+    def _read_addons_folder(self, folder, custom=False):
         """Read data from addons folder."""
         pattern = ADDONS_REPO_PATTERN.format(folder)
 
@@ -58,9 +59,17 @@ class AddonsData(Config):
                 addon_config = read_json_file(addon)
 
                 addon_config = SCHEMA_ADDON_CONFIG(addon_config)
-                self._current_data[addon_config[ATTR_SLUG]] = addon_config
+                if custom:
+                    addon_slug = "{}_{}".format(
+                        extract_hash_from_path(folder, addon),
+                        addon_config[ATTR_SLUG],
+                    )
+                else:
+                    addon_slug = addon_config[ATTR_SLUG]
 
-            except (OSError, KeyError):
+                self._current_data[addon_slug] = addon_config
+
+            except OSError:
                 _LOGGER.warning("Can't read %s", addon)
 
             except vol.Invalid as ex:
@@ -105,7 +114,7 @@ class AddonsData(Config):
 
             data.append({
                 ATTR_NAME: values[ATTR_NAME],
-                ATTR_SLUG: values[ATTR_SLUG],
+                ATTR_SLUG: addon,
                 ATTR_DESCRIPTON: values[ATTR_DESCRIPTON],
                 ATTR_VERSION: values[ATTR_VERSION],
                 ATTR_INSTALLED: i_version,

@@ -59,7 +59,7 @@ class APISupervisor(object):
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
-            old = set(self.config.addons_repositories.keys())
+            old = set(self.config.addons_repositories)
 
             # add new repositories
             for url in set(new - old):
