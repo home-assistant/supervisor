@@ -32,7 +32,7 @@ class AddonManager(AddonsData):
         self.repositories.append(AddonsRepoHassIO(self.config, self.loop))
 
         # init custom repositories
-        for url, slug in self.config.addons_repositories.items():
+        for url in self.config.addons_repositories:
             self.repositories.append(
                 AddonsRepoCustom(self.config, self.loop, url))
 
@@ -97,10 +97,7 @@ class AddonManager(AddonsData):
     async def auto_boot(self, start_type):
         """Boot addons with mode auto."""
         boot_list = self.list_startup(start_type)
-        tasks = []
-
-        for addon in boot_list:
-            tasks.append(self.loop.create_task(self.start(addon)))
+        tasks = [self.start(addon) from addon in boot_list]
 
         _LOGGER.info("Startup %s run %d addons", start_type, len(tasks))
         if tasks:
