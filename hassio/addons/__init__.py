@@ -97,7 +97,7 @@ class AddonManager(AddonsData):
     async def auto_boot(self, start_type):
         """Boot addons with mode auto."""
         boot_list = self.list_startup(start_type)
-        tasks = [self.start(addon) from addon in boot_list]
+        tasks = [self.start(addon) for addon in boot_list]
 
         _LOGGER.info("Startup %s run %d addons", start_type, len(tasks))
         if tasks:
