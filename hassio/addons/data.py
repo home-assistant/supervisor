@@ -90,8 +90,8 @@ class AddonsData(Config):
 
             current = self._current_data[addon]
             if data[ATTR_VERSION] == current[ATTR_VERSION]:
-                if data != current[addon]:
-                    self._system_data[addon] = copy.deepcopy(current[data])
+                if data != current:
+                    self._system_data[addon] = copy.deepcopy(current)
                     have_change = True
 
         if have_change:
