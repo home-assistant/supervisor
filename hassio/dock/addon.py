@@ -26,6 +26,40 @@ class DockerAddon(DockerBase):
         """Return name of docker container."""
         return "addon_{}".format(self.addon)
 
+    @property
+    def volumes(self):
+        """Generate volumes for mappings."""
+        volumes = {
+            self.addons_data.path_data_docker(self.addon): {
+                'bind': '/data', 'mode': 'rw'
+            }}
+
+        if self.addons_data.map_config(self.addon):
+            volumes.update({
+                self.config.path_config_docker: {
+                    'bind': '/config', 'mode': 'rw'
+                }})
+
+        if self.addons_data.map_ssl(self.addon):
+            volumes.update({
+                self.config.path_ssl_docker: {
+                    'bind': '/ssl', 'mode': 'rw'
+                }})
+
+        if self.addons_data.map_addons(self.addon):
+            volumes.update({
+                self.config.path_addons_custom_docker: {
+                    'bind': '/addons', 'mode': 'rw'
+                }})
+
+        if self.addons_data.map_backup(self.addon):
+            volumes.update({
+                self.config.path_backup_docker: {
+                    'bind': '/backup', 'mode': 'rw'
+                }})
+
+        return volumes
+
     def _run(self):
         """Run docker image.
 
@@ -37,22 +71,6 @@ class DockerAddon(DockerBase):
         # cleanup old container
         self._stop()
 
-        # volumes
-        volumes = {
-            self.addons_data.path_data_docker(self.addon): {
-                'bind': '/data', 'mode': 'rw'
-            }}
-        if self.addons_data.need_config(self.addon):
-            volumes.update({
-                self.config.path_config_docker: {
-                    'bind': '/config', 'mode': 'rw'
-                }})
-        if self.addons_data.need_ssl(self.addon):
-            volumes.update({
-                self.config.path_ssl_docker: {
-                    'bind': '/ssl', 'mode': 'rw'
-                }})
-
         try:
             self.container = self.dock.containers.run(
                 self.image,
@@ -60,7 +78,7 @@ class DockerAddon(DockerBase):
                 detach=True,
                 network_mode='bridge',
                 ports=self.addons_data.get_ports(self.addon),
-                volumes=volumes,
+                volumes=self.volumes,
             )
 
             self.version = get_version_from_env(

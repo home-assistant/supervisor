@@ -7,13 +7,14 @@ import voluptuous as vol
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
-    HASSIO_VERSION)
+    HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES)
 
 _LOGGER = logging.getLogger(__name__)
 
 SCHEMA_OPTIONS = vol.Schema({
     # pylint: disable=no-value-for-parameter
     vol.Optional(ATTR_BETA_CHANNEL): vol.Boolean(),
+    vol.Optional(ATTR_ADDONS_REPOSITORIES): [vol.Url()],
 })
 
 SCHEMA_VERSION = vol.Schema({
@@ -45,6 +46,8 @@ class APISupervisor(object):
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
             ATTR_ADDONS: self.addons.list_api,
+            ATTR_ADDONS_REPOSITORIES:
+                list(self.config.addons_repositories.keys()),
         }
 
     @api_process
@@ -54,6 +57,18 @@ class APISupervisor(object):
 
         if ATTR_BETA_CHANNEL in body:
             self.config.upstream_beta = body[ATTR_BETA_CHANNEL]
+
+        if ATTR_ADDONS_REPOSITORIES in body:
+            new = set(body[ATTR_ADDONS_REPOSITORIES])
+            old = set(self.config.addons_repositories.keys())
+
+            # add new repositories
+            for url in set(new - old):
+                await self.addons.add_custom_repository(url)
+
+            # remove old repositories
+            for url in set(old - new):
+                self.addons.drop_custom_repository(url)
 
         return self.config.save()
 

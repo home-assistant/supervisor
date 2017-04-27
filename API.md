@@ -40,6 +40,9 @@ On success
             "dedicated": "bool",
             "description": "description"
         }
+    ],
+    "addons_repositories": [
+        "REPO_URL"
     ]
 }
 ```

@@ -2,6 +2,9 @@
 import logging
 import os
 
+import voluptuous as vol
+from voluptuous.humanize import humanize_error
+
 from .const import FILE_HASSIO_CONFIG, HASSIO_SHARE
 from .tools import (
     fetch_current_versions, write_json_file, read_json_file)
@@ -19,10 +22,28 @@ HASSIO_CLEANUP = 'hassio_cleanup'
 ADDONS_REPO = "{}/addons"
 ADDONS_DATA = "{}/addons_data"
 ADDONS_CUSTOM = "{}/addons_custom"
+ADDONS_CUSTOM_LIST = 'addons_custom_list'
+
+BACKUP_DATA = "{}/backup"
 
 UPSTREAM_BETA = 'upstream_beta'
 
 API_ENDPOINT = 'api_endpoint'
+
+
+SCHEMA_CONFIG = vol.Schema({
+    vol.Optional(
+        HOMEASSISTANT_IMAGE default=os.environ['HOMEASSISTANT_REPOSITORY']):
+            vol.Coerce(str),
+    vol.Optional(UPSTREAM_BETA, default=False): vol.Boolean(),
+    vol.Optional(API_ENDPOINT): vol.Coerce(str),
+    vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
+    vol.Optional(HASSIO_LAST): vol.Coerce(str),
+    vol.Optional(HASSIO_CLEANUP): vol.Coerce(str),
+    vol.Optional(ADDONS_CUSTOM_LIST, default={}): {
+        vol.Url(): vol.Coerce(str),
+    }
+}, extra=vol.REMOVE_EXTRA)
 
 
 class Config(object):
@@ -57,13 +78,13 @@ class CoreConfig(Config):
 
         super().__init__(FILE_HASSIO_CONFIG)
 
-        # init data
-        if not self._data:
-            self._data.update({
-                HOMEASSISTANT_IMAGE: os.environ['HOMEASSISTANT_REPOSITORY'],
-                UPSTREAM_BETA: False,
-            })
+        # validate data
+        try:
+            self._data = SCHEMA_CONFIG(self._data)
             self.save()
+        except vol.Invalid as ex:
+            _LOGGER.warning(
+                "Invalid config %s", humanize_error(self._data, ex))
 
     async def fetch_update_infos(self):
         """Read current versions from web."""
@@ -93,7 +114,7 @@ class CoreConfig(Config):
     @property
     def upstream_beta(self):
         """Return True if we run in beta upstream."""
-        return self._data.get(UPSTREAM_BETA, False)
+        return self._data[UPSTREAM_BETA]
 
     @upstream_beta.setter
     def upstream_beta(self, value):
@@ -165,6 +186,11 @@ class CoreConfig(Config):
         return ADDONS_CUSTOM.format(HASSIO_SHARE)
 
     @property
+    def path_addons_custom_docker(self):
+        """Return path for customs addons."""
+        return ADDONS_CUSTOM.format(self.path_hassio_docker)
+
+    @property
     def path_addons_data(self):
         """Return root addon data folder."""
         return ADDONS_DATA.format(HASSIO_SHARE)
@@ -173,3 +199,28 @@ class CoreConfig(Config):
     def path_addons_data_docker(self):
         """Return root addon data folder extern for docker."""
         return ADDONS_DATA.format(self.path_hassio_docker)
+
+    @property
+    def path_backup(self):
+        """Return root backup data folder."""
+        return BACKUP_DATA.format(HASSIO_SHARE)
+
+    @property
+    def path_backup_docker(self):
+        """Return root backup data folder extern for docker."""
+        return BACKUP_DATA.format(self.path_hassio_docker)
+
+    def add_addons_repository(self, repo, slug):
+        """Add a custom repository to list."""
+        self._data[ADDONS_CUSTOM_LIST][repo][slug]
+        self.save()
+
+    def drop_addons_repository(self, repo):
+        """Remove a custom repository from list."""
+        if self._data[ADDONS_CUSTOM_LIST].pop(repo, None):
+            self.save()
+
+    @property
+    def addons_repositories(self):
+        """Return list of addons custom repositories."""
+        return self._data[ADDONS_CUSTOM_LIST]
