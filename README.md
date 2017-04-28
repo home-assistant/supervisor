@@ -3,7 +3,7 @@ First private cloud solution for home automation.
 
 It is a docker image (supervisor) they manage HomeAssistant docker and give a interface to control itself over UI. It have a own eco system with addons to extend the functionality in a easy way.
 
-[[https://raw.githubusercontent.com/home-assistant/hassio/dev/misc/hassio.png]]
+![](misc/hassio.png?raw=true)
 
 [HassIO-Addons](https://github.com/home-assistant/hassio-addons) | [HassIO-Build](https://github.com/home-assistant/hassio-build)
 
