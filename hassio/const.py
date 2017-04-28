@@ -4,7 +4,7 @@ HASSIO_VERSION = '0.19'
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
 URL_HASSIO_VERSION_BETA = ('https://raw.githubusercontent.com/home-assistant/'
-                           'hassio/master/version_beta.json')
+                           'hassio/dev/version.json')
 
 URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
 
