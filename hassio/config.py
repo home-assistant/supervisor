@@ -1,6 +1,10 @@
 """Bootstrap HassIO."""
 import logging
+import json
 import os
+
+import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from .const import FILE_HASSIO_CONFIG, HASSIO_SHARE
 from .tools import (
@@ -19,10 +23,30 @@ HASSIO_CLEANUP = 'hassio_cleanup'
 ADDONS_REPO = "{}/addons"
 ADDONS_DATA = "{}/addons_data"
 ADDONS_CUSTOM = "{}/addons_custom"
+ADDONS_CUSTOM_LIST = 'addons_custom_list'
+
+BACKUP_DATA = "{}/backup"
 
 UPSTREAM_BETA = 'upstream_beta'
 
 API_ENDPOINT = 'api_endpoint'
+
+
+def hass_image():
+    """Return HomeAssistant docker Image."""
+    return os.environ.get('HOMEASSISTANT_REPOSITORY')
+
+
+# pylint: disable=no-value-for-parameter
+SCHEMA_CONFIG = vol.Schema({
+    vol.Optional(HOMEASSISTANT_IMAGE, default=hass_image): vol.Coerce(str),
+    vol.Optional(UPSTREAM_BETA, default=False): vol.Boolean(),
+    vol.Optional(API_ENDPOINT): vol.Coerce(str),
+    vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
+    vol.Optional(HASSIO_LAST): vol.Coerce(str),
+    vol.Optional(HASSIO_CLEANUP): vol.Coerce(str),
+    vol.Optional(ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
+}, extra=vol.REMOVE_EXTRA)
 
 
 class Config(object):
@@ -37,13 +61,14 @@ class Config(object):
         if os.path.isfile(self._filename):
             try:
                 self._data = read_json_file(self._filename)
-            except OSError:
+            except (OSError, json.JSONDecodeError):
                 _LOGGER.warning("Can't read %s", self._filename)
+                self._data = {}
 
     def save(self):
         """Store data to config file."""
         if not write_json_file(self._filename, self._data):
-            _LOGGER.exception("Can't store config in %s", self._filename)
+            _LOGGER.error("Can't store config in %s", self._filename)
             return False
         return True
 
@@ -57,13 +82,13 @@ class CoreConfig(Config):
 
         super().__init__(FILE_HASSIO_CONFIG)
 
-        # init data
-        if not self._data:
-            self._data.update({
-                HOMEASSISTANT_IMAGE: os.environ['HOMEASSISTANT_REPOSITORY'],
-                UPSTREAM_BETA: False,
-            })
+        # validate data
+        try:
+            self._data = SCHEMA_CONFIG(self._data)
             self.save()
+        except vol.Invalid as ex:
+            _LOGGER.warning(
+                "Invalid config %s", humanize_error(self._data, ex))
 
     async def fetch_update_infos(self):
         """Read current versions from web."""
@@ -93,7 +118,7 @@ class CoreConfig(Config):
     @property
     def upstream_beta(self):
         """Return True if we run in beta upstream."""
-        return self._data.get(UPSTREAM_BETA, False)
+        return self._data[UPSTREAM_BETA]
 
     @upstream_beta.setter
     def upstream_beta(self, value):
@@ -165,6 +190,11 @@ class CoreConfig(Config):
         return ADDONS_CUSTOM.format(HASSIO_SHARE)
 
     @property
+    def path_addons_custom_docker(self):
+        """Return path for customs addons."""
+        return ADDONS_CUSTOM.format(self.path_hassio_docker)
+
+    @property
     def path_addons_data(self):
         """Return root addon data folder."""
         return ADDONS_DATA.format(HASSIO_SHARE)
@@ -173,3 +203,35 @@ class CoreConfig(Config):
     def path_addons_data_docker(self):
         """Return root addon data folder extern for docker."""
         return ADDONS_DATA.format(self.path_hassio_docker)
+
+    @property
+    def path_backup(self):
+        """Return root backup data folder."""
+        return BACKUP_DATA.format(HASSIO_SHARE)
+
+    @property
+    def path_backup_docker(self):
+        """Return root backup data folder extern for docker."""
+        return BACKUP_DATA.format(self.path_hassio_docker)
+
+    @property
+    def addons_repositories(self):
+        """Return list of addons custom repositories."""
+        return self._data[ADDONS_CUSTOM_LIST]
+
+    @addons_repositories.setter
+    def addons_repositories(self, repo):
+        """Add a custom repository to list."""
+        if repo in self._data[ADDONS_CUSTOM_LIST]:
+            return
+
+        self._data[ADDONS_CUSTOM_LIST].append(repo)
+        self.save()
+
+    def drop_addon_repository(self, repo):
+        """Remove a custom repository from list."""
+        if repo not in self._data[ADDONS_CUSTOM_LIST]:
+            return
+
+        self._data[ADDONS_CUSTOM_LIST].remove(repo)
+        self.save()

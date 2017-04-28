@@ -5,7 +5,7 @@ import os
 import shutil
 
 from .data import AddonsData
-from .git import AddonsRepo
+from .git import AddonsRepoHassIO, AddonsRepoCustom
 from ..const import STATE_STOPPED, STATE_STARTED
 from ..dock.addon import DockerAddon
 
@@ -21,16 +21,29 @@ class AddonManager(AddonsData):
 
         self.loop = loop
         self.dock = dock
-        self.repo = AddonsRepo(config, loop)
+        self.repositories = []
         self.dockers = {}
 
     async def prepare(self, arch):
         """Startup addon management."""
         self.arch = arch
 
+        # init hassio repository
+        self.repositories.append(AddonsRepoHassIO(self.config, self.loop))
+
+        # init custom repositories
+        for url in self.config.addons_repositories:
+            self.repositories.append(
+                AddonsRepoCustom(self.config, self.loop, url))
+
         # load addon repository
-        if await self.repo.load():
-            self.read_addons_repo()
+        tasks = [addon.load() for addon in self.repositories]
+        if tasks:
+            await asyncio.wait(tasks, loop=self.loop)
+
+            # read data from repositories
+            self.read_data_from_repositories()
+            self.merge_update_config()
 
         # load installed addons
         for addon in self.list_installed:
@@ -38,11 +51,44 @@ class AddonManager(AddonsData):
                 self.config, self.loop, self.dock, self, addon)
             await self.dockers[addon].attach()
 
+    async def add_custom_repository(self, url):
+        """Add a new custom repository."""
+        if url in self.config.addons_repositories:
+            _LOGGER.warning("Repository already exists %s", url)
+            return False
+
+        repo = AddonsRepoCustom(self.config, self.loop, url)
+
+        if not await repo.load():
+            _LOGGER.error("Can't load from repository %s", url)
+            return False
+
+        self.config.addons_repositories = url
+        self.repositories.append(repo)
+        return True
+
+    def drop_custom_repository(self, url):
+        """Remove a custom repository."""
+        for repo in self.repositories:
+            if repo.url == url:
+                self.repositories.remove(repo)
+                self.config.drop_addon_repository(url)
+                repo.remove()
+                return True
+
+        return False
+
     async def reload(self):
         """Update addons from repo and reload list."""
-        if not await self.repo.pull():
+        tasks = [addon.pull() for addon in self.repositories]
+        if not tasks:
             return
-        self.read_addons_repo()
+
+        await asyncio.wait(tasks, loop=self.loop)
+
+        # read data from repositories
+        self.read_data_from_repositories()
+        self.merge_update_config()
 
         # remove stalled addons
         for addon in self.list_removed:
@@ -51,10 +97,7 @@ class AddonManager(AddonsData):
     async def auto_boot(self, start_type):
         """Boot addons with mode auto."""
         boot_list = self.list_startup(start_type)
-        tasks = []
-
-        for addon in boot_list:
-            tasks.append(self.loop.create_task(self.start(addon)))
+        tasks = [self.start(addon) for addon in boot_list]
 
         _LOGGER.info("Startup %s run %d addons", start_type, len(tasks))
         if tasks:

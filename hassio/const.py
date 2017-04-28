@@ -1,5 +1,5 @@
 """Const file for HassIO."""
-HASSIO_VERSION = '0.17'
+HASSIO_VERSION = '0.18'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
@@ -8,7 +8,7 @@ URL_HASSIO_VERSION_BETA = ('https://raw.githubusercontent.com/home-assistant/'
 
 URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
 
-DOCKER_REPO = "pvizeli"
+DOCKER_REPO = "homeassistant"
 
 HASSIO_SHARE = "/data"
 
@@ -45,14 +45,14 @@ ATTR_DESCRIPTON = 'description'
 ATTR_STARTUP = 'startup'
 ATTR_BOOT = 'boot'
 ATTR_PORTS = 'ports'
-ATTR_MAP_CONFIG = 'map_config'
-ATTR_MAP_SSL = 'map_ssl'
+ATTR_MAP = 'map'
 ATTR_OPTIONS = 'options'
 ATTR_INSTALLED = 'installed'
 ATTR_DEDICATED = 'dedicated'
 ATTR_STATE = 'state'
 ATTR_SCHEMA = 'schema'
 ATTR_IMAGE = 'image'
+ATTR_ADDONS_REPOSITORIES = 'addons_repositories'
 
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'
@@ -63,3 +63,8 @@ BOOT_MANUAL = 'manual'
 
 STATE_STARTED = 'started'
 STATE_STOPPED = 'stopped'
+
+MAP_CONFIG = 'config'
+MAP_SSL = 'ssl'
+MAP_ADDONS = 'addons'
+MAP_BACKUP = 'backup'
