@@ -1,5 +1,5 @@
 """Const file for HassIO."""
-HASSIO_VERSION = '0.18'
+HASSIO_VERSION = '0.19'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
