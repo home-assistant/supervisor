@@ -13,7 +13,6 @@ from .tools import (
 _LOGGER = logging.getLogger(__name__)
 
 HOMEASSISTANT_CONFIG = "{}/homeassistant"
-HOMEASSISTANT_IMAGE = 'homeassistant_image'
 HOMEASSISTANT_LAST = 'homeassistant_last'
 
 HASSIO_SSL = "{}/ssl"
@@ -32,14 +31,8 @@ UPSTREAM_BETA = 'upstream_beta'
 API_ENDPOINT = 'api_endpoint'
 
 
-def hass_image():
-    """Return HomeAssistant docker Image."""
-    return os.environ.get('HOMEASSISTANT_REPOSITORY')
-
-
 # pylint: disable=no-value-for-parameter
 SCHEMA_CONFIG = vol.Schema({
-    vol.Optional(HOMEASSISTANT_IMAGE, default=hass_image): vol.Coerce(str),
     vol.Optional(UPSTREAM_BETA, default=False): vol.Boolean(),
     vol.Optional(API_ENDPOINT): vol.Coerce(str),
     vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
@@ -142,7 +135,7 @@ class CoreConfig(Config):
     @property
     def homeassistant_image(self):
         """Return docker homeassistant repository."""
-        return self._data.get(HOMEASSISTANT_IMAGE)
+        return os.environ['HOMEASSISTANT_REPOSITORY']
 
     @property
     def last_homeassistant(self):
