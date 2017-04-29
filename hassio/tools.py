@@ -77,9 +77,10 @@ def get_local_ip(loop):
 def write_json_file(jsonfile, data):
     """Write a json file."""
     try:
+        json_str = json.dumps(data, indent=2)
         with open(jsonfile, 'w') as conf_file:
-            conf_file.write(json.dumps(data))
-    except OSError:
+            conf_file.write(json_str)
+    except (OSError, json.JSONDecodeError):
         return False
 
     return True
