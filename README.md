@@ -11,7 +11,6 @@ It is a docker image (supervisor) they manage HomeAssistant docker and give a in
 
 ## Feature in progress
 - Backup/Restore
-- MQTT addon
 - DHCP-Server addon
 
 # HomeAssistant
