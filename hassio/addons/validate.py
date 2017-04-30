@@ -72,6 +72,10 @@ def validate_options(raw_schema):
 def _single_validate(typ, value):
     """Validate a single element."""
     try:
+        # if required argument
+        if value is None:
+            raise vol.Invalid("A required argument is not set!")
+
         if typ == V_STR:
             return str(value)
         elif typ == V_INT:
@@ -86,7 +90,7 @@ def _single_validate(typ, value):
             return vol.Url()(value)
 
         raise vol.Invalid("Fatal error for {}.".format(value))
-    except TypeError:
+    except ValueError:
         raise vol.Invalid(
             "Type {} error for {}.".format(typ, value)) from None
 
