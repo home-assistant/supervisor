@@ -41,9 +41,6 @@ class APISupervisor(object):
     @api_process
     async def info(self, request):
         """Return host information."""
-        if request.path.endswith('addons'):
-            return self.addons.list_api
-
         return {
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.config.last_hassio,
@@ -51,6 +48,11 @@ class APISupervisor(object):
             ATTR_ADDONS: self.addons.list_api,
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
         }
+
+    @api_process
+    async def available_addons(self, request):
+        """Return information for all available addons."""
+        return self.addons.list_api
 
     @api_process
     async def options(self, request):
