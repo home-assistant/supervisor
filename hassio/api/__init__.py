@@ -48,6 +48,7 @@ class RestAPI(object):
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
+        self.webapp.router.add_get('/supervisor/addons', api_supervisor.info)
         self.webapp.router.add_post(
             '/supervisor/update', api_supervisor.update)
         self.webapp.router.add_post(
@@ -55,7 +56,6 @@ class RestAPI(object):
         self.webapp.router.add_post(
             '/supervisor/options', api_supervisor.options)
         self.webapp.router.add_get('/supervisor/logs', api_supervisor.logs)
-        self.webapp.router.add_get('/supervisor/addons', api_supervisor.addons)
 
     def register_homeassistant(self, dock_homeassistant):
         """Register homeassistant function."""
