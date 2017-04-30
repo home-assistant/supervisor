@@ -48,6 +48,8 @@ class RestAPI(object):
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
+        self.webapp.router.add_get(
+            '/supervisor/addons', api_supervisor.available_addons)
         self.webapp.router.add_post(
             '/supervisor/update', api_supervisor.update)
         self.webapp.router.add_post(

@@ -26,6 +26,8 @@ On success
 
 - GET `/supervisor/info`
 
+The addons from `addons` are only installed one.
+
 ```json
 {
     "version": "INSTALL_VERSION",
@@ -36,7 +38,7 @@ On success
             "name": "xy bla",
             "slug": "xy",
             "version": "LAST_VERSION",
-            "installed": "none|INSTALL_VERSION",
+            "installed": "INSTALL_VERSION",
             "dedicated": "bool",
             "description": "description"
         }
@@ -45,6 +47,23 @@ On success
         "REPO_URL"
     ]
 }
+```
+
+- GET `/supervisor/addons`
+
+Get all available addons
+
+```json
+[
+    {
+        "name": "xy bla",
+        "slug": "xy",
+        "version": "LAST_VERSION",
+        "installed": "none|INSTALL_VERSION",
+        "dedicated": "bool",
+        "description": "description"
+    }
+]
 ```
 
 - POST `/supervisor/update`

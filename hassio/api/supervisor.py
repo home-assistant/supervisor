@@ -46,8 +46,13 @@ class APISupervisor(object):
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
             ATTR_ADDONS: self.addons.list_api,
-            ATTR_ADDONS_REPOSITORIES: list(self.config.addons_repositories),
+            ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
         }
+
+    @api_process
+    async def available_addons(self, request):
+        """Return information for all available addons."""
+        return self.addons.list_api
 
     @api_process
     async def options(self, request):
