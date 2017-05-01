@@ -113,10 +113,10 @@ class AddonManager(AddonsData):
             _LOGGER.error("Addon %s is already installed", addon)
             return False
 
-        if not os.path.isdir(self.path_data(addon)):
+        if not self.path_data(addon).is_dir():
             _LOGGER.info("Create Home-Assistant addon data folder %s",
                          self.path_data(addon))
-            os.mkdir(self.path_data(addon))
+            self.path_data(addon).mkdir()
 
         addon_docker = DockerAddon(
             self.config, self.loop, self.dock, self, addon)
@@ -142,10 +142,10 @@ class AddonManager(AddonsData):
         if not await self.dockers[addon].remove():
             return False
 
-        if os.path.isdir(self.path_data(addon)):
+        if self.path_data(addon).is_dir():
             _LOGGER.info("Remove Home-Assistant addon data folder %s",
                          self.path_data(addon))
-            shutil.rmtree(self.path_data(addon))
+            shutil.rmtree(str(self.path_data(addon)))
 
         self.dockers.pop(addon)
         self.set_addon_uninstall(addon)
