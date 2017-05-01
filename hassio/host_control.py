@@ -2,8 +2,6 @@
 import asyncio
 import json
 import logging
-import os
-import stat
 
 import async_timeout
 
@@ -37,8 +35,7 @@ class HostControl(object):
         self.hostname = UNKNOWN
         self.os_info = UNKNOWN
 
-        mode = os.stat(SOCKET_HC)[stat.ST_MODE]
-        if stat.S_ISSOCK(mode):
+        if SOCKET_HC.is_socket():
             self.active = True
 
     async def _send_command(self, command):
