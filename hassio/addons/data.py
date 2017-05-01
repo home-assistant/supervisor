@@ -93,7 +93,7 @@ class AddonsData(Config):
 
     def _read_addons_folder(self, path, repository):
         """Read data from addons folder."""
-        for addon in path.glob("**/*.config.json"):
+        for addon in path.glob("**/config.json"):
             try:
                 addon_config = read_json_file(addon)
 
