@@ -6,24 +6,25 @@ from pathlib import Path, PurePath
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .util import get_hash_from_repository
+from .util import extract_hash_from_path
 from .validate import (
     validate_options, SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
     DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA, ATTR_IMAGE, ATTR_DETACHED,
-    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, ATTR_REPOSITORY)
+    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL,
+    ATTR_MAINTAINER)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
-SYSTEM = "system"
-USER = "user"
+SYSTEM = 'system'
+USER = 'user'
 
-REPOSITORY_CORE
-REPOSITORY_LOCAL
+REPOSITORY_CORE = 'core'
+REPOSITORY_LOCAL = 'local'
 
 
 class AddonsData(Config):
@@ -58,7 +59,7 @@ class AddonsData(Config):
 
         # read local repository
         self._read_addons_folder(
-            self.config.path_addons_local, repository=REPOSITORY_LOCA)
+            self.config.path_addons_local, repository=REPOSITORY_LOCAL)
 
         # read custom git repositories
         for repository_dir in self.config.path_addons_git.glob("/*/"):
@@ -70,20 +71,19 @@ class AddonsData(Config):
         repository_info = {ATTR_SLUG: slug}
 
         # exists repository json
-        repository_conf = Path(path, "repository.json")
+        repository_file = Path(path, "repository.json")
         try:
             repository_info.update(SCHEMA_REPOSITORY_CONFIG(
-                read_json_file(repository_conf)
+                read_json_file(repository_file)
             ))
 
         except OSError:
             _LOGGER.warning("Can't read repository information from %s",
-                            repository_conf)
+                            repository_file)
             return
 
         except vol.Invalid as ex:
-            _LOGGER.warning("Repository parse error %s -> %s",
-                            repository_conf, humanize_error(info, ex))
+            _LOGGER.warning("Repository parse error %s", repository_file)
             return
 
         # process data
@@ -128,7 +128,7 @@ class AddonsData(Config):
 
             cache = self._addons_cache[addon]
             if data[ATTR_VERSION] == cache[ATTR_VERSION]:
-                if data != current:
+                if data != cache:
                     self._system_data[addon] = copy.deepcopy(cache)
                     have_change = True
 
@@ -145,7 +145,7 @@ class AddonsData(Config):
         """Return a list of available addons for api."""
         data = []
         all_addons = {**self._system_data, **self._addons_cache}
-        detached = self.list_removed
+        detached = self.list_detached
 
         for addon, values in all_addons.items():
             i_version = self._user_data.get(addon, {}).get(ATTR_VERSION)
@@ -167,7 +167,7 @@ class AddonsData(Config):
         """Return a list of available addons for api."""
         data = []
         all_addons = {**self._system_data, **self._addons_cache}
-        detached = self.list_removed
+        detached = self.list_detached
 
         for addon, values in all_addons.items():
             i_version = self._user_data.get(addon, {}).get(ATTR_VERSION)
@@ -201,7 +201,7 @@ class AddonsData(Config):
         return addon_list
 
     @property
-    def list_removed(self):
+    def list_detached(self):
         """Return local addons they not support from repo."""
         addon_list = set()
         for addon in self._system_data.keys():
