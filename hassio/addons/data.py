@@ -334,7 +334,7 @@ class AddonsData(Config):
 
     def path_extern_data(self, addon):
         """Return addon data path external for docker."""
-        return PurePath(self.config.path_extern_addons_data, addon)
+        return str(PurePath(self.config.path_extern_addons_data, addon))
 
     def path_addon_options(self, addon):
         """Return path to addons options."""
