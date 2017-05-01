@@ -30,7 +30,7 @@ class DockerAddon(DockerBase):
     def volumes(self):
         """Generate volumes for mappings."""
         volumes = {
-            self.addons_data.path_data_docker(self.addon): {
+            self.addons_data.path_extern_data(self.addon): {
                 'bind': '/data', 'mode': 'rw'
             }}
 
@@ -48,7 +48,7 @@ class DockerAddon(DockerBase):
 
         if self.addons_data.map_addons(self.addon):
             volumes.update({
-                self.config.path_addons_custom_docker: {
+                self.config.path_extern_addons_local: {
                     'bind': '/addons', 'mode': 'rw'
                 }})
 

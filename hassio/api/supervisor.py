@@ -45,7 +45,7 @@ class APISupervisor(object):
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
-            ATTR_ADDONS: self.addons.list_api,
+            ATTR_ADDONS: self.addons.list_installed_api,
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
         }
 
@@ -53,7 +53,7 @@ class APISupervisor(object):
     async def available_addons(self, request):
         """Return information for all available addons."""
         return {
-            ATTR_ADDONS: self.addons.list_api,
+            ATTR_ADDONS: self.addons.list_all_api,
             ATTR_REPOSITORIES: self.addons.list_repositories_api,
         }
 
