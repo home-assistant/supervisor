@@ -51,7 +51,7 @@ class AddonManager(AddonsData):
                 self.config, self.loop, self.dock, self, addon)
             await self.dockers[addon].attach()
 
-    async def add_custom_repository(self, url):
+    async def add_git_repository(self, url):
         """Add a new custom repository."""
         if url in self.config.addons_repositories:
             _LOGGER.warning("Repository already exists %s", url)
@@ -67,7 +67,7 @@ class AddonManager(AddonsData):
         self.repositories.append(repo)
         return True
 
-    def drop_custom_repository(self, url):
+    def drop_git_repository(self, url):
         """Remove a custom repository."""
         for repo in self.repositories:
             if repo.url == url:
@@ -91,7 +91,7 @@ class AddonManager(AddonsData):
         self.merge_update_config()
 
         # remove stalled addons
-        for addon in self.list_removed:
+        for addon in self.list_detached:
             _LOGGER.warning("Dedicated addon '%s' found!", addon)
 
     async def auto_boot(self, start_type):

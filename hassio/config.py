@@ -1,6 +1,7 @@
 """Bootstrap HassIO."""
 import logging
 import json
+import os
 from pathlib import Path, PurePath
 
 import voluptuous as vol

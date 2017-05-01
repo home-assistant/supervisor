@@ -1,5 +1,6 @@
 """Bootstrap HassIO."""
 import logging
+import os
 import signal
 
 from colorlog import ColoredFormatter
