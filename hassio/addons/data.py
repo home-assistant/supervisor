@@ -14,7 +14,7 @@ from ..const import (
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
     DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA, ATTR_IMAGE, ATTR_DETACHED,
     MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL,
-    ATTR_MAINTAINER)
+    ATTR_MAINTAINER, ATTR_LAST_VERSION)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -55,11 +55,11 @@ class AddonsData(Config):
 
         # read core repository
         self._read_addons_folder(
-            self.config.path_addons_core, repository=REPOSITORY_CORE)
+            self.config.path_addons_core, REPOSITORY_CORE)
 
         # read local repository
         self._read_addons_folder(
-            self.config.path_addons_local, repository=REPOSITORY_LOCAL)
+            self.config.path_addons_local, REPOSITORY_LOCAL)
 
         # read custom git repositories
         for repository_dir in self.config.path_addons_git.glob("/*/"):
@@ -82,13 +82,13 @@ class AddonsData(Config):
                             repository_file)
             return
 
-        except vol.Invalid as ex:
+        except vol.Invalid:
             _LOGGER.warning("Repository parse error %s", repository_file)
             return
 
         # process data
         self._repositories_data[slug] = repository_info
-        self._read_addons_folder(path, repository_slug=slug)
+        self._read_addons_folder(path, slug)
 
     def _read_addons_folder(self, path, repository):
         """Read data from addons folder."""
