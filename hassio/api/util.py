@@ -30,7 +30,7 @@ def api_process(method):
         except RuntimeError as err:
             return api_return_error(message=str(err))
 
-        if isinstance(answer, (dict, list)):
+        if isinstance(answer, dict):
             return api_return_ok(data=answer)
         elif answer:
             return api_return_ok()

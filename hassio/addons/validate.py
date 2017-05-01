@@ -5,7 +5,7 @@ from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_STARTUP,
     ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER,
     STARTUP_BEFORE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE, MAP_SSL,
-    MAP_CONFIG, MAP_ADDONS, MAP_BACKUP)
+    MAP_CONFIG, MAP_ADDONS, MAP_BACKUP, ATTR_URL, ATTR_MAINTAINER)
 
 V_STR = 'str'
 V_INT = 'int'
@@ -37,6 +37,14 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         ])
     },
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
+}, extra=vol.ALLOW_EXTRA)
+
+
+# pylint: disable=no-value-for-parameter
+SCHEMA_REPOSITORY_CONFIG = vol.Schema({
+    vol.Required(ATTR_NAME): vol.Coerce(str),
+    vol.Optional(ATTR_URL): vol.Url(),
+    vol.Optional(ATTR_MAINTAINER): vol.Coerce(str),
 }, extra=vol.ALLOW_EXTRA)
 
 

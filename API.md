@@ -37,9 +37,8 @@ The addons from `addons` are only installed one.
         {
             "name": "xy bla",
             "slug": "xy",
-            "version": "LAST_VERSION",
-            "installed": "INSTALL_VERSION",
-            "dedicated": "bool",
+            "version": "INSTALL_VERSION",
+            "detached": "bool",
             "description": "description"
         }
     ],
@@ -54,16 +53,27 @@ The addons from `addons` are only installed one.
 Get all available addons
 
 ```json
-[
-    {
-        "name": "xy bla",
-        "slug": "xy",
-        "version": "LAST_VERSION",
-        "installed": "none|INSTALL_VERSION",
-        "dedicated": "bool",
-        "description": "description"
-    }
-]
+{
+    "addons": [
+        {
+            "name": "xy bla",
+            "slug": "xy",
+            "repository": "12345678|null",
+            "version": "LAST_VERSION",
+            "installed": "none|INSTALL_VERSION",
+            "detached": "bool",
+            "description": "description"
+        }
+    ],
+    "repositories": [
+        {
+            "slug": "12345678",
+            "name": "Repitory Name",
+            "url": "WEBSITE",
+            "maintainer": "BLA BLU <fla@dld.ch>"
+        }
+    ]
+}
 ```
 
 - POST `/supervisor/update`

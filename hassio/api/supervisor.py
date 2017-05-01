@@ -52,7 +52,10 @@ class APISupervisor(object):
     @api_process
     async def available_addons(self, request):
         """Return information for all available addons."""
-        return self.addons.list_api
+        return {
+            ATTR_ADDONS: self.addons.list_api,
+            ATTR_REPOSITORIES: self.addons.list_repositories_api,
+        }
 
     @api_process
     async def options(self, request):
