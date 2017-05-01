@@ -45,9 +45,9 @@ class DockerHomeAssistant(DockerBase):
                     'HASSIO': self.config.api_endpoint,
                 },
                 volumes={
-                    self.config.path_config_docker:
+                    self.config.path_extern_config:
                         {'bind': '/config', 'mode': 'rw'},
-                    self.config.path_ssl_docker:
+                    self.config.path_extern_ssl:
                         {'bind': '/ssl', 'mode': 'rw'},
                 })
 

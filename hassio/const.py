@@ -1,4 +1,6 @@
 """Const file for HassIO."""
+from pathlib import Path
+
 HASSIO_VERSION = '0.19'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
@@ -10,7 +12,7 @@ URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
 
 DOCKER_REPO = "homeassistant"
 
-HASSIO_SHARE = "/data"
+HASSIO_SHARE = Path("/data")
 
 RUN_UPDATE_INFO_TASKS = 28800
 RUN_UPDATE_SUPERVISOR_TASKS = 29100
@@ -18,11 +20,11 @@ RUN_RELOAD_ADDONS_TASKS = 28800
 
 RESTART_EXIT_CODE = 100
 
-FILE_HASSIO_ADDONS = "{}/addons.json".format(HASSIO_SHARE)
-FILE_HASSIO_CONFIG = "{}/config.json".format(HASSIO_SHARE)
+FILE_HASSIO_ADDONS = Path(HASSIO_SHARE, "addons.json")
+FILE_HASSIO_CONFIG = Path(HASSIO_SHARE, "config.json")
 
-SOCKET_DOCKER = "/var/run/docker.sock"
-SOCKET_HC = "/var/run/hassio-hc.sock"
+SOCKET_DOCKER = Path("/var/run/docker.sock")
+SOCKET_HC = Path("/var/run/hassio-hc.sock")
 
 JSON_RESULT = 'result'
 JSON_DATA = 'data'
@@ -48,11 +50,15 @@ ATTR_PORTS = 'ports'
 ATTR_MAP = 'map'
 ATTR_OPTIONS = 'options'
 ATTR_INSTALLED = 'installed'
-ATTR_DEDICATED = 'dedicated'
+ATTR_DETACHED = 'detached'
 ATTR_STATE = 'state'
 ATTR_SCHEMA = 'schema'
 ATTR_IMAGE = 'image'
 ATTR_ADDONS_REPOSITORIES = 'addons_repositories'
+ATTR_REPOSITORY = 'repository'
+ATTR_REPOSITORIES = 'repositories'
+ATTR_URL = 'url'
+ATTR_MAINTAINER = 'maintainer'
 
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'

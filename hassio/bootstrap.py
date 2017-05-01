@@ -1,7 +1,6 @@
 """Bootstrap HassIO."""
 import logging
 import os
-import stat
 import signal
 
 from colorlog import ColoredFormatter
@@ -17,26 +16,37 @@ def initialize_system_data(websession):
     config = CoreConfig(websession)
 
     # homeassistant config folder
-    if not os.path.isdir(config.path_config):
+    if not config.path_config.is_dir():
         _LOGGER.info(
             "Create Home-Assistant config folder %s", config.path_config)
-        os.mkdir(config.path_config)
+        config.path_config.mkdir()
 
     # homeassistant ssl folder
-    if not os.path.isdir(config.path_ssl):
+    if not config.path_ssl.is_dir():
         _LOGGER.info("Create Home-Assistant ssl folder %s", config.path_ssl)
-        os.mkdir(config.path_ssl)
+        config.path_ssl.mkdir()
 
     # homeassistant addon data folder
-    if not os.path.isdir(config.path_addons_data):
+    if not config.path_addons_data.is_dir():
         _LOGGER.info("Create Home-Assistant addon data folder %s",
                      config.path_addons_data)
-        os.mkdir(config.path_addons_data)
+        config.path_addons_data.mkdir(parents=True)
 
-    if not os.path.isdir(config.path_addons_custom):
-        _LOGGER.info("Create Home-Assistant addon custom folder %s",
-                     config.path_addons_custom)
-        os.mkdir(config.path_addons_custom)
+    if not config.path_addons_local.is_dir():
+        _LOGGER.info("Create Home-Assistant addon local repository folder %s",
+                     config.path_addons_local)
+        config.path_addons_local.mkdir(parents=True)
+
+    if not config.path_addons_git.is_dir():
+        _LOGGER.info("Create Home-Assistant addon git repositories folder %s",
+                     config.path_addons_git)
+        config.path_addons_git.mkdir(parents=True)
+
+    # homeassistant backup folder
+    if not config.path_backup.is_dir():
+        _LOGGER.info("Create Home-Assistant backup folder %s",
+                     config.path_backup)
+        config.path_backup.mkdir()
 
     return config
 
@@ -76,8 +86,7 @@ def check_environment():
             _LOGGER.fatal("Can't find %s in env!", key)
             return False
 
-    mode = os.stat(SOCKET_DOCKER)[stat.ST_MODE]
-    if not stat.S_ISSOCK(mode):
+    if not SOCKET_DOCKER.is_socket():
         _LOGGER.fatal("Can't find docker socket!")
         return False
 

@@ -7,7 +7,7 @@ import voluptuous as vol
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
-    HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES)
+    HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,14 +45,17 @@ class APISupervisor(object):
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
-            ATTR_ADDONS: self.addons.list_api,
+            ATTR_ADDONS: self.addons.list_installed_api,
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
         }
 
     @api_process
     async def available_addons(self, request):
         """Return information for all available addons."""
-        return self.addons.list_api
+        return {
+            ATTR_ADDONS: self.addons.list_all_api,
+            ATTR_REPOSITORIES: self.addons.list_repositories_api,
+        }
 
     @api_process
     async def options(self, request):
@@ -67,12 +70,15 @@ class APISupervisor(object):
             old = set(self.config.addons_repositories)
 
             # add new repositories
-            for url in set(new - old):
-                await self.addons.add_custom_repository(url)
+            tasks = [self.addons.add_git_repository(url) for url in
+                     set(new - old)]
+            if tasks:
+                await asyncio.shield(
+                    asyncio.wait(tasks, loop=self.loop), loop=self.loop)
 
             # remove old repositories
             for url in set(old - new):
-                self.addons.drop_custom_repository(url)
+                self.addons.drop_git_repository(url)
 
         return True
 

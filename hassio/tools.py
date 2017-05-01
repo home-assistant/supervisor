@@ -78,7 +78,7 @@ def write_json_file(jsonfile, data):
     """Write a json file."""
     try:
         json_str = json.dumps(data, indent=2)
-        with open(jsonfile, 'w') as conf_file:
+        with jsonfile.open('w') as conf_file:
             conf_file.write(json_str)
     except (OSError, json.JSONDecodeError):
         return False
@@ -88,5 +88,5 @@ def write_json_file(jsonfile, data):
 
 def read_json_file(jsonfile):
     """Read a json file and return a dict."""
-    with open(jsonfile, 'r') as cfile:
+    with jsonfile.open('r') as cfile:
         return json.loads(cfile.read())
