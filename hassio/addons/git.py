@@ -1,7 +1,7 @@
 """Init file for HassIO addons git."""
 import asyncio
 import logging
-import os
+from pathlib import Path
 import shutil
 
 import git
@@ -26,14 +26,14 @@ class AddonsRepo(object):
 
     async def load(self):
         """Init git addon repo."""
-        if not os.path.isdir(self.path):
+        if not self.path.is_dir():
             return await self.clone()
 
         async with self._lock:
             try:
                 _LOGGER.info("Load addon %s repository", self.path)
                 self.repo = await self.loop.run_in_executor(
-                    None, git.Repo, self.path)
+                    None, git.Repo, str(self.path))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:
                 _LOGGER.error("Can't load %s repo: %s.", self.path, err)
@@ -47,7 +47,7 @@ class AddonsRepo(object):
             try:
                 _LOGGER.info("Clone addon %s repository", self.url)
                 self.repo = await self.loop.run_in_executor(
-                    None, git.Repo.clone_from, self.url, self.path)
+                    None, git.Repo.clone_from, self.url, str(self.path))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:
                 _LOGGER.error("Can't clone %s repo: %s.", self.url, err)
@@ -88,18 +88,17 @@ class AddonsRepoCustom(AddonsRepo):
 
     def __init__(self, config, loop, url):
         """Initialize git hassio addon repository."""
-        path = os.path.join(
-            config.path_addons_custom, get_hash_from_repository(url))
+        path = Path(config.path_addons_git, get_hash_from_repository(url))
 
         super().__init__(config, loop, path, url)
 
     def remove(self):
         """Remove a custom addon."""
-        if os.path.isdir(self.path):
+        if self.path.is_dir():
             _LOGGER.info("Remove custom addon repository %s", self.url)
 
             def log_err(funct, path, _):
                 """Log error."""
                 _LOGGER.warning("Can't remove %s", path)
 
-            shutil.rmtree(self.path, onerror=log_err)
+            shutil.rmtree(str(self.path), onerror=log_err)

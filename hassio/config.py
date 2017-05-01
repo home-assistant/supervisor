@@ -1,7 +1,7 @@
 """Bootstrap HassIO."""
 import logging
 import json
-import os
+from pathlib import Path, PurePath
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -12,19 +12,20 @@ from .tools import (
 
 _LOGGER = logging.getLogger(__name__)
 
-HOMEASSISTANT_CONFIG = "{}/homeassistant"
+HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 HOMEASSISTANT_LAST = 'homeassistant_last'
 
-HASSIO_SSL = "{}/ssl"
+HASSIO_SSL = PurePath("ssl")
 HASSIO_LAST = 'hassio_last'
 HASSIO_CLEANUP = 'hassio_cleanup'
 
-ADDONS_REPO = "{}/addons"
-ADDONS_DATA = "{}/addons_data"
-ADDONS_CUSTOM = "{}/addons_custom"
+ADDONS_CORE = PurePath("addons/core")
+ADDONS_LOCAL = PurePath("addons/local")
+ADDONS_GIT = PurePath("addons/git")
+ADDONS_DATA = PurePath("addons/data")
 ADDONS_CUSTOM_LIST = 'addons_custom_list'
 
-BACKUP_DATA = "{}/backup"
+BACKUP_DATA = PurePath("backup")
 
 UPSTREAM_BETA = 'upstream_beta'
 
@@ -47,21 +48,21 @@ class Config(object):
 
     def __init__(self, config_file):
         """Initialize config object."""
-        self._filename = config_file
+        self._file = config_file
         self._data = {}
 
         # init or load data
-        if os.path.isfile(self._filename):
+        if self._file.is_file():
             try:
-                self._data = read_json_file(self._filename)
+                self._data = read_json_file(self._file)
             except (OSError, json.JSONDecodeError):
-                _LOGGER.warning("Can't read %s", self._filename)
+                _LOGGER.warning("Can't read %s", self._file)
                 self._data = {}
 
     def save(self):
         """Store data to config file."""
-        if not write_json_file(self._filename, self._data):
-            _LOGGER.error("Can't store config in %s", self._filename)
+        if not write_json_file(self._file, self._data):
+            _LOGGER.error("Can't store config in %s", self._file)
             return False
         return True
 
@@ -148,64 +149,69 @@ class CoreConfig(Config):
         return self._data.get(HASSIO_LAST)
 
     @property
-    def path_hassio_docker(self):
+    def path_extern_hassio(self):
         """Return hassio data path extern for docker."""
-        return os.environ['SUPERVISOR_SHARE']
+        return PurePath(os.environ['SUPERVISOR_SHARE'])
 
     @property
-    def path_config_docker(self):
+    def path_extern_config(self):
         """Return config path extern for docker."""
-        return HOMEASSISTANT_CONFIG.format(self.path_hassio_docker)
+        return str(PurePath(self.path_extern_hassio, HOMEASSISTANT_CONFIG))
 
     @property
     def path_config(self):
         """Return config path inside supervisor."""
-        return HOMEASSISTANT_CONFIG.format(HASSIO_SHARE)
+        return Path(HASSIO_SHARE, HOMEASSISTANT_CONFIG)
 
     @property
-    def path_ssl_docker(self):
+    def path_extern_ssl(self):
         """Return SSL path extern for docker."""
-        return HASSIO_SSL.format(self.path_hassio_docker)
+        return str(PurePath(self.path_extern_hassio, HASSIO_SSL))
 
     @property
     def path_ssl(self):
         """Return SSL path inside supervisor."""
-        return HASSIO_SSL.format(HASSIO_SHARE)
+        return Path(HASSIO_SHARE, HASSIO_SSL)
 
     @property
-    def path_addons_repo(self):
-        """Return git repo path for addons."""
-        return ADDONS_REPO.format(HASSIO_SHARE)
+    def path_addons_core(self):
+        """Return git path for core addons."""
+        return Path(HASSIO_SHARE, ADDONS_CORE)
 
     @property
-    def path_addons_custom(self):
+    def path_addons_git(self):
+        """Return path for git addons."""
+        return Path(HASSIO_SHARE, ADDONS_GIT)
+
+    @property
+    def path_addons_local(self):
         """Return path for customs addons."""
-        return ADDONS_CUSTOM.format(HASSIO_SHARE)
+        return Path(HASSIO_SHARE, ADDONS_LOCAL)
 
     @property
-    def path_addons_custom_docker(self):
+    def path_extern_addons_local(self):
         """Return path for customs addons."""
-        return ADDONS_CUSTOM.format(self.path_hassio_docker)
+        return str(PurePath(self.path_extern_hassio, ADDONS_LOCAL))
 
     @property
     def path_addons_data(self):
         """Return root addon data folder."""
-        return ADDONS_DATA.format(HASSIO_SHARE)
+        return Path(HASSIO_SHARE, ADDONS_DATA)
 
     @property
-    def path_addons_data_docker(self):
+    def path_extern_addons_data(self):
         """Return root addon data folder extern for docker."""
-        return ADDONS_DATA.format(self.path_hassio_docker)
+        return str(PurePath(self.path_extern_hassio, ADDONS_DATA))
 
     @property
     def path_backup(self):
         """Return root backup data folder."""
-        return BACKUP_DATA.format(HASSIO_SHARE)
+        return Path(HASSIO_SHARE, BACKUP_DATA)
 
     @property
-    def path_backup_docker(self):
+    def path_extern_backup(self):
         """Return root backup data folder extern for docker."""
-        return BACKUP_DATA.format(self.path_hassio_docker)
+        return str(PurePath(self.path_extern_hassio, BACKUP_DATA))
 
     @property
     def addons_repositories(self):

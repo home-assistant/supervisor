@@ -1,7 +1,6 @@
 """Init file for HassIO addons."""
 import copy
 import logging
-import glob
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -22,6 +21,9 @@ _LOGGER = logging.getLogger(__name__)
 ADDONS_REPO_PATTERN = "{}/**/config.json"
 SYSTEM = "system"
 USER = "user"
+
+REPOSITORY_CORE
+REPOSITORY_LOCAL
 
 
 class AddonsData(Config):
@@ -51,7 +53,8 @@ class AddonsData(Config):
         self._repositories_data = {}
 
         # read core repository
-        self._read_addons_folder(self.config.path_addons_repo)
+        self._read_addons_folder(
+            self.config.path_addons_core, repository=REPOSITORY_CORE)
 
         # read custom repositories
         pattern = "{}/*/".format(self.config.path_addons_custom)
@@ -89,25 +92,21 @@ class AddonsData(Config):
         self._repositories_data[slug] = repository_info
         self._read_addons_folder(folder, repository_slug=slug)
 
-    def _read_addons_folder(self, folder, repository_slug=None):
+    def _read_addons_folder(self, path, repository):
         """Read data from addons folder."""
-        pattern = ADDONS_REPO_PATTERN.format(folder)
-
-        for addon in glob.iglob(pattern, recursive=True):
+        for addon in path.glob("**/*.config.json"):
             try:
                 addon_config = read_json_file(addon)
+
+                # validate
                 addon_config = SCHEMA_ADDON_CONFIG(addon_config)
 
-                # custom repositories
-                if repository_slug:
-                    addon_slug = "{}_{}".format(
-                        repository_slug,
-                        addon_config[ATTR_SLUG])
-                # core repository
-                else:
-                    addon_slug = addon_config[ATTR_SLUG]
+                # Generate slug
+                addon_slug = "{}_{}".format(
+                    repository, addon_config[ATTR_SLUG])
 
-                addon_config[ATTR_REPOSITORY] = repository_slug
+                # store
+                addon_config[ATTR_REPOSITORY] = repository
                 self._current_data[addon_slug] = addon_config
 
             except OSError:
@@ -285,7 +284,8 @@ class AddonsData(Config):
         addon_data = self._system_data.get(addon, self._current_data[addon])
 
         if ATTR_IMAGE not in addon_data:
-            return "{}/{}-addon-{}".format(DOCKER_REPO, self.arch, addon)
+            return "{}/{}-addon-{}".format(
+                DOCKER_REPO, self.arch, addon_data[ATTR_SLUG])
 
         return addon_data[ATTR_IMAGE].format(arch=self.arch)
 
@@ -311,7 +311,7 @@ class AddonsData(Config):
 
     def path_data_docker(self, addon):
         """Return addon data path external for docker."""
-        return "{}/{}".format(self.config.path_addons_data_docker, addon)
+        return "{}/{}".format(self.config.path_extern_addons_data, addon)
 
     def path_addon_options(self, addon):
         """Return path to addons options."""

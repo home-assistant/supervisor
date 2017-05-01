@@ -36,13 +36,13 @@ class DockerAddon(DockerBase):
 
         if self.addons_data.map_config(self.addon):
             volumes.update({
-                self.config.path_config_docker: {
+                self.config.path_extern_config: {
                     'bind': '/config', 'mode': 'rw'
                 }})
 
         if self.addons_data.map_ssl(self.addon):
             volumes.update({
-                self.config.path_ssl_docker: {
+                self.config.path_extern_ssl: {
                     'bind': '/ssl', 'mode': 'rw'
                 }})
 
@@ -54,7 +54,7 @@ class DockerAddon(DockerBase):
 
         if self.addons_data.map_backup(self.addon):
             volumes.update({
-                self.config.path_backup_docker: {
+                self.config.path_extern_backup: {
                     'bind': '/backup', 'mode': 'rw'
                 }})
 
