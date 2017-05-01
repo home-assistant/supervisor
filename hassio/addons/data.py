@@ -302,7 +302,8 @@ class AddonsData(Config):
 
     def get_image(self, addon):
         """Return image name of addon."""
-        addon_data = self._system_data.get(addon, self._addons_cache[addon])
+        addon_data = self._system_data.get(
+            addon, self._addons_cache.get(addon))
 
         if ATTR_IMAGE not in addon_data:
             return "{}/{}-addon-{}".format(
