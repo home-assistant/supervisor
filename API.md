@@ -38,6 +38,7 @@ The addons from `addons` are only installed one.
             "name": "xy bla",
             "slug": "xy",
             "version": "INSTALL_VERSION",
+            "last_version": "VERSION_FOR_UPDATE",
             "detached": "bool",
             "description": "description"
         }
