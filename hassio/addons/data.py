@@ -62,7 +62,7 @@ class AddonsData(Config):
             self.config.path_addons_local, REPOSITORY_LOCAL)
 
         # read custom git repositories
-        for repository_dir in self.config.path_addons_git.glob("/*/"):
+        for repository_dir in self.config.path_addons_git.glob("*/"):
             self._read_git_repository(repository_dir)
 
     def _read_git_repository(self, path):
