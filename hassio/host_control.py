@@ -47,7 +47,7 @@ class HostControl(object):
             return
 
         reader, writer = await asyncio.open_unix_connection(
-            SOCKET_HC, loop=self.loop)
+            str(SOCKET_HC), loop=self.loop)
 
         try:
             # send
