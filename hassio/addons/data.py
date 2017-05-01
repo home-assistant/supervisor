@@ -62,8 +62,9 @@ class AddonsData(Config):
             self.config.path_addons_local, REPOSITORY_LOCAL)
 
         # read custom git repositories
-        for repository_dir in self.config.path_addons_git.glob("*/"):
-            self._read_git_repository(repository_dir)
+        for repository_element in self.config.path_addons_git.iterdir():
+            if repository_element.is_dir():
+                self._read_git_repository(repository_element)
 
     def _read_git_repository(self, path):
         """Process a custom repository folder."""
