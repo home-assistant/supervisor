@@ -80,7 +80,7 @@ class AddonsRepoHassIO(AddonsRepo):
     def __init__(self, config, loop):
         """Initialize git hassio addon repository."""
         super().__init__(
-            config, loop, config.path_addons_repo, URL_HASSIO_ADDONS)
+            config, loop, config.path_addons_core, URL_HASSIO_ADDONS)
 
 
 class AddonsRepoCustom(AddonsRepo):
