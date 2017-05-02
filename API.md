@@ -60,7 +60,7 @@ Get all available addons
         {
             "name": "xy bla",
             "slug": "xy",
-            "repository": "12345678|null",
+            "repository": "core|local|REP_ID",
             "version": "LAST_VERSION",
             "installed": "none|INSTALL_VERSION",
             "detached": "bool",
@@ -71,7 +71,7 @@ Get all available addons
         {
             "slug": "12345678",
             "name": "Repitory Name",
-            "source": "null|URL_OF_REPOSITORY",
+            "source": "URL_OF_REPOSITORY",
             "url": "null|WEBSITE",
             "maintainer": "null|BLA BLU <fla@dld.ch>"
         }
