@@ -93,7 +93,7 @@ class APISupervisor(object):
         """Return information for all available addons."""
         return {
             ATTR_ADDONS: self._addons_list(only_installed=False),
-            ATTR_REPOSITORIES: self.addons.list_repositories_api,
+            ATTR_REPOSITORIES: self._repositories_list(),
         }
 
     @api_process
