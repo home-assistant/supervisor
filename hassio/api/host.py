@@ -31,7 +31,7 @@ class APIHost(object):
         return {
             ATTR_TYPE: self.host_control.type,
             ATTR_VERSION: self.host_control.version,
-            ATTR_LAST_VERSION: self.host_control.last,
+            ATTR_LAST_VERSION: self.host_control.last_version,
             ATTR_FEATURES: self.host_control.features,
             ATTR_HOSTNAME: self.host_control.hostname,
             ATTR_OS: self.host_control.os_info,
@@ -51,7 +51,7 @@ class APIHost(object):
     async def update(self, request):
         """Update host OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.host_control.last)
+        version = body.get(ATTR_VERSION, self.host_control.last_version)
 
         if version == self.host_control.version:
             raise RuntimeError("Version is already in use")

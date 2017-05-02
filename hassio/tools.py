@@ -16,7 +16,7 @@ _RE_VERSION = re.compile(r"VERSION=(.*)")
 _IMAGE_ARCH = re.compile(r".*/([a-z0-9]*)-hassio-supervisor")
 
 
-async def fetch_current_versions(websession, beta=False):
+async def fetch_last_versions(websession, beta=False):
     """Fetch current versions from github.
 
     Is a coroutine.

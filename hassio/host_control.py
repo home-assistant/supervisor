@@ -29,7 +29,7 @@ class HostControl(object):
         self.loop = loop
         self.active = False
         self.version = UNKNOWN
-        self.last = UNKNOWN
+        self.last_version = UNKNOWN
         self.type = UNKNOWN
         self.features = []
         self.hostname = UNKNOWN
@@ -89,7 +89,7 @@ class HostControl(object):
             return
 
         self.version = info.get(ATTR_VERSION, UNKNOWN)
-        self.last = info.get(ATTR_LAST_VERSION, UNKNOWN)
+        self.last_version = info.get(ATTR_LAST_VERSION, UNKNOWN)
         self.type = info.get(ATTR_TYPE, UNKNOWN)
         self.features = info.get(ATTR_FEATURES, [])
         self.hostname = info.get(ATTR_HOSTNAME, UNKNOWN)
