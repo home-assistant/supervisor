@@ -1,7 +1,6 @@
 """Init file for HassIO addons."""
 import asyncio
 import logging
-import os
 import shutil
 
 from .data import AddonsData
