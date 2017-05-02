@@ -58,11 +58,11 @@ class APISupervisor(object):
 
     def _repositories_list(self):
         """Return a list of addons repositories."""
-        repositories = []
+        data = []
         list_id = create_hash_index_list(self.config.addons_repositories)
 
         for repository in self.addons.list_repositories:
-            repository.append({
+            data.append({
                 ATTR_SLUG: repository[ATTR_SLUG],
                 ATTR_NAME: repository[ATTR_NAME],
                 ATTR_SOURCE: list_id.get(repository[ATTR_SLUG]),
@@ -70,7 +70,7 @@ class APISupervisor(object):
                 ATTR_MAINTAINER: repository.get(ATTR_MAINTAINER),
             })
 
-        return repositories
+        return data
 
     @api_process
     async def ping(self, request):
