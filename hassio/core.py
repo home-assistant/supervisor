@@ -57,15 +57,10 @@ class HassIO(object):
 
         # hostcontrol
         await self.host_control.load()
-        _LOGGER.info(
-            "Connected to HostControl. Type: %s Version: %s Hostname: %s "
-            "Features: %s", self.host_control.type,
-            self.host_control.version, self.host_control.hostname,
-            self.host_control.features)
 
         # schedule update info tasks
         self.scheduler.register_task(
-            self.host_control.load(), RUN_UPDATE_INFO_TASKS)
+            self.host_control.load, RUN_UPDATE_INFO_TASKS)
 
         # rest api views
         self.api.register_host(self.host_control)
