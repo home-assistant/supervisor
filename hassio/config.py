@@ -9,7 +9,7 @@ from voluptuous.humanize import humanize_error
 
 from .const import FILE_HASSIO_CONFIG, HASSIO_SHARE
 from .tools import (
-    fetch_current_versions, write_json_file, read_json_file)
+    fetch_last_versions, write_json_file, read_json_file)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ class CoreConfig(Config):
 
     async def fetch_update_infos(self):
         """Read current versions from web."""
-        last = await fetch_current_versions(
+        last = await fetch_last_versions(
             self.websession, beta=self.upstream_beta)
 
         if last:

@@ -5,9 +5,12 @@ import logging
 import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
+from ..addons.util import create_hash_index_list
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
-    HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES)
+    HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
+    ATTR_REPOSITORY, ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED,
+    ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +36,42 @@ class APISupervisor(object):
         self.addons = addons
         self.host_control = host_control
 
+    def _addons_list(self, only_installed):
+        """Return a list of addons."""
+        data = []
+        detached = self.addons.list_detached
+
+        for addon, values in self.addons.list_all.items():
+            i_version = self.addons.version_installed(addon)
+
+            data.append({
+                ATTR_NAME: values[ATTR_NAME],
+                ATTR_SLUG: addon,
+                ATTR_DESCRIPTON: values[ATTR_DESCRIPTON],
+                ATTR_VERSION: values[ATTR_VERSION],
+                ATTR_INSTALLED: i_version,
+                ATTR_DETACHED: addon in detached,
+                ATTR_REPOSITORY: values[ATTR_REPOSITORY],
+            })
+
+        return data
+
+    def _repositories_list(self):
+        """Return a list of addons repositories."""
+        data = []
+        list_id = create_hash_index_list(self.config.addons_repositories)
+
+        for repository in self.addons.list_repositories:
+            data.append({
+                ATTR_SLUG: repository[ATTR_SLUG],
+                ATTR_NAME: repository[ATTR_NAME],
+                ATTR_SOURCE: list_id.get(repository[ATTR_SLUG]),
+                ATTR_URL: repository.get(ATTR_URL),
+                ATTR_MAINTAINER: repository.get(ATTR_MAINTAINER),
+            })
+
+        return data
+
     @api_process
     async def ping(self, request):
         """Return ok for signal that the api is ready."""
@@ -45,7 +84,7 @@ class APISupervisor(object):
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
-            ATTR_ADDONS: self.addons.list_installed_api,
+            ATTR_ADDONS: self._addons_list(only_installed=True),
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
         }
 
@@ -53,8 +92,8 @@ class APISupervisor(object):
     async def available_addons(self, request):
         """Return information for all available addons."""
         return {
-            ATTR_ADDONS: self.addons.list_all_api,
-            ATTR_REPOSITORIES: self.addons.list_repositories_api,
+            ATTR_ADDONS: self._addons_list(only_installed=False),
+            ATTR_REPOSITORIES: self._repositories_list(),
         }
 
     @api_process
@@ -79,6 +118,9 @@ class APISupervisor(object):
             # remove old repositories
             for url in set(old - new):
                 self.addons.drop_git_repository(url)
+
+            # read repository
+            self.addons.read_data_from_repositories()
 
         return True
 

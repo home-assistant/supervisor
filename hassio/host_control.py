@@ -29,7 +29,7 @@ class HostControl(object):
         self.loop = loop
         self.active = False
         self.version = UNKNOWN
-        self.last = UNKNOWN
+        self.last_version = UNKNOWN
         self.type = UNKNOWN
         self.features = []
         self.hostname = UNKNOWN
@@ -57,8 +57,8 @@ class HostControl(object):
                 writer.write("{}\n".format(command).encode())
                 data = await reader.readline()
 
-            response = data.decode()
-            _LOGGER.debug("Receive from HostControl: %s.", response)
+            response = data.decode().rstrip()
+            _LOGGER.info("Receive from HostControl: %s.", response)
 
             if response == "OK":
                 return True
@@ -70,7 +70,8 @@ class HostControl(object):
                 try:
                     return json.loads(response)
                 except json.JSONDecodeError:
-                    _LOGGER.warning("Json parse error from HostControl.")
+                    _LOGGER.warning("Json parse error from HostControl '%s'.",
+                                    response)
 
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout from HostControl!")
@@ -88,7 +89,7 @@ class HostControl(object):
             return
 
         self.version = info.get(ATTR_VERSION, UNKNOWN)
-        self.last = info.get(ATTR_LAST_VERSION, UNKNOWN)
+        self.last_version = info.get(ATTR_LAST_VERSION, UNKNOWN)
         self.type = info.get(ATTR_TYPE, UNKNOWN)
         self.features = info.get(ATTR_FEATURES, [])
         self.hostname = info.get(ATTR_HOSTNAME, UNKNOWN)
