@@ -177,7 +177,7 @@ class AddonsData(Config):
     @property
     def list_repositories(self):
         """Return list of addon repositories."""
-        return list(self._repositories_data.keys())
+        return list(self._repositories_data.values())
 
     def exists_addon(self, addon):
         """Return True if a addon exists."""
