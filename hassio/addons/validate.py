@@ -5,7 +5,7 @@ from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_STARTUP,
     ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER,
     STARTUP_BEFORE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE, MAP_SSL,
-    MAP_CONFIG, MAP_ADDONS, MAP_BACKUP)
+    MAP_CONFIG, MAP_ADDONS, MAP_BACKUP, ATTR_URL, ATTR_MAINTAINER)
 
 V_STR = 'str'
 V_INT = 'int'
@@ -37,6 +37,14 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         ])
     },
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
+}, extra=vol.ALLOW_EXTRA)
+
+
+# pylint: disable=no-value-for-parameter
+SCHEMA_REPOSITORY_CONFIG = vol.Schema({
+    vol.Required(ATTR_NAME): vol.Coerce(str),
+    vol.Optional(ATTR_URL): vol.Url(),
+    vol.Optional(ATTR_MAINTAINER): vol.Coerce(str),
 }, extra=vol.ALLOW_EXTRA)
 
 
@@ -72,6 +80,10 @@ def validate_options(raw_schema):
 def _single_validate(typ, value):
     """Validate a single element."""
     try:
+        # if required argument
+        if value is None:
+            raise vol.Invalid("A required argument is not set!")
+
         if typ == V_STR:
             return str(value)
         elif typ == V_INT:
@@ -86,7 +98,7 @@ def _single_validate(typ, value):
             return vol.Url()(value)
 
         raise vol.Invalid("Fatal error for {}.".format(value))
-    except TypeError:
+    except ValueError:
         raise vol.Invalid(
             "Type {} error for {}.".format(typ, value)) from None
 

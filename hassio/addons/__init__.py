@@ -1,7 +1,6 @@
 """Init file for HassIO addons."""
 import asyncio
 import logging
-import os
 import shutil
 
 from .data import AddonsData
@@ -51,7 +50,7 @@ class AddonManager(AddonsData):
                 self.config, self.loop, self.dock, self, addon)
             await self.dockers[addon].attach()
 
-    async def add_custom_repository(self, url):
+    async def add_git_repository(self, url):
         """Add a new custom repository."""
         if url in self.config.addons_repositories:
             _LOGGER.warning("Repository already exists %s", url)
@@ -67,7 +66,7 @@ class AddonManager(AddonsData):
         self.repositories.append(repo)
         return True
 
-    def drop_custom_repository(self, url):
+    def drop_git_repository(self, url):
         """Remove a custom repository."""
         for repo in self.repositories:
             if repo.url == url:
@@ -91,7 +90,7 @@ class AddonManager(AddonsData):
         self.merge_update_config()
 
         # remove stalled addons
-        for addon in self.list_removed:
+        for addon in self.list_detached:
             _LOGGER.warning("Dedicated addon '%s' found!", addon)
 
     async def auto_boot(self, start_type):
@@ -113,10 +112,10 @@ class AddonManager(AddonsData):
             _LOGGER.error("Addon %s is already installed", addon)
             return False
 
-        if not os.path.isdir(self.path_data(addon)):
+        if not self.path_data(addon).is_dir():
             _LOGGER.info("Create Home-Assistant addon data folder %s",
                          self.path_data(addon))
-            os.mkdir(self.path_data(addon))
+            self.path_data(addon).mkdir()
 
         addon_docker = DockerAddon(
             self.config, self.loop, self.dock, self, addon)
@@ -142,10 +141,10 @@ class AddonManager(AddonsData):
         if not await self.dockers[addon].remove():
             return False
 
-        if os.path.isdir(self.path_data(addon)):
+        if self.path_data(addon).is_dir():
             _LOGGER.info("Remove Home-Assistant addon data folder %s",
                          self.path_data(addon))
-            shutil.rmtree(self.path_data(addon))
+            shutil.rmtree(str(self.path_data(addon)))
 
         self.dockers.pop(addon)
         self.set_addon_uninstall(addon)

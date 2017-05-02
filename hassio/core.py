@@ -32,7 +32,7 @@ class HassIO(object):
         self.scheduler = Scheduler(self.loop)
         self.api = RestAPI(self.config, self.loop)
         self.dock = docker.DockerClient(
-            base_url="unix:/{}".format(SOCKET_DOCKER), version='auto')
+            base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
 
         # init basic docker container
         self.supervisor = DockerSupervisor(

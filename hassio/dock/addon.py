@@ -30,31 +30,31 @@ class DockerAddon(DockerBase):
     def volumes(self):
         """Generate volumes for mappings."""
         volumes = {
-            self.addons_data.path_data_docker(self.addon): {
+            self.addons_data.path_extern_data(self.addon): {
                 'bind': '/data', 'mode': 'rw'
             }}
 
         if self.addons_data.map_config(self.addon):
             volumes.update({
-                self.config.path_config_docker: {
+                self.config.path_extern_config: {
                     'bind': '/config', 'mode': 'rw'
                 }})
 
         if self.addons_data.map_ssl(self.addon):
             volumes.update({
-                self.config.path_ssl_docker: {
+                self.config.path_extern_ssl: {
                     'bind': '/ssl', 'mode': 'rw'
                 }})
 
         if self.addons_data.map_addons(self.addon):
             volumes.update({
-                self.config.path_addons_custom_docker: {
+                self.config.path_extern_addons_local: {
                     'bind': '/addons', 'mode': 'rw'
                 }})
 
         if self.addons_data.map_backup(self.addon):
             volumes.update({
-                self.config.path_backup_docker: {
+                self.config.path_extern_backup: {
                     'bind': '/backup', 'mode': 'rw'
                 }})
 
