@@ -12,9 +12,8 @@ from .validate import (
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
-    DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA, ATTR_IMAGE, ATTR_DETACHED,
-    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL,
-    ATTR_MAINTAINER, ATTR_LAST_VERSION)
+    DOCKER_REPO, ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS,
+    MAP_BACKUP, ATTR_REPOSITORY)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -142,48 +141,12 @@ class AddonsData(Config):
         return set(self._system_data.keys())
 
     @property
-    def list_all_api(self):
-        """Return a list of available addons for api."""
-        data = []
-        all_addons = {**self._system_data, **self._addons_cache}
-        detached = self.list_detached
-
-        for addon, values in all_addons.items():
-            i_version = self._user_data.get(addon, {}).get(ATTR_VERSION)
-
-            data.append({
-                ATTR_NAME: values[ATTR_NAME],
-                ATTR_SLUG: addon,
-                ATTR_DESCRIPTON: values[ATTR_DESCRIPTON],
-                ATTR_VERSION: values[ATTR_VERSION],
-                ATTR_INSTALLED: i_version,
-                ATTR_DETACHED: addon in detached,
-                ATTR_REPOSITORY: values[ATTR_REPOSITORY],
-            })
-
-        return data
-
-    @property
-    def list_installed_api(self):
-        """Return a list of available addons for api."""
-        data = []
-        all_addons = {**self._system_data, **self._addons_cache}
-        detached = self.list_detached
-
-        for addon, values in all_addons.items():
-            i_version = self._user_data.get(addon, {}).get(ATTR_VERSION)
-
-            data.append({
-                ATTR_NAME: values[ATTR_NAME],
-                ATTR_SLUG: addon,
-                ATTR_DESCRIPTON: values[ATTR_DESCRIPTON],
-                ATTR_VERSION: values[ATTR_VERSION],
-                ATTR_LAST_VERSION: values[ATTR_VERSION],
-                ATTR_INSTALLED: i_version,
-                ATTR_DETACHED: addon in detached
-            })
-
-        return data
+    def list_all(self):
+        """Return a list of all addons."""
+        return {
+            **self._system_data,
+            **self._addons_cache
+        }
 
     def list_startup(self, start_type):
         """Get list of installed addon with need start by type."""
@@ -212,19 +175,9 @@ class AddonsData(Config):
         return addon_list
 
     @property
-    def list_repositories_api(self):
+    def list_repositories(self):
         """Return list of addon repositories."""
-        repositories = []
-
-        for slug, data in self._repositories_data.items():
-            repositories.append({
-                ATTR_SLUG: slug,
-                ATTR_NAME: data[ATTR_NAME],
-                ATTR_URL: data.get(ATTR_URL),
-                ATTR_MAINTAINER: data.get(ATTR_MAINTAINER),
-            })
-
-        return repositories
+        return list(self._repositories_data.values())
 
     def exists_addon(self, addon):
         """Return True if a addon exists."""
@@ -236,7 +189,7 @@ class AddonsData(Config):
 
     def version_installed(self, addon):
         """Return installed version."""
-        return self._user_data[addon][ATTR_VERSION]
+        return self._user_data.get(addon, {}).get(ATTR_VERSION)
 
     def set_addon_install(self, addon, version):
         """Set addon as installed."""
