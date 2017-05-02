@@ -1,4 +1,5 @@
 """Init file for HassIO host rest api."""
+import asyncio
 import logging
 
 import voluptuous as vol
@@ -50,9 +51,10 @@ class APIHost(object):
     async def update(self, request):
         """Update host OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION)
+        version = body.get(ATTR_VERSION, self.host_control.last)
 
         if version == self.host_control.version:
             raise RuntimeError("Version is already in use")
 
-        return await self.host_control.update(version=version)
+        return await asyncio.shield(
+            self.host_control.update(version=version), loop=self.loop)
