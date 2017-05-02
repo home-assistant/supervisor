@@ -35,7 +35,8 @@ class AddonsRepo(object):
                 self.repo = await self.loop.run_in_executor(
                     None, git.Repo, str(self.path))
 
-            except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:
+            except (git.InvalidGitRepositoryError, git.NoSuchPathError,
+                    git.GitCommandError) as err:
                 _LOGGER.error("Can't load %s repo: %s.", self.path, err)
                 return False
 
@@ -49,7 +50,8 @@ class AddonsRepo(object):
                 self.repo = await self.loop.run_in_executor(
                     None, git.Repo.clone_from, self.url, str(self.path))
 
-            except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:
+            except (git.InvalidGitRepositoryError, git.NoSuchPathError,
+                    git.GitCommandError) as err:
                 _LOGGER.error("Can't clone %s repo: %s.", self.url, err)
                 return False
 
@@ -67,7 +69,8 @@ class AddonsRepo(object):
                 await self.loop.run_in_executor(
                     None, self.repo.remotes.origin.pull)
 
-            except (git.InvalidGitRepositoryError, git.NoSuchPathError) as err:
+            except (git.InvalidGitRepositoryError, git.NoSuchPathError,
+                    git.exc.GitCommandError) as err:
                 _LOGGER.error("Can't pull %s repo: %s.", self.url, err)
                 return False
 
