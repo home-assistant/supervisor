@@ -58,7 +58,7 @@ class HostControl(object):
                 data = await reader.readline()
 
             response = data.decode()
-            _LOGGER.debug("Receive from HostControl: %s.", response)
+            _LOGGER.info("Receive from HostControl: %s.", response)
 
             if response == "OK":
                 return True
