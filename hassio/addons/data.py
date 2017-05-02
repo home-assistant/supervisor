@@ -12,9 +12,8 @@ from .validate import (
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
-    DOCKER_REPO, ATTR_INSTALLED, ATTR_SCHEMA, ATTR_IMAGE, ATTR_DETACHED,
-    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL,
-    ATTR_MAINTAINER)
+    DOCKER_REPO, ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS,
+    MAP_BACKUP, ATTR_REPOSITORY)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -190,7 +189,7 @@ class AddonsData(Config):
 
     def version_installed(self, addon):
         """Return installed version."""
-        return self._user_data[addon][ATTR_VERSION]
+        return self._user_data.get(addon, {}).get(ATTR_VERSION)
 
     def set_addon_install(self, addon, version):
         """Set addon as installed."""

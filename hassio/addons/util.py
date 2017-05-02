@@ -20,6 +20,7 @@ def extract_hash_from_path(path):
         return get_hash_from_repository(repo_dir)
     return repo_dir
 
+
 def create_hash_index_list(name_list):
     """Create a dict with hash from repositories list."""
     return {get_hash_from_repository(repo): repo for repo in name_list}

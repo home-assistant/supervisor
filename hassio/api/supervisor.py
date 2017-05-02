@@ -10,7 +10,7 @@ from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
     ATTR_REPOSITORY, ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED,
-    ATTR_DETACHED, ATTR_SOURCE)
+    ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,10 +42,7 @@ class APISupervisor(object):
         detached = self.addons.list_detached
 
         for addon, values in self.addons.list_all.items():
-            if self.addons.is_installed(addon):
-                i_version = self._user_data[ATTR_VERSION]
-            else:
-                i_version = None
+            i_version = self.addons.version_installed(addon)
 
             data.append({
                 ATTR_NAME: values[ATTR_NAME],
@@ -73,7 +70,7 @@ class APISupervisor(object):
                 ATTR_MAINTAINER: repository.get(ATTR_MAINTAINER),
             })
 
-
+        return repositories
 
     @api_process
     async def ping(self, request):
