@@ -63,6 +63,10 @@ class HassIO(object):
             self.host_control.version, self.host_control.hostname,
             self.host_control.features)
 
+        # schedule update info tasks
+        self.scheduler.register_task(
+            self.host_control.load(), RUN_UPDATE_INFO_TASKS)
+
         # rest api views
         self.api.register_host(self.host_control)
         self.api.register_network(self.host_control)
