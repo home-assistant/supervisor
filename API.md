@@ -37,8 +37,9 @@ The addons from `addons` are only installed one.
         {
             "name": "xy bla",
             "slug": "xy",
-            "version": "INSTALL_VERSION",
-            "last_version": "VERSION_FOR_UPDATE",
+            "repository": "12345678|null",
+            "version": "LAST_VERSION",
+            "installed": "INSTALL_VERSION",
             "detached": "bool",
             "description": "description"
         }
@@ -70,8 +71,9 @@ Get all available addons
         {
             "slug": "12345678",
             "name": "Repitory Name",
-            "url": "WEBSITE",
-            "maintainer": "BLA BLU <fla@dld.ch>"
+            "source": "null|URL_OF_REPOSITORY",
+            "url": "null|WEBSITE",
+            "maintainer": "null|BLA BLU <fla@dld.ch>"
         }
     ]
 }
