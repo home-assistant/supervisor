@@ -128,14 +128,14 @@ class AddonsData(Config):
 
         # if core addons are available
         for addons, data in self._addons_cache.items():
-            if data.[ATTR_REPOSITORY] == REPOSITORY_CORE:
+            if data[ATTR_REPOSITORY] == REPOSITORY_CORE:
                 self._repositories_data[REPOSITORY_CORE] = \
                     builtin_data[REPOSITORY_CORE]
                 break
 
         # if local addons are available
         for addons, data in self._addons_cache.items():
-            if data.[ATTR_REPOSITORY] == REPOSITORY_LOCAL:
+            if data[ATTR_REPOSITORY] == REPOSITORY_LOCAL:
                 self._repositories_data[REPOSITORY_LOCAL] = \
                     builtin_data[REPOSITORY_LOCAL]
                 break
