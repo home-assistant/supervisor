@@ -62,7 +62,7 @@ class AddonsData(Config):
             self.config.path_addons_local, REPOSITORY_LOCAL)
 
         # add built-in repositories information
-        self._set_builtin_repositories(self)
+        self._set_builtin_repositories()
 
         # read custom git repositories
         for repository_element in self.config.path_addons_git.iterdir():
