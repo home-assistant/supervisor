@@ -30,6 +30,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_MAP, default=[]): [
         vol.In([MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP])
     ],
+    vol.Optional(ATTR_URL): vol.Url(),
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [

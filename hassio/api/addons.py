@@ -8,7 +8,7 @@ from voluptuous.humanize import humanize_error
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
-    STATE_STOPPED, STATE_STARTED, BOOT_AUTO, BOOT_MANUAL)
+    ATTR_URL, STATE_STOPPED, STATE_STARTED, BOOT_AUTO, BOOT_MANUAL)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ class APIAddons(object):
             ATTR_STATE: await self.addons.state(addon),
             ATTR_BOOT: self.addons.get_boot(addon),
             ATTR_OPTIONS: self.addons.get_options(addon),
+            ATTR_URL: self.addons.get_url(addon),
         }
 
     @api_process
