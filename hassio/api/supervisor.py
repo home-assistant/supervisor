@@ -36,12 +36,17 @@ class APISupervisor(object):
         self.addons = addons
         self.host_control = host_control
 
-    def _addons_list(self, only_installed):
+    def _addons_list(self, only_installed=False):
         """Return a list of addons."""
-        data = []
         detached = self.addons.list_detached
 
-        for addon, values in self.addons.list_all.items():
+        if only_installed:
+            addons = self.addons.data_installed
+        else:
+            addons = self.addons.data_all
+
+        data = []
+        for addon, values in addons:
             i_version = self.addons.version_installed(addon)
 
             data.append({
@@ -92,7 +97,7 @@ class APISupervisor(object):
     async def available_addons(self, request):
         """Return information for all available addons."""
         return {
-            ATTR_ADDONS: self._addons_list(only_installed=False),
+            ATTR_ADDONS: self._addons_list(),
             ATTR_REPOSITORIES: self._repositories_list(),
         }
 
