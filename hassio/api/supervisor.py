@@ -46,7 +46,7 @@ class APISupervisor(object):
             addons = self.addons.data_all
 
         data = []
-        for addon, values in addons:
+        for addon, values in addons.items():
             i_version = self.addons.version_installed(addon)
 
             data.append({
