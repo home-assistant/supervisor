@@ -1,6 +1,7 @@
 """Init file for HassIO addons."""
 import copy
 import logging
+import json
 from pathlib import Path, PurePath
 
 import voluptuous as vol
@@ -127,14 +128,14 @@ class AddonsData(Config):
             return
 
         # if core addons are available
-        for addons, data in self._addons_cache.items():
+        for data in self._addons_cache.values():
             if data[ATTR_REPOSITORY] == REPOSITORY_CORE:
                 self._repositories_data[REPOSITORY_CORE] = \
                     builtin_data[REPOSITORY_CORE]
                 break
 
         # if local addons are available
-        for addons, data in self._addons_cache.items():
+        for data in self._addons_cache.values():
             if data[ATTR_REPOSITORY] == REPOSITORY_LOCAL:
                 self._repositories_data[REPOSITORY_LOCAL] = \
                     builtin_data[REPOSITORY_LOCAL]
