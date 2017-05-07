@@ -141,12 +141,17 @@ class AddonsData(Config):
         return set(self._system_data.keys())
 
     @property
-    def list_all(self):
-        """Return a list of all addons."""
+    def data_all(self):
+        """Return a dict of all addons."""
         return {
             **self._system_data,
             **self._addons_cache
         }
+
+    @property
+    def data_installed(self):
+        """Return a dict of installed addons."""
+        return self._system_data.copy()
 
     def list_startup(self, start_type):
         """Get list of installed addon with need start by type."""
