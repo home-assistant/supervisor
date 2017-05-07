@@ -13,7 +13,7 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
     DOCKER_REPO, ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS,
-    MAP_BACKUP, ATTR_REPOSITORY)
+    MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -59,6 +59,9 @@ class AddonsData(Config):
         # read local repository
         self._read_addons_folder(
             self.config.path_addons_local, REPOSITORY_LOCAL)
+
+        # add built-in repositories information
+        self._set_builtin_repositories(self)
 
         # read custom git repositories
         for repository_element in self.config.path_addons_git.iterdir():
@@ -113,6 +116,29 @@ class AddonsData(Config):
             except vol.Invalid as ex:
                 _LOGGER.warning("Can't read %s -> %s", addon,
                                 humanize_error(addon_config, ex))
+
+    def _set_builtin_repositories(self):
+        """Add local built-in repository into dataset."""
+        try:
+            builtin_file = Path(__file__).parent.joinpath('built-in.json')
+            builtin_data = read_json_file(builtin_file)
+        except (OSError, json.JSONDecodeError):
+            _LOGGER.warning("Can't read built-in.json!")
+            return
+
+        # if core addons are available
+        for addons, data in self._addons_cache.items():
+            if data.[ATTR_REPOSITORY] == REPOSITORY_CORE:
+                self._repositories_data[REPOSITORY_CORE] = \
+                    builtin_data[REPOSITORY_CORE]
+                break
+
+        # if local addons are available
+        for addons, data in self._addons_cache.items():
+            if data.[ATTR_REPOSITORY] == REPOSITORY_LOCAL:
+                self._repositories_data[REPOSITORY_LOCAL] = \
+                    builtin_data[REPOSITORY_LOCAL]
+                break
 
     def merge_update_config(self):
         """Update local config if they have update.
@@ -258,6 +284,10 @@ class AddonsData(Config):
     def get_ports(self, addon):
         """Return ports of addon."""
         return self._system_data[addon].get(ATTR_PORTS)
+
+    def get_url(self, addon):
+        """Return url of addon."""
+        return self._system_data[addon].get(ATTR_URL)
 
     def get_image(self, addon):
         """Return image name of addon."""
