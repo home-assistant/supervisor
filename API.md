@@ -176,7 +176,11 @@ Output the raw docker log
 - GET `/addons/{addon}/info`
 ```json
 {
+    "name": "xy bla",
+    "description": "description",
     "url": "null|url of addon",
+    "detached": "bool",
+    "repository": "12345678|null",
     "version": "VERSION",
     "last_version": "LAST_VERSION",
     "state": "started|stopped",

@@ -8,7 +8,8 @@ from voluptuous.humanize import humanize_error
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
-    ATTR_URL, STATE_STOPPED, STATE_STARTED, BOOT_AUTO, BOOT_MANUAL)
+    ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
+    STATE_STOPPED, STATE_STARTED, BOOT_AUTO, BOOT_MANUAL)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,12 +49,16 @@ class APIAddons(object):
         addon = self._extract_addon(request)
 
         return {
+            ATTR_NAME: self.addons.get_name(addon),
+            ATTR_DESCRIPTON: self.addons.get_description(addon),
             ATTR_VERSION: self.addons.version_installed(addon),
+            ATTR_REPOSITORY: self.addons.get_repository(addon),
             ATTR_LAST_VERSION: self.addons.get_last_version(addon),
             ATTR_STATE: await self.addons.state(addon),
             ATTR_BOOT: self.addons.get_boot(addon),
             ATTR_OPTIONS: self.addons.get_options(addon),
             ATTR_URL: self.addons.get_url(addon),
+            ATTR_DETACHED: addon in self.addons.list_detached,
         }
 
     @api_process

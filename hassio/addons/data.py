@@ -276,6 +276,10 @@ class AddonsData(Config):
         """Return description of addon."""
         return self._system_data[addon][ATTR_DESCRIPTON]
 
+    def get_repository(self, addon):
+        """Return repository of addon."""
+        return self._system_data[addon][ATTR_REPOSITORY]
+
     def get_last_version(self, addon):
         """Return version of addon."""
         if addon not in self._addons_cache:
