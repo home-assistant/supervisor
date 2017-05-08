@@ -197,6 +197,14 @@ class AddonManager(AddonsData):
             return True
         return False
 
+    async def restart(self, addon):
+        """Restart addon."""
+        if addon not in self.dockers:
+            _LOGGER.error("No docker found for addon %s", addon)
+            return False
+
+        return await self.dockers[addon].restart()
+
     async def logs(self, addon):
         """Return addons log output."""
         if addon not in self.dockers:

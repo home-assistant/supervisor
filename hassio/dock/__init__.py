@@ -264,3 +264,28 @@ class DockerBase(object):
             return self.container.logs(tail=100, stdout=True, stderr=True)
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't grap logs from %s -> %s", self.image, err)
+
+    async def restart(self):
+        """Restart docker container."""
+        if self._lock.locked():
+            _LOGGER.error("Can't excute restart while a task is in progress")
+            return False
+
+        async with self._lock:
+            return await self.loop.run_in_executor(None, self._restart)
+
+    def _restart(self):
+        """Restart docker container.
+
+        Need run inside executor.
+        """
+        if not self.container:
+            return False
+
+        try:
+            self.container.restart(timeout=30)
+        except docker.errors.DockerException as err:
+            _LOGGER.warning("Can't restart %s -> %s", self.image, err)
+            return False
+
+        return True

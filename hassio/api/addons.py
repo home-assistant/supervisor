@@ -143,6 +143,12 @@ class APIAddons(object):
         return await asyncio.shield(
             self.addons.update(addon, version), loop=self.loop)
 
+    @api_process
+    async def restart(self, request):
+        """Restart addon."""
+        addon = self._extract_addon(request)
+        return await asyncio.shield(self.addons.restart(addon), loop=self.loop)
+
     @api_process_raw
     def logs(self, request):
         """Return logs from addon."""

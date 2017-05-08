@@ -81,3 +81,7 @@ class DockerSupervisor(DockerBase):
     async def remove(self):
         """Remove docker image."""
         raise RuntimeError("Not support on supervisor docker container!")
+
+    async def restart(self):
+        """Restart docker container."""
+        raise RuntimeError("Not support on supervisor docker container!")
