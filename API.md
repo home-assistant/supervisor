@@ -171,6 +171,8 @@ Optional:
 
 Output the raw docker log
 
+- POST `/homeassistant/restart`
+
 ### REST API addons
 
 - GET `/addons/{addon}/info`
@@ -222,6 +224,8 @@ Optional:
 - GET `/addons/{addon}/logs`
 
 Output the raw docker log
+
+- POST `/addons/{addon}/restart`
 
 ## Host Control
 

@@ -35,7 +35,7 @@ class APIHomeAssistant(object):
 
     @api_process
     async def update(self, request):
-        """Update host OS."""
+        """Update homeassistant."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.config.last_homeassistant)
 
@@ -47,6 +47,15 @@ class APIHomeAssistant(object):
 
         return await asyncio.shield(
             self.homeassistant.update(version), loop=self.loop)
+
+    @api_process
+    async def restart(self, request):
+        """Restart homeassistant."""
+        if self.homeassistant.in_progress:
+            raise RuntimeError("Other task is in progress")
+
+        return await asyncio.shield(
+            self.homeassistant.restart(), loop=self.loop)
 
     @api_process_raw
     def logs(self, request):
