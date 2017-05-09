@@ -297,7 +297,7 @@ class AddonsData(Config):
     def get_arch(self, addon):
         """Return list of supported arch."""
         if addon not in self._addons_cache:
-            return self._system_data.get(ATTR_ARCH)
+            return self._system_data[addon][ATTR_ARCH]
         return self._addons_cache[addon][ATTR_ARCH]
 
     def get_image(self, addon):
