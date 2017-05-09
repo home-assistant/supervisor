@@ -16,7 +16,7 @@ from .const import (
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
-from .tasks import hassio_update, homeassistant_watchdog
+from .tasks import hassio_update, homeassistant_watchdog, homeassistant_setup
 from .tools import get_arch_from_image, get_local_ip
 
 _LOGGER = logging.getLogger(__name__)
@@ -80,7 +80,8 @@ class HassIO(object):
         # first start of supervisor?
         if not await self.homeassistant.exists():
             _LOGGER.info("No HomeAssistant docker found.")
-            await self._setup_homeassistant()
+            await homeassistant_setup(
+                self.config, self.loop, self.homeassistant)
 
         # Load addons
         arch = get_arch_from_image(self.supervisor.image)
@@ -131,19 +132,3 @@ class HassIO(object):
 
         self.exit_code = exit_code
         self.loop.stop()
-
-    async def _setup_homeassistant(self):
-        """Install a homeassistant docker container."""
-        while True:
-            # read homeassistant tag and install it
-            if not self.config.last_homeassistant:
-                await self.config.fetch_update_infos()
-
-            tag = self.config.last_homeassistant
-            if tag and await self.homeassistant.install(tag):
-                break
-            _LOGGER.warning("Error on setup HomeAssistant. Retry in 60.")
-            await asyncio.sleep(60, loop=self.loop)
-
-        # store version
-        _LOGGER.info("HomeAssistant docker now installed.")
