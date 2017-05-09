@@ -79,6 +79,8 @@ class RestAPI(object):
         self.webapp.router.add_post('/addons/{addon}/start', api_addons.start)
         self.webapp.router.add_post('/addons/{addon}/stop', api_addons.stop)
         self.webapp.router.add_post(
+            '/addons/{addon}/restart', api_addons.restart)
+        self.webapp.router.add_post(
             '/addons/{addon}/update', api_addons.update)
         self.webapp.router.add_post(
             '/addons/{addon}/options', api_addons.options)
