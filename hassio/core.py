@@ -11,10 +11,12 @@ from .api import RestAPI
 from .host_control import HostControl
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
-    RUN_UPDATE_SUPERVISOR_TASKS, STARTUP_AFTER, STARTUP_BEFORE)
+    RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT, STARTUP_AFTER,
+    STARTUP_BEFORE)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
+from .tasks import hassio_update, homeassistant_watchdog, homeassistant_setup
 from .tools import get_arch_from_image, get_local_ip
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,7 +80,8 @@ class HassIO(object):
         # first start of supervisor?
         if not await self.homeassistant.exists():
             _LOGGER.info("No HomeAssistant docker found.")
-            await self._setup_homeassistant()
+            await homeassistant_setup(
+                self.config, self.loop, self.homeassistant)
 
         # Load addons
         arch = get_arch_from_image(self.supervisor.image)
@@ -90,7 +93,8 @@ class HassIO(object):
 
         # schedule self update task
         self.scheduler.register_task(
-            self._hassio_update, RUN_UPDATE_SUPERVISOR_TASKS)
+            hassio_update(self.config, self.supervisor),
+            RUN_UPDATE_SUPERVISOR_TASKS)
 
     async def start(self):
         """Start HassIO orchestration."""
@@ -109,6 +113,11 @@ class HassIO(object):
         # run HomeAssistant
         await self.homeassistant.run()
 
+        # schedule homeassistant watchdog
+        self.scheduler.register_task(
+            homeassistant_watchdog(self.loop, self.homeassistant),
+            RUN_WATCHDOG_HOMEASSISTANT)
+
         # start addon mark as after
         await self.addons.auto_boot(STARTUP_AFTER)
 
@@ -123,28 +132,3 @@ class HassIO(object):
 
         self.exit_code = exit_code
         self.loop.stop()
-
-    async def _setup_homeassistant(self):
-        """Install a homeassistant docker container."""
-        while True:
-            # read homeassistant tag and install it
-            if not self.config.last_homeassistant:
-                await self.config.fetch_update_infos()
-
-            tag = self.config.last_homeassistant
-            if tag and await self.homeassistant.install(tag):
-                break
-            _LOGGER.warning("Error on setup HomeAssistant. Retry in 60.")
-            await asyncio.sleep(60, loop=self.loop)
-
-        # store version
-        _LOGGER.info("HomeAssistant docker now installed.")
-
-    async def _hassio_update(self):
-        """Check and run update of supervisor hassio."""
-        if self.config.last_hassio == self.supervisor.version:
-            return
-
-        _LOGGER.info(
-            "Found new HassIO version %s.", self.config.last_hassio)
-        await self.supervisor.update(self.config.last_hassio)
