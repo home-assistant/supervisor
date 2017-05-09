@@ -282,7 +282,7 @@ class DockerBase(object):
         if not self.container:
             return False
 
-        _LOGGER.info("Restart %s")
+        _LOGGER.info("Restart %s", self.image)
 
         try:
             self.container.restart(timeout=30)
