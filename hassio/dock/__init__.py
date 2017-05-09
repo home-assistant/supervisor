@@ -282,6 +282,8 @@ class DockerBase(object):
         if not self.container:
             return False
 
+        _LOGGER.info("Restart %s")
+
         try:
             self.container.restart(timeout=30)
         except docker.errors.DockerException as err:
