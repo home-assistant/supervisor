@@ -88,6 +88,11 @@ class APIAddons(object):
         version = body.get(
             ATTR_VERSION, self.addons.get_last_version(addon))
 
+        # check if arch supported
+        if self.addons.arch not in self.addons.get_arch(addon):
+            raise RuntimeError(
+                "Addon is not supported on {}".format(self.addons.arch))
+
         return await asyncio.shield(
             self.addons.install(addon, version), loop=self.loop)
 

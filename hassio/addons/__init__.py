@@ -108,6 +108,10 @@ class AddonManager(AddonsData):
             _LOGGER.error("Addon %s not exists for install", addon)
             return False
 
+        if self.arch not in self.get_arch(addon):
+            _LOGGER.error("Addon %s not supported on %s", addon, self.arch)
+            return False
+
         if self.is_installed(addon):
             _LOGGER.error("Addon %s is already installed", addon)
             return False

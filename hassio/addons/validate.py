@@ -5,7 +5,8 @@ from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_STARTUP,
     ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER,
     STARTUP_BEFORE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE, MAP_SSL,
-    MAP_CONFIG, MAP_ADDONS, MAP_BACKUP, ATTR_URL, ATTR_MAINTAINER)
+    MAP_CONFIG, MAP_ADDONS, MAP_BACKUP, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH,
+    ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386)
 
 V_STR = 'str'
 V_INT = 'int'
@@ -16,12 +17,18 @@ V_URL = 'url'
 
 ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL, V_EMAIL, V_URL])
 
+ARCH_ALL = [
+    ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386
+]
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Required(ATTR_SLUG): vol.Coerce(str),
     vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
+    vol.Optional(ATTR_URL): vol.Url(),
+    vol.Optional(ATTR_ARCH, default=ARCH_ALL): [vol.In(ARCH_ALL)],
     vol.Required(ATTR_STARTUP):
         vol.In([STARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
     vol.Required(ATTR_BOOT):
@@ -30,7 +37,6 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_MAP, default=[]): [
         vol.In([MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP])
     ],
-    vol.Optional(ATTR_URL): vol.Url(),
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [

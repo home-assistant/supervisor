@@ -32,16 +32,18 @@ The addons from `addons` are only installed one.
 {
     "version": "INSTALL_VERSION",
     "last_version": "LAST_VERSION",
+    "arch": "armhf|aarch64|i386|amd64",
     "beta_channel": "true|false",
     "addons": [
         {
             "name": "xy bla",
             "slug": "xy",
+            "description": "description",
+            "arch": ["armhf", "aarch64", "i386", "amd64"],
             "repository": "12345678|null",
             "version": "LAST_VERSION",
             "installed": "INSTALL_VERSION",
-            "detached": "bool",
-            "description": "description"
+            "detached": "bool"
         }
     ],
     "addons_repositories": [
@@ -60,11 +62,12 @@ Get all available addons
         {
             "name": "xy bla",
             "slug": "xy",
+            "description": "description",
+            "arch": ["armhf", "aarch64", "i386", "amd64"],
             "repository": "core|local|REP_ID",
             "version": "LAST_VERSION",
             "installed": "none|INSTALL_VERSION",
-            "detached": "bool",
-            "description": "description"
+            "detached": "bool"
         }
     ],
     "repositories": [

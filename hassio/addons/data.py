@@ -14,7 +14,7 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
     DOCKER_REPO, ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS,
-    MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL)
+    MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -293,6 +293,12 @@ class AddonsData(Config):
     def get_url(self, addon):
         """Return url of addon."""
         return self._system_data[addon].get(ATTR_URL)
+
+    def get_arch(self, addon):
+        """Return list of supported arch."""
+        if addon not in self._addons_cache:
+            return self._system_data[addon][ATTR_ARCH]
+        return self._addons_cache[addon][ATTR_ARCH]
 
     def get_image(self, addon):
         """Return image name of addon."""

@@ -10,7 +10,7 @@ from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
     ATTR_REPOSITORY, ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED,
-    ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL)
+    ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,6 +55,7 @@ class APISupervisor(object):
                 ATTR_DESCRIPTON: values[ATTR_DESCRIPTON],
                 ATTR_VERSION: values[ATTR_VERSION],
                 ATTR_INSTALLED: i_version,
+                ATTR_ARCH: values[ATTR_ARCH],
                 ATTR_DETACHED: addon in detached,
                 ATTR_REPOSITORY: values[ATTR_REPOSITORY],
             })
@@ -89,6 +90,7 @@ class APISupervisor(object):
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
+            ATTR_ARCH: self.addons.arch,
             ATTR_ADDONS: self._addons_list(only_installed=True),
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
         }
