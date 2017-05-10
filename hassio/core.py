@@ -12,7 +12,7 @@ from .host_control import HostControl
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
-    RUN_CLEANUP_API_SESSIONS, TARTUP_AFTER, STARTUP_BEFORE)
+    RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor

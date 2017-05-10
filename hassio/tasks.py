@@ -10,7 +10,7 @@ def api_sessions_cleanup(config):
     """Create scheduler task for cleanup api sessions."""
     async def _api_sessions_cleanup():
         """Cleanup old api sessions."""
-        now datetime.now()
+        now = datetime.now()
         for session, until_valid in config.security_sessions.items():
             if now >= until_valid:
                 config.security_sessions = (session, None)
