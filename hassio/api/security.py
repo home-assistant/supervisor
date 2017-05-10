@@ -59,6 +59,7 @@ class APISecurity(object):
 
         self.config.security_password = hash_password(body[ATTR_PASSWORD])
         self.config.security_initialize = True
+        return True
 
     @api_process
     async def totp(self, request):
