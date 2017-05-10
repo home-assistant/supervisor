@@ -1,4 +1,5 @@
 """Bootstrap HassIO."""
+from datetime import datetime
 import logging
 import json
 import os
@@ -12,6 +13,8 @@ from .tools import (
     fetch_last_versions, write_json_file, read_json_file)
 
 _LOGGER = logging.getLogger(__name__)
+
+DATETIME_FORMAT = "%Y%m%d %H:%M:%S"
 
 HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 HOMEASSISTANT_LAST = 'homeassistant_last'
@@ -34,7 +37,8 @@ API_ENDPOINT = 'api_endpoint'
 
 SECURITY_INITIALIZE = 'security_initialize'
 SECURITY_TOTP = 'security_totp'
-SECURITY_PASSWORD = 'security_PASSWORD'
+SECURITY_PASSWORD = 'security_password'
+SECURITY_SESSIONS = 'security_sessions'
 
 
 # pylint: disable=no-value-for-parameter
@@ -48,6 +52,8 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(SECURITY_INITIALIZE, default=False): vol.Boolean(),
     vol.Optional(SECURITY_TOTP): vol.Coerce(str),
     vol.Optional(SECURITY_PASSWORD): vol.Coerce(str),
+    vol.Optional(SECURITY_SESSIONS, default={}):
+        {vol.Coerce(str): vol.Coerce(str)},
 }, extra=vol.REMOVE_EXTRA)
 
 
@@ -274,4 +280,23 @@ class CoreConfig(Config):
     def security_password(self, value):
         """Set the password key."""
         self._data[SECURITY_PASSWORD] = value
+        self.save()
+
+    @property
+    def security_sessions(self):
+        """Return api sessions."""
+        return {session: datetime.strptime(until, DATETIME_FORMAT) for
+                session, until in self._data[SECURITY_SESSIONS].items()}
+
+    @security_sessions.setter
+    def security_sessions(self, value):
+        """Set the a new session."""
+        session, valid = value
+        if valid is None:
+            self._data[SECURITY_SESSIONS].pop(session, None)
+        else
+            self._data[SECURITY_SESSIONS].update(
+                {session: valid.strftime(DATETIME_FORMAT)}
+            )
+
         self.save()

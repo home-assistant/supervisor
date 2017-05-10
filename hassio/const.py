@@ -65,6 +65,7 @@ ATTR_MAINTAINER = 'maintainer'
 ATTR_PASSWORD = 'password'
 ATTR_TOTP = 'totp'
 ATTR_INITIALIZE = 'initialize'
+ATTR_SESSION = 'session'
 
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'

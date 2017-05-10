@@ -1,7 +1,9 @@
 """Init file for HassIO security rest api."""
 import asyncio
+from datetime import datetime, timedelta
 import io
 import logging
+import os
 
 from aiohttp import web
 import voluptuous as vol
@@ -9,7 +11,7 @@ import pyotp
 import pyqrcode
 
 from .util import api_process, api_validate, hash_password
-from ..const import ATTR_INITIALIZE, ATTR_PASSWORD, ATTR_TOTP
+from ..const import ATTR_INITIALIZE, ATTR_PASSWORD, ATTR_TOTP, ATTR_SESSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,6 +32,15 @@ class APISecurity(object):
         self.config = config
         self.loop = loop
 
+    def _check_password(self, body):
+        """Check if password is valid and security is initialize."""
+        if not self.config.security_initialize:
+            raise RuntimeError("First set a password")
+
+        password = hash_password(body[ATTR_PASSWORD])
+        if password != self.config.security_password:
+            raise RuntimeError("Wrong password")
+
     @api_process
     async def info(self, request):
         """Return host information."""
@@ -46,17 +57,16 @@ class APISecurity(object):
         if self.config.security_initialize:
             raise RuntimeError("Password is already set!")
 
-        self.config.security_password = hash_password(body.get(ATTR_PASSWORD))
+        self.config.security_password = hash_password(body[ATTR_PASSWORD])
         self.config.security_initialize = True
 
     @api_process
     async def totp(self, request):
         """Set and initialze TOTP."""
         body = await api_validate(SCHEMA_PASSWORD, request)
+        self._check_password(body)
 
-        if not self.config.security_initialize:
-            raise RuntimeError("First set a password")
-
+        # generate TOTP
         totp_init_key = pyotp.random_base32()
         totp = pyotp.TOTP(totp_init_key)
 
@@ -73,4 +83,19 @@ class APISecurity(object):
     @api_process
     async def session(self, request):
         """Set and initialze session."""
-        pass
+        body = await api_validate(SCHEMA_SESSION, request)
+        self._check_password(body)
+
+        # check TOTP
+        if self.config.security_totp:
+            totp = pyotp.TOTP(self.config.security_totp)
+            if body[ATTR_TOTP] != totp.now():
+                raise RuntimeError("Invalid TOTP token!")
+
+        # create session
+        valid_until = datetime.now() + timedelta(days=1)
+        session = return hashlib.sha256(os.urandom(54)).hexdigest()
+
+        # store session
+        self.config.security_sessions = (session, valid_until)
+        return {ATTR_SESSION: session}
