@@ -108,6 +108,40 @@ Reload addons/version.
 
 Output the raw docker log
 
+### Security
+
+- GET `/security/info`
+```json
+{
+    "initialize": "bool",
+    "totp": "bool"
+}
+```
+
+- POST `/security/options`
+```json
+{
+    "password": "xy"
+}
+```
+
+- POST `/security/totp`
+```json
+{
+    "password": "xy"
+}
+```
+
+Return QR-Code
+
+- POST `/security/session`
+```json
+{
+    "password": "xy",
+    "totp": "null|123456"
+}
+```
+
 ### Host
 
 - POST `/host/shutdown`

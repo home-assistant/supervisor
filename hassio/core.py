@@ -11,12 +11,14 @@ from .api import RestAPI
 from .host_control import HostControl
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
-    RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT, STARTUP_AFTER,
-    STARTUP_BEFORE)
+    RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
+    RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
-from .tasks import hassio_update, homeassistant_watchdog, homeassistant_setup
+from .tasks import (
+    hassio_update, homeassistant_watchdog, homeassistant_setup,
+    api_sessions_cleanup)
 from .tools import get_arch_from_image, get_local_ip
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,6 +73,12 @@ class HassIO(object):
             self.supervisor, self.addons, self.host_control)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
+        self.api.register_security()
+
+        # schedule api session cleanup
+        self.scheduler.register_task(
+            api_sessions_cleanup(self.config), RUN_CLEANUP_API_SESSIONS,
+            now=True)
 
         # schedule update info tasks
         self.scheduler.register_task(
@@ -102,24 +110,26 @@ class HassIO(object):
         await self.api.start()
         _LOGGER.info("Start hassio api on %s", self.config.api_endpoint)
 
-        # HomeAssistant is already running / supervisor have only reboot
-        if await self.homeassistant.is_running():
-            _LOGGER.info("HassIO reboot detected")
-            return
+        try:
+            # HomeAssistant is already running / supervisor have only reboot
+            if await self.homeassistant.is_running():
+                _LOGGER.info("HassIO reboot detected")
+                return
 
-        # start addon mark as before
-        await self.addons.auto_boot(STARTUP_BEFORE)
+            # start addon mark as before
+            await self.addons.auto_boot(STARTUP_BEFORE)
 
-        # run HomeAssistant
-        await self.homeassistant.run()
+            # run HomeAssistant
+            await self.homeassistant.run()
 
-        # schedule homeassistant watchdog
-        self.scheduler.register_task(
-            homeassistant_watchdog(self.loop, self.homeassistant),
-            RUN_WATCHDOG_HOMEASSISTANT)
+            # start addon mark as after
+            await self.addons.auto_boot(STARTUP_AFTER)
 
-        # start addon mark as after
-        await self.addons.auto_boot(STARTUP_AFTER)
+        finally:
+            # schedule homeassistant watchdog
+            self.scheduler.register_task(
+                homeassistant_watchdog(self.loop, self.homeassistant),
+                RUN_WATCHDOG_HOMEASSISTANT)
 
     async def stop(self, exit_code=0):
         """Stop a running orchestration."""
