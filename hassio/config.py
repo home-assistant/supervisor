@@ -32,6 +32,10 @@ UPSTREAM_BETA = 'upstream_beta'
 
 API_ENDPOINT = 'api_endpoint'
 
+SECURITY_INITIALIZE = 'security_initialize'
+SECURITY_TOTP = 'security_totp'
+SECURITY_PASSWORD = 'security_PASSWORD'
+
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_CONFIG = vol.Schema({
@@ -41,6 +45,9 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(HASSIO_LAST): vol.Coerce(str),
     vol.Optional(HASSIO_CLEANUP): vol.Coerce(str),
     vol.Optional(ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
+    vol.Optional(SECURITY_INITIALIZE, default=False): vol.Boolean(),
+    vol.Optional(SECURITY_TOTP): vol.Coerce(str),
+    vol.Optional(SECURITY_PASSWORD): vol.Coerce(str),
 }, extra=vol.REMOVE_EXTRA)
 
 
@@ -234,4 +241,37 @@ class CoreConfig(Config):
             return
 
         self._data[ADDONS_CUSTOM_LIST].remove(repo)
+        self.save()
+
+    @property
+    def security_initialize(self):
+        """Return is security was initialize."""
+        return self._data[security_initialize]
+
+    @security_initialize.setter
+    def security_initialize(self, value):
+        """Set is security initialize."""
+        self._data[security_initialize] = value
+        self.save()
+
+    @property
+    def security_totp(self):
+        """Return the TOTP key."""
+        return self._data.get(SECURITY_TOTP)
+
+    @security_totp.setter
+    def security_totp(self, value):
+        """Set the TOTP key."""
+        self._data[SECURITY_TOTP] = value
+        self.save()
+
+    @property
+    def security_password(self):
+        """Return the password key."""
+        return self._data.get(SECURITY_PASSWORD)
+
+    @security_password.setter
+    def security_password(self, value):
+        """Set the password key."""
+        self._data[SECURITY_PASSWORD] = value
         self.save()

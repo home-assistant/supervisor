@@ -1,0 +1,76 @@
+"""Init file for HassIO security rest api."""
+import asyncio
+import io
+import logging
+
+from aiohttp import web
+import voluptuous as vol
+import pyotp
+import pyqrcode
+
+from .util import api_process, api_validate, hash_password
+from ..const import ATTR_INITIALIZE, ATTR_PASSWORD, ATTR_TOTP
+
+_LOGGER = logging.getLogger(__name__)
+
+SCHEMA_PASSWORD = vol.Schema({
+    vol.Required(ATTR_PASSWORD): vol.Coerce(str),
+})
+
+SCHEMA_SESSION = SCHEMA_PASSWORD.extend({
+    vol.Optional(ATTR_TOTP, default=None): vol.Coerce(int),
+})
+
+
+class APISecurity(object):
+    """Handle rest api for security functions."""
+
+    def __init__(self, config, loop):
+        """Initialize security rest api part."""
+        self.config = config
+        self.loop = loop
+
+    @api_process
+    async def info(self, request):
+        """Return host information."""
+        return {
+            ATTR_INITIALIZE: self.config.security_initialize,
+            ATTR_TOTP: self.config.security_totp is not None,
+        }
+
+    @api_process
+    async def options(self, request):
+        """Set options / password."""
+        body = await api_validate(SCHEMA_PASSWORD, request)
+
+        if self.config.security_initialize:
+            raise RuntimeError("Password is already set!")
+
+        self.config.security_password = hash_password(body.get(ATTR_PASSWORD))
+        self.config.security_initialize = True
+
+    @api_process
+    async def totp(self, request):
+        """Set and initialze TOTP."""
+        body = await api_validate(SCHEMA_PASSWORD, request)
+
+        if not self.config.security_initialize:
+            raise RuntimeError("First set a password")
+
+        totp_init_key = pyotp.random_base32()
+        totp = pyotp.TOTP(totp_init_key)
+
+        # init qrcode
+        buff = io.BytesIO()
+
+        qrcode = pyqrcode.create(totp.provisioning_uri("Hass.IO"))
+        qrcode.svg(buff)
+
+        # finish
+        self.config.security_totp = totp_init_key
+        return web.Response(body=buff.getvalue(), content_type='image/svg+xml')
+
+    @api_process
+    async def session(self, request):
+        """Set and initialze session."""
+        pass
