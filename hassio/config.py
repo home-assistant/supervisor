@@ -294,7 +294,7 @@ class CoreConfig(Config):
         session, valid = value
         if valid is None:
             self._data[SECURITY_SESSIONS].pop(session, None)
-        else
+        else:
             self._data[SECURITY_SESSIONS].update(
                 {session: valid.strftime(DATETIME_FORMAT)}
             )

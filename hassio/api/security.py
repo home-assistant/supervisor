@@ -3,6 +3,7 @@ import asyncio
 from datetime import datetime, timedelta
 import io
 import logging
+import hashlib
 import os
 
 from aiohttp import web
@@ -94,7 +95,7 @@ class APISecurity(object):
 
         # create session
         valid_until = datetime.now() + timedelta(days=1)
-        session = return hashlib.sha256(os.urandom(54)).hexdigest()
+        session = hashlib.sha256(os.urandom(54)).hexdigest()
 
         # store session
         self.config.security_sessions = (session, valid_until)
