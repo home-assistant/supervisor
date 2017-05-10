@@ -20,7 +20,7 @@ SCHEMA_PASSWORD = vol.Schema({
 })
 
 SCHEMA_SESSION = SCHEMA_PASSWORD.extend({
-    vol.Optional(ATTR_TOTP, default=None): vol.Coerce(int),
+    vol.Optional(ATTR_TOTP, default=None): vol.Coerce(str),
 })
 
 
