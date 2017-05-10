@@ -71,6 +71,7 @@ class HassIO(object):
             self.supervisor, self.addons, self.host_control)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
+        self.api.register_security()
 
         # schedule update info tasks
         self.scheduler.register_task(
