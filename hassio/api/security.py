@@ -1,5 +1,4 @@
 """Init file for HassIO security rest api."""
-import asyncio
 from datetime import datetime, timedelta
 import io
 import logging

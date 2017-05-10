@@ -252,12 +252,12 @@ class CoreConfig(Config):
     @property
     def security_initialize(self):
         """Return is security was initialize."""
-        return self._data[security_initialize]
+        return self._data[SECURITY_INITIALIZE]
 
     @security_initialize.setter
     def security_initialize(self, value):
         """Set is security initialize."""
-        self._data[security_initialize] = value
+        self._data[SECURITY_INITIALIZE] = value
         self.save()
 
     @property
