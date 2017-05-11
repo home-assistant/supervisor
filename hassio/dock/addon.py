@@ -134,12 +134,13 @@ class DockerAddon(DockerBase):
 
         Need run inside executor.
         """
-        with TemporaryDirectory(dir=self.config.path_addons_build) as tmp_dir:
+        addon_build_path = str(self.config.path_addons_build)
+        with TemporaryDirectory(dir=str(addon_build_path)) as tmp_dir:
 
             # prepare temporary addon build folder
             try:
-                source = str(self.addons_data.path_addon_location)
-                shutil.copytree(source, tmp_dir)
+                source = self.addons_data.path_addon_location
+                shutil.copytree(str(source), tmp_dir)
             except shutil.Error as err:
                 _LOGGER.error("Can't copy %s to temporary build folder -> %s",
                               source, tmp_dir)
@@ -155,9 +156,11 @@ class DockerAddon(DockerBase):
             # run docker build
             try:
                 build_tag = "{}:{}".format(self.image, tag)
+                build_path = Path(self.config.path_extern_addons_build,
+                                  Path(tmp_dir).parts[-1])
 
                 _LOGGER.info("Start build %s", build_tag)
-                self.dock.images.build(path=tmp_dir, tag=build_tag)
+                self.dock.images.build(path=str(build_path), tag=build_tag)
             except docker.errors.DockerException as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)
                 return False
