@@ -139,7 +139,7 @@ class DockerAddon(DockerBase):
 
             # prepare temporary addon build folder
             try:
-                source = self.addons_data.path_addon_location
+                source = self.addons_data.path_addon_location(self.addon)
                 shutil.copytree(str(source), tmp_dir)
             except shutil.Error as err:
                 _LOGGER.error("Can't copy %s to temporary build folder -> %s",
