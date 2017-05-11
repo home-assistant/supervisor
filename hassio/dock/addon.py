@@ -1,12 +1,14 @@
 """Init file for HassIO addon docker object."""
 import asyncio
 import logging
+from pathlib import Path
 import shutil
 from tempfile import TemporaryDirectory
 
 import docker
 
 from . import DockerBase
+from .util import dockerfile_template
 from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
@@ -104,8 +106,9 @@ class DockerAddon(DockerBase):
             self.container = self.dock.containers.get(self.docker_name)
             self.version = get_version_from_env(
                 self.container.attrs['Config']['Env'])
-            _LOGGER.info("Attach to image %s with version %s",
-                         self.image, self.version)
+
+            _LOGGER.info(
+                "Attach to image %s with version %s", self.image, self.version)
         except (docker.errors.DockerException, KeyError):
             pass
 
@@ -123,6 +126,7 @@ class DockerAddon(DockerBase):
 
         Need run inside executor.
         """
+        version = self.addons.get_last_version(addon)
         with TemporaryDirectory(dir=self.config.path_addons_build) as tmp_dir:
 
             # prepare temporary addon build folder
@@ -133,14 +137,22 @@ class DockerAddon(DockerBase):
                     "Can't copy to temporary build folder -> %s", tmp_dir)
                 return False
 
+            # prepare Dockerfile
+            try:
+                dockerfile_template(
+                    Path(temp_dir, 'Dockerfile'), self.addons.arch, version)
+            except OSError as err:
+                _LOGGER.error("Can't prepare dockerfile -> %s", err)
+
             # run docker build
             try:
-                build_tag = "{}:{}".format(
-                    self.image, self.addons.get_last_version(addon))
+                build_tag = "{}:{}".format(self.image, version)
 
+                _LOGGER.info("Start build %s", build_tag)
                 self.dock.images.build(path=tmp_dir, tag=build_tag)
             except docker.errors.DockerException as err:
-                _LOGGER.error("Can't build %s", build_tag)
+                _LOGGER.error("Can't build %s -> %s", build_tag, err)
                 return False
 
+            _LOGGER.info("Build %s done", build_tag)
             return True
