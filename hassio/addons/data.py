@@ -340,6 +340,10 @@ class AddonsData(Config):
         """Return path to addons options."""
         return Path(self.path_data(addon), "options.json")
 
+    def path_addon_location(self, addon):
+        """Return path to this addon."""
+        return Path(self._addons_cache[addon][ATTR_LOCATON])
+
     def write_addon_options(self, addon):
         """Return True if addon options is written to data."""
         schema = self.get_schema(addon)

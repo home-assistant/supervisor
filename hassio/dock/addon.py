@@ -1,5 +1,8 @@
 """Init file for HassIO addon docker object."""
+import asyncio
 import logging
+import shutil
+from tempfile import TemporaryDirectory
 
 import docker
 
@@ -7,8 +10,6 @@ from . import DockerBase
 from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
-
-HASS_DOCKER_NAME = 'homeassistant'
 
 
 class DockerAddon(DockerBase):
@@ -20,6 +21,7 @@ class DockerAddon(DockerBase):
             config, loop, dock, image=addons_data.get_image(addon))
         self.addon = addon
         self.addons_data = addons_data
+        self._build = asyncio.Lock(loop=loop)
 
     @property
     def docker_name(self):
@@ -106,3 +108,36 @@ class DockerAddon(DockerBase):
                          self.image, self.version)
         except (docker.errors.DockerException, KeyError):
             pass
+
+    async def build(self):
+        """Build a docker container."""
+        if self._build.locked():
+            _LOGGER.error("Can't excute build while a build is in progress")
+            return False
+
+        async with self._build:
+            return await self.loop.run_in_executor(None, self._build)
+
+    def _build(self):
+        """Build a docker container.
+
+        Need run inside executor.
+        """
+        with TemporaryDirectory(dir=self.config.path_addons_build) as tmp_dir:
+
+            # prepare temporary addon build folder
+            try:
+                shutil.copytree(str(self.adddons.path_addon_location), tmp_dir)
+            except shutil.Error as err:
+                _LOGGER.error(
+                    "Can't copy to temporary build folder -> %s", tmp_dir)
+                return False
+
+            # run docker build
+            try:
+                self.dock.images.build(path=, tag=)
+            except docker.errors.DockerException as err:
+                _LOGGER.error("Can't build", self.image)
+                return False
+
+            return True
