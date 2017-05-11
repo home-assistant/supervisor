@@ -1,4 +1,5 @@
 """Bootstrap HassIO."""
+from datetime import datetime
 import logging
 import json
 import os
@@ -13,6 +14,8 @@ from .tools import (
 
 _LOGGER = logging.getLogger(__name__)
 
+DATETIME_FORMAT = "%Y%m%d %H:%M:%S"
+
 HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 HOMEASSISTANT_LAST = 'homeassistant_last'
 
@@ -24,6 +27,7 @@ ADDONS_CORE = PurePath("addons/core")
 ADDONS_LOCAL = PurePath("addons/local")
 ADDONS_GIT = PurePath("addons/git")
 ADDONS_DATA = PurePath("addons/data")
+ADDONS_BUILD = PurePath("addons/build")
 ADDONS_CUSTOM_LIST = 'addons_custom_list'
 
 BACKUP_DATA = PurePath("backup")
@@ -31,6 +35,11 @@ BACKUP_DATA = PurePath("backup")
 UPSTREAM_BETA = 'upstream_beta'
 
 API_ENDPOINT = 'api_endpoint'
+
+SECURITY_INITIALIZE = 'security_initialize'
+SECURITY_TOTP = 'security_totp'
+SECURITY_PASSWORD = 'security_password'
+SECURITY_SESSIONS = 'security_sessions'
 
 
 # pylint: disable=no-value-for-parameter
@@ -41,6 +50,11 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(HASSIO_LAST): vol.Coerce(str),
     vol.Optional(HASSIO_CLEANUP): vol.Coerce(str),
     vol.Optional(ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
+    vol.Optional(SECURITY_INITIALIZE, default=False): vol.Boolean(),
+    vol.Optional(SECURITY_TOTP): vol.Coerce(str),
+    vol.Optional(SECURITY_PASSWORD): vol.Coerce(str),
+    vol.Optional(SECURITY_SESSIONS, default={}):
+        {vol.Coerce(str): vol.Coerce(str)},
 }, extra=vol.REMOVE_EXTRA)
 
 
@@ -192,7 +206,7 @@ class CoreConfig(Config):
     @property
     def path_extern_addons_local(self):
         """Return path for customs addons."""
-        return str(PurePath(self.path_extern_hassio, ADDONS_LOCAL))
+        return PurePath(self.path_extern_hassio, ADDONS_LOCAL)
 
     @property
     def path_addons_data(self):
@@ -202,7 +216,12 @@ class CoreConfig(Config):
     @property
     def path_extern_addons_data(self):
         """Return root addon data folder extern for docker."""
-        return str(PurePath(self.path_extern_hassio, ADDONS_DATA))
+        return PurePath(self.path_extern_hassio, ADDONS_DATA)
+
+    @property
+    def path_addons_build(self):
+        """Return root addon build folder."""
+        return Path(HASSIO_SHARE, ADDONS_BUILD)
 
     @property
     def path_backup(self):
@@ -212,7 +231,7 @@ class CoreConfig(Config):
     @property
     def path_extern_backup(self):
         """Return root backup data folder extern for docker."""
-        return str(PurePath(self.path_extern_hassio, BACKUP_DATA))
+        return PurePath(self.path_extern_hassio, BACKUP_DATA)
 
     @property
     def addons_repositories(self):
@@ -234,4 +253,56 @@ class CoreConfig(Config):
             return
 
         self._data[ADDONS_CUSTOM_LIST].remove(repo)
+        self.save()
+
+    @property
+    def security_initialize(self):
+        """Return is security was initialize."""
+        return self._data[SECURITY_INITIALIZE]
+
+    @security_initialize.setter
+    def security_initialize(self, value):
+        """Set is security initialize."""
+        self._data[SECURITY_INITIALIZE] = value
+        self.save()
+
+    @property
+    def security_totp(self):
+        """Return the TOTP key."""
+        return self._data.get(SECURITY_TOTP)
+
+    @security_totp.setter
+    def security_totp(self, value):
+        """Set the TOTP key."""
+        self._data[SECURITY_TOTP] = value
+        self.save()
+
+    @property
+    def security_password(self):
+        """Return the password key."""
+        return self._data.get(SECURITY_PASSWORD)
+
+    @security_password.setter
+    def security_password(self, value):
+        """Set the password key."""
+        self._data[SECURITY_PASSWORD] = value
+        self.save()
+
+    @property
+    def security_sessions(self):
+        """Return api sessions."""
+        return {session: datetime.strptime(until, DATETIME_FORMAT) for
+                session, until in self._data[SECURITY_SESSIONS].items()}
+
+    @security_sessions.setter
+    def security_sessions(self, value):
+        """Set the a new session."""
+        session, valid = value
+        if valid is None:
+            self._data[SECURITY_SESSIONS].pop(session, None)
+        else:
+            self._data[SECURITY_SESSIONS].update(
+                {session: valid.strftime(DATETIME_FORMAT)}
+            )
+
         self.save()

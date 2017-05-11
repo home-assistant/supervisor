@@ -26,12 +26,10 @@ class APIHomeAssistant(object):
     @api_process
     async def info(self, request):
         """Return host information."""
-        info = {
+        return {
             ATTR_VERSION: self.homeassistant.version,
             ATTR_LAST_VERSION: self.config.last_homeassistant,
         }
-
-        return info
 
     @api_process
     async def update(self, request):

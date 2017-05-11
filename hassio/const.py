@@ -1,7 +1,7 @@
 """Const file for HassIO."""
 from pathlib import Path
 
-HASSIO_VERSION = '0.23'
+HASSIO_VERSION = '0.24'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
@@ -18,6 +18,7 @@ RUN_UPDATE_INFO_TASKS = 28800
 RUN_UPDATE_SUPERVISOR_TASKS = 29100
 RUN_RELOAD_ADDONS_TASKS = 28800
 RUN_WATCHDOG_HOMEASSISTANT = 15
+RUN_CLEANUP_API_SESSIONS = 900
 
 RESTART_EXIT_CODE = 100
 
@@ -62,6 +63,11 @@ ATTR_REPOSITORY = 'repository'
 ATTR_REPOSITORIES = 'repositories'
 ATTR_URL = 'url'
 ATTR_MAINTAINER = 'maintainer'
+ATTR_PASSWORD = 'password'
+ATTR_TOTP = 'totp'
+ATTR_INITIALIZE = 'initialize'
+ATTR_SESSION = 'session'
+ATTR_LOCATON = 'location'
 
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'

@@ -8,6 +8,7 @@ from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .network import APINetwork
 from .supervisor import APISupervisor
+from .security import APISecurity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,6 +86,15 @@ class RestAPI(object):
         self.webapp.router.add_post(
             '/addons/{addon}/options', api_addons.options)
         self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
+
+    def register_security(self):
+        """Register security function."""
+        api_security = APISecurity(self.config, self.loop)
+
+        self.webapp.router.add_get('/security/info', api_security.info)
+        self.webapp.router.add_post('/security/options', api_security.options)
+        self.webapp.router.add_post('/security/totp', api_security.totp)
+        self.webapp.router.add_post('/security/session', api_security.session)
 
     async def start(self):
         """Run rest api webserver."""

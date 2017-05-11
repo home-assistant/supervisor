@@ -1,5 +1,6 @@
 """Init file for HassIO util for rest api."""
 import json
+import hashlib
 import logging
 
 from aiohttp import web
@@ -32,6 +33,8 @@ def api_process(method):
 
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
+        if isinstance(answer, web.Response):
+            return answer
         elif answer:
             return api_return_ok()
         return api_return_error()
@@ -101,3 +104,9 @@ async def api_validate(schema, request):
         raise RuntimeError(humanize_error(data, ex)) from None
 
     return data
+
+
+def hash_password(password):
+    """Hash and salt our passwords."""
+    key = ")*()*SALT_HASSIO2123{}6554547485HSKA!!*JSLAfdasda$".format(password)
+    return hashlib.sha256(key.encode()).hexdigest()
