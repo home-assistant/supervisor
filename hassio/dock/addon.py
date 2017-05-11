@@ -166,4 +166,4 @@ class DockerAddon(DockerBase):
             return True
 
         finally:
-            shutil.rmtree(str(build_dir), ignore_error=True)
+            shutil.rmtree(str(build_dir), ignore_errors=True)
