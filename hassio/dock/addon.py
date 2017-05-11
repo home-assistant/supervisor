@@ -1,10 +1,8 @@
 """Init file for HassIO addon docker object."""
 from distutils.dir_util import copy_tree
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 from tempfile import TemporaryDirectory
-
-import time
 
 import docker
 
@@ -34,31 +32,31 @@ class DockerAddon(DockerBase):
     def volumes(self):
         """Generate volumes for mappings."""
         volumes = {
-            self.addons_data.path_extern_data(self.addon): {
+            str(self.addons_data.path_extern_data(self.addon)): {
                 'bind': '/data', 'mode': 'rw'
             }}
 
         if self.addons_data.map_config(self.addon):
             volumes.update({
-                self.config.path_extern_config: {
+                str(self.config.path_extern_config): {
                     'bind': '/config', 'mode': 'rw'
                 }})
 
         if self.addons_data.map_ssl(self.addon):
             volumes.update({
-                self.config.path_extern_ssl: {
+                str(self.config.path_extern_ssl): {
                     'bind': '/ssl', 'mode': 'rw'
                 }})
 
         if self.addons_data.map_addons(self.addon):
             volumes.update({
-                self.config.path_extern_addons_local: {
+                str(self.config.path_extern_addons_local): {
                     'bind': '/addons', 'mode': 'rw'
                 }})
 
         if self.addons_data.map_backup(self.addon):
             volumes.update({
-                self.config.path_extern_backup: {
+                str(self.config.path_extern_backup): {
                     'bind': '/backup', 'mode': 'rw'
                 }})
 
@@ -158,14 +156,14 @@ class DockerAddon(DockerBase):
             # run docker build
             try:
                 build_tag = "{}:{}".format(self.image, tag)
-                build_path = Path(self.config.path_extern_addons_build,
-                                  Path(tmp_dir).parts[-1])
+                build_path = PurePath(
+                    self.config.path_extern_addons_build,
+                    PurePath(tmp_dir).parts[-1])
 
-                _LOGGER.info("Start build %s", build_tag)
+                _LOGGER.info("Start build %s on %s", build_tag, build_path)
                 self.dock.images.build(path=str(build_path), tag=build_tag)
             except (docker.errors.DockerException, TypeError) as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)
-                time.sleep(60)
                 return False
 
             _LOGGER.info("Build %s done", build_tag)

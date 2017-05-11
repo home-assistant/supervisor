@@ -206,7 +206,7 @@ class CoreConfig(Config):
     @property
     def path_extern_addons_local(self):
         """Return path for customs addons."""
-        return str(PurePath(self.path_extern_hassio, ADDONS_LOCAL))
+        return PurePath(self.path_extern_hassio, ADDONS_LOCAL)
 
     @property
     def path_addons_data(self):
@@ -216,7 +216,7 @@ class CoreConfig(Config):
     @property
     def path_extern_addons_data(self):
         """Return root addon data folder extern for docker."""
-        return str(PurePath(self.path_extern_hassio, ADDONS_DATA))
+        return PurePath(self.path_extern_hassio, ADDONS_DATA)
 
     @property
     def path_addons_build(self):
@@ -226,7 +226,7 @@ class CoreConfig(Config):
     @property
     def path_extern_addons_build(self):
         """Return root addon build folder extern for docker."""
-        return str(PurePath(self.path_extern_hassio, ADDONS_BUILD))
+        return PurePath(self.path_extern_hassio, ADDONS_BUILD)
 
     @property
     def path_backup(self):
@@ -236,7 +236,7 @@ class CoreConfig(Config):
     @property
     def path_extern_backup(self):
         """Return root backup data folder extern for docker."""
-        return str(PurePath(self.path_extern_hassio, BACKUP_DATA))
+        return PurePath(self.path_extern_hassio, BACKUP_DATA)
 
     @property
     def addons_repositories(self):
