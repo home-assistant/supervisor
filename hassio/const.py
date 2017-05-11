@@ -67,6 +67,7 @@ ATTR_PASSWORD = 'password'
 ATTR_TOTP = 'totp'
 ATTR_INITIALIZE = 'initialize'
 ATTR_SESSION = 'session'
+ATTR_LOCATON = 'location'
 
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'

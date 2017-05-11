@@ -42,6 +42,11 @@ def initialize_system_data(websession):
                      config.path_addons_git)
         config.path_addons_git.mkdir(parents=True)
 
+    if not config.path_addons_build.is_dir():
+        _LOGGER.info("Create Home-Assistant addon build folder %s",
+                     config.path_addons_build)
+        config.path_addons_build.mkdir(parents=True)
+
     # homeassistant backup folder
     if not config.path_backup.is_dir():
         _LOGGER.info("Create Home-Assistant backup folder %s",

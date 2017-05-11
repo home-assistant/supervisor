@@ -14,7 +14,7 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
     DOCKER_REPO, ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS,
-    MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH)
+    MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -109,6 +109,7 @@ class AddonsData(Config):
 
                 # store
                 addon_config[ATTR_REPOSITORY] = repository
+                addon_config[ATTR_LOCATON] = str(addon.parent)
                 self._addons_cache[addon_slug] = addon_config
 
             except OSError:

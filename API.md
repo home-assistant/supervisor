@@ -264,6 +264,10 @@ Output the raw docker log
 
 - POST `/addons/{addon}/restart`
 
+- POST `/addons/{addon}/build`
+
+Build a local container
+
 ## Host Control
 
 Communicate over unix socket with a host daemon.
