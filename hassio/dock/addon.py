@@ -115,7 +115,7 @@ class DockerAddon(DockerBase):
 
         Need run inside executor.
         """
-        if self.addons.need_build(self.addon):
+        if self.addons_data.need_build(self.addon):
             return self._build(tag)
 
         return super()._install(tag)
@@ -138,16 +138,17 @@ class DockerAddon(DockerBase):
 
             # prepare temporary addon build folder
             try:
-                shutil.copytree(str(self.adddons.path_addon_location), tmp_dir)
+                source = str(self.addons_data.path_addon_location)
+                shutil.copytree(source, tmp_dir)
             except shutil.Error as err:
-                _LOGGER.error(
-                    "Can't copy to temporary build folder -> %s", tmp_dir)
+                _LOGGER.error("Can't copy %s to temporary build folder -> %s",
+                              source, tmp_dir)
                 return False
 
             # prepare Dockerfile
             try:
                 dockerfile_template(
-                    Path(temp_dir, 'Dockerfile'), self.addons.arch, tag)
+                    Path(tmp_dir, 'Dockerfile'), self.addons_data.arch, tag)
             except OSError as err:
                 _LOGGER.error("Can't prepare dockerfile -> %s", err)
 
