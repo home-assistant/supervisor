@@ -14,7 +14,7 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
     DOCKER_REPO, ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS,
-    MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH)
+    MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -109,6 +109,7 @@ class AddonsData(Config):
 
                 # store
                 addon_config[ATTR_REPOSITORY] = repository
+                addon_config[ATTR_LOCATON] = str(addon.parent)
                 self._addons_cache[addon_slug] = addon_config
 
             except OSError:
@@ -303,13 +304,31 @@ class AddonsData(Config):
     def get_image(self, addon):
         """Return image name of addon."""
         addon_data = self._system_data.get(
-            addon, self._addons_cache.get(addon))
+            addon, self._addons_cache.get(addon)
+        )
 
-        if ATTR_IMAGE not in addon_data:
+        # core repository
+        if addon_data[ATTR_REPOSITORY] == REPOSITORY_CORE:
             return "{}/{}-addon-{}".format(
                 DOCKER_REPO, self.arch, addon_data[ATTR_SLUG])
 
-        return addon_data[ATTR_IMAGE].format(arch=self.arch)
+        # Repository with dockerhub images
+        if ATTR_IMAGE in addon_data:
+            return addon_data[ATTR_IMAGE].format(arch=self.arch)
+
+        # Local build addon
+        if addon_data[ATTR_REPOSITORY] == REPOSITORY_LOCAL:
+            return "local/{}-addon-{}".format(self.arch, addon_data[ATTR_SLUG])
+
+        _LOGGER.error("No image for %s", addon)
+
+    def need_build(self, addon):
+        """Return True if this addon need a local build."""
+        addon_data = self._system_data.get(
+            addon, self._addons_cache.get(addon)
+        )
+        return addon_data[ATTR_REPOSITORY] == REPOSITORY_LOCAL \
+            and not addon_data.get(ATTR_IMAGE)
 
     def map_config(self, addon):
         """Return True if config map is needed."""
@@ -333,11 +352,15 @@ class AddonsData(Config):
 
     def path_extern_data(self, addon):
         """Return addon data path external for docker."""
-        return str(PurePath(self.config.path_extern_addons_data, addon))
+        return PurePath(self.config.path_extern_addons_data, addon)
 
     def path_addon_options(self, addon):
         """Return path to addons options."""
         return Path(self.path_data(addon), "options.json")
+
+    def path_addon_location(self, addon):
+        """Return path to this addon."""
+        return Path(self._addons_cache[addon][ATTR_LOCATON])
 
     def write_addon_options(self, addon):
         """Return True if addon options is written to data."""
