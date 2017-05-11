@@ -161,7 +161,7 @@ class DockerAddon(DockerBase):
                     PurePath(tmp_dir).parts[-1])
 
                 _LOGGER.info("Start build %s on %s", build_tag, build_path)
-                self.dock.images.build(path=str(build_path), tag=build_tag)
+                self.dock.images.build(path=tmp_dir, tag=build_tag)
             except (docker.errors.DockerException, TypeError) as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)
                 return False
