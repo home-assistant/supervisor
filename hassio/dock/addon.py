@@ -1,7 +1,7 @@
 """Init file for HassIO addon docker object."""
+from distutils.dir_util import copy_tree
 import logging
 from pathlib import Path
-import shutil
 from tempfile import TemporaryDirectory
 
 import docker
@@ -140,7 +140,7 @@ class DockerAddon(DockerBase):
             # prepare temporary addon build folder
             try:
                 source = self.addons_data.path_addon_location(self.addon)
-                shutil.copytree(str(source), tmp_dir)
+                copy_tree(str(source), tmp_dir)
             except shutil.Error as err:
                 _LOGGER.error("Can't copy %s to temporary build folder -> %s",
                               source, tmp_dir)
