@@ -304,7 +304,8 @@ class AddonsData(Config):
     def get_image(self, addon):
         """Return image name of addon."""
         addon_data = self._system_data.get(
-            addon, self._addons_cache.get(addon))
+            addon, self._addons_cache.get(addon)
+        )
 
         # core repository
         if addon_data[ATTR_REPOSITORY] == REPOSITORY_CORE:
@@ -320,6 +321,14 @@ class AddonsData(Config):
             return "local/{}-addon-{}".format(self.arch, addon_data[ATTR_SLUG])
 
         _LOGGER.error("No image for %s", addon)
+
+    def need_build(self, addon):
+        """Return True if this addon need a local build."""
+        addon_data = self._system_data.get(
+            addon, self._addons_cache.get(addon)
+        )
+        return addon_data[ATTR_REPOSITORY] == REPOSITORY_LOCAL \
+            and not addon_data.get(ATTR_IMAGE)
 
     def map_config(self, addon):
         """Return True if config map is needed."""

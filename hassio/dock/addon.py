@@ -1,5 +1,4 @@
 """Init file for HassIO addon docker object."""
-import asyncio
 import logging
 from pathlib import Path
 import shutil
@@ -23,7 +22,6 @@ class DockerAddon(DockerBase):
             config, loop, dock, image=addons_data.get_image(addon))
         self.addon = addon
         self.addons_data = addons_data
-        self._build = asyncio.Lock(loop=loop)
 
     @property
     def docker_name(self):
@@ -112,21 +110,30 @@ class DockerAddon(DockerBase):
         except (docker.errors.DockerException, KeyError):
             pass
 
-    async def build(self):
+    def _install(self, tag):
+        """Pull docker image or build it.
+
+        Need run inside executor.
+        """
+        if self.addons.need_build(self.addon):
+            return self._build(tag)
+
+        return super()._install(tag)
+
+    async def build(self, tag):
         """Build a docker container."""
-        if self._build.locked():
-            _LOGGER.error("Can't excute build while a build is in progress")
+        if self._lock.locked():
+            _LOGGER.error("Can't excute build while a task is in progress")
             return False
 
-        async with self._build:
-            return await self.loop.run_in_executor(None, self._build)
+        async with self._lock:
+            return await self.loop.run_in_executor(None, self._build, tag)
 
-    def _build(self):
+    def _build(self, tag):
         """Build a docker container.
 
         Need run inside executor.
         """
-        version = self.addons.get_last_version(addon)
         with TemporaryDirectory(dir=self.config.path_addons_build) as tmp_dir:
 
             # prepare temporary addon build folder
@@ -140,13 +147,13 @@ class DockerAddon(DockerBase):
             # prepare Dockerfile
             try:
                 dockerfile_template(
-                    Path(temp_dir, 'Dockerfile'), self.addons.arch, version)
+                    Path(temp_dir, 'Dockerfile'), self.addons.arch, tag)
             except OSError as err:
                 _LOGGER.error("Can't prepare dockerfile -> %s", err)
 
             # run docker build
             try:
-                build_tag = "{}:{}".format(self.image, version)
+                build_tag = "{}:{}".format(self.image, tag)
 
                 _LOGGER.info("Start build %s", build_tag)
                 self.dock.images.build(path=tmp_dir, tag=build_tag)
