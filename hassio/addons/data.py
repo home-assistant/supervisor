@@ -306,11 +306,20 @@ class AddonsData(Config):
         addon_data = self._system_data.get(
             addon, self._addons_cache.get(addon))
 
-        if ATTR_IMAGE not in addon_data:
+        # core repository
+        if addon_data[ATTR_REPOSITORY] == REPOSITORY_CORE:
             return "{}/{}-addon-{}".format(
                 DOCKER_REPO, self.arch, addon_data[ATTR_SLUG])
 
-        return addon_data[ATTR_IMAGE].format(arch=self.arch)
+        # Repository with dockerhub images
+        if ATTR_IMAGE in addon_data:
+            return addon_data[ATTR_IMAGE].format(arch=self.arch)
+
+        # Local build addon
+        if addon_data[ATTR_REPOSITORY] == REPOSITORY_LOCAL:
+            return "local/{}-addon-{}".format(self.arch, addon_data[ATTR_SLUG])
+
+        _LOGGER.error("No image for %s", addon)
 
     def map_config(self, addon):
         """Return True if config map is needed."""

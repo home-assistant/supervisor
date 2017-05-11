@@ -135,9 +135,12 @@ class DockerAddon(DockerBase):
 
             # run docker build
             try:
-                self.dock.images.build(path=, tag=)
+                build_tag = "{}:{}".format(
+                    self.image, self.addons.get_last_version(addon))
+
+                self.dock.images.build(path=tmp_dir, tag=build_tag)
             except docker.errors.DockerException as err:
-                _LOGGER.error("Can't build", self.image)
+                _LOGGER.error("Can't build %s", build_tag)
                 return False
 
             return True
