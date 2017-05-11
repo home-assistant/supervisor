@@ -18,14 +18,14 @@ TMPL_IMAGE = re.compile(r"%%BASE_IMAGE%%")
 def dockerfile_template(dockerfile, arch, version):
     """Prepare a Hass.IO dockerfile."""
     buff = []
-    resin_image = re.escape(RESIN_BASE_IMAGE[arch])
+    resin_image = RESIN_BASE_IMAGE[arch]
 
     # read docker
     with dockerfile.open('r') as dock_input:
-        line = dock_input.readline()
-        line = TMPL_VERSION.sub(re.escape(version), line)
-        line = TMPL_IMAGE.sub(resin_image, line)
-        buff.append(line)
+        for line in dock_input:
+            line = TMPL_VERSION.sub(version, line)
+            line = TMPL_IMAGE.sub(resin_image, line)
+            buff.append(line)
 
     # write docker
     with dockerfile.open('w') as dock_output:
