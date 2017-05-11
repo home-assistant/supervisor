@@ -4,6 +4,8 @@ import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import time
+
 import docker
 
 from . import DockerBase
@@ -161,8 +163,9 @@ class DockerAddon(DockerBase):
 
                 _LOGGER.info("Start build %s", build_tag)
                 self.dock.images.build(path=str(build_path), tag=build_tag)
-            except docker.errors.DockerException as err:
+            except (docker.errors.DockerException, TypeError) as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)
+                time.sleep(60)
                 return False
 
             _LOGGER.info("Build %s done", build_tag)
