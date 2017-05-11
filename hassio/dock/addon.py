@@ -1,8 +1,7 @@
 """Init file for HassIO addon docker object."""
-from distutils.dir_util import copy_tree
 import logging
-from pathlib import Path, PurePath
-from tempfile import TemporaryDirectory
+from pathlib import Path
+import shutil
 
 import docker
 
@@ -134,37 +133,37 @@ class DockerAddon(DockerBase):
 
         Need run inside executor.
         """
-        addon_build_path = str(self.config.path_addons_build)
-        with TemporaryDirectory(dir=str(addon_build_path)) as tmp_dir:
-
+        build_dir = Path(self.config.path_addons_build, self.addon)
+        try:
             # prepare temporary addon build folder
             try:
                 source = self.addons_data.path_addon_location(self.addon)
-                copy_tree(str(source), tmp_dir)
+                shutil.copytree(str(source), str(build_dir))
             except shutil.Error as err:
                 _LOGGER.error("Can't copy %s to temporary build folder -> %s",
-                              source, tmp_dir)
+                              source, build_dir)
                 return False
 
             # prepare Dockerfile
             try:
                 dockerfile_template(
-                    Path(tmp_dir, 'Dockerfile'), self.addons_data.arch, tag)
+                    Path(build_dir, 'Dockerfile'), self.addons_data.arch, tag)
             except OSError as err:
                 _LOGGER.error("Can't prepare dockerfile -> %s", err)
 
             # run docker build
             try:
                 build_tag = "{}:{}".format(self.image, tag)
-                build_path = PurePath(
-                    self.config.path_extern_addons_build,
-                    PurePath(tmp_dir).parts[-1])
 
-                _LOGGER.info("Start build %s on %s", build_tag, build_path)
-                self.dock.images.build(path=tmp_dir, tag=build_tag)
+                _LOGGER.info("Start build %s on %s", build_tag, build_dir)
+                self.dock.images.build(
+                    path=str(build_dir), tag=build_tag, pull=True)
             except (docker.errors.DockerException, TypeError) as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)
                 return False
 
             _LOGGER.info("Build %s done", build_tag)
             return True
+
+        finally:
+            shutil.rmtree(str(build_dir), ignore_error=True)

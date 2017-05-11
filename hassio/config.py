@@ -224,11 +224,6 @@ class CoreConfig(Config):
         return Path(HASSIO_SHARE, ADDONS_BUILD)
 
     @property
-    def path_extern_addons_build(self):
-        """Return root addon build folder extern for docker."""
-        return PurePath(self.path_extern_hassio, ADDONS_BUILD)
-
-    @property
     def path_backup(self):
         """Return root backup data folder."""
         return Path(HASSIO_SHARE, BACKUP_DATA)
