@@ -58,6 +58,7 @@ class APISupervisor(object):
                 ATTR_DETACHED: addon in detached,
                 ATTR_REPOSITORY: self.addons.get_repository(addon),
                 ATTR_BUILD: self.addons.need_build(addon),
+                ATTR_URL: self.addons.get_url(addon),
             })
 
         return data

@@ -44,7 +44,8 @@ The addons from `addons` are only installed one.
             "version": "LAST_VERSION",
             "installed": "INSTALL_VERSION",
             "detached": "bool",
-            "build": "bool"
+            "build": "bool",
+            "url": "null|url"
         }
     ],
     "addons_repositories": [
@@ -69,7 +70,8 @@ Get all available addons
             "version": "LAST_VERSION",
             "installed": "none|INSTALL_VERSION",
             "detached": "bool",
-            "build": "bool"
+            "build": "bool",
+            "url": "null|url"
         }
     ],
     "repositories": [

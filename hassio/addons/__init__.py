@@ -191,7 +191,7 @@ class AddonManager(AddonsData):
             return False
 
         version = version or self.get_last_version(addon)
-        is_running = self.dockers[addon].is_running()
+        is_running = await self.dockers[addon].is_running()
 
         # update
         if await self.dockers[addon].update(version):
