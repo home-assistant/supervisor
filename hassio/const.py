@@ -68,6 +68,7 @@ ATTR_TOTP = 'totp'
 ATTR_INITIALIZE = 'initialize'
 ATTR_SESSION = 'session'
 ATTR_LOCATON = 'location'
+ATTR_BUILD = 'build'
 
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'
