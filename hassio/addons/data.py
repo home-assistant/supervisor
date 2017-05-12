@@ -149,12 +149,13 @@ class AddonsData(Config):
         """
         have_change = False
 
-        for addon, data in self._system_data.items():
+        for addon in self.list_installed:
             # detached
             if addon not in self._addons_cache:
                 continue
 
             cache = self._addons_cache[addon]
+            data = self._system_data[addon]
             if data[ATTR_VERSION] == cache[ATTR_VERSION]:
                 if data != cache:
                     self._system_data[addon] = copy.deepcopy(cache)
@@ -166,20 +167,12 @@ class AddonsData(Config):
     @property
     def list_installed(self):
         """Return a list of installed addons."""
-        return set(self._system_data.keys())
+        return set(self._system_data)
 
     @property
-    def data_all(self):
+    def list_all(self):
         """Return a dict of all addons."""
-        return {
-            **self._system_data,
-            **self._addons_cache
-        }
-
-    @property
-    def data_installed(self):
-        """Return a dict of installed addons."""
-        return self._system_data.copy()
+        return set(self._system_data) | set(self._addons_cache)
 
     def list_startup(self, start_type):
         """Get list of installed addon with need start by type."""
@@ -271,21 +264,27 @@ class AddonsData(Config):
 
     def get_name(self, addon):
         """Return name of addon."""
+        if addon in self._addons_cache:
+            return self._addons_cache[addon][ATTR_NAME]
         return self._system_data[addon][ATTR_NAME]
 
     def get_description(self, addon):
         """Return description of addon."""
+        if addon in self._addons_cache:
+            return self._addons_cache[addon][ATTR_DESCRIPTON]
         return self._system_data[addon][ATTR_DESCRIPTON]
 
     def get_repository(self, addon):
         """Return repository of addon."""
+        if addon in self._addons_cache:
+            return self._addons_cache[addon][ATTR_REPOSITORY]
         return self._system_data[addon][ATTR_REPOSITORY]
 
     def get_last_version(self, addon):
         """Return version of addon."""
-        if addon not in self._addons_cache:
-            return self.version_installed(addon)
-        return self._addons_cache[addon][ATTR_VERSION]
+        if addon in self._addons_cache:
+            return self._addons_cache[addon][ATTR_VERSION]
+        return self.version_installed(addon)
 
     def get_ports(self, addon):
         """Return ports of addon."""
@@ -293,13 +292,15 @@ class AddonsData(Config):
 
     def get_url(self, addon):
         """Return url of addon."""
+        if addon in self._addons_cache:
+            return self._addons_cache[addon].get(ATTR_URL)
         return self._system_data[addon].get(ATTR_URL)
 
     def get_arch(self, addon):
         """Return list of supported arch."""
-        if addon not in self._addons_cache:
-            return self._system_data[addon][ATTR_ARCH]
-        return self._addons_cache[addon][ATTR_ARCH]
+        if addon in self._addons_cache:
+            return self._addons_cache[addon][ATTR_ARCH]
+        return self._system_data[addon][ATTR_ARCH]
 
     def get_image(self, addon):
         """Return image name of addon."""

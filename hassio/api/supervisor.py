@@ -10,7 +10,8 @@ from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
     ATTR_REPOSITORY, ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED,
-    ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH)
+    ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH,
+    ATTR_BUILD)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,23 +42,23 @@ class APISupervisor(object):
         detached = self.addons.list_detached
 
         if only_installed:
-            addons = self.addons.data_installed
+            addons = self.addons.list_installed
         else:
-            addons = self.addons.data_all
+            addons = self.addons.list_all
 
         data = []
-        for addon, values in addons.items():
-            i_version = self.addons.version_installed(addon)
-
+        for addon in addons:
             data.append({
-                ATTR_NAME: values[ATTR_NAME],
+                ATTR_NAME: self.addons.get_name(addon),
                 ATTR_SLUG: addon,
-                ATTR_DESCRIPTON: values[ATTR_DESCRIPTON],
-                ATTR_VERSION: values[ATTR_VERSION],
-                ATTR_INSTALLED: i_version,
-                ATTR_ARCH: values[ATTR_ARCH],
+                ATTR_DESCRIPTON: self.addons.get_description(addon),
+                ATTR_VERSION: self.addons.get_last_version(addon),
+                ATTR_INSTALLED: self.addons.version_installed(addon),
+                ATTR_ARCH: self.addons.get_arch(addon),
                 ATTR_DETACHED: addon in detached,
-                ATTR_REPOSITORY: values[ATTR_REPOSITORY],
+                ATTR_REPOSITORY: self.addons.get_repository(addon),
+                ATTR_BUILD: self.addons.need_build(addon),
+                ATTR_URL: self.addons.get_url(addon),
             })
 
         return data

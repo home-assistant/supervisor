@@ -43,7 +43,9 @@ The addons from `addons` are only installed one.
             "repository": "12345678|null",
             "version": "LAST_VERSION",
             "installed": "INSTALL_VERSION",
-            "detached": "bool"
+            "detached": "bool",
+            "build": "bool",
+            "url": "null|url"
         }
     ],
     "addons_repositories": [
@@ -67,7 +69,9 @@ Get all available addons
             "repository": "core|local|REP_ID",
             "version": "LAST_VERSION",
             "installed": "none|INSTALL_VERSION",
-            "detached": "bool"
+            "detached": "bool",
+            "build": "bool",
+            "url": "null|url"
         }
     ],
     "repositories": [
@@ -224,6 +228,7 @@ Output the raw docker log
     "last_version": "LAST_VERSION",
     "state": "started|stopped",
     "boot": "auto|manual",
+    "build": "bool",
     "options": {},
 }
 ```
