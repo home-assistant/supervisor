@@ -293,7 +293,7 @@ class AddonsData(Config):
     def get_url(self, addon):
         """Return url of addon."""
         if addon in self._addons_cache:
-            return self._addons_cache[addon][ATTR_URL]
+            return self._addons_cache[addon].get(ATTR_URL)
         return self._system_data[addon].get(ATTR_URL)
 
     def get_arch(self, addon):
