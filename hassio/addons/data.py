@@ -172,7 +172,7 @@ class AddonsData(Config):
     @property
     def list_all(self):
         """Return a dict of all addons."""
-        return set(self._system_data) + set(self._addons_cache)
+        return set(self._system_data) | set(self._addons_cache)
 
     def list_startup(self, start_type):
         """Get list of installed addon with need start by type."""
