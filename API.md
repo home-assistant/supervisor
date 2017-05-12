@@ -226,6 +226,7 @@ Output the raw docker log
     "last_version": "LAST_VERSION",
     "state": "started|stopped",
     "boot": "auto|manual",
+    "build": "bool",
     "options": {},
 }
 ```
