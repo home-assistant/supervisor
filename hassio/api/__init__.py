@@ -1,5 +1,6 @@
 """Init file for HassIO rest api."""
 import logging
+from pathlib import Path
 
 from aiohttp import web
 
@@ -95,6 +96,13 @@ class RestAPI(object):
         self.webapp.router.add_post('/security/options', api_security.options)
         self.webapp.router.add_post('/security/totp', api_security.totp)
         self.webapp.router.add_post('/security/session', api_security.session)
+
+    def register_panel(self):
+        """Register panel for homeassistant."""
+        panel_dir = Path(__file__).parents[1].joinpath('panel')
+
+        self.webapp.router.register_resource(
+            web.StaticResource('/frontend', str(panel_dir)))
 
     async def start(self):
         """Run rest api webserver."""
