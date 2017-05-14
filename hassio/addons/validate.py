@@ -70,10 +70,10 @@ def validate_options(raw_schema):
             try:
                 if isinstance(typ, list):
                     # nested value
-                    options[key] = _nested_validate(typ[0], value)
+                    options[key] = _nested_validate(typ[0], value, key)
                 else:
                     # normal value
-                    options[key] = _single_validate(typ, value)
+                    options[key] = _single_validate(typ, value, key)
             except (IndexError, KeyError):
                 raise vol.Invalid(
                     "Type error for {}.".format(key)) from None
@@ -84,12 +84,12 @@ def validate_options(raw_schema):
 
 
 # pylint: disable=no-value-for-parameter
-def _single_validate(typ, value):
+def _single_validate(typ, value, key):
     """Validate a single element."""
     try:
         # if required argument
         if value is None:
-            raise vol.Invalid("A required argument is not set!")
+            raise vol.Invalid("Missing required option '{}'.".format(key))
 
         if typ == V_STR:
             return str(value)
@@ -104,13 +104,13 @@ def _single_validate(typ, value):
         elif typ == V_URL:
             return vol.Url()(value)
 
-        raise vol.Invalid("Fatal error for {}.".format(value))
+        raise vol.Invalid("Fatal error for {} type {}.".format(key, typ))
     except ValueError:
         raise vol.Invalid(
-            "Type {} error for {}.".format(typ, value)) from None
+            "Type {} error for '{}' on {}.".format(typ, value, key)) from None
 
 
-def _nested_validate(typ, data_list):
+def _nested_validate(typ, data_list, key):
     """Validate nested items."""
     options = []
 
@@ -123,10 +123,10 @@ def _nested_validate(typ, data_list):
                     raise vol.Invalid(
                         "Unknown nested options {}.".format(c_key))
 
-                c_options[c_key] = _single_validate(typ[c_key], c_value)
+                c_options[c_key] = _single_validate(typ[c_key], c_value, c_key)
             options.append(c_options)
         # normal list
         else:
-            options.append(_single_validate(typ, element))
+            options.append(_single_validate(typ, element, key))
 
     return options

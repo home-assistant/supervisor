@@ -74,6 +74,7 @@ class HassIO(object):
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
         self.api.register_security()
+        self.api.register_panel()
 
         # schedule api session cleanup
         self.scheduler.register_task(

@@ -1,7 +1,7 @@
 """Const file for HassIO."""
 from pathlib import Path
 
-HASSIO_VERSION = '0.25'
+HASSIO_VERSION = '0.26'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
@@ -9,8 +9,6 @@ URL_HASSIO_VERSION_BETA = ('https://raw.githubusercontent.com/home-assistant/'
                            'hassio/dev/version.json')
 
 URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
-
-DOCKER_REPO = "homeassistant"
 
 HASSIO_SHARE = Path("/data")
 

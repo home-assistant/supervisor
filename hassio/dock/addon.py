@@ -159,12 +159,14 @@ class DockerAddon(DockerBase):
                 image = self.dock.images.build(
                     path=str(build_dir), tag=build_tag, pull=True)
 
-                _LOGGER.info("Build %s done", build_tag)
+                self.version = tag
                 image.tag(self.image, tag='latest')
+
             except (docker.errors.DockerException, TypeError) as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)
                 return False
 
+            _LOGGER.info("Build %s done", build_tag)
             return True
 
         finally:
