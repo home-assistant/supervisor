@@ -13,8 +13,8 @@ from .validate import (
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
-    DOCKER_REPO, ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS,
-    MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON)
+    ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP,
+    ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -317,7 +317,7 @@ class AddonsData(Config):
             addon_data[ATTR_REPOSITORY], self.arch, addon_data[ATTR_SLUG])
 
     def need_build(self, addon):
-        """Return True if this addon need a local build."""
+        """Return True if this  addon need a local build."""
         addon_data = self._system_data.get(
             addon, self._addons_cache.get(addon)
         )

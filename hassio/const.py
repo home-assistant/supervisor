@@ -10,8 +10,6 @@ URL_HASSIO_VERSION_BETA = ('https://raw.githubusercontent.com/home-assistant/'
 
 URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
 
-DOCKER_REPO = "homeassistant"
-
 HASSIO_SHARE = Path("/data")
 
 RUN_UPDATE_INFO_TASKS = 28800
