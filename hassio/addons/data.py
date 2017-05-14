@@ -13,8 +13,8 @@ from .validate import (
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
-    DOCKER_REPO, ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS,
-    MAP_BACKUP, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON)
+    ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP,
+    ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -308,28 +308,20 @@ class AddonsData(Config):
             addon, self._addons_cache.get(addon)
         )
 
-        # core repository
-        if addon_data[ATTR_REPOSITORY] == REPOSITORY_CORE:
-            return "{}/{}-addon-{}".format(
-                DOCKER_REPO, self.arch, addon_data[ATTR_SLUG])
-
         # Repository with dockerhub images
         if ATTR_IMAGE in addon_data:
             return addon_data[ATTR_IMAGE].format(arch=self.arch)
 
-        # Local build addon
-        if addon_data[ATTR_REPOSITORY] == REPOSITORY_LOCAL:
-            return "local/{}-addon-{}".format(self.arch, addon_data[ATTR_SLUG])
-
-        _LOGGER.error("No image for %s", addon)
+        # local build
+        return "{}/{}-addon-{}".format(
+            addon_data[ATTR_REPOSITORY], self.arch, addon_data[ATTR_SLUG])
 
     def need_build(self, addon):
-        """Return True if this addon need a local build."""
+        """Return True if this  addon need a local build."""
         addon_data = self._system_data.get(
             addon, self._addons_cache.get(addon)
         )
-        return addon_data[ATTR_REPOSITORY] == REPOSITORY_LOCAL \
-            and not addon_data.get(ATTR_IMAGE)
+        return ATTR_IMAGE not in addon_data
 
     def map_config(self, addon):
         """Return True if config map is needed."""

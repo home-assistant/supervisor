@@ -51,13 +51,13 @@ class DockerBase(object):
             _LOGGER.info("Pull image %s tag %s.", self.image, tag)
             image = self.dock.images.pull("{}:{}".format(self.image, tag))
 
+            self.version = tag
             image.tag(self.image, tag='latest')
-            self.version = get_version_from_env(image.attrs['Config']['Env'])
-            _LOGGER.info("Tag image %s with version %s as latest",
-                         self.image, self.version)
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", self.image, tag, err)
             return False
+
+        _LOGGER.info("Tag image %s with version %s as latest", self.image, tag)
         return True
 
     def exists(self):
