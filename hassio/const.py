@@ -1,7 +1,7 @@
 """Const file for HassIO."""
 from pathlib import Path
 
-HASSIO_VERSION = '0.26'
+HASSIO_VERSION = '0.27'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
@@ -25,6 +25,14 @@ FILE_HASSIO_CONFIG = Path(HASSIO_SHARE, "config.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 SOCKET_HC = Path("/var/run/hassio-hc.sock")
+
+LABEL_VERSION = 'io.hass.version'
+LABEL_ARCH = 'io.hass.arch'
+LABEL_TYPE = 'io.hass.type'
+
+META_ADDON = 'addon'
+META_SUPERVISOR = 'supervisor'
+META_HOMEASSISTANT = 'homeassistant'
 
 JSON_RESULT = 'result'
 JSON_DATA = 'data'
