@@ -7,7 +7,6 @@ import docker
 
 from . import DockerBase
 from .util import dockerfile_template
-from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,9 +81,7 @@ class DockerAddon(DockerBase):
                 volumes=self.volumes,
             )
 
-            self.version = get_version_from_env(
-                self.container.attrs['Config']['Env'])
-
+            self.process_metadata()
             _LOGGER.info("Start docker addon %s with version %s",
                          self.image, self.version)
 
@@ -101,8 +98,7 @@ class DockerAddon(DockerBase):
         """
         try:
             self.container = self.dock.containers.get(self.docker_name)
-            self.version = get_version_from_env(
-                self.container.attrs['Config']['Env'])
+            self.process_metadata()
 
             _LOGGER.info(
                 "Attach to image %s with version %s", self.image, self.version)
@@ -159,8 +155,8 @@ class DockerAddon(DockerBase):
                 image = self.dock.images.build(
                     path=str(build_dir), tag=build_tag, pull=True)
 
-                self.version = tag
                 image.tag(self.image, tag='latest')
+                self.process_metadata(metadata=image.attrs, force=True)
 
             except (docker.errors.DockerException, TypeError) as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)

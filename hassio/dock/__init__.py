@@ -5,6 +5,7 @@ import logging
 
 import docker
 
+from ..const import LABEL_VERSION
 from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,6 +34,19 @@ class DockerBase(object):
         """Return True if a task is in progress."""
         return self._lock.locked()
 
+    def process_metadata(self, metadata=None, force=False):
+        """Read metadata and set it to object."""
+        if not force and version:
+            return
+
+        # read metadata
+        metadata =  metadata or self.container
+        if LABEL_VERSION in metadata['Label']:
+            self.version = metadata['Label'][LABEL_VERSION]
+
+        # dedicated
+        self.version = get_version_from_env(metadata['Config']['Env'])
+
     async def install(self, tag):
         """Pull docker image."""
         if self._lock.locked():
@@ -51,8 +65,8 @@ class DockerBase(object):
             _LOGGER.info("Pull image %s tag %s.", self.image, tag)
             image = self.dock.images.pull("{}:{}".format(self.image, tag))
 
-            self.version = tag
             image.tag(self.image, tag='latest')
+            self.process_metadata(metadata=image.attrs, force=True)
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", self.image, tag, err)
             return False
@@ -74,7 +88,7 @@ class DockerBase(object):
         """
         try:
             image = self.dock.images.get(self.image)
-            self.version = get_version_from_env(image.attrs['Config']['Env'])
+            self.process_metadata(metadata=image.attrs)
         except docker.errors.DockerException:
             return False
 
@@ -95,8 +109,7 @@ class DockerBase(object):
         if not self.container:
             try:
                 self.container = self.dock.containers.get(self.docker_name)
-                self.version = get_version_from_env(
-                    self.container.attrs['Config']['Env'])
+                self.process_metadata()
             except docker.errors.DockerException:
                 return False
         else:
@@ -121,8 +134,7 @@ class DockerBase(object):
         try:
             self.container = self.dock.containers.get(self.docker_name)
             self.image = self.container.attrs['Config']['Image']
-            self.version = get_version_from_env(
-                self.container.attrs['Config']['Env'])
+            self.process_metadata()
             _LOGGER.info("Attach to image %s with version %s",
                          self.image, self.version)
         except (docker.errors.DockerException, KeyError):

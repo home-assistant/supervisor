@@ -51,8 +51,7 @@ class DockerHomeAssistant(DockerBase):
                         {'bind': '/ssl', 'mode': 'rw'},
                 })
 
-            self.version = get_version_from_env(
-                self.container.attrs['Config']['Env'])
+            self.process_metadata()
 
             _LOGGER.info("Start docker addon %s with version %s",
                          self.image, self.version)
