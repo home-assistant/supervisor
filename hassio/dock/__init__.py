@@ -36,7 +36,7 @@ class DockerBase(object):
 
     def process_metadata(self, metadata=None, force=False):
         """Read metadata and set it to object."""
-        if not force and version:
+        if not force and self.version:
             return
 
         # read metadata
