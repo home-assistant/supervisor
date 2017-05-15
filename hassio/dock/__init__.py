@@ -41,8 +41,8 @@ class DockerBase(object):
 
         # read metadata
         metadata = metadata or self.container
-        if LABEL_VERSION in metadata['Label']:
-            self.version = metadata['Label'][LABEL_VERSION]
+        if LABEL_VERSION in metadata['Config']['Label']:
+            self.version = metadata['Config']['Label'][LABEL_VERSION]
 
         # dedicated
         self.version = get_version_from_env(metadata['Config']['Env'])
