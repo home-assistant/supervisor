@@ -7,7 +7,7 @@ import docker
 
 from . import DockerBase
 from .util import dockerfile_template
-from ..tools import get_version_from_env
+from ..const import META_ADDON
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,9 +82,7 @@ class DockerAddon(DockerBase):
                 volumes=self.volumes,
             )
 
-            self.version = get_version_from_env(
-                self.container.attrs['Config']['Env'])
-
+            self.process_metadata()
             _LOGGER.info("Start docker addon %s with version %s",
                          self.image, self.version)
 
@@ -101,8 +99,7 @@ class DockerAddon(DockerBase):
         """
         try:
             self.container = self.dock.containers.get(self.docker_name)
-            self.version = get_version_from_env(
-                self.container.attrs['Config']['Env'])
+            self.process_metadata()
 
             _LOGGER.info(
                 "Attach to image %s with version %s", self.image, self.version)
@@ -147,7 +144,8 @@ class DockerAddon(DockerBase):
             # prepare Dockerfile
             try:
                 dockerfile_template(
-                    Path(build_dir, 'Dockerfile'), self.addons_data.arch, tag)
+                    Path(build_dir, 'Dockerfile'), self.addons_data.arch,
+                    tag, META_ADDON)
             except OSError as err:
                 _LOGGER.error("Can't prepare dockerfile -> %s", err)
 
@@ -159,8 +157,8 @@ class DockerAddon(DockerBase):
                 image = self.dock.images.build(
                     path=str(build_dir), tag=build_tag, pull=True)
 
-                self.version = tag
                 image.tag(self.image, tag='latest')
+                self.process_metadata(metadata=image.attrs, force=True)
 
             except (docker.errors.DockerException, TypeError) as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)

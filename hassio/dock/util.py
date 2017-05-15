@@ -11,11 +11,10 @@ RESIN_BASE_IMAGE = {
     ARCH_AMD64: "resin/amd64-alpine:3.5",
 }
 
-TMPL_VERSION = re.compile(r"%%VERSION%%")
 TMPL_IMAGE = re.compile(r"%%BASE_IMAGE%%")
 
 
-def dockerfile_template(dockerfile, arch, version):
+def dockerfile_template(dockerfile, arch, version, meta_type):
     """Prepare a Hass.IO dockerfile."""
     buff = []
     resin_image = RESIN_BASE_IMAGE[arch]
@@ -23,10 +22,19 @@ def dockerfile_template(dockerfile, arch, version):
     # read docker
     with dockerfile.open('r') as dock_input:
         for line in dock_input:
-            line = TMPL_VERSION.sub(version, line)
             line = TMPL_IMAGE.sub(resin_image, line)
             buff.append(line)
+
+    # add metadata
+    buff.append(create_metadata(version, arch, meta_type))
 
     # write docker
     with dockerfile.open('w') as dock_output:
         dock_output.writelines(buff)
+
+
+def create_metadata(version, arch, meta_type):
+    """Generate docker label layer for hassio."""
+    return ('LABEL io.hass.version="{}" '
+            'io.hass.arch="{}" '
+            'io.hass.type="{}"').format(version, arch, meta_type)
