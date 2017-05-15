@@ -7,6 +7,7 @@ import docker
 
 from . import DockerBase
 from .util import dockerfile_template
+from ..const import META_ADDON
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -143,7 +144,8 @@ class DockerAddon(DockerBase):
             # prepare Dockerfile
             try:
                 dockerfile_template(
-                    Path(build_dir, 'Dockerfile'), self.addons_data.arch, tag)
+                    Path(build_dir, 'Dockerfile'), self.addons_data.arch,
+                    tag, META_ADDON)
             except OSError as err:
                 _LOGGER.error("Can't prepare dockerfile -> %s", err)
 

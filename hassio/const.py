@@ -30,6 +30,10 @@ LABEL_VERSION = 'io.hass.version'
 LABEL_ARCH = 'io.hass.arch'
 LABEL_TYPE = 'io.hass.type'
 
+META_ADDON = 'addon'
+META_SUPERVISOR = 'supervisor'
+META_HOMEASSISTANT = 'homeassistant'
+
 JSON_RESULT = 'result'
 JSON_DATA = 'data'
 JSON_MESSAGE = 'message'

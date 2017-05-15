@@ -14,7 +14,7 @@ RESIN_BASE_IMAGE = {
 TMPL_IMAGE = re.compile(r"%%BASE_IMAGE%%")
 
 
-def dockerfile_template(dockerfile, arch, version):
+def dockerfile_template(dockerfile, arch, version, meta_type):
     """Prepare a Hass.IO dockerfile."""
     buff = []
     resin_image = RESIN_BASE_IMAGE[arch]
@@ -26,15 +26,15 @@ def dockerfile_template(dockerfile, arch, version):
             buff.append(line)
 
     # add metadata
-    buff.append(create_metadata(version, arch))
+    buff.append(create_metadata(version, arch, meta_type))
 
     # write docker
     with dockerfile.open('w') as dock_output:
         dock_output.writelines(buff)
 
 
-def create_metadata(version, arch):
+def create_metadata(version, arch, meta_type):
     """Generate docker label layer for hassio."""
     return ('LABEL io.hass.version="{}" '
             'io.hass.arch="{}" '
-            'io.hass.type="addon"').format(version, arch)
+            'io.hass.type="{}"').format(version, arch, meta_type)
