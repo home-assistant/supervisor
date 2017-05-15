@@ -28,6 +28,7 @@ SOCKET_HC = Path("/var/run/hassio-hc.sock")
 
 LABEL_VERSION = 'io.hass.version'
 LABEL_ARCH = 'io.hass.arch'
+LABEL_TYPE = 'io.hass.type'
 
 JSON_RESULT = 'result'
 JSON_DATA = 'data'

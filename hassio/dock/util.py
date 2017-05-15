@@ -35,4 +35,6 @@ def dockerfile_template(dockerfile, arch, version):
 
 def create_metadata(version, arch):
     """Generate docker label layer for hassio."""
-    return 'LABEL io.hass.version="{}" io.hass.arch="{}"'.format(version, arch)
+    return ('LABEL io.hass.version="{}" '
+            'io.hass.arch="{}" '
+            'io.hass.type="addon"').format(version, arch)

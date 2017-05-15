@@ -40,7 +40,7 @@ class DockerBase(object):
             return
 
         # read metadata
-        metadata =  metadata or self.container
+        metadata = metadata or self.container
         if LABEL_VERSION in metadata['Label']:
             self.version = metadata['Label'][LABEL_VERSION]
 
