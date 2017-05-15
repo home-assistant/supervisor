@@ -97,14 +97,26 @@ class DockerAddon(DockerBase):
 
         Need run inside executor.
         """
+        # read container
         try:
             self.container = self.dock.containers.get(self.docker_name)
             self.process_metadata()
 
-            _LOGGER.info(
-                "Attach to image %s with version %s", self.image, self.version)
+            _LOGGER.info("Attach to container %s with version %s",
+                         self.image, self.version)
+            return
         except (docker.errors.DockerException, KeyError):
             pass
+
+        # read image
+        try:
+            image = self.dock.images.get(self.image)
+            self.process_metadata(metadata=image.attrs)
+
+            _LOGGER.info("Attach to image %s with version %s",
+                         self.image, self.version)
+        except (docker.errors.DockerException, KeyError):
+            _LOGGER.error("No container/image found for %s", self.image)
 
     def _install(self, tag):
         """Pull docker image or build it.
