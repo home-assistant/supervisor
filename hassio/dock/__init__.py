@@ -43,9 +43,9 @@ class DockerBase(object):
         metadata = metadata or self.container.attrs
         if LABEL_VERSION in metadata['Config']['Labels']:
             self.version = metadata['Config']['Labels'][LABEL_VERSION]
-
-        # dedicated
-        self.version = get_version_from_env(metadata['Config']['Env'])
+        else:
+            # dedicated
+            self.version = get_version_from_env(metadata['Config']['Env'])
 
     async def install(self, tag):
         """Pull docker image."""
