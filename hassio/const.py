@@ -75,6 +75,7 @@ ATTR_INITIALIZE = 'initialize'
 ATTR_SESSION = 'session'
 ATTR_LOCATON = 'location'
 ATTR_BUILD = 'build'
+ATTR_DEVICES = 'devices'
 
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'

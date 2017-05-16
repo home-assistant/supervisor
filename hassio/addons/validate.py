@@ -6,7 +6,7 @@ from ..const import (
     ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER,
     STARTUP_BEFORE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE, MAP_SSL,
     MAP_CONFIG, MAP_ADDONS, MAP_BACKUP, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH,
-    ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386)
+    ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386, ATTR_DEVICES)
 
 V_STR = 'str'
 V_INT = 'int'
@@ -34,6 +34,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): dict,
+    vol.Optional(ATTR_DEVICES): [vol.Match(r"(.*):(.*):(rwm|rw|rm)")],
     vol.Optional(ATTR_MAP, default=[]): [
         vol.In([MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP])
     ],
