@@ -338,7 +338,7 @@ class AddonsData(Config):
             result = RE_VOLUME.match(volume)
             volumes[result.group(1)] = result.group(2) or 'ro'
 
-        return valumes
+        return volumes
 
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
