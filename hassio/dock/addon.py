@@ -79,6 +79,7 @@ class DockerAddon(DockerBase):
                 detach=True,
                 network_mode='bridge',
                 ports=self.addons_data.get_ports(self.addon),
+                devices=self.addons_data.get_devices(self.addon),
                 volumes=self.volumes,
             )
 
