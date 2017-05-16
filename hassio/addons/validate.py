@@ -9,7 +9,7 @@ from ..const import (
     ARCH_AARCH64, ARCH_AMD64, ARCH_I386)
 
 
-MAP_VOLUME = r"^(config|ssl|addons|backup)(:rw|:ro)?$"
+MAP_VOLUME = r"^(config|ssl|addons|backup)(?::(rw|:ro))?$"
 
 V_STR = 'str'
 V_INT = 'int'
