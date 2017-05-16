@@ -4,9 +4,12 @@ import voluptuous as vol
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_STARTUP,
     ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER,
-    STARTUP_BEFORE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE, MAP_SSL,
-    MAP_CONFIG, MAP_ADDONS, MAP_BACKUP, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH,
-    ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386, ATTR_DEVICES)
+    STARTUP_BEFORE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE,
+    ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES, ARCH_ARMHF,
+    ARCH_AARCH64, ARCH_AMD64, ARCH_I386)
+
+
+MAP_VOLUME = r"^(config|ssl|addons|backup)(:rw|:ro)?$"
 
 V_STR = 'str'
 V_INT = 'int'
@@ -35,9 +38,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): dict,
     vol.Optional(ATTR_DEVICES): [vol.Match(r"(.*):(.*):(rwm|rw|rm)")],
-    vol.Optional(ATTR_MAP, default=[]): [
-        vol.In([MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP])
-    ],
+    vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [

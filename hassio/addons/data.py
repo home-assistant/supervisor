@@ -3,18 +3,20 @@ import copy
 import logging
 import json
 from pathlib import Path, PurePath
+import re
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .util import extract_hash_from_path
 from .validate import (
-    validate_options, SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG)
+    validate_options, SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG,
+    MAP_VOLUME)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
-    ATTR_SCHEMA, ATTR_IMAGE, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP,
-    ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES)
+    ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH,
+    ATTR_LOCATON, ATTR_DEVICES)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -25,6 +27,8 @@ USER = 'user'
 
 REPOSITORY_CORE = 'core'
 REPOSITORY_LOCAL = 'local'
+
+RE_VOLUME = re.compile(MAP_VOLUME)
 
 
 class AddonsData(Config):
@@ -327,21 +331,14 @@ class AddonsData(Config):
         )
         return ATTR_IMAGE not in addon_data
 
-    def map_config(self, addon):
-        """Return True if config map is needed."""
-        return MAP_CONFIG in self._system_data[addon][ATTR_MAP]
+    def map_volumes(self, addon):
+        """Return a dict of {volume: policy} from addon."""
+        volumes = {}
+        for volume in self._system_data[addon][ATTR_MAP]:
+            result = RE_VOLUME.match(volume)
+            volumes[result.group(1)] = result.group(2) or 'ro'
 
-    def map_ssl(self, addon):
-        """Return True if ssl map is needed."""
-        return MAP_SSL in self._system_data[addon][ATTR_MAP]
-
-    def map_addons(self, addon):
-        """Return True if addons map is needed."""
-        return MAP_ADDONS in self._system_data[addon][ATTR_MAP]
-
-    def map_backup(self, addon):
-        """Return True if backup map is needed."""
-        return MAP_BACKUP in self._system_data[addon][ATTR_MAP]
+        return volumes
 
     def path_data(self, addon):
         """Return addon data path inside supervisor."""
