@@ -37,7 +37,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): dict,
-    vol.Optional(ATTR_DEVICES): [vol.Match(r"(.*):(.*):(rwm|rw|rm)")],
+    vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
     vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
