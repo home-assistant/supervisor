@@ -7,7 +7,7 @@ import docker
 
 from . import DockerBase
 from .util import dockerfile_template
-from ..const import META_ADDON
+from ..const import META_ADDON, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,28 +35,30 @@ class DockerAddon(DockerBase):
                 'bind': '/data', 'mode': 'rw'
             }}
 
-        if self.addons_data.map_config(self.addon):
+        addon_mapping = self.addons_data.map_volumes(self.addon)
+
+        if MAP_CONFIG in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_config): {
-                    'bind': '/config', 'mode': 'rw'
+                    'bind': '/config', 'mode': addon_mapping[MAP_CONFIG]
                 }})
 
-        if self.addons_data.map_ssl(self.addon):
+        if MAP_SSL in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_ssl): {
-                    'bind': '/ssl', 'mode': 'rw'
+                    'bind': '/ssl', 'mode': addon_mapping[MAP_SSL]
                 }})
 
-        if self.addons_data.map_addons(self.addon):
+        if MAP_ADDONS in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_addons_local): {
-                    'bind': '/addons', 'mode': 'rw'
+                    'bind': '/addons', 'mode': addon_mapping[MAP_ADDONS]
                 }})
 
-        if self.addons_data.map_backup(self.addon):
+        if MAP_BACKUP in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_backup): {
-                    'bind': '/backup', 'mode': 'rw'
+                    'bind': '/backup', 'mode': addon_mapping[MAP_BACKUP]
                 }})
 
         return volumes
