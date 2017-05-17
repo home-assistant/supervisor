@@ -32,6 +32,8 @@ ADDONS_CUSTOM_LIST = 'addons_custom_list'
 
 BACKUP_DATA = PurePath("backup")
 
+SHARE_DATA = PurePath("share")
+
 UPSTREAM_BETA = 'upstream_beta'
 
 API_ENDPOINT = 'api_endpoint'
@@ -232,6 +234,16 @@ class CoreConfig(Config):
     def path_extern_backup(self):
         """Return root backup data folder extern for docker."""
         return PurePath(self.path_extern_hassio, BACKUP_DATA)
+
+    @property
+    def path_share(self):
+        """Return root share data folder."""
+        return Path(HASSIO_SHARE, SHARE_DATA)
+
+    @property
+    def path_extern_share(self):
+        """Return root share data folder extern for docker."""
+        return PurePath(self.path_extern_hassio, SHARE_DATA)
 
     @property
     def addons_repositories(self):
