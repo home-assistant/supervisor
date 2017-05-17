@@ -28,17 +28,17 @@ def initialize_system_data(websession):
 
     # hassio addon data folder
     if not config.path_addons_data.is_dir():
-        _LOGGER.info("Create Home-Assistant addon data folder %s",
-                     config.path_addons_data)
+        _LOGGER.info(
+            "Create hassio addon data folder %s", config.path_addons_data)
         config.path_addons_data.mkdir(parents=True)
 
     if not config.path_addons_local.is_dir():
-        _LOGGER.info("Create Home-Assistant addon local repository folder %s",
+        _LOGGER.info("Create hassio addon local repository folder %s",
                      config.path_addons_local)
         config.path_addons_local.mkdir(parents=True)
 
     if not config.path_addons_git.is_dir():
-        _LOGGER.info("Create Home-Assistant addon git repositories folder %s",
+        _LOGGER.info("Create hassio addon git repositories folder %s",
                      config.path_addons_git)
         config.path_addons_git.mkdir(parents=True)
 
