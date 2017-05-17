@@ -76,6 +76,7 @@ ATTR_SESSION = 'session'
 ATTR_LOCATON = 'location'
 ATTR_BUILD = 'build'
 ATTR_DEVICES = 'devices'
+ATTR_ENVIRONMENT = 'environment'
 
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'
