@@ -92,6 +92,8 @@ MAP_CONFIG = 'config'
 MAP_SSL = 'ssl'
 MAP_ADDONS = 'addons'
 MAP_BACKUP = 'backup'
+MAP_SHARE = 'share'
+MAP_MNT = 'mnt'
 
 ARCH_ARMHF = 'armhf'
 ARCH_AARCH64 = 'aarch64'

@@ -21,24 +21,24 @@ def initialize_system_data(websession):
             "Create Home-Assistant config folder %s", config.path_config)
         config.path_config.mkdir()
 
-    # homeassistant ssl folder
+    # hassio ssl folder
     if not config.path_ssl.is_dir():
-        _LOGGER.info("Create Home-Assistant ssl folder %s", config.path_ssl)
+        _LOGGER.info("Create hassio ssl folder %s", config.path_ssl)
         config.path_ssl.mkdir()
 
-    # homeassistant addon data folder
+    # hassio addon data folder
     if not config.path_addons_data.is_dir():
-        _LOGGER.info("Create Home-Assistant addon data folder %s",
-                     config.path_addons_data)
+        _LOGGER.info(
+            "Create hassio addon data folder %s", config.path_addons_data)
         config.path_addons_data.mkdir(parents=True)
 
     if not config.path_addons_local.is_dir():
-        _LOGGER.info("Create Home-Assistant addon local repository folder %s",
+        _LOGGER.info("Create hassio addon local repository folder %s",
                      config.path_addons_local)
         config.path_addons_local.mkdir(parents=True)
 
     if not config.path_addons_git.is_dir():
-        _LOGGER.info("Create Home-Assistant addon git repositories folder %s",
+        _LOGGER.info("Create hassio addon git repositories folder %s",
                      config.path_addons_git)
         config.path_addons_git.mkdir(parents=True)
 
@@ -47,11 +47,15 @@ def initialize_system_data(websession):
                      config.path_addons_build)
         config.path_addons_build.mkdir(parents=True)
 
-    # homeassistant backup folder
+    # hassio backup folder
     if not config.path_backup.is_dir():
-        _LOGGER.info("Create Home-Assistant backup folder %s",
-                     config.path_backup)
+        _LOGGER.info("Create hassio backup folder %s", config.path_backup)
         config.path_backup.mkdir()
+
+    # share folder
+    if not config.path_share.is_dir():
+        _LOGGER.info("Create hassio share folder %s", config.path_share)
+        config.path_share.mkdir()
 
     return config
 

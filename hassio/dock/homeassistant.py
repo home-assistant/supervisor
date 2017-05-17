@@ -47,7 +47,9 @@ class DockerHomeAssistant(DockerBase):
                     str(self.config.path_extern_config):
                         {'bind': '/config', 'mode': 'rw'},
                     str(self.config.path_extern_ssl):
-                        {'bind': '/ssl', 'mode': 'rw'},
+                        {'bind': '/ssl', 'mode': 'ro'},
+                    str(self.config.path_extern_share):
+                        {'bind': '/share', 'mode': 'rw'},
                 })
 
             self.process_metadata()
