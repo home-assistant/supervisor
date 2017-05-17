@@ -5,11 +5,11 @@ from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_STARTUP,
     ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER,
     STARTUP_BEFORE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE,
-    ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES, ARCH_ARMHF,
-    ARCH_AARCH64, ARCH_AMD64, ARCH_I386)
+    ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES, ATTR_ENVIRONMENT,
+    ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386)
 
 
-MAP_VOLUME = r"^(config|ssl|addons|backup)(?::(rw|:ro))?$"
+MAP_VOLUME = r"^(config|ssl|addons|backup|share|mnt)(?::(rw|:ro))?$"
 
 V_STR = 'str'
 V_INT = 'int'
@@ -39,6 +39,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_PORTS): dict,
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
     vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
+    vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [

@@ -7,7 +7,9 @@ import docker
 
 from . import DockerBase
 from .util import dockerfile_template
-from ..const import META_ADDON, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP
+from ..const import (
+    META_ADDON, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE,
+    MAP_MNT)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,6 +63,18 @@ class DockerAddon(DockerBase):
                     'bind': '/backup', 'mode': addon_mapping[MAP_BACKUP]
                 }})
 
+        if MAP_SHARE in addon_mapping:
+            volumes.update({
+                str(self.config.path_extern_share): {
+                    'bind': '/share', 'mode': addon_mapping[MAP_SHARE]
+                }})
+
+        if MAP_MNT in addon_mapping:
+            volumes.update({
+                '/mnt': {
+                    'bind': '/mnt', 'mode': addon_mapping[MAP_MNT]
+                }})
+
         return volumes
 
     def _run(self):
@@ -82,6 +96,7 @@ class DockerAddon(DockerBase):
                 network_mode='bridge',
                 ports=self.addons_data.get_ports(self.addon),
                 devices=self.addons_data.get_devices(self.addon),
+                environment=self.addons_data.get_environment(self.addon),
                 volumes=self.volumes,
             )
 
