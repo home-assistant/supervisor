@@ -82,7 +82,7 @@ class DockerAddon(DockerBase):
                 network_mode='bridge',
                 ports=self.addons_data.get_ports(self.addon),
                 devices=self.addons_data.get_devices(self.addon),
-                environment=self.addons.get_environment(self.addon),
+                environment=self.addons_data.get_environment(self.addon),
                 volumes=self.volumes,
             )
 
