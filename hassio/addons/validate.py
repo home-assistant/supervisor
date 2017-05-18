@@ -4,12 +4,12 @@ import voluptuous as vol
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_STARTUP,
     ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER,
-    STARTUP_BEFORE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE,
-    ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES, ATTR_ENVIRONMENT,
-    ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386)
+    STARTUP_BEFORE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE, ATTR_URL,
+    ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES, ATTR_ENVIRONMENT, ARCH_ARMHF,
+    ARCH_AARCH64, ARCH_AMD64, ARCH_I386)
 
 
-MAP_VOLUME = r"^(config|ssl|addons|backup|share|mnt)(?::(rw|:ro))?$"
+MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
 
 V_STR = 'str'
 V_INT = 'int'
@@ -33,7 +33,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_URL): vol.Url(),
     vol.Optional(ATTR_ARCH, default=ARCH_ALL): [vol.In(ARCH_ALL)],
     vol.Required(ATTR_STARTUP):
-        vol.In([STARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
+        vol.In([ARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): dict,
