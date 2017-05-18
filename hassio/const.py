@@ -78,7 +78,6 @@ ATTR_BUILD = 'build'
 ATTR_DEVICES = 'devices'
 ATTR_ENVIRONMENT = 'environment'
 
-STARTUP_FIRST = 'first'
 STARTUP_BEFORE = 'before'
 STARTUP_AFTER = 'after'
 STARTUP_ONCE = 'once'
