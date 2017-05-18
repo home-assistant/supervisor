@@ -33,7 +33,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_URL): vol.Url(),
     vol.Optional(ATTR_ARCH, default=ARCH_ALL): [vol.In(ARCH_ALL)],
     vol.Required(ATTR_STARTUP):
-        vol.In([ARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
+        vol.In([STARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE]),
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): dict,
