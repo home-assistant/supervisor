@@ -281,8 +281,10 @@ Communicate over unix socket with a host daemon.
 # shutdown
 # host-update [v]
 
+# hostname xy
+
 # network info
-# network hostname xy
+-> {}
 # network wlan ssd xy
 # network wlan password xy
 # network int ip xy
@@ -294,6 +296,7 @@ features:
 - shutdown
 - reboot
 - update
+- hostname
 - network_info
 - network_control
 
