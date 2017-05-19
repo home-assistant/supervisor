@@ -12,7 +12,8 @@ from .host_control import HostControl
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
-    RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE)
+    RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE,
+    STARTUP_INITIALIZE)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
@@ -104,6 +105,9 @@ class HassIO(object):
         self.scheduler.register_task(
             hassio_update(self.config, self.supervisor),
             RUN_UPDATE_SUPERVISOR_TASKS)
+
+        # start addon mark as initialize
+        await self.addons.auto_boot(STARTUP_INITIALIZE)
 
     async def start(self):
         """Start HassIO orchestration."""
