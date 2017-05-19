@@ -99,10 +99,9 @@ class RestAPI(object):
 
     def register_panel(self):
         """Register panel for homeassistant."""
-        panel_dir = Path(__file__).parents[1].joinpath('panel')
+        panel = Path(__file__).parents[1].joinpath('panel/hassio-main.html')
 
-        self.webapp.router.register_resource(
-            web.StaticResource('/panel', panel_dir))
+        self.webapp.router.add_get('/panel', web.FileResponse(panel))
 
     async def start(self):
         """Run rest api webserver."""
