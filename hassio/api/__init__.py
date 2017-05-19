@@ -101,7 +101,7 @@ class RestAPI(object):
         """Register panel for homeassistant."""
         panel = Path(__file__).parents[1].joinpath('panel/hassio-main.html')
         
-        def get_panel():
+        def get_panel(request):
             """Return file response with panel."""
             return web.FileResponse(panel)
 
