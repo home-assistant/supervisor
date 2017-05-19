@@ -102,7 +102,7 @@ class RestAPI(object):
         panel_dir = Path(__file__).parents[1].joinpath('panel')
 
         self.webapp.router.register_resource(
-            web.StaticResource('/panel', str(panel_dir)))
+            web.StaticResource('/panel', panel_dir))
 
     async def start(self):
         """Run rest api webserver."""
