@@ -37,7 +37,7 @@ class APINetwork(object):
 
         # hostname
         if ATTR_HOSTNAME in body:
-            if self.host_control.hostname != body[ATTR_HOSTNAME]
+            if self.host_control.hostname != body[ATTR_HOSTNAME]:
                 await self.host_control.set_hostname(body[ATTR_HOSTNAME])
 
         return True
