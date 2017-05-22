@@ -10,7 +10,7 @@ from voluptuous.humanize import humanize_error
 
 from .const import FILE_HASSIO_CONFIG, HASSIO_SHARE
 from .tools import (
-    fetch_last_versions, write_json_file, read_json_file)
+    fetch_last_versions, write_json_file, read_json_file, validate_timezone)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,8 +35,8 @@ BACKUP_DATA = PurePath("backup")
 SHARE_DATA = PurePath("share")
 
 UPSTREAM_BETA = 'upstream_beta'
-
 API_ENDPOINT = 'api_endpoint'
+TIMEZONE = 'timezone'
 
 SECURITY_INITIALIZE = 'security_initialize'
 SECURITY_TOTP = 'security_totp'
@@ -48,6 +48,7 @@ SECURITY_SESSIONS = 'security_sessions'
 SCHEMA_CONFIG = vol.Schema({
     vol.Optional(UPSTREAM_BETA, default=False): vol.Boolean(),
     vol.Optional(API_ENDPOINT): vol.Coerce(str),
+    vol.Optional(TIMEZONE, default='UTC'): validate_timezone,
     vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
     vol.Optional(HASSIO_LAST): vol.Coerce(str),
     vol.Optional(HASSIO_CLEANUP): vol.Coerce(str),
@@ -135,6 +136,17 @@ class CoreConfig(Config):
     def upstream_beta(self, value):
         """Set beta upstream mode."""
         self._data[UPSTREAM_BETA] = bool(value)
+
+    @property
+    def timezone(self):
+        """Return system timezone."""
+        return self._data[TIMEZONE]
+
+    @timezone.setter
+    def timezone(self, value):
+        """Set system timezone."""
+        self._data[TIMEZONE] = value
+        self.save()
 
     @property
     def hassio_cleanup(self):

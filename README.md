@@ -9,9 +9,9 @@ Hass.io is a Docker based system for managing your Home Assistant installation a
 
 **HassIO is under active development and is not ready yet for production use.**
 
-## Installing Hass.io
+## Installation
 
-Looks to our [website](https://home-assistant.io/hassio).
+Installation instructions can be found at [https://home-assistant.io/hassio](https://home-assistant.io/hassio).
 
 # HomeAssistant
 
