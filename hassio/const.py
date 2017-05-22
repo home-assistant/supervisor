@@ -43,6 +43,7 @@ RESULT_OK = 'ok'
 
 ATTR_ARCH = 'arch'
 ATTR_HOSTNAME = 'hostname'
+ATTR_TIMEZONE = 'timezone'
 ATTR_OS = 'os'
 ATTR_TYPE = 'type'
 ATTR_SOURCE = 'source'

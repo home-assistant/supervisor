@@ -7,6 +7,8 @@ import socket
 
 import aiohttp
 import async_timeout
+import pytz
+import voluptuous as vol
 
 from .const import URL_HASSIO_VERSION, URL_HASSIO_VERSION_BETA
 
@@ -90,3 +92,16 @@ def read_json_file(jsonfile):
     """Read a json file and return a dict."""
     with jsonfile.open('r') as cfile:
         return json.loads(cfile.read())
+
+
+def validate_timezone(timezone):
+    """Validate voluptuous timezone."""
+    try:
+        pytz.timezone(timezone)
+    except pytz.exceptions.UnknownTimeZoneError:
+        raise vol.Invalid(
+            "Invalid time zone passed in. Valid options can be found here: "
+            "http://en.wikipedia.org/wiki/List_of_tz_database_time_zones") \
+                from None
+
+    return timezone

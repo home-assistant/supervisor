@@ -11,7 +11,8 @@ from ..const import (
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
     ATTR_REPOSITORY, ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED,
     ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH,
-    ATTR_BUILD)
+    ATTR_BUILD, ATTR_TIMEZONE)
+from ..tools import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ SCHEMA_OPTIONS = vol.Schema({
     # pylint: disable=no-value-for-parameter
     vol.Optional(ATTR_BETA_CHANNEL): vol.Boolean(),
     vol.Optional(ATTR_ADDONS_REPOSITORIES): [vol.Url()],
+    vol.Optional(ATTR_TIMEZONE): validate_timezone,
 })
 
 SCHEMA_VERSION = vol.Schema({
@@ -92,6 +94,7 @@ class APISupervisor(object):
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
             ATTR_ARCH: self.addons.arch,
+            ATTR_TIMEZONE: self.config.timezone,
             ATTR_ADDONS: self._addons_list(only_installed=True),
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
         }
@@ -111,6 +114,9 @@ class APISupervisor(object):
 
         if ATTR_BETA_CHANNEL in body:
             self.config.upstream_beta = body[ATTR_BETA_CHANNEL]
+
+        if ATTR_TIMEZONE in body:
+            self.config.timezone = body[ATTR_TIMEZONE]
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
