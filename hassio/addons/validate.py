@@ -6,7 +6,8 @@ from ..const import (
     ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER,
     STARTUP_BEFORE, STARTUP_INITIALIZE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA,
     ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES,
-    ATTR_ENVIRONMENT, ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386)
+    ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64,
+    ARCH_I386)
 
 
 MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
@@ -24,8 +25,19 @@ ARCH_ALL = [
     ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386
 ]
 
+
+def check_network(data):
+    """Validate network settings."""
+    host_network = data[ATTR_HOST_NETWORK]
+
+    if ATTR_PORTS in data and host_network:
+        raise vol.Invalid("Hostnetwork & ports are not allow!")
+
+    return data
+
+
 # pylint: disable=no-value-for-parameter
-SCHEMA_ADDON_CONFIG = vol.Schema({
+SCHEMA_ADDON_CONFIG = vol.Schema(vol.All({
     vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Required(ATTR_SLUG): vol.Coerce(str),
@@ -38,6 +50,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): dict,
+    vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
     vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
@@ -48,7 +61,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         ])
     },
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
-}, extra=vol.ALLOW_EXTRA)
+}, check_network), extra=vol.ALLOW_EXTRA)
 
 
 # pylint: disable=no-value-for-parameter

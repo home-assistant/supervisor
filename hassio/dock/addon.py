@@ -86,11 +86,11 @@ class DockerAddon(DockerBase):
                 self.image,
                 name=self.docker_name,
                 detach=True,
-                network_mode='bridge',
+                network_mode=self.addons_data.get_network_mode(self.addon),
                 ports=self.addons_data.get_ports(self.addon),
                 devices=self.addons_data.get_devices(self.addon),
                 environment=self.addons_data.get_environment(self.addon),
-                volumes=self.volumes,
+                volumes=self.volumes
             )
 
             self.process_metadata()
