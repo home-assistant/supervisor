@@ -39,6 +39,7 @@ setup(
         'voluptuous',
         'gitpython',
         'pyotp',
-        'pyqrcode'
+        'pyqrcode',
+        'pytz'
     ]
 )

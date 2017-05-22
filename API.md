@@ -34,6 +34,7 @@ The addons from `addons` are only installed one.
     "last_version": "LAST_VERSION",
     "arch": "armhf|aarch64|i386|amd64",
     "beta_channel": "true|false",
+    "timezone": "TIMEZONE",
     "addons": [
         {
             "name": "xy bla",
@@ -98,6 +99,7 @@ Optional:
 ```json
 {
     "beta_channel": "true|false",
+    "timezone": "TIMEZONE",
     "addons_repositories": [
         "REPO_URL"
     ]
