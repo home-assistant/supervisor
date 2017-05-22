@@ -90,7 +90,8 @@ class DockerAddon(DockerBase):
                 ports=self.addons_data.get_ports(self.addon),
                 devices=self.addons_data.get_devices(self.addon),
                 environment=self.addons_data.get_environment(self.addon),
-                volumes=self.volumes,
+                network_mode=self.addons_data.get_network(self.addon),
+                volumes=self.volumes
             )
 
             self.process_metadata()

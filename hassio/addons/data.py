@@ -16,7 +16,7 @@ from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
     ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH,
-    ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT)
+    ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT, ATTR_HOST_NETWORK)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -293,6 +293,12 @@ class AddonsData(Config):
     def get_ports(self, addon):
         """Return ports of addon."""
         return self._system_data[addon].get(ATTR_PORTS)
+
+    def get_network(self, addon):
+        """Return network of addon."""
+        if self._system_data[addon][ATTR_HOST_NETWORK]:
+            return 'host'
+        return 'bridge'
 
     def get_devices(self, addon):
         """Return devices of addon."""
