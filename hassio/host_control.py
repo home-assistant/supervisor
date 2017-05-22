@@ -17,6 +17,7 @@ UNKNOWN = 'unknown'
 FEATURES_SHUTDOWN = 'shutdown'
 FEATURES_REBOOT = 'reboot'
 FEATURES_UPDATE = 'update'
+FEATURES_HOSTNAME = 'hostname'
 FEATURES_NETWORK_INFO = 'network_info'
 FEATURES_NETWORK_CONTROL = 'network_control'
 
@@ -117,3 +118,7 @@ class HostControl(object):
         if version:
             return self._send_command("update {}".format(version))
         return self._send_command("update")
+
+    def set_hostname(self, hostname):
+        """Update hostname on host."""
+        return self._send_command("hostname {}".format(hostname))
