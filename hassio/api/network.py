@@ -24,7 +24,7 @@ class APINetwork(object):
         self.host_control = host_control
 
     @api_process
-    def info(self, request):
+    async def info(self, request):
         """Show network settings."""
         return {
             ATTR_HOSTNAME: self.host_control.hostname,
