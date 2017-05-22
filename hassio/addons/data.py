@@ -294,8 +294,8 @@ class AddonsData(Config):
         """Return ports of addon."""
         return self._system_data[addon].get(ATTR_PORTS)
 
-    def get_network(self, addon):
-        """Return network of addon."""
+    def get_network_mode(self, addon):
+        """Return network mode of addon."""
         if self._system_data[addon][ATTR_HOST_NETWORK]:
             return 'host'
         return 'bridge'
