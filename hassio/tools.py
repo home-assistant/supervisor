@@ -97,7 +97,7 @@ def read_json_file(jsonfile):
 def validate_timezone(timezone):
     """Validate voluptuous timezone."""
     try:
-        pytz.timezone(time_zone_str)
+        pytz.timezone(timezone)
     except pytz.exceptions.UnknownTimeZoneError:
         raise vol.Invalid(
             "Invalid time zone passed in. Valid options can be found here: "
