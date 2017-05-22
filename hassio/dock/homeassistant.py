@@ -42,6 +42,7 @@ class DockerHomeAssistant(DockerBase):
                 network_mode='host',
                 environment={
                     'HASSIO': self.config.api_endpoint,
+                    'TZ': self.config.timezone,
                 },
                 volumes={
                     str(self.config.path_extern_config):

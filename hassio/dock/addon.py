@@ -29,6 +29,16 @@ class DockerAddon(DockerBase):
         return "addon_{}".format(self.addon)
 
     @property
+    def environment(self):
+        """Return environment for docker add-on."""
+        addon_env = self.addons_data.get_environment(self.addon) or {}
+
+        return {
+            **addon_env,
+            'TZ': self.config.timezone,
+        }
+
+    @property
     def volumes(self):
         """Generate volumes for mappings."""
         volumes = {
@@ -89,7 +99,7 @@ class DockerAddon(DockerBase):
                 network_mode=self.addons_data.get_network_mode(self.addon),
                 ports=self.addons_data.get_ports(self.addon),
                 devices=self.addons_data.get_devices(self.addon),
-                environment=self.addons_data.get_environment(self.addon),
+                environment=self.environment,
                 volumes=self.volumes
             )
 
