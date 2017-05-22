@@ -176,6 +176,11 @@ Optional:
 ### Network
 
 - GET `/network/info`
+```json
+{
+    "hostname": ""
+}
+```
 
 - POST `/network/options`
 ```json

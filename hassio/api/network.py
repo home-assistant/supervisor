@@ -1,9 +1,17 @@
 """Init file for HassIO network rest api."""
 import logging
 
-from .util import api_process_hostcontrol
+import voluptuous as vol
+
+from .util import api_process, api_process_hostcontrol, api_validate
+from ..const import ATTR_HOSTNAME
 
 _LOGGER = logging.getLogger(__name__)
+
+
+SCHEMA_OPTIONS = vol.Schema({
+    vol.Optional(ATTR_HOSTNAME): vol.Coerce(str),
+})
 
 
 class APINetwork(object):
@@ -15,12 +23,21 @@ class APINetwork(object):
         self.loop = loop
         self.host_control = host_control
 
-    @api_process_hostcontrol
+    @api_process
     def info(self, request):
         """Show network settings."""
-        pass
+        return {
+            ATTR_HOSTNAME: self.host_control.hostname,
+        }
 
     @api_process_hostcontrol
     def options(self, request):
         """Edit network settings."""
-        pass
+        body = await api_validate(SCHEMA_OPTIONS, request)
+
+        # hostname
+        if ATTR_HOSTNAME in body:
+            if self.host_control.hostname != body[ATTR_HOSTNAME]
+                await self.host_control.set_hostname(body[ATTR_HOSTNAME])
+
+        return True
