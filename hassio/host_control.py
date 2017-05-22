@@ -121,4 +121,4 @@ class HostControl(object):
 
     def set_hostname(self, hostname):
         """Update hostname on host."""
-        return await self._send_command("hostname {}".format(hostname))
+        return self._send_command("hostname {}".format(hostname))

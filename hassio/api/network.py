@@ -31,7 +31,7 @@ class APINetwork(object):
         }
 
     @api_process_hostcontrol
-    def options(self, request):
+    async def options(self, request):
         """Edit network settings."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
