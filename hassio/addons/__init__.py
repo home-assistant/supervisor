@@ -207,6 +207,10 @@ class AddonManager(AddonsData):
             _LOGGER.error("No docker found for addon %s", addon)
             return False
 
+        if not self.write_addon_options(addon):
+            _LOGGER.error("Can't write options for addon %s", addon)
+            return False
+
         return await self.dockers[addon].restart()
 
     async def logs(self, addon):
