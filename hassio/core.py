@@ -20,7 +20,7 @@ from .dock.supervisor import DockerSupervisor
 from .tasks import (
     hassio_update, homeassistant_watchdog, homeassistant_setup,
     api_sessions_cleanup)
-from .tools import get_arch_from_image, get_local_ip
+from .tools import get_arch_from_image, get_local_ip, fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,13 +60,17 @@ class HassIO(object):
         # set api endpoint
         self.config.api_endpoint = await get_local_ip(self.loop)
 
+        # update timezone
+        if self.config.timezone == 'UTC':
+            self.config.timezone = await fetch_timezone(self.websession)
+
         # hostcontrol
         await self.host_control.load()
 
         # schedule update info tasks
         self.scheduler.register_task(
-            self.host_control.load, RUN_UPDATE_INFO_TASKS)
 
+            self.host_control.load, RUN_UPDATE_INFO_TASKS)
         # rest api views
         self.api.register_host(self.host_control)
         self.api.register_network(self.host_control)

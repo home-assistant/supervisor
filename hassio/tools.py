@@ -1,5 +1,6 @@
 """Tools file for HassIO."""
 import asyncio
+from contextlib import suppress
 import json
 import logging
 import re
@@ -13,6 +14,8 @@ import voluptuous as vol
 from .const import URL_HASSIO_VERSION, URL_HASSIO_VERSION_BETA
 
 _LOGGER = logging.getLogger(__name__)
+
+FREEGEOIP_URL = "https://freegeoip.io/json/"
 
 _RE_VERSION = re.compile(r"VERSION=(.*)")
 _IMAGE_ARCH = re.compile(r".*/([a-z0-9]*)-hassio-supervisor")
@@ -105,3 +108,15 @@ def validate_timezone(timezone):
                 from None
 
     return timezone
+
+
+async def fetch_timezone(websession):
+    """Read timezone from freegeoip."""
+    data = {}
+    with suppress(aiohttp.ClientError, asyncio.TimeoutError,
+                  json.JSONDecodeError, KeyError):
+        with async_timeout.timeout(10, loop=websession.loop):
+            async with websession.get(FREEGEOIP_URL) as request:
+                data = await request.json()
+
+    return data.get('time_zone', 'UTC')
