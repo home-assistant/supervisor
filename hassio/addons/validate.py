@@ -52,7 +52,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema(vol.All({
     vol.Optional(ATTR_PORTS): dict,
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
-    vol.Optional(ATTR_TMPFS): vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
+    vol.Optional(ATTR_TMPFS):
+        vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
     vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Required(ATTR_OPTIONS): dict,
