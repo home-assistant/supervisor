@@ -7,7 +7,7 @@ from ..const import (
     STARTUP_BEFORE, STARTUP_INITIALIZE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA,
     ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES,
     ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64,
-    ARCH_I386)
+    ARCH_I386, ATTR_TMPFS)
 
 
 MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
@@ -52,7 +52,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(vol.All({
     vol.Optional(ATTR_PORTS): dict,
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
-    vol.Optional(ATTR_TMPFS): vol.Coerce(str)},
+    vol.Optional(ATTR_TMPFS): vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
     vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Required(ATTR_OPTIONS): dict,

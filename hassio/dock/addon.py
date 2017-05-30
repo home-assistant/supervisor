@@ -44,8 +44,7 @@ class DockerAddon(DockerBase):
         options = self.addons_data.get_tmpfs(self.addon) or None
         if options is not None:
             return {"/tmpfs": "{}".format(options)}
-        else:
-            return {}
+        return {}
 
     @property
     def volumes(self):
