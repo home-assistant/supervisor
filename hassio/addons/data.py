@@ -304,6 +304,10 @@ class AddonsData(Config):
         """Return devices of addon."""
         return self._system_data[addon].get(ATTR_DEVICES)
 
+    def get_tmpfs(self, addon):
+        """Return tmpfs of addon."""
+        return self._system_data[addon].get(ATTR_TMPFS)
+
     def get_environment(self, addon):
         """Return environment of addon."""
         return self._system_data[addon].get(ATTR_ENVIRONMENT)
