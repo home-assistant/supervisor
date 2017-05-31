@@ -13,10 +13,10 @@ _LOGGER = logging.getLogger(__name__)
 class DockerSupervisor(DockerBase):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, dock, restart_callback, image=None):
+    def __init__(self, config, loop, dock, stop_callback, image=None):
         """Initialize docker base wrapper."""
         super().__init__(config, loop, dock, image=image)
-        self.restart_callback = restart_callback
+        self.stop_callback = stop_callback
 
     @property
     def name(self):
@@ -33,7 +33,7 @@ class DockerSupervisor(DockerBase):
 
         async with self._lock:
             if await self.loop.run_in_executor(None, self._install, tag):
-                self.loop.create_task(self.restart_callback(RESTART_EXIT_CODE))
+                self.loop.create_task(self.stop_callback(RESTART_EXIT_CODE))
                 return True
 
             return False
