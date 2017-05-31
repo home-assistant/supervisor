@@ -191,15 +191,13 @@ class AddonManager(AddonsData):
             return False
 
         version = version or self.get_last_version(addon)
-        is_running = await self.dockers[addon].is_running()
 
         # update
-        if await self.dockers[addon].update(version):
-            self.set_addon_update(addon, version)
-            if is_running:
-                await self.start(addon)
-            return True
-        return False
+        if not await self.dockers[addon].update(version):
+            return False
+
+        self.set_addon_update(addon, version)
+        return True
 
     async def restart(self, addon):
         """Restart addon."""

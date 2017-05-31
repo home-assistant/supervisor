@@ -18,7 +18,7 @@ class DockerHomeAssistant(DockerBase):
         super().__init__(config, loop, dock, image=config.homeassistant_image)
 
     @property
-    def docker_name(self):
+    def name(self):
         """Return name of docker container."""
         return HASS_DOCKER_NAME
 
@@ -30,13 +30,13 @@ class DockerHomeAssistant(DockerBase):
         if self._is_running():
             return
 
-        # cleanup old container
+        # cleanup
         self._stop()
 
         try:
-            self.container = self.dock.containers.run(
+            self.dock.containers.run(
                 self.image,
-                name=self.docker_name,
+                name=self.name,
                 detach=True,
                 privileged=True,
                 network_mode='host',
@@ -53,26 +53,10 @@ class DockerHomeAssistant(DockerBase):
                         {'bind': '/share', 'mode': 'rw'},
                 })
 
-            self.process_metadata()
-
-            _LOGGER.info("Start docker addon %s with version %s",
-                         self.image, self.version)
-
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't run %s -> %s", self.image, err)
             return False
 
+        _LOGGER.info(
+            "Start homeassistant %s with version %s", self.image, self.version)
         return True
-
-    async def update(self, tag):
-        """Update homeassistant docker image."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute update while a task is in progress")
-            return False
-
-        async with self._lock:
-            if await self.loop.run_in_executor(None, self._update, tag):
-                await self.loop.run_in_executor(None, self._run)
-                return True
-
-            return False

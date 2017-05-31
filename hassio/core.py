@@ -41,7 +41,7 @@ class HassIO(object):
 
         # init basic docker container
         self.supervisor = DockerSupervisor(
-            self.config, self.loop, self.dock, self)
+            self.config, self.loop, self.dock, self.stop)
         self.homeassistant = DockerHomeAssistant(
             self.config, self.loop, self.dock)
 
@@ -54,7 +54,8 @@ class HassIO(object):
     async def setup(self):
         """Setup HassIO orchestration."""
         # supervisor
-        await self.supervisor.attach()
+        if not await self.supervisor.attach():
+            _LOGGER.fatal("Can't attach to supervisor docker container!")
         await self.supervisor.cleanup()
 
         # set api endpoint
@@ -96,6 +97,8 @@ class HassIO(object):
             _LOGGER.info("No HomeAssistant docker found.")
             await homeassistant_setup(
                 self.config, self.loop, self.homeassistant)
+        else:
+            await self.homeassistant.attach()
 
         # Load addons
         arch = get_arch_from_image(self.supervisor.image)
