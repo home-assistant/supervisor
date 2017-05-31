@@ -39,14 +39,6 @@ class DockerAddon(DockerBase):
         }
 
     @property
-    def tmpfs(self):
-        """Return tmpfs for docker add-on."""
-        options = self.addons_data.get_tmpfs(self.addon) or None
-        if options is not None:
-            return {"/tmpfs": "{}".format(options)}
-        return {}
-
-    @property
     def volumes(self):
         """Generate volumes for mappings."""
         volumes = {
@@ -107,9 +99,9 @@ class DockerAddon(DockerBase):
                 network_mode=self.addons_data.get_network_mode(self.addon),
                 ports=self.addons_data.get_ports(self.addon),
                 devices=self.addons_data.get_devices(self.addon),
+                tmpfs=self.addons_data.get_tmpfs(self.addon),
                 environment=self.environment,
-                volumes=self.volumes,
-                tmpfs=self.tmpfs
+                volumes=self.volumes
             )
 
             self.process_metadata()
