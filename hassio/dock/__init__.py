@@ -2,7 +2,6 @@
 import asyncio
 from contextlib import suppress
 import logging
-import re
 
 import docker
 
