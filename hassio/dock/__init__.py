@@ -317,7 +317,7 @@ class DockerBase(object):
             return False
 
         async with self._lock:
-            await self.loop.run_in_executor(None, self._cleanup):
+            await self.loop.run_in_executor(None, self._cleanup)
 
     def _cleanup(self):
         """Check if old version exists and cleanup.
@@ -335,4 +335,5 @@ class DockerBase(object):
                 continue
 
             with suppress(docker.errors.DockerException):
+                _LOGGER.info("Cleanup docker images: %s", image.tags)
                 self.dock.images.remove(image.id, force=True)
