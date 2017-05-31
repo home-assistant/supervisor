@@ -20,7 +20,7 @@ class DockerSupervisor(DockerBase):
         self.hassio = hassio
 
     @property
-    def docker_name(self):
+    def name(self):
         """Return name of docker container."""
         return os.environ['SUPERVISOR_NAME']
 

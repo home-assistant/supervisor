@@ -18,7 +18,7 @@ class DockerHomeAssistant(DockerBase):
         super().__init__(config, loop, dock, image=config.homeassistant_image)
 
     @property
-    def docker_name(self):
+    def name(self):
         """Return name of docker container."""
         return HASS_DOCKER_NAME
 
@@ -36,7 +36,7 @@ class DockerHomeAssistant(DockerBase):
         try:
             self.container = self.dock.containers.run(
                 self.image,
-                name=self.docker_name,
+                name=self.name,
                 detach=True,
                 privileged=True,
                 network_mode='host',
@@ -53,15 +53,12 @@ class DockerHomeAssistant(DockerBase):
                         {'bind': '/share', 'mode': 'rw'},
                 })
 
-            self.process_metadata()
-
-            _LOGGER.info("Start docker addon %s with version %s",
-                         self.image, self.version)
-
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't run %s -> %s", self.image, err)
             return False
 
+        _LOGGER.info(
+            "Start homeassistant %s with version %s", self.image, self.version)
         return True
 
     async def update(self, tag):

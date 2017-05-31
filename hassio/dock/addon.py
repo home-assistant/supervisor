@@ -24,7 +24,7 @@ class DockerAddon(DockerBase):
         self.addons_data = addons_data
 
     @property
-    def docker_name(self):
+    def name(self):
         """Return name of docker container."""
         return "addon_{}".format(self.addon)
 
@@ -102,7 +102,7 @@ class DockerAddon(DockerBase):
         try:
             self.container = self.dock.containers.run(
                 self.image,
-                name=self.docker_name,
+                name=self.name,
                 detach=True,
                 network_mode=self.addons_data.get_network_mode(self.addon),
                 ports=self.addons_data.get_ports(self.addon),
@@ -121,32 +121,6 @@ class DockerAddon(DockerBase):
             return False
 
         return True
-
-    def _attach(self):
-        """Attach to running docker container.
-
-        Need run inside executor.
-        """
-        # read container
-        try:
-            self.container = self.dock.containers.get(self.docker_name)
-            self.process_metadata()
-
-            _LOGGER.info("Attach to container %s with version %s",
-                         self.image, self.version)
-            return
-        except (docker.errors.DockerException, KeyError):
-            pass
-
-        # read image
-        try:
-            image = self.dock.images.get(self.image)
-            self.process_metadata(metadata=image.attrs)
-
-            _LOGGER.info("Attach to image %s with version %s",
-                         self.image, self.version)
-        except (docker.errors.DockerException, KeyError):
-            _LOGGER.error("No container/image found for %s", self.image)
 
     def _install(self, tag):
         """Pull docker image or build it.

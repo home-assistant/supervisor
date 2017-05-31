@@ -46,17 +46,6 @@ def get_arch_from_image(image):
         return found.group(1)
 
 
-def get_version_from_env(env_list):
-    """Extract Version from ENV list."""
-    for env in env_list:
-        found = _RE_VERSION.match(env)
-        if found:
-            return found.group(1)
-
-    _LOGGER.error("Can't find VERSION in env")
-    return None
-
-
 def get_local_ip(loop):
     """Retrieve local IP address.
 
