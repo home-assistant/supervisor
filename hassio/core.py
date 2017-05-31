@@ -96,6 +96,8 @@ class HassIO(object):
             _LOGGER.info("No HomeAssistant docker found.")
             await homeassistant_setup(
                 self.config, self.loop, self.homeassistant)
+        else:
+            await self.homeassistant.attach()
 
         # Load addons
         arch = get_arch_from_image(self.supervisor.image)

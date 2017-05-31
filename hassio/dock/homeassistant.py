@@ -34,7 +34,7 @@ class DockerHomeAssistant(DockerBase):
         self._stop()
 
         try:
-            self.container = self.dock.containers.run(
+            self.dock.containers.run(
                 self.image,
                 name=self.name,
                 detach=True,

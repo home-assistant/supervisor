@@ -100,7 +100,7 @@ class DockerAddon(DockerBase):
         self._stop()
 
         try:
-            self.container = self.dock.containers.run(
+            self.dock.containers.run(
                 self.image,
                 name=self.name,
                 detach=True,
@@ -172,7 +172,7 @@ class DockerAddon(DockerBase):
                     path=str(build_dir), tag=build_tag, pull=True)
 
                 image.tag(self.image, tag='latest')
-                self.process_metadata(metadata=image.attrs, force=True)
+                self.process_metadata(image.attrs, force=True)
 
             except (docker.errors.DockerException, TypeError) as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)
