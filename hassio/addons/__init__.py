@@ -193,7 +193,11 @@ class AddonManager(AddonsData):
         version = version or self.get_last_version(addon)
 
         # update
-        return await self.dockers[addon].update(version)
+        if not await self.dockers[addon].update(version):
+            return False
+
+        self.set_addon_update(addon, version)
+        return True
 
     async def restart(self, addon):
         """Restart addon."""
