@@ -2,8 +2,6 @@
 import logging
 import os
 
-import docker
-
 from . import DockerBase
 from ..const import RESTART_EXIT_CODE
 
