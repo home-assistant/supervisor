@@ -41,7 +41,7 @@ class HassIO(object):
 
         # init basic docker container
         self.supervisor = DockerSupervisor(
-            self.config, self.loop, self.dock, self)
+            self.config, self.loop, self.dock, self.stop)
         self.homeassistant = DockerHomeAssistant(
             self.config, self.loop, self.dock)
 
