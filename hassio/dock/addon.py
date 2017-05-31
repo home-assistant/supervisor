@@ -41,10 +41,10 @@ class DockerAddon(DockerBase):
     @property
     def tmpfs(self):
         """Return tmpfs for docker add-on."""
-        options = self.addons_data.get_tmpfs(self.addon) or None
-        if options is not None:
+        options = self.addons_data.get_tmpfs(self.addon)
+        if options:
             return {"/tmpfs": "{}".format(options)}
-        return {}
+        return None
 
     @property
     def volumes(self):
