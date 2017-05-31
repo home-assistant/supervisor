@@ -24,7 +24,7 @@ class DockerAddon(DockerBase):
         self.addons_data = addons_data
 
     @property
-    def docker_name(self):
+    def name(self):
         """Return name of docker container."""
         return "addon_{}".format(self.addon)
 
@@ -96,13 +96,13 @@ class DockerAddon(DockerBase):
         if self._is_running():
             return
 
-        # cleanup old container
+        # cleanup
         self._stop()
 
         try:
-            self.container = self.dock.containers.run(
+            self.dock.containers.run(
                 self.image,
-                name=self.docker_name,
+                name=self.name,
                 detach=True,
                 network_mode=self.addons_data.get_network_mode(self.addon),
                 ports=self.addons_data.get_ports(self.addon),
@@ -112,41 +112,13 @@ class DockerAddon(DockerBase):
                 tmpfs=self.tmpfs
             )
 
-            self.process_metadata()
-            _LOGGER.info("Start docker addon %s with version %s",
-                         self.image, self.version)
-
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't run %s -> %s", self.image, err)
             return False
 
+        _LOGGER.info(
+            "Start docker addon %s with version %s", self.image, self.version)
         return True
-
-    def _attach(self):
-        """Attach to running docker container.
-
-        Need run inside executor.
-        """
-        # read container
-        try:
-            self.container = self.dock.containers.get(self.docker_name)
-            self.process_metadata()
-
-            _LOGGER.info("Attach to container %s with version %s",
-                         self.image, self.version)
-            return
-        except (docker.errors.DockerException, KeyError):
-            pass
-
-        # read image
-        try:
-            image = self.dock.images.get(self.image)
-            self.process_metadata(metadata=image.attrs)
-
-            _LOGGER.info("Attach to image %s with version %s",
-                         self.image, self.version)
-        except (docker.errors.DockerException, KeyError):
-            _LOGGER.error("No container/image found for %s", self.image)
 
     def _install(self, tag):
         """Pull docker image or build it.
@@ -200,7 +172,7 @@ class DockerAddon(DockerBase):
                     path=str(build_dir), tag=build_tag, pull=True)
 
                 image.tag(self.image, tag='latest')
-                self.process_metadata(metadata=image.attrs, force=True)
+                self.process_metadata(image.attrs, force=True)
 
             except (docker.errors.DockerException, TypeError) as err:
                 _LOGGER.error("Can't build %s -> %s", build_tag, err)

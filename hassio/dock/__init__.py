@@ -6,7 +6,6 @@ import logging
 import docker
 
 from ..const import LABEL_VERSION
-from ..tools import get_version_from_env
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,12 +19,11 @@ class DockerBase(object):
         self.loop = loop
         self.dock = dock
         self.image = image
-        self.container = None
         self.version = None
         self._lock = asyncio.Lock(loop=loop)
 
     @property
-    def docker_name(self):
+    def name(self):
         """Return name of docker container."""
         return None
 
@@ -34,18 +32,18 @@ class DockerBase(object):
         """Return True if a task is in progress."""
         return self._lock.locked()
 
-    def process_metadata(self, metadata=None, force=False):
+    def process_metadata(self, metadata, force=False):
         """Read metadata and set it to object."""
-        if not force and self.version:
-            return
+        # read image
+        if not self.image:
+            self.image = metadata['Config']['Image']
 
         # read metadata
-        metadata = metadata or self.container.attrs
-        if LABEL_VERSION in metadata['Config']['Labels']:
+        need_version = force or not self.version
+        if need_version and LABEL_VERSION in metadata['Config']['Labels']:
             self.version = metadata['Config']['Labels'][LABEL_VERSION]
-        else:
-            # dedicated
-            self.version = get_version_from_env(metadata['Config']['Env'])
+        elif need_version:
+            _LOGGER.warning("Can't read version from %s", self.name)
 
     async def install(self, tag):
         """Pull docker image."""
@@ -66,7 +64,7 @@ class DockerBase(object):
             image = self.dock.images.pull("{}:{}".format(self.image, tag))
 
             image.tag(self.image, tag='latest')
-            self.process_metadata(metadata=image.attrs, force=True)
+            self.process_metadata(image.attrs, force=True)
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", self.image, tag, err)
             return False
@@ -87,8 +85,7 @@ class DockerBase(object):
         Need run inside executor.
         """
         try:
-            image = self.dock.images.get(self.image)
-            self.process_metadata(metadata=image.attrs)
+            self.dock.images.get(self.image)
         except docker.errors.DockerException:
             return False
 
@@ -106,16 +103,21 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        if not self.container:
-            try:
-                self.container = self.dock.containers.get(self.docker_name)
-                self.process_metadata()
-            except docker.errors.DockerException:
-                return False
-        else:
-            self.container.reload()
+        try:
+            container = self.dock.containers.get(self.name)
+            image = self.dock.images.get(self.image)
+        except docker.errors.DockerException:
+            return False
 
-        return self.container.status == 'running'
+        # container is not running
+        if container.status != 'running':
+            return False
+
+        # we run on a old image, stop and start it
+        if container.image.id != image.id:
+            return False
+
+        return True
 
     async def attach(self):
         """Attach to running docker container."""
@@ -132,15 +134,16 @@ class DockerBase(object):
         Need run inside executor.
         """
         try:
-            self.container = self.dock.containers.get(self.docker_name)
-            self.image = self.container.attrs['Config']['Image']
-            self.process_metadata()
-            _LOGGER.info("Attach to image %s with version %s",
-                         self.image, self.version)
-        except (docker.errors.DockerException, KeyError):
-            _LOGGER.fatal(
-                "Can't attach to %s docker container!", self.docker_name)
+            if self.image:
+                obj_data = self.dock.images.get(self.image).attrs
+            else:
+                obj_data = self.dock.containers.get(self.name).attrs
+        except docker.errors.DockerException:
             return False
+
+        self.process_metadata(obj_data)
+        _LOGGER.info(
+            "Attach to image %s with version %s", self.image, self.version)
 
         return True
 
@@ -175,20 +178,19 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        if not self.container:
+        try:
+            container = self.dock.containers.get(self.name)
+        except docker.errors.DockerException:
             return
 
         _LOGGER.info("Stop %s docker application", self.image)
 
-        self.container.reload()
-        if self.container.status == 'running':
+        if container.status == 'running':
             with suppress(docker.errors.DockerException):
-                self.container.stop()
+                container.stop()
 
         with suppress(docker.errors.DockerException):
-            self.container.remove(force=True)
-
-        self.container = None
+            container.remove(force=True)
 
     async def remove(self):
         """Remove docker container."""
@@ -207,8 +209,8 @@ class DockerBase(object):
         if self._is_running():
             self._stop()
 
-        _LOGGER.info("Remove docker %s with latest and %s",
-                     self.image, self.version)
+        _LOGGER.info(
+            "Remove docker %s with latest and %s", self.image, self.version)
 
         try:
             with suppress(docker.errors.ImageNotFound):
@@ -239,23 +241,21 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        old_image = "{}:{}".format(self.image, self.version)
+        was_running = self._is_running()
 
-        _LOGGER.info("Update docker %s with %s:%s",
-                     old_image, self.image, tag)
+        _LOGGER.info(
+            "Update docker %s with %s:%s", self.version, self.image, tag)
 
         # update docker image
-        if self._install(tag):
-            _LOGGER.info("Cleanup old %s docker", old_image)
-            self._stop()
-            try:
-                self.dock.images.remove(image=old_image, force=True)
-            except docker.errors.DockerException as err:
-                _LOGGER.warning(
-                    "Can't remove old image %s -> %s", old_image, err)
-            return True
+        if not self._install(tag):
+            return False
 
-        return False
+        # cleanup old stuff
+        if was_running:
+            self._run()
+        self._cleanup()
+
+        return True
 
     async def logs(self):
         """Return docker logs of container."""
@@ -271,11 +271,13 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        if not self.container:
-            return
+        try:
+            container = self.dock.containers.get(self.name)
+        except docker.errors.DockerException:
+            return b""
 
         try:
-            return self.container.logs(tail=100, stdout=True, stderr=True)
+            return container.logs(tail=100, stdout=True, stderr=True)
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't grap logs from %s -> %s", self.image, err)
 
@@ -293,15 +295,45 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        if not self.container:
+        try:
+            container = self.dock.containers.get(self.name)
+        except docker.errors.DockerException:
             return False
 
         _LOGGER.info("Restart %s", self.image)
 
         try:
-            self.container.restart(timeout=30)
+            container.restart(timeout=30)
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't restart %s -> %s", self.image, err)
             return False
 
         return True
+
+    async def cleanup(self):
+        """Check if old version exists and cleanup."""
+        if self._lock.locked():
+            _LOGGER.error("Can't excute cleanup while a task is in progress")
+            return False
+
+        async with self._lock:
+            await self.loop.run_in_executor(None, self._cleanup)
+
+    def _cleanup(self):
+        """Check if old version exists and cleanup.
+
+        Need run inside executor.
+        """
+        try:
+            latest = self.dock.images.get(self.image)
+        except docker.errors.DockerException:
+            _LOGGER.warning("Can't find %s for cleanup", self.image)
+            return
+
+        for image in self.dock.images.list(name=self.image):
+            if latest.id == image.id:
+                continue
+
+            with suppress(docker.errors.DockerException):
+                _LOGGER.info("Cleanup docker images: %s", image.tags)
+                self.dock.images.remove(image.id, force=True)
