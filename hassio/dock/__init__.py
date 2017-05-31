@@ -114,7 +114,7 @@ class DockerBase(object):
             return False
 
         # we run on a old image, stop and start it
-        if container.id != image.id:
+        if container.image.id != image.id:
             return False
 
         return True
