@@ -241,6 +241,7 @@ class DockerBase(object):
 
         Need run inside executor.
         """
+        was_running = self._is_running()
 
         _LOGGER.info(
             "Update docker %s with %s:%s", self.version, self.image, tag)
@@ -250,7 +251,8 @@ class DockerBase(object):
             return False
 
         # cleanup old stuff
-        self._stop()
+        if was_running:
+            self._run()
         self._cleanup()
 
         return True
