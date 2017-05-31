@@ -85,7 +85,7 @@ class DockerBase(object):
         Need run inside executor.
         """
         try:
-            _ = self.dock.images.get(self.image)
+            self.dock.images.get(self.image)
         except docker.errors.DockerException:
             return False
 
