@@ -105,10 +105,19 @@ class DockerBase(object):
         """
         try:
             container = self.dock.containers.get(self.name)
+            image = self.dock.images.get(self.image)
         except docker.errors.DockerException:
             return False
 
-        return container.status == 'running'
+        # container is not running
+        if container.status != 'running':
+            return False
+
+        # we run on a old image, stop and start it
+        if container.id != image.id:
+            return False
+
+        return True
 
     async def attach(self):
         """Attach to running docker container."""

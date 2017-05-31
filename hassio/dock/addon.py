@@ -96,7 +96,7 @@ class DockerAddon(DockerBase):
         if self._is_running():
             return
 
-        # cleanup old container
+        # cleanup
         self._stop()
 
         try:
@@ -112,14 +112,12 @@ class DockerAddon(DockerBase):
                 tmpfs=self.tmpfs
             )
 
-            self.process_metadata()
-            _LOGGER.info("Start docker addon %s with version %s",
-                         self.image, self.version)
-
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't run %s -> %s", self.image, err)
             return False
 
+        _LOGGER.info(
+            "Start docker addon %s with version %s", self.image, self.version)
         return True
 
     def _install(self, tag):

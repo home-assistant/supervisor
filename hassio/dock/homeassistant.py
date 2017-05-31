@@ -30,7 +30,7 @@ class DockerHomeAssistant(DockerBase):
         if self._is_running():
             return
 
-        # cleanup old container
+        # cleanup
         self._stop()
 
         try:
