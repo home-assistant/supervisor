@@ -31,40 +31,13 @@ class DockerSupervisor(DockerBase):
             return False
 
         _LOGGER.info("Update supervisor docker to %s:%s", self.image, tag)
-        old_version = self.version
 
         async with self._lock:
             if await self.loop.run_in_executor(None, self._install, tag):
-                self.config.hassio_cleanup = old_version
                 self.loop.create_task(self.hassio.stop(RESTART_EXIT_CODE))
                 return True
 
             return False
-
-    async def cleanup(self):
-        """Check if old supervisor version exists and cleanup."""
-        if not self.config.hassio_cleanup:
-            return
-
-        async with self._lock:
-            if await self.loop.run_in_executor(None, self._cleanup):
-                self.config.hassio_cleanup = None
-
-    def _cleanup(self):
-        """Remove old image.
-
-        Need run inside executor.
-        """
-        old_image = "{}:{}".format(self.image, self.config.hassio_cleanup)
-
-        _LOGGER.info("Old supervisor docker found %s", old_image)
-        try:
-            self.dock.images.remove(image=old_image, force=True)
-        except docker.errors.DockerException as err:
-            _LOGGER.warning("Can't remove old image %s -> %s", old_image, err)
-            return False
-
-        return True
 
     async def run(self):
         """Run docker image."""

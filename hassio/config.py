@@ -21,7 +21,6 @@ HOMEASSISTANT_LAST = 'homeassistant_last'
 
 HASSIO_SSL = PurePath("ssl")
 HASSIO_LAST = 'hassio_last'
-HASSIO_CLEANUP = 'hassio_cleanup'
 
 ADDONS_CORE = PurePath("addons/core")
 ADDONS_LOCAL = PurePath("addons/local")
@@ -51,7 +50,6 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(TIMEZONE, default='UTC'): validate_timezone,
     vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
     vol.Optional(HASSIO_LAST): vol.Coerce(str),
-    vol.Optional(HASSIO_CLEANUP): vol.Coerce(str),
     vol.Optional(ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
     vol.Optional(SECURITY_INITIALIZE, default=False): vol.Boolean(),
     vol.Optional(SECURITY_TOTP): vol.Coerce(str),
@@ -146,20 +144,6 @@ class CoreConfig(Config):
     def timezone(self, value):
         """Set system timezone."""
         self._data[TIMEZONE] = value
-        self.save()
-
-    @property
-    def hassio_cleanup(self):
-        """Return Version they need to cleanup."""
-        return self._data.get(HASSIO_CLEANUP)
-
-    @hassio_cleanup.setter
-    def hassio_cleanup(self, version):
-        """Set or remove cleanup flag."""
-        if version is None:
-            self._data.pop(HASSIO_CLEANUP, None)
-        else:
-            self._data[HASSIO_CLEANUP] = version
         self.save()
 
     @property

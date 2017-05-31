@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import suppress
 import logging
+import re
 
 import docker
 
@@ -241,23 +242,19 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        old_image = "{}:{}".format(self.image, self.version)
 
-        _LOGGER.info("Update docker %s with %s:%s",
-                     old_image, self.image, tag)
+        _LOGGER.info(
+            "Update docker %s with %s:%s", self.version, self.image, tag)
 
         # update docker image
-        if self._install(tag):
-            _LOGGER.info("Cleanup old %s docker", old_image)
-            self._stop()
-            try:
-                self.dock.images.remove(image=old_image, force=True)
-            except docker.errors.DockerException as err:
-                _LOGGER.warning(
-                    "Can't remove old image %s -> %s", old_image, err)
-            return True
+        if not self._install(tag):
+            return False
 
-        return False
+        # cleanup old stuff
+        self._stop()
+        self._cleanup()
+
+        return True
 
     async def logs(self):
         """Return docker logs of container."""
@@ -311,3 +308,30 @@ class DockerBase(object):
             return False
 
         return True
+
+    async def cleanup(self):
+        """Check if old version exists and cleanup."""
+        if self._lock.locked():
+            _LOGGER.error("Can't excute cleanup while a task is in progress")
+            return False
+
+        async with self._lock:
+            await self.loop.run_in_executor(None, self._cleanup):
+
+    def _cleanup(self):
+        """Check if old version exists and cleanup.
+
+        Need run inside executor.
+        """
+        try:
+            latest = self.dock.images.get(self.image)
+        except docker.errors.DockerException:
+            _LOGGER.warning("Can't find %s for cleanup", self.image)
+            return
+
+        for image in self.dock.images.list(name=self.image):
+            if latest.id == image.id:
+                continue
+
+            with suppress(docker.errors.DockerException):
+                self.dock.images.remove(image.id, force=True)
