@@ -54,7 +54,8 @@ class HassIO(object):
     async def setup(self):
         """Setup HassIO orchestration."""
         # supervisor
-        await self.supervisor.attach()
+        if not await self.supervisor.attach():
+            _LOGGER.fatal("Can't attach to supervisor docker container!")
         await self.supervisor.cleanup()
 
         # set api endpoint
