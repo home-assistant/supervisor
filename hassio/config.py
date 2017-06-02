@@ -154,7 +154,7 @@ class CoreConfig(Config):
         """Return list of special device to map into homeassistant."""
         return self._data[HOMEASSISTANT_DEVICES]
 
-    @upstream_beta.setter
+    @homeassistant_devices.setter
     def homeassistant_devices(self, value):
         """Set list of special device."""
         self._data[HOMEASSISTANT_DEVICES] = value
