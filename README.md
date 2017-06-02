@@ -12,15 +12,3 @@ Hass.io is a Docker based system for managing your Home Assistant installation a
 ## Installation
 
 Installation instructions can be found at [https://home-assistant.io/hassio](https://home-assistant.io/hassio).
-
-# HomeAssistant
-
-## SSL
-
-All addons that create SSL certs follow the same file structure. If you use one, put follow lines in your `configuration.yaml`.
-
-```yaml
-http:
-  ssl_certificate: /ssl/fullchain.pem
-  ssl_key: /ssl/privkey.pem
-```
