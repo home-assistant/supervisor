@@ -18,6 +18,7 @@ DATETIME_FORMAT = "%Y%m%d %H:%M:%S"
 
 HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 HOMEASSISTANT_LAST = 'homeassistant_last'
+HOMEASSISTANT_DEVICES = 'homeassistant_devices'
 
 HASSIO_SSL = PurePath("ssl")
 HASSIO_LAST = 'hassio_last'
@@ -49,6 +50,7 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(API_ENDPOINT): vol.Coerce(str),
     vol.Optional(TIMEZONE, default='UTC'): validate_timezone,
     vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
+    vol.Optional(HOMEASSISTANT_DEVICES, default=[]): [vol.Coerce(str)],
     vol.Optional(HASSIO_LAST): vol.Coerce(str),
     vol.Optional(ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
     vol.Optional(SECURITY_INITIALIZE, default=False): vol.Boolean(),
@@ -134,6 +136,7 @@ class CoreConfig(Config):
     def upstream_beta(self, value):
         """Set beta upstream mode."""
         self._data[UPSTREAM_BETA] = bool(value)
+        self.save()
 
     @property
     def timezone(self):
@@ -144,6 +147,17 @@ class CoreConfig(Config):
     def timezone(self, value):
         """Set system timezone."""
         self._data[TIMEZONE] = value
+        self.save()
+
+    @property
+    def homeassistant_devices(self):
+        """Return list of special device to map into homeassistant."""
+        return self._data[HOMEASSISTANT_DEVICES]
+
+    @upstream_beta.setter
+    def homeassistant_devices(self, value):
+        """Set list of special device."""
+        self._data[HOMEASSISTANT_DEVICES] = value
         self.save()
 
     @property

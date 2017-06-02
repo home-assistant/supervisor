@@ -22,6 +22,18 @@ class DockerHomeAssistant(DockerBase):
         """Return name of docker container."""
         return HASS_DOCKER_NAME
 
+    @property
+    def devices(self):
+        """Create list of special device to map into docker."""
+        if not self.config.homeassistant_devices:
+            return
+
+        devices = []
+        for device in self.config.homeassistant_devices:
+            devices.append("{0}:{0}:rwm".format(device))
+
+        return devices
+
     def _run(self):
         """Run docker image.
 
@@ -39,6 +51,7 @@ class DockerHomeAssistant(DockerBase):
                 name=self.name,
                 detach=True,
                 privileged=True,
+                devices=self.devices,
                 network_mode='host',
                 environment={
                     'HASSIO': self.config.api_endpoint,
