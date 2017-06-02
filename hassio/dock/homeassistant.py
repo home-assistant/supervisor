@@ -30,7 +30,7 @@ class DockerHomeAssistant(DockerBase):
 
         devices = []
         for device in self.config.homeassistant_devices:
-            devices.append("{0}:{0}:rwm".format(device))
+            devices.append("/dev/{0}:/dev/{0}:rwm".format(device))
 
         return devices
 
