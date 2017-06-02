@@ -5,9 +5,14 @@ import logging
 import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
-from ..const import ATTR_VERSION, ATTR_LAST_VERSION
+from ..const import ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
+
+
+SCHEMA_OPTIONS = vol.Schema({
+    vol.Optional(ATTR_DEVICES): [vol.Coerce(str)],
+})
 
 SCHEMA_VERSION = vol.Schema({
     vol.Optional(ATTR_VERSION): vol.Coerce(str),
@@ -29,7 +34,18 @@ class APIHomeAssistant(object):
         return {
             ATTR_VERSION: self.homeassistant.version,
             ATTR_LAST_VERSION: self.config.last_homeassistant,
+            ATTR_DEVICES: self.config.homeassistant_devices,
         }
+
+    @api_process
+    async def options(self, request):
+        """Set homeassistant options."""
+        body = await api_validate(SCHEMA_OPTIONS, request)
+
+        if ATTR_DEVICES in body:
+            self.config.homeassistant_devices = body[ATTR_DEVICES]
+
+        return True
 
     @api_process
     async def update(self, request):

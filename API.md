@@ -203,7 +203,8 @@ Optional:
 ```json
 {
     "version": "INSTALL_VERSION",
-    "last_version": "LAST_VERSION"
+    "last_version": "LAST_VERSION",
+    "devices": []
 }
 ```
 
@@ -220,6 +221,13 @@ Optional:
 Output the raw docker log
 
 - POST `/homeassistant/restart`
+
+- POST `/homeassistant/options`
+```json
+{
+    "devices": [],
+}
+```
 
 ### REST API addons
 
