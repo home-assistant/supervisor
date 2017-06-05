@@ -17,7 +17,7 @@ from ..const import (
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
     ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH,
     ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT, ATTR_HOST_NETWORK,
-    ATTR_TMPFS)
+    ATTR_TMPFS, ATTR_PRIVILEGED)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -312,6 +312,10 @@ class AddonsData(Config):
     def get_environment(self, addon):
         """Return environment of addon."""
         return self._system_data[addon].get(ATTR_ENVIRONMENT)
+
+    def get_privileged(self, addon):
+        """Return list of privilege."""
+        return self._system_data[addon].get(ATTR_PRIVILEGED)
 
     def get_url(self, addon):
         """Return url of addon."""

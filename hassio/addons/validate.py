@@ -7,7 +7,7 @@ from ..const import (
     STARTUP_BEFORE, STARTUP_INITIALIZE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA,
     ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES,
     ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64,
-    ARCH_I386, ATTR_TMPFS)
+    ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED)
 
 
 MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
@@ -23,6 +23,10 @@ ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL, V_EMAIL, V_URL])
 
 ARCH_ALL = [
     ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386
+]
+
+PRIVILEGE_ALL = [
+    "NET_ADMIN"
 ]
 
 
@@ -56,6 +60,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(vol.All({
         vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
     vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
+    vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGE_ALL)],
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): {
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [

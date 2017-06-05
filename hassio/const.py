@@ -1,7 +1,7 @@
 """Const file for HassIO."""
 from pathlib import Path
 
-HASSIO_VERSION = '0.35'
+HASSIO_VERSION = '0.36'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
@@ -80,6 +80,7 @@ ATTR_DEVICES = 'devices'
 ATTR_ENVIRONMENT = 'environment'
 ATTR_HOST_NETWORK = 'host_network'
 ATTR_TMPFS = 'tmpfs'
+ATTR_PRIVILEGED = 'privileged'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_BEFORE = 'before'

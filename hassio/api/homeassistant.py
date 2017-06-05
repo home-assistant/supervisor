@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_DEVICES): [vol.Coerce(str)],
+    vol.Optional(ATTR_DEVICES): [vol.Match(r"^[^/]*$")],
 })
 
 SCHEMA_VERSION = vol.Schema({
