@@ -107,6 +107,7 @@ class DockerAddon(DockerBase):
                 network_mode=self.addons_data.get_network_mode(self.addon),
                 ports=self.addons_data.get_ports(self.addon),
                 devices=self.addons_data.get_devices(self.addon),
+                cap_add=self.addons_data.get_privileged(self.addon),
                 environment=self.environment,
                 volumes=self.volumes,
                 tmpfs=self.tmpfs
