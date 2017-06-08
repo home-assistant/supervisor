@@ -206,8 +206,8 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        if self._is_running():
-            self._stop()
+        # cleanup container
+        self._stop()
 
         _LOGGER.info(
             "Remove docker %s with latest and %s", self.image, self.version)
