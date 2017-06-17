@@ -393,5 +393,7 @@ class AddonsData(Config):
         """Create a schema for addon options."""
         raw_schema = self._system_data[addon][ATTR_SCHEMA]
 
-        schema = vol.Schema(vol.All(dict, validate_options(raw_schema)))
-        return schema
+        if isinstance(raw_schema, bool):
+            return vol.Schema(dict)
+
+        return vol.Schema(vol.All(dict, validate_options(raw_schema)))
