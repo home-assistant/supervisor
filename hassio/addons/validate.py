@@ -62,11 +62,11 @@ SCHEMA_ADDON_CONFIG = vol.Schema(vol.All({
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGE_ALL)],
     vol.Required(ATTR_OPTIONS): dict,
-    vol.Required(ATTR_SCHEMA): {
+    vol.Required(ATTR_SCHEMA): vol.Any({
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [
             vol.Any(ADDON_ELEMENT, {vol.Coerce(str): ADDON_ELEMENT})
         ])
-    },
+    }, False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
 }, check_network), extra=vol.ALLOW_EXTRA)
 
