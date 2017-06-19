@@ -23,11 +23,22 @@ RE_VOLUME = re.compile(MAP_VOLUME)
 class Addon(object):
     """Hold data for addon inside HassIO."""
 
-    def __init__(self, config, data, addon_slug):
+    def __init__(self, data, addon_slug):
         """Initialize data holder."""
-        self.config = config
         self.data = data
         self._id = addon_slug
+
+        if self._mesh is None:
+            raise RuntimeError("{} not a valid addon!".format(self._id))
+
+    def __repr__(self):
+        """Return name of object."""
+        return self._id
+
+    @property
+    def slug(self):
+        """Return slug/id of addon."""
+        return self._id
 
     @property
     def _mesh(self):
@@ -35,9 +46,19 @@ class Addon(object):
         return self.data.system.get(self._id, self.data.cache.get(self._id))
 
     @property
+    def arch(self):
+        """Return slug/id of addon."""
+        return self.data.arch
+
+    @property
     def is_installed(self):
         """Return True if a addon is installed."""
         return self._id in self.data.system
+
+    @property
+    def is_detached(self):
+        """Return True if addon is detached."""
+        return self._id not in self.data.cache
 
     @property
     def version_installed(self):
@@ -190,12 +211,12 @@ class Addon(object):
     @property
     def path_data(self):
         """Return addon data path inside supervisor."""
-        return Path(self.config.path_addons_data, self._id)
+        return Path(self.data.config.path_addons_data, self._id)
 
     @property
     def path_extern_data(self):
         """Return addon data path external for docker."""
-        return PurePath(self.config.path_extern_addons_data, self._id)
+        return PurePath(self.data.config.path_extern_addons_data, self._id)
 
     @property
     def path_addon_options(self):
