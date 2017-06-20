@@ -33,9 +33,12 @@ class AddonManager(AddonsData):
         """Return list of addon repositories."""
         return list(self._data.repositories.values())
 
+    def get_addon(self, addon_slug):
+        """Return a adddon from slug."""
+        return self.addons.get(addon_slug)
+
     async def prepare(self, arch):
         """Startup addon management."""
-        self.arch = arch
         self.data.arch = self.arch
 
         # init hassio repository

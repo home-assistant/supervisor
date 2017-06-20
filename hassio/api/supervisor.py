@@ -41,26 +41,22 @@ class APISupervisor(object):
 
     def _addons_list(self, only_installed=False):
         """Return a list of addons."""
-        detached = self.addons.list_detached
-
-        if only_installed:
-            addons = self.addons.list_installed
-        else:
-            addons = self.addons.list_all
-
         data = []
-        for addon in addons:
+        for addon in self.addons.list_addons:
+            if only_installed and not addon.is_installed:
+                continue
+
             data.append({
-                ATTR_NAME: self.addons.get_name(addon),
-                ATTR_SLUG: addon,
-                ATTR_DESCRIPTON: self.addons.get_description(addon),
-                ATTR_VERSION: self.addons.get_last_version(addon),
-                ATTR_INSTALLED: self.addons.version_installed(addon),
-                ATTR_ARCH: self.addons.get_arch(addon),
-                ATTR_DETACHED: addon in detached,
-                ATTR_REPOSITORY: self.addons.get_repository(addon),
-                ATTR_BUILD: self.addons.need_build(addon),
-                ATTR_URL: self.addons.get_url(addon),
+                ATTR_NAME: addon.name,
+                ATTR_SLUG: addon.slug,
+                ATTR_DESCRIPTON: addon.description,
+                ATTR_VERSION: addon.last_version,
+                ATTR_INSTALLED: addons.version_installed,
+                ATTR_ARCH: addon.supported_arch,
+                ATTR_DETACHED: addon.is_detached,
+                ATTR_REPOSITORY: addon.repository,
+                ATTR_BUILD: addon.need_build,
+                ATTR_URL: addon.url,
             })
 
         return data

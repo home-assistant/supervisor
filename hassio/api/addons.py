@@ -31,15 +31,11 @@ class APIAddons(object):
         self.loop = loop
         self.addons = addons
 
-    def _extract_addon(self, request, check_installed=True):
+    def _extract_addon(self, request):
         """Return addon and if not exists trow a exception."""
-        addon = request.match_info.get('addon')
-
-        # check data
-        if not self.addons.exists_addon(addon):
+        addon = self.addons.get_addon(request.match_info.get('addon'))
+        if not addon:
             raise RuntimeError("Addon not exists")
-        if check_installed and not self.addons.is_installed(addon):
-            raise RuntimeError("Addon is not installed")
 
         return addon
 
@@ -49,24 +45,24 @@ class APIAddons(object):
         addon = self._extract_addon(request)
 
         return {
-            ATTR_NAME: self.addons.get_name(addon),
-            ATTR_DESCRIPTON: self.addons.get_description(addon),
-            ATTR_VERSION: self.addons.version_installed(addon),
-            ATTR_REPOSITORY: self.addons.get_repository(addon),
-            ATTR_LAST_VERSION: self.addons.get_last_version(addon),
-            ATTR_STATE: await self.addons.state(addon),
-            ATTR_BOOT: self.addons.get_boot(addon),
-            ATTR_OPTIONS: self.addons.get_options(addon),
-            ATTR_URL: self.addons.get_url(addon),
-            ATTR_DETACHED: addon in self.addons.list_detached,
-            ATTR_BUILD: self.addons.need_build(addon),
+            ATTR_NAME: addon.name,
+            ATTR_DESCRIPTON: addons.description,
+            ATTR_VERSION: addon.version_installed,
+            ATTR_REPOSITORY: addon.repository,
+            ATTR_LAST_VERSION: addon.last_version,
+            ATTR_STATE: await addon.state(),
+            ATTR_BOOT: addon.boot,
+            ATTR_OPTIONS: addon.options,
+            ATTR_URL: addon.url,
+            ATTR_DETACHED: addon.is_detached,
+            ATTR_BUILD: addons.need_build,
         }
 
     @api_process
     async def options(self, request):
         """Store user options for addon."""
         addon = self._extract_addon(request)
-        options_schema = self.addons.get_schema(addon)
+        options_schema = addon.schema
 
         addon_schema = SCHEMA_OPTIONS.extend({
             vol.Optional(ATTR_OPTIONS): options_schema,
@@ -75,9 +71,9 @@ class APIAddons(object):
         body = await api_validate(addon_schema, request)
 
         if ATTR_OPTIONS in body:
-            self.addons.set_options(addon, body[ATTR_OPTIONS])
+            addon.options = body[ATTR_OPTIONS]
         if ATTR_BOOT in body:
-            self.addons.set_boot(addon, body[ATTR_BOOT])
+            addon.boot = body[ATTR_BOOT]
 
         return True
 
@@ -85,78 +81,72 @@ class APIAddons(object):
     async def install(self, request):
         """Install addon."""
         body = await api_validate(SCHEMA_VERSION, request)
-        addon = self._extract_addon(request, check_installed=False)
-        version = body.get(
-            ATTR_VERSION, self.addons.get_last_version(addon))
+        addon = self._extract_addon(request)
+        version = body.get(ATTR_VERSION)
 
         # check if arch supported
-        if self.addons.arch not in self.addons.get_arch(addon):
+        if addon.arch not in addon.supported_arch:
             raise RuntimeError(
-                "Addon is not supported on {}".format(self.addons.arch))
+                "Addon is not supported on {}".format(addon.arch))
 
         return await asyncio.shield(
-            self.addons.install(addon, version), loop=self.loop)
+            addon.install(version=version), loop=self.loop)
 
     @api_process
     async def uninstall(self, request):
         """Uninstall addon."""
         addon = self._extract_addon(request)
 
-        return await asyncio.shield(
-            self.addons.uninstall(addon), loop=self.loop)
+        return await asyncio.shield(addon.uninstall(), loop=self.loop)
 
     @api_process
     async def start(self, request):
         """Start addon."""
         addon = self._extract_addon(request)
 
-        if await self.addons.state(addon) == STATE_STARTED:
+        if await addon.state(addon) == STATE_STARTED:
             raise RuntimeError("Addon is already running")
 
         # validate options
         try:
-            schema = self.addons.get_schema(addon)
-            options = self.addons.get_options(addon)
-            schema(options)
+            options = addon.options
+            addon.schema(options)
         except vol.Invalid as ex:
             raise RuntimeError(humanize_error(options, ex)) from None
 
-        return await asyncio.shield(
-            self.addons.start(addon), loop=self.loop)
+        return await asyncio.shield(addon.start(), loop=self.loop)
 
     @api_process
     async def stop(self, request):
         """Stop addon."""
         addon = self._extract_addon(request)
 
-        if await self.addons.state(addon) == STATE_STOPPED:
+        if await addon.state() == STATE_STOPPED:
             raise RuntimeError("Addon is already stoped")
 
-        return await asyncio.shield(
-            self.addons.stop(addon), loop=self.loop)
+        return await asyncio.shield(addon.stop(), loop=self.loop)
 
     @api_process
     async def update(self, request):
         """Update addon."""
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request)
-        version = body.get(
-            ATTR_VERSION, self.addons.get_last_version(addon))
+        version = body.get(ATTR_VERSION)
 
-        if version == self.addons.version_installed(addon):
+        if version == addon.version_installed:
             raise RuntimeError("Version is already in use")
 
         return await asyncio.shield(
-            self.addons.update(addon, version), loop=self.loop)
+            addon.update(version=version), loop=self.loop)
 
     @api_process
     async def restart(self, request):
         """Restart addon."""
         addon = self._extract_addon(request)
-        return await asyncio.shield(self.addons.restart(addon), loop=self.loop)
+        return await asyncio.shield(addon.restart(), loop=self.loop)
 
     @api_process_raw
     def logs(self, request):
         """Return logs from addon."""
         addon = self._extract_addon(request)
-        return self.addons.logs(addon)
+        return addon.logs()
