@@ -1,8 +1,10 @@
 """Init file for HassIO addons."""
-import copy
+import asyncio
+from copy import deepcopy
 import logging
 from pathlib import Path, PurePath
 import re
+import shutil
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -13,7 +15,8 @@ from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO, ATTR_SCHEMA, ATTR_IMAGE,
     ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES,
-    ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED)
+    ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED,
+    STATE_STARTED, STATE_STOPPED, STATE_NONE)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,17 +26,22 @@ RE_VOLUME = re.compile(MAP_VOLUME)
 class Addon(object):
     """Hold data for addon inside HassIO."""
 
-    def __init__(self, data, addon_slug):
+    def __init__(self, config, loop, dock, data, addon_slug):
         """Initialize data holder."""
+        self.config = config
         self.data = data
         self._id = addon_slug
+
+        self.addon_docker = DockerAddon(
+            self.config, self.loop, self.dock, self)
 
         if self._mesh is None:
             raise RuntimeError("{} not a valid addon!".format(self._id))
 
-    def __repr__(self):
-        """Return name of object."""
-        return self._id
+    async def load(self):
+        """Async initialize of object."""
+        if self.is_installed:
+            await self.addon_docker.attach()
 
     @property
     def slug(self):
@@ -65,31 +73,31 @@ class Addon(object):
         """Return installed version."""
         return self.data.user.get(self._id, {}).get(ATTR_VERSION)
 
-    def set_install(self, version):
+    def _set_install(self, version):
         """Set addon as installed."""
-        self.data.system[self._id] = copy.deepcopy(self.data.cache[self._id])
+        self.data.system[self._id] = deepcopy(self.data.cache[self._id])
         self.data.user[self._id] = {
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
         }
         self.data.save()
 
-    def set_uninstall(self):
+    def _set_uninstall(self):
         """Set addon as uninstalled."""
         self.data.system.pop(self._id, None)
         self.data.user.pop(self._id, None)
         self.data.save()
 
-    def set_update(self, version):
+    def _set_update(self, version):
         """Update version of addon."""
-        self.data.system[self._id] = copy.deepcopy(self.data.cache[self._id])
+        self.data.system[self._id] = deepcopy(self.data.cache[self._id])
         self.data.user[self._id][ATTR_VERSION] = version
         self.data.save()
 
     @options.setter
     def options(self, value):
         """Store user addon options."""
-        self.data.user[self._id][ATTR_OPTIONS] = copy.deepcopy(value)
+        self.data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
         self.data.save()
 
     @property
@@ -211,12 +219,12 @@ class Addon(object):
     @property
     def path_data(self):
         """Return addon data path inside supervisor."""
-        return Path(self.data.config.path_addons_data, self._id)
+        return Path(self.config.path_addons_data, self._id)
 
     @property
     def path_extern_data(self):
         """Return addon data path external for docker."""
-        return PurePath(self.data.config.path_extern_addons_data, self._id)
+        return PurePath(self.config.path_extern_addons_data, self._id)
 
     @property
     def path_addon_options(self):
@@ -250,3 +258,103 @@ class Addon(object):
         if isinstance(raw_schema, bool):
             return vol.Schema(dict)
         return vol.Schema(vol.All(dict, validate_options(raw_schema)))
+
+    async def install(self, version=None):
+        """Install a addon."""
+        if self.arch not in self.supported_arch:
+            _LOGGER.error("Addon %s not supported on %s", self._id, self.arch)
+            return False
+
+        if self.is_installed:
+            _LOGGER.error("Addon %s is already installed", self._id)
+            return False
+
+        if not self.path_data.is_dir():
+            _LOGGER.info(
+                "Create Home-Assistant addon data folder %s", self.path_data)
+            self.path_data.mkdir()
+
+        self.addon_docker = DockerAddon(
+            self.config, self.loop, self.dock, self)
+
+        version = version or self.last_version
+        if not await self.addon_docker.install(version):
+            return False
+
+        self._set_install(version)
+        return True
+
+    async def uninstall(self):
+        """Remove a addon."""
+        if not self.is_installed:
+            RuntimeError("Addon {} is already uninstalled".format(self._id))
+
+        if not await self.addon_docker.remove():
+            return False
+
+        if self.path_data.is_dir():
+            _LOGGER.info(
+                "Remove Home-Assistant addon data folder %s", self.path_data)
+            shutil.rmtree(str(self.path_data))
+
+        self._set_uninstall()
+        return True
+
+    async def state(self):
+        """Return running state of addon."""
+        if not self.is_installed:
+            return STATE_NONE
+
+        if await self.addon_docker.is_running():
+            return STATE_STARTED
+        return STATE_STOPPED
+
+    async def start(self):
+        """Set options and start addon."""
+        if not self.is_installed:
+            RuntimeError("Addon {} is not installed".format(self._id))
+
+        if not self.write_addon_options():
+            _LOGGER.error("Can't write options for addon %s", self._id)
+            return False
+
+        return await self.addon_docker.run()
+
+    async def stop(self):
+        """Stop addon."""
+        if not self.is_installed:
+            RuntimeError("Addon {} is not installed".format(self._id))
+
+        return await self.addon_docker.stop()
+
+    async def update(self, version=None):
+        """Update addon."""
+        if not self.is_installed:
+            RuntimeError("Addon {} is not installed".format(self._id))
+
+        version = version or self.last_version
+
+        # update
+        if not await self.addon_docker.update(version):
+            return False
+
+        self._set_update(version)
+        return True
+
+    async def restart(self):
+        """Restart addon."""
+        if not self.is_installed:
+            RuntimeError("Addon {} is not installed".format(self._id))
+
+        if not self.write_addon_options():
+            _LOGGER.error("Can't write options for addon %s", self._id)
+            return False
+
+        return await self.addon_docker.restart()
+
+    async def logs(self):
+        """Return addons log output."""
+        if not self.is_installed:
+            RuntimeError("Addon {} is not installed".format(self._id))
+
+        return await self.addon_docker.logs()

@@ -92,6 +92,7 @@ BOOT_MANUAL = 'manual'
 
 STATE_STARTED = 'started'
 STATE_STOPPED = 'stopped'
+STATE_NONE = 'none'
 
 MAP_CONFIG = 'config'
 MAP_SSL = 'ssl'
