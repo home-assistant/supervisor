@@ -16,6 +16,7 @@ class AddonManager(object):
     def __init__(self, config, loop, dock):
         """Initialize docker base wrapper."""
         self.loop = loop
+        self.config = config
         self.dock = dock
         self.data = Data(config)
         self.addons = {}
@@ -37,7 +38,7 @@ class AddonManager(object):
 
     async def prepare(self, arch):
         """Startup addon management."""
-        self.data.arch = self.arch
+        self.data.arch = arch
 
         # init hassio repositories
         repositories = set(self.config.addons_repositories) | \
