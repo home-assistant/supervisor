@@ -41,7 +41,7 @@ class AddonManager(object):
         self.data.arch = arch
 
         # read from repositories
-        self.data.update()
+        self.data.reload()
 
         # init hassio repositories
         repositories = set(self.config.addons_repositories) | \
