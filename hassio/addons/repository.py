@@ -1,5 +1,4 @@
 """Represent a HassIO repository."""
-
 from .git import GitRepoHassIO, GitRepoCustom
 from ..const import (
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_NAME, ATTR_SLUG, ATTR_URL,
@@ -22,7 +21,7 @@ class Repository(object):
             self.git = GitRepoHassIO(config, loop)
         else
             self._id = get_hash_from_repository(repository)
-            self.git = GitRepoHassIO(config, loop, repository)
+            self.git = GitRepoCustom(config, loop, repository)
             self.source = repository
 
         if self._id not in self.data.repositories:

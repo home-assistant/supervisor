@@ -1,12 +1,12 @@
 """Init file for HassIO addons."""
 import asyncio
 import logging
-import shutil
 
 from .addon import Addon
 from .repository import Repository
 from .data import AddonsData
-from ..const import STATE_STOPPED, STATE_STARTED
+from ..const import (
+    STATE_STOPPED, STATE_STARTED, REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO)
 
 _LOGGER = logging.getLogger(__name__)
 
