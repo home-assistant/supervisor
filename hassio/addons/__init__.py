@@ -112,7 +112,7 @@ class AddonManager(object):
         tasks = []
         for addon_slug in add_addons:
             addon = Addon(
-                self.conf, self.loop, self.dock, self.data, addon_slug)
+                self.config, self.loop, self.dock, self.data, addon_slug)
 
             tasks.append(addon.load())
             self.addons[addon_slug] = addon
