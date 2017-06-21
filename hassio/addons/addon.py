@@ -1,5 +1,4 @@
 """Init file for HassIO addons."""
-import asyncio
 from copy import deepcopy
 import logging
 from pathlib import Path, PurePath
@@ -9,15 +8,15 @@ import shutil
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .validate import (
-    validate_options, SCHEMA_ADDON_CONFIG, MAP_VOLUME)
+from .validate import validate_options, MAP_VOLUME
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
-    ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO, ATTR_SCHEMA, ATTR_IMAGE,
-    ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES,
-    ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED,
-    STATE_STARTED, STATE_STOPPED, STATE_NONE)
+    ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
+    ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
+    ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, STATE_STARTED,
+    STATE_STOPPED, STATE_NONE)
 from ..dock.addon import DockerAddon
+from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,8 +32,7 @@ class Addon(object):
         self.data = data
         self._id = addon_slug
 
-        self.addon_docker = DockerAddon(
-            self.config, self.loop, self.dock, self)
+        self.addon_docker = DockerAddon(config, loop, dock, self)
 
         if self._mesh is None:
             raise RuntimeError("{} not a valid addon!".format(self._id))
@@ -95,12 +93,6 @@ class Addon(object):
         self.data.user[self._id][ATTR_VERSION] = version
         self.data.save()
 
-    @options.setter
-    def options(self, value):
-        """Store user addon options."""
-        self.data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
-        self.data.save()
-
     @property
     def options(self):
         """Return options with local changes."""
@@ -112,10 +104,10 @@ class Addon(object):
 
         return self.data.cache[self._id]
 
-    @boot.setter
-    def boot(self, value):
-        """Store user boot options."""
-        self.data.user[self._id][ATTR_BOOT] = value
+    @options.setter
+    def options(self, value):
+        """Store user addon options."""
+        self.data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
         self.data.save()
 
     @property
@@ -124,6 +116,12 @@ class Addon(object):
         if ATTR_BOOT in self.data.user[self._id]:
             return self.data.user[self._id][ATTR_BOOT]
         return self._mesh[ATTR_BOOT]
+
+    @boot.setter
+    def boot(self, value):
+        """Store user boot options."""
+        self.data.user[self._id][ATTR_BOOT] = value
+        self.data.save()
 
     @property
     def name(self):
@@ -274,9 +272,6 @@ class Addon(object):
             _LOGGER.info(
                 "Create Home-Assistant addon data folder %s", self.path_data)
             self.path_data.mkdir()
-
-        self.addon_docker = DockerAddon(
-            self.config, self.loop, self.dock, self)
 
         version = version or self.last_version
         if not await self.addon_docker.install(version):

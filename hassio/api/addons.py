@@ -46,7 +46,7 @@ class APIAddons(object):
 
         return {
             ATTR_NAME: addon.name,
-            ATTR_DESCRIPTON: addons.description,
+            ATTR_DESCRIPTON: addon.description,
             ATTR_VERSION: addon.version_installed,
             ATTR_REPOSITORY: addon.repository,
             ATTR_LAST_VERSION: addon.last_version,
@@ -55,7 +55,7 @@ class APIAddons(object):
             ATTR_OPTIONS: addon.options,
             ATTR_URL: addon.url,
             ATTR_DETACHED: addon.is_detached,
-            ATTR_BUILD: addons.need_build,
+            ATTR_BUILD: addon.need_build,
         }
 
     @api_process

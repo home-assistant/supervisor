@@ -2,25 +2,20 @@
 import copy
 import logging
 import json
-from pathlib import Path, PurePath
+from pathlib import Path
 import re
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .addon import Addon
 from .util import extract_hash_from_path
 from .validate import (
-    validate_options, SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG,
-    MAP_VOLUME)
+    SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG, MAP_VOLUME)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
-    ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
-    ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH,
-    ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT, ATTR_HOST_NETWORK,
-    ATTR_TMPFS, ATTR_PRIVILEGED, REPOSITORY_CORE, REPOSITORY_LOCAL)
+    ATTR_REPOSITORY, ATTR_URL, ATTR_LOCATON REPOSITORY_CORE, REPOSITORY_LOCAL)
 from ..config import Config
-from ..tools import read_json_file, write_json_file
+from ..tools import read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -168,7 +163,7 @@ class Data(Config):
         """
         have_change = False
 
-        for addon in self.list_installed:
+        for addon in set(self._system_data):
             # detached
             if addon not in self._cache_data:
                 continue

@@ -47,7 +47,7 @@ class AddonManager(AddonsData):
         # init custom repositories
         tasks = []
         for url in repositories:
-            repository = Repository(self.config, self.loop, self.data, url))
+            repository = Repository(self.config, self.loop, self.data, url)
             tasks.append(repository.load())
 
             self.repositories[url] = repository
