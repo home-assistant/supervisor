@@ -17,6 +17,7 @@ from ..const import (
     ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES,
     ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED,
     STATE_STARTED, STATE_STOPPED, STATE_NONE)
+from ..dock.addon import DockerAddon
 
 _LOGGER = logging.getLogger(__name__)
 

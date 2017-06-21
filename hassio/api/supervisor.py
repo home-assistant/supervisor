@@ -5,7 +5,6 @@ import logging
 import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
-from ..addons.util import create_hash_index_list
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
@@ -64,15 +63,13 @@ class APISupervisor(object):
     def _repositories_list(self):
         """Return a list of addons repositories."""
         data = []
-        list_id = create_hash_index_list(self.config.addons_repositories)
-
         for repository in self.addons.list_repositories:
             data.append({
-                ATTR_SLUG: repository[ATTR_SLUG],
-                ATTR_NAME: repository[ATTR_NAME],
-                ATTR_SOURCE: list_id.get(repository[ATTR_SLUG]),
-                ATTR_URL: repository.get(ATTR_URL),
-                ATTR_MAINTAINER: repository.get(ATTR_MAINTAINER),
+                ATTR_SLUG: repository.slug,
+                ATTR_NAME: repository.name,
+                ATTR_SOURCE: repository.source,
+                ATTR_URL: repository.url,
+                ATTR_MAINTAINER: repository.maintainer,
             })
 
         return data

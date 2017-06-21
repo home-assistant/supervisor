@@ -104,3 +104,6 @@ ARCH_ARMHF = 'armhf'
 ARCH_AARCH64 = 'aarch64'
 ARCH_AMD64 = 'amd64'
 ARCH_I386 = 'i386'
+
+REPOSITORY_CORE = 'core'
+REPOSITORY_LOCAL = 'local'

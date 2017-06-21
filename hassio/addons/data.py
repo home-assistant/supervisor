@@ -18,7 +18,7 @@ from ..const import (
     ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
     ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH,
     ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT, ATTR_HOST_NETWORK,
-    ATTR_TMPFS, ATTR_PRIVILEGED)
+    ATTR_TMPFS, ATTR_PRIVILEGED, REPOSITORY_CORE, REPOSITORY_LOCAL)
 from ..config import Config
 from ..tools import read_json_file, write_json_file
 
@@ -26,9 +26,6 @@ _LOGGER = logging.getLogger(__name__)
 
 SYSTEM = 'system'
 USER = 'user'
-
-REPOSITORY_CORE = 'core'
-REPOSITORY_LOCAL = 'local'
 
 RE_VOLUME = re.compile(MAP_VOLUME)
 
@@ -73,7 +70,7 @@ class Data(Config):
         """Return addon data from repositories."""
         return self._repositories_data
 
-    def read_data_from_repositories(self):
+    def reload(self):
         """Read data from addons repository."""
         self._cache_data = {}
         self._repositories_data = {}
@@ -93,6 +90,9 @@ class Data(Config):
         for repository_element in self.config.path_addons_git.iterdir():
             if repository_element.is_dir():
                 self._read_git_repository(repository_element)
+
+        # update local data
+        self._merge_config()
 
     def _read_git_repository(self, path):
         """Process a custom repository folder."""
@@ -153,24 +153,18 @@ class Data(Config):
             _LOGGER.warning("Can't read built-in.json -> %s", err)
             return
 
-        # if core addons are available
-        for data in self._cache_data.values():
-            if data[ATTR_REPOSITORY] == REPOSITORY_CORE:
-                self._repositories_data[REPOSITORY_CORE] = \
-                    builtin_data[REPOSITORY_CORE]
-                break
+        # core repository
+        self._repositories_data[REPOSITORY_CORE] = \
+            builtin_data[REPOSITORY_CORE]
 
-        # if local addons are available
-        for data in self._cache_data.values():
-            if data[ATTR_REPOSITORY] == REPOSITORY_LOCAL:
-                self._repositories_data[REPOSITORY_LOCAL] = \
-                    builtin_data[REPOSITORY_LOCAL]
-                break
+        # local repository
+        self._repositories_data[REPOSITORY_LOCAL] = \
+            builtin_data[REPOSITORY_LOCAL]
 
-    def merge_update_config(self):
+    def _merge_config(self):
         """Update local config if they have update.
 
-        It need to be the same version as the local version is.
+        It need to be the same version as the local version is for merge.
         """
         have_change = False
 
@@ -188,7 +182,3 @@ class Data(Config):
 
         if have_change:
             self.save()
-
-    def list_repositories(self):
-        """Return list of addon repositories."""
-        return list(self._repositories_data.values())

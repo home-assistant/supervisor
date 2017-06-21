@@ -4,10 +4,9 @@ import logging
 import shutil
 
 from .addon import Addon
+from .repository import Repository
 from .data import AddonsData
-from .git import AddonsRepoHassIO, AddonsRepoCustom
 from ..const import STATE_STOPPED, STATE_STARTED
-from ..dock.addon import DockerAddon
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ class AddonManager(AddonsData):
         self.dock = dock
         self.data = AddonsData(config)
         self.addons = {}
-        self.repositories = []
+        self.repositories = {}
 
     @property
     def list_addons(self):
@@ -31,7 +30,7 @@ class AddonManager(AddonsData):
     @property
     def list_repositories(self):
         """Return list of addon repositories."""
-        return list(self._data.repositories.values())
+        return list(self.repositories.values())
 
     def get_addon(self, addon_slug):
         """Return a adddon from slug."""
@@ -41,64 +40,59 @@ class AddonManager(AddonsData):
         """Startup addon management."""
         self.data.arch = self.arch
 
-        # init hassio repository
-        self._repositories.append(AddonsRepoHassIO(self.config, self.loop))
+        # init hassio repositories
+        repositories = set(self.config.addons_repositories) | \
+            (REPOSITORY_CORE, REPOSITORY_LOCAL)
 
         # init custom repositories
-        for url in self.config.addons_repositories:
-            self._repositories.append(
-                AddonsRepoCustom(self.config, self.loop, url))
+        tasks = []
+        for url in repositories:
+            repository = Repository(self.config, self.loop, self.data, url))
+            tasks.append(repository.load())
+
+            self.repositories[url] = repository
 
         # load addon repository
-        tasks = [repo.load() for repo in self._repositories]
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
-
-            # read data from repositories
-            self.data.read_data_from_repositories()
-            self.data.merge_update_config()
 
         # init addons
         await self.load_addons()
 
-    async def add_git_repository(self, url):
+    async def add_repository(self, url):
         """Add a new custom repository."""
         if url in self.config.addons_repositories:
             _LOGGER.warning("Repository already exists %s", url)
             return False
 
-        repo = AddonsRepoCustom(self.config, self.loop, url)
+        repository = Repository(self.config, self.loop, self.data, url)
 
-        if not await repo.load():
+        if not await repository.load():
             _LOGGER.error("Can't load from repository %s", url)
             return False
 
         self.config.addons_repositories = url
-        self.repositories.append(repo)
+        self.repositories[url] = repository
         return True
 
-    def drop_git_repository(self, url):
+    def drop_repository(self, url):
         """Remove a custom repository."""
-        for repo in self.repositories:
-            if repo.url == url:
-                self.repositories.remove(repo)
-                self.config.drop_addon_repository(url)
-                repo.remove()
-                return True
+        if url not in self.repositories:
+            _LOGGER.warning("Repository %s not found!", url)
+            return False
 
-        return False
+        self.repositories.pop(url).remove()
+        self.config.drop_addon_repository(url)
+        return True
 
     async def reload(self):
         """Update addons from repo and reload list."""
         tasks = [repository.pull() for repository in self.repositories]
-        if not tasks:
-            return
-
-        await asyncio.wait(tasks, loop=self.loop)
+        if tasks:
+            await asyncio.wait(tasks, loop=self.loop)
 
         # read data from repositories
-        self.data.read_data_from_repositories()
-        self.data.merge_update_config()
+        self.data.reload()
 
         # update addons
         await self.load_addons()
