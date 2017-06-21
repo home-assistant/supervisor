@@ -40,6 +40,9 @@ class AddonManager(object):
         """Startup addon management."""
         self.data.arch = arch
 
+        # read from repositories
+        self.data.update()
+
         # init hassio repositories
         repositories = set(self.config.addons_repositories) | \
             (REPOSITORY_CORE, REPOSITORY_LOCAL)
