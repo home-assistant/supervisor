@@ -4,7 +4,7 @@ import logging
 
 from .addon import Addon
 from .repository import Repository
-from .data import AddonsData
+from .data import Data
 from ..const import (
     STATE_STOPPED, STATE_STARTED, REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO)
 
@@ -18,7 +18,7 @@ class AddonManager(AddonsData):
         """Initialize docker base wrapper."""
         self.loop = loop
         self.dock = dock
-        self.data = AddonsData(config)
+        self.data = Data(config)
         self.addons = {}
         self.repositories = {}
 

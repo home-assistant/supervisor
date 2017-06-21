@@ -19,7 +19,7 @@ class Repository(object):
         elif repository == REPOSITORY_CORE:
             self._id = repository
             self.git = GitRepoHassIO(config, loop)
-        else
+        else:
             self._id = get_hash_from_repository(repository)
             self.git = GitRepoCustom(config, loop, repository)
             self.source = repository
