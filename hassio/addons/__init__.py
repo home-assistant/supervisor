@@ -5,13 +5,12 @@ import logging
 from .addon import Addon
 from .repository import Repository
 from .data import Data
-from ..const import (
-    STATE_STOPPED, STATE_STARTED, REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO)
+from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class AddonManager(AddonsData):
+class AddonManager(object):
     """Manage addons inside HassIO."""
 
     def __init__(self, config, loop, dock):

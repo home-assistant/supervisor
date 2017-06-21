@@ -1,5 +1,6 @@
 """Represent a HassIO repository."""
 from .git import GitRepoHassIO, GitRepoCustom
+from .util import get_hash_from_repository
 from ..const import (
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_NAME, ATTR_SLUG, ATTR_URL,
     ATTR_MAINTAINER)
@@ -25,7 +26,7 @@ class Repository(object):
             self.source = repository
 
         if self._id not in self.data.repositories:
-            raise RuntimeError("Repository %s not exists".format(self._id))
+            raise RuntimeError("Repository {} not exists".format(self._id))
 
     @property
     def _mesh(self):
