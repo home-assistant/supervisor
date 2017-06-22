@@ -45,7 +45,7 @@ class AddonManager(object):
 
         # init hassio repositories
         repositories = set(self.config.addons_repositories) | \
-            (REPOSITORY_CORE, REPOSITORY_LOCAL)
+            set((REPOSITORY_CORE, REPOSITORY_LOCAL))
 
         # init repositories & load addons
         await self.load_repositories(repositories)
