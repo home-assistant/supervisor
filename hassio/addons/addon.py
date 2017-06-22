@@ -97,8 +97,6 @@ class Addon(object):
                 **self.data.user[self._id][ATTR_OPTIONS],
             }
 
-        return self.data.cache[self._id]
-
     @options.setter
     def options(self, value):
         """Store user addon options."""
@@ -283,7 +281,7 @@ class Addon(object):
     async def uninstall(self):
         """Remove a addon."""
         if not self.is_installed:
-            RuntimeError("Addon {} is already uninstalled".format(self._id))
+            RuntimeError("Addon {} is not installed".format(self._id))
 
         if not await self.addon_docker.remove():
             return False
