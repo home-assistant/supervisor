@@ -47,7 +47,7 @@ class AddonManager(object):
             set(self.config.addons_repositories) | BUILTIN_REPOSITORIES
 
         # init custom repositories & load addons
-        await self.load_repositories(self.config.addons_repositories)
+        await self.load_repositories(repositories)
 
     async def reload(self):
         """Update addons from repo and reload list."""
