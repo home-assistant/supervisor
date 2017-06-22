@@ -32,7 +32,7 @@ class AddonManager(object):
         """Return list of addon repositories."""
         return list(self.repositories.values())
 
-    def get_addon(self, addon_slug):
+    def get(self, addon_slug):
         """Return a adddon from slug."""
         return self.addons.get(addon_slug)
 
@@ -47,15 +47,12 @@ class AddonManager(object):
         repositories = set(self.config.addons_repositories) | \
             (REPOSITORY_CORE, REPOSITORY_LOCAL)
 
-        # init repositories
+        # init repositories & load addons
         await self.load_repositories(repositories)
-
-        # init addons
-        await self.load_addons()
 
     async def reload(self):
         """Update addons from repo and reload list."""
-        tasks = [repository.pull() for repository in self.repositories]
+        tasks = [repository.update() for repository in self.repositories]
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
 
@@ -86,13 +83,9 @@ class AddonManager(object):
             await asyncio.wait(tasks, loop=self.loop)
 
         # del new repository
-        def _del_repository(url):
-            """Helper function to del repository."""
+        for url in old_rep - new_rep:
             self.repositories.pop(url).remove()
             self.config.drop_addon_repository(url)
-
-        for url in old_rep - new_rep:
-            _del_repository(url)
 
         # update data
         self.data.reload()

@@ -32,10 +32,10 @@ class Addon(object):
         self.data = data
         self._id = addon_slug
 
-        self.addon_docker = DockerAddon(config, loop, dock, self)
-
         if self._mesh is None:
             raise RuntimeError("{} not a valid addon!".format(self._id))
+
+        self.addon_docker = DockerAddon(config, loop, dock, self)
 
     async def load(self):
         """Async initialize of object."""
@@ -54,7 +54,7 @@ class Addon(object):
 
     @property
     def arch(self):
-        """Return slug/id of addon."""
+        """Return running arch of addon."""
         return self.data.arch
 
     @property

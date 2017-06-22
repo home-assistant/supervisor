@@ -33,7 +33,7 @@ class APIAddons(object):
 
     def _extract_addon(self, request):
         """Return addon and if not exists trow a exception."""
-        addon = self.addons.get_addon(request.match_info.get('addon'))
+        addon = self.addons.get(request.match_info.get('addon'))
         if not addon:
             raise RuntimeError("Addon not exists")
 
