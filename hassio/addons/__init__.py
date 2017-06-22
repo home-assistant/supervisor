@@ -127,6 +127,6 @@ class AddonManager(object):
                     addon.startup == stage:
                 tasks.append(addon.start())
 
-        _LOGGER.info("Startup %s run %d addons", start_type, len(tasks))
+        _LOGGER.info("Startup %s run %d addons", stage, len(tasks))
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
