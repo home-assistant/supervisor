@@ -187,7 +187,7 @@ class DockerBase(object):
 
         if container.status == 'running':
             with suppress(docker.errors.DockerException):
-                container.stop()
+                container.stop(timeout=15)
 
         with suppress(docker.errors.DockerException):
             container.remove(force=True)
