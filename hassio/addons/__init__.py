@@ -53,6 +53,18 @@ class AddonManager(object):
         # init addons
         await self.load_addons()
 
+    async def reload(self):
+        """Update addons from repo and reload list."""
+        tasks = [repository.pull() for repository in self.repositories]
+        if tasks:
+            await asyncio.wait(tasks, loop=self.loop)
+
+        # read data from repositories
+        self.data.reload()
+
+        # update addons
+        await self.load_addons()
+
     async def load_repositories(self, list_repositories):
         """Add a new custom repository."""
         new_rep = set(list_repositories)
@@ -84,18 +96,6 @@ class AddonManager(object):
 
         # update data
         self.data.reload()
-        await self.load_addons()
-
-    async def reload(self):
-        """Update addons from repo and reload list."""
-        tasks = [repository.pull() for repository in self.repositories]
-        if tasks:
-            await asyncio.wait(tasks, loop=self.loop)
-
-        # read data from repositories
-        self.data.reload()
-
-        # update addons
         await self.load_addons()
 
     async def load_addons(self):
