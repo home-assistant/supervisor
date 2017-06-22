@@ -82,6 +82,10 @@ class AddonManager(object):
         for url in old_rep - new_rep:
             _del_repository(url)
 
+        # update data
+        self.data.reload()
+        await self.load_addons()
+
     async def reload(self):
         """Update addons from repo and reload list."""
         tasks = [repository.pull() for repository in self.repositories]

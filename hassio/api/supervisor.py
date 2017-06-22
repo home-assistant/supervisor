@@ -113,10 +113,7 @@ class APISupervisor(object):
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
-            
-
-            # read repository
-            self.loop.create_task(self.addons.reload())
+            await asyncio.shield(self.addons.load_repositories(new))
 
         return True
 
