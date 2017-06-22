@@ -13,8 +13,8 @@ from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
-    ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, STATE_STARTED,
-    STATE_STOPPED, STATE_NONE)
+    ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
+    STATE_STARTED, STATE_STOPPED, STATE_NONE)
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file
 
@@ -144,6 +144,11 @@ class Addon(object):
         if self._id in self.data.cache:
             return self.data.cache[self._id][ATTR_VERSION]
         return self.version_installed
+
+    @property
+    def startup(self):
+        """Return startup type of addon."""
+        return self._mesh.get(ATTR_STARTUP)
 
     @property
     def ports(self):
