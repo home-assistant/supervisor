@@ -52,7 +52,8 @@ class AddonManager(object):
 
     async def reload(self):
         """Update addons from repo and reload list."""
-        tasks = [repository.update() for repository in self.repositories]
+        tasks = [repository.update() for repository in
+                 self.repositories.values()]
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
 
@@ -118,12 +119,12 @@ class AddonManager(object):
         for addon_slug in del_addons:
             self.addons.pop(addon_slug)
 
-    async def auto_boot(self, start_type):
+    async def auto_boot(self, stage):
         """Boot addons with mode auto."""
         tasks = []
         for addon in self.addons.values():
             if addon.is_installed and addon.boot == BOOT_AUTO and \
-                    addon.startup == start_type:
+                    addon.startup == stage:
                 tasks.append(addon.start())
 
         _LOGGER.info("Startup %s run %d addons", start_type, len(tasks))
