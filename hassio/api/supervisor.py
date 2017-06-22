@@ -113,18 +113,7 @@ class APISupervisor(object):
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
-            old = set(self.config.addons_repositories)
-
-            # add new repositories
-            tasks = [self.addons.add_repository(url) for url in
-                     set(new - old)]
-            if tasks:
-                await asyncio.shield(
-                    asyncio.wait(tasks, loop=self.loop), loop=self.loop)
-
-            # remove old repositories
-            for url in set(old - new):
-                self.addons.drop_repository(url)
+            
 
             # read repository
             self.loop.create_task(self.addons.reload())

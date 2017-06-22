@@ -47,46 +47,40 @@ class AddonManager(object):
         repositories = set(self.config.addons_repositories) | \
             (REPOSITORY_CORE, REPOSITORY_LOCAL)
 
-        # init custom repositories
-        tasks = []
-        for url in repositories:
-            repository = Repository(self.config, self.loop, self.data, url)
-            tasks.append(repository.load())
-
-            self.repositories[url] = repository
-
-        # load addon repository
-        if tasks:
-            await asyncio.wait(tasks, loop=self.loop)
+        # init repositories
+        await self.load_repositories(repositories)
 
         # init addons
         await self.load_addons()
 
-    async def add_repository(self, url):
+    async def load_repositories(self, list_repositories):
         """Add a new custom repository."""
-        if url in self.config.addons_repositories:
-            _LOGGER.warning("Repository already exists %s", url)
-            return False
+        new_rep = set(list_repositories)
+        old_rep = set(self.repositories)
 
-        repository = Repository(self.config, self.loop, self.data, url)
+        # add new repository
+        async def _add_repository(url):
+            """Helper function to async add repository."""
+            repository = Repository(self.config, self.loop, self.data, url)
+            if not await repository.load():
+                _LOGGER.error("Can't load from repository %s", url)
+                return
 
-        if not await repository.load():
-            _LOGGER.error("Can't load from repository %s", url)
-            return False
+            self.config.addons_repositories = url
+            self.repositories[url] = repository
 
-        self.config.addons_repositories = url
-        self.repositories[url] = repository
-        return True
+        tasks = [_add_repository(url) for url in new_rep - old_rep]
+        if tasks:
+            await asyncio.wait(tasks, loop=self.loop)
 
-    def drop_repository(self, url):
-        """Remove a custom repository."""
-        if url not in self.repositories:
-            _LOGGER.warning("Repository %s not found!", url)
-            return False
+        # del new repository
+        def _del_repository(url):
+            """Helper function to del repository."""
+            self.repositories.pop(url).remove()
+            self.config.drop_addon_repository(url)
 
-        self.repositories.pop(url).remove()
-        self.config.drop_addon_repository(url)
-        return True
+        for url in old_rep - new_rep:
+            _del_repository(url)
 
     async def reload(self):
         """Update addons from repo and reload list."""
