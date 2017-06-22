@@ -49,7 +49,7 @@ class DockerBase(object):
         # read arch
         need_arch = force or not self.arch
         if need_arch and LABEL_ARCH in metadata['Config']['Labels']:
-            self.version = metadata['Config']['Labels'][LABEL_ARCH]
+            self.arch = metadata['Config']['Labels'][LABEL_ARCH]
 
     async def install(self, tag):
         """Pull docker image."""
