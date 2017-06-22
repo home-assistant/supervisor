@@ -1,4 +1,5 @@
 """Init file for HassIO addon docker object."""
+from contextlib import suppress
 import logging
 from pathlib import Path
 import shutil
@@ -183,3 +184,21 @@ class DockerAddon(DockerBase):
 
         finally:
             shutil.rmtree(str(build_dir), ignore_errors=True)
+
+    def _restart(self):
+        """Restart docker container.
+
+        Addons prepare some thing on start and that is normaly not repeatable.
+        Need run inside executor.
+        """
+        try:
+            container = self.dock.containers.get(self.name)
+        except docker.errors.DockerException:
+            return False
+
+        _LOGGER.info("Restart %s", self.image)
+
+        with suppress(docker.errors.DockerException):
+            container.stop(timeout=30)
+
+        return self._run()
