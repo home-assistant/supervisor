@@ -39,15 +39,6 @@ class APIAddons(object):
 
         return addon
 
-    def _validate_config(self, addon):
-        try:
-            options = addon.options
-            addon.schema(options)
-        except vol.Invalid as ex:
-            raise RuntimeError(
-                "Invalid addon config: {}".format(humanize_error(options, ex))
-            ) from None
-
     @api_process
     async def info(self, request):
         """Return addon information."""
@@ -109,15 +100,12 @@ class APIAddons(object):
     async def start(self, request):
         """Start addon."""
         addon = self._extract_addon(request)
-
-        self._validate_config(addon)
         return await asyncio.shield(addon.start(), loop=self.loop)
 
     @api_process
     async def stop(self, request):
         """Stop addon."""
         addon = self._extract_addon(request)
-
         return await asyncio.shield(addon.stop(), loop=self.loop)
 
     @api_process
@@ -134,8 +122,6 @@ class APIAddons(object):
     async def restart(self, request):
         """Restart addon."""
         addon = self._extract_addon(request)
-
-        self._validate_config(addon)
         return await asyncio.shield(addon.restart(), loop=self.loop)
 
     @api_process_raw
