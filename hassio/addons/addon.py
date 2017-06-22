@@ -260,11 +260,12 @@ class Addon(object):
     async def install(self, version=None):
         """Install a addon."""
         if self.config.arch not in self.supported_arch:
-            RuntimeError("Addon {} not supported on {}".format(
+            raise RuntimeError("Addon {} not supported on {}".format(
                 self._id, self.config.arch))
 
         if self.is_installed:
-            RuntimeError("Addon {} is already installed".format(self._id))
+            raise RuntimeError(
+                "Addon {} is already installed".format(self._id))
 
         if not self.path_data.is_dir():
             _LOGGER.info(
@@ -281,7 +282,7 @@ class Addon(object):
     async def uninstall(self):
         """Remove a addon."""
         if not self.is_installed:
-            RuntimeError("Addon {} is not installed".format(self._id))
+            raise RuntimeError("Addon {} is not installed".format(self._id))
 
         if not await self.addon_docker.remove():
             return False
@@ -306,24 +307,25 @@ class Addon(object):
     async def start(self):
         """Set options and start addon."""
         if not self.is_installed:
-            RuntimeError("Addon {} is not installed".format(self._id))
+            raise RuntimeError("Addon {} is not installed".format(self._id))
 
         if not self.write_addon_options():
-            RuntimeError("Can't write options for addon {}".format(self._id))
+            raise RuntimeError(
+                "Can't write options for addon {}".format(self._id))
 
         return await self.addon_docker.run()
 
     async def stop(self):
         """Stop addon."""
         if not self.is_installed:
-            RuntimeError("Addon {} is not installed".format(self._id))
+            raise RuntimeError("Addon {} is not installed".format(self._id))
 
         return await self.addon_docker.stop()
 
     async def update(self, version=None):
         """Update addon."""
         if not self.is_installed:
-            RuntimeError("Addon {} is not installed".format(self._id))
+            raise RuntimeError("Addon {} is not installed".format(self._id))
 
         version = version or self.last_version
         if version == self.version_installed:
@@ -338,16 +340,17 @@ class Addon(object):
     async def restart(self):
         """Restart addon."""
         if not self.is_installed:
-            RuntimeError("Addon {} is not installed".format(self._id))
+            raise RuntimeError("Addon {} is not installed".format(self._id))
 
         if not self.write_addon_options():
-            RuntimeError("Can't write options for addon {}".format(self._id))
+            raise RuntimeError(
+                "Can't write options for addon {}".format(self._id))
 
         return await self.addon_docker.restart()
 
     async def logs(self):
         """Return addons log output."""
         if not self.is_installed:
-            RuntimeError("Addon {} is not installed".format(self._id))
+            raise RuntimeError("Addon {} is not installed".format(self._id))
 
         return await self.addon_docker.logs()
