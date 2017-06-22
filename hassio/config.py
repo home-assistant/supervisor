@@ -91,6 +91,7 @@ class CoreConfig(Config):
     def __init__(self, websession):
         """Initialize config object."""
         self.websession = websession
+        self.arch = None
 
         super().__init__(FILE_HASSIO_CONFIG)
 

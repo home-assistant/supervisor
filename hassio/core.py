@@ -58,6 +58,9 @@ class HassIO(object):
             _LOGGER.fatal("Can't attach to supervisor docker container!")
         await self.supervisor.cleanup()
 
+        # set running arch
+        self.config.arch = get_arch_from_image(self.supervisor.image)
+
         # set api endpoint
         self.config.api_endpoint = await get_local_ip(self.loop)
 
@@ -101,8 +104,7 @@ class HassIO(object):
             await self.homeassistant.attach()
 
         # Load addons
-        arch = get_arch_from_image(self.supervisor.image)
-        await self.addons.prepare(arch)
+        await self.addons.prepare()
 
         # schedule addon update task
         self.scheduler.register_task(

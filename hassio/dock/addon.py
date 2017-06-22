@@ -159,7 +159,7 @@ class DockerAddon(DockerBase):
             # prepare Dockerfile
             try:
                 dockerfile_template(
-                    Path(build_dir, 'Dockerfile'), self.addon.arch,
+                    Path(build_dir, 'Dockerfile'), self.config.arch,
                     tag, META_ADDON)
             except OSError as err:
                 _LOGGER.error("Can't prepare dockerfile -> %s", err)

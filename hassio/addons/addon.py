@@ -53,11 +53,6 @@ class Addon(object):
         return self.data.system.get(self._id, self.data.cache.get(self._id))
 
     @property
-    def arch(self):
-        """Return running arch of addon."""
-        return self.data.arch
-
-    @property
     def is_installed(self):
         """Return True if a addon is installed."""
         return self._id in self.data.system
@@ -199,11 +194,12 @@ class Addon(object):
 
         # Repository with dockerhub images
         if ATTR_IMAGE in addon_data:
-            return addon_data[ATTR_IMAGE].format(arch=self.arch)
+            return addon_data[ATTR_IMAGE].format(arch=self.config.arch)
 
         # local build
         return "{}/{}-addon-{}".format(
-            addon_data[ATTR_REPOSITORY], self.arch, addon_data[ATTR_SLUG])
+            addon_data[ATTR_REPOSITORY], self.config.arch,
+            addon_data[ATTR_SLUG])
 
     @property
     def need_build(self):
@@ -265,9 +261,9 @@ class Addon(object):
 
     async def install(self, version=None):
         """Install a addon."""
-        if self.arch not in self.supported_arch:
-            RuntimeError(
-                "Addon {} not supported on {}".format(self._id, self.arch))
+        if self.config.arch not in self.supported_arch:
+            RuntimeError("Addon {} not supported on {}".format(
+                self._id, self.config.arch))
 
         if self.is_installed:
             RuntimeError("Addon {} is already installed".format(self._id))
