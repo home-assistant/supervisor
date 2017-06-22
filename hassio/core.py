@@ -1,5 +1,4 @@
 """Main file for HassIO."""
-import asyncio
 import logging
 
 import aiohttp

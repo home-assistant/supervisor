@@ -239,12 +239,12 @@ Output the raw docker log
     "url": "null|url of addon",
     "detached": "bool",
     "repository": "12345678|null",
-    "version": "VERSION",
+    "version": "null|VERSION_INSTALLED",
     "last_version": "LAST_VERSION",
-    "state": "started|stopped",
+    "state": "none|started|stopped",
     "boot": "auto|manual",
     "build": "bool",
-    "options": {},
+    "options": "null|{}",
 }
 ```
 
