@@ -62,10 +62,12 @@ class APIAddons(object):
     async def options(self, request):
         """Store user options for addon."""
         addon = self._extract_addon(request)
-        options_schema = addon.schema
+
+        if not addon.is_installed:
+            raise RuntimeError("Addon {} is not installed!".format(addon.slug))
 
         addon_schema = SCHEMA_OPTIONS.extend({
-            vol.Optional(ATTR_OPTIONS): options_schema,
+            vol.Optional(ATTR_OPTIONS): addon.schema,
         })
 
         body = await api_validate(addon_schema, request)
