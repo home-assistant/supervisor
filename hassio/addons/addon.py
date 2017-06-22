@@ -261,12 +261,11 @@ class Addon(object):
     async def install(self, version=None):
         """Install a addon."""
         if self.arch not in self.supported_arch:
-            _LOGGER.error("Addon %s not supported on %s", self._id, self.arch)
-            return False
+            RuntimeError(
+                "Addon {} not supported on {}".format(self._id, self.arch))
 
         if self.is_installed:
-            _LOGGER.error("Addon %s is already installed", self._id)
-            return False
+            RuntimeError("Addon {} is already installed".format(self._id))
 
         if not self.path_data.is_dir():
             _LOGGER.info(
@@ -311,8 +310,7 @@ class Addon(object):
             RuntimeError("Addon {} is not installed".format(self._id))
 
         if not self.write_addon_options():
-            _LOGGER.error("Can't write options for addon %s", self._id)
-            return False
+            RuntimeError("Can't write options for addon {}".format(self._id))
 
         return await self.addon_docker.run()
 
@@ -329,8 +327,9 @@ class Addon(object):
             RuntimeError("Addon {} is not installed".format(self._id))
 
         version = version or self.last_version
+        if version == addon.version_installed:
+            raise RuntimeError("Version is already in use")
 
-        # update
         if not await self.addon_docker.update(version):
             return False
 
@@ -343,8 +342,7 @@ class Addon(object):
             RuntimeError("Addon {} is not installed".format(self._id))
 
         if not self.write_addon_options():
-            _LOGGER.error("Can't write options for addon %s", self._id)
-            return False
+            RuntimeError("Can't write options for addon {}".format(self._id))
 
         return await self.addon_docker.restart()
 

@@ -86,11 +86,6 @@ class APIAddons(object):
         addon = self._extract_addon(request)
         version = body.get(ATTR_VERSION)
 
-        # check if arch supported
-        if addon.arch not in addon.supported_arch:
-            raise RuntimeError(
-                "Addon is not supported on {}".format(addon.arch))
-
         return await asyncio.shield(
             addon.install(version=version), loop=self.loop)
 
@@ -106,10 +101,6 @@ class APIAddons(object):
         """Start addon."""
         addon = self._extract_addon(request)
 
-        if await addon.state(addon) == STATE_STARTED:
-            raise RuntimeError("Addon is already running")
-
-        # validate options
         try:
             options = addon.options
             addon.schema(options)
@@ -123,9 +114,6 @@ class APIAddons(object):
         """Stop addon."""
         addon = self._extract_addon(request)
 
-        if await addon.state() == STATE_STOPPED:
-            raise RuntimeError("Addon is already stoped")
-
         return await asyncio.shield(addon.stop(), loop=self.loop)
 
     @api_process
@@ -134,9 +122,6 @@ class APIAddons(object):
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request)
         version = body.get(ATTR_VERSION)
-
-        if version == addon.version_installed:
-            raise RuntimeError("Version is already in use")
 
         return await asyncio.shield(
             addon.update(version=version), loop=self.loop)
