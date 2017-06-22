@@ -20,7 +20,7 @@ from .dock.supervisor import DockerSupervisor
 from .tasks import (
     hassio_update, homeassistant_watchdog, homeassistant_setup,
     api_sessions_cleanup)
-from .tools import get_arch_from_image, get_local_ip, fetch_timezone
+from .tools import get_local_ip, fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
