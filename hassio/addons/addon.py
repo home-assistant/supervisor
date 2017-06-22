@@ -327,7 +327,7 @@ class Addon(object):
             RuntimeError("Addon {} is not installed".format(self._id))
 
         version = version or self.last_version
-        if version == addon.version_installed:
+        if version == self.version_installed:
             raise RuntimeError("Version is already in use")
 
         if not await self.addon_docker.update(version):
