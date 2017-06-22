@@ -92,7 +92,6 @@ class Data(Config):
     def _read_git_repository(self, path):
         """Process a custom repository folder."""
         slug = extract_hash_from_path(path)
-        repository_info = {ATTR_SLUG: slug}
 
         # exists repository json
         repository_file = Path(path, "repository.json")
