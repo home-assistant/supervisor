@@ -3,7 +3,6 @@ import asyncio
 import logging
 
 import voluptuous as vol
-from voluptuous.humanize import humanize_error
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import (

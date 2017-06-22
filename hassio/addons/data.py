@@ -96,9 +96,9 @@ class Data(Config):
         # exists repository json
         repository_file = Path(path, "repository.json")
         try:
-            repository_info.update(SCHEMA_REPOSITORY_CONFIG(
+            repository_info = SCHEMA_REPOSITORY_CONFIG(
                 read_json_file(repository_file)
-            ))
+            )
 
         except OSError:
             _LOGGER.warning("Can't read repository information from %s",
