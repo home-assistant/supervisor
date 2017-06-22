@@ -108,7 +108,7 @@ class Addon(object):
     @property
     def boot(self):
         """Return boot config with prio local settings."""
-        if self.is_installed and ATTR_BOOT in self.data.user[self._id]:
+        if ATTR_BOOT in self.data.user.get(self._id, {}):
             return self.data.user[self._id][ATTR_BOOT]
         return self._mesh[ATTR_BOOT]
 

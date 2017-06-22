@@ -59,7 +59,7 @@ class HassIO(object):
         await self.supervisor.cleanup()
 
         # set running arch
-        self.config.arch = get_arch_from_image(self.supervisor.image)
+        self.config.arch = self.supervisor.arch
 
         # set api endpoint
         self.config.api_endpoint = await get_local_ip(self.loop)
