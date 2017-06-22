@@ -2,7 +2,7 @@
 import copy
 import logging
 import json
-from pathlib import Path, PurePath
+from pathlib import Path
 import re
 
 import voluptuous as vol
@@ -10,29 +10,22 @@ from voluptuous.humanize import humanize_error
 
 from .util import extract_hash_from_path
 from .validate import (
-    validate_options, SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG,
-    MAP_VOLUME)
+    SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG, MAP_VOLUME)
 from ..const import (
-    FILE_HASSIO_ADDONS, ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON,
-    ATTR_STARTUP, ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, BOOT_AUTO,
-    ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY, ATTR_URL, ATTR_ARCH,
-    ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT, ATTR_HOST_NETWORK,
-    ATTR_TMPFS, ATTR_PRIVILEGED)
+    FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
+    REPOSITORY_CORE, REPOSITORY_LOCAL)
 from ..config import Config
-from ..tools import read_json_file, write_json_file
+from ..tools import read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
 SYSTEM = 'system'
 USER = 'user'
 
-REPOSITORY_CORE = 'core'
-REPOSITORY_LOCAL = 'local'
-
 RE_VOLUME = re.compile(MAP_VOLUME)
 
 
-class AddonsData(Config):
+class Data(Config):
     """Hold data for addons inside HassIO."""
 
     def __init__(self, config):
@@ -41,9 +34,8 @@ class AddonsData(Config):
         self.config = config
         self._system_data = self._data.get(SYSTEM, {})
         self._user_data = self._data.get(USER, {})
-        self._addons_cache = {}
+        self._cache_data = {}
         self._repositories_data = {}
-        self.arch = None
 
     def save(self):
         """Store data to config file."""
@@ -53,9 +45,29 @@ class AddonsData(Config):
         }
         super().save()
 
-    def read_data_from_repositories(self):
+    @property
+    def user(self):
+        """Return local addon user data."""
+        return self._user_data
+
+    @property
+    def system(self):
+        """Return local addon data."""
+        return self._system_data
+
+    @property
+    def cache(self):
+        """Return addon data from cache/repositories."""
+        return self._cache_data
+
+    @property
+    def repositories(self):
+        """Return addon data from repositories."""
+        return self._repositories_data
+
+    def reload(self):
         """Read data from addons repository."""
-        self._addons_cache = {}
+        self._cache_data = {}
         self._repositories_data = {}
 
         # read core repository
@@ -74,17 +86,19 @@ class AddonsData(Config):
             if repository_element.is_dir():
                 self._read_git_repository(repository_element)
 
+        # update local data
+        self._merge_config()
+
     def _read_git_repository(self, path):
         """Process a custom repository folder."""
         slug = extract_hash_from_path(path)
-        repository_info = {ATTR_SLUG: slug}
 
         # exists repository json
         repository_file = Path(path, "repository.json")
         try:
-            repository_info.update(SCHEMA_REPOSITORY_CONFIG(
+            repository_info = SCHEMA_REPOSITORY_CONFIG(
                 read_json_file(repository_file)
-            ))
+            )
 
         except OSError:
             _LOGGER.warning("Can't read repository information from %s",
@@ -115,7 +129,7 @@ class AddonsData(Config):
                 # store
                 addon_config[ATTR_REPOSITORY] = repository
                 addon_config[ATTR_LOCATON] = str(addon.parent)
-                self._addons_cache[addon_slug] = addon_config
+                self._cache_data[addon_slug] = addon_config
 
             except OSError:
                 _LOGGER.warning("Can't read %s", addon)
@@ -133,33 +147,27 @@ class AddonsData(Config):
             _LOGGER.warning("Can't read built-in.json -> %s", err)
             return
 
-        # if core addons are available
-        for data in self._addons_cache.values():
-            if data[ATTR_REPOSITORY] == REPOSITORY_CORE:
-                self._repositories_data[REPOSITORY_CORE] = \
-                    builtin_data[REPOSITORY_CORE]
-                break
+        # core repository
+        self._repositories_data[REPOSITORY_CORE] = \
+            builtin_data[REPOSITORY_CORE]
 
-        # if local addons are available
-        for data in self._addons_cache.values():
-            if data[ATTR_REPOSITORY] == REPOSITORY_LOCAL:
-                self._repositories_data[REPOSITORY_LOCAL] = \
-                    builtin_data[REPOSITORY_LOCAL]
-                break
+        # local repository
+        self._repositories_data[REPOSITORY_LOCAL] = \
+            builtin_data[REPOSITORY_LOCAL]
 
-    def merge_update_config(self):
+    def _merge_config(self):
         """Update local config if they have update.
 
-        It need to be the same version as the local version is.
+        It need to be the same version as the local version is for merge.
         """
         have_change = False
 
-        for addon in self.list_installed:
+        for addon in set(self._system_data):
             # detached
-            if addon not in self._addons_cache:
+            if addon not in self._cache_data:
                 continue
 
-            cache = self._addons_cache[addon]
+            cache = self._cache_data[addon]
             data = self._system_data[addon]
             if data[ATTR_VERSION] == cache[ATTR_VERSION]:
                 if data != cache:
@@ -168,232 +176,3 @@ class AddonsData(Config):
 
         if have_change:
             self.save()
-
-    @property
-    def list_installed(self):
-        """Return a list of installed addons."""
-        return set(self._system_data)
-
-    @property
-    def list_all(self):
-        """Return a dict of all addons."""
-        return set(self._system_data) | set(self._addons_cache)
-
-    def list_startup(self, start_type):
-        """Get list of installed addon with need start by type."""
-        addon_list = set()
-        for addon in self._system_data.keys():
-            if self.get_boot(addon) != BOOT_AUTO:
-                continue
-
-            try:
-                if self._system_data[addon][ATTR_STARTUP] == start_type:
-                    addon_list.add(addon)
-            except KeyError:
-                _LOGGER.warning("Orphaned addon detect %s", addon)
-                continue
-
-        return addon_list
-
-    @property
-    def list_detached(self):
-        """Return local addons they not support from repo."""
-        addon_list = set()
-        for addon in self._system_data.keys():
-            if addon not in self._addons_cache:
-                addon_list.add(addon)
-
-        return addon_list
-
-    @property
-    def list_repositories(self):
-        """Return list of addon repositories."""
-        return list(self._repositories_data.values())
-
-    def exists_addon(self, addon):
-        """Return True if a addon exists."""
-        return addon in self._addons_cache or addon in self._system_data
-
-    def is_installed(self, addon):
-        """Return True if a addon is installed."""
-        return addon in self._system_data
-
-    def version_installed(self, addon):
-        """Return installed version."""
-        return self._user_data.get(addon, {}).get(ATTR_VERSION)
-
-    def set_addon_install(self, addon, version):
-        """Set addon as installed."""
-        self._system_data[addon] = copy.deepcopy(self._addons_cache[addon])
-        self._user_data[addon] = {
-            ATTR_OPTIONS: {},
-            ATTR_VERSION: version,
-        }
-        self.save()
-
-    def set_addon_uninstall(self, addon):
-        """Set addon as uninstalled."""
-        self._system_data.pop(addon, None)
-        self._user_data.pop(addon, None)
-        self.save()
-
-    def set_addon_update(self, addon, version):
-        """Update version of addon."""
-        self._system_data[addon] = copy.deepcopy(self._addons_cache[addon])
-        self._user_data[addon][ATTR_VERSION] = version
-        self.save()
-
-    def set_options(self, addon, options):
-        """Store user addon options."""
-        self._user_data[addon][ATTR_OPTIONS] = copy.deepcopy(options)
-        self.save()
-
-    def set_boot(self, addon, boot):
-        """Store user boot options."""
-        self._user_data[addon][ATTR_BOOT] = boot
-        self.save()
-
-    def get_options(self, addon):
-        """Return options with local changes."""
-        return {
-            **self._system_data[addon][ATTR_OPTIONS],
-            **self._user_data[addon][ATTR_OPTIONS],
-        }
-
-    def get_boot(self, addon):
-        """Return boot config with prio local settings."""
-        if ATTR_BOOT in self._user_data[addon]:
-            return self._user_data[addon][ATTR_BOOT]
-
-        return self._system_data[addon][ATTR_BOOT]
-
-    def get_name(self, addon):
-        """Return name of addon."""
-        if addon in self._addons_cache:
-            return self._addons_cache[addon][ATTR_NAME]
-        return self._system_data[addon][ATTR_NAME]
-
-    def get_description(self, addon):
-        """Return description of addon."""
-        if addon in self._addons_cache:
-            return self._addons_cache[addon][ATTR_DESCRIPTON]
-        return self._system_data[addon][ATTR_DESCRIPTON]
-
-    def get_repository(self, addon):
-        """Return repository of addon."""
-        if addon in self._addons_cache:
-            return self._addons_cache[addon][ATTR_REPOSITORY]
-        return self._system_data[addon][ATTR_REPOSITORY]
-
-    def get_last_version(self, addon):
-        """Return version of addon."""
-        if addon in self._addons_cache:
-            return self._addons_cache[addon][ATTR_VERSION]
-        return self.version_installed(addon)
-
-    def get_ports(self, addon):
-        """Return ports of addon."""
-        return self._system_data[addon].get(ATTR_PORTS)
-
-    def get_network_mode(self, addon):
-        """Return network mode of addon."""
-        if self._system_data[addon][ATTR_HOST_NETWORK]:
-            return 'host'
-        return 'bridge'
-
-    def get_devices(self, addon):
-        """Return devices of addon."""
-        return self._system_data[addon].get(ATTR_DEVICES)
-
-    def get_tmpfs(self, addon):
-        """Return tmpfs of addon."""
-        return self._system_data[addon].get(ATTR_TMPFS)
-
-    def get_environment(self, addon):
-        """Return environment of addon."""
-        return self._system_data[addon].get(ATTR_ENVIRONMENT)
-
-    def get_privileged(self, addon):
-        """Return list of privilege."""
-        return self._system_data[addon].get(ATTR_PRIVILEGED)
-
-    def get_url(self, addon):
-        """Return url of addon."""
-        if addon in self._addons_cache:
-            return self._addons_cache[addon].get(ATTR_URL)
-        return self._system_data[addon].get(ATTR_URL)
-
-    def get_arch(self, addon):
-        """Return list of supported arch."""
-        if addon in self._addons_cache:
-            return self._addons_cache[addon][ATTR_ARCH]
-        return self._system_data[addon][ATTR_ARCH]
-
-    def get_image(self, addon):
-        """Return image name of addon."""
-        addon_data = self._system_data.get(
-            addon, self._addons_cache.get(addon)
-        )
-
-        # Repository with dockerhub images
-        if ATTR_IMAGE in addon_data:
-            return addon_data[ATTR_IMAGE].format(arch=self.arch)
-
-        # local build
-        return "{}/{}-addon-{}".format(
-            addon_data[ATTR_REPOSITORY], self.arch, addon_data[ATTR_SLUG])
-
-    def need_build(self, addon):
-        """Return True if this  addon need a local build."""
-        addon_data = self._system_data.get(
-            addon, self._addons_cache.get(addon)
-        )
-        return ATTR_IMAGE not in addon_data
-
-    def map_volumes(self, addon):
-        """Return a dict of {volume: policy} from addon."""
-        volumes = {}
-        for volume in self._system_data[addon][ATTR_MAP]:
-            result = RE_VOLUME.match(volume)
-            volumes[result.group(1)] = result.group(2) or 'ro'
-
-        return volumes
-
-    def path_data(self, addon):
-        """Return addon data path inside supervisor."""
-        return Path(self.config.path_addons_data, addon)
-
-    def path_extern_data(self, addon):
-        """Return addon data path external for docker."""
-        return PurePath(self.config.path_extern_addons_data, addon)
-
-    def path_addon_options(self, addon):
-        """Return path to addons options."""
-        return Path(self.path_data(addon), "options.json")
-
-    def path_addon_location(self, addon):
-        """Return path to this addon."""
-        return Path(self._addons_cache[addon][ATTR_LOCATON])
-
-    def write_addon_options(self, addon):
-        """Return True if addon options is written to data."""
-        schema = self.get_schema(addon)
-        options = self.get_options(addon)
-
-        try:
-            schema(options)
-            return write_json_file(self.path_addon_options(addon), options)
-        except vol.Invalid as ex:
-            _LOGGER.error("Addon %s have wrong options -> %s", addon,
-                          humanize_error(options, ex))
-
-        return False
-
-    def get_schema(self, addon):
-        """Create a schema for addon options."""
-        raw_schema = self._system_data[addon][ATTR_SCHEMA]
-
-        if isinstance(raw_schema, bool):
-            return vol.Schema(dict)
-
-        return vol.Schema(vol.All(dict, validate_options(raw_schema)))

@@ -1,5 +1,4 @@
 """Main file for HassIO."""
-import asyncio
 import logging
 
 import aiohttp
@@ -20,7 +19,7 @@ from .dock.supervisor import DockerSupervisor
 from .tasks import (
     hassio_update, homeassistant_watchdog, homeassistant_setup,
     api_sessions_cleanup)
-from .tools import get_arch_from_image, get_local_ip, fetch_timezone
+from .tools import get_local_ip, fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +56,9 @@ class HassIO(object):
         if not await self.supervisor.attach():
             _LOGGER.fatal("Can't attach to supervisor docker container!")
         await self.supervisor.cleanup()
+
+        # set running arch
+        self.config.arch = self.supervisor.arch
 
         # set api endpoint
         self.config.api_endpoint = await get_local_ip(self.loop)
@@ -101,8 +103,7 @@ class HassIO(object):
             await self.homeassistant.attach()
 
         # Load addons
-        arch = get_arch_from_image(self.supervisor.image)
-        await self.addons.prepare(arch)
+        await self.addons.prepare()
 
         # schedule addon update task
         self.scheduler.register_task(
@@ -148,9 +149,9 @@ class HassIO(object):
         # don't process scheduler anymore
         self.scheduler.stop()
 
-        # process stop task pararell
-        tasks = [self.websession.close(), self.api.stop()]
-        await asyncio.wait(tasks, loop=self.loop)
+        # process stop tasks
+        self.websession.close()
+        await self.api.stop()
 
         self.exit_code = exit_code
         self.loop.stop()

@@ -1,12 +1,10 @@
 {
     "local": {
-        "slug": "local",
         "name": "Local Add-Ons",
         "url": "https://home-assistant.io/hassio",
         "maintainer": "By our self"
     },
     "core": {
-        "slug": "core",
         "name": "Built-in Add-Ons",
         "url": "https://home-assistant.io/addons",
         "maintainer": "Home Assistant authors"

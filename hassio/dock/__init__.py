@@ -5,7 +5,7 @@ import logging
 
 import docker
 
-from ..const import LABEL_VERSION
+from ..const import LABEL_VERSION, LABEL_ARCH
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ class DockerBase(object):
         self.dock = dock
         self.image = image
         self.version = None
+        self.arch = None
         self._lock = asyncio.Lock(loop=loop)
 
     @property
@@ -38,12 +39,17 @@ class DockerBase(object):
         if not self.image:
             self.image = metadata['Config']['Image']
 
-        # read metadata
+        # read version
         need_version = force or not self.version
         if need_version and LABEL_VERSION in metadata['Config']['Labels']:
             self.version = metadata['Config']['Labels'][LABEL_VERSION]
         elif need_version:
             _LOGGER.warning("Can't read version from %s", self.name)
+
+        # read arch
+        need_arch = force or not self.arch
+        if need_arch and LABEL_ARCH in metadata['Config']['Labels']:
+            self.arch = metadata['Config']['Labels'][LABEL_ARCH]
 
     async def install(self, tag):
         """Pull docker image."""
@@ -187,7 +193,7 @@ class DockerBase(object):
 
         if container.status == 'running':
             with suppress(docker.errors.DockerException):
-                container.stop()
+                container.stop(timeout=15)
 
         with suppress(docker.errors.DockerException):
             container.remove(force=True)
