@@ -25,23 +25,20 @@ class Repository(object):
             self.git = GitRepoCustom(config, loop, repository)
             self.source = repository
 
-        if self._id not in self.data.repositories:
-            raise RuntimeError("Repository {} not exists".format(self._id))
-
     @property
     def _mesh(self):
         """Return data struct repository."""
-        return self.data.repositories[self._id]
+        return self.data.repositories.get(self._id, {})
 
     @property
     def slug(self):
         """Return slug of repository."""
-        return self._mesh[ATTR_SLUG]
+        return self._id
 
     @property
     def name(self):
         """Return name of repository."""
-        return self._mesh[ATTR_NAME]
+        return self._mesh.get(ATTR_NAME, self.source)
 
     @property
     def url(self):
