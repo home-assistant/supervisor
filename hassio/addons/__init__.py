@@ -9,6 +9,8 @@ from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO
 
 _LOGGER = logging.getLogger(__name__)
 
+BUILTIN_REPOSITORIES = set((REPOSITORY_CORE, REPOSITORY_LOCAL))
+
 
 class AddonManager(object):
     """Manage addons inside HassIO."""
@@ -40,12 +42,12 @@ class AddonManager(object):
         """Startup addon management."""
         self.data.reload()
 
-        # init hassio repositories
-        repositories = set(self.config.addons_repositories) | \
-            set((REPOSITORY_CORE, REPOSITORY_LOCAL))
+        # init hassio built-in repositories
+        repositories = \
+            set(self.config.addons_repositories) | BUILTIN_REPOSITORIES
 
-        # init repositories & load addons
-        await self.load_repositories(repositories)
+        # init custom repositories & load addons
+        await self.load_repositories(self.config.addons_repositories)
 
     async def reload(self):
         """Update addons from repo and reload list."""
@@ -72,16 +74,18 @@ class AddonManager(object):
             if not await repository.load():
                 _LOGGER.error("Can't load from repository %s", url)
                 return
-
-            self.config.addons_repositories = url
             self.repositories[url] = repository
+
+            # don't add built-in repository to config
+            if url not in BUILTIN_REPOSITORIES:
+                self.config.addons_repositories = url
 
         tasks = [_add_repository(url) for url in new_rep - old_rep]
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
 
         # del new repository
-        for url in old_rep - new_rep:
+        for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
             self.repositories.pop(url).remove()
             self.config.drop_addon_repository(url)
 
