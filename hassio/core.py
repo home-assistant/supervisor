@@ -150,9 +150,9 @@ class HassIO(object):
         # don't process scheduler anymore
         self.scheduler.stop()
 
-        # process stop task pararell
-        tasks = [self.websession.close(), self.api.stop()]
-        await asyncio.wait(tasks, loop=self.loop)
+        # process stop tasks
+        self.websession.close()
+        await self.api.stop()
 
         self.exit_code = exit_code
         self.loop.stop()
