@@ -199,6 +199,6 @@ class DockerAddon(DockerBase):
         _LOGGER.info("Restart %s", self.image)
 
         with suppress(docker.errors.DockerException):
-            container.stop(timeout=30)
+            container.stop(timeout=15)
 
         return self._run()
