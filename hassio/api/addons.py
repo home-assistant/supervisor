@@ -30,18 +30,21 @@ class APIAddons(object):
         self.loop = loop
         self.addons = addons
 
-    def _extract_addon(self, request):
+    def _extract_addon(self, request, check_installed=True):
         """Return addon and if not exists trow a exception."""
         addon = self.addons.get(request.match_info.get('addon'))
         if not addon:
             raise RuntimeError("Addon not exists")
+
+        if check_installed and not addon.is_installed:
+            raise RuntimeError("Addon is not installed")
 
         return addon
 
     @api_process
     async def info(self, request):
         """Return addon information."""
-        addon = self._extract_addon(request)
+        addon = self._extract_addon(request, check_installed=False)
 
         return {
             ATTR_NAME: addon.name,
@@ -62,9 +65,6 @@ class APIAddons(object):
         """Store user options for addon."""
         addon = self._extract_addon(request)
 
-        if not addon.is_installed:
-            raise RuntimeError("Addon {} is not installed!".format(addon.slug))
-
         addon_schema = SCHEMA_OPTIONS.extend({
             vol.Optional(ATTR_OPTIONS): addon.schema,
         })
@@ -79,7 +79,7 @@ class APIAddons(object):
         return True
 
     @api_process
-    async def install(self, request):
+    async def install(self, request, check_installed=False):
         """Install addon."""
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request)
