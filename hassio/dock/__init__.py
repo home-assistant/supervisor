@@ -189,7 +189,6 @@ class DockerBase(object):
         except docker.errors.DockerException:
             return
 
-
         if container.status == 'running':
             _LOGGER.info("Stop %s docker application", self.image)
             with suppress(docker.errors.DockerException):
