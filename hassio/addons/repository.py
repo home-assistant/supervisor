@@ -4,6 +4,8 @@ from .util import get_hash_from_repository
 from ..const import (
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_NAME, ATTR_URL, ATTR_MAINTAINER)
 
+UNKNOWN = 'unknown'
+
 
 class Repository(object):
     """Repository in HassIO."""
@@ -37,17 +39,17 @@ class Repository(object):
     @property
     def name(self):
         """Return name of repository."""
-        return self._mesh.get(ATTR_NAME, self.source)
+        return self._mesh.get(ATTR_NAME, UNKNOWN)
 
     @property
     def url(self):
         """Return url of repository."""
-        return self._mesh.get(ATTR_URL)
+        return self._mesh.get(ATTR_URL, self.source)
 
     @property
     def maintainer(self):
         """Return url of repository."""
-        return self._mesh.get(ATTR_MAINTAINER)
+        return self._mesh.get(ATTR_MAINTAINER, UNKNOWN)
 
     async def load(self):
         """Load addon repository."""

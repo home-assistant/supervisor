@@ -189,13 +189,14 @@ class DockerBase(object):
         except docker.errors.DockerException:
             return
 
-        _LOGGER.info("Stop %s docker application", self.image)
 
         if container.status == 'running':
+            _LOGGER.info("Stop %s docker application", self.image)
             with suppress(docker.errors.DockerException):
                 container.stop(timeout=15)
 
         with suppress(docker.errors.DockerException):
+            _LOGGER.info("Clean %s docker application", self.image)
             container.remove(force=True)
 
     async def remove(self):

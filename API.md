@@ -78,10 +78,10 @@ Get all available addons
     "repositories": [
         {
             "slug": "12345678",
-            "name": "Repitory Name",
+            "name": "Repitory Name|unknown",
             "source": "URL_OF_REPOSITORY",
-            "url": "null|WEBSITE",
-            "maintainer": "null|BLA BLU <fla@dld.ch>"
+            "url": "WEBSITE|REPOSITORY",
+            "maintainer": "BLA BLU <fla@dld.ch>|unknown"
         }
     ]
 }
