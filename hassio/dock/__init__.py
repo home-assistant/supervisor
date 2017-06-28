@@ -267,7 +267,7 @@ class DockerBase(object):
         """Return docker logs of container."""
         if self._lock.locked():
             _LOGGER.error("Can't excute logs while a task is in progress")
-            return False
+            return b""
 
         async with self._lock:
             return await self.loop.run_in_executor(None, self._logs)

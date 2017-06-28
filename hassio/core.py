@@ -4,7 +4,6 @@ import logging
 import aiohttp
 import docker
 
-from . import bootstrap
 from .addons import AddonManager
 from .api import RestAPI
 from .host_control import HostControl
@@ -27,28 +26,26 @@ _LOGGER = logging.getLogger(__name__)
 class HassIO(object):
     """Main object of hassio."""
 
-    def __init__(self, loop):
+    def __init__(self, loop, config):
         """Initialize hassio object."""
         self.exit_code = 0
         self.loop = loop
-        self.websession = aiohttp.ClientSession(loop=self.loop)
-        self.config = bootstrap.initialize_system_data(self.websession)
-        self.scheduler = Scheduler(self.loop)
-        self.api = RestAPI(self.config, self.loop)
+        self.config = config
+        self.websession = aiohttp.ClientSession(loop=loop)
+        self.scheduler = Scheduler(loop)
+        self.api = RestAPI(config, loop)
         self.dock = docker.DockerClient(
             base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
 
         # init basic docker container
-        self.supervisor = DockerSupervisor(
-            self.config, self.loop, self.dock, self.stop)
-        self.homeassistant = DockerHomeAssistant(
-            self.config, self.loop, self.dock)
+        self.supervisor = DockerSupervisor(config, loop, self.dock, self.stop)
+        self.homeassistant = DockerHomeAssistant(config, loop, self.dock)
 
         # init HostControl
-        self.host_control = HostControl(self.loop)
+        self.host_control = HostControl(loop)
 
         # init addon system
-        self.addons = AddonManager(self.config, self.loop, self.dock)
+        self.addons = AddonManager(config, loop, self.dock)
 
     async def setup(self):
         """Setup HassIO orchestration."""
@@ -98,7 +95,7 @@ class HassIO(object):
         if not await self.homeassistant.exists():
             _LOGGER.info("No HomeAssistant docker found.")
             await homeassistant_setup(
-                self.config, self.loop, self.homeassistant)
+                self.config, self.loop, self.homeassistant, self.websession)
         else:
             await self.homeassistant.attach()
 

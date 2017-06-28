@@ -43,12 +43,12 @@ def homeassistant_watchdog(loop, homeassistant):
     return _homeassistant_watchdog
 
 
-async def homeassistant_setup(config, loop, homeassistant):
+async def homeassistant_setup(config, loop, homeassistant, websession):
     """Install a homeassistant docker container."""
     while True:
         # read homeassistant tag and install it
         if not config.last_homeassistant:
-            await config.fetch_update_infos()
+            await config.fetch_update_infos(websession)
 
         tag = config.last_homeassistant
         if tag and await homeassistant.install(tag):
