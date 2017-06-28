@@ -313,9 +313,6 @@ class Addon(object):
             _LOGGER.error("Addon %s is not installed", self._id)
             return False
 
-        if not self.write_addon_options():
-            return False
-
         return await self.addon_docker.run()
 
     async def stop(self):
@@ -348,9 +345,6 @@ class Addon(object):
         """Restart addon."""
         if not self.is_installed:
             _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
-        if not self.write_addon_options():
             return False
 
         return await self.addon_docker.restart()
