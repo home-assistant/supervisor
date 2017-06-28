@@ -96,6 +96,7 @@ class Addon(object):
                 **self.data.system[self._id][ATTR_OPTIONS],
                 **self.data.user[self._id][ATTR_OPTIONS],
             }
+        return self.data.cache[self._id][ATTR_OPTIONS]
 
     @options.setter
     def options(self, value):
