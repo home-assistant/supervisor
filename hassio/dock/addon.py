@@ -94,10 +94,14 @@ class DockerAddon(DockerBase):
         Need run inside executor.
         """
         if self._is_running():
-            return
+            return True
 
         # cleanup
         self._stop()
+
+        # write config
+        if not self.addon.write_options():
+            return False
 
         try:
             self.dock.containers.run(

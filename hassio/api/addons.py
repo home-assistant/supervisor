@@ -3,6 +3,7 @@ import asyncio
 import logging
 
 import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
@@ -92,13 +93,20 @@ class APIAddons(object):
     async def uninstall(self, request):
         """Uninstall addon."""
         addon = self._extract_addon(request)
-
         return await asyncio.shield(addon.uninstall(), loop=self.loop)
 
     @api_process
     async def start(self, request):
         """Start addon."""
         addon = self._extract_addon(request)
+
+        # check options
+        options = addon.options
+        try:
+            addon.schema(options)
+        except vol.Invalid as ex:
+            raise RuntimeError(humanize_error(options, ex)) from None
+
         return await asyncio.shield(addon.start(), loop=self.loop)
 
     @api_process
