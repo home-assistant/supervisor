@@ -235,7 +235,7 @@ class Addon(object):
         """Return path to this addon."""
         return Path(self._mesh[ATTR_LOCATON])
 
-    def write_addon_options(self):
+    def write_options(self):
         """Return True if addon options is written to data."""
         schema = self.schema
         options = self.options

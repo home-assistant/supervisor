@@ -100,7 +100,7 @@ class DockerAddon(DockerBase):
         self._stop()
 
         # write config
-        if not self.addon.write_json_file():
+        if not self.addon.write_options():
             return False
 
         try:
