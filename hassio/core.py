@@ -86,14 +86,6 @@ class HassIO(object):
             api_sessions_cleanup(self.config), RUN_CLEANUP_API_SESSIONS,
             now=True)
 
-        # on release channel, try update itself
-        # on beta channel, only read new versions
-        if not self.config.upstream_beta:
-            await self.loop.create_task(
-                hassio_update(self.config, self.supervisor, self.websession)())
-        else:
-            await self.config.fetch_update_infos(self.websession)
-
         # first start of supervisor?
         if not await self.homeassistant.exists():
             _LOGGER.info("No HomeAssistant docker found.")
@@ -119,6 +111,14 @@ class HassIO(object):
 
     async def start(self):
         """Start HassIO orchestration."""
+        # on release channel, try update itself
+        # on beta channel, only read new versions
+        if not self.config.upstream_beta:
+            await self.loop.create_task(
+                hassio_update(self.config, self.supervisor, self.websession)())
+        else:
+            await self.config.fetch_update_infos(self.websession)
+
         # start api
         await self.api.start()
         _LOGGER.info("Start hassio api on %s", self.config.api_endpoint)
