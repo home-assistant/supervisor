@@ -244,7 +244,7 @@ Output the raw docker log
     "state": "none|started|stopped",
     "boot": "auto|manual",
     "build": "bool",
-    "options": "null|{}",
+    "options": "{}",
 }
 ```
 
