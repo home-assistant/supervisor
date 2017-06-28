@@ -38,7 +38,6 @@ if __name__ == "__main__":
     loop.run_forever()
 
     _LOGGER.info("Cleanup system")
-    websession.close()
     executor.shutdown(wait=False)
     loop.close()
 
