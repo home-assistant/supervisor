@@ -69,8 +69,8 @@ class HassIO(object):
 
         # schedule update info tasks
         self.scheduler.register_task(
-
             self.host_control.load, RUN_UPDATE_INFO_TASKS)
+
         # rest api views
         self.api.register_host(self.host_control)
         self.api.register_network(self.host_control)
@@ -86,10 +86,13 @@ class HassIO(object):
             api_sessions_cleanup(self.config), RUN_CLEANUP_API_SESSIONS,
             now=True)
 
-        # schedule update info tasks
-        self.scheduler.register_task(
-            self.config.fetch_update_infos, RUN_UPDATE_INFO_TASKS,
-            now=True)
+        # on release channel, try update itself
+        # on beta channel, only read new versions
+        if not self.config.upstream_beta:
+            await self.loop.create_task(
+                hassio_update(self.config, self.supervisor, self.websession)())
+        else:
+            await self.config.fetch_update_infos(self.websession)
 
         # first start of supervisor?
         if not await self.homeassistant.exists():
@@ -108,7 +111,7 @@ class HassIO(object):
 
         # schedule self update task
         self.scheduler.register_task(
-            hassio_update(self.config, self.supervisor),
+            hassio_update(self.config, self.supervisor, self.websession),
             RUN_UPDATE_SUPERVISOR_TASKS)
 
         # start addon mark as initialize

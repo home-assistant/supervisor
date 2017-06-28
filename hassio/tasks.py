@@ -18,10 +18,11 @@ def api_sessions_cleanup(config):
     return _api_sessions_cleanup
 
 
-def hassio_update(config, supervisor):
+def hassio_update(config, supervisor, websession):
     """Create scheduler task for update of supervisor hassio."""
     async def _hassio_update():
         """Check and run update of supervisor hassio."""
+        await config.fetch_update_infos(websession)
         if config.last_hassio == supervisor.version:
             return
 
