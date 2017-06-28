@@ -145,7 +145,7 @@ class DockerAddon(DockerBase):
 
         Need run inside executor.
         """
-        build_dir = Path(self.config.path_addons_build, self.addon.slug)
+        build_dir = Path(self.config.path_tmp, self.addon.slug)
         try:
             # prepare temporary addon build folder
             try:

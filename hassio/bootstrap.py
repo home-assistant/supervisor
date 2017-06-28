@@ -2,6 +2,7 @@
 import logging
 import os
 import signal
+from pathlib import Path
 
 from colorlog import ColoredFormatter
 
@@ -11,9 +12,9 @@ from .config import CoreConfig
 _LOGGER = logging.getLogger(__name__)
 
 
-def initialize_system_data(websession):
+def initialize_system_data():
     """Setup default config and create folders."""
-    config = CoreConfig(websession)
+    config = CoreConfig()
 
     # homeassistant config folder
     if not config.path_config.is_dir():
@@ -42,10 +43,10 @@ def initialize_system_data(websession):
                      config.path_addons_git)
         config.path_addons_git.mkdir(parents=True)
 
-    if not config.path_addons_build.is_dir():
-        _LOGGER.info("Create Home-Assistant addon build folder %s",
-                     config.path_addons_build)
-        config.path_addons_build.mkdir(parents=True)
+    # hassio tmp folder
+    if not config.path_tmp.is_dir():
+        _LOGGER.info("Create hassio temp folder %s", config.path_tmp)
+        config.path_tmp.mkdir(parents=True)
 
     # hassio backup folder
     if not config.path_backup.is_dir():
@@ -58,6 +59,18 @@ def initialize_system_data(websession):
         config.path_share.mkdir()
 
     return config
+
+
+def migrate_system_env(config):
+    """Cleanup some stuff after update."""
+
+    # hass.io 0.37 -> 0.38
+    old_build = Path(config.path_hassio, "addons/build")
+    if old_build.is_dir():
+        try:
+            old_build.rmdir()
+        except OSError:
+            _LOGGER.warning("Can't cleanup old addons build dir.")
 
 
 def initialize_logging():

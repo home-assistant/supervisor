@@ -2,7 +2,7 @@ sudo: false
 matrix:
   fast_finish: true
   include:
-    - python: "3.5"
+    - python: "3.6"
 
 cache:
   directories:

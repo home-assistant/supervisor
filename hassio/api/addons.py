@@ -79,10 +79,10 @@ class APIAddons(object):
         return True
 
     @api_process
-    async def install(self, request, check_installed=False):
+    async def install(self, request):
         """Install addon."""
         body = await api_validate(SCHEMA_VERSION, request)
-        addon = self._extract_addon(request)
+        addon = self._extract_addon(request, check_installed=False)
         version = body.get(ATTR_VERSION)
 
         return await asyncio.shield(

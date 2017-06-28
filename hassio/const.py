@@ -10,7 +10,7 @@ URL_HASSIO_VERSION_BETA = ('https://raw.githubusercontent.com/home-assistant/'
 
 URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
 
-HASSIO_SHARE = Path("/data")
+HASSIO_DATA = Path("/data")
 
 RUN_UPDATE_INFO_TASKS = 28800
 RUN_UPDATE_SUPERVISOR_TASKS = 29100
@@ -20,8 +20,8 @@ RUN_CLEANUP_API_SESSIONS = 900
 
 RESTART_EXIT_CODE = 100
 
-FILE_HASSIO_ADDONS = Path(HASSIO_SHARE, "addons.json")
-FILE_HASSIO_CONFIG = Path(HASSIO_SHARE, "config.json")
+FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
+FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 SOCKET_HC = Path("/var/run/hassio-hc.sock")
