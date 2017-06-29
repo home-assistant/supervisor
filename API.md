@@ -148,6 +148,31 @@ Return QR-Code
 }
 ```
 
+### Backup/Snapshot
+
+- GET `/snapshots/info`
+```json
+[
+    {
+        "slug": "SNAPSHOT ID",
+        "name": "custom snapshot name",
+        "date": "ISO",
+        "size": "SIZE_IN_MB"
+    }
+]
+```
+
+- POST `/snapshots/take`
+```json
+{
+    "name": "Optional"
+}
+```
+
+- POST `/snapshots/restore/{snapshot}`
+
+- POST `/snapshots/remove/{snapshot}`
+
 ### Host
 
 - POST `/host/shutdown`
