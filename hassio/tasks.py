@@ -26,6 +26,11 @@ def hassio_update(config, supervisor, websession):
         if config.last_hassio == supervisor.version:
             return
 
+        # don't perform a update on beta/dev channel
+        if config.upstream_beta:
+            _LOGGER.warning("Ignore Hass.IO update on beta upstream!")
+            return
+
         _LOGGER.info("Found new HassIO version %s.", config.last_hassio)
         await supervisor.update(config.last_hassio)
 
