@@ -1,4 +1,5 @@
 """Init file for HassIO addon docker object."""
+from contextlib import suppress
 import logging
 from pathlib import Path
 import shutil
@@ -16,22 +17,21 @@ _LOGGER = logging.getLogger(__name__)
 class DockerAddon(DockerBase):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, dock, addons_data, addon):
+    def __init__(self, config, loop, dock, addon):
         """Initialize docker homeassistant wrapper."""
         super().__init__(
-            config, loop, dock, image=addons_data.get_image(addon))
+            config, loop, dock, image=addon.image)
         self.addon = addon
-        self.addons_data = addons_data
 
     @property
     def name(self):
         """Return name of docker container."""
-        return "addon_{}".format(self.addon)
+        return "addon_{}".format(self.addon.slug)
 
     @property
     def environment(self):
         """Return environment for docker add-on."""
-        addon_env = self.addons_data.get_environment(self.addon) or {}
+        addon_env = self.addon.environment or {}
 
         return {
             **addon_env,
@@ -41,7 +41,7 @@ class DockerAddon(DockerBase):
     @property
     def tmpfs(self):
         """Return tmpfs for docker add-on."""
-        options = self.addons_data.get_tmpfs(self.addon)
+        options = self.addon.tmpfs
         if options:
             return {"/tmpfs": "{}".format(options)}
         return None
@@ -50,11 +50,11 @@ class DockerAddon(DockerBase):
     def volumes(self):
         """Generate volumes for mappings."""
         volumes = {
-            str(self.addons_data.path_extern_data(self.addon)): {
+            str(self.addon.path_extern_data): {
                 'bind': '/data', 'mode': 'rw'
             }}
 
-        addon_mapping = self.addons_data.map_volumes(self.addon)
+        addon_mapping = self.addon.map_volumes
 
         if MAP_CONFIG in addon_mapping:
             volumes.update({
@@ -94,20 +94,24 @@ class DockerAddon(DockerBase):
         Need run inside executor.
         """
         if self._is_running():
-            return
+            return True
 
         # cleanup
         self._stop()
+
+        # write config
+        if not self.addon.write_options():
+            return False
 
         try:
             self.dock.containers.run(
                 self.image,
                 name=self.name,
                 detach=True,
-                network_mode=self.addons_data.get_network_mode(self.addon),
-                ports=self.addons_data.get_ports(self.addon),
-                devices=self.addons_data.get_devices(self.addon),
-                cap_add=self.addons_data.get_privileged(self.addon),
+                network_mode=self.addon.network_mode,
+                ports=self.addon.ports,
+                devices=self.addon.devices,
+                cap_add=self.addon.privileged,
                 environment=self.environment,
                 volumes=self.volumes,
                 tmpfs=self.tmpfs
@@ -126,7 +130,7 @@ class DockerAddon(DockerBase):
 
         Need run inside executor.
         """
-        if self.addons_data.need_build(self.addon):
+        if self.addon.need_build:
             return self._build(tag)
 
         return super()._install(tag)
@@ -145,11 +149,11 @@ class DockerAddon(DockerBase):
 
         Need run inside executor.
         """
-        build_dir = Path(self.config.path_addons_build, self.addon)
+        build_dir = Path(self.config.path_tmp, self.addon.slug)
         try:
             # prepare temporary addon build folder
             try:
-                source = self.addons_data.path_addon_location(self.addon)
+                source = self.addon.path_addon_location
                 shutil.copytree(str(source), str(build_dir))
             except shutil.Error as err:
                 _LOGGER.error("Can't copy %s to temporary build folder -> %s",
@@ -159,7 +163,7 @@ class DockerAddon(DockerBase):
             # prepare Dockerfile
             try:
                 dockerfile_template(
-                    Path(build_dir, 'Dockerfile'), self.addons_data.arch,
+                    Path(build_dir, 'Dockerfile'), self.config.arch,
                     tag, META_ADDON)
             except OSError as err:
                 _LOGGER.error("Can't prepare dockerfile -> %s", err)
@@ -184,3 +188,21 @@ class DockerAddon(DockerBase):
 
         finally:
             shutil.rmtree(str(build_dir), ignore_errors=True)
+
+    def _restart(self):
+        """Restart docker container.
+
+        Addons prepare some thing on start and that is normaly not repeatable.
+        Need run inside executor.
+        """
+        try:
+            container = self.dock.containers.get(self.name)
+        except docker.errors.DockerException:
+            return False
+
+        _LOGGER.info("Restart %s", self.image)
+
+        with suppress(docker.errors.DockerException):
+            container.stop(timeout=15)
+
+        return self._run()

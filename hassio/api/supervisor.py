@@ -5,7 +5,6 @@ import logging
 import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
-from ..addons.util import create_hash_index_list
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
@@ -31,36 +30,34 @@ SCHEMA_VERSION = vol.Schema({
 class APISupervisor(object):
     """Handle rest api for supervisor functions."""
 
-    def __init__(self, config, loop, supervisor, addons, host_control):
+    def __init__(self, config, loop, supervisor, addons, host_control,
+                 websession):
         """Initialize supervisor rest api part."""
         self.config = config
         self.loop = loop
         self.supervisor = supervisor
         self.addons = addons
         self.host_control = host_control
+        self.websession = websession
 
     def _addons_list(self, only_installed=False):
         """Return a list of addons."""
-        detached = self.addons.list_detached
-
-        if only_installed:
-            addons = self.addons.list_installed
-        else:
-            addons = self.addons.list_all
-
         data = []
-        for addon in addons:
+        for addon in self.addons.list_addons:
+            if only_installed and not addon.is_installed:
+                continue
+
             data.append({
-                ATTR_NAME: self.addons.get_name(addon),
-                ATTR_SLUG: addon,
-                ATTR_DESCRIPTON: self.addons.get_description(addon),
-                ATTR_VERSION: self.addons.get_last_version(addon),
-                ATTR_INSTALLED: self.addons.version_installed(addon),
-                ATTR_ARCH: self.addons.get_arch(addon),
-                ATTR_DETACHED: addon in detached,
-                ATTR_REPOSITORY: self.addons.get_repository(addon),
-                ATTR_BUILD: self.addons.need_build(addon),
-                ATTR_URL: self.addons.get_url(addon),
+                ATTR_NAME: addon.name,
+                ATTR_SLUG: addon.slug,
+                ATTR_DESCRIPTON: addon.description,
+                ATTR_VERSION: addon.last_version,
+                ATTR_INSTALLED: addon.version_installed,
+                ATTR_ARCH: addon.supported_arch,
+                ATTR_DETACHED: addon.is_detached,
+                ATTR_REPOSITORY: addon.repository,
+                ATTR_BUILD: addon.need_build,
+                ATTR_URL: addon.url,
             })
 
         return data
@@ -68,15 +65,13 @@ class APISupervisor(object):
     def _repositories_list(self):
         """Return a list of addons repositories."""
         data = []
-        list_id = create_hash_index_list(self.config.addons_repositories)
-
         for repository in self.addons.list_repositories:
             data.append({
-                ATTR_SLUG: repository[ATTR_SLUG],
-                ATTR_NAME: repository[ATTR_NAME],
-                ATTR_SOURCE: list_id.get(repository[ATTR_SLUG]),
-                ATTR_URL: repository.get(ATTR_URL),
-                ATTR_MAINTAINER: repository.get(ATTR_MAINTAINER),
+                ATTR_SLUG: repository.slug,
+                ATTR_NAME: repository.name,
+                ATTR_SOURCE: repository.source,
+                ATTR_URL: repository.url,
+                ATTR_MAINTAINER: repository.maintainer,
             })
 
         return data
@@ -93,7 +88,7 @@ class APISupervisor(object):
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.config.last_hassio,
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
-            ATTR_ARCH: self.addons.arch,
+            ATTR_ARCH: self.config.arch,
             ATTR_TIMEZONE: self.config.timezone,
             ATTR_ADDONS: self._addons_list(only_installed=True),
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
@@ -120,21 +115,7 @@ class APISupervisor(object):
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
-            old = set(self.config.addons_repositories)
-
-            # add new repositories
-            tasks = [self.addons.add_git_repository(url) for url in
-                     set(new - old)]
-            if tasks:
-                await asyncio.shield(
-                    asyncio.wait(tasks, loop=self.loop), loop=self.loop)
-
-            # remove old repositories
-            for url in set(old - new):
-                self.addons.drop_git_repository(url)
-
-            # read repository
-            self.addons.read_data_from_repositories()
+            await asyncio.shield(self.addons.load_repositories(new))
 
         return True
 
@@ -154,7 +135,8 @@ class APISupervisor(object):
     async def reload(self, request):
         """Reload addons, config ect."""
         tasks = [
-            self.addons.reload(), self.config.fetch_update_infos(),
+            self.addons.reload(),
+            self.config.fetch_update_infos(self.websession),
             self.host_control.load()
         ]
         results, _ = await asyncio.shield(

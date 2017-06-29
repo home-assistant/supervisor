@@ -18,11 +18,17 @@ def api_sessions_cleanup(config):
     return _api_sessions_cleanup
 
 
-def hassio_update(config, supervisor):
+def hassio_update(config, supervisor, websession):
     """Create scheduler task for update of supervisor hassio."""
     async def _hassio_update():
         """Check and run update of supervisor hassio."""
+        await config.fetch_update_infos(websession)
         if config.last_hassio == supervisor.version:
+            return
+
+        # don't perform a update on beta/dev channel
+        if config.upstream_beta:
+            _LOGGER.warning("Ignore Hass.IO update on beta upstream!")
             return
 
         _LOGGER.info("Found new HassIO version %s.", config.last_hassio)
@@ -43,12 +49,12 @@ def homeassistant_watchdog(loop, homeassistant):
     return _homeassistant_watchdog
 
 
-async def homeassistant_setup(config, loop, homeassistant):
+async def homeassistant_setup(config, loop, homeassistant, websession):
     """Install a homeassistant docker container."""
     while True:
         # read homeassistant tag and install it
         if not config.last_homeassistant:
-            await config.fetch_update_infos()
+            await config.fetch_update_infos(websession)
 
         tag = config.last_homeassistant
         if tag and await homeassistant.install(tag):

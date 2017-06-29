@@ -8,7 +8,7 @@ from pathlib import Path, PurePath
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .const import FILE_HASSIO_CONFIG, HASSIO_SHARE
+from .const import FILE_HASSIO_CONFIG, HASSIO_DATA
 from .tools import (
     fetch_last_versions, write_json_file, read_json_file, validate_timezone)
 
@@ -27,12 +27,11 @@ ADDONS_CORE = PurePath("addons/core")
 ADDONS_LOCAL = PurePath("addons/local")
 ADDONS_GIT = PurePath("addons/git")
 ADDONS_DATA = PurePath("addons/data")
-ADDONS_BUILD = PurePath("addons/build")
 ADDONS_CUSTOM_LIST = 'addons_custom_list'
 
 BACKUP_DATA = PurePath("backup")
-
 SHARE_DATA = PurePath("share")
+TMP_DATA = PurePath("tmp")
 
 UPSTREAM_BETA = 'upstream_beta'
 API_ENDPOINT = 'api_endpoint'
@@ -88,9 +87,9 @@ class Config(object):
 class CoreConfig(Config):
     """Hold all core config data."""
 
-    def __init__(self, websession):
+    def __init__(self):
         """Initialize config object."""
-        self.websession = websession
+        self.arch = None
 
         super().__init__(FILE_HASSIO_CONFIG)
 
@@ -102,10 +101,9 @@ class CoreConfig(Config):
             _LOGGER.warning(
                 "Invalid config %s", humanize_error(self._data, ex))
 
-    async def fetch_update_infos(self):
+    async def fetch_update_infos(self, websession):
         """Read current versions from web."""
-        last = await fetch_last_versions(
-            self.websession, beta=self.upstream_beta)
+        last = await fetch_last_versions(websession, beta=self.upstream_beta)
 
         if last:
             self._data.update({
@@ -176,6 +174,11 @@ class CoreConfig(Config):
         return self._data.get(HASSIO_LAST)
 
     @property
+    def path_hassio(self):
+        """Return hassio data path."""
+        return HASSIO_DATA
+
+    @property
     def path_extern_hassio(self):
         """Return hassio data path extern for docker."""
         return PurePath(os.environ['SUPERVISOR_SHARE'])
@@ -188,7 +191,7 @@ class CoreConfig(Config):
     @property
     def path_config(self):
         """Return config path inside supervisor."""
-        return Path(HASSIO_SHARE, HOMEASSISTANT_CONFIG)
+        return Path(HASSIO_DATA, HOMEASSISTANT_CONFIG)
 
     @property
     def path_extern_ssl(self):
@@ -198,22 +201,22 @@ class CoreConfig(Config):
     @property
     def path_ssl(self):
         """Return SSL path inside supervisor."""
-        return Path(HASSIO_SHARE, HASSIO_SSL)
+        return Path(HASSIO_DATA, HASSIO_SSL)
 
     @property
     def path_addons_core(self):
         """Return git path for core addons."""
-        return Path(HASSIO_SHARE, ADDONS_CORE)
+        return Path(HASSIO_DATA, ADDONS_CORE)
 
     @property
     def path_addons_git(self):
         """Return path for git addons."""
-        return Path(HASSIO_SHARE, ADDONS_GIT)
+        return Path(HASSIO_DATA, ADDONS_GIT)
 
     @property
     def path_addons_local(self):
         """Return path for customs addons."""
-        return Path(HASSIO_SHARE, ADDONS_LOCAL)
+        return Path(HASSIO_DATA, ADDONS_LOCAL)
 
     @property
     def path_extern_addons_local(self):
@@ -223,7 +226,7 @@ class CoreConfig(Config):
     @property
     def path_addons_data(self):
         """Return root addon data folder."""
-        return Path(HASSIO_SHARE, ADDONS_DATA)
+        return Path(HASSIO_DATA, ADDONS_DATA)
 
     @property
     def path_extern_addons_data(self):
@@ -231,14 +234,14 @@ class CoreConfig(Config):
         return PurePath(self.path_extern_hassio, ADDONS_DATA)
 
     @property
-    def path_addons_build(self):
-        """Return root addon build folder."""
-        return Path(HASSIO_SHARE, ADDONS_BUILD)
+    def path_tmp(self):
+        """Return hass.io temp folder."""
+        return Path(HASSIO_DATA, TMP_DATA)
 
     @property
     def path_backup(self):
         """Return root backup data folder."""
-        return Path(HASSIO_SHARE, BACKUP_DATA)
+        return Path(HASSIO_DATA, BACKUP_DATA)
 
     @property
     def path_extern_backup(self):
@@ -248,7 +251,7 @@ class CoreConfig(Config):
     @property
     def path_share(self):
         """Return root share data folder."""
-        return Path(HASSIO_SHARE, SHARE_DATA)
+        return Path(HASSIO_DATA, SHARE_DATA)
 
     @property
     def path_extern_share(self):

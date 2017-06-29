@@ -78,10 +78,10 @@ Get all available addons
     "repositories": [
         {
             "slug": "12345678",
-            "name": "Repitory Name",
+            "name": "Repitory Name|unknown",
             "source": "URL_OF_REPOSITORY",
-            "url": "null|WEBSITE",
-            "maintainer": "null|BLA BLU <fla@dld.ch>"
+            "url": "WEBSITE|REPOSITORY",
+            "maintainer": "BLA BLU <fla@dld.ch>|unknown"
         }
     ]
 }
@@ -239,12 +239,12 @@ Output the raw docker log
     "url": "null|url of addon",
     "detached": "bool",
     "repository": "12345678|null",
-    "version": "VERSION",
+    "version": "null|VERSION_INSTALLED",
     "last_version": "LAST_VERSION",
-    "state": "started|stopped",
+    "state": "none|started|stopped",
     "boot": "auto|manual",
     "build": "bool",
-    "options": {},
+    "options": "{}",
 }
 ```
 

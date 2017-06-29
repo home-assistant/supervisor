@@ -12,7 +12,7 @@ from ..const import URL_HASSIO_ADDONS
 _LOGGER = logging.getLogger(__name__)
 
 
-class AddonsRepo(object):
+class GitRepo(object):
     """Manage addons git repo."""
 
     def __init__(self, config, loop, path, url):
@@ -77,7 +77,7 @@ class AddonsRepo(object):
             return True
 
 
-class AddonsRepoHassIO(AddonsRepo):
+class GitRepoHassIO(GitRepo):
     """HassIO addons repository."""
 
     def __init__(self, config, loop):
@@ -86,7 +86,7 @@ class AddonsRepoHassIO(AddonsRepo):
             config, loop, config.path_addons_core, URL_HASSIO_ADDONS)
 
 
-class AddonsRepoCustom(AddonsRepo):
+class GitRepoCustom(GitRepo):
     """Custom addons repository."""
 
     def __init__(self, config, loop, url):

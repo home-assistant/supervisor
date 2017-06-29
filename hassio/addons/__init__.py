@@ -1,220 +1,133 @@
 """Init file for HassIO addons."""
 import asyncio
 import logging
-import shutil
 
-from .data import AddonsData
-from .git import AddonsRepoHassIO, AddonsRepoCustom
-from ..const import STATE_STOPPED, STATE_STARTED
-from ..dock.addon import DockerAddon
+from .addon import Addon
+from .repository import Repository
+from .data import Data
+from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO
 
 _LOGGER = logging.getLogger(__name__)
 
+BUILTIN_REPOSITORIES = set((REPOSITORY_CORE, REPOSITORY_LOCAL))
 
-class AddonManager(AddonsData):
+
+class AddonManager(object):
     """Manage addons inside HassIO."""
 
     def __init__(self, config, loop, dock):
         """Initialize docker base wrapper."""
-        super().__init__(config)
-
         self.loop = loop
+        self.config = config
         self.dock = dock
-        self.repositories = []
-        self.dockers = {}
+        self.data = Data(config)
+        self.addons = {}
+        self.repositories = {}
 
-    async def prepare(self, arch):
+    @property
+    def list_addons(self):
+        """Return a list of all addons."""
+        return list(self.addons.values())
+
+    @property
+    def list_repositories(self):
+        """Return list of addon repositories."""
+        return list(self.repositories.values())
+
+    def get(self, addon_slug):
+        """Return a adddon from slug."""
+        return self.addons.get(addon_slug)
+
+    async def prepare(self):
         """Startup addon management."""
-        self.arch = arch
+        self.data.reload()
 
-        # init hassio repository
-        self.repositories.append(AddonsRepoHassIO(self.config, self.loop))
+        # init hassio built-in repositories
+        repositories = \
+            set(self.config.addons_repositories) | BUILTIN_REPOSITORIES
 
-        # init custom repositories
-        for url in self.config.addons_repositories:
-            self.repositories.append(
-                AddonsRepoCustom(self.config, self.loop, url))
-
-        # load addon repository
-        tasks = [addon.load() for addon in self.repositories]
-        if tasks:
-            await asyncio.wait(tasks, loop=self.loop)
-
-            # read data from repositories
-            self.read_data_from_repositories()
-            self.merge_update_config()
-
-        # load installed addons
-        for addon in self.list_installed:
-            self.dockers[addon] = DockerAddon(
-                self.config, self.loop, self.dock, self, addon)
-            await self.dockers[addon].attach()
-
-    async def add_git_repository(self, url):
-        """Add a new custom repository."""
-        if url in self.config.addons_repositories:
-            _LOGGER.warning("Repository already exists %s", url)
-            return False
-
-        repo = AddonsRepoCustom(self.config, self.loop, url)
-
-        if not await repo.load():
-            _LOGGER.error("Can't load from repository %s", url)
-            return False
-
-        self.config.addons_repositories = url
-        self.repositories.append(repo)
-        return True
-
-    def drop_git_repository(self, url):
-        """Remove a custom repository."""
-        for repo in self.repositories:
-            if repo.url == url:
-                self.repositories.remove(repo)
-                self.config.drop_addon_repository(url)
-                repo.remove()
-                return True
-
-        return False
+        # init custom repositories & load addons
+        await self.load_repositories(repositories)
 
     async def reload(self):
         """Update addons from repo and reload list."""
-        tasks = [addon.pull() for addon in self.repositories]
-        if not tasks:
-            return
-
-        await asyncio.wait(tasks, loop=self.loop)
-
-        # read data from repositories
-        self.read_data_from_repositories()
-        self.merge_update_config()
-
-        # remove stalled addons
-        for addon in self.list_detached:
-            _LOGGER.warning("Dedicated addon '%s' found!", addon)
-
-    async def auto_boot(self, start_type):
-        """Boot addons with mode auto."""
-        boot_list = self.list_startup(start_type)
-        tasks = [self.start(addon) for addon in boot_list]
-
-        _LOGGER.info("Startup %s run %d addons", start_type, len(tasks))
+        tasks = [repository.update() for repository in
+                 self.repositories.values()]
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
 
-    async def install(self, addon, version=None):
-        """Install a addon."""
-        if not self.exists_addon(addon):
-            _LOGGER.error("Addon %s not exists for install", addon)
-            return False
+        # read data from repositories
+        self.data.reload()
 
-        if self.arch not in self.get_arch(addon):
-            _LOGGER.error("Addon %s not supported on %s", addon, self.arch)
-            return False
+        # update addons
+        await self.load_addons()
 
-        if self.is_installed(addon):
-            _LOGGER.error("Addon %s is already installed", addon)
-            return False
+    async def load_repositories(self, list_repositories):
+        """Add a new custom repository."""
+        new_rep = set(list_repositories)
+        old_rep = set(self.repositories)
 
-        if not self.path_data(addon).is_dir():
-            _LOGGER.info("Create Home-Assistant addon data folder %s",
-                         self.path_data(addon))
-            self.path_data(addon).mkdir()
+        # add new repository
+        async def _add_repository(url):
+            """Helper function to async add repository."""
+            repository = Repository(self.config, self.loop, self.data, url)
+            if not await repository.load():
+                _LOGGER.error("Can't load from repository %s", url)
+                return
+            self.repositories[url] = repository
 
-        addon_docker = DockerAddon(
-            self.config, self.loop, self.dock, self, addon)
+            # don't add built-in repository to config
+            if url not in BUILTIN_REPOSITORIES:
+                self.config.addons_repositories = url
 
-        version = version or self.get_last_version(addon)
-        if not await addon_docker.install(version):
-            return False
+        tasks = [_add_repository(url) for url in new_rep - old_rep]
+        if tasks:
+            await asyncio.wait(tasks, loop=self.loop)
 
-        self.dockers[addon] = addon_docker
-        self.set_addon_install(addon, version)
-        return True
+        # del new repository
+        for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
+            self.repositories.pop(url).remove()
+            self.config.drop_addon_repository(url)
 
-    async def uninstall(self, addon):
-        """Remove a addon."""
-        if not self.is_installed(addon):
-            _LOGGER.error("Addon %s is already uninstalled", addon)
-            return False
+        # update data
+        self.data.reload()
+        await self.load_addons()
 
-        if addon not in self.dockers:
-            _LOGGER.error("No docker found for addon %s", addon)
-            return False
+    async def load_addons(self):
+        """Update/add internal addon store."""
+        all_addons = set(self.data.system) | set(self.data.cache)
 
-        if not await self.dockers[addon].remove():
-            return False
+        # calc diff
+        add_addons = all_addons - set(self.addons)
+        del_addons = set(self.addons) - all_addons
 
-        if self.path_data(addon).is_dir():
-            _LOGGER.info("Remove Home-Assistant addon data folder %s",
-                         self.path_data(addon))
-            shutil.rmtree(str(self.path_data(addon)))
+        _LOGGER.info("Load addons: %d all - %d new - %d remove",
+                     len(all_addons), len(add_addons), len(del_addons))
 
-        self.dockers.pop(addon)
-        self.set_addon_uninstall(addon)
-        return True
+        # new addons
+        tasks = []
+        for addon_slug in add_addons:
+            addon = Addon(
+                self.config, self.loop, self.dock, self.data, addon_slug)
 
-    async def state(self, addon):
-        """Return running state of addon."""
-        if addon not in self.dockers:
-            _LOGGER.error("No docker found for addon %s", addon)
-            return
+            tasks.append(addon.load())
+            self.addons[addon_slug] = addon
 
-        if await self.dockers[addon].is_running():
-            return STATE_STARTED
-        return STATE_STOPPED
+        if tasks:
+            await asyncio.wait(tasks, loop=self.loop)
 
-    async def start(self, addon):
-        """Set options and start addon."""
-        if addon not in self.dockers:
-            _LOGGER.error("No docker found for addon %s", addon)
-            return False
+        # remove
+        for addon_slug in del_addons:
+            self.addons.pop(addon_slug)
 
-        if not self.write_addon_options(addon):
-            _LOGGER.error("Can't write options for addon %s", addon)
-            return False
+    async def auto_boot(self, stage):
+        """Boot addons with mode auto."""
+        tasks = []
+        for addon in self.addons.values():
+            if addon.is_installed and addon.boot == BOOT_AUTO and \
+                    addon.startup == stage:
+                tasks.append(addon.start())
 
-        return await self.dockers[addon].run()
-
-    async def stop(self, addon):
-        """Stop addon."""
-        if addon not in self.dockers:
-            _LOGGER.error("No docker found for addon %s", addon)
-            return False
-
-        return await self.dockers[addon].stop()
-
-    async def update(self, addon, version=None):
-        """Update addon."""
-        if addon not in self.dockers:
-            _LOGGER.error("No docker found for addon %s", addon)
-            return False
-
-        version = version or self.get_last_version(addon)
-
-        # update
-        if not await self.dockers[addon].update(version):
-            return False
-
-        self.set_addon_update(addon, version)
-        return True
-
-    async def restart(self, addon):
-        """Restart addon."""
-        if addon not in self.dockers:
-            _LOGGER.error("No docker found for addon %s", addon)
-            return False
-
-        if not self.write_addon_options(addon):
-            _LOGGER.error("Can't write options for addon %s", addon)
-            return False
-
-        return await self.dockers[addon].restart()
-
-    async def logs(self, addon):
-        """Return addons log output."""
-        if addon not in self.dockers:
-            _LOGGER.error("No docker found for addon %s", addon)
-            return False
-
-        return await self.dockers[addon].logs()
+        _LOGGER.info("Startup %s run %d addons", stage, len(tasks))
+        if tasks:
+            await asyncio.wait(tasks, loop=self.loop)
