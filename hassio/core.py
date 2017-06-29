@@ -1,4 +1,5 @@
 """Main file for HassIO."""
+import asyncio
 import logging
 
 import aiohttp
@@ -113,11 +114,10 @@ class HassIO(object):
         """Start HassIO orchestration."""
         # on release channel, try update itself
         # on beta channel, only read new versions
-        if not self.config.upstream_beta:
-            await self.loop.create_task(
-                hassio_update(self.config, self.supervisor, self.websession)())
-        else:
-            await self.config.fetch_update_infos(self.websession)
+        await asyncio.wait(
+            [hassio_update(self.config, self.supervisor, self.websession)()],
+            loop=self.loop
+        )
 
         # start api
         await self.api.start()
