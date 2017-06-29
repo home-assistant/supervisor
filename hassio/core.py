@@ -76,7 +76,7 @@ class HassIO(object):
         self.api.register_host(self.host_control)
         self.api.register_network(self.host_control)
         self.api.register_supervisor(
-            self.supervisor, self.addons, self.host_control)
+            self.supervisor, self.addons, self.host_control, self.websession)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
         self.api.register_security()
