@@ -51,6 +51,13 @@ The addons from `addons` are only installed one.
     ],
     "addons_repositories": [
         "REPO_URL"
+    ],
+    "snapshots": [
+        {
+            "slug": "SLUG",
+            "data": "ISO",
+            "name": "Custom name"
+        }
     ]
 }
 ```
@@ -150,28 +157,26 @@ Return QR-Code
 
 ### Backup/Snapshot
 
-- GET `/snapshots/info`
-```json
-[
-    {
-        "slug": "SNAPSHOT ID",
-        "name": "custom snapshot name",
-        "date": "ISO",
-        "size": "SIZE_IN_MB"
-    }
-]
-```
-
-- POST `/snapshots/take`
+- POST `/snapshot`
 ```json
 {
     "name": "Optional"
 }
 ```
 
-- POST `/snapshots/restore/{snapshot}`
+- GET `/snapshot/{slug}/info`
+```json
+{
+    "slug": "SNAPSHOT ID",
+    "name": "custom snapshot name",
+    "date": "ISO",
+    "size": "SIZE_IN_MB"
+}
+```
 
-- POST `/snapshots/remove/{snapshot}`
+- POST `/snapshot/{slug}/restore`
+
+- POST `/snapshot/{slug}/remove`
 
 ### Host
 
