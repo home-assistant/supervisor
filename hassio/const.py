@@ -107,3 +107,7 @@ ARCH_I386 = 'i386'
 
 REPOSITORY_CORE = 'core'
 REPOSITORY_LOCAL = 'local'
+
+CONF_USER = 'user'
+CONF_SYSTEM = 'system'
+CONF_STATE = 'state'

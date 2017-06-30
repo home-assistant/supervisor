@@ -13,15 +13,11 @@ from .validate import (
     SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG, MAP_VOLUME)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
-    REPOSITORY_CORE, REPOSITORY_LOCAL)
+    REPOSITORY_CORE, REPOSITORY_LOCAL, CONF_USER, CONF_SYSTEM)
 from ..config import Config
 from ..tools import read_json_file
 
 _LOGGER = logging.getLogger(__name__)
-
-SYSTEM = 'system'
-USER = 'user'
-STATE = 'state'
 
 RE_VOLUME = re.compile(MAP_VOLUME)
 
@@ -33,16 +29,16 @@ class Data(Config):
         """Initialize data holder."""
         super().__init__(FILE_HASSIO_ADDONS)
         self.config = config
-        self._system_data = self._data.get(SYSTEM, {})
-        self._user_data = self._data.get(USER, {})
+        self._system_data = self._data.get(CONF_SYSTEM, {})
+        self._user_data = self._data.get(CONF_USER, {})
         self._cache_data = {}
         self._repositories_data = {}
 
     def save(self):
         """Store data to config file."""
         self._data = {
-            USER: self._user_data,
-            SYSTEM: self._system_data,
+            CONF_USER: self._user_data,
+            CONF_SYSTEM: self._system_data,
         }
         super().save()
 

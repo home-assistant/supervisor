@@ -16,7 +16,8 @@ from ..const import (
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
-    STATE_STARTED, STATE_STOPPED, STATE_NONE)
+    STATE_STARTED, STATE_STOPPED, STATE_NONE, CONF_USER, CONF_SYSTEM,
+    CONF_STATE)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -360,9 +361,9 @@ class Addon(object):
                 return False
 
             data = {
-                'user': self.data.user.get(self._id, {}),
-                'system': self.data.system.get(self._id, {}),
-                'state': await self.state(),
+                CONF_USER: self.data.user.get(self._id, {}),
+                CONF_SYSTEM: self.data.system.get(self._id, {}),
+                CONF_STATE: await self.state(),
             }
 
             # store local configs/state
@@ -403,7 +404,7 @@ class Addon(object):
                     return False
 
             # check version / restore image
-            version = data['user'][ATTR_VERSION]
+            version = data[CONF_USER][ATTR_VERSION]
             if version != self.version_installed:
                 if not await self.addon_docker.remove():
                     return False
@@ -427,10 +428,10 @@ class Addon(object):
                 return False
 
             # restore data
-            self._restore_data(data['user'], data['system'])
+            self._restore_data(data[CONF_USER], data[CONF_SYSTEM])
 
             # run addon
-            if data['state'] == STATE_STARTED:
+            if data[CONF_STATE] == STATE_STARTED:
                 return await self.start()
 
         return True
