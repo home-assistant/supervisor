@@ -360,9 +360,9 @@ class Addon(object):
                 return False
 
             data = {
-                'user': self.data.user.get(self._id, {})
-                'system': self.data.system.get(self._id, {})
-                'state': await self.state()
+                'user': self.data.user.get(self._id, {}),
+                'system': self.data.system.get(self._id, {}),
+                'state': await self.state(),
             }
 
             # store local configs/state
