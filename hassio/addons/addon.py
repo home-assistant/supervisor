@@ -32,6 +32,7 @@ class Addon(object):
 
     def __init__(self, config, loop, dock, data, addon_slug):
         """Initialize data holder."""
+        self.loop = loop
         self.config = config
         self.data = data
         self._id = addon_slug
@@ -373,12 +374,16 @@ class Addon(object):
 
             # write into tarfile
             with tarfile.open(tar_file, "w:xz") as snapshot:
-                try:
-                    snapshot.add(temp, arcname=".")
-                    snapshot.add(self.path_data, arcname="data")
-                except tarfile.TarError as err:
-                    _LOGGER.error(
-                        "Can't write tarfile %s -> %s", tar_file, err)
+                def _create_tar():
+                    """Write tar inside loop."""
+                    try:
+                        snapshot.add(temp, arcname=".")
+                        snapshot.add(self.path_data, arcname="data")
+                    except tarfile.TarError as err:
+                        _LOGGER.error(
+                            "Can't write tarfile %s -> %s", tar_file, err)
+
+                await self.loop.run_in_executor(None, _create_tar)
 
         return True
 
@@ -388,7 +393,8 @@ class Addon(object):
             # extract snapshot
             try:
                 with tarfile.open(tar_file, "r:xz") as snapshot:
-                    snapshot.extractall(path=Path(temp))
+                    await self.loop.run_in_executor(
+                        None, snapshot.extractall(path=Path(temp)))
             except tarfile.TarError as err:
                 _LOGGER.error("Can't read tarfile %s -> %s", tar_file, err)
 
