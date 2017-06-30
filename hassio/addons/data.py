@@ -101,7 +101,7 @@ class Data(Config):
                 read_json_file(repository_file)
             )
 
-        except OSError:
+        except (OSError, json.JSONDecodeError):
             _LOGGER.warning("Can't read repository information from %s",
                             repository_file)
             return

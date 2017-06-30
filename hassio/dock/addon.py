@@ -148,7 +148,7 @@ class DockerAddon(DockerBase):
                 shutil.copytree(str(source), str(build_dir))
             except shutil.Error as err:
                 _LOGGER.error("Can't copy %s to temporary build folder -> %s",
-                              source, build_dir)
+                              source, err)
                 return False
 
             # prepare Dockerfile
@@ -227,10 +227,13 @@ class DockerAddon(DockerBase):
         try:
             with tar_file.open("rb") as read_tar:
                 self.dock.api.import_image(src=read_tar)
+
+            image = self.dock.images.get(self.image)
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s -> %s", self.image, err)
             return False
 
+        self.process_metadata(image.attrs, force=True)
         return True
 
     def _restart(self):

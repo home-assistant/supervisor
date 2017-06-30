@@ -19,7 +19,7 @@ from ..const import (
     STATE_STARTED, STATE_STOPPED, STATE_NONE)
 from .util import check_installed
 from ..dock.addon import DockerAddon
-from ..tools import write_json_file
+from ..tools import write_json_file, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -89,6 +89,12 @@ class Addon(object):
         """Update version of addon."""
         self.data.system[self._id] = deepcopy(self.data.cache[self._id])
         self.data.user[self._id][ATTR_VERSION] = version
+        self.data.save()
+
+    def _restore_data(self, user, system):
+        """Restore data to addon."""
+        self.data.user[self._id] = deepcopy(user)
+        self.data.system[self._id] = deepcopy(system)
         self.data.save()
 
     @property
@@ -345,10 +351,7 @@ class Addon(object):
 
     @check_installed
     async def snapshot(self, tar_file):
-        """Snapshot a state of a addon.
-
-        If it is a local build addon, it need to set `tar_file`.
-        """
+        """Snapshot a state of a addon."""
         with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
 
             # store local image
@@ -362,16 +365,72 @@ class Addon(object):
                 'state': await self.state()
             }
 
+            # store local configs/state
             if not write_json_file(Path(temp, "addon.json"), data):
                 _LOGGER.error("Can't write addon.json for %s", self._id)
                 return False
 
-            with tarfile.open(str(tar_file), "w:xz") as snapshot:
+            # write into tarfile
+            with tarfile.open(tar_file, "w:xz") as snapshot:
                 try:
                     snapshot.add(temp, arcname=".")
-                    snapshot.add(str(self.path_data), arcname="data")
+                    snapshot.add(self.path_data, arcname="data")
                 except tarfile.TarError as err:
                     _LOGGER.error(
                         "Can't write tarfile %s -> %s", tar_file, err)
+
+        return True
+
+    async def restore(self, tar_file):
+        """Restore a state of a addon."""
+        with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
+            # extract snapshot
+            try:
+                with tarfile.open(tar_file), "r:xz") as snapshot:
+                    snapshot.extractall(path=Path(temp))
+            except tarfile.TarError as err:
+                _LOGGER.error("Can't read tarfile %s -> %s", tar_file, err)
+
+            # read snapshot data
+            try:
+                data = read_json_file(Path(temp, "addon.json"))
+            except (OSError, json.JSONDecodeError):
+                _LOGGER.error("Can't read addon.json -> %s", err)
+
+            # stop addon
+            if await self.state() == STATE_STARTED:
+                if not await self.stop():
+                    return False
+
+            # check version / restore image
+            version = data['user'][ATTR_VERSION]
+            if version != self.version_installed:
+                if not await self.addon_docker.remove():
+                    return False
+
+                image_file = Path(temp, "image.tar")
+                if image_file.is_file():
+                    if not await self.addon_docker.import(image_file):
+                        return False
+                else:
+                    if not await self.addon_docker.install(version):
+                        return False
+
+            # restore data
+            if self.path_data.is_dir():
+                shutil.rmtree(str(self.path_data), ignore_errors=True)
+
+            try:
+                shutil.copytree(str(Path(temp, "data")), str(self.path_data))
+            except shutil.Error as err:
+                _LOGGER.error("Can't restore origin data -> %s", err)
+                return False
+
+            # restore data
+            self._restore_data(data['user'], data['system'])
+
+            # run addon
+            if data['state'] == STATE_STARTED:
+                return await self.start()
 
         return True
