@@ -355,8 +355,8 @@ class Addon(object):
         with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
 
             # store local image
-            if self.need_build and not \
-                    await self.addon_docker.export(Path(temp, "image.tar")):
+            if self.need_build and not await \
+                    self.addon_docker.export_image(Path(temp, "image.tar")):
                 return False
 
             data = {
@@ -386,7 +386,7 @@ class Addon(object):
         with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
             # extract snapshot
             try:
-                with tarfile.open(tar_file), "r:xz") as snapshot:
+                with tarfile.open(tar_file, "r:xz") as snapshot:
                     snapshot.extractall(path=Path(temp))
             except tarfile.TarError as err:
                 _LOGGER.error("Can't read tarfile %s -> %s", tar_file, err)
@@ -410,7 +410,7 @@ class Addon(object):
 
                 image_file = Path(temp, "image.tar")
                 if image_file.is_file():
-                    if not await self.addon_docker.import(image_file):
+                    if not await self.addon_docker.import_image(image_file):
                         return False
                 else:
                     if not await self.addon_docker.install(version):

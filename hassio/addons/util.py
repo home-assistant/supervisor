@@ -1,9 +1,12 @@
 """Util addons functions."""
 import hashlib
+import logging
 import re
 
 RE_SLUGIFY = re.compile(r'[^a-z0-9_]+')
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def get_hash_from_repository(name):
