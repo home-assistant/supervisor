@@ -21,6 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SYSTEM = 'system'
 USER = 'user'
+STATE = 'state'
 
 RE_VOLUME = re.compile(MAP_VOLUME)
 

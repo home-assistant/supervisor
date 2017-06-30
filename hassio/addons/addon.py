@@ -4,6 +4,8 @@ import logging
 from pathlib import Path, PurePath
 import re
 import shutil
+import tarfile
+from tempfile import TemporaryDirectory
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -15,6 +17,7 @@ from ..const import (
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE)
+from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file
 
@@ -281,12 +284,9 @@ class Addon(object):
         self._set_install(version)
         return True
 
+    @check_installed
     async def uninstall(self):
         """Remove a addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         if not await self.addon_docker.remove():
             return False
 
@@ -307,29 +307,21 @@ class Addon(object):
             return STATE_STARTED
         return STATE_STOPPED
 
+    @check_installed
     async def start(self):
         """Set options and start addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         return await self.addon_docker.run()
 
+    @check_installed
     async def stop(self):
         """Stop addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         return await self.addon_docker.stop()
 
+    @check_installed
     async def update(self, version=None):
         """Update addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         version = version or self.last_version
+
         if version == self.version_installed:
             _LOGGER.warning(
                 "Addon %s is already installed in %s", self._id, version)
@@ -341,18 +333,45 @@ class Addon(object):
         self._set_update(version)
         return True
 
+    @check_installed
     async def restart(self):
         """Restart addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         return await self.addon_docker.restart()
 
+    @check_installed
     async def logs(self):
         """Return addons log output."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         return await self.addon_docker.logs()
+
+    @check_installed
+    async def snapshot(self, tar_file):
+        """Snapshot a state of a addon.
+
+        If it is a local build addon, it need to set `tar_file`.
+        """
+        with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
+
+            # store local image
+            if self.need_build and not \
+                    await self.addon_docker.export(Path(temp, "image.tar")):
+                return False
+
+            data = {
+                'user': self.data.user.get(self._id, {})
+                'system': self.data.system.get(self._id, {})
+                'state': await self.state()
+            }
+
+            if not write_json_file(Path(temp, "addon.json"), data):
+                _LOGGER.error("Can't write addon.json for %s", self._id)
+                return False
+
+            with tarfile.open(str(tar_file), "w:xz") as snapshot:
+                try:
+                    snapshot.add(temp, arcname=".")
+                    snapshot.add(str(self.path_data), arcname="data")
+                except tarfile.TarError as err:
+                    _LOGGER.error(
+                        "Can't write tarfile %s -> %s", tar_file, err)
+
+        return True
