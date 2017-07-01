@@ -35,15 +35,14 @@ class Addon(object):
         self.loop = loop
         self.config = config
         self.data = data
+        self.dock = dock
         self._id = addon_slug
-
-        if self._mesh is None:
-            raise RuntimeError("{} not a valid addon!".format(self._id))
-
-        self.addon_docker = DockerAddon(config, loop, dock, self)
 
     async def load(self):
         """Async initialize of object."""
+        self.addon_docker = DockerAddon(
+            self.config, self.loop, self.dock, self)
+
         if self.is_installed:
             await self.addon_docker.attach()
 
@@ -408,6 +407,13 @@ class Addon(object):
             except (OSError, json.JSONDecodeError):
                 _LOGGER.error("Can't read addon.json -> %s", err)
 
+            # restore data
+            self._restore_data(data[CONF_USER], data[CONF_SYSTEM])
+
+            # create docker if new
+            if not self.addon_docker:
+                await self.load()
+
             # stop addon
             if await self.state() == STATE_STARTED:
                 if not await self.stop():
@@ -415,7 +421,7 @@ class Addon(object):
 
             # check version / restore image
             version = data[CONF_USER][ATTR_VERSION]
-            if version != self.version_installed:
+            if version != self.addon_docker.version:
                 if not await self.addon_docker.remove():
                     return False
 
@@ -438,9 +444,6 @@ class Addon(object):
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data -> %s", err)
                 return False
-
-            # restore data
-            self._restore_data(data[CONF_USER], data[CONF_SYSTEM])
 
             # run addon
             if data[CONF_STATE] == STATE_STARTED:
