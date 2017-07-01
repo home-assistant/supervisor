@@ -170,7 +170,15 @@ Return QR-Code
     "slug": "SNAPSHOT ID",
     "name": "custom snapshot name",
     "date": "ISO",
-    "size": "SIZE_IN_MB"
+    "size": "SIZE_IN_MB",
+    "addons": [
+        {
+            "slug": "ADDON_SLUG",
+            "name": "NAME",
+            "version": "INSTALLED_VERSION"
+        }
+    ],
+    "repositories": ["URL"]
 }
 ```
 

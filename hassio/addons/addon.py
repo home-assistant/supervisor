@@ -17,7 +17,7 @@ from ..const import (
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, CONF_USER, CONF_SYSTEM,
-    CONF_STATE)
+    CONF_STATE, CONF_VERSION)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -30,13 +30,13 @@ RE_VOLUME = re.compile(MAP_VOLUME)
 class Addon(object):
     """Hold data for addon inside HassIO."""
 
-    def __init__(self, config, loop, dock, data, addon_slug):
+    def __init__(self, config, loop, dock, data, slug):
         """Initialize data holder."""
         self.loop = loop
         self.config = config
         self.data = data
         self.dock = dock
-        self._id = addon_slug
+        self._id = slug
 
     async def load(self):
         """Async initialize of object."""
@@ -363,6 +363,7 @@ class Addon(object):
             data = {
                 CONF_USER: self.data.user.get(self._id, {}),
                 CONF_SYSTEM: self.data.system.get(self._id, {}),
+                CONF_VERSION: self.version_installed,
                 CONF_STATE: await self.state(),
             }
 
@@ -372,17 +373,17 @@ class Addon(object):
                 return False
 
             # write into tarfile
-            with tarfile.open(tar_file, "w:xz") as snapshot:
-                def _create_tar():
-                    """Write tar inside loop."""
-                    try:
-                        snapshot.add(temp, arcname=".")
-                        snapshot.add(self.path_data, arcname="data")
-                    except tarfile.TarError as err:
-                        _LOGGER.error(
-                            "Can't write tarfile %s -> %s", tar_file, err)
+            def _create_tar():
+                """Write tar inside loop."""
+                with tarfile.open(tar_file, "w:xz") as snapshot:
+                    snapshot.add(temp, arcname=".")
+                    snapshot.add(self.path_data, arcname="data")
 
+            try:
                 await self.loop.run_in_executor(None, _create_tar)
+            except tarfile.TarError as err:
+                _LOGGER.error("Can't write tarfile %s -> %s", tar_file, err)
+                return False
 
         return True
 
@@ -390,16 +391,16 @@ class Addon(object):
         """Restore a state of a addon."""
         with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
             # extract snapshot
-            try:
+            def _extract_tar():
+                """Extract tar snapshot."""
                 with tarfile.open(tar_file, "r:xz") as snapshot:
-                    def _extract_tar():
-                        """Extract tar snapshot."""
-                        snapshot.extractall(path=Path(temp))
+                    snapshot.extractall(path=Path(temp))
 
-                    await self.loop.run_in_executor(
-                        None, _extract_tar)
+            try:
+                await self.loop.run_in_executor(None, _extract_tar)
             except tarfile.TarError as err:
                 _LOGGER.error("Can't read tarfile %s -> %s", tar_file, err)
+                return False
 
             # read snapshot data
             try:
@@ -420,8 +421,7 @@ class Addon(object):
                     return False
 
             # check version / restore image
-            version = data[CONF_USER][ATTR_VERSION]
-            if version != self.addon_docker.version:
+            if data[CONF_VERSION] != self.addon_docker.version:
                 if not await self.addon_docker.remove():
                     return False
 
@@ -430,7 +430,7 @@ class Addon(object):
                     if not await self.addon_docker.import_image(image_file):
                         return False
                 else:
-                    if not await self.addon_docker.install(version):
+                    if not await self.addon_docker.install(data[CONF_VERSION]):
                         return False
 
             # restore data
