@@ -393,8 +393,12 @@ class Addon(object):
             # extract snapshot
             try:
                 with tarfile.open(tar_file, "r:xz") as snapshot:
+                    def _extract_tar():
+                        """Extract tar snapshot."""
+                        snapshot.extractall(path=Path(temp))
+
                     await self.loop.run_in_executor(
-                        None, snapshot.extractall(path=Path(temp)))
+                        None, _extract_tar)
             except tarfile.TarError as err:
                 _LOGGER.error("Can't read tarfile %s -> %s", tar_file, err)
 
@@ -428,7 +432,9 @@ class Addon(object):
                 shutil.rmtree(str(self.path_data), ignore_errors=True)
 
             try:
-                shutil.copytree(str(Path(temp, "data")), str(self.path_data))
+                await self.loop.run_in_executor(
+                    None, shutil.copytree, str(Path(temp, "data")),
+                    str(self.path_data))
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data -> %s", err)
                 return False
