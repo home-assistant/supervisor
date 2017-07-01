@@ -45,6 +45,13 @@ class Snapshot(object):
         """Return snapshot date."""
         return self._data.get(ATTR_REPOSITORIES)
 
+    @property
+    def size(self):
+        """Return snapshot size."""
+        if not self.tar_file.is_file():
+            return 0
+        return self.tar_file.stat().st_size / 1048576  # calc mbyte
+
     async def load(self):
         """Read snapshot.json from tar file."""
         if not self.tar_file.is_file():
