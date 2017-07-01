@@ -35,15 +35,15 @@ class Addon(object):
         self.loop = loop
         self.config = config
         self.data = data
-        self.dock = dock
         self._id = addon_slug
-        self.addon_docker = None
+
+        if self._mesh is None:
+            raise RuntimeError("{} not a valid addon!".format(self._id))
+
+        self.addon_docker = DockerAddon(config, loop, dock, self)
 
     async def load(self):
         """Async initialize of object."""
-        self.addon_docker = DockerAddon(
-            self.config, self.loop, self.dock, self)
-
         if self.is_installed:
             await self.addon_docker.attach()
 
