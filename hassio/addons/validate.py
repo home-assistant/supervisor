@@ -8,7 +8,7 @@ from ..const import (
     ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES,
     ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64,
     ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED, CONF_USER, CONF_STATE, CONF_SYSTEM,
-    CONF_VERSION, STATE_STARTED, STATE_STOPPED)
+    CONF_VERSION, STATE_STARTED, STATE_STOPPED, ATTR_LOCATON, ATTR_REPOSITORY)
 
 
 MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
@@ -88,9 +88,15 @@ SCHEMA_ADDON_USER = vol.Schema({
 })
 
 
+SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_USER.extend({
+    vol.Required(ATTR_LOCATON): vol.Coerce(str),
+    vol.Required(ATTR_REPOSITORY): vol.Coerce(str),
+})
+
+
 SCHEMA_ADDON_SNAPSHOT = vol.Schema({
-    vol.Required(CONF_USER): dict,
-    vol.Required(CONF_SYSTEM): SCHEMA_ADDON_CONFIG,
+    vol.Required(CONF_USER): SCHEMA_ADDON_USER,
+    vol.Required(CONF_SYSTEM): SCHEMA_ADDON_SYSTEM,
     vol.Required(CONF_STATE): vol.In([STATE_STARTED, STATE_STOPPED]),
     vol.Required(CONF_VERSION): vol.Coerce(str),
 })

@@ -11,7 +11,7 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import (
-    validate_options, SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_USER,
+    validate_options, SCHEMA_ADDON_USER, SCHEMA_ADDON_SYSTEM,
     SCHEMA_ADDON_SNAPSHOT, MAP_VOLUME)
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
@@ -42,14 +42,13 @@ class Addon(object):
 
     async def load(self):
         """Async initialize of object."""
-        try:
-            self.data.system[self._id] = \
-                SCHEMA_ADDON_CONFIG(self.data.system[self._id])
-
-            self.data.user[self._id] = \
-                SCHEMA_ADDON_USER(self.data.user[self._id])
-        except vol.Invalid:
-            _LOGGER.warning("Can't validate addon %s", self._id)
+        for data, schema in ((self.data.system, SCHEMA_ADDON_SYSTEM),
+                             (self.data.user, SCHEMA_ADDON_USER)):
+            try:
+                data[self._id] = schema(data[self._id])
+            except vol.Invalid as err:
+                _LOGGER.warning("Can't validate addon load %s -> %s", self._id,
+                                humanize_error(data[self._id], err))
 
         # init docker
         self.addon_docker = DockerAddon(
@@ -366,7 +365,6 @@ class Addon(object):
     async def snapshot(self, tar_file):
         """Snapshot a state of a addon."""
         with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
-
             # store local image
             if self.need_build and not await \
                     self.addon_docker.export_image(Path(temp, "image.tar")):
@@ -423,8 +421,9 @@ class Addon(object):
             # validate
             try:
                 data = SCHEMA_ADDON_SNAPSHOT(data)
-            except vol.Invalid:
-                _LOGGER.error("Can't validate snapshot data -> %s", tar_file)
+            except vol.Invalid as err:
+                _LOGGER.error("Can't validate snapshot data -> %s", self._id,
+                              humanize_error(data, err))
                 return False
 
             # restore data / reload addon
@@ -447,6 +446,8 @@ class Addon(object):
                 else:
                     if not await self.addon_docker.install(data[CONF_VERSION]):
                         return False
+            else:
+                await self.addon_docker.stop()
 
             # restore data
             def _restore_data():

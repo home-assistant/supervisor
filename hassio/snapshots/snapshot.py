@@ -4,9 +4,13 @@ import logging
 import tarfile
 from tempfile import TemporaryDirectory
 
-from .const import (
+import voluptuous as vol
+from voluptuous.humanize import humanize_error
+
+from .validate import SCHEMA_SNAPSHOT
+from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES)
-from .tools import write_json_file
+from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +50,11 @@ class Snapshot(object):
         """Return snapshot date."""
         return self._data.get(ATTR_REPOSITORIES)
 
+    @repositories.setter
+    def repositories(self, value):
+        """Return snapshot date."""
+        self._data[ATTR_REPOSITORIES] = value
+
     @property
     def size(self):
         """Return snapshot size."""
@@ -55,10 +64,6 @@ class Snapshot(object):
 
     def create(self, slug, name, date):
         """Initialize a new snapshot."""
-        if not self._data:
-            _LOGGER.error("Can't Initialize a exists snapshot %s", self.slug)
-            return False
-
         # init metadata
         self._data[ATTR_SLUG] = slug
         self._data[ATTR_NAME] = name
@@ -67,8 +72,6 @@ class Snapshot(object):
         # init other constructs
         self._data[ATTR_ADDONS] = []
         self._data[ATTR_REPOSITORIES] = []
-
-        return True
 
     async def load(self):
         """Read snapshot.json from tar file."""
@@ -89,12 +92,21 @@ class Snapshot(object):
         except tarfile.TarError as err:
             _LOGGER.error(
                 "Can't read snapshot tarfile %s -> %s", self.tar_file, err)
+            return False
 
         # parse data
         try:
-            self._data = json.loads(raw)
+            raw_dict = json.loads(raw)
         except json.JSONDecodeError as err:
             _LOGGER.error("Can't read data for %s -> %s", self.tar_file, err)
+            return False
+
+        # validate
+        try:
+            raw_dict = SCHEMA_SNAPSHOT(raw_dict)
+        except vol.Invalid as err:
+            _LOGGER.error("Can't validate data for %s -> %s", self.tar_file,
+                          humanize_error(raw_dict, err))
             return False
 
         return True
@@ -128,3 +140,17 @@ class Snapshot(object):
                 tar.add(self._tmp.name, arcname=".")
 
         await self.loop.run_in_executor(None, _create_snapshot)
+
+    async def add_addon(self, addon):
+        """Add a addon into snapshot."""
+        snapshot_file = Path(self._tmp, "{}.tar.xz".format(addon.slug))
+
+        if not addon.snapshot(snapshot_file):
+            _LOGGER.error("Can't make snapshot from %s", addon.slug)
+            return False
+
+        self._data[ATTR_ADDONS].append({
+            ATTR_SLUG: addon.slug,
+            ATTR_NAME: addon.name,
+            ATTR_VERSION: addon.version_installed,
+        })
