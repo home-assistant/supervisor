@@ -10,7 +10,9 @@ from tempfile import TemporaryDirectory
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .validate import validate_options, SCHEMA_ADDON_CONFIG, MAP_VOLUME
+from .validate import (
+    validate_options, SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_USER,
+    SCHEMA_ADDON_SNAPSHOT, MAP_VOLUME)
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
@@ -43,12 +45,15 @@ class Addon(object):
         try:
             self.data.system[self._id] = \
                 SCHEMA_ADDON_CONFIG(self.data.system[self._id])
+
+            self.data.user[self._id] = \
+                SCHEMA_ADDON_USER(self.data.user[self._id])
         except vol.Invalid:
             _LOGGER.warning("Can't validate addon %s", self._id)
 
-        if not self.addon_docker:
-            self.addon_docker = DockerAddon(
-                self.config, self.loop, self.dock, self)
+        # init docker
+        self.addon_docker = DockerAddon(
+            self.config, self.loop, self.dock, self)
 
         if self.is_installed:
             await self.addon_docker.attach()
@@ -415,14 +420,20 @@ class Addon(object):
             except (OSError, json.JSONDecodeError):
                 _LOGGER.error("Can't read addon.json -> %s", err)
 
+            # validate
+            try:
+                data = SCHEMA_ADDON_SNAPSHOT(data)
+            except vol.Invalid:
+                _LOGGER.error("Can't validate snapshot data -> %s", tar_file)
+                return False
+
             # restore data / reload addon
             self._restore_data(data[CONF_USER], data[CONF_SYSTEM])
-            await self.load()
 
-            # stop addon
-            if await self.state() == STATE_STARTED:
-                if not await self.stop():
-                    return False
+            # init docker if not exists
+            if not self.addon_docker:
+                self.addon_docker = DockerAddon(
+                    self.config, self.loop, self.dock, self)
 
             # check version / restore image
             if data[CONF_VERSION] != self.addon_docker.version:

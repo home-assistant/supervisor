@@ -7,7 +7,8 @@ from ..const import (
     STARTUP_BEFORE, STARTUP_INITIALIZE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA,
     ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES,
     ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64,
-    ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED)
+    ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED, CONF_USER, CONF_STATE, CONF_SYSTEM,
+    CONF_VERSION, STATE_STARTED, STATE_STOPPED)
 
 
 MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
@@ -77,6 +78,22 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
     vol.Optional(ATTR_URL): vol.Url(),
     vol.Optional(ATTR_MAINTAINER): vol.Coerce(str),
 }, extra=vol.ALLOW_EXTRA)
+
+
+SCHEMA_ADDON_USER = vol.Schema({
+    vol.Required(ATTR_VERSION): vol.Coerce(str),
+    vol.Required(ATTR_OPTIONS): dict,
+    vol.Optional(ATTR_BOOT):
+        vol.In([BOOT_AUTO, BOOT_MANUAL]),
+})
+
+
+SCHEMA_ADDON_SNAPSHOT = vol.Schema({
+    vol.Required(CONF_USER): dict,
+    vol.Required(CONF_SYSTEM): SCHEMA_ADDON_CONFIG,
+    vol.Required(CONF_STATE): vol.In([STATE_STARTED, STATE_STOPPED]),
+    vol.Required(CONF_VERSION): vol.Coerce(str),
+})
 
 
 def validate_options(raw_schema):
