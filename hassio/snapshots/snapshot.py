@@ -19,6 +19,7 @@ class Snapshot(object):
         self.loop = loop
         self.tar_file = tar_file
         self._data = {}
+        self._tmp = None
 
     @property
     def slug(self):
@@ -80,3 +81,33 @@ class Snapshot(object):
             return False
 
         return True
+
+    async def __aenter__(self):
+        """Async context to open a snapshot."""
+        self._tmp = TemporaryDirectory(dir=str(self.config.path_tmp))
+
+        # create a snapshot
+        if not self.tar_file.is_file():
+            return self
+
+        # extract a exists snapshot
+        def _extract_snapshot():
+            """Extract a snapshot."""
+            with tarfile.open(self.tar_file, "r:xz") as tar:
+                tar.extractall(path=self._tmp.name)
+
+        await self.loop.run_in_executor(None, _extract_snapshot)
+
+    async def __aexit__(self):
+        """Async context to close a snapshot."""
+        # exists snapshot, close
+        if self.tar_file.is_file():
+            return self._tmp.cleanup()
+
+        # new snapshot, build it
+        def _create_snapshot():
+            """Create a new snapshot."""
+            with tarfile.open(self.tar_file, "w:xz") as tar:
+                tar.add(self._tmp.name, arcname=".")
+
+        await self.loop.run_in_executor(None, _create_snapshot)
