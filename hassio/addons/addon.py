@@ -449,13 +449,14 @@ class Addon(object):
                         return False
 
             # restore data
-            if self.path_data.is_dir():
-                shutil.rmtree(str(self.path_data), ignore_errors=True)
+            def _restore_data():
+                """Restore data."""
+                if self.path_data.is_dir():
+                    shutil.rmtree(str(self.path_data), ignore_errors=True)
+                shutil.copytree(str(Path(temp, "data")), str(self.path_data))
 
             try:
-                await self.loop.run_in_executor(
-                    None, shutil.copytree, str(Path(temp, "data")),
-                    str(self.path_data))
+                await self.loop.run_in_executor(None, _restore_data)
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data -> %s", err)
                 return False
