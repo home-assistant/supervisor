@@ -53,6 +53,23 @@ class Snapshot(object):
             return 0
         return self.tar_file.stat().st_size / 1048576  # calc mbyte
 
+    def create(self, slug, name, date):
+        """Initialize a new snapshot."""
+        if not self._data:
+            _LOGGER.error("Can't Initialize a exists snapshot %s", self.slug)
+            return False
+
+        # init metadata
+        self._data[ATTR_SLUG] = slug
+        self._data[ATTR_NAME] = name
+        self._data[ATTR_DATE] = date
+
+        # init other constructs
+        self._data[ATTR_ADDONS] = []
+        self._data[ATTR_REPOSITORIES] = []
+
+        return True
+
     async def load(self):
         """Read snapshot.json from tar file."""
         if not self.tar_file.is_file():
