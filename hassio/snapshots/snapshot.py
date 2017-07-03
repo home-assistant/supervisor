@@ -156,11 +156,20 @@ class Snapshot(object):
             with tarfile.open(self.tar_file, "w:xz") as tar:
                 tar.add(self._tmp.name, arcname=".")
 
-        await self.loop.run_in_executor(None, _create_snapshot)
+        if write_json_file(Path(self._tmp.name, "snapshot.json"), self._data):
+            try:
+                await self.loop.run_in_executor(None, _create_snapshot)
+            except tarfile.TarError as err:
+                _LOGGER.error("Can't create tar %s", err)
+        else:
+            _LOGGER.error("Can't write snapshot.json")
+
+        self._tmp.cleanup()
+        self._tmp = None
 
     async def import_addon(self, addon):
         """Add a addon into snapshot."""
-        snapshot_file = Path(self._tmp, "{}.tar.xz".format(addon.slug))
+        snapshot_file = Path(self._tmp.name, "{}.tar.xz".format(addon.slug))
 
         if not await addon.snapshot(snapshot_file):
             _LOGGER.error("Can't make snapshot from %s", addon.slug)
@@ -177,7 +186,7 @@ class Snapshot(object):
 
     async def export_addon(self, addon):
         """Restore a addon from snapshot."""
-        snapshot_file = Path(self._tmp, "{}.tar.xz".format(addon.slug))
+        snapshot_file = Path(self._tmp.name, "{}.tar.xz".format(addon.slug))
 
         if not await addon.restore(snapshot_file):
             _LOGGER.error("Can't restore snapshot for %s", addon.slug)
