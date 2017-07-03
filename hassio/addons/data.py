@@ -13,7 +13,7 @@ from .validate import (
     SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG, MAP_VOLUME)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
-    REPOSITORY_CORE, REPOSITORY_LOCAL, CONF_USER, CONF_SYSTEM)
+    REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
 from ..config import Config
 from ..tools import read_json_file
 
@@ -34,18 +34,18 @@ class Data(Config):
 
         # init data
         if not self._data:
-            self._data[CONF_USER] = {}
-            self._data[CONF_SYSTEM] = {}
+            self._data[ATTR_USER] = {}
+            self._data[ATTR_SYSTEM] = {}
 
     @property
     def user(self):
         """Return local addon user data."""
-        return self._data[CONF_USER]
+        return self._data[ATTR_USER]
 
     @property
     def system(self):
         """Return local addon data."""
-        return self._data[CONF_SYSTEM]
+        return self._data[ATTR_SYSTEM]
 
     @property
     def cache(self):

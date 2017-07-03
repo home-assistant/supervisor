@@ -18,8 +18,8 @@ from ..const import (
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
-    STATE_STARTED, STATE_STOPPED, STATE_NONE, CONF_USER, CONF_SYSTEM,
-    CONF_STATE, CONF_VERSION)
+    STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
+    ATTR_STATE)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -371,10 +371,10 @@ class Addon(object):
                 return False
 
             data = {
-                CONF_USER: self.data.user.get(self._id, {}),
-                CONF_SYSTEM: self.data.system.get(self._id, {}),
-                CONF_VERSION: self.version_installed,
-                CONF_STATE: await self.state(),
+                ATTR_USER: self.data.user.get(self._id, {}),
+                ATTR_SYSTEM: self.data.system.get(self._id, {}),
+                ATTR_VERSION: self.version_installed,
+                ATTR_STATE: await self.state(),
             }
 
             # store local configs/state
@@ -427,7 +427,7 @@ class Addon(object):
                 return False
 
             # restore data / reload addon
-            self._restore_data(data[CONF_USER], data[CONF_SYSTEM])
+            self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM])
 
             # init docker if not exists
             if not self.addon_docker:
@@ -435,7 +435,7 @@ class Addon(object):
                     self.config, self.loop, self.dock, self)
 
             # check version / restore image
-            if data[CONF_VERSION] != self.addon_docker.version:
+            if data[ATTR_VERSION] != self.addon_docker.version:
                 if not await self.addon_docker.remove():
                     return False
 
@@ -444,7 +444,7 @@ class Addon(object):
                     if not await self.addon_docker.import_image(image_file):
                         return False
                 else:
-                    if not await self.addon_docker.install(data[CONF_VERSION]):
+                    if not await self.addon_docker.install(data[ATTR_VERSION]):
                         return False
             else:
                 await self.addon_docker.stop()
@@ -463,7 +463,7 @@ class Addon(object):
                 return False
 
             # run addon
-            if data[CONF_STATE] == STATE_STARTED:
+            if data[ATTR_STATE] == STATE_STARTED:
                 return await self.start()
 
         return True

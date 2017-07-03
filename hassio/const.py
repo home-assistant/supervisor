@@ -82,6 +82,9 @@ ATTR_ENVIRONMENT = 'environment'
 ATTR_HOST_NETWORK = 'host_network'
 ATTR_TMPFS = 'tmpfs'
 ATTR_PRIVILEGED = 'privileged'
+ATTR_USER = 'user'
+ATTR_SYSTEM = 'system'
+ATTR_HOMEASSISTANT = 'homeassistant'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_BEFORE = 'before'
@@ -108,8 +111,3 @@ ARCH_I386 = 'i386'
 
 REPOSITORY_CORE = 'core'
 REPOSITORY_LOCAL = 'local'
-
-CONF_USER = 'user'
-CONF_SYSTEM = 'system'
-CONF_STATE = 'state'
-CONF_VERSION = 'version'
