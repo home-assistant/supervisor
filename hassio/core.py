@@ -12,10 +12,11 @@ from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
     RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE,
-    STARTUP_INITIALIZE)
+    STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
+from .snapshots import SnapshotsManager
 from .tasks import (
     hassio_update, homeassistant_watchdog, homeassistant_setup,
     api_sessions_cleanup)
@@ -47,6 +48,10 @@ class HassIO(object):
 
         # init addon system
         self.addons = AddonManager(config, loop, self.dock)
+
+        # init snapshot system
+        self.snapshots = SnapshotsManager(
+            config, loop, self.scheduler, self.addons, self.homeassistant)
 
     async def setup(self):
         """Setup HassIO orchestration."""
@@ -106,6 +111,10 @@ class HassIO(object):
         self.scheduler.register_task(
             hassio_update(self.config, self.supervisor, self.websession),
             RUN_UPDATE_SUPERVISOR_TASKS)
+
+        # schedule snapshot update tasks
+        self.scheduler.register_task(
+            self.snapshot.reload, RUN_RELOAD_SNAPSHOTS_TASKS, now=True)
 
         # start addon mark as initialize
         await self.addons.auto_boot(STARTUP_INITIALIZE)

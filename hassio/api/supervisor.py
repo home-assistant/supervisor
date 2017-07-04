@@ -37,6 +37,7 @@ class APISupervisor(object):
         self.loop = loop
         self.supervisor = supervisor
         self.addons = addons
+        self.snapshots = addons
         self.host_control = host_control
         self.websession = websession
 
@@ -136,6 +137,7 @@ class APISupervisor(object):
         """Reload addons, config ect."""
         tasks = [
             self.addons.reload(),
+            self.snapshots.reload(),
             self.config.fetch_update_infos(self.websession),
             self.host_control.load()
         ]

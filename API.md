@@ -164,6 +164,8 @@ Return QR-Code
 }
 ```
 
+- POST `/snapshot/reload`
+
 - GET `/snapshot/{slug}/info`
 ```json
 {
@@ -198,6 +200,7 @@ Return QR-Code
 ```
 
 ### Host
+- POST `/host/reload`
 
 - POST `/host/shutdown`
 
@@ -279,6 +282,8 @@ Output the raw docker log
 ```
 
 ### REST API addons
+
+- POST `/addons/reload`
 
 - GET `/addons/{addon}/info`
 ```json

@@ -31,8 +31,10 @@ class SnapshotsManager(object):
         """Return snapshot object."""
         return self.snapshots.get(slug)
 
-    async def prepare(self):
+    async def reload(self):
         """Load exists backups."""
+        self.snapshots = {}
+
         async def _load_snapshot(tar_file):
             """Internal function to load snapshot."""
             snapshot = Snapshot(self.config, self.loop, tar_file)
@@ -50,7 +52,7 @@ class SnapshotsManager(object):
         """Create a snapshot."""
         date_str = str(datetime.utcnow())
         slug = create_slug(name, date_str)
-        tar_file Path(self.config.path_backup, "{}.tar.xz".foramt(slug))
+        tar_file Path(self.config.path_backup, "{}.tar".foramt(slug))
         snapshot = Snapshot(self.config, self.loop, tar_file)
 
         _LOGGER.info("Snapshot %s start", slug)

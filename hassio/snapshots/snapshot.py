@@ -105,7 +105,7 @@ class Snapshot(object):
 
         def _load_file():
             """Read snapshot.json."""
-            with tarfile.open(self.tar_file, "r:xz") as snapshot:
+            with tarfile.open(self.tar_file, "r") as snapshot:
                 json_file = snapshot.extractfile("snapshot.json")
             if json_file:
                 return json_file.read()
@@ -146,7 +146,7 @@ class Snapshot(object):
         # extract a exists snapshot
         def _extract_snapshot():
             """Extract a snapshot."""
-            with tarfile.open(self.tar_file, "r:xz") as tar:
+            with tarfile.open(self.tar_file, "r") as tar:
                 tar.extractall(path=self._tmp.name)
 
         await self.loop.run_in_executor(None, _extract_snapshot)
@@ -160,7 +160,7 @@ class Snapshot(object):
         # new snapshot, build it
         def _create_snapshot():
             """Create a new snapshot."""
-            with tarfile.open(self.tar_file, "w:xz") as tar:
+            with tarfile.open(self.tar_file, "w") as tar:
                 tar.add(self._tmp.name, arcname=".")
 
         if write_json_file(Path(self._tmp.name, "snapshot.json"), self._data):
@@ -205,11 +205,15 @@ class Snapshot(object):
         """Backup hassio data into snapshot."""
         def _folder_save(name):
             """Intenal function to snapshot a folder."""
-            snapshot_dir = Path(self._tmp, name)
+            slug_name = name.replace("/", "_")
+            snapshot_tar = Path(self._tmp, "{}.tar.xz".format(slug_name))
             origin_dir = Path(self.config.path_hassio, name)
 
             try:
                 shutil.copytree(str(origin_dir), str(snapshot_dir))
+                with tarfile.open(snapshot_tar, "w:xz") as tar_file:
+                    tar_file.add(origin_dir, arcname=".")
+
                 self._data[ATTR_FOLDERS].append(name)
             except shutil.Error as err:
                 _LOGGER.warning("Can't snapshot folder %s -> %s", name, err)
@@ -224,7 +228,8 @@ class Snapshot(object):
         """Backup hassio data into snapshot."""
         def _folder_restore(name):
             """Intenal function to restore a folder."""
-            snapshot_dir = Path(self._tmp, name)
+            slug_name = name.replace("/", "_")
+            snapshot_tar = Path(self._tmp, "{}.tar.xz".format(slug_name))
             origin_dir = Path(self.config.path_hassio, name)
 
             # clean old stuff
@@ -232,8 +237,9 @@ class Snapshot(object):
                 remove_folder(origin_dir)
 
             try:
-                shutil.copytree(str(snapshot_dir), str(origin_dir))
-            except shutil.Error as err:
+                with tarfile.open(snapshot_tar, "r:xz") as tar_file:
+                    tar_file.extractall(path=origin_dir)
+            except tarfile.Error as err:
                 _LOGGER.warning("Can't restore folder %s -> %s", name, err)
 
         # run tasks
