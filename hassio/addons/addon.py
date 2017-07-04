@@ -44,6 +44,12 @@ class Addon(object):
 
     async def load(self):
         """Async initialize of object."""
+        if self.is_installed:
+            self._validate_system_user()
+            await self.addon_docker.attach()
+
+    def _validate_system_user(self):
+        """Validate internal data they read from file."""
         for data, schema in ((self.data.system, SCHEMA_ADDON_SYSTEM),
                              (self.data.user, SCHEMA_ADDON_USER)):
             try:
@@ -51,9 +57,8 @@ class Addon(object):
             except vol.Invalid as err:
                 _LOGGER.warning("Can't validate addon load %s -> %s", self._id,
                                 humanize_error(data[self._id], err))
-
-        if self.is_installed:
-            await self.addon_docker.attach()
+            except KeyError:
+                pass
 
     @property
     def slug(self):
