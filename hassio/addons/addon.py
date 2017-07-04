@@ -1,6 +1,7 @@
 """Init file for HassIO addons."""
 from copy import deepcopy
 import logging
+import json
 from pathlib import Path, PurePath
 import re
 import shutil
@@ -413,7 +414,7 @@ class Addon(object):
             # read snapshot data
             try:
                 data = read_json_file(Path(temp, "addon.json"))
-            except (OSError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError) as err:
                 _LOGGER.error("Can't read addon.json -> %s", err)
 
             # validate

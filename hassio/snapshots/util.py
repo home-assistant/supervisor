@@ -1,6 +1,6 @@
 """Util addons functions."""
 import hashlib
-import pathlib
+import shutil
 
 
 def create_slug(name, date_str):

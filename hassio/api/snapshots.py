@@ -41,10 +41,22 @@ class APISnapshots(object):
 
         return snapshot
 
+    def _addons_list(self, snapshot):
+        """Generate a list with addons data."""
+        data = []
+        for addon_data in snapshot.addons:
+            data.append({
+                ATTR_SLUG: addon_data[ATTR_SLUG],
+                ATTR_NAME: addon_data[ATTR_NAME],
+                ATTR_VERSION: addon_data[ATTR_VERSION],
+            })
+
+        return data
+
     @api_process
     async def info(self, request):
         """Return snapshot info."""
-        snapshot = self._extract_snapshot(reqeust)
+        snapshot = self._extract_snapshot(request)
 
         return {
             ATTR_SLUG: snapshot.slug,
@@ -52,7 +64,7 @@ class APISnapshots(object):
             ATTR_DATE: snapshot.date,
             ATTR_SIZE: snapshot.size,
             ATTR_HOMEASSISTANT: snapshot.homeassistant,
-            ATTR_ADDONS: snapshot.addons,
+            ATTR_ADDONS: self._addons_list(snapshot),
             ATTR_REPOSITORIES: snapshot.repositories,
             ATTR_FOLDERS: snapshot.folders,
         }
@@ -67,14 +79,14 @@ class APISnapshots(object):
     @api_process
     async def restore(self, request):
         """Full-Restore a snapshot."""
-        snapshot = self._extract_snapshot(reqeust)
+        snapshot = self._extract_snapshot(request)
         return await asyncio.shield(
             self.snapshots.do_restore(snapshot), loop=self.loop)
 
     @api_process
     async def pick(self, request):
         """Full-Restore a snapshot."""
-        snapshot = self._extract_snapshot(reqeust)
+        snapshot = self._extract_snapshot(request)
         options = await api_validate(SCHEMA_PICK, request)
 
         return await asyncio.shield(
@@ -83,5 +95,5 @@ class APISnapshots(object):
     @api_process
     async def remove(self, request):
         """Full-Restore a snapshot."""
-        snapshot = self._extract_snapshot(reqeust)
+        snapshot = self._extract_snapshot(request)
         return self.snapshots.remove(snapshot)

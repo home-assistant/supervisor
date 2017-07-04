@@ -2,7 +2,7 @@
 import asyncio
 import json
 import logging
-from pathlib import Path, PurePath
+from pathlib import Path
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
@@ -14,7 +14,7 @@ from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
 from .util import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT, ATTR_FOLDERS, FOLDER_CONFIG, FOLDER_SHARE)
+    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION)
 from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
@@ -210,12 +210,11 @@ class Snapshot(object):
             origin_dir = Path(self.config.path_hassio, name)
 
             try:
-                shutil.copytree(str(origin_dir), str(snapshot_dir))
                 with tarfile.open(snapshot_tar, "w:xz") as tar_file:
                     tar_file.add(origin_dir, arcname=".")
 
                 self._data[ATTR_FOLDERS].append(name)
-            except shutil.Error as err:
+            except tarfile.TarError as err:
                 _LOGGER.warning("Can't snapshot folder %s -> %s", name, err)
 
         # run tasks
@@ -239,7 +238,7 @@ class Snapshot(object):
             try:
                 with tarfile.open(snapshot_tar, "r:xz") as tar_file:
                     tar_file.extractall(path=origin_dir)
-            except tarfile.Error as err:
+            except tarfile.TarError as err:
                 _LOGGER.warning("Can't restore folder %s -> %s", name, err)
 
         # run tasks
