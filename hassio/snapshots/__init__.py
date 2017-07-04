@@ -30,7 +30,6 @@ class SnapshotsManager(object):
         """Return a list of all snapshot object."""
         return set(self.snapshots.values())
 
-    @property
     def get(self, slug):
         """Return snapshot object."""
         return self.snapshots.get(slug)
