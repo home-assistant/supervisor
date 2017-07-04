@@ -42,7 +42,7 @@ def check_network(data):
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_ADDON_CONFIG = vol.Schema(vol.All({
+SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Required(ATTR_SLUG): vol.Coerce(str),
@@ -69,8 +69,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema(vol.All({
         ])
     }, False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
-}, check_network), extra=vol.ALLOW_EXTRA)
-
+}, extra=vol.ALLOW_EXTRA)
+SCHEMA_ADDON = vol.Schema(vol.All(SCHEMA_ADDON_CONFIG, check_network))
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_REPOSITORY_CONFIG = vol.Schema({
