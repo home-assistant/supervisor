@@ -94,7 +94,7 @@ class SnapshotsManager(object):
                 await snapshot.store_folders()
 
             _LOGGER.info("Snapshot %s done", slug)
-            self.snapshots.append(snapshot)
+            self.snapshots[snapshot.slug] = snapshot
             return True
 
         except (OSError, tarfile.TarError) as err:
@@ -144,7 +144,7 @@ class SnapshotsManager(object):
                     else:
                         _LOGGER.warning("Can't remove addon %s", slug)
 
-                for addon in restor_addons:
+                for slug in restor_addons:
                     addon = self.addons.get(slug)
                     if addon:
                         tasks.append(snapshot.export_addon(addon))

@@ -39,7 +39,6 @@ class APISnapshots(object):
         snapshot = self.snapshots.get(request.match_info.get('snapshot'))
         if not snapshot:
             raise RuntimeError("Snapshot not exists")
-
         return snapshot
 
     def _addons_list(self, snapshot):
@@ -51,7 +50,6 @@ class APISnapshots(object):
                 ATTR_NAME: addon_data[ATTR_NAME],
                 ATTR_VERSION: addon_data[ATTR_VERSION],
             })
-
         return data
 
     @api_process
