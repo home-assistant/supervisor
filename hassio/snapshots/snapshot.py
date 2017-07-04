@@ -205,7 +205,7 @@ class Snapshot(object):
         def _folder_save(name):
             """Intenal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
-            snapshot_tar = Path(self._tmp, "{}.tar.xz".format(slug_name))
+            snapshot_tar = Path(self._tmp.name, "{}.tar.xz".format(slug_name))
             origin_dir = Path(self.config.path_hassio, name)
 
             try:
@@ -229,7 +229,7 @@ class Snapshot(object):
         def _folder_restore(name):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
-            snapshot_tar = Path(self._tmp, "{}.tar.xz".format(slug_name))
+            snapshot_tar = Path(self._tmp.name, "{}.tar.xz".format(slug_name))
             origin_dir = Path(self.config.path_hassio, name)
 
             # clean old stuff
