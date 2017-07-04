@@ -13,12 +13,12 @@ from voluptuous.humanize import humanize_error
 from .validate import SCHEMA_SNAPSHOT
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT)
+    ATTR_HOMEASSISTANT, ATTR_FOLDERS, FOLDER_CONFIG, FOLDER_SHARE)
 from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
-HASSIO_PATH_LIST = (('config', 'share'))
+HASSIO_PATH_LIST = ((FOLDER_CONFIG, FOLDER_SHARE))
 
 
 class Snapshot(object):
@@ -51,6 +51,11 @@ class Snapshot(object):
     def addons(self):
         """Return snapshot date."""
         return self._data.get(ATTR_ADDONS)
+
+    @property
+    def folders(self):
+        """Return list of saved folders."""
+        return self._data.get(ATTR_FOLDERS)
 
     @property
     def repositories(self):
@@ -89,6 +94,7 @@ class Snapshot(object):
         # init other constructs
         self._data[ATTR_ADDONS] = []
         self._data[ATTR_REPOSITORIES] = []
+        self._data[ATTR_FOLDERS] = []
 
     async def load(self):
         """Read snapshot.json from tar file."""
@@ -194,7 +200,7 @@ class Snapshot(object):
 
         return True
 
-    async def store_folders(self):
+    async def store_folders(self, folder_list=HASSIO_PATH_LIST):
         """Backup hassio data into snapshot."""
         def _folder_save(name):
             """Intenal function to snapshot a folder."""
@@ -203,16 +209,17 @@ class Snapshot(object):
 
             try:
                 shutil.copytree(str(origin_dir), str(snapshot_dir))
+                self._data[ATTR_FOLDERS].append(name)
             except shutil.Error as err:
                 _LOGGER.warning("Can't snapshot folder %s -> %s", name, err)
 
         # run tasks
         tasks = [self.loop.run_in_executor(None, _folder_save, folder)
-                 for folder in HASSIO_PATH_LIST]
+                 for folder in folder_list]
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
 
-    async def restore_folders(self):
+    async def restore_folders(self, folder_list=HASSIO_PATH_LIST):
         """Backup hassio data into snapshot."""
         def _folder_restore(name):
             """Intenal function to restore a folder."""
@@ -230,6 +237,6 @@ class Snapshot(object):
 
         # run tasks
         tasks = [self.loop.run_in_executor(None, _folder_restore, folder)
-                 for folder in HASSIO_PATH_LIST]
+                 for folder in folder_list]
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)

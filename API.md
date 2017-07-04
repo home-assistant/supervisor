@@ -171,6 +171,7 @@ Return QR-Code
     "name": "custom snapshot name",
     "date": "ISO",
     "size": "SIZE_IN_MB",
+    "homeassistant": "INSTALLED_HASS_VERSION",
     "addons": [
         {
             "slug": "ADDON_SLUG",
@@ -178,13 +179,23 @@ Return QR-Code
             "version": "INSTALLED_VERSION"
         }
     ],
-    "repositories": ["URL"]
+    "repositories": ["URL"],
+    "folders": ["NAME"]
 }
 ```
 
 - POST `/snapshot/{slug}/restore`
 
 - POST `/snapshot/{slug}/remove`
+
+- POST `/snapshot/{slug}/pick`
+```json
+{
+    "homeassistant": "bool",
+    "addons": ["ADDON_SLUG"],
+    "folders": ["FOLDER_NAME"]
+}
+```
 
 ### Host
 

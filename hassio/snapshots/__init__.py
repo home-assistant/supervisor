@@ -20,7 +20,13 @@ class SnapshotsManager(object):
 
     @property
     def list_snapshots(self):
+        """Return a list of all snapshot object."""
         return set(self.snapshots.values())
+
+    @property
+    def get(self, slug):
+        """Return snapshot object."""
+        return self.snapshots.get(slug)
 
     async def prepare(self):
         """Load exists backups."""
@@ -42,10 +48,13 @@ class SnapshotsManager(object):
         date_str = str(datetime.utcnow())
         slug = create_slug(name, date_str)
         tar_file Path(self.config.path_backup, "{}.tar.xz".foramt(slug))
-
         snapshot = Snapshot(self.config, self.loop, tar_file)
+
+        _LOGGER.info("Snapshot %s start", slug)
         await with snapshot:
             snapshot.create(slug, name, date_str)
+            snapshot.homeassistant = homeassistant.version
+            snapshot.repositories = self.config.addons_repositories
 
             # snapshot addons
             tasks = []
@@ -58,14 +67,18 @@ class SnapshotsManager(object):
             if tasks:
                 await asyncio.wait(tasks, loop=self.loop)
 
-            # snapshot metadata
-            snapshot.homeassistant = homeassistant.version
-            snapshot.repositories = self.config.addons_repositories
-
             # snapshot folders
+            _LOGGER.info("Snapshot all hassio folders on %s", slug)
             await snapshot.store_folders()
 
+        _LOGGER.info("Snapshot %s done", slug)
         self.snapshots.append(snapshot)
+        return True
 
-    async def do_restore(self):
+    async def do_restore(self, snapshot):
         """Restore a snapshot."""
+        _LOGGER.info("Full-Restore %s start", snapshot.slug)
+        await with snapshot:
+
+        _LOGGER.info("Full-Restore %s done", snapshot.slug)
+        return True

@@ -14,7 +14,6 @@ from .validate import (
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
-from ..config import Config
 from ..tools import read_json_file
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,20 +21,36 @@ _LOGGER = logging.getLogger(__name__)
 RE_VOLUME = re.compile(MAP_VOLUME)
 
 
-class Data(Config):
+class Data(object):
     """Hold data for addons inside HassIO."""
 
     def __init__(self, config):
         """Initialize data holder."""
-        super().__init__(FILE_HASSIO_ADDONS)
+        self._file = FILE_HASSIO_ADDONS
+        self._data = {}
         self.config = config
         self._cache = {}
         self._repositories = {}
+
+        # init or load data
+        if self._file.is_file():
+            try:
+                self._data = read_json_file(self._file)
+            except (OSError, json.JSONDecodeError):
+                _LOGGER.warning("Can't read %s", self._file)
+                self._data = {}
 
         # init data
         if not self._data:
             self._data[ATTR_USER] = {}
             self._data[ATTR_SYSTEM] = {}
+
+    def save(self):
+        """Store data to config file."""
+        if not write_json_file(self._file, self._data):
+            _LOGGER.error("Can't store config in %s", self._file)
+            return False
+        return True
 
     @property
     def user(self):

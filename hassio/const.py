@@ -85,6 +85,7 @@ ATTR_PRIVILEGED = 'privileged'
 ATTR_USER = 'user'
 ATTR_SYSTEM = 'system'
 ATTR_HOMEASSISTANT = 'homeassistant'
+ATTR_FOLDERS = 'folders'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_BEFORE = 'before'
@@ -111,3 +112,6 @@ ARCH_I386 = 'i386'
 
 REPOSITORY_CORE = 'core'
 REPOSITORY_LOCAL = 'local'
+
+FOLDER_CONFIG = 'config'
+FOLDER_SHARE = 'share'
