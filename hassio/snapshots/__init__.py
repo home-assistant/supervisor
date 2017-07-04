@@ -63,7 +63,7 @@ class SnapshotsManager(object):
         """Create a snapshot."""
         date_str = str(datetime.utcnow())
         slug = create_slug(name, date_str)
-        tar_file Path(self.config.path_backup, "{}.tar".format(slug))
+        tar_file = Path(self.config.path_backup, "{}.tar".format(slug))
         snapshot = Snapshot(self.config, self.loop, tar_file)
 
         _LOGGER.info("Snapshot %s start", slug)

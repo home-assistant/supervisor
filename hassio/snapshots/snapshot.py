@@ -149,7 +149,7 @@ class Snapshot(object):
 
         await self.loop.run_in_executor(None, _extract_snapshot)
 
-    async def __aexit__(self):
+    async def __aexit__(self, exception_type, exception_value, traceback):
         """Async context to close a snapshot."""
         # exists snapshot, close
         if self.tar_file.is_file():
