@@ -48,6 +48,17 @@ class SnapshotsManager(object):
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
 
+    def remove(self, snapshot):
+        """Remove a snapshot."""
+        try:
+            snapshot.tar_file.unlink()
+            self.snapshots.pop(snapshot.slug, None)
+        except OSError as err:
+            _LOGGER.error("Can't remove snapshot %s -> %s", snapshot.slug, err)
+            return False
+
+        return True
+
     async def do_snapshot(self, name):
         """Create a snapshot."""
         date_str = str(datetime.utcnow())
@@ -153,7 +164,7 @@ class SnapshotsManager(object):
         finally:
             self.sheduler.suspend = False
 
-    async def do_pickup(self, snapshot, options):
+    async def do_pick(self, snapshot, options):
         """Restore a snapshot."""
         _LOGGER.info("Pick-Restore %s start", snapshot.slug)
         try:

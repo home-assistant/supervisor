@@ -10,6 +10,7 @@ from .host import APIHost
 from .network import APINetwork
 from .supervisor import APISupervisor
 from .security import APISecurity
+from .snapshots import APISnapshots
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -99,6 +100,21 @@ class RestAPI(object):
         self.webapp.router.add_post('/security/options', api_security.options)
         self.webapp.router.add_post('/security/totp', api_security.totp)
         self.webapp.router.add_post('/security/session', api_security.session)
+
+    def register_snapshots(self, snapshots):
+        """Register snapshots function."""
+        api_snapshots = APISnapshots(self.config, self.loop, snapshots)
+
+        self.webapp.router.add_post('/snapshots', api_snapshots.snapshot)
+
+        self.webapp.router.add_get(
+            '/snapshots/{snapshot}/info', api_snapshots.info)
+        self.webapp.router.add_post(
+            '/snapshots/{snapshot}/restore', api_snapshots.restore)
+        self.webapp.router.add_post(
+            '/snapshots/{snapshot}/pick', api_snapshots.pick)
+        self.webapp.router.add_post(
+            '/snapshots/{snapshot}/remove', api_snapshots.remove)
 
     def register_panel(self):
         """Register panel for homeassistant."""
