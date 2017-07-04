@@ -69,7 +69,7 @@ class SnapshotsManager(object):
         _LOGGER.info("Snapshot %s start", slug)
         try:
             self.sheduler.suspend = True
-            await with snapshot:
+            async with snapshot:
                 snapshot.create(slug, name, date_str)
                 snapshot.homeassistant = homeassistant.version
                 snapshot.repositories = self.config.addons_repositories
@@ -105,7 +105,7 @@ class SnapshotsManager(object):
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True
-            await with snapshot:
+            async with snapshot:
                 # stop system
                 tasks = []
                 tasks.append(self.homeassistant.stop())
@@ -169,7 +169,7 @@ class SnapshotsManager(object):
         _LOGGER.info("Pick-Restore %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True
-            await with snapshot:
+            async with snapshot:
                 tasks = []
 
                 if FOLDER_CONFIG in options.get(ATTR_FOLDERS, {}):

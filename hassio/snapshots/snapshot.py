@@ -3,7 +3,6 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-import shutil
 import tarfile
 from tempfile import TemporaryDirectory
 
