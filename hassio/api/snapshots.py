@@ -13,6 +13,7 @@ from ..const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_PICK = vol.Schema({
     vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     vol.Optional(ATTR_ADDONS): [vol.Coerce(str)],

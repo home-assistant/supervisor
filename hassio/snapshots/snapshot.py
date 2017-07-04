@@ -19,8 +19,6 @@ from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
-HASSIO_PATH_LIST = set(ALL_FOLDERS)
-
 
 class Snapshot(object):
     """A signle hassio snapshot."""
@@ -201,8 +199,10 @@ class Snapshot(object):
 
         return True
 
-    async def store_folders(self, folder_list=HASSIO_PATH_LIST):
+    async def store_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
+        folder_list = folder_list or ALL_FOLDERS
+
         def _folder_save(name):
             """Intenal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
@@ -223,8 +223,10 @@ class Snapshot(object):
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
 
-    async def restore_folders(self, folder_list=HASSIO_PATH_LIST):
+    async def restore_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
+        folder_list = folder_list or ALL_FOLDERS
+
         def _folder_restore(name):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")

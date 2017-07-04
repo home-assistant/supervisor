@@ -40,8 +40,7 @@ class Addon(object):
         self.data = data
         self._id = slug
 
-        self.addon_docker = DockerAddon(
-            self.config, self.loop, self.dock, self)
+        self.addon_docker = DockerAddon(config, loop, dock, self)
 
     async def load(self):
         """Async initialize of object."""
@@ -421,8 +420,8 @@ class Addon(object):
             try:
                 data = SCHEMA_ADDON_SNAPSHOT(data)
             except vol.Invalid as err:
-                _LOGGER.error("Can't validate snapshot data -> %s", self._id,
-                              humanize_error(data, err))
+                _LOGGER.error("Can't validate %s, snapshot data -> %s",
+                              self._id, humanize_error(data, err))
                 return False
 
             # restore data / reload addon

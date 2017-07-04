@@ -180,14 +180,15 @@ class DockerAddon(DockerBase):
         finally:
             shutil.rmtree(str(build_dir), ignore_errors=True)
 
-    async def export_image(self):
+    async def export_image(self, path):
         """Export current images into a tar file."""
         if self._lock.locked():
             _LOGGER.error("Can't excute export while a task is in progress")
             return False
 
         async with self._lock:
-            return await self.loop.run_in_executor(None, self._export_image)
+            return await self.loop.run_in_executor(
+                None, self._export_image, path)
 
     def _export_image(self, tar_file):
         """Export current images into a tar file.
@@ -210,14 +211,15 @@ class DockerAddon(DockerBase):
 
         return True
 
-    async def import_image(self):
+    async def import_image(self, path):
         """Import a tar file as image."""
         if self._lock.locked():
             _LOGGER.error("Can't excute import while a task is in progress")
             return False
 
         async with self._lock:
-            return await self.loop.run_in_executor(None, self._import_image)
+            return await self.loop.run_in_executor(
+                None, self._import_image, path)
 
     def _import_image(self, tar_file):
         """Import a tar file as image.

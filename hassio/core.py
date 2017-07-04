@@ -81,10 +81,12 @@ class HassIO(object):
         self.api.register_host(self.host_control)
         self.api.register_network(self.host_control)
         self.api.register_supervisor(
-            self.supervisor, self.addons, self.host_control, self.websession)
+            self.supervisor, self.snapshots, self.addons, self.host_control,
+            self.websession)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
         self.api.register_security()
+        self.api.register_snapshots(self.snapshots)
         self.api.register_panel()
 
         # schedule api session cleanup
@@ -114,7 +116,7 @@ class HassIO(object):
 
         # schedule snapshot update tasks
         self.scheduler.register_task(
-            self.snapshot.reload, RUN_RELOAD_SNAPSHOTS_TASKS, now=True)
+            self.snapshots.reload, RUN_RELOAD_SNAPSHOTS_TASKS, now=True)
 
         # start addon mark as initialize
         await self.addons.auto_boot(STARTUP_INITIALIZE)

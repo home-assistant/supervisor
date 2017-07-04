@@ -47,10 +47,6 @@ class Scheduler(object):
         """Run a scheduled task."""
         data = self._data.pop(idx)
 
-        # stop execute tasks
-        if self._stop:
-            return
-
         if not self.suspend:
             self.loop.create_task(data[CALL]())
 
