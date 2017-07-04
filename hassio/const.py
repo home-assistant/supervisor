@@ -115,3 +115,4 @@ REPOSITORY_LOCAL = 'local'
 
 FOLDER_CONFIG = 'config'
 FOLDER_SHARE = 'share'
+FOLDER_ADDONS = 'addons/local'

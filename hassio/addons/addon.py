@@ -37,8 +37,10 @@ class Addon(object):
         self.loop = loop
         self.config = config
         self.data = data
-        self.dock = dock
         self._id = slug
+
+        self.addon_docker = DockerAddon(
+            self.config, self.loop, self.dock, self)
 
     async def load(self):
         """Async initialize of object."""
@@ -49,10 +51,6 @@ class Addon(object):
             except vol.Invalid as err:
                 _LOGGER.warning("Can't validate addon load %s -> %s", self._id,
                                 humanize_error(data[self._id], err))
-
-        # init docker
-        self.addon_docker = DockerAddon(
-            self.config, self.loop, self.dock, self)
 
         if self.is_installed:
             await self.addon_docker.attach()
@@ -428,11 +426,6 @@ class Addon(object):
 
             # restore data / reload addon
             self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM])
-
-            # init docker if not exists
-            if not self.addon_docker:
-                self.addon_docker = DockerAddon(
-                    self.config, self.loop, self.dock, self)
 
             # check version / restore image
             if data[ATTR_VERSION] != self.addon_docker.version:

@@ -147,7 +147,7 @@ class HassIO(object):
     async def stop(self, exit_code=0):
         """Stop a running orchestration."""
         # don't process scheduler anymore
-        self.scheduler.stop()
+        self.scheduler.suspend = True
 
         # process stop tasks
         self.websession.close()

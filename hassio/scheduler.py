@@ -16,11 +16,7 @@ class Scheduler(object):
         """Initialize task schedule."""
         self.loop = loop
         self._data = {}
-        self._stop = False
-
-    def stop(self):
-        """Stop to execute tasks in scheduler."""
-        self._stop = True
+        self.suspend = False
 
     def register_task(self, coro_callback, seconds, repeat=True,
                       now=False):
@@ -55,7 +51,8 @@ class Scheduler(object):
         if self._stop:
             return
 
-        self.loop.create_task(data[CALL]())
+        if not self.suspend:
+            self.loop.create_task(data[CALL]())
 
         if data[REPEAT]:
             task = self.loop.call_later(data[SEC], self._run_task, idx)

@@ -10,7 +10,8 @@ from tempfile import TemporaryDirectory
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .validate import SCHEMA_SNAPSHOT
+from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
+from .util import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, FOLDER_CONFIG, FOLDER_SHARE)
@@ -18,7 +19,7 @@ from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
-HASSIO_PATH_LIST = ((FOLDER_CONFIG, FOLDER_SHARE))
+HASSIO_PATH_LIST = set(ALL_FOLDERS)
 
 
 class Snapshot(object):
@@ -228,7 +229,7 @@ class Snapshot(object):
 
             # clean old stuff
             if origin_dir.is_dir():
-                shutil.rmtree(str(origin_dir), ignore_errors=True)
+                remove_folder(origin_dir)
 
             try:
                 shutil.copytree(str(snapshot_dir), str(origin_dir))
