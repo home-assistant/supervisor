@@ -1,12 +1,16 @@
 """Snapshot system control."""
 import asyncio
 from datetime import datetime
+import logging
 from pathlib import Path
 import tarfile
 
 from .snapshot import Snapshot
 from .util import create_slug
-from ..const import FOLDER_CONFIG
+from ..const import (
+    ATTR_FOLDERS, ATTR_HOMEASSISTANT, ATTR_ADDONS, FOLDER_CONFIG)
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class SnapshotsManager(object):
@@ -71,12 +75,12 @@ class SnapshotsManager(object):
             self.sheduler.suspend = True
             async with snapshot:
                 snapshot.create(slug, name, date_str)
-                snapshot.homeassistant = homeassistant.version
+                snapshot.homeassistant = self.homeassistant.version
                 snapshot.repositories = self.config.addons_repositories
 
                 # snapshot addons
                 tasks = []
-                for addon in addons.list_addons:
+                for addon in self.addons.list_addons:
                     if not addon.is_installed:
                         continue
                     tasks.append(snapshot.import_addon(addon))
