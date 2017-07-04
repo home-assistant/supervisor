@@ -41,7 +41,7 @@ class APISnapshots(object):
             raise RuntimeError("Snapshot not exists")
         return snapshot
 
-    @classmethod
+    @staticmethod
     def _addons_list(snapshot):
         """Generate a list with addons data."""
         data = []
