@@ -8,7 +8,8 @@ from .util import api_process, api_validate
 from ..snapshots.validate import ALL_FOLDERS
 from ..const import (
     ATTR_NAME, ATTR_SLUG, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS, ATTR_TYPE)
+    ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS, ATTR_TYPE,
+    ATTR_DEVICES)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,7 +70,10 @@ class APISnapshots(object):
             ATTR_NAME: snapshot.name,
             ATTR_DATE: snapshot.date,
             ATTR_SIZE: snapshot.size,
-            ATTR_HOMEASSISTANT: snapshot.homeassistant,
+            ATTR_HOMEASSISTANT: {
+                ATTR_VERSION: snapshot.homeassistant_version,
+                ATTR_DEVICES: snapshot.homeassistant_devices,
+            },
             ATTR_ADDONS: self._addons_list(snapshot),
             ATTR_REPOSITORIES: snapshot.repositories,
             ATTR_FOLDERS: snapshot.folders,

@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 
 import docker
+import requests
 
 from . import DockerBase
 from .util import dockerfile_template
@@ -196,7 +197,7 @@ class DockerAddon(DockerBase):
         Need run inside executor.
         """
         try:
-            image = self.dock.api.get_image("{}:latest".format(self.image))
+            image = self.dock.api.get_image(self.image)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't fetch image %s -> %s", self.image, err)
             return False
@@ -205,13 +206,14 @@ class DockerAddon(DockerBase):
             with tar_file.open("wb") as write_tar:
                 for chunk in image.stream():
                     write_tar.write(chunk)
-        except OSError() as err:
+        except (OSError, requests.exceptions.ReadTimeout) as err:
             _LOGGER.error("Can't write tar file %s -> %s", tar_file, err)
             return False
 
+        _LOGGER.info("Export image %s to %s", self.image, tar_file)
         return True
 
-    async def import_image(self, path):
+    async def import_image(self, path, tag):
         """Import a tar file as image."""
         if self._lock.locked():
             _LOGGER.error("Can't excute import while a task is in progress")
@@ -219,9 +221,9 @@ class DockerAddon(DockerBase):
 
         async with self._lock:
             return await self.loop.run_in_executor(
-                None, self._import_image, path)
+                None, self._import_image, path, tag)
 
-    def _import_image(self, tar_file):
+    def _import_image(self, tar_file, tag):
         """Import a tar file as image.
 
         Need run inside executor.
@@ -231,10 +233,12 @@ class DockerAddon(DockerBase):
                 self.dock.api.load_image(read_tar)
 
             image = self.dock.images.get(self.image)
+            image.tag(self.image, tag=tag)
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s -> %s", self.image, err)
             return False
 
+        _LOGGER.info("Import image %s and tag %s", tar_file, tag)
         self.process_metadata(image.attrs, force=True)
         self._cleanup()
         return True
