@@ -388,7 +388,8 @@ class Addon(object):
             # write into tarfile
             def _create_tar():
                 """Write tar inside loop."""
-                with tarfile.open(tar_file, "w:gz") as snapshot:
+                with tarfile.open(tar_file, "w:gz", compresslevel=4)
+                        as snapshot:
                     snapshot.add(temp, arcname=".")
                     snapshot.add(self.path_data, arcname="data")
 

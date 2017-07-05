@@ -215,7 +215,8 @@ class Snapshot(object):
             origin_dir = Path(self.config.path_hassio, name)
 
             try:
-                with tarfile.open(snapshot_tar, "w:gz") as tar_file:
+                with tarfile.open(snapshot_tar, "w:gz", compresslevel=4)
+                        as tar_file:
                     tar_file.add(origin_dir, arcname=".")
 
                 self._data[ATTR_FOLDERS].append(name)
