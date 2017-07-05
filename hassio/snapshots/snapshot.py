@@ -108,7 +108,7 @@ class Snapshot(object):
 
         def _load_file():
             """Read snapshot.json."""
-            with tarfile.open(self.tar_file, "r") as snapshot:
+            with tarfile.open(self.tar_file, "r:") as snapshot:
                 json_file = snapshot.extractfile("./snapshot.json")
             if json_file:
                 return json_file.read()
@@ -149,7 +149,7 @@ class Snapshot(object):
         # extract a exists snapshot
         def _extract_snapshot():
             """Extract a snapshot."""
-            with tarfile.open(self.tar_file, "r") as tar:
+            with tarfile.open(self.tar_file, "r:") as tar:
                 tar.extractall(path=self._tmp.name)
 
         await self.loop.run_in_executor(None, _extract_snapshot)
@@ -163,7 +163,7 @@ class Snapshot(object):
         # new snapshot, build it
         def _create_snapshot():
             """Create a new snapshot."""
-            with tarfile.open(self.tar_file, "w") as tar:
+            with tarfile.open(self.tar_file, "w:") as tar:
                 tar.add(self._tmp.name, arcname=".")
 
         if write_json_file(Path(self._tmp.name, "snapshot.json"), self._data):
