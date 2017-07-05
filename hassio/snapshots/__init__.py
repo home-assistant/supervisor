@@ -125,10 +125,10 @@ class SnapshotsManager(object):
 
                 # snapshot addons
                 tasks = []
-                for addon in addons:
-                    if not addon.is_installed:
-                        continue
-                    tasks.append(snapshot.import_addon(addon))
+                for slug in addons:
+                    addon = self.addons.get(slug)
+                    if addon.is_installed:
+                        tasks.append(snapshot.import_addon(addon))
 
                 if tasks:
                     _LOGGER.info("Partial-Snapshot %s run %d addons",
