@@ -187,7 +187,7 @@ class SnapshotsManager(object):
                 tasks = []
                 actual_addons = (addon.slug for addon in
                                  self.addons.list_addons if addon.is_installed)
-                restor_addons = set(snapshot.addons)
+                restor_addons = (data[ATTR_SLUG] for data in snapshot.addons)
                 remove_addons = actual_addons - restor_addons
 
                 for slug in remove_addons:

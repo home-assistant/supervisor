@@ -53,17 +53,17 @@ class Snapshot(object):
     @property
     def addons(self):
         """Return snapshot date."""
-        return self._data.get(ATTR_ADDONS)
+        return self._data.get(ATTR_ADDONS, [])
 
     @property
     def folders(self):
         """Return list of saved folders."""
-        return self._data.get(ATTR_FOLDERS)
+        return self._data.get(ATTR_FOLDERS, [])
 
     @property
     def repositories(self):
         """Return snapshot date."""
-        return self._data.get(ATTR_REPOSITORIES)
+        return self._data.get(ATTR_REPOSITORIES, [])
 
     @repositories.setter
     def repositories(self, value):
