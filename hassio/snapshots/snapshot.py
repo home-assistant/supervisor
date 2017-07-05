@@ -75,7 +75,7 @@ class Snapshot(object):
         """Return snapshot homeassistant version."""
         return self._data[ATTR_HOMEASSISTANT].get(ATTR_VERSION)
 
-    @homeassistant.setter
+    @homeassistant_version.setter
     def homeassistant_version(self, value):
         """Set snapshot homeassistant version."""
         self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
@@ -85,7 +85,7 @@ class Snapshot(object):
         """Return snapshot homeassistant devices."""
         return self._data[ATTR_HOMEASSISTANT].get(ATTR_DEVICES)
 
-    @homeassistant.setter
+    @homeassistant_devices.setter
     def homeassistant_devices(self, value):
         """Set snapshot homeassistant devices."""
         self._data[ATTR_HOMEASSISTANT][ATTR_DEVICES] = value
@@ -175,7 +175,7 @@ class Snapshot(object):
             self._data = SCHEMA_SNAPSHOT(self._data)
         except vol.Invalid as err:
             _LOGGER.error("Invalid data for %s -> %s", self.tar_file,
-                          humanize_error(raw_dict, err))
+                          humanize_error(self._data, err))
             raise ValueError("Invalid config") from None
 
         # new snapshot, build it
