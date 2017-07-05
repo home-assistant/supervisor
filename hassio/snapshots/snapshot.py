@@ -129,7 +129,7 @@ class Snapshot(object):
 
         # validate
         try:
-            raw_dict = SCHEMA_SNAPSHOT(raw_dict)
+            self._data = SCHEMA_SNAPSHOT(raw_dict)
         except vol.Invalid as err:
             _LOGGER.error("Can't validate data for %s -> %s", self.tar_file,
                           humanize_error(raw_dict, err))
