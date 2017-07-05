@@ -180,10 +180,13 @@ Return QR-Code
 {
     "slug": "SNAPSHOT ID",
     "type": "full|partial",
-    "name": "custom snapshot name",
+    "name": "custom snapshot name / description",
     "date": "ISO",
     "size": "SIZE_IN_MB",
-    "homeassistant": "INSTALLED_HASS_VERSION",
+    "homeassistant": {
+      "version": "INSTALLED_HASS_VERSION",
+      "devices": []
+    },
     "addons": [
         {
             "slug": "ADDON_SLUG",

@@ -13,7 +13,7 @@ from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
 from .util import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE)
+    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_DEVICES)
 from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,27 +43,27 @@ class Snapshot(object):
     @property
     def name(self):
         """Return snapshot name."""
-        return self._data.get(ATTR_NAME)
+        return self._data[ATTR_NAME]
 
     @property
     def date(self):
         """Return snapshot date."""
-        return self._data.get(ATTR_DATE)
+        return self._data[ATTR_DATE]
 
     @property
     def addons(self):
         """Return snapshot date."""
-        return self._data.get(ATTR_ADDONS, [])
+        return self._data[ATTR_ADDONS]
 
     @property
     def folders(self):
         """Return list of saved folders."""
-        return self._data.get(ATTR_FOLDERS, [])
+        return self._data[ATTR_FOLDERS]
 
     @property
     def repositories(self):
         """Return snapshot date."""
-        return self._data.get(ATTR_REPOSITORIES, [])
+        return self._data[ATTR_REPOSITORIES]
 
     @repositories.setter
     def repositories(self, value):
@@ -71,14 +71,24 @@ class Snapshot(object):
         self._data[ATTR_REPOSITORIES] = value
 
     @property
-    def homeassistant(self):
+    def homeassistant_version(self):
         """Return snapshot homeassistant version."""
-        return self._data.get(ATTR_HOMEASSISTANT)
+        return self._data[ATTR_HOMEASSISTANT].get(ATTR_VERSION)
 
     @homeassistant.setter
-    def homeassistant(self, value):
+    def homeassistant_version(self, value):
         """Set snapshot homeassistant version."""
-        self._data[ATTR_HOMEASSISTANT] = value
+        self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
+
+    @property
+    def homeassistant_devices(self):
+        """Return snapshot homeassistant devices."""
+        return self._data[ATTR_HOMEASSISTANT].get(ATTR_DEVICES)
+
+    @homeassistant.setter
+    def homeassistant_devices(self, value):
+        """Set snapshot homeassistant devices."""
+        self._data[ATTR_HOMEASSISTANT][ATTR_DEVICES] = value
 
     @property
     def size(self):
@@ -96,6 +106,7 @@ class Snapshot(object):
         self._data[ATTR_TYPE] = sys_type
 
         # init other constructs
+        self._data[ATTR_HOMEASSISTANT] = {}
         self._data[ATTR_ADDONS] = []
         self._data[ATTR_REPOSITORIES] = []
         self._data[ATTR_FOLDERS] = []
@@ -159,6 +170,14 @@ class Snapshot(object):
         if self.tar_file.is_file() or exception_type is not None:
             return self._tmp.cleanup()
 
+        # validate data
+        try:
+            self._data = SCHEMA_SNAPSHOT(self._data)
+        except vol.Invalid as err:
+            _LOGGER.error("Invalid data for %s -> %s", self.tar_file,
+                          humanize_error(raw_dict, err))
+            raise ValueError("Invalid config") from None
+
         # new snapshot, build it
         def _create_snapshot():
             """Create a new snapshot."""
@@ -166,10 +185,7 @@ class Snapshot(object):
                 tar.add(self._tmp.name, arcname=".")
 
         if write_json_file(Path(self._tmp.name, "snapshot.json"), self._data):
-            try:
-                await self.loop.run_in_executor(None, _create_snapshot)
-            except tarfile.TarError as err:
-                _LOGGER.error("Can't create tar %s", err)
+            await self.loop.run_in_executor(None, _create_snapshot)
         else:
             _LOGGER.error("Can't write snapshot.json")
 

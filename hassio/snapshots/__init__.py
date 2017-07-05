@@ -41,8 +41,14 @@ class SnapshotsManager(object):
         slug = create_slug(name, date_str)
         tar_file = Path(self.config.path_backup, "{}.tar".format(slug))
 
+        # init object
         snapshot = Snapshot(self.config, self.loop, tar_file)
         snapshot.create(slug, name, date_str, sys_type)
+
+        # set general data
+        snapshot.homeassistant_version = self.homeassistant.version
+        snapshot.homeassistant_devices = self.config.homeassistant_devices
+        snapshot.repositories = self.config.addons_repositories
 
         return snapshot
 
@@ -87,9 +93,6 @@ class SnapshotsManager(object):
             await self._lock.acquire()
 
             async with snapshot:
-                snapshot.homeassistant = self.homeassistant.version
-                snapshot.repositories = self.config.addons_repositories
-
                 # snapshot addons
                 tasks = []
                 for addon in self.addons.list_addons:
@@ -110,7 +113,7 @@ class SnapshotsManager(object):
             self.snapshots[snapshot.slug] = snapshot
             return True
 
-        except (OSError, tarfile.TarError) as err:
+        except (OSError, ValueError, tarfile.TarError) as err:
             _LOGGER.info("Full-Snapshot %s error -> %s", snapshot.slug, err)
             return False
 
@@ -134,9 +137,6 @@ class SnapshotsManager(object):
             await self._lock.acquire()
 
             async with snapshot:
-                snapshot.homeassistant = self.homeassistant.version
-                snapshot.repositories = self.config.addons_repositories
-
                 # snapshot addons
                 tasks = []
                 for slug in addons:
@@ -158,7 +158,7 @@ class SnapshotsManager(object):
             self.snapshots[snapshot.slug] = snapshot
             return True
 
-        except (OSError, tarfile.TarError) as err:
+        except (OSError, ValueError, tarfile.TarError) as err:
             _LOGGER.info("Partial-Snapshot %s error -> %s", snapshot.slug, err)
             return False
 
@@ -239,12 +239,14 @@ class SnapshotsManager(object):
                 _LOGGER.info("Full-Restore %s wait until homeassistant ready",
                              snapshot.slug)
                 await task_hass
+                self.config.homeassistant_devices = \
+                    snapshot.homeassistant_devices
                 await self.homeassistant.run()
 
             _LOGGER.info("Full-Restore %s done", snapshot.slug)
             return True
 
-        except (OSError, tarfile.TarError) as err:
+        except (OSError, ValueError, tarfile.TarError) as err:
             _LOGGER.info("Full-Restore %s error -> %s", slug, err)
             return False
 
@@ -279,6 +281,8 @@ class SnapshotsManager(object):
                     await snapshot.restore_folders(folders)
 
                 if homeassistant:
+                    self.config.homeassistant_devices = \
+                        snapshot.homeassistant_devices
                     tasks.append(self.homeassistant.update(
                         snapshot.homeassistant))
 
@@ -300,7 +304,7 @@ class SnapshotsManager(object):
             _LOGGER.info("Partial-Restore %s done", snapshot.slug)
             return True
 
-        except (OSError, tarfile.TarError) as err:
+        except (OSError, ValueError, tarfile.TarError) as err:
             _LOGGER.info("Partial-Restore %s error -> %s", slug, err)
             return False
 
