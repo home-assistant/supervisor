@@ -24,6 +24,7 @@ class SnapshotsManager(object):
         self.addons = addons
         self.homeassistant = homeassistant
         self.snapshots = {}
+        self._lock = asyncio.Lock(loop=loop)
 
     @property
     def list_snapshots(self):
@@ -75,11 +76,16 @@ class SnapshotsManager(object):
 
     async def do_snapshot_full(self, name=""):
         """Create a full snapshot."""
-        snapshot = self._create_snapshot(name, SNAPSHOT_FULL)
+        if self._lock.locked():
+            _LOGGER.error("It is already a snapshot/restore process running")
+            return False
 
+        snapshot = self._create_snapshot(name, SNAPSHOT_FULL)
         _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True
+            await self._lock.acquire()
+
             async with snapshot:
                 snapshot.homeassistant = self.homeassistant.version
                 snapshot.repositories = self.config.addons_repositories
@@ -110,9 +116,14 @@ class SnapshotsManager(object):
 
         finally:
             self.sheduler.suspend = False
+            self._lock.release()
 
     async def do_snapshot_partial(self, name="", addons=None, folders=None):
         """Create a partial snapshot."""
+        if self._lock.locked():
+            _LOGGER.error("It is already a snapshot/restore process running")
+            return False
+
         addons = addons or []
         folders = folders or []
         snapshot = self._create_snapshot(name, SNAPSHOT_PARTIAL)
@@ -120,6 +131,8 @@ class SnapshotsManager(object):
         _LOGGER.info("Partial-Snapshot %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True
+            await self._lock.acquire()
+
             async with snapshot:
                 snapshot.homeassistant = self.homeassistant.version
                 snapshot.repositories = self.config.addons_repositories
@@ -151,9 +164,14 @@ class SnapshotsManager(object):
 
         finally:
             self.sheduler.suspend = False
+            self._lock.release()
 
     async def do_restore_full(self, snapshot):
         """Restore a snapshot."""
+        if self._lock.locked():
+            _LOGGER.error("It is already a snapshot/restore process running")
+            return False
+
         if snapshot.sys_type != SNAPSHOT_FULL:
             _LOGGER.error(
                 "Full-Restore %s is only a partial snapshot!", snapshot.slug)
@@ -162,6 +180,8 @@ class SnapshotsManager(object):
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True
+            await self._lock.acquire()
+
             async with snapshot:
                 # stop system
                 tasks = []
@@ -186,10 +206,15 @@ class SnapshotsManager(object):
 
                 # restore addons
                 tasks = []
-                actual_addons = (addon.slug for addon in
-                                 self.addons.list_addons if addon.is_installed)
-                restor_addons = (data[ATTR_SLUG] for data in snapshot.addons)
-                remove_addons = set(actual_addons) - set(restor_addons)
+                actual_addons = \
+                    set(addon.slug for addon in self.addons.list_addons
+                        if addon.is_installed)
+                restore_addons = \
+                    set(data[ATTR_SLUG] for data in snapshot.addons)
+                remove_addons = actual_addons) - (restor_addons)
+
+                _LOGGER.info("Full-Restore %s restore addons %s, remove %s",
+                             snapshot.slug, restore_addons, remove_addons)
 
                 for slug in remove_addons:
                     addon = self.addons.get(slug)
@@ -206,7 +231,7 @@ class SnapshotsManager(object):
                         _LOGGER.warning("Can't restore addon %s", slug)
 
                 if tasks:
-                    _LOGGER.info("Full-Restore %s restore addons %d",
+                    _LOGGER.info("Full-Restore %s restore addons tasks %d",
                                  snapshot.slug, len(tasks))
                     await asyncio.wait(tasks, loop=self.loop)
 
@@ -225,16 +250,23 @@ class SnapshotsManager(object):
 
         finally:
             self.sheduler.suspend = False
+            self._lock.release()
 
     async def do_restore_partial(self, snapshot, homeassistant=False,
                                  addons=None, folders=None):
         """Restore a snapshot."""
+        if self._lock.locked():
+            _LOGGER.error("It is already a snapshot/restore process running")
+            return False
+
         addons = addons or []
         folders = folders or []
 
         _LOGGER.info("Partial-Restore %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True
+            await self._lock.acquire()
+
             async with snapshot:
                 tasks = []
 
@@ -274,3 +306,4 @@ class SnapshotsManager(object):
 
         finally:
             self.sheduler.suspend = False
+            self._lock.release()
