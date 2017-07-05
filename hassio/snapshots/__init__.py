@@ -7,9 +7,7 @@ import tarfile
 
 from .snapshot import Snapshot
 from .util import create_slug
-from ..const import (
-    ATTR_FOLDERS, ATTR_HOMEASSISTANT, ATTR_ADDONS, FOLDER_CONFIG,
-    SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
+from ..const import FOLDER_CONFIG, SNAPSHOT_FULL, SNAPSHOT_PARTIAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,7 +76,7 @@ class SnapshotsManager(object):
         """Create a full snapshot."""
         snapshot = self._create_snapshot(name, SNAPSHOT_FULL)
 
-        _LOGGER.info("Full-Snapshot %s start", slug)
+        _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True
             async with snapshot:
@@ -112,11 +110,13 @@ class SnapshotsManager(object):
         finally:
             self.sheduler.suspend = False
 
-    async def do_snapshot_partial(self, name="", addons=[], folders=[]):
+    async def do_snapshot_partial(self, name="", addons=None, folders=None):
         """Create a partial snapshot."""
+        addons = addons or []
+        folders = folders or []
         snapshot = self._create_snapshot(name, SNAPSHOT_PARTIAL)
 
-        _LOGGER.info("Partial-Snapshot %s start", slug)
+        _LOGGER.info("Partial-Snapshot %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True
             async with snapshot:
@@ -226,8 +226,11 @@ class SnapshotsManager(object):
             self.sheduler.suspend = False
 
     async def do_restore_partial(self, snapshot, homeassistant=False,
-                                 addons=[], folders=[]):
+                                 addons=None, folders=None):
         """Restore a snapshot."""
+        addons = addons or []
+        folders = folders or []
+
         _LOGGER.info("Partial-Restore %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True
