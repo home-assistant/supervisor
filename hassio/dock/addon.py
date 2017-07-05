@@ -236,6 +236,7 @@ class DockerAddon(DockerBase):
             return False
 
         self.process_metadata(image.attrs, force=True)
+        self._cleanup()
         return True
 
     def _restart(self):

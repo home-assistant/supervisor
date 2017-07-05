@@ -7,7 +7,8 @@ import tarfile
 
 from .snapshot import Snapshot
 from .util import create_slug
-from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL
+from ..const import (
+    ATTR_SLUG, FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 
 _LOGGER = logging.getLogger(__name__)
 
