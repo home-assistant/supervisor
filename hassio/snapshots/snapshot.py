@@ -179,7 +179,7 @@ class Snapshot(object):
 
     async def import_addon(self, addon):
         """Add a addon into snapshot."""
-        snapshot_file = Path(self._tmp.name, "{}.tar.xz".format(addon.slug))
+        snapshot_file = Path(self._tmp.name, "{}.tar.gz".format(addon.slug))
 
         if not await addon.snapshot(snapshot_file):
             _LOGGER.error("Can't make snapshot from %s", addon.slug)
@@ -196,7 +196,7 @@ class Snapshot(object):
 
     async def export_addon(self, addon):
         """Restore a addon from snapshot."""
-        snapshot_file = Path(self._tmp.name, "{}.tar.xz".format(addon.slug))
+        snapshot_file = Path(self._tmp.name, "{}.tar.gz".format(addon.slug))
 
         if not await addon.restore(snapshot_file):
             _LOGGER.error("Can't restore snapshot for %s", addon.slug)
@@ -211,11 +211,11 @@ class Snapshot(object):
         def _folder_save(name):
             """Intenal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
-            snapshot_tar = Path(self._tmp.name, "{}.tar.xz".format(slug_name))
+            snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
             origin_dir = Path(self.config.path_hassio, name)
 
             try:
-                with tarfile.open(snapshot_tar, "w:xz") as tar_file:
+                with tarfile.open(snapshot_tar, "w:gz") as tar_file:
                     tar_file.add(origin_dir, arcname=".")
 
                 self._data[ATTR_FOLDERS].append(name)
@@ -235,7 +235,7 @@ class Snapshot(object):
         def _folder_restore(name):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
-            snapshot_tar = Path(self._tmp.name, "{}.tar.xz".format(slug_name))
+            snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
             origin_dir = Path(self.config.path_hassio, name)
 
             # clean old stuff

@@ -55,7 +55,7 @@ class SnapshotsManager(object):
                 self.snapshots[snapshot.slug] = snapshot
 
         tasks = [_load_snapshot(tar_file) for tar_file in
-                 self.config.path_backup.glob("*.tar.xz")]
+                 self.config.path_backup.glob("*.tar")]
 
         _LOGGER.info("Found %d snapshot files", len(tasks))
         if tasks:
