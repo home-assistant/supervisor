@@ -110,7 +110,6 @@ class Snapshot(object):
             """Read snapshot.json."""
             with tarfile.open(self.tar_file, "r:") as snapshot:
                 json_file = snapshot.extractfile("./snapshot.json")
-            if json_file:
                 return json_file.read()
 
         # read snapshot.json
