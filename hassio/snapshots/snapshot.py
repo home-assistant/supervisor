@@ -109,14 +109,14 @@ class Snapshot(object):
         def _load_file():
             """Read snapshot.json."""
             with tarfile.open(self.tar_file, "r") as snapshot:
-                json_file = snapshot.extractfile("snapshot.json")
+                json_file = snapshot.extractfile("./snapshot.json")
             if json_file:
                 return json_file.read()
 
         # read snapshot.json
         try:
             raw = await self.loop.run_in_executor(None, _load_file)
-        except tarfile.TarError as err:
+        except (tarfile.TarError, KeyError) as err:
             _LOGGER.error(
                 "Can't read snapshot tarfile %s -> %s", self.tar_file, err)
             return False
@@ -216,7 +216,7 @@ class Snapshot(object):
 
             try:
                 with tarfile.open(snapshot_tar, "w:gz",
-                                  compresslevel=4) as tar_file:
+                                  compresslevel=1) as tar_file:
                     tar_file.add(origin_dir, arcname=".")
 
                 self._data[ATTR_FOLDERS].append(name)
