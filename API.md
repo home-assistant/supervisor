@@ -157,19 +157,29 @@ Return QR-Code
 
 ### Backup/Snapshot
 
-- POST `/snapshot`
+- POST `/snapshots/new/full`
 ```json
 {
     "name": "Optional"
 }
 ```
 
-- POST `/snapshot/reload`
+- POST `/snapshots/new/partial`
+```json
+{
+    "name": "Optional",
+    "addons": ["ADDON_SLUG"],
+    "folders": ["FOLDER_NAME"]
+}
+```
 
-- GET `/snapshot/{slug}/info`
+- POST `/snapshots/reload`
+
+- GET `/snapshots/{slug}/info`
 ```json
 {
     "slug": "SNAPSHOT ID",
+    "type": "full|partial",
     "name": "custom snapshot name",
     "date": "ISO",
     "size": "SIZE_IN_MB",
@@ -186,11 +196,11 @@ Return QR-Code
 }
 ```
 
-- POST `/snapshot/{slug}/restore`
+- POST `/snapshots/{slug}/remove`
 
-- POST `/snapshot/{slug}/remove`
+- POST `/snapshots/{slug}/restore/full`
 
-- POST `/snapshot/{slug}/pick`
+- POST `/snapshots/{slug}/restore/partial`
 ```json
 {
     "homeassistant": "bool",

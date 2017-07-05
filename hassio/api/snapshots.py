@@ -14,14 +14,19 @@ _LOGGER = logging.getLogger(__name__)
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_PICK = vol.Schema({
+SCHEMA_RESTORE_PARTIAL = vol.Schema({
     vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     vol.Optional(ATTR_ADDONS): [vol.Coerce(str)],
     vol.Optional(ATTR_FOLDERS): [vol.In(ALL_FOLDERS)],
 })
 
-SCHEMA_SNAPSHOT = vol.Schema({
-    vol.Optional(ATTR_NAME, default=""): vol.Coerce(str),
+SCHEMA_SNAPSHOT_FULL = vol.Schema({
+    vol.Optional(ATTR_NAME): vol.Coerce(str),
+})
+
+SCHEMA_SNAPSHOT_PARTIAL = SCHEMA_SNAPSHOT_FULL.extend({
+    vol.Optional(ATTR_ADDONS): [vol.Coerce(str)],
+    vol.Optional(ATTR_FOLDERS): [vol.In(ALL_FOLDERS)],
 })
 
 
@@ -70,30 +75,38 @@ class APISnapshots(object):
         }
 
     @api_process
-    async def snapshot(self, request):
-        """Full-Restore a snapshot."""
-        body = await api_validate(SCHEMA_SNAPSHOT, request)
+    async def snapshot_full(self, request):
+        """Full-Snapshot a snapshot."""
+        body = await api_validate(SCHEMA_SNAPSHOT_FULL, request)
         return await asyncio.shield(
-            self.snapshots.do_snapshot(body[ATTR_NAME]), loop=self.loop)
+            self.snapshots.do_snapshot_full(**body), loop=self.loop)
 
     @api_process
-    async def restore(self, request):
+    async def snapshot_partial(self, request):
+        """Partial-Snapshot a snapshot."""
+        body = await api_validate(SCHEMA_SNAPSHOT_PARTIAL, request)
+        return await asyncio.shield(
+            self.snapshots.do_snapshot_partial(**body), loop=self.loop)
+
+    @api_process
+    async def restore_full(self, request):
         """Full-Restore a snapshot."""
         snapshot = self._extract_snapshot(request)
         return await asyncio.shield(
-            self.snapshots.do_restore(snapshot), loop=self.loop)
+            self.snapshots.do_restore_full(snapshot), loop=self.loop)
 
     @api_process
-    async def pick(self, request):
-        """Full-Restore a snapshot."""
+    async def restore_partial(self, request):
+        """Partial-Restore a snapshot."""
         snapshot = self._extract_snapshot(request)
-        options = await api_validate(SCHEMA_PICK, request)
+        body = await api_validate(SCHEMA_SNAPSHOT_PARTIAL, request)
 
         return await asyncio.shield(
-            self.snapshots.do_pick(snapshot, options), loop=self.loop)
+            self.snapshots.do_restore_partial(snapshot, **body),
+            loop=self.loop)
 
     @api_process
     async def remove(self, request):
-        """Full-Restore a snapshot."""
+        """Remove a snapshot."""
         snapshot = self._extract_snapshot(request)
         return self.snapshots.remove(snapshot)

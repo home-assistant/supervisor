@@ -105,16 +105,20 @@ class RestAPI(object):
         """Register snapshots function."""
         api_snapshots = APISnapshots(self.config, self.loop, snapshots)
 
-        self.webapp.router.add_post('/snapshots', api_snapshots.snapshot)
+        self.webapp.router.add_post(
+            '/snapshots/new/full', api_snapshots.snapshot_full)
+        self.webapp.router.add_post(
+            '/snapshots/new/partial', api_snapshots.snapshot_partial)
 
         self.webapp.router.add_get(
             '/snapshots/{snapshot}/info', api_snapshots.info)
         self.webapp.router.add_post(
-            '/snapshots/{snapshot}/restore', api_snapshots.restore)
-        self.webapp.router.add_post(
-            '/snapshots/{snapshot}/pick', api_snapshots.pick)
-        self.webapp.router.add_post(
             '/snapshots/{snapshot}/remove', api_snapshots.remove)
+        self.webapp.router.add_post(
+            '/snapshots/{snapshot}/restore/full', api_snapshots.restore_full)
+        self.webapp.router.add_post(
+            '/snapshots/{snapshot}/restore/partial',
+            api_snapshots.restore_partial)
 
     def register_panel(self):
         """Register panel for homeassistant."""
