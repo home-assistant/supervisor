@@ -155,8 +155,8 @@ class Snapshot(object):
 
     async def __aexit__(self, exception_type, exception_value, traceback):
         """Async context to close a snapshot."""
-        # exists snapshot, close
-        if self.tar_file.is_file():
+        # exists snapshot or exception on build
+        if self.tar_file.is_file() or exception_type is not None:
             return self._tmp.cleanup()
 
         # new snapshot, build it

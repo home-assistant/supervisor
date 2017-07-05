@@ -261,6 +261,9 @@ class SnapshotsManager(object):
                                  snapshot.slug, len(tasks))
                     await asyncio.wait(tasks, loop=self.loop)
 
+                # make sure homeassistant run agen
+                await self.homeassistant.run()
+
             _LOGGER.info("Partial-Restore %s done", snapshot.slug)
             return True
 
