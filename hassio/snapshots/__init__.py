@@ -181,7 +181,7 @@ class SnapshotsManager(object):
                     self.homeassistant.update(snapshot.homeassistant))
 
                 # restore repositories
-                await self.addons.laod_repositories(snapshot.repositories)
+                await self.addons.load_repositories(snapshot.repositories)
 
                 # restore addons
                 tasks = []
