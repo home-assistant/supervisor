@@ -211,7 +211,7 @@ class SnapshotsManager(object):
                         if addon.is_installed)
                 restore_addons = \
                     set(data[ATTR_SLUG] for data in snapshot.addons)
-                remove_addons = actual_addons) - (restor_addons)
+                remove_addons = actual_addons - restor_addons
 
                 _LOGGER.info("Full-Restore %s restore addons %s, remove %s",
                              snapshot.slug, restore_addons, remove_addons)
