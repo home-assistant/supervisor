@@ -211,7 +211,7 @@ class SnapshotsManager(object):
                         if addon.is_installed)
                 restore_addons = \
                     set(data[ATTR_SLUG] for data in snapshot.addons)
-                remove_addons = actual_addons - restor_addons
+                remove_addons = actual_addons - restore_addons
 
                 _LOGGER.info("Full-Restore %s restore addons %s, remove %s",
                              snapshot.slug, restore_addons, remove_addons)
@@ -223,7 +223,7 @@ class SnapshotsManager(object):
                     else:
                         _LOGGER.warning("Can't remove addon %s", slug)
 
-                for slug in restor_addons:
+                for slug in restore_addons:
                     addon = self.addons.get(slug)
                     if addon:
                         tasks.append(snapshot.export_addon(addon))
