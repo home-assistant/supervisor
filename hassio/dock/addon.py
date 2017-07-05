@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 
 import docker
+import requests
 
 from . import DockerBase
 from .util import dockerfile_template
@@ -205,7 +206,7 @@ class DockerAddon(DockerBase):
             with tar_file.open("wb") as write_tar:
                 for chunk in image.stream():
                     write_tar.write(chunk)
-        except OSError() as err:
+        except (OSError, requests.exceptions.ReadTimeout) as err:
             _LOGGER.error("Can't write tar file %s -> %s", tar_file, err)
             return False
 

@@ -198,8 +198,10 @@ class SnapshotsManager(object):
                 await snapshot.restore_folders()
 
                 # start homeassistant restore
+                self.config.homeassistant_devices = \
+                    snapshot.homeassistant_devices
                 task_hass = self.loop.create_task(
-                    self.homeassistant.update(snapshot.homeassistant))
+                    self.homeassistant.update(snapshot.homeassistant_version))
 
                 # restore repositories
                 await self.addons.load_repositories(snapshot.repositories)
@@ -239,8 +241,6 @@ class SnapshotsManager(object):
                 _LOGGER.info("Full-Restore %s wait until homeassistant ready",
                              snapshot.slug)
                 await task_hass
-                self.config.homeassistant_devices = \
-                    snapshot.homeassistant_devices
                 await self.homeassistant.run()
 
             _LOGGER.info("Full-Restore %s done", snapshot.slug)
@@ -284,7 +284,7 @@ class SnapshotsManager(object):
                     self.config.homeassistant_devices = \
                         snapshot.homeassistant_devices
                     tasks.append(self.homeassistant.update(
-                        snapshot.homeassistant))
+                        snapshot.homeassistant_version))
 
                 for slug in addons:
                     addon = self.addons.get(slug)
