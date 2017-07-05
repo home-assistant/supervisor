@@ -117,7 +117,7 @@ ARCH_I386 = 'i386'
 REPOSITORY_CORE = 'core'
 REPOSITORY_LOCAL = 'local'
 
-FOLDER_CONFIG = 'config'
+FOLDER_HOMEASSISTANT = 'homeassistant'
 FOLDER_SHARE = 'share'
 FOLDER_ADDONS = 'addons/local'
 FOLDER_SSL = 'ssl'

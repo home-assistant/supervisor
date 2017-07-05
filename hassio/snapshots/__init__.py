@@ -7,7 +7,7 @@ import tarfile
 
 from .snapshot import Snapshot
 from .util import create_slug
-from ..const import FOLDER_CONFIG, SNAPSHOT_FULL, SNAPSHOT_PARTIAL
+from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -237,7 +237,7 @@ class SnapshotsManager(object):
             async with snapshot:
                 tasks = []
 
-                if FOLDER_CONFIG in folders:
+                if FOLDER_HOMEASSISTANT in folders:
                     await self.homeassistant.stop()
 
                 if folders:
