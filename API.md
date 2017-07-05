@@ -51,6 +51,13 @@ The addons from `addons` are only installed one.
     ],
     "addons_repositories": [
         "REPO_URL"
+    ],
+    "snapshots": [
+        {
+            "slug": "SLUG",
+            "data": "ISO",
+            "name": "Custom name"
+        }
     ]
 }
 ```
@@ -148,7 +155,65 @@ Return QR-Code
 }
 ```
 
+### Backup/Snapshot
+
+- POST `/snapshots/new/full`
+```json
+{
+    "name": "Optional"
+}
+```
+
+- POST `/snapshots/new/partial`
+```json
+{
+    "name": "Optional",
+    "addons": ["ADDON_SLUG"],
+    "folders": ["FOLDER_NAME"]
+}
+```
+
+- POST `/snapshots/reload`
+
+- GET `/snapshots/{slug}/info`
+```json
+{
+    "slug": "SNAPSHOT ID",
+    "type": "full|partial",
+    "name": "custom snapshot name / description",
+    "date": "ISO",
+    "size": "SIZE_IN_MB",
+    "homeassistant": {
+      "version": "INSTALLED_HASS_VERSION",
+      "devices": []
+    },
+    "addons": [
+        {
+            "slug": "ADDON_SLUG",
+            "name": "NAME",
+            "version": "INSTALLED_VERSION"
+        }
+    ],
+    "repositories": ["URL"],
+    "folders": ["NAME"]
+}
+```
+
+- POST `/snapshots/{slug}/remove`
+
+- POST `/snapshots/{slug}/restore/full`
+
+- POST `/snapshots/{slug}/restore/partial`
+```json
+{
+    "homeassistant": "bool",
+    "addons": ["ADDON_SLUG"],
+    "folders": ["FOLDER_NAME"]
+}
+```
+
 ### Host
+- POST `/host/reload`
 
 - POST `/host/shutdown`
 
@@ -230,6 +295,8 @@ Output the raw docker log
 ```
 
 ### REST API addons
+
+- POST `/addons/reload`
 
 - GET `/addons/{addon}/info`
 ```json

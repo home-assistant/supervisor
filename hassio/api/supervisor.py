@@ -10,7 +10,7 @@ from ..const import (
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
     ATTR_REPOSITORY, ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED,
     ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH,
-    ATTR_BUILD, ATTR_TIMEZONE)
+    ATTR_BUILD, ATTR_TIMEZONE, ATTR_DATE, ATTR_SNAPSHOTS)
 from ..tools import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,13 +30,14 @@ SCHEMA_VERSION = vol.Schema({
 class APISupervisor(object):
     """Handle rest api for supervisor functions."""
 
-    def __init__(self, config, loop, supervisor, addons, host_control,
-                 websession):
+    def __init__(self, config, loop, supervisor, snapshots, addons,
+                 host_control, websession):
         """Initialize supervisor rest api part."""
         self.config = config
         self.loop = loop
         self.supervisor = supervisor
         self.addons = addons
+        self.snapshots = snapshots
         self.host_control = host_control
         self.websession = websession
 
@@ -76,6 +77,18 @@ class APISupervisor(object):
 
         return data
 
+    def _snapshots_list(self):
+        """Return a list of available snapshots."""
+        data = []
+        for snapshot in self.snapshots.list_snapshots:
+            data.append({
+                ATTR_SLUG: snapshot.slug,
+                ATTR_NAME: snapshot.name,
+                ATTR_DATE: snapshot.date,
+            })
+
+        return data
+
     @api_process
     async def ping(self, request):
         """Return ok for signal that the api is ready."""
@@ -92,6 +105,7 @@ class APISupervisor(object):
             ATTR_TIMEZONE: self.config.timezone,
             ATTR_ADDONS: self._addons_list(only_installed=True),
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
+            ATTR_SNAPSHOTS: self._snapshots_list(),
         }
 
     @api_process
@@ -136,6 +150,7 @@ class APISupervisor(object):
         """Reload addons, config ect."""
         tasks = [
             self.addons.reload(),
+            self.snapshots.reload(),
             self.config.fetch_update_infos(self.websession),
             self.host_control.load()
         ]

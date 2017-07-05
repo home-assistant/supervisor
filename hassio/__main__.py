@@ -30,7 +30,7 @@ if __name__ == "__main__":
     _LOGGER.info("Run Hassio setup")
     loop.run_until_complete(hassio.setup())
 
-    _LOGGER.info("Start Hassio task")
+    _LOGGER.info("Start Hassio")
     loop.call_soon_threadsafe(loop.create_task, hassio.start())
     loop.call_soon_threadsafe(bootstrap.reg_signal, loop, hassio)
 

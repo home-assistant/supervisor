@@ -7,7 +7,8 @@ from ..const import (
     STARTUP_BEFORE, STARTUP_INITIALIZE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA,
     ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES,
     ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64,
-    ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED)
+    ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_USER, ATTR_STATE, ATTR_SYSTEM,
+    STATE_STARTED, STATE_STOPPED, ATTR_LOCATON, ATTR_REPOSITORY)
 
 
 MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
@@ -41,7 +42,7 @@ def check_network(data):
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_ADDON_CONFIG = vol.Schema(vol.All({
+SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Required(ATTR_SLUG): vol.Coerce(str),
@@ -68,8 +69,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema(vol.All({
         ])
     }, False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
-}, check_network), extra=vol.ALLOW_EXTRA)
-
+}, extra=vol.ALLOW_EXTRA)
+SCHEMA_ADDON = vol.Schema(vol.All(SCHEMA_ADDON_CONFIG, check_network))
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_REPOSITORY_CONFIG = vol.Schema({
@@ -77,6 +78,28 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
     vol.Optional(ATTR_URL): vol.Url(),
     vol.Optional(ATTR_MAINTAINER): vol.Coerce(str),
 }, extra=vol.ALLOW_EXTRA)
+
+
+SCHEMA_ADDON_USER = vol.Schema({
+    vol.Required(ATTR_VERSION): vol.Coerce(str),
+    vol.Required(ATTR_OPTIONS): dict,
+    vol.Optional(ATTR_BOOT):
+        vol.In([BOOT_AUTO, BOOT_MANUAL]),
+})
+
+
+SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_CONFIG.extend({
+    vol.Required(ATTR_LOCATON): vol.Coerce(str),
+    vol.Required(ATTR_REPOSITORY): vol.Coerce(str),
+})
+
+
+SCHEMA_ADDON_SNAPSHOT = vol.Schema({
+    vol.Required(ATTR_USER): SCHEMA_ADDON_USER,
+    vol.Required(ATTR_SYSTEM): SCHEMA_ADDON_SYSTEM,
+    vol.Required(ATTR_STATE): vol.In([STATE_STARTED, STATE_STOPPED]),
+    vol.Required(ATTR_VERSION): vol.Coerce(str),
+})
 
 
 def validate_options(raw_schema):

@@ -1,9 +1,11 @@
 """Util addons functions."""
 import hashlib
+import logging
 import re
 
-RE_SLUGIFY = re.compile(r'[^a-z0-9_]+')
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def get_hash_from_repository(name):
@@ -19,3 +21,15 @@ def extract_hash_from_path(path):
     if not RE_SHA1.match(repo_dir):
         return get_hash_from_repository(repo_dir)
     return repo_dir
+
+
+def check_installed(method):
+    """Wrap function with check if addon is installed."""
+    async def wrap_check(addon, *args, **kwargs):
+        """Return False if not installed or the function."""
+        if not addon.is_installed:
+            _LOGGER.error("Addon %s is not installed", addon.slug)
+            return False
+        return await method(addon, *args, **kwargs)
+
+    return wrap_check

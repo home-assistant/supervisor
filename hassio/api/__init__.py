@@ -10,6 +10,7 @@ from .host import APIHost
 from .network import APINetwork
 from .supervisor import APISupervisor
 from .security import APISecurity
+from .snapshots import APISnapshots
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,12 +44,12 @@ class RestAPI(object):
         self.webapp.router.add_get('/network/info', api_net.info)
         self.webapp.router.add_post('/network/options', api_net.options)
 
-    def register_supervisor(self, supervisor, addons, host_control,
+    def register_supervisor(self, supervisor, snapshots, addons, host_control,
                             websession):
         """Register supervisor function."""
         api_supervisor = APISupervisor(
-            self.config, self.loop, supervisor, addons, host_control,
-            websession)
+            self.config, self.loop, supervisor, snapshots, addons,
+            host_control, websession)
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
@@ -99,6 +100,25 @@ class RestAPI(object):
         self.webapp.router.add_post('/security/options', api_security.options)
         self.webapp.router.add_post('/security/totp', api_security.totp)
         self.webapp.router.add_post('/security/session', api_security.session)
+
+    def register_snapshots(self, snapshots):
+        """Register snapshots function."""
+        api_snapshots = APISnapshots(self.config, self.loop, snapshots)
+
+        self.webapp.router.add_post(
+            '/snapshots/new/full', api_snapshots.snapshot_full)
+        self.webapp.router.add_post(
+            '/snapshots/new/partial', api_snapshots.snapshot_partial)
+
+        self.webapp.router.add_get(
+            '/snapshots/{snapshot}/info', api_snapshots.info)
+        self.webapp.router.add_post(
+            '/snapshots/{snapshot}/remove', api_snapshots.remove)
+        self.webapp.router.add_post(
+            '/snapshots/{snapshot}/restore/full', api_snapshots.restore_full)
+        self.webapp.router.add_post(
+            '/snapshots/{snapshot}/restore/partial',
+            api_snapshots.restore_partial)
 
     def register_panel(self):
         """Register panel for homeassistant."""

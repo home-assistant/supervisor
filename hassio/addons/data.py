@@ -10,65 +10,72 @@ from voluptuous.humanize import humanize_error
 
 from .util import extract_hash_from_path
 from .validate import (
-    SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG, MAP_VOLUME)
+    SCHEMA_ADDON, SCHEMA_REPOSITORY_CONFIG, MAP_VOLUME)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
-    REPOSITORY_CORE, REPOSITORY_LOCAL)
-from ..config import Config
-from ..tools import read_json_file
+    REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
+from ..tools import read_json_file, write_json_file
 
 _LOGGER = logging.getLogger(__name__)
-
-SYSTEM = 'system'
-USER = 'user'
 
 RE_VOLUME = re.compile(MAP_VOLUME)
 
 
-class Data(Config):
+class Data(object):
     """Hold data for addons inside HassIO."""
 
     def __init__(self, config):
         """Initialize data holder."""
-        super().__init__(FILE_HASSIO_ADDONS)
+        self._file = FILE_HASSIO_ADDONS
+        self._data = {}
         self.config = config
-        self._system_data = self._data.get(SYSTEM, {})
-        self._user_data = self._data.get(USER, {})
-        self._cache_data = {}
-        self._repositories_data = {}
+        self._cache = {}
+        self._repositories = {}
+
+        # init or load data
+        if self._file.is_file():
+            try:
+                self._data = read_json_file(self._file)
+            except (OSError, json.JSONDecodeError):
+                _LOGGER.warning("Can't read %s", self._file)
+                self._data = {}
+
+        # init data
+        if not self._data:
+            self._data[ATTR_USER] = {}
+            self._data[ATTR_SYSTEM] = {}
 
     def save(self):
         """Store data to config file."""
-        self._data = {
-            USER: self._user_data,
-            SYSTEM: self._system_data,
-        }
-        super().save()
+        if not write_json_file(self._file, self._data):
+            _LOGGER.error("Can't store config in %s", self._file)
+            return False
+        return True
 
     @property
     def user(self):
         """Return local addon user data."""
-        return self._user_data
+        return self._data[ATTR_USER]
 
     @property
     def system(self):
         """Return local addon data."""
-        return self._system_data
+        return self._data[ATTR_SYSTEM]
 
     @property
     def cache(self):
         """Return addon data from cache/repositories."""
-        return self._cache_data
+        return self._cache
 
     @property
     def repositories(self):
         """Return addon data from repositories."""
-        return self._repositories_data
+        return self._repositories
 
     def reload(self):
         """Read data from addons repository."""
-        self._cache_data = {}
-        self._repositories_data = {}
+        self._cache = {}
+        self._repositories = {}
 
         # read core repository
         self._read_addons_folder(
@@ -100,7 +107,7 @@ class Data(Config):
                 read_json_file(repository_file)
             )
 
-        except OSError:
+        except (OSError, json.JSONDecodeError):
             _LOGGER.warning("Can't read repository information from %s",
                             repository_file)
             return
@@ -110,7 +117,7 @@ class Data(Config):
             return
 
         # process data
-        self._repositories_data[slug] = repository_info
+        self._repositories[slug] = repository_info
         self._read_addons_folder(path, slug)
 
     def _read_addons_folder(self, path, repository):
@@ -120,7 +127,7 @@ class Data(Config):
                 addon_config = read_json_file(addon)
 
                 # validate
-                addon_config = SCHEMA_ADDON_CONFIG(addon_config)
+                addon_config = SCHEMA_ADDON(addon_config)
 
                 # Generate slug
                 addon_slug = "{}_{}".format(
@@ -129,7 +136,7 @@ class Data(Config):
                 # store
                 addon_config[ATTR_REPOSITORY] = repository
                 addon_config[ATTR_LOCATON] = str(addon.parent)
-                self._cache_data[addon_slug] = addon_config
+                self._cache[addon_slug] = addon_config
 
             except OSError:
                 _LOGGER.warning("Can't read %s", addon)
@@ -148,11 +155,11 @@ class Data(Config):
             return
 
         # core repository
-        self._repositories_data[REPOSITORY_CORE] = \
+        self._repositories[REPOSITORY_CORE] = \
             builtin_data[REPOSITORY_CORE]
 
         # local repository
-        self._repositories_data[REPOSITORY_LOCAL] = \
+        self._repositories[REPOSITORY_LOCAL] = \
             builtin_data[REPOSITORY_LOCAL]
 
     def _merge_config(self):
@@ -162,16 +169,16 @@ class Data(Config):
         """
         have_change = False
 
-        for addon in set(self._system_data):
+        for addon in set(self.system):
             # detached
-            if addon not in self._cache_data:
+            if addon not in self._cache:
                 continue
 
-            cache = self._cache_data[addon]
-            data = self._system_data[addon]
+            cache = self._cache[addon]
+            data = self.system[addon]
             if data[ATTR_VERSION] == cache[ATTR_VERSION]:
                 if data != cache:
-                    self._system_data[addon] = copy.deepcopy(cache)
+                    self.system[addon] = copy.deepcopy(cache)
                     have_change = True
 
         if have_change:
