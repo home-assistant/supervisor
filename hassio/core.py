@@ -12,10 +12,11 @@ from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
     RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE,
-    STARTUP_INITIALIZE)
+    STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
+from .snapshots import SnapshotsManager
 from .tasks import (
     hassio_update, homeassistant_watchdog, homeassistant_setup,
     api_sessions_cleanup)
@@ -48,6 +49,10 @@ class HassIO(object):
         # init addon system
         self.addons = AddonManager(config, loop, self.dock)
 
+        # init snapshot system
+        self.snapshots = SnapshotsManager(
+            config, loop, self.scheduler, self.addons, self.homeassistant)
+
     async def setup(self):
         """Setup HassIO orchestration."""
         # supervisor
@@ -76,10 +81,12 @@ class HassIO(object):
         self.api.register_host(self.host_control)
         self.api.register_network(self.host_control)
         self.api.register_supervisor(
-            self.supervisor, self.addons, self.host_control, self.websession)
+            self.supervisor, self.snapshots, self.addons, self.host_control,
+            self.websession)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
         self.api.register_security()
+        self.api.register_snapshots(self.snapshots)
         self.api.register_panel()
 
         # schedule api session cleanup
@@ -106,6 +113,10 @@ class HassIO(object):
         self.scheduler.register_task(
             hassio_update(self.config, self.supervisor, self.websession),
             RUN_UPDATE_SUPERVISOR_TASKS)
+
+        # schedule snapshot update tasks
+        self.scheduler.register_task(
+            self.snapshots.reload, RUN_RELOAD_SNAPSHOTS_TASKS, now=True)
 
         # start addon mark as initialize
         await self.addons.auto_boot(STARTUP_INITIALIZE)
@@ -147,7 +158,7 @@ class HassIO(object):
     async def stop(self, exit_code=0):
         """Stop a running orchestration."""
         # don't process scheduler anymore
-        self.scheduler.stop()
+        self.scheduler.suspend = True
 
         # process stop tasks
         self.websession.close()

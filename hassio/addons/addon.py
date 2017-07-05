@@ -1,22 +1,29 @@
 """Init file for HassIO addons."""
 from copy import deepcopy
 import logging
+import json
 from pathlib import Path, PurePath
 import re
 import shutil
+import tarfile
+from tempfile import TemporaryDirectory
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .validate import validate_options, MAP_VOLUME
+from .validate import (
+    validate_options, SCHEMA_ADDON_USER, SCHEMA_ADDON_SYSTEM,
+    SCHEMA_ADDON_SNAPSHOT, MAP_VOLUME)
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
-    STATE_STARTED, STATE_STOPPED, STATE_NONE)
+    STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
+    ATTR_STATE)
+from .util import check_installed
 from ..dock.addon import DockerAddon
-from ..tools import write_json_file
+from ..tools import write_json_file, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,21 +33,32 @@ RE_VOLUME = re.compile(MAP_VOLUME)
 class Addon(object):
     """Hold data for addon inside HassIO."""
 
-    def __init__(self, config, loop, dock, data, addon_slug):
+    def __init__(self, config, loop, dock, data, slug):
         """Initialize data holder."""
+        self.loop = loop
         self.config = config
         self.data = data
-        self._id = addon_slug
-
-        if self._mesh is None:
-            raise RuntimeError("{} not a valid addon!".format(self._id))
+        self._id = slug
 
         self.addon_docker = DockerAddon(config, loop, dock, self)
 
     async def load(self):
         """Async initialize of object."""
         if self.is_installed:
+            self._validate_system_user()
             await self.addon_docker.attach()
+
+    def _validate_system_user(self):
+        """Validate internal data they read from file."""
+        for data, schema in ((self.data.system, SCHEMA_ADDON_SYSTEM),
+                             (self.data.user, SCHEMA_ADDON_USER)):
+            try:
+                data[self._id] = schema(data[self._id])
+            except vol.Invalid as err:
+                _LOGGER.warning("Can't validate addon load %s -> %s", self._id,
+                                humanize_error(data[self._id], err))
+            except KeyError:
+                pass
 
     @property
     def slug(self):
@@ -86,6 +104,12 @@ class Addon(object):
         """Update version of addon."""
         self.data.system[self._id] = deepcopy(self.data.cache[self._id])
         self.data.user[self._id][ATTR_VERSION] = version
+        self.data.save()
+
+    def _restore_data(self, user, system):
+        """Restore data to addon."""
+        self.data.user[self._id] = deepcopy(user)
+        self.data.system[self._id] = deepcopy(system)
         self.data.save()
 
     @property
@@ -281,12 +305,9 @@ class Addon(object):
         self._set_install(version)
         return True
 
+    @check_installed
     async def uninstall(self):
         """Remove a addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         if not await self.addon_docker.remove():
             return False
 
@@ -307,29 +328,21 @@ class Addon(object):
             return STATE_STARTED
         return STATE_STOPPED
 
+    @check_installed
     async def start(self):
         """Set options and start addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         return await self.addon_docker.run()
 
+    @check_installed
     async def stop(self):
         """Stop addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         return await self.addon_docker.stop()
 
+    @check_installed
     async def update(self, version=None):
         """Update addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         version = version or self.last_version
+
         if version == self.version_installed:
             _LOGGER.warning(
                 "Addon %s is already installed in %s", self._id, version)
@@ -341,18 +354,113 @@ class Addon(object):
         self._set_update(version)
         return True
 
+    @check_installed
     async def restart(self):
         """Restart addon."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         return await self.addon_docker.restart()
 
+    @check_installed
     async def logs(self):
         """Return addons log output."""
-        if not self.is_installed:
-            _LOGGER.error("Addon %s is not installed", self._id)
-            return False
-
         return await self.addon_docker.logs()
+
+    @check_installed
+    async def snapshot(self, tar_file):
+        """Snapshot a state of a addon."""
+        with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
+            # store local image
+            if self.need_build and not await \
+                    self.addon_docker.export_image(Path(temp, "image.tar")):
+                return False
+
+            data = {
+                ATTR_USER: self.data.user.get(self._id, {}),
+                ATTR_SYSTEM: self.data.system.get(self._id, {}),
+                ATTR_VERSION: self.version_installed,
+                ATTR_STATE: await self.state(),
+            }
+
+            # store local configs/state
+            if not write_json_file(Path(temp, "addon.json"), data):
+                _LOGGER.error("Can't write addon.json for %s", self._id)
+                return False
+
+            # write into tarfile
+            def _create_tar():
+                """Write tar inside loop."""
+                with tarfile.open(tar_file, "w:gz",
+                                  compresslevel=1) as snapshot:
+                    snapshot.add(temp, arcname=".")
+                    snapshot.add(self.path_data, arcname="data")
+
+            try:
+                await self.loop.run_in_executor(None, _create_tar)
+            except tarfile.TarError as err:
+                _LOGGER.error("Can't write tarfile %s -> %s", tar_file, err)
+                return False
+
+        return True
+
+    async def restore(self, tar_file):
+        """Restore a state of a addon."""
+        with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
+            # extract snapshot
+            def _extract_tar():
+                """Extract tar snapshot."""
+                with tarfile.open(tar_file, "r:gz") as snapshot:
+                    snapshot.extractall(path=Path(temp))
+
+            try:
+                await self.loop.run_in_executor(None, _extract_tar)
+            except tarfile.TarError as err:
+                _LOGGER.error("Can't read tarfile %s -> %s", tar_file, err)
+                return False
+
+            # read snapshot data
+            try:
+                data = read_json_file(Path(temp, "addon.json"))
+            except (OSError, json.JSONDecodeError) as err:
+                _LOGGER.error("Can't read addon.json -> %s", err)
+
+            # validate
+            try:
+                data = SCHEMA_ADDON_SNAPSHOT(data)
+            except vol.Invalid as err:
+                _LOGGER.error("Can't validate %s, snapshot data -> %s",
+                              self._id, humanize_error(data, err))
+                return False
+
+            # restore data / reload addon
+            self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM])
+
+            # check version / restore image
+            if data[ATTR_VERSION] != self.addon_docker.version:
+                image_file = Path(temp, "image.tar")
+                if image_file.is_file():
+                    if not await self.addon_docker.import_image(image_file):
+                        return False
+                else:
+                    if not await self.addon_docker.install(data[ATTR_VERSION]):
+                        return False
+                    await self.addon_docker.cleanup()
+            else:
+                await self.addon_docker.stop()
+
+            # restore data
+            def _restore_data():
+                """Restore data."""
+                if self.path_data.is_dir():
+                    shutil.rmtree(str(self.path_data), ignore_errors=True)
+                shutil.copytree(str(Path(temp, "data")), str(self.path_data))
+
+            try:
+                await self.loop.run_in_executor(None, _restore_data)
+            except shutil.Error as err:
+                _LOGGER.error("Can't restore origin data -> %s", err)
+                return False
+
+            # run addon
+            if data[ATTR_STATE] == STATE_STARTED:
+                return await self.start()
+
+        return True

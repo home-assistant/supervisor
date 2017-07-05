@@ -15,6 +15,7 @@ HASSIO_DATA = Path("/data")
 RUN_UPDATE_INFO_TASKS = 28800
 RUN_UPDATE_SUPERVISOR_TASKS = 29100
 RUN_RELOAD_ADDONS_TASKS = 28800
+RUN_RELOAD_SNAPSHOTS_TASKS = 72000
 RUN_WATCHDOG_HOMEASSISTANT = 15
 RUN_CLEANUP_API_SESSIONS = 900
 
@@ -41,6 +42,7 @@ JSON_MESSAGE = 'message'
 RESULT_ERROR = 'error'
 RESULT_OK = 'ok'
 
+ATTR_DATE = 'date'
 ATTR_ARCH = 'arch'
 ATTR_HOSTNAME = 'hostname'
 ATTR_TIMEZONE = 'timezone'
@@ -81,6 +83,13 @@ ATTR_ENVIRONMENT = 'environment'
 ATTR_HOST_NETWORK = 'host_network'
 ATTR_TMPFS = 'tmpfs'
 ATTR_PRIVILEGED = 'privileged'
+ATTR_USER = 'user'
+ATTR_SYSTEM = 'system'
+ATTR_SNAPSHOTS = 'snapshots'
+ATTR_HOMEASSISTANT = 'homeassistant'
+ATTR_FOLDERS = 'folders'
+ATTR_SIZE = 'size'
+ATTR_TYPE = 'type'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_BEFORE = 'before'
@@ -107,3 +116,11 @@ ARCH_I386 = 'i386'
 
 REPOSITORY_CORE = 'core'
 REPOSITORY_LOCAL = 'local'
+
+FOLDER_HOMEASSISTANT = 'homeassistant'
+FOLDER_SHARE = 'share'
+FOLDER_ADDONS = 'addons/local'
+FOLDER_SSL = 'ssl'
+
+SNAPSHOT_FULL = 'full'
+SNAPSHOT_PARTIAL = 'partial'

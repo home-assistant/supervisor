@@ -60,12 +60,13 @@ SCHEMA_CONFIG = vol.Schema({
 }, extra=vol.REMOVE_EXTRA)
 
 
-class Config(object):
-    """Hold all config data."""
+class CoreConfig(object):
+    """Hold all core config data."""
 
-    def __init__(self, config_file):
+    def __init__(self):
         """Initialize config object."""
-        self._file = config_file
+        self.arch = None
+        self._file = FILE_HASSIO_CONFIG
         self._data = {}
 
         # init or load data
@@ -76,30 +77,31 @@ class Config(object):
                 _LOGGER.warning("Can't read %s", self._file)
                 self._data = {}
 
+        # validate data
+        if not self._validate_config():
+            self._data = SCHEMA_CONFIG({})
+
+    def _validate_config(self):
+        """Validate config and return True or False."""
+        # validate data
+        try:
+            self._data = SCHEMA_CONFIG(self._data)
+        except vol.Invalid as ex:
+            _LOGGER.warning(
+                "Invalid config %s", humanize_error(self._data, ex))
+            return False
+
+        return True
+
     def save(self):
         """Store data to config file."""
+        if not self._validate_config():
+            return False
+
         if not write_json_file(self._file, self._data):
             _LOGGER.error("Can't store config in %s", self._file)
             return False
         return True
-
-
-class CoreConfig(Config):
-    """Hold all core config data."""
-
-    def __init__(self):
-        """Initialize config object."""
-        self.arch = None
-
-        super().__init__(FILE_HASSIO_CONFIG)
-
-        # validate data
-        try:
-            self._data = SCHEMA_CONFIG(self._data)
-            self.save()
-        except vol.Invalid as ex:
-            _LOGGER.warning(
-                "Invalid config %s", humanize_error(self._data, ex))
 
     async def fetch_update_infos(self, websession):
         """Read current versions from web."""

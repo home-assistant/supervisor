@@ -135,15 +135,6 @@ class DockerAddon(DockerBase):
 
         return super()._install(tag)
 
-    async def build(self, tag):
-        """Build a docker container."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute build while a task is in progress")
-            return False
-
-        async with self._lock:
-            return await self.loop.run_in_executor(None, self._build, tag)
-
     def _build(self, tag):
         """Build a docker container.
 
@@ -157,7 +148,7 @@ class DockerAddon(DockerBase):
                 shutil.copytree(str(source), str(build_dir))
             except shutil.Error as err:
                 _LOGGER.error("Can't copy %s to temporary build folder -> %s",
-                              source, build_dir)
+                              source, err)
                 return False
 
             # prepare Dockerfile
@@ -189,6 +180,65 @@ class DockerAddon(DockerBase):
         finally:
             shutil.rmtree(str(build_dir), ignore_errors=True)
 
+    async def export_image(self, path):
+        """Export current images into a tar file."""
+        if self._lock.locked():
+            _LOGGER.error("Can't excute export while a task is in progress")
+            return False
+
+        async with self._lock:
+            return await self.loop.run_in_executor(
+                None, self._export_image, path)
+
+    def _export_image(self, tar_file):
+        """Export current images into a tar file.
+
+        Need run inside executor.
+        """
+        try:
+            image = self.dock.api.get_image("{}:latest".format(self.image))
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't fetch image %s -> %s", self.image, err)
+            return False
+
+        try:
+            with tar_file.open("wb") as write_tar:
+                for chunk in image.stream():
+                    write_tar.write(chunk)
+        except OSError() as err:
+            _LOGGER.error("Can't write tar file %s -> %s", tar_file, err)
+            return False
+
+        return True
+
+    async def import_image(self, path):
+        """Import a tar file as image."""
+        if self._lock.locked():
+            _LOGGER.error("Can't excute import while a task is in progress")
+            return False
+
+        async with self._lock:
+            return await self.loop.run_in_executor(
+                None, self._import_image, path)
+
+    def _import_image(self, tar_file):
+        """Import a tar file as image.
+
+        Need run inside executor.
+        """
+        try:
+            with tar_file.open("rb") as read_tar:
+                self.dock.api.load_image(read_tar)
+
+            image = self.dock.images.get(self.image)
+        except (docker.errors.DockerException, OSError) as err:
+            _LOGGER.error("Can't import image %s -> %s", self.image, err)
+            return False
+
+        self.process_metadata(image.attrs, force=True)
+        self._cleanup()
+        return True
+
     def _restart(self):
         """Restart docker container.
 
@@ -200,8 +250,11 @@ class DockerAddon(DockerBase):
         except docker.errors.DockerException:
             return False
 
-        _LOGGER.info("Restart %s", self.image)
+        # for restart it need to run!
+        if container.status != 'running':
+            return False
 
+        _LOGGER.info("Restart %s", self.image)
         with suppress(docker.errors.DockerException):
             container.stop(timeout=15)
 
