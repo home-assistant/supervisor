@@ -228,7 +228,7 @@ class DockerAddon(DockerBase):
         """
         try:
             with tar_file.open("rb") as read_tar:
-                self.dock.api.import_image(src=read_tar)
+                self.dock.api.load_image(read_tar)
 
             image = self.dock.images.get(self.image)
         except (docker.errors.DockerException, OSError) as err:

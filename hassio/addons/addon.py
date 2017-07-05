@@ -435,9 +435,6 @@ class Addon(object):
 
             # check version / restore image
             if data[ATTR_VERSION] != self.addon_docker.version:
-                if not await self.addon_docker.remove():
-                    return False
-
                 image_file = Path(temp, "image.tar")
                 if image_file.is_file():
                     if not await self.addon_docker.import_image(image_file):
@@ -445,6 +442,7 @@ class Addon(object):
                 else:
                     if not await self.addon_docker.install(data[ATTR_VERSION]):
                         return False
+                    await self.addon_docker.cleanup()
             else:
                 await self.addon_docker.stop()
 
