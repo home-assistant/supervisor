@@ -406,7 +406,7 @@ class Addon(object):
             # extract snapshot
             def _extract_tar():
                 """Extract tar snapshot."""
-                with tarfile.open(tar_file, "r:xz") as snapshot:
+                with tarfile.open(tar_file, "r:gz") as snapshot:
                     snapshot.extractall(path=Path(temp))
 
             try:

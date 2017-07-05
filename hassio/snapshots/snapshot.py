@@ -243,7 +243,7 @@ class Snapshot(object):
                 remove_folder(origin_dir)
 
             try:
-                with tarfile.open(snapshot_tar, "r:xz") as tar_file:
+                with tarfile.open(snapshot_tar, "r:gz") as tar_file:
                     tar_file.extractall(path=origin_dir)
             except tarfile.TarError as err:
                 _LOGGER.warning("Can't restore folder %s -> %s", name, err)
