@@ -8,7 +8,7 @@ from .util import api_process, api_validate
 from ..snapshots.validate import ALL_FOLDERS
 from ..const import (
     ATTR_NAME, ATTR_SLUG, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS)
+    ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS, ATTR_TYPE)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +65,7 @@ class APISnapshots(object):
 
         return {
             ATTR_SLUG: snapshot.slug,
+            ATTR_TYPE: snapshot.sys_type,
             ATTR_NAME: snapshot.name,
             ATTR_DATE: snapshot.date,
             ATTR_SIZE: snapshot.size,

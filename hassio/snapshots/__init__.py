@@ -8,7 +8,8 @@ import tarfile
 from .snapshot import Snapshot
 from .util import create_slug
 from ..const import (
-    ATTR_FOLDERS, ATTR_HOMEASSISTANT, ATTR_ADDONS, FOLDER_CONFIG)
+    ATTR_FOLDERS, ATTR_HOMEASSISTANT, ATTR_ADDONS, FOLDER_CONFIG,
+    SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,14 +35,14 @@ class SnapshotsManager(object):
         """Return snapshot object."""
         return self.snapshots.get(slug)
 
-    def _create_snapshot(self, name):
+    def _create_snapshot(self, name, sys_type):
         """Initialize a new snapshot object from name."""
         date_str = str(datetime.utcnow())
         slug = create_slug(name, date_str)
         tar_file = Path(self.config.path_backup, "{}.tar".format(slug))
 
         snapshot = Snapshot(self.config, self.loop, tar_file)
-        snapshot.create(slug, name, date_str)
+        snapshot.create(slug, name, date_str, sys_type)
 
         return snapshot
 
@@ -75,7 +76,7 @@ class SnapshotsManager(object):
 
     async def do_snapshot_full(self, name=""):
         """Create a full snapshot."""
-        snapshot = self._create_snapshot(name)
+        snapshot = self._create_snapshot(name, SNAPSHOT_FULL)
 
         _LOGGER.info("Full-Snapshot %s start", slug)
         try:
@@ -113,7 +114,7 @@ class SnapshotsManager(object):
 
     async def do_snapshot_partial(self, name="", addons=[], folders=[]):
         """Create a partial snapshot."""
-        snapshot = self._create_snapshot(name)
+        snapshot = self._create_snapshot(name, SNAPSHOT_PARTIAL)
 
         _LOGGER.info("Partial-Snapshot %s start", slug)
         try:
@@ -152,6 +153,11 @@ class SnapshotsManager(object):
 
     async def do_restore_full(self, snapshot):
         """Restore a snapshot."""
+        if snapshot.sys_type != SNAPSHOT_FULL:
+            _LOGGER.error(
+                "Full-Restore %s is only a partial snapshot!", snapshot.slug)
+            return False
+
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
         try:
             self.sheduler.suspend = True

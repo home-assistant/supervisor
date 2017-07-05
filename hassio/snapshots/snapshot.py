@@ -13,7 +13,7 @@ from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
 from .util import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION)
+    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE)
 from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,6 +34,11 @@ class Snapshot(object):
     def slug(self):
         """Return snapshot slug."""
         return self._data.get(ATTR_SLUG)
+
+    @property
+    def sys_type(self):
+        """Return snapshot type."""
+        return self._data.get(ATTR_TYPE)
 
     @property
     def name(self):
@@ -82,12 +87,13 @@ class Snapshot(object):
             return 0
         return self.tar_file.stat().st_size / 1048576  # calc mbyte
 
-    def create(self, slug, name, date):
+    def create(self, slug, name, date, sys_type):
         """Initialize a new snapshot."""
         # init metadata
         self._data[ATTR_SLUG] = slug
         self._data[ATTR_NAME] = name
         self._data[ATTR_DATE] = date
+        self._data[ATTR_TYPE] = sys_type
 
         # init other constructs
         self._data[ATTR_ADDONS] = []
