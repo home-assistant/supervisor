@@ -231,6 +231,9 @@ class DockerBase(object):
             _LOGGER.warning("Can't remove image %s -> %s", self.image, err)
             return False
 
+        # clean metadata
+        self.version = None
+        self.arch = None
         return True
 
     async def update(self, tag):
