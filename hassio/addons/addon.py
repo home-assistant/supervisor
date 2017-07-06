@@ -192,7 +192,7 @@ class Addon(object):
 
         if not self.is_installed or \
                 ATTR_NETWORK not in self.data.user[self._id]:
-            self._mesh[ATTR_PORTS]
+            return self._mesh[ATTR_PORTS]
         return self.data.user[self._id][ATTR_NETWORK]
 
     @ports.setter
