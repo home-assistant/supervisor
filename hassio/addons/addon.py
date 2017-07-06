@@ -186,11 +186,15 @@ class Addon(object):
         """Set custom ports of addon."""
         if value is None:
             self.data.user[self._id].pop(ATTR_NETWORK, None)
-            return
+        else:
+            new_ports {}
+            for container_port, host_port in value.items():
+                if container_port in self._mesh.get(ATTR_PORTS, {}):
+                    new_ports[container_port] = host_port
 
-        for container_port, host_port in value.items():
-            if container_port in self._mesh.get(ATTR_PORTS, {}):
-                self.data.user[self._id][ATTR_NETWORK] = host_port
+            self.data.user[self._id][ATTR_NETWORK] = new_ports
+
+        self.data.save()
 
     @property
     def network_mode(self):
