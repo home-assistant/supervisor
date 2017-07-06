@@ -92,6 +92,16 @@ SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_CONFIG.extend({
 })
 
 
+SCHEMA_ADDON_FILE = vol.Schema({
+    vol.Optional(ATTR_USER, default={}): {
+        vol.Coerce(str): SCHEMA_ADDON_USER,
+    },
+    vol.Optional(ATTR_SYSTEM, default={}): {
+        vol.Coerce(str): SCHEMA_ADDON_SYSTEM,
+    }
+})
+
+
 SCHEMA_ADDON_SNAPSHOT = vol.Schema({
     vol.Required(ATTR_USER): SCHEMA_ADDON_USER,
     vol.Required(ATTR_SYSTEM): SCHEMA_ADDON_SYSTEM,

@@ -10,7 +10,8 @@ from voluptuous.humanize import humanize_error
 
 from .util import extract_hash_from_path
 from .validate import (
-    SCHEMA_ADDON_CONFIG, SCHEMA_REPOSITORY_CONFIG, MAP_VOLUME)
+    SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_FILE, SCHEMA_REPOSITORY_CONFIG,
+    MAP_VOLUME)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
@@ -40,10 +41,12 @@ class Data(object):
                 _LOGGER.warning("Can't read %s", self._file)
                 self._data = {}
 
-        # init data
-        if not self._data:
-            self._data[ATTR_USER] = {}
-            self._data[ATTR_SYSTEM] = {}
+        # validate
+        try:
+            self._data = SCHEMA_ADDON_FILE(self._data)
+        except vol.Invalid as ex:
+            _LOGGER.error("Can't parse addons.json -> %s",
+                          humanize_error(addon_config, ex))
 
     def save(self):
         """Store data to config file."""

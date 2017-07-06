@@ -12,8 +12,7 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import (
-    validate_options, SCHEMA_ADDON_USER, SCHEMA_ADDON_SYSTEM,
-    SCHEMA_ADDON_SNAPSHOT, MAP_VOLUME)
+    validate_options, SCHEMA_ADDON_SNAPSHOT, MAP_VOLUME)
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
@@ -45,20 +44,7 @@ class Addon(object):
     async def load(self):
         """Async initialize of object."""
         if self.is_installed:
-            self._validate_system_user()
             await self.addon_docker.attach()
-
-    def _validate_system_user(self):
-        """Validate internal data they read from file."""
-        for data, schema in ((self.data.system, SCHEMA_ADDON_SYSTEM),
-                             (self.data.user, SCHEMA_ADDON_USER)):
-            try:
-                data[self._id] = schema(data[self._id])
-            except vol.Invalid as err:
-                _LOGGER.warning("Can't validate addon load %s -> %s", self._id,
-                                humanize_error(data[self._id], err))
-            except KeyError:
-                pass
 
     @property
     def slug(self):
