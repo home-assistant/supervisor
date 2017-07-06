@@ -24,7 +24,7 @@ def addons_update(loop, addons):
         """Check if a update is available of a addon and update it."""
         tasks = []
         for addon in addons.list_addons:
-            if not addon.is_installed:
+            if not addon.is_installed or not addon.auto_update:
                 continue
 
             if addon.version_installed != addon.version:
