@@ -7,7 +7,7 @@ from ..const import (
     ATTR_VERSION, ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_TYPE, ATTR_DEVICES,
     FOLDER_SHARE, FOLDER_HOMEASSISTANT, FOLDER_ADDONS, FOLDER_SSL,
     SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
-from ..validate import hass_devices
+from ..validate import HASS_DEVICES
 
 ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
@@ -19,7 +19,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
     vol.Required(ATTR_DATE): vol.Coerce(str),
     vol.Required(ATTR_HOMEASSISTANT): vol.Schema({
         vol.Required(ATTR_VERSION): vol.Coerce(str),
-        vol.Optional(ATTR_DEVICES, default=[]): hass_devices,
+        vol.Optional(ATTR_DEVICES, default=[]): HASS_DEVICES,
     }),
     vol.Optional(ATTR_FOLDERS, default=[]): [vol.In(ALL_FOLDERS)],
     vol.Optional(ATTR_ADDONS, default=[]): [vol.Schema({

@@ -6,13 +6,13 @@ import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES
-from ..validate import hass_devices
+from ..validate import HASS_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
 
 
 SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_DEVICES): hass_devices,
+    vol.Optional(ATTR_DEVICES): HASS_DEVICES,
 })
 
 SCHEMA_VERSION = vol.Schema({
