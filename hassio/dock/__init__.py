@@ -13,12 +13,13 @@ _LOGGER = logging.getLogger(__name__)
 class DockerBase(object):
     """Docker hassio wrapper."""
 
-    def __init__(self, config, loop, dock, image=None):
+    def __init__(self, config, loop, dock, image=None, timeout=30):
         """Initialize docker base wrapper."""
         self.config = config
         self.loop = loop
         self.dock = dock
         self.image = image
+        self.timeout = timeout
         self.version = None
         self.arch = None
         self._lock = asyncio.Lock(loop=loop)
@@ -192,7 +193,7 @@ class DockerBase(object):
         if container.status == 'running':
             _LOGGER.info("Stop %s docker application", self.image)
             with suppress(docker.errors.DockerException):
-                container.stop(timeout=15)
+                container.stop(timeout=self.timeout)
 
         with suppress(docker.errors.DockerException):
             _LOGGER.info("Clean %s docker application", self.image)
@@ -312,7 +313,7 @@ class DockerBase(object):
         _LOGGER.info("Restart %s", self.image)
 
         try:
-            container.restart(timeout=30)
+            container.restart(timeout=self.timeout)
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't restart %s -> %s", self.image, err)
             return False

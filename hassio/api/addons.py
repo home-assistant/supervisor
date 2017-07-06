@@ -9,7 +9,9 @@ from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
-    ATTR_BUILD, BOOT_AUTO, BOOT_MANUAL)
+    ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK,
+    BOOT_AUTO, BOOT_MANUAL)
+from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,8 +19,11 @@ SCHEMA_VERSION = vol.Schema({
     vol.Optional(ATTR_VERSION): vol.Coerce(str),
 })
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL])
+    vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
+    vol.Optional(ATTR_NETWORK): vol.Any(None, DOCKER_PORTS),
+    vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
 })
 
 
@@ -51,6 +56,7 @@ class APIAddons(object):
             ATTR_NAME: addon.name,
             ATTR_DESCRIPTON: addon.description,
             ATTR_VERSION: addon.version_installed,
+            ATTR_AUTO_UPDATE: addon.auto_update,
             ATTR_REPOSITORY: addon.repository,
             ATTR_LAST_VERSION: addon.last_version,
             ATTR_STATE: await addon.state(),
@@ -59,6 +65,8 @@ class APIAddons(object):
             ATTR_URL: addon.url,
             ATTR_DETACHED: addon.is_detached,
             ATTR_BUILD: addon.need_build,
+            ATTR_NETWORK: addon.ports,
+            ATTR_HOST_NETWORK: addon.network_mode == 'host',
         }
 
     @api_process
@@ -76,6 +84,10 @@ class APIAddons(object):
             addon.options = body[ATTR_OPTIONS]
         if ATTR_BOOT in body:
             addon.boot = body[ATTR_BOOT]
+        if ATTR_AUTO_UPDATE in body:
+            addon.auto_update = body[ATTR_AUTO_UPDATE]
+        if ATTR_NETWORK in body:
+            addon.ports = body[ATTR_NETWORK]
 
         return True
 

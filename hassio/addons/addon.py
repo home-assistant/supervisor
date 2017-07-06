@@ -12,15 +12,14 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import (
-    validate_options, SCHEMA_ADDON_USER, SCHEMA_ADDON_SYSTEM,
-    SCHEMA_ADDON_SNAPSHOT, MAP_VOLUME)
+    validate_options, SCHEMA_ADDON_SNAPSHOT, MAP_VOLUME)
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
-    ATTR_STATE)
+    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -45,20 +44,7 @@ class Addon(object):
     async def load(self):
         """Async initialize of object."""
         if self.is_installed:
-            self._validate_system_user()
             await self.addon_docker.attach()
-
-    def _validate_system_user(self):
-        """Validate internal data they read from file."""
-        for data, schema in ((self.data.system, SCHEMA_ADDON_SYSTEM),
-                             (self.data.user, SCHEMA_ADDON_USER)):
-            try:
-                data[self._id] = schema(data[self._id])
-            except vol.Invalid as err:
-                _LOGGER.warning("Can't validate addon load %s -> %s", self._id,
-                                humanize_error(data[self._id], err))
-            except KeyError:
-                pass
 
     @property
     def slug(self):
@@ -142,9 +128,25 @@ class Addon(object):
         self.data.save()
 
     @property
+    def auto_update(self):
+        """Return if auto update is enable."""
+        return self.data.user[self._id][ATTR_AUTO_UPDATE]
+
+    @auto_update.setter
+    def auto_update(self, value):
+        """Set auto update."""
+        self.data.user[self._id][ATTR_AUTO_UPDATE] = value
+        self.data.save()
+
+    @property
     def name(self):
         """Return name of addon."""
         return self._mesh[ATTR_NAME]
+
+    @property
+    def timeout(self):
+        """Return timeout of addon for docker stop."""
+        return self._mesh[ATTR_TIMEOUT]
 
     @property
     def description(self):
@@ -171,7 +173,28 @@ class Addon(object):
     @property
     def ports(self):
         """Return ports of addon."""
-        return self._mesh.get(ATTR_PORTS)
+        if self.network_mode != 'bridge' or ATTR_PORTS not in self._mesh:
+            return
+
+        if not self.is_installed or \
+                ATTR_NETWORK not in self.data.user[self._id]:
+            return self._mesh[ATTR_PORTS]
+        return self.data.user[self._id][ATTR_NETWORK]
+
+    @ports.setter
+    def ports(self, value):
+        """Set custom ports of addon."""
+        if value is None:
+            self.data.user[self._id].pop(ATTR_NETWORK, None)
+        else:
+            new_ports = {}
+            for container_port, host_port in value.items():
+                if container_port in self._mesh.get(ATTR_PORTS, {}):
+                    new_ports[container_port] = host_port
+
+            self.data.user[self._id][ATTR_NETWORK] = new_ports
+
+        self.data.save()
 
     @property
     def network_mode(self):

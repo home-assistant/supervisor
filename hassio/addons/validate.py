@@ -8,7 +8,9 @@ from ..const import (
     ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES,
     ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64,
     ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_USER, ATTR_STATE, ATTR_SYSTEM,
-    STATE_STARTED, STATE_STOPPED, ATTR_LOCATON, ATTR_REPOSITORY)
+    STATE_STARTED, STATE_STOPPED, ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT,
+    ATTR_NETWORK, ATTR_AUTO_UPDATE)
+from ..validate import NETWORK_PORT, DOCKER_PORTS
 
 
 MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
@@ -19,8 +21,9 @@ V_FLOAT = 'float'
 V_BOOL = 'bool'
 V_EMAIL = 'email'
 V_URL = 'url'
+V_PORT = 'port'
 
-ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL, V_EMAIL, V_URL])
+ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL, V_EMAIL, V_URL, V_PORT])
 
 ARCH_ALL = [
     ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386
@@ -29,16 +32,6 @@ ARCH_ALL = [
 PRIVILEGE_ALL = [
     "NET_ADMIN"
 ]
-
-
-def check_network(data):
-    """Validate network settings."""
-    host_network = data[ATTR_HOST_NETWORK]
-
-    if ATTR_PORTS in data and host_network:
-        raise vol.Invalid("Hostnetwork & ports are not allow!")
-
-    return data
 
 
 # pylint: disable=no-value-for-parameter
@@ -54,7 +47,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
                 STARTUP_INITIALIZE]),
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
-    vol.Optional(ATTR_PORTS): dict,
+    vol.Optional(ATTR_PORTS): DOCKER_PORTS,
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
     vol.Optional(ATTR_TMPFS):
@@ -69,8 +62,10 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         ])
     }, False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
+    vol.Optional(ATTR_TIMEOUT, default=10):
+        vol.All(vol.Coerce(int), vol.Range(min=10, max=120))
 }, extra=vol.ALLOW_EXTRA)
-SCHEMA_ADDON = vol.Schema(vol.All(SCHEMA_ADDON_CONFIG, check_network))
+
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_REPOSITORY_CONFIG = vol.Schema({
@@ -80,17 +75,30 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
 }, extra=vol.ALLOW_EXTRA)
 
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Required(ATTR_OPTIONS): dict,
+    vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
+    vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
 })
 
 
 SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_CONFIG.extend({
     vol.Required(ATTR_LOCATON): vol.Coerce(str),
     vol.Required(ATTR_REPOSITORY): vol.Coerce(str),
+})
+
+
+SCHEMA_ADDON_FILE = vol.Schema({
+    vol.Optional(ATTR_USER, default={}): {
+        vol.Coerce(str): SCHEMA_ADDON_USER,
+    },
+    vol.Optional(ATTR_SYSTEM, default={}): {
+        vol.Coerce(str): SCHEMA_ADDON_SYSTEM,
+    }
 })
 
 
@@ -150,6 +158,8 @@ def _single_validate(typ, value, key):
             return vol.Email()(value)
         elif typ == V_URL:
             return vol.Url()(value)
+        elif typ == V_PORT:
+            return NETWORK_PORT(value)
 
         raise vol.Invalid("Fatal error for {} type {}.".format(key, typ))
     except ValueError:
