@@ -12,14 +12,14 @@ from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
     RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE,
-    STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS)
+    STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS, RUN_UPDATE_ADDONS_TASKS)
 from .scheduler import Scheduler
 from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
 from .snapshots import SnapshotsManager
 from .tasks import (
     hassio_update, homeassistant_watchdog, homeassistant_setup,
-    api_sessions_cleanup)
+    api_sessions_cleanup, addons_update)
 from .tools import get_local_ip, fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -108,6 +108,8 @@ class HassIO(object):
         # schedule addon update task
         self.scheduler.register_task(
             self.addons.reload, RUN_RELOAD_ADDONS_TASKS, now=True)
+        self.scheduler.register_task(
+            addons_update(self.loop, self.addons), RUN_UPDATE_ADDONS_TASKS)
 
         # schedule self update task
         self.scheduler.register_task(

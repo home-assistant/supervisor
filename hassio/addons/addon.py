@@ -20,7 +20,7 @@ from ..const import (
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
-    ATTR_STATE)
+    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -142,9 +142,25 @@ class Addon(object):
         self.data.save()
 
     @property
+    def auto_update(self):
+        """Return if auto update is enable."""
+        return self.data.user[self._id][ATTR_AUTO_UPDATE]
+
+    @auto_update.setter
+    def auto_update(self, value):
+        """Set auto update."""
+        self.data.user[self._id][ATTR_AUTO_UPDATE] = value
+        self.data.save()
+
+    @property
     def name(self):
         """Return name of addon."""
         return self._mesh[ATTR_NAME]
+
+    @property
+    def timeout(self):
+        """Return timeout of addon for docker stop."""
+        return self._mesh[ATTR_TIMEOUT]
 
     @property
     def description(self):
@@ -171,7 +187,23 @@ class Addon(object):
     @property
     def ports(self):
         """Return ports of addon."""
-        return self._mesh.get(ATTR_PORTS)
+        if self.network_mode != 'bridge' or ATTR_PORTS not in self._mesh:
+            return
+
+        if not self.is_installed:
+            self._mesh[ATTR_PORTS]
+
+        return {
+            **self._mesh[ATTR_PORTS],
+            **self.data.user[self._id][ATTR_NETWORK],
+        }
+
+    @ports.setter
+    def ports(self, value):
+        """Set custom ports of addon."""
+        for container_port, host_port in value.items():
+            if container_port in self._mesh.get(ATTR_PORTS, {}):
+                self.data.user[self._id][ATTR_NETWORK] = host_port
 
     @property
     def network_mode(self):

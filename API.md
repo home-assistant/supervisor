@@ -303,6 +303,7 @@ Output the raw docker log
 {
     "name": "xy bla",
     "description": "description",
+    "auto_update": "bool",
     "url": "null|url of addon",
     "detached": "bool",
     "repository": "12345678|null",
@@ -312,6 +313,8 @@ Output the raw docker log
     "boot": "auto|manual",
     "build": "bool",
     "options": "{}",
+    "network": "{}|null",
+    "host_network": "bool"
 }
 ```
 
@@ -319,6 +322,10 @@ Output the raw docker log
 ```json
 {
     "boot": "auto|manual",
+    "auto_update": "bool",
+    "network": {
+      "CONTAINER": "port|[ip, port]"
+    },
     "options": {},
 }
 ```

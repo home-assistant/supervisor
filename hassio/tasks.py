@@ -18,6 +18,25 @@ def api_sessions_cleanup(config):
     return _api_sessions_cleanup
 
 
+def addons_update(loop, addons):
+    """Create scheduler task for auto update addons."""
+    async def _addons_update():
+        """Check if a update is available of a addon and update it."""
+        tasks = []
+        for addon in addons.list_addons:
+            if not addon.is_installed:
+                continue
+
+            if addon.version_installed != addon.version:
+                tasks.append(addon.update())
+
+        if tasks:
+            _LOGGER.info("Addon auto update process %d tasks", len(tasks))
+            await asyncio.wait(tasks, loop=loop)
+
+    return _addons_update
+
+
 def hassio_update(config, supervisor, websession):
     """Create scheduler task for update of supervisor hassio."""
     async def _hassio_update():

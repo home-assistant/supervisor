@@ -21,7 +21,7 @@ class DockerAddon(DockerBase):
     def __init__(self, config, loop, dock, addon):
         """Initialize docker homeassistant wrapper."""
         super().__init__(
-            config, loop, dock, image=addon.image)
+            config, loop, dock, image=addon.image, timeout=addon.timeout)
         self.addon = addon
 
     @property
@@ -249,17 +249,5 @@ class DockerAddon(DockerBase):
         Addons prepare some thing on start and that is normaly not repeatable.
         Need run inside executor.
         """
-        try:
-            container = self.dock.containers.get(self.name)
-        except docker.errors.DockerException:
-            return False
-
-        # for restart it need to run!
-        if container.status != 'running':
-            return False
-
-        _LOGGER.info("Restart %s", self.image)
-        with suppress(docker.errors.DockerException):
-            container.stop(timeout=15)
-
+        self._stop()
         return self._run()

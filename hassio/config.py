@@ -11,6 +11,7 @@ from voluptuous.humanize import humanize_error
 from .const import FILE_HASSIO_CONFIG, HASSIO_DATA
 from .tools import (
     fetch_last_versions, write_json_file, read_json_file, validate_timezone)
+from .validate import HOMEASSISTANT_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(API_ENDPOINT): vol.Coerce(str),
     vol.Optional(TIMEZONE, default='UTC'): validate_timezone,
     vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
-    vol.Optional(HOMEASSISTANT_DEVICES, default=[]): [vol.Coerce(str)],
+    vol.Optional(HOMEASSISTANT_DEVICES, default=[]): HOMEASSISTANT_DEVICES,
     vol.Optional(HASSIO_LAST): vol.Coerce(str),
     vol.Optional(ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
     vol.Optional(SECURITY_INITIALIZE, default=False): vol.Boolean(),

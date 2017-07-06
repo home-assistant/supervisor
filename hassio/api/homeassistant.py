@@ -6,12 +6,13 @@ import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES
+from ..validate import HOMEASSISTANT_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
 
 
 SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_DEVICES): [vol.Match(r"^[^/]*$")],
+    vol.Optional(ATTR_DEVICES): HOMEASSISTANT_DEVICES,
 })
 
 SCHEMA_VERSION = vol.Schema({
