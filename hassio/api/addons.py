@@ -11,7 +11,7 @@ from ..const import (
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
     ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK,
     BOOT_AUTO, BOOT_MANUAL)
-from ..validate import DOCKER_PORTS
+from ..validate import docker_ports
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ SCHEMA_VERSION = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
-    vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
+    vol.Optional(ATTR_NETWORK): docker_ports,
     vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
 })
 

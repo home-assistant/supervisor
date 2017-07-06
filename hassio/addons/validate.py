@@ -10,7 +10,7 @@ from ..const import (
     ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_USER, ATTR_STATE, ATTR_SYSTEM,
     STATE_STARTED, STATE_STOPPED, ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT,
     ATTR_NETWORK, ATTR_AUTO_UPDATE)
-from ..validate import NETWORK_PORT, DOCKER_PORTS
+from ..validate import network_port, docker_ports
 
 
 MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
@@ -47,7 +47,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
                 STARTUP_INITIALIZE]),
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
-    vol.Optional(ATTR_PORTS): DOCKER_PORTS,
+    vol.Optional(ATTR_PORTS): docker_ports,
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
     vol.Optional(ATTR_TMPFS):
@@ -82,7 +82,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
-    vol.Optional(ATTR_NETWORK, default={}): DOCKER_PORTS,
+    vol.Optional(ATTR_NETWORK, default={}): docker_ports,
 })
 
 
@@ -149,7 +149,7 @@ def _single_validate(typ, value, key):
         elif typ == V_URL:
             return vol.Url()(value)
         elif typ == V_PORT:
-            return NETWORK_PORT(value)
+            return network_port(value)
 
         raise vol.Invalid("Fatal error for {} type {}.".format(key, typ))
     except ValueError:
