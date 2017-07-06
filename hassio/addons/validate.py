@@ -82,7 +82,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
-    vol.Optional(ATTR_NETWORK, default={}): DOCKER_PORTS,
+    vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
 })
 
 

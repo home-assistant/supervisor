@@ -190,17 +190,18 @@ class Addon(object):
         if self.network_mode != 'bridge' or ATTR_PORTS not in self._mesh:
             return
 
-        if not self.is_installed:
+        if not self.is_installed or \
+                ATTR_NETWORK not in self.data.user[self._id]:
             self._mesh[ATTR_PORTS]
-
-        return {
-            **self._mesh[ATTR_PORTS],
-            **self.data.user[self._id][ATTR_NETWORK],
-        }
+        return self.data.user[self._id][ATTR_NETWORK]
 
     @ports.setter
     def ports(self, value):
         """Set custom ports of addon."""
+        if value is None:
+            self.data.user[self._id].pop(ATTR_NETWORK, None)
+            return
+
         for container_port, host_port in value.items():
             if container_port in self._mesh.get(ATTR_PORTS, {}):
                 self.data.user[self._id][ATTR_NETWORK] = host_port

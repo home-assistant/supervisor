@@ -330,6 +330,8 @@ Output the raw docker log
 }
 ```
 
+For reset custom network settings, set it `null`.
+
 - POST `/addons/{addon}/start`
 
 - POST `/addons/{addon}/stop`

@@ -22,7 +22,7 @@ SCHEMA_VERSION = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
-    vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
+    vol.Optional(ATTR_NETWORK): vol.Any(None, DOCKER_PORTS),
     vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
 })
 
