@@ -50,6 +50,14 @@ class Data(object):
 
     def save(self):
         """Store data to config file."""
+        # validate
+        try:
+            self._data = SCHEMA_ADDON_FILE(self._data)
+        except vol.Invalid as ex:
+            _LOGGER.error("Can't parse addons data -> %s",
+                          humanize_error(self._data, ex))
+            return False
+
         if not write_json_file(self._file, self._data):
             _LOGGER.error("Can't store config in %s", self._file)
             return False

@@ -187,7 +187,7 @@ class Addon(object):
         if value is None:
             self.data.user[self._id].pop(ATTR_NETWORK, None)
         else:
-            new_ports {}
+            new_ports = {}
             for container_port, host_port in value.items():
                 if container_port in self._mesh.get(ATTR_PORTS, {}):
                     new_ports[container_port] = host_port
