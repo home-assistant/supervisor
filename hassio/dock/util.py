@@ -4,7 +4,7 @@ import re
 from ..const import ARCH_AARCH64, ARCH_ARMHF, ARCH_I386, ARCH_AMD64
 
 
-RESIN_BASE_IMAGE = {
+HASSIO_BASE_IMAGE = {
     ARCH_ARMHF: "homeassistant/armhf-base:latest",
     ARCH_AARCH64: "homeassistant/aarch64-base:latest",
     ARCH_I386: "homeassistant/i386-base:latest",
@@ -17,12 +17,14 @@ TMPL_IMAGE = re.compile(r"%%BASE_IMAGE%%")
 def dockerfile_template(dockerfile, arch, version, meta_type):
     """Prepare a Hass.IO dockerfile."""
     buff = []
-    resin_image = RESIN_BASE_IMAGE[arch]
+    hassio_image = HASSIO_BASE_IMAGE[arch]
+    custom_image = re.compile(r"^#{}:FROM".format(arch))
 
     # read docker
     with dockerfile.open('r') as dock_input:
         for line in dock_input:
-            line = TMPL_IMAGE.sub(resin_image, line)
+            line = TMPL_IMAGE.sub(hassio_image, line)
+            line = custom_image.sub("FROM", line)
             buff.append(line)
 
     # add metadata
