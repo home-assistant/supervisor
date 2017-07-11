@@ -13,13 +13,12 @@ from .const import (
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
     RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE,
     STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS, RUN_UPDATE_ADDONS_TASKS)
+from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
-from .dock.homeassistant import DockerHomeAssistant
 from .dock.supervisor import DockerSupervisor
 from .snapshots import SnapshotsManager
 from .tasks import (
-    hassio_update, homeassistant_watchdog, homeassistant_setup,
-    api_sessions_cleanup, addons_update)
+    hassio_update, homeassistant_watchdog, api_sessions_cleanup, addons_update)
 from .tools import get_local_ip, fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,7 +40,9 @@ class HassIO(object):
 
         # init basic docker container
         self.supervisor = DockerSupervisor(config, loop, self.dock, self.stop)
-        self.homeassistant = DockerHomeAssistant(config, loop, self.dock)
+
+        # init homeassistant
+        self.homeassistant = HomeAssistant(config, loop, self.dock)
 
         # init HostControl
         self.host_control = HostControl(loop)
@@ -94,13 +95,8 @@ class HassIO(object):
             api_sessions_cleanup(self.config), RUN_CLEANUP_API_SESSIONS,
             now=True)
 
-        # first start of supervisor?
-        if not await self.homeassistant.exists():
-            _LOGGER.info("No HomeAssistant docker found.")
-            await homeassistant_setup(
-                self.config, self.loop, self.homeassistant, self.websession)
-        else:
-            await self.homeassistant.attach()
+        # Load homeassistant
+        await self.homeassistant.prepare():
 
         # Load addons
         await self.addons.prepare()
@@ -131,6 +127,10 @@ class HassIO(object):
             [hassio_update(self.config, self.supervisor, self.websession)()],
             loop=self.loop
         )
+
+        # If laningpage / run upgrade in background
+        if self.homeassistant.version == 'landingpage':
+            self.loop.create_task(self.homeassistant.install())
 
         # start api
         await self.api.start()

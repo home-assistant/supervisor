@@ -66,20 +66,3 @@ def homeassistant_watchdog(loop, homeassistant):
         loop.create_task(homeassistant.run())
 
     return _homeassistant_watchdog
-
-
-async def homeassistant_setup(config, loop, homeassistant, websession):
-    """Install a homeassistant docker container."""
-    while True:
-        # read homeassistant tag and install it
-        if not config.last_homeassistant:
-            await config.fetch_update_infos(websession)
-
-        tag = config.last_homeassistant
-        if tag and await homeassistant.install(tag):
-            break
-        _LOGGER.warning("Error on setup HomeAssistant. Retry in 60.")
-        await asyncio.sleep(60, loop=loop)
-
-    # store version
-    _LOGGER.info("HomeAssistant docker now installed.")

@@ -269,7 +269,9 @@ Optional:
 {
     "version": "INSTALL_VERSION",
     "last_version": "LAST_VERSION",
-    "devices": []
+    "devices": [""],
+    "image": "str",
+    "custom": "bool -> if custom image"
 }
 ```
 
@@ -291,8 +293,12 @@ Output the raw docker log
 ```json
 {
     "devices": [],
+    "image": "Optional|null",
+    "last_version": "Optional for custom image|null"
 }
 ```
+
+Image with `null` and last_version with `null` reset this options.
 
 ### REST API addons
 

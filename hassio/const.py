@@ -95,6 +95,7 @@ ATTR_SIZE = 'size'
 ATTR_TYPE = 'type'
 ATTR_TIMEOUT = 'timeout'
 ATTR_AUTO_UPDATE = 'auto_update'
+ATTR_CUSTOM = 'custom'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_BEFORE = 'before'

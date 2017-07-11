@@ -1,7 +1,7 @@
 """Validate functions."""
 import voluptuous as vol
 
-from .const import ATTR_DEVICES, ATTR_IMAGE
+from .const import ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION
 
 
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
@@ -37,5 +37,6 @@ DOCKER_PORTS = vol.Schema({
 
 SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Optional(ATTR_DEVICES, default=[]): HASS_DEVICES,
-    vol.Optional(ATTR_IMAGE): vol.Coerce(str)
+    vol.inclusive(ATTR_IMAGE, 'custom_hass'): vol.Coerce(str),
+    vol.inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
 })
