@@ -73,9 +73,12 @@ class HomeAssistant(JsonConfig):
         if image is None and version is None:
             self._data.pop(ATTR_IMAGE, None)
             self._data.pop(ATTR_VERSION, None)
+
+            self.docker.image = self.image
         else:
             if image:
                 self._data[ATTR_IMAGE] = image
+                self.docker.image = image
             if version:
                 self._data[ATTR_VERSION] = version
         self.save()
