@@ -111,6 +111,7 @@ class HomeAssistant(JsonConfig):
 
         # store version
         _LOGGER.info("HomeAssistant docker now installed")
+        await self.docker.cleanup()
 
     def update(self, version=None):
         """Update HomeAssistant version.
