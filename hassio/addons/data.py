@@ -15,7 +15,7 @@ from .validate import (
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
-from ..tools import JsonConfig
+from ..tools import JsonConfig, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 

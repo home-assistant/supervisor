@@ -11,7 +11,6 @@ from ..const import (
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
     ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK,
     BOOT_AUTO, BOOT_MANUAL)
-from ..tools import read_json_file
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)

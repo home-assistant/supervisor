@@ -101,13 +101,13 @@ class HomeAssistant(JsonConfig):
         while True:
             # read homeassistant tag and install it
             if not self.last_version:
-                await self.config.fetch_update_infos(websession)
+                await self.config.fetch_update_infos(self.websession)
 
             tag = self.last_version
             if tag and await self.docker.install(tag):
                 break
             _LOGGER.warning("Error on install HomeAssistant. Retry in 60sec")
-            await asyncio.sleep(60, loop=loop)
+            await asyncio.sleep(60, loop=self.loop)
 
         # store version
         _LOGGER.info("HomeAssistant docker now installed")
@@ -147,3 +147,10 @@ class HomeAssistant(JsonConfig):
         Return a coroutine.
         """
         return self.docker.logs()
+
+    def is_running(self):
+        """Return True if docker container is running.
+
+        Return a coroutine.
+        """
+        return self.docker.is_running()

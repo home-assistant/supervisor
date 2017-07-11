@@ -37,6 +37,6 @@ DOCKER_PORTS = vol.Schema({
 
 SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Optional(ATTR_DEVICES, default=[]): HASS_DEVICES,
-    vol.inclusive(ATTR_IMAGE, 'custom_hass'): vol.Coerce(str),
-    vol.inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
+    vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Coerce(str),
+    vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
 })

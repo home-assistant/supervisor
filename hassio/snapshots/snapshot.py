@@ -128,7 +128,7 @@ class Snapshot(object):
         self.homeassistant_devices = homeassistant.devices
 
         # custom image
-        if self.homeassistant.is_custom_image:
+        if homeassistant.is_custom_image:
             self.homeassistant_image = homeassistant.image
 
     def restore_homeassistant(self, homeassistant):
