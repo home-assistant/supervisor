@@ -13,9 +13,10 @@ HASS_DOCKER_NAME = 'homeassistant'
 class DockerHomeAssistant(DockerBase):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, dock):
+    def __init__(self, config, loop, dock, data):
         """Initialize docker homeassistant wrapper."""
-        super().__init__(config, loop, dock, image=config.homeassistant_image)
+        super().__init__(config, loop, dock, image=data.image)
+        self.data = data
 
     @property
     def name(self):
@@ -25,11 +26,11 @@ class DockerHomeAssistant(DockerBase):
     @property
     def devices(self):
         """Create list of special device to map into docker."""
-        if not self.config.homeassistant_devices:
+        if not self.data.devices:
             return
 
         devices = []
-        for device in self.config.homeassistant_devices:
+        for device in self.data.devices:
             devices.append("/dev/{0}:/dev/{0}:rwm".format(device))
 
         return devices

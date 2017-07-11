@@ -1,6 +1,9 @@
 """Validate functions."""
 import voluptuous as vol
 
+from .const import ATTR_DEVICES, ATTR_IMAGE
+
+
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 HASS_DEVICES = [vol.Match(r"^[^/]*$")]
 
@@ -29,4 +32,10 @@ def convert_to_docker_ports(data):
 DOCKER_PORTS = vol.Schema({
     vol.All(vol.Coerce(str), vol.Match(r"^\d+(?:/tcp|/udp)?$")):
         convert_to_docker_ports,
+})
+
+
+SCHEMA_HASS_CONFIG = vol.Schema({
+    vol.Optional(ATTR_DEVICES, default=[]): HASS_DEVICES,
+    vol.Optional(ATTR_IMAGE): vol.Coerce(str)
 })

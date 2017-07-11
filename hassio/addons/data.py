@@ -15,53 +15,21 @@ from .validate import (
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
-from ..tools import read_json_file, write_json_file
+from ..tools import JsonConfig
 
 _LOGGER = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(MAP_VOLUME)
 
 
-class Data(object):
+class Data(JsonConfig):
     """Hold data for addons inside HassIO."""
 
     def __init__(self, config):
         """Initialize data holder."""
-        self._file = FILE_HASSIO_ADDONS
-        self._data = {}
+        super().__init__(FILE_HASSIO_ADDONS, SCHEMA_ADDON_FILE)
         self.config = config
-        self._cache = {}
         self._repositories = {}
-
-        # init or load data
-        if self._file.is_file():
-            try:
-                self._data = read_json_file(self._file)
-            except (OSError, json.JSONDecodeError):
-                _LOGGER.warning("Can't read %s", self._file)
-                self._data = {}
-
-        # validate
-        try:
-            self._data = SCHEMA_ADDON_FILE(self._data)
-        except vol.Invalid as ex:
-            _LOGGER.error("Can't parse addons.json -> %s",
-                          humanize_error(self._data, ex))
-
-    def save(self):
-        """Store data to config file."""
-        # validate
-        try:
-            self._data = SCHEMA_ADDON_FILE(self._data)
-        except vol.Invalid as ex:
-            _LOGGER.error("Can't parse addons data -> %s",
-                          humanize_error(self._data, ex))
-            return False
-
-        if not write_json_file(self._file, self._data):
-            _LOGGER.error("Can't store config in %s", self._file)
-            return False
-        return True
 
     @property
     def user(self):
