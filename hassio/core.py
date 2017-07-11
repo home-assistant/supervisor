@@ -129,10 +129,6 @@ class HassIO(object):
             loop=self.loop
         )
 
-        # If laningpage / run upgrade in background
-        if self.homeassistant.version == 'landingpage':
-            self.loop.create_task(self.homeassistant.install())
-
         # start api
         await self.api.start()
         _LOGGER.info("Start hassio api on %s", self.config.api_endpoint)
@@ -157,6 +153,10 @@ class HassIO(object):
             self.scheduler.register_task(
                 homeassistant_watchdog(self.loop, self.homeassistant),
                 RUN_WATCHDOG_HOMEASSISTANT)
+
+            # If landingpage / run upgrade in background
+            if self.homeassistant.version == 'landingpage':
+                self.loop.create_task(self.homeassistant.install())
 
     async def stop(self, exit_code=0):
         """Stop a running orchestration."""
