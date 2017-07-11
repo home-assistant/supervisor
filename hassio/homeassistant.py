@@ -90,7 +90,7 @@ class HomeAssistant(JsonConfig):
         """Install a landingpage."""
         _LOGGER.info("Setup HomeAssistant landingpage")
         while True:
-            if self.docker.install('landingpage'):
+            if await self.docker.install('landingpage'):
                 break
             _LOGGER.warning("Fails install landingpage, retry after 60sec")
             await asyncio.sleep(60, loop=self.loop)
