@@ -8,7 +8,7 @@ from ..const import (ATTR_IS_MASTER, ATTR_MASTER_KEY, ATTR_SLUG, ATTR_NODE_KEY,
                      ATTR_ADDONS_REPOSITORIES, ATTR_NODE_NAME, ATTR_MASTER_IP,
                      HTTP_HEADER_X_NODE_KEY, ATTR_VERSION, ATTR_ARCH,
                      ATTR_TIMEZONE, ATR_KNOWN_NODES, ATTR_IP, ATTR_IS_ACTIVE,
-                     ATTR_ADDONS)
+                     ATTR_ADDONS, ATTR_LAST_SEEN)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,8 +52,8 @@ class APICluster(object):
 
         if HTTP_HEADER_X_NODE_KEY not in request.headers \
                 or request.headers.get(
-                        HTTP_HEADER_X_NODE_KEY) != hash_password(
-                            self.config.node_key):
+                    HTTP_HEADER_X_NODE_KEY) != hash_password(
+                    self.config.node_key):
             raise RuntimeError("Invalid node key")
 
     def __get_node(self, request):
@@ -91,9 +91,10 @@ class APICluster(object):
                     ATTR_SLUG: node.slug,
                     ATTR_ARCH: node.arch,
                     ATTR_VERSION: node.version,
-                    ATTR_TIMEZONE: node.tz,
+                    ATTR_TIMEZONE: node.time_zone,
                     ATTR_IP: str(node.last_ip),
-                    ATTR_IS_ACTIVE: node.is_active
+                    ATTR_IS_ACTIVE: node.is_active,
+                    ATTR_LAST_SEEN: node.last_seen
                 })
 
         else:
@@ -123,10 +124,15 @@ class APICluster(object):
         self.__master_only()
         body = await api_validate(SCHEMA_PING, request)
         node = self.__get_public_node(request)
-        node.ping(get_real_ip(request),
-                  body[ATTR_VERSION],
-                  body[ATTR_ARCH],
-                  body[ATTR_TIMEZONE])
+        new_key = self.cluster.ping(node,
+                                    get_real_ip(request),
+                                    body[ATTR_VERSION],
+                                    body[ATTR_ARCH],
+                                    body[ATTR_TIMEZONE])
+        response = {}
+        if new_key is not None:
+            response[ATTR_NODE_KEY] = new_key
+        return response
 
     @api_process
     async def register_node(self, request):

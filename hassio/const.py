@@ -108,6 +108,7 @@ ATR_KNOWN_NODES = 'nodes'
 ATTR_IP = 'ip'
 ATTR_IS_ACTIVE = 'is_active'
 ATTR_NODE = 'node'
+ATTR_LAST_SEEN = 'last_seen'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_BEFORE = 'before'

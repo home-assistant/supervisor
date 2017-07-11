@@ -9,12 +9,12 @@ import async_timeout
 import aiohttp
 
 from .util import get_public_cluster_url, get_security_headers_raw
-from ..const import RUN_PING_CLUSTER_MASTER, ATTR_NODE, ATTR_ADDONS
+from ..const import (RUN_PING_CLUSTER_MASTER, ATTR_NODE, ATTR_ADDONS,
+                     JSON_DATA)
 from ..api.util import hash_password
 
 _LOGGER = logging.getLogger(__name__)
 INACTIVE_TIME = 2 * RUN_PING_CLUSTER_MASTER
-RESPONSE_DATA = "data"
 
 
 class ClusterNode(object):
@@ -70,6 +70,11 @@ class ClusterNode(object):
             raise RuntimeError("Unknown addon")
         return slug
 
+    def update_key(self, key):
+        """Updating node key."""
+        self.key = key
+        self.hashed_key = hash_password(key)
+
     def ping(self, ip_address, version, arch, time_zone):
         """Updating information about remote node."""
         self.last_seen_time = datetime.utcnow()
@@ -82,12 +87,6 @@ class ClusterNode(object):
         """Validating security key."""
         return self.hashed_key == key
 
-    @property
-    def is_active(self):
-        """Flag indicating whether this node active or not."""
-        seconds = (datetime.utcnow() - self.last_seen_time).total_seconds()
-        return self.last_seen_time is not None and seconds < INACTIVE_TIME
-
     async def get_addons_list(self):
         """Retrieving addons list from remote slave node."""
         response = await self.__do_get("/addons")
@@ -95,17 +94,30 @@ class ClusterNode(object):
             _LOGGER.info("Failed to get addons from node %s", self.slug)
             return []
 
-        if RESPONSE_DATA not in response \
-                or ATTR_ADDONS not in response[RESPONSE_DATA]:
+        if JSON_DATA not in response \
+                or ATTR_ADDONS not in response[JSON_DATA]:
             _LOGGER.info("Unknown addons list response from node %s",
                          self.slug)
             return []
-        for addon in response[RESPONSE_DATA][ATTR_ADDONS]:
+        for addon in response[JSON_DATA][ATTR_ADDONS]:
             addon[ATTR_NODE] = self.slug
-        return response[RESPONSE_DATA][ATTR_ADDONS]
+        return response[JSON_DATA][ATTR_ADDONS]
 
     async def install_addon(self, original_request, body):
         """Installing addon on remote slave node."""
         return await self.__do_post(
             "/addons/{0}/install".format(
                 self.__get_addon_slug(original_request)), body)
+
+    @property
+    def last_seen(self):
+        """Retrieving seconds from last seen."""
+        if self.last_seen_time is None:
+            return None
+        return (datetime.utcnow() - self.last_seen_time).total_seconds()
+
+    @property
+    def is_active(self):
+        """Flag indicating whether this node active or not."""
+        passed = self.last_seen
+        return passed is not None and passed < INACTIVE_TIME

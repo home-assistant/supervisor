@@ -2,6 +2,7 @@
 import asyncio
 import json
 import logging
+import random
 
 import aiohttp
 import async_timeout
@@ -13,7 +14,7 @@ from ..api.util import hash_password
 from ..const import (RUN_REGENERATE_CLUSTER_KEY, ATTR_MASTER_KEY, ATTR_SLUG,
                      ATTR_NODE_KEY, ATTR_ADDONS_REPOSITORIES,
                      RUN_PING_CLUSTER_MASTER, ATTR_VERSION, HASSIO_VERSION,
-                     ATTR_TIMEZONE, ATTR_ARCH)
+                     ATTR_TIMEZONE, ATTR_ARCH, JSON_DATA)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ class ClusterManager(object):
                         return node_
                     if node_.validate_key(key):
                         return node_
-            break
+                    break
         return None
 
     async def __regenerate_master_key(self):
@@ -83,7 +84,10 @@ class ClusterManager(object):
                 async with self.websession.post(url,
                                                 headers=headers,
                                                 json=data) as request:
-                    await request.json(content_type=None)
+                    response = await request.json(content_type=None)
+                    if ATTR_NODE_KEY in response[JSON_DATA]:
+                        node_key = response[JSON_DATA][ATTR_NODE_KEY]
+                        self.config.node_key = node_key
         except (aiohttp.ClientError, asyncio.TimeoutError,
                 KeyError, json.JSONDecodeError) as err:
             _LOGGER.warning("Failed to ping master %s", err)
@@ -170,6 +174,16 @@ class ClusterManager(object):
         self.config.known_nodes = (node_.slug, None)
         _LOGGER.info("Removed node %s from cluster", node_.slug)
         return True
+
+    def ping(self, node_, ip_address, version, arch, time_zone):
+        """Responding to ping from slave node."""
+        node_.ping(ip_address, version, arch, time_zone)
+        new_key = None
+        if random.SystemRandom().randint(1, 100) <= 20:
+            new_key = generate_cluster_key()
+            self.config.known_nodes = (node_.slug, new_key)
+            node_.update_key(new_key)
+        return new_key
 
     def get_node(self, slug):
         """Retrieving known node by slug."""
