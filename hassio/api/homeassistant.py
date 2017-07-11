@@ -67,9 +67,6 @@ class APIHomeAssistant(object):
         if self.homeassistant.in_progress:
             raise RuntimeError("Other task is in progress")
 
-        if version == self.homeassistant.version:
-            raise RuntimeError("Version is already in use")
-
         return await asyncio.shield(
             self.homeassistant.update(version), loop=self.loop)
 

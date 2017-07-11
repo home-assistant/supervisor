@@ -109,12 +109,12 @@ class HomeAssistant(JsonConfig):
         # store version
         _LOGGER.info("HomeAssistant docker now installed")
 
-    async def update(self, version=None):
-        """Update HomeAssistant version."""
-        version = version or self.last_version
-        if version == self.version:
-            return True
+    def update(self, version=None):
+        """Update HomeAssistant version.
 
+        Return a coroutine.
+        """
+        version = version or self.last_version
         return self.docker.update(version)
 
     def run(self):
@@ -123,3 +123,24 @@ class HomeAssistant(JsonConfig):
         Return a coroutine.
         """
         return self.docker.run()
+
+    def stop(self):
+        """Stop HomeAssistant docker.
+
+        Return a coroutine.
+        """
+        return self.docker.stop()
+
+    def restart(self):
+        """Restart HomeAssistant docker.
+
+        Return a coroutine.
+        """
+        return self.docker.restart()
+
+    def logs(self):
+        """Get HomeAssistant docker logs.
+
+        Return a coroutine.
+        """
+        return self.docker.logs()
