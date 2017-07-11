@@ -9,8 +9,8 @@ import async_timeout
 import aiohttp
 
 from .util import get_public_cluster_url, get_security_headers_raw
-from ..const import (RUN_PING_CLUSTER_MASTER, ATTR_NODE, ATTR_ADDONS,
-                     JSON_DATA)
+from ..const import (RUN_PING_CLUSTER_MASTER, ATTR_ADDONS, JSON_DATA,
+                     ATTR_INSTALLED)
 from ..api.util import hash_password
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class ClusterNode(object):
         self.arch = None
         self.time_zone = None
 
-    async def __do_post(self, url, data):
+    async def _do_post(self, url, data):
         """Performing post call to remote slave node."""
         try:
             url = get_public_cluster_url(self.last_ip, url)
@@ -48,7 +48,7 @@ class ClusterNode(object):
             _LOGGER.warning("Failed to POST cluster call %s : %s", url, err)
             return None
 
-    async def __do_get(self, url):
+    async def _do_get(self, url):
         """Performing get call to remote slave node."""
         try:
             url = get_public_cluster_url(self.last_ip, url)
@@ -63,7 +63,7 @@ class ClusterNode(object):
             _LOGGER.warning("Failed to GET cluster call %s : %s", url, err)
 
     @staticmethod
-    def __get_addon_slug(request):
+    def _get_addon_slug(request):
         """Retrieving addon slug from request."""
         slug = request.match_info.get("addon")
         if slug is None or slug == "":
@@ -89,7 +89,7 @@ class ClusterNode(object):
 
     async def get_addons_list(self):
         """Retrieving addons list from remote slave node."""
-        response = await self.__do_get("/addons")
+        response = await self._do_get("/addons")
         if response is None:
             _LOGGER.info("Failed to get addons from node %s", self.slug)
             return []
@@ -100,14 +100,18 @@ class ClusterNode(object):
                          self.slug)
             return []
         for addon in response[JSON_DATA][ATTR_ADDONS]:
-            addon[ATTR_NODE] = self.slug
+            # Patching slug
+            version = addon[ATTR_INSTALLED][next(iter(addon[ATTR_INSTALLED]))]
+            addon[ATTR_INSTALLED] = {
+                self.slug: version
+            }
         return response[JSON_DATA][ATTR_ADDONS]
 
     async def install_addon(self, original_request, body):
         """Installing addon on remote slave node."""
-        return await self.__do_post(
+        return await self._do_post(
             "/addons/{0}/install".format(
-                self.__get_addon_slug(original_request)), body)
+                self._get_addon_slug(original_request)), body)
 
     @property
     def last_seen(self):

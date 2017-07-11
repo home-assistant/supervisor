@@ -6,14 +6,16 @@ import aiohttp
 import docker
 
 from .addons import AddonManager
-from .api import RestAPI
+from .api import RestAPI, ClusterAPI
 from .host_control import HostControl
+from .homeassistant import HomeAssistant
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
     RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE,
-    STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS, RUN_UPDATE_ADDONS_TASKS)
-from .homeassistant import HomeAssistant
+    STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS, RUN_UPDATE_ADDONS_TASKS,
+    STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS, RUN_UPDATE_ADDONS_TASKS,
+    HASSIO_API_PORT, HASSIO_PUBLIC_CLUSTER_PORT)
 from .scheduler import Scheduler
 from .dock.supervisor import DockerSupervisor
 from .snapshots import SnapshotsManager
@@ -36,6 +38,7 @@ class HassIO(object):
         self.websession = aiohttp.ClientSession(loop=loop)
         self.scheduler = Scheduler(loop)
         self.api = RestAPI(config, loop)
+        self.cluster_api = ClusterAPI(config, loop)
         self.dock = docker.DockerClient(
             base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
 
@@ -98,7 +101,9 @@ class HassIO(object):
         self.api.register_panel()
 
         # Have to be the last one because shares other API
-        self.api.register_cluster(self.cluster, self.addons)
+        self.api.register_cluster(self.cluster)
+        self.cluster_api.register_cluster(self.cluster, self.addons,
+                                          self.api.api_addons)
 
         # schedule api session cleanup
         self.scheduler.register_task(
@@ -139,8 +144,12 @@ class HassIO(object):
         )
 
         # start api
-        await self.api.start()
-        _LOGGER.info("Start hassio api on %s", self.config.api_endpoint)
+        await self.api.start(HASSIO_API_PORT)
+        _LOGGER.info("Start hassio api on %s:%d",
+                     self.config.api_endpoint, HASSIO_API_PORT)
+        await self.cluster_api.start(HASSIO_PUBLIC_CLUSTER_PORT)
+        _LOGGER.info("Start hassio cluster api on %s:%d",
+                     self.config.api_endpoint, HASSIO_PUBLIC_CLUSTER_PORT)
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
@@ -176,6 +185,7 @@ class HassIO(object):
         # process stop tasks
         self.websession.close()
         await self.api.stop()
+        await self.cluster_api.stop()
 
         self.exit_code = exit_code
         self.loop.stop()

@@ -32,23 +32,23 @@ class ClusterManager(object):
         self.addons = addons
         self._master_key = None
         self.scheduler.register_task(
-            self.__regenerate_master_key, RUN_REGENERATE_CLUSTER_KEY, now=True)
+            self._regenerate_master_key, RUN_REGENERATE_CLUSTER_KEY, now=True)
         self.scheduler.register_task(
-            self.__ping_master, RUN_PING_CLUSTER_MASTER, now=True)
+            self._ping_master, RUN_PING_CLUSTER_MASTER, now=True)
 
         self._lock = asyncio.Lock(loop=loop)
 
         self._nodes = []
-        self.__load_nodes()
+        self._load_nodes()
 
-    def __load_nodes(self):
+    def _load_nodes(self):
         """Loading existing known nodes."""
         self._nodes.clear()
         for slug, key in self.config.known_nodes.items():
             new_node = ClusterNode(slug, key, self.websession)
             self._nodes.append(new_node)
 
-    def __find_node(self, slug=None, key=None):
+    def _find_node(self, slug=None, key=None):
         """Searching known node by slug or key."""
         for node_ in self._nodes:
             if slug is None:
@@ -63,11 +63,11 @@ class ClusterManager(object):
                     break
         return None
 
-    async def __regenerate_master_key(self):
+    async def _regenerate_master_key(self):
         """Periodically re-generating master key."""
         self._master_key = generate_cluster_key()
 
-    async def __ping_master(self):
+    async def _ping_master(self):
         if self.config.is_master is True:
             return
         try:
@@ -132,13 +132,13 @@ class ClusterManager(object):
             with async_timeout.timeout(10, loop=self.websession.loop):
                 async with self.websession.post(url, json=data) as request:
                     response = await request.json(content_type=None)
-                    node_key = response["data"][ATTR_NODE_KEY]
+                    node_key = response[JSON_DATA][ATTR_NODE_KEY]
                     self.config.node_key = node_key
                     self.config.is_master = False
                     self.config.master_ip = master_ip
                     self.config.node_name = node_name
 
-                    new = set(response["data"][ATTR_ADDONS_REPOSITORIES])
+                    new = set(response[JSON_DATA][ATTR_ADDONS_REPOSITORIES])
                     await asyncio.shield(self.addons.load_repositories(new))
 
                     _LOGGER.info("Registered with %s, synced %d repositories",
@@ -155,7 +155,7 @@ class ClusterManager(object):
             _LOGGER.error("Attempt to register new node failed: wrong key")
             raise RuntimeError("Wrong key")
 
-        if self.__find_node(node_slug) is not None:
+        if self._find_node(node_slug) is not None:
             _LOGGER.error("Attempt to re-register node %s", node_slug)
             raise RuntimeError("Node already registered")
 
@@ -187,11 +187,11 @@ class ClusterManager(object):
 
     def get_node(self, slug):
         """Retrieving known node by slug."""
-        return self.__find_node(slug=slug)
+        return self._find_node(slug=slug)
 
     def get_public_node(self, key):
         """Retreiving known node by hashed key."""
-        return self.__find_node(key=key)
+        return self._find_node(key=key)
 
     @property
     def master_key(self):

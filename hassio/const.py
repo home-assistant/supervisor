@@ -12,7 +12,8 @@ URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
 
 HASSIO_DATA = Path("/data")
 
-HASSIO_PUBLIC_CLUSTER_PORT = 80
+HASSIO_PUBLIC_CLUSTER_PORT = 8124
+HASSIO_API_PORT = 80
 
 RUN_UPDATE_INFO_TASKS = 28800
 RUN_UPDATE_SUPERVISOR_TASKS = 29100
@@ -107,7 +108,6 @@ ATTR_MASTER_IP = 'master_ip'
 ATR_KNOWN_NODES = 'nodes'
 ATTR_IP = 'ip'
 ATTR_IS_ACTIVE = 'is_active'
-ATTR_NODE = 'node'
 ATTR_LAST_SEEN = 'last_seen'
 
 STARTUP_INITIALIZE = 'initialize'

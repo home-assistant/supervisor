@@ -12,7 +12,7 @@ from ..const import (
     ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH,
     ATTR_BUILD, ATTR_TIMEZONE,
     ATTR_NAME, ATTR_SLUG, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH,
-    ATTR_TIMEZONE, ATTR_DATE, ATTR_SNAPSHOTS)
+    ATTR_TIMEZONE, ATTR_DATE, ATTR_SNAPSHOTS, ATTR_INSTALLED)
 from ..tools import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,15 +57,20 @@ class APISupervisor(object):
             results, _ = await asyncio.shield(
                 asyncio.wait(tasks, loop=self.loop), loop=self.loop)
             for result in results:
-                if result.exception() is not None:
+                err = result.exception()
+                if err is not None:
+                    _LOGGER.warning("Failed to fetch addons "
+                                    "list from remote: %s", err)
                     continue
                 for addon in result.result():
                     local_addon = next((x for x in local
                                         if x[ATTR_SLUG] == addon[ATTR_SLUG]),
                                        None)
                     if local_addon is not None:
-                        local.remove(local_addon)
-                    local.append(addon)
+                        local_addon[ATTR_INSTALLED] \
+                            .update(addon[ATTR_INSTALLED])
+                    else:
+                        local.append(addon)
         return local
 
     def _repositories_list(self):

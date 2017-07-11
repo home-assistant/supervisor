@@ -4,20 +4,21 @@ from pathlib import Path
 
 from aiohttp import web
 
+from .cluster import APICluster
+from .cluster_management import APIClusterManagement
 from .addons import APIAddons
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .network import APINetwork
-from .supervisor import APISupervisor
 from .security import APISecurity
 from .snapshots import APISnapshots
-from .cluster import APICluster
+from .supervisor import APISupervisor
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class RestAPI(object):
-    """Handle rest api for hassio."""
+class RestAPIBase(object):
+    """Base REST API server."""
 
     def __init__(self, config, loop):
         """Initialize docker base wrapper."""
@@ -31,6 +32,32 @@ class RestAPI(object):
 
         # shared api
         self.api_addons = None
+
+    async def start(self, port):
+        """Run rest api webserver."""
+        self._handler = self.webapp.make_handler(loop=self.loop)
+
+        try:
+            self.server = await self.loop.create_server(
+                self._handler, "0.0.0.0", port)
+        except OSError as err:
+            _LOGGER.fatal(
+                "Failed to create HTTP server at 0.0.0.0:%d -> %s", port, err)
+
+    async def stop(self):
+        """Stop rest api webserver."""
+        if self.server:
+            self.server.close()
+            await self.server.wait_closed()
+        await self.webapp.shutdown()
+
+        if self._handler:
+            await self._handler.finish_connections(60)
+        await self.webapp.cleanup()
+
+
+class RestAPI(RestAPIBase):
+    """Handle rest api for hassio."""
 
     def register_host(self, host_control):
         """Register hostcontrol function."""
@@ -139,31 +166,17 @@ class RestAPI(object):
             '/snapshots/{snapshot}/restore/partial',
             api_snapshots.restore_partial)
 
-    def register_cluster(self, cluster, addons):
+    def register_cluster(self, cluster):
         """Register cluster function."""
-        api_cluster = APICluster(self.config, addons, cluster, self.api_addons)
+        api_cluster = APICluster(self.config, cluster)
 
         self.webapp.router.add_get('/cluster/info', api_cluster.info)
-
         self.webapp.router.add_post('/cluster/switch_to_master',
                                     api_cluster.switch_to_master)
         self.webapp.router.add_post('/cluster/switch_to_slave',
                                     api_cluster.switch_to_slave)
         self.webapp.router.add_post('/cluster/{slug}/remove',
                                     api_cluster.remove_node)
-
-        # These API are awailable for public
-        self.webapp.router.add_post('/cluster/public/register',
-                                    api_cluster.register_node)
-        self.webapp.router.add_post('/cluster/public/unregister',
-                                    api_cluster.unregister_node)
-        self.webapp.router.add_post('/cluster/public/ping',
-                                    api_cluster.ping)
-
-        self.webapp.router.add_get('/cluster/public/addons',
-                                   api_cluster.get_addons_list)
-        self.webapp.router.add_post('/cluster/public/addons/{addon}/install',
-                                    api_cluster.install_addon)
 
     def register_panel(self):
         """Register panel for homeassistant."""
@@ -175,24 +188,22 @@ class RestAPI(object):
 
         self.webapp.router.add_get('/panel', get_panel)
 
-    async def start(self):
-        """Run rest api webserver."""
-        self._handler = self.webapp.make_handler(loop=self.loop)
 
-        try:
-            self.server = await self.loop.create_server(
-                self._handler, "0.0.0.0", "80")
-        except OSError as err:
-            _LOGGER.fatal(
-                "Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
+class ClusterAPI(RestAPIBase):
+    """Cluster management REST API."""
 
-    async def stop(self):
-        """Stop rest api webserver."""
-        if self.server:
-            self.server.close()
-            await self.server.wait_closed()
-        await self.webapp.shutdown()
+    def register_cluster(self, cluster, addons, api_addons):
+        """Registering cluster management function."""
+        api_cluster = APIClusterManagement(self.config, addons,
+                                           cluster, api_addons)
+        self.webapp.router.add_post('/cluster/public/register',
+                                    api_cluster.register_node)
+        self.webapp.router.add_post('/cluster/public/unregister',
+                                    api_cluster.unregister_node)
+        self.webapp.router.add_post('/cluster/public/ping',
+                                    api_cluster.ping)
 
-        if self._handler:
-            await self._handler.finish_connections(60)
-        await self.webapp.cleanup()
+        self.webapp.router.add_get('/cluster/public/addons',
+                                   api_cluster.get_addons_list)
+        self.webapp.router.add_post('/cluster/public/addons/{addon}/install',
+                                    api_cluster.install_addon)

@@ -13,7 +13,7 @@ from ..const import (
     JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
     HTTP_HEADER_X_FORWARDED_FOR, ATTR_NAME, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_VERSION, ATTR_INSTALLED, ATTR_ARCH, ATTR_DETACHED, ATTR_REPOSITORY,
-    ATTR_BUILD, ATTR_URL, ATTR_NODE, CLUSTER_NODE_MASTER)
+    ATTR_BUILD, ATTR_URL, CLUSTER_NODE_MASTER)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -149,18 +149,21 @@ def get_addons_list(addons, config, only_installed=False):
         if only_installed and not addon.is_installed:
             continue
 
+        installed = {}
+        if addon.is_installed:
+            installed[node] = addon.version_installed
+
         data.append({
             ATTR_NAME: addon.name,
             ATTR_SLUG: addon.slug,
             ATTR_DESCRIPTON: addon.description,
             ATTR_VERSION: addon.last_version,
-            ATTR_INSTALLED: addon.version_installed,
+            ATTR_INSTALLED: installed,
             ATTR_ARCH: addon.supported_arch,
             ATTR_DETACHED: addon.is_detached,
             ATTR_REPOSITORY: addon.repository,
             ATTR_BUILD: addon.need_build,
             ATTR_URL: addon.url,
-            ATTR_NODE: node
         })
 
     return data
