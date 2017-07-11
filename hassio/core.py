@@ -96,7 +96,7 @@ class HassIO(object):
             now=True)
 
         # Load homeassistant
-        await self.homeassistant.prepare():
+        await self.homeassistant.prepare()
 
         # Load addons
         await self.addons.prepare()
