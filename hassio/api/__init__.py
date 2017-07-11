@@ -77,6 +77,8 @@ class RestAPI(object):
         """Register homeassistant function."""
         api_addons = APIAddons(self.config, self.loop, addons)
 
+        self.webapp.router.add_get('/addons', api_addons.list)
+
         self.webapp.router.add_get('/addons/{addon}/info', api_addons.info)
         self.webapp.router.add_post(
             '/addons/{addon}/install', api_addons.install)
@@ -104,6 +106,8 @@ class RestAPI(object):
     def register_snapshots(self, snapshots):
         """Register snapshots function."""
         api_snapshots = APISnapshots(self.config, self.loop, snapshots)
+
+        self.webapp.router.add_get('/snapshots', api_snapshots.list)
 
         self.webapp.router.add_post(
             '/snapshots/new/full', api_snapshots.snapshot_full)

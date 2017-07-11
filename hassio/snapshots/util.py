@@ -3,8 +3,8 @@ import hashlib
 import shutil
 
 
-def create_slug(name, date_str):
-    """Generate a hash from repository."""
+def create_id(name, date_str):
+    """Generate a hash from name & date as id."""
     key = "{} - {}".format(date_str, name).lower().encode()
     return hashlib.sha1(key).hexdigest()[:8]
 

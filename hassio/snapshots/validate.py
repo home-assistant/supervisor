@@ -5,15 +5,15 @@ import voluptuous as vol
 from ..const import (
     ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_NAME, ATTR_SLUG, ATTR_DATE,
     ATTR_VERSION, ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_TYPE, ATTR_DEVICES,
-    ATTR_IMAGE, FOLDER_SHARE, FOLDER_HOMEASSISTANT, FOLDER_ADDONS, FOLDER_SSL,
-    SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
+    ATTR_IMAGE, ATTR_ID, FOLDER_SHARE, FOLDER_HOMEASSISTANT, FOLDER_ADDONS,
+    FOLDER_SSL, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 from ..validate import HASS_DEVICES
 
 ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_SNAPSHOT = vol.Schema({
-    vol.Required(ATTR_SLUG): vol.Coerce(str),
+    vol.Required(ATTR_ID): vol.Coerce(str),
     vol.Required(ATTR_TYPE): vol.In([SNAPSHOT_FULL, SNAPSHOT_PARTIAL]),
     vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Required(ATTR_DATE): vol.Coerce(str),
