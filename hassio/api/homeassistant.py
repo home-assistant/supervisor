@@ -5,7 +5,8 @@ import logging
 import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
-from ..const import ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES
+from ..const import (
+    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM)
 from ..validate import HASS_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
@@ -13,6 +14,9 @@ _LOGGER = logging.getLogger(__name__)
 
 SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_DEVICES): HASS_DEVICES,
+    vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Any(None, vol.Coerce(str)),
+    vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'):
+        vol.Any(None, vol.Coerce(str)),
 })
 
 SCHEMA_VERSION = vol.Schema({
@@ -34,8 +38,10 @@ class APIHomeAssistant(object):
         """Return host information."""
         return {
             ATTR_VERSION: self.homeassistant.version,
-            ATTR_LAST_VERSION: self.config.last_homeassistant,
-            ATTR_DEVICES: self.config.homeassistant_devices,
+            ATTR_LAST_VERSION: self.homeassistant.last_version,
+            ATTR_IMAGE: self.homeassistant.image,
+            ATTR_DEVICES: self.homeassistant.devices,
+            ATTR_CUSTOM: self.homeassistant.is_custom_image,
         }
 
     @api_process
@@ -44,7 +50,11 @@ class APIHomeAssistant(object):
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_DEVICES in body:
-            self.config.homeassistant_devices = body[ATTR_DEVICES]
+            self.homeassistant.devices = body[ATTR_DEVICES]
+
+        if ATTR_IMAGE in body:
+            self.homeassistant.set_custom(
+                body[ATTR_IMAGE], body[ATTR_LAST_VERSION])
 
         return True
 
@@ -56,9 +66,6 @@ class APIHomeAssistant(object):
 
         if self.homeassistant.in_progress:
             raise RuntimeError("Other task is in progress")
-
-        if version == self.homeassistant.version:
-            raise RuntimeError("Version is already in use")
 
         return await asyncio.shield(
             self.homeassistant.update(version), loop=self.loop)

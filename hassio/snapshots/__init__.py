@@ -46,8 +46,7 @@ class SnapshotsManager(object):
         snapshot.create(slug, name, date_str, sys_type)
 
         # set general data
-        snapshot.homeassistant_version = self.homeassistant.version
-        snapshot.homeassistant_devices = self.config.homeassistant_devices
+        snapshot.snapshot_homeassistant(self.homeassistant)
         snapshot.repositories = self.config.addons_repositories
 
         return snapshot
@@ -198,8 +197,7 @@ class SnapshotsManager(object):
                 await snapshot.restore_folders()
 
                 # start homeassistant restore
-                self.config.homeassistant_devices = \
-                    snapshot.homeassistant_devices
+                snapshot.restore_homeassistant(self.homeassistant)
                 task_hass = self.loop.create_task(
                     self.homeassistant.update(snapshot.homeassistant_version))
 
@@ -281,8 +279,7 @@ class SnapshotsManager(object):
                     await snapshot.restore_folders(folders)
 
                 if homeassistant:
-                    self.config.homeassistant_devices = \
-                        snapshot.homeassistant_devices
+                    snapshot.restore_homeassistant(self.homeassistant)
                     tasks.append(self.homeassistant.update(
                         snapshot.homeassistant_version))
 

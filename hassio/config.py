@@ -1,17 +1,13 @@
 """Bootstrap HassIO."""
 from datetime import datetime
 import logging
-import json
 import os
 from pathlib import Path, PurePath
 
 import voluptuous as vol
-from voluptuous.humanize import humanize_error
 
 from .const import FILE_HASSIO_CONFIG, HASSIO_DATA
-from .tools import (
-    fetch_last_versions, write_json_file, read_json_file, validate_timezone)
-from .validate import HASS_DEVICES
+from .tools import fetch_last_versions, JsonConfig, validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,7 +15,6 @@ DATETIME_FORMAT = "%Y%m%d %H:%M:%S"
 
 HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 HOMEASSISTANT_LAST = 'homeassistant_last'
-HOMEASSISTANT_DEVICES = 'homeassistant_devices'
 
 HASSIO_SSL = PurePath("ssl")
 HASSIO_LAST = 'hassio_last'
@@ -50,7 +45,6 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(API_ENDPOINT): vol.Coerce(str),
     vol.Optional(TIMEZONE, default='UTC'): validate_timezone,
     vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
-    vol.Optional(HOMEASSISTANT_DEVICES, default=[]): HASS_DEVICES,
     vol.Optional(HASSIO_LAST): vol.Coerce(str),
     vol.Optional(ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
     vol.Optional(SECURITY_INITIALIZE, default=False): vol.Boolean(),
@@ -61,48 +55,13 @@ SCHEMA_CONFIG = vol.Schema({
 }, extra=vol.REMOVE_EXTRA)
 
 
-class CoreConfig(object):
+class CoreConfig(JsonConfig):
     """Hold all core config data."""
 
     def __init__(self):
         """Initialize config object."""
+        super().__init__(FILE_HASSIO_CONFIG, SCHEMA_CONFIG)
         self.arch = None
-        self._file = FILE_HASSIO_CONFIG
-        self._data = {}
-
-        # init or load data
-        if self._file.is_file():
-            try:
-                self._data = read_json_file(self._file)
-            except (OSError, json.JSONDecodeError):
-                _LOGGER.warning("Can't read %s", self._file)
-                self._data = {}
-
-        # validate data
-        if not self._validate_config():
-            self._data = SCHEMA_CONFIG({})
-
-    def _validate_config(self):
-        """Validate config and return True or False."""
-        # validate data
-        try:
-            self._data = SCHEMA_CONFIG(self._data)
-        except vol.Invalid as ex:
-            _LOGGER.warning(
-                "Invalid config %s", humanize_error(self._data, ex))
-            return False
-
-        return True
-
-    def save(self):
-        """Store data to config file."""
-        if not self._validate_config():
-            return False
-
-        if not write_json_file(self._file, self._data):
-            _LOGGER.error("Can't store config in %s", self._file)
-            return False
-        return True
 
     async def fetch_update_infos(self, websession):
         """Read current versions from web."""
@@ -149,22 +108,6 @@ class CoreConfig(object):
         """Set system timezone."""
         self._data[TIMEZONE] = value
         self.save()
-
-    @property
-    def homeassistant_devices(self):
-        """Return list of special device to map into homeassistant."""
-        return self._data[HOMEASSISTANT_DEVICES]
-
-    @homeassistant_devices.setter
-    def homeassistant_devices(self, value):
-        """Set list of special device."""
-        self._data[HOMEASSISTANT_DEVICES] = value
-        self.save()
-
-    @property
-    def homeassistant_image(self):
-        """Return docker homeassistant repository."""
-        return os.environ['HOMEASSISTANT_REPOSITORY']
 
     @property
     def last_homeassistant(self):

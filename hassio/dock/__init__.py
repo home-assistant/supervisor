@@ -260,9 +260,13 @@ class DockerBase(object):
         if not self._install(tag):
             return False
 
-        # cleanup old stuff
+        # run or cleanup container
         if was_running:
             self._run()
+        else:
+            self._stop()
+
+        # cleanup images
         self._cleanup()
 
         return True

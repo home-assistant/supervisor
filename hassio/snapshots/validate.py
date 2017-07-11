@@ -5,7 +5,7 @@ import voluptuous as vol
 from ..const import (
     ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_NAME, ATTR_SLUG, ATTR_DATE,
     ATTR_VERSION, ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_TYPE, ATTR_DEVICES,
-    FOLDER_SHARE, FOLDER_HOMEASSISTANT, FOLDER_ADDONS, FOLDER_SSL,
+    ATTR_IMAGE, FOLDER_SHARE, FOLDER_HOMEASSISTANT, FOLDER_ADDONS, FOLDER_SSL,
     SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 from ..validate import HASS_DEVICES
 
@@ -20,6 +20,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
     vol.Required(ATTR_HOMEASSISTANT): vol.Schema({
         vol.Required(ATTR_VERSION): vol.Coerce(str),
         vol.Optional(ATTR_DEVICES, default=[]): HASS_DEVICES,
+        vol.Optional(ATTR_IMAGE): vol.Coerce(str),
     }),
     vol.Optional(ATTR_FOLDERS, default=[]): [vol.In(ALL_FOLDERS)],
     vol.Optional(ATTR_ADDONS, default=[]): [vol.Schema({
