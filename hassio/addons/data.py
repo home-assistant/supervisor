@@ -30,6 +30,7 @@ class Data(JsonConfig):
         super().__init__(FILE_HASSIO_ADDONS, SCHEMA_ADDON_FILE)
         self.config = config
         self._repositories = {}
+        self._cache = {}
 
     @property
     def user(self):
