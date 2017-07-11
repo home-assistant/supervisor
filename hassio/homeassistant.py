@@ -4,10 +4,13 @@ import logging
 import os
 
 from .const import (
-    FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION)
+    FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
+    ATTR_VERSION)
 from .dock.homeassistant import DockerHomeAssistant
 from .tools import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class HomeAssistant(JsonConfig):

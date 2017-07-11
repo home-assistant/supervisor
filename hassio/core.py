@@ -42,7 +42,8 @@ class HassIO(object):
         self.supervisor = DockerSupervisor(config, loop, self.dock, self.stop)
 
         # init homeassistant
-        self.homeassistant = HomeAssistant(config, loop, self.dock)
+        self.homeassistant = HomeAssistant(
+            config, loop, self.dock, self.websession)
 
         # init HostControl
         self.host_control = HostControl(loop)

@@ -1,7 +1,6 @@
 """Bootstrap HassIO."""
 from datetime import datetime
 import logging
-import json
 import os
 from pathlib import Path, PurePath
 
@@ -9,7 +8,6 @@ import voluptuous as vol
 
 from .const import FILE_HASSIO_CONFIG, HASSIO_DATA
 from .tools import fetch_last_versions, JsonConfig, validate_timezone
-from .validate import HASS_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
 
