@@ -17,6 +17,7 @@ from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
 from .dock.supervisor import DockerSupervisor
 from .snapshots import SnapshotsManager
+from .cluster import ClusterManager
 from .tasks import (
     hassio_update, homeassistant_watchdog, api_sessions_cleanup, addons_update)
 from .tools import get_local_ip, fetch_timezone
@@ -55,6 +56,11 @@ class HassIO(object):
         self.snapshots = SnapshotsManager(
             config, loop, self.scheduler, self.addons, self.homeassistant)
 
+        # init cluster system
+        self.cluster = ClusterManager(config, loop, self.scheduler,
+                                      self.websession, self.homeassistant,
+                                      self.addons)
+
     async def setup(self):
         """Setup HassIO orchestration."""
         # supervisor
@@ -84,12 +90,15 @@ class HassIO(object):
         self.api.register_network(self.host_control)
         self.api.register_supervisor(
             self.supervisor, self.snapshots, self.addons, self.host_control,
-            self.websession)
+            self.websession, self.cluster)
         self.api.register_homeassistant(self.homeassistant)
-        self.api.register_addons(self.addons)
+        self.api.register_addons(self.addons, self.cluster)
         self.api.register_security()
         self.api.register_snapshots(self.snapshots)
         self.api.register_panel()
+
+        # Have to be the last one because shares other API
+        self.api.register_cluster(self.cluster, self.addons)
 
         # schedule api session cleanup
         self.scheduler.register_task(
@@ -142,8 +151,9 @@ class HassIO(object):
             # start addon mark as before
             await self.addons.auto_boot(STARTUP_BEFORE)
 
-            # run HomeAssistant
-            await self.homeassistant.run()
+            # run HomeAssistant if we're not on slave node
+            if self.config.is_master is True:
+                await self.homeassistant.run()
 
             # start addon mark as after
             await self.addons.auto_boot(STARTUP_AFTER)

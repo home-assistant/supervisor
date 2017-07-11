@@ -11,6 +11,7 @@ from .network import APINetwork
 from .supervisor import APISupervisor
 from .security import APISecurity
 from .snapshots import APISnapshots
+from .cluster import APICluster
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +28,9 @@ class RestAPI(object):
         # service stuff
         self._handler = None
         self.server = None
+
+        # shared api
+        self.api_addons = None
 
     def register_host(self, host_control):
         """Register hostcontrol function."""
@@ -45,11 +49,11 @@ class RestAPI(object):
         self.webapp.router.add_post('/network/options', api_net.options)
 
     def register_supervisor(self, supervisor, snapshots, addons, host_control,
-                            websession):
+                            websession, cluster):
         """Register supervisor function."""
         api_supervisor = APISupervisor(
             self.config, self.loop, supervisor, snapshots, addons,
-            host_control, websession)
+            host_control, websession, cluster)
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
@@ -73,27 +77,36 @@ class RestAPI(object):
         self.webapp.router.add_post('/homeassistant/restart', api_hass.restart)
         self.webapp.router.add_get('/homeassistant/logs', api_hass.logs)
 
-    def register_addons(self, addons):
+    def register_addons(self, addons, cluster):
         """Register homeassistant function."""
-        api_addons = APIAddons(self.config, self.loop, addons)
+        self.api_addons = APIAddons(self.config, self.loop, addons, cluster)
 
-        self.webapp.router.add_get('/addons', api_addons.list)
-        self.webapp.router.add_post('/addons/reload', api_addons.reload)
+        self.webapp.router.add_get('/addons/{addon}/info',
+                                   self.api_addons.info)
 
-        self.webapp.router.add_get('/addons/{addon}/info', api_addons.info)
+        self.webapp.router.add_get('/addons', self.api_addons.list)
+        self.webapp.router.add_post('/addons/reload', self.api_addons.reload)
+
+        self.webapp.router.add_get('/addons/{addon}/info', self.api_addons.info)
         self.webapp.router.add_post(
-            '/addons/{addon}/install', api_addons.install)
+            '/addons/{addon}/install', self.api_addons.install)
         self.webapp.router.add_post(
-            '/addons/{addon}/uninstall', api_addons.uninstall)
-        self.webapp.router.add_post('/addons/{addon}/start', api_addons.start)
-        self.webapp.router.add_post('/addons/{addon}/stop', api_addons.stop)
+            '/addons/{addon}/{node}/install', self.api_addons.install)
+
         self.webapp.router.add_post(
-            '/addons/{addon}/restart', api_addons.restart)
+            '/addons/{addon}/uninstall', self.api_addons.uninstall)
+        self.webapp.router.add_post('/addons/{addon}/start',
+                                    self.api_addons.start)
+        self.webapp.router.add_post('/addons/{addon}/stop',
+                                    self.api_addons.stop)
         self.webapp.router.add_post(
-            '/addons/{addon}/update', api_addons.update)
+            '/addons/{addon}/restart', self.api_addons.restart)
         self.webapp.router.add_post(
-            '/addons/{addon}/options', api_addons.options)
-        self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
+            '/addons/{addon}/update', self.api_addons.update)
+        self.webapp.router.add_post(
+            '/addons/{addon}/options', self.api_addons.options)
+        self.webapp.router.add_get('/addons/{addon}/logs',
+                                   self.api_addons.logs)
 
     def register_security(self):
         """Register security function."""
@@ -125,6 +138,32 @@ class RestAPI(object):
         self.webapp.router.add_post(
             '/snapshots/{snapshot}/restore/partial',
             api_snapshots.restore_partial)
+
+    def register_cluster(self, cluster, addons):
+        """Register cluster function."""
+        api_cluster = APICluster(self.config, addons, cluster, self.api_addons)
+
+        self.webapp.router.add_get('/cluster/info', api_cluster.info)
+
+        self.webapp.router.add_post('/cluster/switch_to_master',
+                                    api_cluster.switch_to_master)
+        self.webapp.router.add_post('/cluster/switch_to_slave',
+                                    api_cluster.switch_to_slave)
+        self.webapp.router.add_post('/cluster/{slug}/remove',
+                                    api_cluster.remove_node)
+
+        # These API are awailable for public
+        self.webapp.router.add_post('/cluster/public/register',
+                                    api_cluster.register_node)
+        self.webapp.router.add_post('/cluster/public/unregister',
+                                    api_cluster.unregister_node)
+        self.webapp.router.add_post('/cluster/public/ping',
+                                    api_cluster.ping)
+
+        self.webapp.router.add_get('/cluster/public/addons',
+                                   api_cluster.get_addons_list)
+        self.webapp.router.add_post('/cluster/public/addons/{addon}/install',
+                                    api_cluster.install_addon)
 
     def register_panel(self):
         """Register panel for homeassistant."""

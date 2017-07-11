@@ -38,6 +38,11 @@ SECURITY_TOTP = 'security_totp'
 SECURITY_PASSWORD = 'security_password'
 SECURITY_SESSIONS = 'security_sessions'
 
+CLUSTER_IS_MASTER = 'is_master'
+CLUSTER_MASTER_IP = 'master_ip'
+CLUSTER_NODE_KEY = 'node_key'
+CLUSTER_KNOWN_NODES = 'known_nodes'
+CLUSTER_NODE_NAME = 'node_name'
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_CONFIG = vol.Schema({
@@ -51,6 +56,12 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(SECURITY_TOTP): vol.Coerce(str),
     vol.Optional(SECURITY_PASSWORD): vol.Coerce(str),
     vol.Optional(SECURITY_SESSIONS, default={}):
+        {vol.Coerce(str): vol.Coerce(str)},
+    vol.Optional(CLUSTER_IS_MASTER, default=True): vol.Boolean(),
+    vol.Optional(CLUSTER_MASTER_IP, default=""): vol.Coerce(str),
+    vol.Optional(CLUSTER_NODE_KEY, default=""): vol.Coerce(str),
+    vol.Optional(CLUSTER_NODE_NAME, default=""): vol.Coerce(str),
+    vol.Optional(CLUSTER_KNOWN_NODES, default={}):
         {vol.Coerce(str): vol.Coerce(str)},
 }, extra=vol.REMOVE_EXTRA)
 
@@ -276,4 +287,63 @@ class CoreConfig(JsonConfig):
                 {session: valid.strftime(DATETIME_FORMAT)}
             )
 
+        self.save()
+
+    @property
+    def is_master(self):
+        """Return flag indicating whether this node operates as master."""
+        return self._data.get(CLUSTER_IS_MASTER)
+
+    @is_master.setter
+    def is_master(self, value):
+        """Set operation mode."""
+        self._data[CLUSTER_IS_MASTER] = value
+        self.save()
+
+    @property
+    def master_ip(self):
+        """Return master IP address."""
+        return self._data.get(CLUSTER_MASTER_IP)
+
+    @master_ip.setter
+    def master_ip(self, value):
+        """Set master IP address."""
+        self._data[CLUSTER_MASTER_IP] = value
+        self.save()
+
+    @property
+    def node_key(self):
+        """Return node secret key."""
+        return self._data.get(CLUSTER_NODE_KEY)
+
+    @node_key.setter
+    def node_key(self, value):
+        """Set node secret key."""
+        self._data[CLUSTER_NODE_KEY] = value
+        self.save()
+
+    @property
+    def known_nodes(self):
+        """Return information about known nodes."""
+        return self._data[CLUSTER_KNOWN_NODES]
+
+    @known_nodes.setter
+    def known_nodes(self, value):
+        """Set known node."""
+        slug, key = value
+        if key is None:
+            self._data[CLUSTER_KNOWN_NODES].pop(slug, None)
+        else:
+            self._data[CLUSTER_KNOWN_NODES][slug] = key
+        self.save()
+
+    @property
+    def node_name(self):
+        """Return node name."""
+        return self._data[CLUSTER_NODE_NAME]
+
+    @node_name.setter
+    def node_name(self, value):
+        """Set node name."""
+        self._data[CLUSTER_NODE_NAME] = value
         self.save()

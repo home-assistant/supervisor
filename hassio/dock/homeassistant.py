@@ -40,7 +40,7 @@ class DockerHomeAssistant(DockerBase):
 
         Need run inside executor.
         """
-        if self._is_running():
+        if self._is_running() or self.config.is_master is False:
             return
 
         # cleanup

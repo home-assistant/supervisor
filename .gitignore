@@ -90,3 +90,10 @@ ENV/
 
 # pylint
 .pylint.d/
+
+# PyCharm/Idea
+.idea
+
+# Local test files
+run_master.sh
+run_slave.sh

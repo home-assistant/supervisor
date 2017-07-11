@@ -9,9 +9,11 @@ from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
-    ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, ATTR_SLUG,
+    ATTR_SLUG,
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
-    ATTR_INSTALLED, BOOT_AUTO, BOOT_MANUAL)
+    ATTR_INSTALLED, ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK,
+    ATTR_HOST_NETWORK,
+    BOOT_AUTO, BOOT_MANUAL, CLUSTER_NODE_MASTER)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,11 +33,12 @@ SCHEMA_OPTIONS = vol.Schema({
 class APIAddons(object):
     """Handle rest api for addons functions."""
 
-    def __init__(self, config, loop, addons):
+    def __init__(self, config, loop, addons, cluster):
         """Initialize homeassistant rest api part."""
         self.config = config
         self.loop = loop
         self.addons = addons
+        self.cluster = cluster
 
     def _extract_addon(self, request, check_installed=True):
         """Return addon and if not exists trow a exception."""
@@ -47,6 +50,18 @@ class APIAddons(object):
             raise RuntimeError("Addon is not installed")
 
         return addon
+
+    def _get_cluster_node(self, request):
+        """Return cluster node if it's known and active."""
+        node_slug = request.match_info.get('node')
+        if node_slug is None or node_slug == CLUSTER_NODE_MASTER:
+            return None
+        node = self.cluster.get_node(node_slug)
+        if node is None:
+            raise RuntimeError("Node is unknown")
+        if node.is_active is False:
+            raise RuntimeError("Node is not active")
+        return node
 
     @api_process
     async def list(self, request):
@@ -134,11 +149,15 @@ class APIAddons(object):
     async def install(self, request):
         """Install addon."""
         body = await api_validate(SCHEMA_VERSION, request)
-        addon = self._extract_addon(request, check_installed=False)
-        version = body.get(ATTR_VERSION)
+        node = self._get_cluster_node(request)
+        if node is None:
+            addon = self._extract_addon(request, check_installed=False)
+            version = body.get(ATTR_VERSION)
 
-        return await asyncio.shield(
-            addon.install(version=version), loop=self.loop)
+            return await asyncio.shield(
+                addon.install(version=version), loop=self.loop)
+        else:
+            await node.install_addon(request, body)
 
     @api_process
     async def uninstall(self, request):
