@@ -154,4 +154,4 @@ class HomeAssistant(JsonConfig):
 
         Return a coroutine.
         """
-        return self.docker.is_running()
+        return self.docker.is_running
