@@ -148,6 +148,7 @@ class HomeAssistant(JsonConfig):
         """
         return self.docker.logs()
 
+    @property
     def is_running(self):
         """Return True if docker container is running.
 
