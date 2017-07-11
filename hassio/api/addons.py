@@ -9,7 +9,8 @@ from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
-    ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK,
+    ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, ATTR_SLUG,
+    ATTR_SOURCE, ATTR_REPOSITORY, ATTR_REPOSITORIES, ATTR_ADDONS,
     BOOT_AUTO, BOOT_MANUAL)
 from ..validate import DOCKER_PORTS
 
@@ -46,6 +47,44 @@ class APIAddons(object):
             raise RuntimeError("Addon is not installed")
 
         return addon
+
+    @api_process
+    async def list(self, request):
+        """Return all addons / repositories ."""
+        data_addons = []
+        for addon in self.addons.list_addons:
+            data_addons.append({
+                ATTR_NAME: addon.name,
+                ATTR_SLUG: addon.slug,
+                ATTR_DESCRIPTON: addon.description,
+                ATTR_VERSION: addon.last_version,
+                ATTR_INSTALLED: addon.version_installed,
+                ATTR_ARCH: addon.supported_arch,
+                ATTR_DETACHED: addon.is_detached,
+                ATTR_REPOSITORY: addon.repository,
+                ATTR_BUILD: addon.need_build,
+                ATTR_URL: addon.url,
+            })
+
+        data_repositories = []
+        for repository in self.addons.list_repositories:
+            data_repositories.append({
+                ATTR_SLUG: repository.slug,
+                ATTR_NAME: repository.name,
+                ATTR_SOURCE: repository.source,
+                ATTR_URL: repository.url,
+                ATTR_MAINTAINER: repository.maintainer,
+            })
+
+        return {
+            ATTR_ADDONS: data_addons,
+            ATTR_REPOSITORIES: data_repositories,
+        }
+
+    @api_process
+    def reload(self, request):
+        """Reload all addons data."""
+        return self.addons.reload()
 
     @api_process
     async def info(self, request):
