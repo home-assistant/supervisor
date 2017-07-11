@@ -6,7 +6,7 @@ from pathlib import Path
 import tarfile
 
 from .snapshot import Snapshot
-from .util import create_slug
+from .util import create_id
 from ..const import (
     ATTR_SLUG, FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 
@@ -31,19 +31,19 @@ class SnapshotsManager(object):
         """Return a list of all snapshot object."""
         return set(self.snapshots.values())
 
-    def get(self, slug):
+    def get(self, snapshot_id):
         """Return snapshot object."""
-        return self.snapshots.get(slug)
+        return self.snapshots.get(snapshot_id)
 
     def _create_snapshot(self, name, sys_type):
         """Initialize a new snapshot object from name."""
-        date_str = str(datetime.utcnow())
-        slug = create_slug(name, date_str)
-        tar_file = Path(self.config.path_backup, "{}.tar".format(slug))
+        date_str = datetime.utcnow().isoformat()
+        snapshot_id = create_id(name, date_str)
+        tar_file = Path(self.config.path_backup, "{}.tar".format(snapshot_id))
 
         # init object
         snapshot = Snapshot(self.config, self.loop, tar_file)
-        snapshot.create(slug, name, date_str, sys_type)
+        snapshot.create(snapshot_id, name, date_str, sys_type)
 
         # set general data
         snapshot.snapshot_homeassistant(self.homeassistant)
@@ -59,7 +59,7 @@ class SnapshotsManager(object):
             """Internal function to load snapshot."""
             snapshot = Snapshot(self.config, self.loop, tar_file)
             if await snapshot.load():
-                self.snapshots[snapshot.slug] = snapshot
+                self.snapshots[snapshot.id] = snapshot
 
         tasks = [_load_snapshot(tar_file) for tar_file in
                  self.config.path_backup.glob("*.tar")]
@@ -72,9 +72,9 @@ class SnapshotsManager(object):
         """Remove a snapshot."""
         try:
             snapshot.tar_file.unlink()
-            self.snapshots.pop(snapshot.slug, None)
+            self.snapshots.pop(snapshot.id, None)
         except OSError as err:
-            _LOGGER.error("Can't remove snapshot %s -> %s", snapshot.slug, err)
+            _LOGGER.error("Can't remove snapshot %s -> %s", snapshot.id, err)
             return False
 
         return True
@@ -86,7 +86,7 @@ class SnapshotsManager(object):
             return False
 
         snapshot = self._create_snapshot(name, SNAPSHOT_FULL)
-        _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
+        _LOGGER.info("Full-Snapshot %s start", snapshot.id)
         try:
             self.sheduler.suspend = True
             await self._lock.acquire()
@@ -101,19 +101,19 @@ class SnapshotsManager(object):
 
                 if tasks:
                     _LOGGER.info("Full-Snapshot %s run %d addons",
-                                 snapshot.slug, len(tasks))
+                                 snapshot.id, len(tasks))
                     await asyncio.wait(tasks, loop=self.loop)
 
                 # snapshot folders
-                _LOGGER.info("Full-Snapshot %s store folders", snapshot.slug)
+                _LOGGER.info("Full-Snapshot %s store folders", snapshot.id)
                 await snapshot.store_folders()
 
-            _LOGGER.info("Full-Snapshot %s done", snapshot.slug)
-            self.snapshots[snapshot.slug] = snapshot
+            _LOGGER.info("Full-Snapshot %s done", snapshot.id)
+            self.snapshots[snapshot.id] = snapshot
             return True
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Full-Snapshot %s error -> %s", snapshot.slug, err)
+            _LOGGER.info("Full-Snapshot %s error -> %s", snapshot.id, err)
             return False
 
         finally:
@@ -130,7 +130,7 @@ class SnapshotsManager(object):
         folders = folders or []
         snapshot = self._create_snapshot(name, SNAPSHOT_PARTIAL)
 
-        _LOGGER.info("Partial-Snapshot %s start", snapshot.slug)
+        _LOGGER.info("Partial-Snapshot %s start", snapshot.id)
         try:
             self.sheduler.suspend = True
             await self._lock.acquire()
@@ -145,20 +145,20 @@ class SnapshotsManager(object):
 
                 if tasks:
                     _LOGGER.info("Partial-Snapshot %s run %d addons",
-                                 snapshot.slug, len(tasks))
+                                 snapshot.id, len(tasks))
                     await asyncio.wait(tasks, loop=self.loop)
 
                 # snapshot folders
                 _LOGGER.info("Partial-Snapshot %s store folders %s",
-                             snapshot.slug, folders)
+                             snapshot.id, folders)
                 await snapshot.store_folders(folders)
 
-            _LOGGER.info("Partial-Snapshot %s done", snapshot.slug)
-            self.snapshots[snapshot.slug] = snapshot
+            _LOGGER.info("Partial-Snapshot %s done", snapshot.id)
+            self.snapshots[snapshot.id] = snapshot
             return True
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Partial-Snapshot %s error -> %s", snapshot.slug, err)
+            _LOGGER.info("Partial-Snapshot %s error -> %s", snapshot.id, err)
             return False
 
         finally:
@@ -173,10 +173,10 @@ class SnapshotsManager(object):
 
         if snapshot.sys_type != SNAPSHOT_FULL:
             _LOGGER.error(
-                "Full-Restore %s is only a partial snapshot!", snapshot.slug)
+                "Full-Restore %s is only a partial snapshot!", snapshot.id)
             return False
 
-        _LOGGER.info("Full-Restore %s start", snapshot.slug)
+        _LOGGER.info("Full-Restore %s start", snapshot.id)
         try:
             self.sheduler.suspend = True
             await self._lock.acquire()
@@ -193,7 +193,7 @@ class SnapshotsManager(object):
                 await asyncio.wait(tasks, loop=self.loop)
 
                 # restore folders
-                _LOGGER.info("Full-Restore %s restore folders", snapshot.slug)
+                _LOGGER.info("Full-Restore %s restore folders", snapshot.id)
                 await snapshot.restore_folders()
 
                 # start homeassistant restore
@@ -214,7 +214,7 @@ class SnapshotsManager(object):
                 remove_addons = actual_addons - restore_addons
 
                 _LOGGER.info("Full-Restore %s restore addons %s, remove %s",
-                             snapshot.slug, restore_addons, remove_addons)
+                             snapshot.id, restore_addons, remove_addons)
 
                 for slug in remove_addons:
                     addon = self.addons.get(slug)
@@ -232,20 +232,20 @@ class SnapshotsManager(object):
 
                 if tasks:
                     _LOGGER.info("Full-Restore %s restore addons tasks %d",
-                                 snapshot.slug, len(tasks))
+                                 snapshot.id, len(tasks))
                     await asyncio.wait(tasks, loop=self.loop)
 
                 # finish homeassistant task
                 _LOGGER.info("Full-Restore %s wait until homeassistant ready",
-                             snapshot.slug)
+                             snapshot.id)
                 await task_hass
                 await self.homeassistant.run()
 
-            _LOGGER.info("Full-Restore %s done", snapshot.slug)
+            _LOGGER.info("Full-Restore %s done", snapshot.id)
             return True
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Full-Restore %s error -> %s", slug, err)
+            _LOGGER.info("Full-Restore %s error -> %s", snapshot.id, err)
             return False
 
         finally:
@@ -262,7 +262,7 @@ class SnapshotsManager(object):
         addons = addons or []
         folders = folders or []
 
-        _LOGGER.info("Partial-Restore %s start", snapshot.slug)
+        _LOGGER.info("Partial-Restore %s start", snapshot.id)
         try:
             self.sheduler.suspend = True
             await self._lock.acquire()
@@ -275,7 +275,7 @@ class SnapshotsManager(object):
 
                 if folders:
                     _LOGGER.info("Partial-Restore %s restore folders %s",
-                                 snapshot.slug, folders)
+                                 snapshot.id, folders)
                     await snapshot.restore_folders(folders)
 
                 if homeassistant:
@@ -292,17 +292,17 @@ class SnapshotsManager(object):
 
                 if tasks:
                     _LOGGER.info("Partial-Restore %s run %d tasks",
-                                 snapshot.slug, len(tasks))
+                                 snapshot.id, len(tasks))
                     await asyncio.wait(tasks, loop=self.loop)
 
                 # make sure homeassistant run agen
                 await self.homeassistant.run()
 
-            _LOGGER.info("Partial-Restore %s done", snapshot.slug)
+            _LOGGER.info("Partial-Restore %s done", snapshot.id)
             return True
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Partial-Restore %s error -> %s", slug, err)
+            _LOGGER.info("Partial-Restore %s error -> %s", snapshot.id, err)
             return False
 
         finally:
