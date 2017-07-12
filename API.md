@@ -43,7 +43,9 @@ The addons from `addons` are only installed one.
             "arch": ["armhf", "aarch64", "i386", "amd64"],
             "repository": "12345678|null",
             "version": "LAST_VERSION",
-            "installed": "INSTALL_VERSION",
+            "installed": {
+              "node_name": "INSTALL_VERSION"
+            },
             "detached": "bool",
             "build": "bool",
             "url": "null|url"

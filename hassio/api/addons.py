@@ -104,46 +104,53 @@ class APIAddons(object):
     @api_process
     async def info(self, request):
         """Return addon information."""
-        addon = self._extract_addon(request, check_installed=False)
+        node = self._get_cluster_node(request)
+        if node is None:
+            addon = self._extract_addon(request, check_installed=False)
 
-        return {
-            ATTR_NAME: addon.name,
-            ATTR_DESCRIPTON: addon.description,
-            ATTR_VERSION: addon.version_installed,
-            ATTR_AUTO_UPDATE: addon.auto_update,
-            ATTR_REPOSITORY: addon.repository,
-            ATTR_LAST_VERSION: addon.last_version,
-            ATTR_STATE: await addon.state(),
-            ATTR_BOOT: addon.boot,
-            ATTR_OPTIONS: addon.options,
-            ATTR_URL: addon.url,
-            ATTR_DETACHED: addon.is_detached,
-            ATTR_BUILD: addon.need_build,
-            ATTR_NETWORK: addon.ports,
-            ATTR_HOST_NETWORK: addon.network_mode == 'host',
-        }
+            return {
+                ATTR_NAME: addon.name,
+                ATTR_DESCRIPTON: addon.description,
+                ATTR_VERSION: addon.version_installed,
+                ATTR_AUTO_UPDATE: addon.auto_update,
+                ATTR_REPOSITORY: addon.repository,
+                ATTR_LAST_VERSION: addon.last_version,
+                ATTR_STATE: await addon.state(),
+                ATTR_BOOT: addon.boot,
+                ATTR_OPTIONS: addon.options,
+                ATTR_URL: addon.url,
+                ATTR_DETACHED: addon.is_detached,
+                ATTR_BUILD: addon.need_build,
+                ATTR_NETWORK: addon.ports,
+                ATTR_HOST_NETWORK: addon.network_mode == 'host',
+            }
+
+        return await node.addon_info(request)
 
     @api_process
     async def options(self, request):
         """Store user options for addon."""
-        addon = self._extract_addon(request)
-
+        addon = self._extract_addon(request, check_installed=False)
         addon_schema = SCHEMA_OPTIONS.extend({
             vol.Optional(ATTR_OPTIONS): addon.schema,
         })
-
         body = await api_validate(addon_schema, request)
+        node = self._get_cluster_node(request)
+        if node is None:
+            if not addon.is_installed:
+                raise RuntimeError("Addon is not installed")
 
-        if ATTR_OPTIONS in body:
-            addon.options = body[ATTR_OPTIONS]
-        if ATTR_BOOT in body:
-            addon.boot = body[ATTR_BOOT]
-        if ATTR_AUTO_UPDATE in body:
-            addon.auto_update = body[ATTR_AUTO_UPDATE]
-        if ATTR_NETWORK in body:
-            addon.ports = body[ATTR_NETWORK]
+            if ATTR_OPTIONS in body:
+                addon.options = body[ATTR_OPTIONS]
+            if ATTR_BOOT in body:
+                addon.boot = body[ATTR_BOOT]
+            if ATTR_AUTO_UPDATE in body:
+                addon.auto_update = body[ATTR_AUTO_UPDATE]
+            if ATTR_NETWORK in body:
+                addon.ports = body[ATTR_NETWORK]
+            return True
 
-        return True
+        return await node.addon_options(request, body)
 
     @api_process
     async def install(self, request):
@@ -151,58 +158,90 @@ class APIAddons(object):
         body = await api_validate(SCHEMA_VERSION, request)
         node = self._get_cluster_node(request)
         if node is None:
-            addon = self._extract_addon(request, check_installed=False)
-            version = body.get(ATTR_VERSION)
+            return await self.install_plain(request, body)
 
-            return await asyncio.shield(
-                addon.install(version=version), loop=self.loop)
-        else:
-            await node.install_addon(request, body)
+        return await node.addon_install(request, body, self.config)
+
+    async def install_plain(self, request, body):
+        """Installing addon from pre-validated request."""
+        addon = self._extract_addon(request, check_installed=False)
+        version = body[ATTR_VERSION]
+
+        return await asyncio.shield(
+            addon.install(version=version), loop=self.loop)
 
     @api_process
     async def uninstall(self, request):
         """Uninstall addon."""
-        addon = self._extract_addon(request)
-        return await asyncio.shield(addon.uninstall(), loop=self.loop)
+        node = self._get_cluster_node(request)
+        if node is None:
+            addon = self._extract_addon(request)
+            return await asyncio.shield(addon.uninstall(), loop=self.loop)
+
+        return await node.addon_uninstall(request)
 
     @api_process
     async def start(self, request):
         """Start addon."""
-        addon = self._extract_addon(request)
+        node = self._get_cluster_node(request)
+        if node is None:
+            addon = self._extract_addon(request)
 
-        # check options
-        options = addon.options
-        try:
-            addon.schema(options)
-        except vol.Invalid as ex:
-            raise RuntimeError(humanize_error(options, ex)) from None
+            # check options
+            options = addon.options
+            try:
+                addon.schema(options)
+            except vol.Invalid as ex:
+                raise RuntimeError(humanize_error(options, ex)) from None
 
-        return await asyncio.shield(addon.start(), loop=self.loop)
+            return await asyncio.shield(addon.start(), loop=self.loop)
+
+        return await node.addon_start(request)
 
     @api_process
     async def stop(self, request):
         """Stop addon."""
-        addon = self._extract_addon(request)
-        return await asyncio.shield(addon.stop(), loop=self.loop)
+        node = self._get_cluster_node(request)
+        if node is None:
+            addon = self._extract_addon(request)
+            return await asyncio.shield(addon.stop(), loop=self.loop)
+
+        return await node.addon_stop(request)
 
     @api_process
     async def update(self, request):
         """Update addon."""
         body = await api_validate(SCHEMA_VERSION, request)
-        addon = self._extract_addon(request)
-        version = body.get(ATTR_VERSION)
+        node = self._get_cluster_node(request)
+        if node is None:
+            addon = self._extract_addon(request)
+            version = body.get(ATTR_VERSION)
 
-        return await asyncio.shield(
-            addon.update(version=version), loop=self.loop)
+            return await asyncio.shield(
+                addon.update(version=version), loop=self.loop)
+
+        return await node.addon_update(request, body)
 
     @api_process
     async def restart(self, request):
         """Restart addon."""
-        addon = self._extract_addon(request)
-        return await asyncio.shield(addon.restart(), loop=self.loop)
+        node = self._get_cluster_node(request)
+        if node is None:
+            addon = self._extract_addon(request)
+            return await asyncio.shield(addon.restart(), loop=self.loop)
+
+        return await node.addon_restart(request)
 
     @api_process_raw
-    def logs(self, request):
+    async def logs(self, request):
         """Return logs from addon."""
+        node = self._get_cluster_node(request)
+        if node is None:
+            return await self.logs_plain(request)
+
+        return await node.addon_logs(request)
+
+    async def logs_plain(self, request):
+        """Return plain logs without wrappers."""
         addon = self._extract_addon(request)
-        return addon.logs()
+        return await addon.logs()

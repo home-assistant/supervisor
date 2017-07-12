@@ -102,8 +102,9 @@ class HassIO(object):
 
         # Have to be the last one because shares other API
         self.api.register_cluster(self.cluster)
-        self.cluster_api.register_cluster(self.cluster, self.addons,
-                                          self.api.api_addons)
+        self.cluster_api.register_cluster_management(self.cluster)
+        self.cluster_api.register_cluster_addons(self.cluster, self.addons,
+                                                 self.api.api_addons)
 
         # schedule api session cleanup
         self.scheduler.register_task(

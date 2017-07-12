@@ -22,10 +22,11 @@ SCHEMA_SLAVE_SWITCH = vol.Schema({
 class APIClusterBase(object):
     """Base cluster API object."""
 
-    def __init__(self, config, cluster):
+    def __init__(self, cluster, config, loop):
         """Initialize base cluster REST API object."""
         self.cluster = cluster
         self.config = config
+        self.loop = loop
 
     def _master_only(self):
         """Check if this method is executed on master node."""
@@ -67,6 +68,8 @@ class APICluster(APIClusterBase):
             response[ATTR_MASTER_KEY] = self.cluster.master_key
             response[ATR_KNOWN_NODES] = []
             for node in self.cluster.known_nodes:
+                last_seen = int(node.last_seen) if node.last_seen is not None \
+                    else None
                 response[ATR_KNOWN_NODES].append({
                     ATTR_SLUG: node.slug,
                     ATTR_ARCH: node.arch,
@@ -74,7 +77,7 @@ class APICluster(APIClusterBase):
                     ATTR_TIMEZONE: node.time_zone,
                     ATTR_IP: str(node.last_ip),
                     ATTR_IS_ACTIVE: node.is_active,
-                    ATTR_LAST_SEEN: int(node.last_seen)
+                    ATTR_LAST_SEEN: last_seen
                 })
 
         else:

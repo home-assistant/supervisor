@@ -5,11 +5,10 @@ import logging
 import voluptuous as vol
 
 from .cluster import APIClusterBase
-from .util import api_process, api_validate, get_real_ip, get_addons_list
+from .util import api_process, api_validate, get_real_ip
 from ..const import (ATTR_MASTER_KEY, ATTR_SLUG, ATTR_NODE_KEY,
                      ATTR_ADDONS_REPOSITORIES, HTTP_HEADER_X_NODE_KEY,
-                     ATTR_VERSION, ATTR_ARCH,
-                     ATTR_TIMEZONE, ATTR_ADDONS)
+                     ATTR_VERSION, ATTR_ARCH, ATTR_TIMEZONE)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,12 +26,6 @@ SCHEMA_NODE_REGISTER = vol.Schema({
 
 class APIClusterManagement(APIClusterBase):
     """Management part of cluster REST API."""
-
-    def __init__(self, config, addons, cluster, api_addons):
-        """Initialize cluster REST API object."""
-        super().__init__(config, cluster)
-        self.api_addons = api_addons
-        self.addons = addons
 
     def _get_public_node(self, request):
         """Return known node based on public request data."""
@@ -82,21 +75,3 @@ class APIClusterManagement(APIClusterBase):
             ATTR_NODE_KEY: node_key,
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories
         }
-
-    @api_process
-    async def get_addons_list(self, request):
-        """Retrieving addons list from slave node."""
-        self._slave_only(request)
-        return {
-            ATTR_ADDONS: get_addons_list(self.addons,
-                                         self.config,
-                                         only_installed=True)
-        }
-
-    @api_process
-    async def install_addon(self, request):
-        """Installing addon on slave node."""
-        self._slave_only(request)
-        _LOGGER.info("Remote addon installation called")
-        await self.addons.load_addons()
-        await self.api_addons.install(request)
