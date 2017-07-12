@@ -3,5 +3,6 @@
     "homeassistant": "0.48.1",
     "resinos": "0.8",
     "resinhup": "0.1",
-    "generic": "0.3"
+    "generic": "0.3",
+    "cluster": "0.1"
 }
