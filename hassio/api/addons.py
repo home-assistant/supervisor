@@ -9,11 +9,9 @@ from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
-    ATTR_SLUG,
-    ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
-    ATTR_INSTALLED, ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK,
-    ATTR_HOST_NETWORK,
-    BOOT_AUTO, BOOT_MANUAL, CLUSTER_NODE_MASTER)
+    ATTR_SLUG, ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_MAINTAINER,
+    ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, BOOT_AUTO,
+    BOOT_MANUAL, CLUSTER_NODE_MASTER)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -66,21 +64,6 @@ class APIAddons(object):
     @api_process
     async def list(self, request):
         """Return all addons / repositories ."""
-        data_addons = []
-        for addon in self.addons.list_addons:
-            data_addons.append({
-                ATTR_NAME: addon.name,
-                ATTR_SLUG: addon.slug,
-                ATTR_DESCRIPTON: addon.description,
-                ATTR_VERSION: addon.last_version,
-                ATTR_INSTALLED: addon.version_installed,
-                ATTR_ARCH: addon.supported_arch,
-                ATTR_DETACHED: addon.is_detached,
-                ATTR_REPOSITORY: addon.repository,
-                ATTR_BUILD: addon.need_build,
-                ATTR_URL: addon.url,
-            })
-
         data_repositories = []
         for repository in self.addons.list_repositories:
             data_repositories.append({
@@ -92,7 +75,7 @@ class APIAddons(object):
             })
 
         return {
-            ATTR_ADDONS: data_addons,
+            ATTR_ADDONS: await self.cluster.get_addons_list(),
             ATTR_REPOSITORIES: data_repositories,
         }
 

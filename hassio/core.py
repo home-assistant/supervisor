@@ -7,19 +7,18 @@ import docker
 
 from .addons import AddonManager
 from .api import RestAPI, ClusterAPI
-from .host_control import HostControl
-from .homeassistant import HomeAssistant
+from .cluster import ClusterManager
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
     RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE,
     STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS, RUN_UPDATE_ADDONS_TASKS,
-    STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS, RUN_UPDATE_ADDONS_TASKS,
     HASSIO_API_PORT, HASSIO_PUBLIC_CLUSTER_PORT)
-from .scheduler import Scheduler
 from .dock.supervisor import DockerSupervisor
+from .homeassistant import HomeAssistant
+from .host_control import HostControl
+from .scheduler import Scheduler
 from .snapshots import SnapshotsManager
-from .cluster import ClusterManager
 from .tasks import (
     hassio_update, homeassistant_watchdog, api_sessions_cleanup, addons_update)
 from .tools import get_local_ip, fetch_timezone
@@ -162,7 +161,7 @@ class HassIO(object):
             await self.addons.auto_boot(STARTUP_BEFORE)
 
             # run HomeAssistant if we're not on slave node
-            if self.config.is_master is True:
+            if self.cluster.is_master is True:
                 await self.homeassistant.run()
 
             # start addon mark as after

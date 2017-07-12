@@ -5,10 +5,9 @@ import voluptuous as vol
 
 from .util import api_process, api_validate, hash_password
 from ..const import (ATTR_IS_MASTER, ATTR_MASTER_KEY, ATTR_SLUG, ATTR_NODE_KEY,
-                     ATTR_NODE_NAME, ATTR_MASTER_IP,
-                     HTTP_HEADER_X_NODE_KEY, ATTR_VERSION, ATTR_ARCH,
-                     ATTR_TIMEZONE, ATR_KNOWN_NODES, ATTR_IP, ATTR_IS_ACTIVE,
-                     ATTR_LAST_SEEN)
+                     ATTR_NODE_NAME, ATTR_MASTER_IP, HTTP_HEADER_X_NODE_KEY,
+                     ATTR_VERSION, ATTR_ARCH, ATTR_TIMEZONE, ATR_KNOWN_NODES,
+                     ATTR_IP, ATTR_IS_ACTIVE, ATTR_LAST_SEEN)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,18 +29,18 @@ class APIClusterBase(object):
 
     def _master_only(self):
         """Check if this method is executed on master node."""
-        if self.config.is_master is False:
+        if self.cluster.is_master is False:
             raise RuntimeError("Unable to execute on slave")
 
     def _slave_only(self, request):
         """Check if this method is executed on slave node."""
-        if self.config.is_master is True:
+        if self.cluster.is_master is True:
             raise RuntimeError("Unable to execute on master")
 
         if HTTP_HEADER_X_NODE_KEY not in request.headers \
                 or request.headers.get(
                         HTTP_HEADER_X_NODE_KEY) != hash_password(
-                            self.config.node_key):
+                            self.cluster.node_key):
             raise RuntimeError("Invalid node key")
 
 
@@ -59,7 +58,7 @@ class APICluster(APIClusterBase):
     @api_process
     async def info(self, request):
         """Return information about current cluster node."""
-        is_master = self.config.is_master
+        is_master = self.cluster.is_master
         response = {
             ATTR_IS_MASTER: is_master
         }
@@ -81,9 +80,9 @@ class APICluster(APIClusterBase):
                 })
 
         else:
-            response[ATTR_SLUG] = self.config.node_slug
-            response[ATTR_NODE_KEY] = self.config.node_key
-            response[ATTR_MASTER_IP] = self.config.master_ip
+            response[ATTR_NODE_NAME] = self.cluster.node_name
+            response[ATTR_NODE_KEY] = self.cluster.node_key
+            response[ATTR_MASTER_IP] = self.cluster.master_ip
 
         return response
 

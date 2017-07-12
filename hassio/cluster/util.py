@@ -36,6 +36,6 @@ def get_security_headers_raw(hash_key):
     }
 
 
-def get_security_headers(config):
+def get_security_headers(cluster):
     """Returning security header using config."""
-    return get_security_headers_raw(hash_password(config.node_key))
+    return get_security_headers_raw(hash_password(cluster.node_key))

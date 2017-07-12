@@ -30,6 +30,7 @@ RESTART_EXIT_CODE = 100
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
 FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
+FILE_HASSIO_CLUSTER = Path(HASSIO_DATA, "cluster.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 SOCKET_HC = Path("/var/run/hassio-hc.sock")

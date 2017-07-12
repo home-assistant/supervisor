@@ -25,7 +25,7 @@ class APIClusterAddons(APIClusterBase):
         """Retrieving addons list from slave node."""
         self._slave_only(request)
         return get_addons_list(self.addons,
-                               self.config,
+                               self.cluster.is_master,
                                only_installed=True)
 
     @api_process

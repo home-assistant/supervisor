@@ -4,15 +4,12 @@ import logging
 
 import voluptuous as vol
 
-from .util import api_process, api_process_raw, api_validate, get_addons_list
+from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
-    ATTR_REPOSITORY, ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED,
-    ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH,
-    ATTR_BUILD, ATTR_TIMEZONE,
     ATTR_NAME, ATTR_SLUG, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH,
-    ATTR_TIMEZONE, ATTR_DATE, ATTR_SNAPSHOTS, ATTR_INSTALLED)
+    ATTR_TIMEZONE)
 from ..tools import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,35 +41,6 @@ class APISupervisor(object):
         self.websession = websession
         self.cluster = cluster
 
-    async def _addons_list(self, only_installed=False):
-        """Return a list of addons."""
-        local = get_addons_list(self.addons, self.config, only_installed)
-
-        tasks = []
-        for node in self.cluster.known_nodes:
-            if node.is_active:
-                tasks.append(node.get_addons_list())
-        len_ = len(tasks)
-        if len_ > 0:
-            results, _ = await asyncio.shield(
-                asyncio.wait(tasks, loop=self.loop), loop=self.loop)
-            for result in results:
-                err = result.exception()
-                if err is not None:
-                    _LOGGER.warning("Failed to fetch addons "
-                                    "list from remote: %s", err)
-                    continue
-                for addon in result.result():
-                    local_addon = next((x for x in local
-                                        if x[ATTR_SLUG] == addon[ATTR_SLUG]),
-                                       None)
-                    if local_addon is not None:
-                        local_addon[ATTR_INSTALLED] \
-                            .update(addon[ATTR_INSTALLED])
-                    else:
-                        local.append(addon)
-        return local
-
     def _repositories_list(self):
         """Return a list of addons repositories."""
         data = []
@@ -101,7 +69,8 @@ class APISupervisor(object):
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
             ATTR_ARCH: self.config.arch,
             ATTR_TIMEZONE: self.config.timezone,
-            ATTR_ADDONS: await self._addons_list(only_installed=True),
+            ATTR_ADDONS: await self.cluster.get_addons_list(
+                only_installed=True),
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
         }
 
@@ -109,7 +78,7 @@ class APISupervisor(object):
     async def available_addons(self, request):
         """Return information for all available addons."""
         return {
-            ATTR_ADDONS: await self._addons_list(),
+            ATTR_ADDONS: await self.cluster.get_addons_list(),
             ATTR_REPOSITORIES: self._repositories_list(),
         }
 

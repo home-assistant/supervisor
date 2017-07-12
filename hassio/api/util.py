@@ -150,9 +150,9 @@ def get_real_ip(request):
     return real_ip
 
 
-def get_addons_list(addons, config, only_installed=False):
+def get_addons_list(addons, is_master, only_installed=False):
     """Return a list of addons."""
-    if config.is_master:
+    if is_master:
         node = CLUSTER_NODE_MASTER
     else:
         node = 'slave'
