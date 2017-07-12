@@ -93,7 +93,6 @@ class APISupervisor(object):
             ATTR_TIMEZONE: self.config.timezone,
             ATTR_ADDONS: self._addons_list(only_installed=True),
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
-            ATTR_SNAPSHOTS: self._snapshots_list(),
         }
 
     @api_process
