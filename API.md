@@ -51,48 +51,13 @@ The addons from `addons` are only installed one.
     ],
     "addons_repositories": [
         "REPO_URL"
-    ],
-    "snapshots": [
-        {
-            "slug": "SLUG",
-            "data": "ISO",
-            "name": "Custom name"
-        }
     ]
 }
 ```
 
 - GET `/supervisor/addons`
 
-Get all available addons
-
-```json
-{
-    "addons": [
-        {
-            "name": "xy bla",
-            "slug": "xy",
-            "description": "description",
-            "arch": ["armhf", "aarch64", "i386", "amd64"],
-            "repository": "core|local|REP_ID",
-            "version": "LAST_VERSION",
-            "installed": "none|INSTALL_VERSION",
-            "detached": "bool",
-            "build": "bool",
-            "url": "null|url"
-        }
-    ],
-    "repositories": [
-        {
-            "slug": "12345678",
-            "name": "Repitory Name|unknown",
-            "source": "URL_OF_REPOSITORY",
-            "url": "WEBSITE|REPOSITORY",
-            "maintainer": "BLA BLU <fla@dld.ch>|unknown"
-        }
-    ]
-}
-```
+Get all available addons. Will be delete soon. Look to `/addons`
 
 - POST `/supervisor/update`
 Optional:
@@ -156,6 +121,21 @@ Return QR-Code
 ```
 
 ### Backup/Snapshot
+
+- GET `/snapshots`
+```json
+{
+    "snapshots": [
+        {
+            "slug": "SLUG",
+            "date": "ISO",
+            "name": "Custom name"
+        }
+    ]
+}
+```
+
+- POST `/snapshots/reload`
 
 - POST `/snapshots/new/full`
 ```json
@@ -269,7 +249,9 @@ Optional:
 {
     "version": "INSTALL_VERSION",
     "last_version": "LAST_VERSION",
-    "devices": []
+    "devices": [""],
+    "image": "str",
+    "custom": "bool -> if custom image"
 }
 ```
 
@@ -291,10 +273,46 @@ Output the raw docker log
 ```json
 {
     "devices": [],
+    "image": "Optional|null",
+    "last_version": "Optional for custom image|null"
 }
 ```
 
+Image with `null` and last_version with `null` reset this options.
+
 ### REST API addons
+
+- GET `/addons`
+
+Get all available addons
+
+```json
+{
+    "addons": [
+        {
+            "name": "xy bla",
+            "slug": "xy",
+            "description": "description",
+            "arch": ["armhf", "aarch64", "i386", "amd64"],
+            "repository": "core|local|REP_ID",
+            "version": "LAST_VERSION",
+            "installed": "none|INSTALL_VERSION",
+            "detached": "bool",
+            "build": "bool",
+            "url": "null|url"
+        }
+    ],
+    "repositories": [
+        {
+            "slug": "12345678",
+            "name": "Repitory Name|unknown",
+            "source": "URL_OF_REPOSITORY",
+            "url": "WEBSITE|REPOSITORY",
+            "maintainer": "BLA BLU <fla@dld.ch>|unknown"
+        }
+    ]
+}
+```
 
 - POST `/addons/reload`
 

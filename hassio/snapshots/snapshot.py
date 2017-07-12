@@ -13,7 +13,8 @@ from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
 from .util import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_DEVICES)
+    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_DEVICES,
+    ATTR_IMAGE)
 from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,6 +92,16 @@ class Snapshot(object):
         self._data[ATTR_HOMEASSISTANT][ATTR_DEVICES] = value
 
     @property
+    def homeassistant_image(self):
+        """Return snapshot homeassistant custom image."""
+        return self._data[ATTR_HOMEASSISTANT].get(ATTR_IMAGE)
+
+    @homeassistant_image.setter
+    def homeassistant_image(self, value):
+        """Set snapshot homeassistant custom image."""
+        self._data[ATTR_HOMEASSISTANT][ATTR_IMAGE] = value
+
+    @property
     def size(self):
         """Return snapshot size."""
         if not self.tar_file.is_file():
@@ -110,6 +121,24 @@ class Snapshot(object):
         self._data[ATTR_ADDONS] = []
         self._data[ATTR_REPOSITORIES] = []
         self._data[ATTR_FOLDERS] = []
+
+    def snapshot_homeassistant(self, homeassistant):
+        """Read all data from homeassistant object."""
+        self.homeassistant_version = homeassistant.version
+        self.homeassistant_devices = homeassistant.devices
+
+        # custom image
+        if homeassistant.is_custom_image:
+            self.homeassistant_image = homeassistant.image
+
+    def restore_homeassistant(self, homeassistant):
+        """Write all data to homeassistant object."""
+        homeassistant.devices = self.homeassistant_devices
+
+        # custom image
+        if self.homeassistant_image:
+            homeassistant.set_custom(
+                self.homeassistant_image, self.homeassistant_version)
 
     async def load(self):
         """Read snapshot.json from tar file."""

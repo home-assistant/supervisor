@@ -9,6 +9,7 @@ import aiohttp
 import async_timeout
 import pytz
 import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from .const import URL_HASSIO_VERSION, URL_HASSIO_VERSION_BETA
 
@@ -98,3 +99,44 @@ async def fetch_timezone(websession):
                 data = await request.json()
 
     return data.get('time_zone', 'UTC')
+
+
+class JsonConfig(object):
+    """Hass core object for handle it."""
+
+    def __init__(self, json_file, schema):
+        """Initialize hass object."""
+        self._file = json_file
+        self._schema = schema
+        self._data = {}
+
+        # init or load data
+        if self._file.is_file():
+            try:
+                self._data = read_json_file(self._file)
+            except (OSError, json.JSONDecodeError):
+                _LOGGER.warning("Can't read %s", self._file)
+                self._data = {}
+
+        # validate
+        try:
+            self._data = self._schema(self._data)
+        except vol.Invalid as ex:
+            _LOGGER.error("Can't parse %s -> %s",
+                          self._file, humanize_error(self._data, ex))
+
+    def save(self):
+        """Store data to config file."""
+        # validate
+        try:
+            self._data = self._schema(self._data)
+        except vol.Invalid as ex:
+            _LOGGER.error("Can't parse data -> %s",
+                          humanize_error(self._data, ex))
+            return False
+
+        # write
+        if not write_json_file(self._file, self._data):
+            _LOGGER.error("Can't store config in %s", self._file)
+            return False
+        return True
