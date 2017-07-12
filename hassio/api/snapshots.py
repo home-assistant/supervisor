@@ -9,7 +9,7 @@ from ..snapshots.validate import ALL_FOLDERS
 from ..const import (
     ATTR_NAME, ATTR_SLUG, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS, ATTR_TYPE,
-    ATTR_DEVICES)
+    ATTR_DEVICES, ATTR_SNAPSHOTS)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,22 +47,38 @@ class APISnapshots(object):
             raise RuntimeError("Snapshot not exists")
         return snapshot
 
-    @staticmethod
-    def _addons_list(snapshot):
-        """Generate a list with addons data."""
-        data = []
-        for addon_data in snapshot.addons:
-            data.append({
-                ATTR_SLUG: addon_data[ATTR_SLUG],
-                ATTR_NAME: addon_data[ATTR_NAME],
-                ATTR_VERSION: addon_data[ATTR_VERSION],
+    @api_process
+    async def list(self, request):
+        """Return snapshot list."""
+        data_snapshots = []
+        for snapshot in self.snapshots.list_snapshots:
+            data_snapshots.append({
+                ATTR_SLUG: snapshot.slug,
+                ATTR_NAME: snapshot.name,
+                ATTR_DATE: snapshot.date,
             })
-        return data
+
+        return {
+            ATTR_SNAPSHOTS: data_snapshots,
+        }
+
+    @api_process
+    def reload(self, request):
+        """Reload snapshot list."""
+        return asyncio.shield(self.snapshots.reload(), loop=self.loop)
 
     @api_process
     async def info(self, request):
         """Return snapshot info."""
         snapshot = self._extract_snapshot(request)
+
+        data_addons = []
+        for addon_data in snapshot.addons:
+            data_addons.append({
+                ATTR_SLUG: addon_data[ATTR_SLUG],
+                ATTR_NAME: addon_data[ATTR_NAME],
+                ATTR_VERSION: addon_data[ATTR_VERSION],
+            })
 
         return {
             ATTR_SLUG: snapshot.slug,
@@ -74,7 +90,7 @@ class APISnapshots(object):
                 ATTR_VERSION: snapshot.homeassistant_version,
                 ATTR_DEVICES: snapshot.homeassistant_devices,
             },
-            ATTR_ADDONS: self._addons_list(snapshot),
+            ATTR_ADDONS: data_addons,
             ATTR_REPOSITORIES: snapshot.repositories,
             ATTR_FOLDERS: snapshot.folders,
         }

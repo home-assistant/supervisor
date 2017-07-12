@@ -10,7 +10,7 @@ from ..const import (
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
     ATTR_REPOSITORY, ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED,
     ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH,
-    ATTR_BUILD, ATTR_TIMEZONE, ATTR_DATE, ATTR_SNAPSHOTS)
+    ATTR_BUILD, ATTR_TIMEZONE)
 from ..tools import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,18 +77,6 @@ class APISupervisor(object):
 
         return data
 
-    def _snapshots_list(self):
-        """Return a list of available snapshots."""
-        data = []
-        for snapshot in self.snapshots.list_snapshots:
-            data.append({
-                ATTR_SLUG: snapshot.slug,
-                ATTR_NAME: snapshot.name,
-                ATTR_DATE: snapshot.date,
-            })
-
-        return data
-
     @api_process
     async def ping(self, request):
         """Return ok for signal that the api is ready."""
@@ -105,7 +93,6 @@ class APISupervisor(object):
             ATTR_TIMEZONE: self.config.timezone,
             ATTR_ADDONS: self._addons_list(only_installed=True),
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
-            ATTR_SNAPSHOTS: self._snapshots_list(),
         }
 
     @api_process

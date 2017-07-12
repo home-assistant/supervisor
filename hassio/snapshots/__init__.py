@@ -37,7 +37,7 @@ class SnapshotsManager(object):
 
     def _create_snapshot(self, name, sys_type):
         """Initialize a new snapshot object from name."""
-        date_str = str(datetime.utcnow())
+        date_str = datetime.utcnow().isoformat()
         slug = create_slug(name, date_str)
         tar_file = Path(self.config.path_backup, "{}.tar".format(slug))
 
