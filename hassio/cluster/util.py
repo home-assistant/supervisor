@@ -7,7 +7,7 @@ from aiohttp import web
 from jwcrypto import jwk, jwe
 from jwcrypto.common import json_encode
 
-from ..const import HASSIO_PUBLIC_CLUSTER_PORT, JSON_RESULT, RESULT_OK
+from ..const import JSON_RESULT, RESULT_OK
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,16 +25,6 @@ def generate_cluster_key():
 def get_node_slug(node_name):
     """Fixing node name."""
     return node_name.replace(" ", "_")
-
-
-def get_public_cluster_url(ip_address, relative_url):
-    """Preparing URL for public cluster API."""
-    if relative_url[0] != "/":
-        relative_url = "/" + relative_url
-    return "http://{0}:{1}/" \
-           "cluster/public{2}".format(ip_address,
-                                      HASSIO_PUBLIC_CLUSTER_PORT,
-                                      relative_url)
 
 
 def get_key(key):

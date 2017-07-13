@@ -195,12 +195,9 @@ class RestAPI(RestAPIBase):
         api_cluster = APICluster(cluster, self.config, self.loop)
 
         self.webapp.router.add_get('/cluster/info', api_cluster.info)
-        self.webapp.router.add_post('/cluster/leave',
-                                    api_cluster.switch_to_master)
-        self.webapp.router.add_post('/cluster/register',
-                                    api_cluster.switch_to_slave)
-        self.webapp.router.add_post('/cluster/{node}/leave',
-                                    api_cluster.remove_node)
+        self.webapp.router.add_post('/cluster/leave', api_cluster.leave)
+        self.webapp.router.add_post('/cluster/register', api_cluster.register)
+        self.webapp.router.add_post('/cluster/{node}/kick', api_cluster.kick)
 
     def register_panel(self):
         """Register panel for homeassistant."""

@@ -380,6 +380,50 @@ Output the raw docker log
 
 - POST `/addons/{addon}/restart`
 
+## REST API Cluster 
+- GET `/cluster/info`
+
+Retrieving information about cluster. If it's a master node will return list 
+of all known slaves. 
+
+Example result:
+```json
+   
+ {
+  "is_master": <master or slave node>,
+  "master_key": "key",
+  "nodes": [{
+     "slug": "registration name",
+     "arch": "armhf|aarch64|i386|amd64",
+     "version": "hassio version",
+     "timezone": "node tz",
+     "ip": "last known IP",
+     "is_active": <any recent activitiy from node>,
+     "last_seen": <second since last activity>
+  }]
+}
+``` 
+
+- POST `/cluster/register`
+
+Registering this instance as a slave node in cluster
+ ```json
+{
+	"master_ip": "ip address of master node", 
+	"master_key": "master key", 
+	"node_name": "registration name" 
+}
+```
+
+- POST `/cluster/leave`
+
+Can be executed on registered slave to leave cluster
+
+- POST  `/cluster/{node}/kick`
+
+Can be executed on master to remove one of known nodes. Will make attempt to 
+notify this node if it's online.  
+
 ## Host Control
 
 Communicate over unix socket with a host daemon.
@@ -420,3 +464,13 @@ Answer:
 - OK: call was successfully
 - ERROR: error on call
 - WRONG: not supported
+
+## Cluster internal
+Internal communications are held on port `9123` with JWE and nonce validation.
+All methods are `POST` and requires key (node or master)
+
+- `/cluster/register` - registration within cluster
+- `/cluster/leave` - leaving cluster
+- `/cluster/kick` - forcing node to leave cluster
+- `/cluster/ping` - ping from slave node and additional data sync
+- `/cluster/addons/{addon}/{operation}` - proxy of `/addons` calls to slaves

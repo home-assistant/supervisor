@@ -109,13 +109,13 @@ class APICluster(APIClusterBase):
         return response
 
     @api_process
-    async def switch_to_master(self, request):
+    async def leave(self, request):
         """Changing current node status to master."""
         await self.cluster.switch_to_master(True)
         return True
 
     @api_process
-    async def switch_to_slave(self, request):
+    async def register(self, request):
         """Changing current node status to slave."""
         body = await api_validate(SCHEMA_SLAVE_SWITCH, request)
         return await self.cluster.switch_to_slave(body[ATTR_MASTER_IP],
@@ -123,7 +123,7 @@ class APICluster(APIClusterBase):
                                                   body[ATTR_NODE_NAME])
 
     @api_process
-    async def remove_node(self, request):
+    async def kick(self, request):
         """Removing existing slave node from cluster."""
         self._master_only()
         node = self._get_node(request)
