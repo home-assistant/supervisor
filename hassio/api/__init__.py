@@ -195,11 +195,11 @@ class RestAPI(RestAPIBase):
         api_cluster = APICluster(cluster, self.config, self.loop)
 
         self.webapp.router.add_get('/cluster/info', api_cluster.info)
-        self.webapp.router.add_post('/cluster/switch_to_master',
+        self.webapp.router.add_post('/cluster/leave',
                                     api_cluster.switch_to_master)
-        self.webapp.router.add_post('/cluster/switch_to_slave',
+        self.webapp.router.add_post('/cluster/register',
                                     api_cluster.switch_to_slave)
-        self.webapp.router.add_post('/cluster/{slug}/remove',
+        self.webapp.router.add_post('/cluster/{node}/leave',
                                     api_cluster.remove_node)
 
     def register_panel(self):
@@ -220,11 +220,11 @@ class ClusterAPI(RestAPIBase):
         """Registering cluster management functions."""
         api_cluster = APIClusterManagement(cluster, self.config, self.loop)
 
-        self.webapp.router.add_post('/cluster/public/register',
+        self.webapp.router.add_post('/cluster/register',
                                     api_cluster.register_node)
-        self.webapp.router.add_post('/cluster/public/unregister',
+        self.webapp.router.add_post('/cluster/leave',
                                     api_cluster.unregister_node)
-        self.webapp.router.add_post('/cluster/public/ping',
+        self.webapp.router.add_post('/cluster/ping',
                                     api_cluster.ping)
 
     def register_cluster_addons(self, cluster, addons, api_addons):
@@ -232,23 +232,21 @@ class ClusterAPI(RestAPIBase):
         api_cluster_addons = APIClusterAddons(cluster, self.config,
                                               addons, api_addons, self.loop)
 
-        self.webapp.router.add_get('/cluster/public/addons',
-                                   api_cluster_addons.list)
-        self.webapp.router.add_post('/cluster/public/addons/{addon}/install',
+        self.webapp.router.add_post('/cluster/addons/{addon}/install',
                                     api_cluster_addons.install)
-        self.webapp.router.add_post('/cluster/public/addons/{addon}/uninstall',
+        self.webapp.router.add_post('/cluster/addons/{addon}/uninstall',
                                     api_cluster_addons.uninstall)
-        self.webapp.router.add_get('/cluster/public/addons/{addon}/info',
-                                   api_cluster_addons.info)
-        self.webapp.router.add_post('/cluster/public/addons/{addon}/start',
+        self.webapp.router.add_post('/cluster/addons/{addon}/info',
+                                    api_cluster_addons.info)
+        self.webapp.router.add_post('/cluster/addons/{addon}/start',
                                     api_cluster_addons.start)
-        self.webapp.router.add_post('/cluster/public/addons/{addon}/stop',
+        self.webapp.router.add_post('/cluster/addons/{addon}/stop',
                                     api_cluster_addons.stop)
-        self.webapp.router.add_post('/cluster/public/addons/{addon}/restart',
+        self.webapp.router.add_post('/cluster/addons/{addon}/restart',
                                     api_cluster_addons.restart)
-        self.webapp.router.add_post('/cluster/public/addons/{addon}/update',
+        self.webapp.router.add_post('/cluster/addons/{addon}/update',
                                     api_cluster_addons.update)
-        self.webapp.router.add_post('/cluster/public/addons/{addon}/options',
+        self.webapp.router.add_post('/cluster/addons/{addon}/options',
                                     api_cluster_addons.options)
-        self.webapp.router.add_get('/cluster/public/addons/{addon}/logs',
-                                   api_cluster_addons.logs)
+        self.webapp.router.add_post('/cluster/addons/{addon}/logs',
+                                    api_cluster_addons.logs)

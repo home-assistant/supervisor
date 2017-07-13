@@ -5,97 +5,97 @@ import logging
 
 from hassio.const import ATTR_ADDONS_REPOSITORIES
 from .cluster import APIClusterBase
-from .util import api_process, get_addons_list, cluster_api_wrap, \
-    api_process_raw, json_loads
+from ..cluster.util import cluster_public_api_process
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class APIClusterAddons(APIClusterBase):
     """Addons management rest API on remote slave node."""
+
     def __init__(self, cluster, config, addons, api_addons, loop):
         """Initialize cluster REST API object."""
         super().__init__(cluster, config, loop)
         self.api_addons = api_addons
         self.addons = addons
 
-    @api_process
-    @cluster_api_wrap
-    async def list(self, request):
-        """Retrieving addons list from slave node."""
-        self._slave_only(request)
-        return get_addons_list(self.addons,
-                               self.cluster.is_master,
-                               only_installed=True)
-
-    @api_process
+    @cluster_public_api_process
     async def install(self, request):
         """Installing addon on slave node."""
-        self._slave_only(request)
+        body = await self._slave_only_body(request)
         _LOGGER.info("Remote addon install called")
-        body = await request.json(loads=json_loads)
         tasks = []
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
             tasks.append(self.addons.load_repositories(new))
-        tasks.append(self.api_addons.install_plain(request, body))
+            body.pop(ATTR_ADDONS_REPOSITORIES, None)
+        tasks.append(self.api_addons.install(request, cluster_body=body))
 
-        results, _ = await asyncio.shield(
-            asyncio.wait(tasks, loop=self.loop), loop=self.loop)
+        results, _ = await asyncio.wait(tasks, loop=self.loop)
         last_result = None
         for result in results:
             err = result.exception()
             if err is not None:
-                raise RuntimeError("Failed to install add-on, check node logs")
+                raise RuntimeError(err)
             last_result = result.result()
 
-        return last_result
+        return self._node_return(last_result)
 
+    @cluster_public_api_process
     async def uninstall(self, request):
         """Uninstalling addon on slave node."""
-        self._slave_only(request)
+        await self._slave_only_body(request)
         _LOGGER.info("Remote addon uninstall called")
-        return await self.api_addons.uninstall(request)
+        return self._node_return(await self.api_addons.uninstall(request))
 
+    @cluster_public_api_process
     async def info(self, request):
         """Retrieving addon information from slave node."""
-        self._slave_only(request)
+        await self._slave_only_body(request)
         _LOGGER.info("Remote addon info called")
-        return await self.api_addons.info(request)
+        return self._node_return(await self.api_addons.info(
+            request))
 
+    @cluster_public_api_process
     async def start(self, request):
         """Starting addon on slave node."""
-        self._slave_only(request)
+        await self._slave_only_body(request)
         _LOGGER.info("Remote addon start called")
-        return await self.api_addons.start(request)
+        return self._node_return(await self.api_addons.start(request))
 
+    @cluster_public_api_process
     async def stop(self, request):
         """Stopping addon on slave node."""
-        self._slave_only(request)
+        await self._slave_only_body(request)
         _LOGGER.info("Remote addon stop called")
-        return await self.api_addons.stop(request)
+        return self._node_return(await self.api_addons.stop(request))
 
+    @cluster_public_api_process
     async def restart(self, request):
         """Restarting addon on slave node."""
-        self._slave_only(request)
+        await self._slave_only_body(request)
         _LOGGER.info("Remote addon restart called")
-        return await self.api_addons.restart(request)
+        return self._node_return(await self.api_addons.restart(request))
 
+    @cluster_public_api_process
     async def update(self, request):
         """Updating addon on slave node."""
-        self._slave_only(request)
+        body = await self._slave_only_body(request)
         _LOGGER.info("Remote addon update called")
-        return await self.api_addons.update(request)
+        return self._node_return(await self.api_addons.update(
+            request, cluster_body=body))
 
+    @cluster_public_api_process
     async def options(self, request):
         """Updating addon options on slave node."""
-        self._slave_only(request)
+        body = await self._slave_only_body(request)
         _LOGGER.info("Remote addon options called")
-        return await self.api_addons.options(request)
+        return self._node_return(await self.api_addons.options(
+            request, cluster_body=body))
 
-    @api_process_raw
+    @cluster_public_api_process
     async def logs(self, request):
         """Retrieving addon logs from slave node."""
-        self._slave_only(request)
+        await self._slave_only_body(request)
         _LOGGER.info("Remote addon logs called")
-        return await self.api_addons.logs_plain(request)
+        return self._node_return(await self.api_addons.logs(request))

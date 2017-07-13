@@ -1,19 +1,19 @@
 """Init file for HassIO util for rest api."""
-import json
 import hashlib
+import json
 import logging
-
 from ipaddress import ip_address
-from aiohttp import web
-from aiohttp.web_exceptions import HTTPServiceUnavailable
+
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
+from aiohttp import web
+from aiohttp.web_exceptions import HTTPServiceUnavailable
 
 from ..const import (
     JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
     HTTP_HEADER_X_FORWARDED_FOR, ATTR_NAME, ATTR_SLUG, ATTR_DESCRIPTON,
     ATTR_VERSION, ATTR_INSTALLED, ATTR_ARCH, ATTR_DETACHED, ATTR_REPOSITORY,
-    ATTR_BUILD, ATTR_URL, CLUSTER_NODE_MASTER, ATTR_CLUSTER_WRAP)
+    ATTR_BUILD, ATTR_URL, CLUSTER_NODE_MASTER)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -103,19 +103,6 @@ def api_return_ok(data=None):
         JSON_RESULT: RESULT_OK,
         JSON_DATA: data or {},
     })
-
-
-def cluster_api_wrap(method):
-    """Wrap simple true/false function for cluster calls."""
-
-    async def wrap_api(api, *args, **kwargs):
-        """Calling the API."""
-        data = await method(api, *args, **kwargs)
-        return {
-            ATTR_CLUSTER_WRAP: data
-        }
-
-    return wrap_api
 
 
 async def api_validate(schema, request):

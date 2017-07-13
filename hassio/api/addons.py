@@ -85,7 +85,7 @@ class APIAddons(object):
         return self.addons.reload()
 
     @api_process
-    async def info(self, request):
+    async def info(self, request, **kwargs):
         """Return addon information."""
         node = self._get_cluster_node(request)
         if node is None:
@@ -111,13 +111,14 @@ class APIAddons(object):
         return await node.addon_info(request)
 
     @api_process
-    async def options(self, request):
+    async def options(self, request, cluster_body=None):
         """Store user options for addon."""
         addon = self._extract_addon(request, check_installed=False)
         addon_schema = SCHEMA_OPTIONS.extend({
             vol.Optional(ATTR_OPTIONS): addon.schema,
         })
-        body = await api_validate(addon_schema, request)
+        body = await api_validate(addon_schema, request) \
+            if cluster_body is None else addon_schema(cluster_body)
         node = self._get_cluster_node(request)
         if node is None:
             if not addon.is_installed:
@@ -136,22 +137,19 @@ class APIAddons(object):
         return await node.addon_options(request, body)
 
     @api_process
-    async def install(self, request):
+    async def install(self, request, cluster_body=None):
         """Install addon."""
-        body = await api_validate(SCHEMA_VERSION, request)
+        body = await api_validate(SCHEMA_VERSION, request) \
+            if cluster_body is None else SCHEMA_VERSION(cluster_body)
         node = self._get_cluster_node(request)
         if node is None:
-            return await self.install_plain(request, body)
+            addon = self._extract_addon(request, check_installed=False)
+            version = body[ATTR_VERSION]
+
+            return await asyncio.shield(
+                addon.install(version=version), loop=self.loop)
 
         return await node.addon_install(request, body, self.config)
-
-    async def install_plain(self, request, body):
-        """Installing addon from pre-validated request."""
-        addon = self._extract_addon(request, check_installed=False)
-        version = body[ATTR_VERSION]
-
-        return await asyncio.shield(
-            addon.install(version=version), loop=self.loop)
 
     @api_process
     async def uninstall(self, request):
@@ -192,9 +190,10 @@ class APIAddons(object):
         return await node.addon_stop(request)
 
     @api_process
-    async def update(self, request):
+    async def update(self, request, cluster_body=None):
         """Update addon."""
-        body = await api_validate(SCHEMA_VERSION, request)
+        body = await api_validate(SCHEMA_VERSION, request) \
+            if cluster_body is None else SCHEMA_VERSION(cluster_body)
         node = self._get_cluster_node(request)
         if node is None:
             addon = self._extract_addon(request)
@@ -220,11 +219,7 @@ class APIAddons(object):
         """Return logs from addon."""
         node = self._get_cluster_node(request)
         if node is None:
-            return await self.logs_plain(request)
+            addon = self._extract_addon(request)
+            return await addon.logs()
 
         return await node.addon_logs(request)
-
-    async def logs_plain(self, request):
-        """Return plain logs without wrappers."""
-        addon = self._extract_addon(request)
-        return await addon.logs()

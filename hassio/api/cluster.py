@@ -1,13 +1,18 @@
 """Init file for HassIO cluster rest api."""
 import logging
+from collections import deque
 
 import voluptuous as vol
+from aiohttp import web
 
-from .util import api_process, api_validate, hash_password
+from .util import api_process, api_validate
+from ..cluster.util import cluster_decrypt_body_json, cluster_encrypt_json, \
+    cluster_encrypt
 from ..const import (ATTR_IS_MASTER, ATTR_MASTER_KEY, ATTR_SLUG, ATTR_NODE_KEY,
-                     ATTR_NODE_NAME, ATTR_MASTER_IP, HTTP_HEADER_X_NODE_KEY,
-                     ATTR_VERSION, ATTR_ARCH, ATTR_TIMEZONE, ATR_KNOWN_NODES,
-                     ATTR_IP, ATTR_IS_ACTIVE, ATTR_LAST_SEEN)
+                     ATTR_NODE_NAME, ATTR_MASTER_IP, ATTR_VERSION, ATTR_ARCH,
+                     ATTR_TIMEZONE, ATR_KNOWN_NODES,
+                     ATTR_IP, ATTR_IS_ACTIVE, ATTR_LAST_SEEN, ATTR_NONCE,
+                     ATTR_CLUSTER_WRAP)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,22 +31,37 @@ class APIClusterBase(object):
         self.cluster = cluster
         self.config = config
         self.loop = loop
+        self.nonce_queue = deque(maxlen=100)
+
+    def _check_nonce(self, nonce):
+        """Validating nonce received from master."""
+        if nonce in self.nonce_queue:
+            raise RuntimeError("Duplicated nonce from master")
+        self.nonce_queue.append(nonce)
 
     def _master_only(self):
         """Check if this method is executed on master node."""
         if self.cluster.is_master is False:
             raise RuntimeError("Unable to execute on slave")
 
-    def _slave_only(self, request):
+    async def _slave_only_body(self, request):
         """Check if this method is executed on slave node."""
         if self.cluster.is_master is True:
             raise RuntimeError("Unable to execute on master")
+        result = await cluster_decrypt_body_json(request,
+                                                 self.cluster.node_key)
+        if ATTR_NONCE not in result:
+            raise RuntimeError("Nonce not found")
+        self._check_nonce(result[ATTR_NONCE])
+        if ATTR_CLUSTER_WRAP in result:
+            return result[ATTR_CLUSTER_WRAP]
+        return {}
 
-        if HTTP_HEADER_X_NODE_KEY not in request.headers \
-                or request.headers.get(
-                        HTTP_HEADER_X_NODE_KEY) != hash_password(
-                            self.cluster.node_key):
-            raise RuntimeError("Invalid node key")
+    def _node_return(self, json_obj):
+        """Returning data back to master."""
+        if isinstance(json_obj, web.Response):
+            return cluster_encrypt(json_obj.text, self.cluster.node_key)
+        return cluster_encrypt_json(json_obj, self.cluster.node_key)
 
 
 class APICluster(APIClusterBase):
@@ -49,7 +69,7 @@ class APICluster(APIClusterBase):
 
     def _get_node(self, request):
         """Return known node based on request data."""
-        slug = request.match_info.get("slug")
+        slug = request.match_info.get("node")
         node = self.cluster.get_node(slug)
         if node is None:
             raise RuntimeError("Requested node not found")

@@ -1,25 +1,21 @@
 """Cluster manager object."""
 import asyncio
-import json
 import logging
 import random
 
-import aiohttp
-import async_timeout
-
-from .validate import (SCHEMA_CLUSTER_CONFIG, CLUSTER_MASTER_IP,
-                       CLUSTER_NODE_KEY, CLUSTER_NODE_NAME,
-                       CLUSTER_REGISTERED_NODES)
-from ..tools import JsonConfig
 from .node import ClusterNode
-from .util import (generate_cluster_key, get_node_slug,
-                   get_public_cluster_url, get_security_headers)
-from ..api.util import hash_password, get_addons_list
-from ..const import (RUN_REGENERATE_CLUSTER_KEY, ATTR_MASTER_KEY, ATTR_SLUG,
-                     ATTR_NODE_KEY, ATTR_ADDONS_REPOSITORIES,
-                     RUN_PING_CLUSTER_MASTER, ATTR_VERSION, HASSIO_VERSION,
-                     ATTR_TIMEZONE, ATTR_ARCH, JSON_DATA, FILE_HASSIO_CLUSTER,
-                     ATTR_INSTALLED)
+from .util import generate_cluster_key, get_node_slug
+from .util_rest import cluster_do_post, get_nonce_request
+from .validate import (
+    SCHEMA_CLUSTER_CONFIG, CLUSTER_MASTER_IP, CLUSTER_NODE_KEY,
+    CLUSTER_NODE_NAME, CLUSTER_REGISTERED_NODES)
+from ..api.util import get_addons_list
+from ..const import (
+    RUN_REGENERATE_CLUSTER_KEY, ATTR_SLUG, ATTR_NODE_KEY,
+    ATTR_ADDONS_REPOSITORIES, RUN_PING_CLUSTER_MASTER, ATTR_VERSION,
+    HASSIO_VERSION, ATTR_TIMEZONE, ATTR_ARCH, FILE_HASSIO_CLUSTER,
+    ATTR_INSTALLED, ATTR_ADDONS)
+from ..tools import JsonConfig
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,27 +73,25 @@ class ClusterManager(JsonConfig):
     async def _ping_master(self):
         if self.is_master is True:
             return
-        try:
-            url = get_public_cluster_url(self.master_ip, "/ping")
-            headers = get_security_headers(self)
 
-            data = {
-                ATTR_VERSION: HASSIO_VERSION,
-                ATTR_ARCH: self.config.arch,
-                ATTR_TIMEZONE: self.config.timezone,
-            }
+        data = {
+            ATTR_VERSION: HASSIO_VERSION,
+            ATTR_ARCH: self.config.arch,
+            ATTR_TIMEZONE: self.config.timezone,
+            ATTR_ADDONS: get_addons_list(self.addons, False, True)
+        }
+        data.update(get_nonce_request())
 
-            with async_timeout.timeout(10, loop=self.websession.loop):
-                async with self.websession.post(url,
-                                                headers=headers,
-                                                json=data) as request:
-                    response = await request.json(content_type=None)
-                    if ATTR_NODE_KEY in response[JSON_DATA]:
-                        node_key = response[JSON_DATA][ATTR_NODE_KEY]
-                        self.node_key = node_key
-        except (aiohttp.ClientError, asyncio.TimeoutError,
-                KeyError, json.JSONDecodeError) as err:
-            _LOGGER.warning("Failed to ping master %s", err)
+        result = await cluster_do_post(data, self.master_ip, "/ping",
+                                       self.node_key, self.websession,
+                                       self.node_name)
+        if result is None:
+            _LOGGER.warning("Failed to ping master")
+            return
+
+        if ATTR_NODE_KEY in result:
+            node_key = result[ATTR_NODE_KEY]
+            self.node_key = node_key
 
     async def switch_to_master(self):
         """Switching operating mode to master."""
@@ -108,19 +102,14 @@ class ClusterManager(JsonConfig):
             _LOGGER.info("Starting HASS because of switching to master mode")
             await self.homeassistant.run()
 
-        try:
-            url = get_public_cluster_url(self.master_ip, "/unregister")
-            headers = get_security_headers(self)
-
-            with async_timeout.timeout(10, loop=self.websession.loop):
-                async with self.websession.post(url,
-                                                headers=headers) as request:
-                    await request.json(content_type=None)
-                    _LOGGER.info("Successfully un-registered on master")
-        except (aiohttp.ClientError, asyncio.TimeoutError,
-                KeyError, json.JSONDecodeError) as err:
-            _LOGGER.error("Failed to un-register from master: %s", err)
-            return False
+        result = await cluster_do_post(None, self.master_ip, "/leave",
+                                       self.node_key, self.websession,
+                                       self.node_name)
+        if result is not None:
+            _LOGGER.info("Successfully un-registered on master")
+            return True
+        _LOGGER.error("Failed to un-register from master")
+        return False
 
     async def switch_to_slave(self, master_ip, master_key, node_name):
         """Switching operating mode to slave."""
@@ -129,39 +118,30 @@ class ClusterManager(JsonConfig):
         if await self.homeassistant.is_running():
             _LOGGER.info("Stopping HASS because of switching to slave mode")
             await self.homeassistant.stop()
-        try:
-            url = get_public_cluster_url(master_ip, "/register")
-            data = {
-                ATTR_MASTER_KEY: hash_password(master_key),
-                ATTR_SLUG: get_node_slug(node_name)
-            }
+        data = {
+            ATTR_SLUG: get_node_slug(node_name)
+        }
 
-            with async_timeout.timeout(10, loop=self.websession.loop):
-                async with self.websession.post(url, json=data) as request:
-                    response = await request.json(content_type=None)
-                    node_key = response[JSON_DATA][ATTR_NODE_KEY]
-                    self.node_key = node_key
-                    self.is_master = False
-                    self.master_ip = master_ip
-                    self.node_name = node_name
-
-                    new = set(response[JSON_DATA][ATTR_ADDONS_REPOSITORIES])
-                    await asyncio.shield(self.addons.load_repositories(new))
-
-                    _LOGGER.info("Registered with %s, synced %d repositories",
-                                 master_ip, len(new))
-                    return True
-        except (aiohttp.ClientError, asyncio.TimeoutError,
-                KeyError, json.JSONDecodeError) as err:
-            _LOGGER.error("Failed to register on master: %s", err)
+        result = await cluster_do_post(data, master_ip, "/register",
+                                       master_key, self.websession)
+        if result is None:
             return False
 
-    def register_node(self, ip_address, master_key, node_slug):
-        """Registering new slave node."""
-        if master_key != hash_password(self._master_key):
-            _LOGGER.error("Attempt to register new node failed: wrong key")
-            raise RuntimeError("Wrong key")
+        node_key = result[ATTR_NODE_KEY]
+        self.node_key = node_key
+        self.is_master = False
+        self.master_ip = master_ip
+        self.node_name = node_name
 
+        new = set(result[ATTR_ADDONS_REPOSITORIES])
+        await asyncio.shield(self.addons.load_repositories(new))
+
+        _LOGGER.info("Registered with %s, synced %d repositories",
+                     master_ip, len(new))
+        return True
+
+    def register_node(self, ip_address, node_slug):
+        """Registering new slave node."""
         if self._find_node(node_slug) is not None:
             _LOGGER.error("Attempt to re-register node %s", node_slug)
             raise RuntimeError("Node already registered")
@@ -180,11 +160,10 @@ class ClusterManager(JsonConfig):
         self._nodes.remove(node_)
         self.registered_nodes = (node_.slug, None)
         _LOGGER.info("Removed node %s from cluster", node_.slug)
-        return True
 
-    def ping(self, node_, ip_address, version, arch, time_zone):
+    def ping(self, node_, ip_address, version, arch, time_zone, addons):
         """Responding to ping from slave node."""
-        node_.ping(ip_address, version, arch, time_zone)
+        node_.ping(ip_address, version, arch, time_zone, addons)
         new_key = None
         if random.SystemRandom().randint(1, 100) <= 20:
             new_key = generate_cluster_key()
@@ -196,10 +175,6 @@ class ClusterManager(JsonConfig):
         """Retrieving known node by slug."""
         return self._find_node(slug=slug)
 
-    def get_public_node(self, key):
-        """Retreiving known node by hashed key."""
-        return self._find_node(key=key)
-
     async def get_addons_list(self, only_installed=False):
         """Return a list of addons."""
         local = get_addons_list(self.addons,
@@ -208,29 +183,15 @@ class ClusterManager(JsonConfig):
         if self.is_master is False:
             return local
 
-        tasks = []
-        for node_ in self.known_nodes:
-            if node_.is_active:
-                tasks.append(node_.get_addons_list())
-        len_ = len(tasks)
-        if len_ > 0:
-            results, _ = await asyncio.shield(
-                asyncio.wait(tasks, loop=self.loop), loop=self.loop)
-            for result in results:
-                err = result.exception()
-                if err is not None:
-                    _LOGGER.warning("Failed to fetch addons "
-                                    "list from remote: %s", err)
-                    continue
-                for addon in result.result():
-                    local_addon = next((x for x in local
-                                        if x[ATTR_SLUG] == addon[ATTR_SLUG]),
-                                       None)
-                    if local_addon is not None:
-                        local_addon[ATTR_INSTALLED] \
-                            .update(addon[ATTR_INSTALLED])
-                    else:
-                        local.append(addon)
+        for node_ in self._nodes:
+            for addon in node_.addons:
+                local_addon = next((x for x in local
+                                    if x[ATTR_SLUG] == addon[ATTR_SLUG]), None)
+                if local_addon is not None:
+                    local_addon[ATTR_INSTALLED] \
+                        .update(addon[ATTR_INSTALLED])
+                else:
+                    local.append(addon)
         return local
 
     @property

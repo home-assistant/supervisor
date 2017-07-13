@@ -111,6 +111,7 @@ ATTR_IP = 'ip'
 ATTR_IS_ACTIVE = 'is_active'
 ATTR_LAST_SEEN = 'last_seen'
 ATTR_CLUSTER_WRAP = 'wrap'
+ATTR_NONCE = 'nonce'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_BEFORE = 'before'
@@ -147,6 +148,6 @@ SNAPSHOT_FULL = 'full'
 SNAPSHOT_PARTIAL = 'partial'
 
 HTTP_HEADER_X_FORWARDED_FOR = 'X-Forwarded-For'
-HTTP_HEADER_X_NODE_KEY = 'X-Node-Key'
+HTTP_HEADER_X_NODE = "X-Node"
 
 CLUSTER_NODE_MASTER = 'master'

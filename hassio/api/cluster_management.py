@@ -5,21 +5,27 @@ import logging
 import voluptuous as vol
 
 from .cluster import APIClusterBase
-from .util import api_process, api_validate, get_real_ip
-from ..const import (ATTR_MASTER_KEY, ATTR_SLUG, ATTR_NODE_KEY,
-                     ATTR_ADDONS_REPOSITORIES, HTTP_HEADER_X_NODE_KEY,
-                     ATTR_VERSION, ATTR_ARCH, ATTR_TIMEZONE)
+from .util import get_real_ip
+from ..cluster.util import (
+    cluster_decrypt_schema, cluster_encrypt_json, cluster_public_api_process,
+    cluster_encrypt_ok)
+from ..const import (
+    ATTR_SLUG, ATTR_NODE_KEY, ATTR_ADDONS_REPOSITORIES, ATTR_VERSION,
+    ATTR_ARCH, ATTR_TIMEZONE, ATTR_NONCE, HTTP_HEADER_X_NODE, ATTR_ADDONS)
 
 _LOGGER = logging.getLogger(__name__)
 
-SCHEMA_PING = vol.Schema({
+SCHEMA_NONCE = vol.Schema({
+    vol.Required(ATTR_NONCE): vol.Coerce(int),
+})
+
+SCHEMA_PING = SCHEMA_NONCE.extend({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Required(ATTR_ARCH): vol.Coerce(str),
     vol.Required(ATTR_TIMEZONE): vol.Coerce(str),
-})
+}, extra=True)
 
 SCHEMA_NODE_REGISTER = vol.Schema({
-    vol.Required(ATTR_MASTER_KEY): vol.Coerce(str),
     vol.Required(ATTR_SLUG): vol.Coerce(str),
 })
 
@@ -27,51 +33,60 @@ SCHEMA_NODE_REGISTER = vol.Schema({
 class APIClusterManagement(APIClusterBase):
     """Management part of cluster REST API."""
 
-    def _get_public_node(self, request):
+    def _get_calling_node(self, request):
         """Return known node based on public request data."""
         node = None
-        if HTTP_HEADER_X_NODE_KEY in request.headers:
-            node = self.cluster.get_public_node(
-                request.headers.get(HTTP_HEADER_X_NODE_KEY))
+        if HTTP_HEADER_X_NODE in request.headers:
+            node = self.cluster.get_node(
+                request.headers.get(HTTP_HEADER_X_NODE))
 
         if node is None:
             raise RuntimeError("Requested node not found")
         return node
 
-    @api_process
+    @cluster_public_api_process
     async def ping(self, request):
         """Ping request from slave node."""
         self._master_only()
-        body = await api_validate(SCHEMA_PING, request)
-        node = self._get_public_node(request)
+        node = self._get_calling_node(request)
+        old_key = node.key
+        body = await cluster_decrypt_schema(SCHEMA_PING, request, node.key)
+        node.validate_nonce(body[ATTR_NONCE])
         new_key = self.cluster.ping(node,
                                     get_real_ip(request),
                                     body[ATTR_VERSION],
                                     body[ATTR_ARCH],
-                                    body[ATTR_TIMEZONE])
-        response = {}
+                                    body[ATTR_TIMEZONE],
+                                    body[ATTR_ADDONS])
+        response = {
+            "result": True
+        }
+
         if new_key is not None:
             response[ATTR_NODE_KEY] = new_key
-        return response
+        return cluster_encrypt_json(response, old_key)
 
-    @api_process
+    @cluster_public_api_process
     async def unregister_node(self, request):
         """Un-registering slave node from cluster."""
         self._master_only()
-        node = self._get_public_node(request)
+        node = self._get_calling_node(request)
+        body = await cluster_decrypt_schema(SCHEMA_NONCE, request, node.key)
+        node.validate_nonce(body[ATTR_NONCE])
         _LOGGER.info("Node %s asked for un-register", node.slug)
-        return self.cluster.remove_node(node)
+        self.cluster.remove_node(node)
+        return cluster_encrypt_ok(node.key)
 
-    @api_process
+    @cluster_public_api_process
     async def register_node(self, request):
         """Registering new slave node into cluster."""
         self._master_only()
-        body = await api_validate(SCHEMA_NODE_REGISTER, request)
+        body = await cluster_decrypt_schema(SCHEMA_NODE_REGISTER, request,
+                                            self.cluster.master_key)
         ip_address = get_real_ip(request)
         node_key = self.cluster.register_node(ip_address,
-                                              body[ATTR_MASTER_KEY],
                                               body[ATTR_SLUG])
-        return {
+        return cluster_encrypt_json({
             ATTR_NODE_KEY: node_key,
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories
-        }
+        }, self.cluster.master_key)

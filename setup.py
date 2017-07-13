@@ -48,6 +48,7 @@ setup(
         'pyotp',
         'pyqrcode',
         'pytz',
-        'ipaddress'
+        'ipaddress',
+        'jwcrypto'
     ]
 )

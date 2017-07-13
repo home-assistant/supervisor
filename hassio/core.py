@@ -144,12 +144,18 @@ class HassIO(object):
         )
 
         # start api
-        await self.api.start(HASSIO_API_PORT)
-        _LOGGER.info("Start hassio api on %s:%d",
-                     self.config.api_endpoint, HASSIO_API_PORT)
-        await self.cluster_api.start(HASSIO_PUBLIC_CLUSTER_PORT)
-        _LOGGER.info("Start hassio cluster api on %s:%d",
-                     self.config.api_endpoint, HASSIO_PUBLIC_CLUSTER_PORT)
+        _LOGGER.info("Starting API on %s. Hassio port %d. Cluster port %d",
+                     self.config.api_endpoint, HASSIO_API_PORT,
+                     HASSIO_PUBLIC_CLUSTER_PORT)
+        tasks, _ = await asyncio.wait([
+            self.api.start(HASSIO_API_PORT),
+            self.cluster_api.start(HASSIO_PUBLIC_CLUSTER_PORT)
+        ], loop=self.loop)
+
+        for task in tasks:
+            err = task.exception()
+            if err is not None:
+                _LOGGER.error("Failed to start API: %s", str(err))
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
@@ -184,8 +190,10 @@ class HassIO(object):
 
         # process stop tasks
         self.websession.close()
-        await self.api.stop()
-        await self.cluster_api.stop()
+        await asyncio.wait([
+            self.api.stop(),
+            self.cluster_api.stop()
+        ], loop=self.loop)
 
         self.exit_code = exit_code
         self.loop.stop()

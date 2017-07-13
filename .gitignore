@@ -93,7 +93,3 @@ ENV/
 
 # PyCharm/Idea
 .idea
-
-# Local test files
-run_master.sh
-run_slave.sh
