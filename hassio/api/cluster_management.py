@@ -67,18 +67,18 @@ class APIClusterManagement(APIClusterBase):
         return cluster_encrypt_json(response, old_key)
 
     @cluster_public_api_process
-    async def unregister_node(self, request):
+    async def leave(self, request):
         """Un-registering slave node from cluster."""
         self._master_only()
         node = self._get_calling_node(request)
         body = await cluster_decrypt_schema(SCHEMA_NONCE, request, node.key)
         node.validate_nonce(body[ATTR_NONCE])
         _LOGGER.info("Node %s asked for un-register", node.slug)
-        self.cluster.remove_node(node)
+        await self.cluster.remove_node(node, False)
         return cluster_encrypt_ok(node.key)
 
     @cluster_public_api_process
-    async def register_node(self, request):
+    async def register(self, request):
         """Registering new slave node into cluster."""
         self._master_only()
         body = await cluster_decrypt_schema(SCHEMA_NODE_REGISTER, request,
@@ -90,3 +90,10 @@ class APIClusterManagement(APIClusterBase):
             ATTR_NODE_KEY: node_key,
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories
         }, self.cluster.master_key)
+
+    @cluster_public_api_process
+    async def kick(self, request):
+        """Processing cluster leave command from master."""
+        await self._slave_only_body(request)
+        _LOGGER.info("Received leave cluster command")
+        return self._node_return(await self.cluster.switch_to_master(False))

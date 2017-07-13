@@ -61,6 +61,8 @@ class APIClusterBase(object):
         """Returning data back to master."""
         if isinstance(json_obj, web.Response):
             return cluster_encrypt(json_obj.text, self.cluster.node_key)
+        if isinstance(json_obj, bool):
+            return cluster_encrypt(str(json_obj), self.cluster.node_key)
         return cluster_encrypt_json(json_obj, self.cluster.node_key)
 
 
@@ -109,7 +111,7 @@ class APICluster(APIClusterBase):
     @api_process
     async def switch_to_master(self, request):
         """Changing current node status to master."""
-        await self.cluster.switch_to_master()
+        await self.cluster.switch_to_master(True)
         return True
 
     @api_process
@@ -125,4 +127,4 @@ class APICluster(APIClusterBase):
         """Removing existing slave node from cluster."""
         self._master_only()
         node = self._get_node(request)
-        return self.cluster.remove_node(node)
+        return await self.cluster.remove_node(node, True)

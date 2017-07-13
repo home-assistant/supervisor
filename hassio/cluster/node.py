@@ -139,6 +139,10 @@ class ClusterNode(object):
         return await self._call_remote(self._get_addons_url("/logs", request),
                                        is_raw=True)
 
+    async def leave_remote(self):
+        """Passing leave node from cluster command to slave node."""
+        return await self._call_remote("/kick", is_raw=True)
+
     def validate_nonce(self, nonce):
         """Validating nonce received from remote node."""
         if nonce in self.nonce_queue:

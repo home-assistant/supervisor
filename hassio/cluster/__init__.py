@@ -93,31 +93,33 @@ class ClusterManager(JsonConfig):
             node_key = result[ATTR_NODE_KEY]
             self.node_key = node_key
 
-    async def switch_to_master(self):
+    async def switch_to_master(self, is_slave_initiated):
         """Switching operating mode to master."""
         if self.is_master is True:
-            return
+            return False
         self.is_master = True
         if await self.homeassistant.is_running() is False:
             _LOGGER.info("Starting HASS because of switching to master mode")
             await self.homeassistant.run()
 
+        if is_slave_initiated is False:
+            return True
+
         result = await cluster_do_post(None, self.master_ip, "/leave",
                                        self.node_key, self.websession,
                                        self.node_name)
+        self.node_key = None
         if result is not None:
-            _LOGGER.info("Successfully un-registered on master")
+            _LOGGER.info("Successfully left cluster")
             return True
-        _LOGGER.error("Failed to un-register from master")
+        _LOGGER.error("Failed to leave cluster")
         return False
 
     async def switch_to_slave(self, master_ip, master_key, node_name):
         """Switching operating mode to slave."""
         if self.is_master is False:
             return
-        if await self.homeassistant.is_running():
-            _LOGGER.info("Stopping HASS because of switching to slave mode")
-            await self.homeassistant.stop()
+
         data = {
             ATTR_SLUG: get_node_slug(node_name)
         }
@@ -125,7 +127,12 @@ class ClusterManager(JsonConfig):
         result = await cluster_do_post(data, master_ip, "/register",
                                        master_key, self.websession)
         if result is None:
+            _LOGGER.error("Failed to register in cluster.")
             return False
+
+        if await self.homeassistant.is_running():
+            _LOGGER.info("Stopping HASS because of switching to slave mode")
+            await self.homeassistant.stop()
 
         node_key = result[ATTR_NODE_KEY]
         self.node_key = node_key
@@ -155,8 +162,13 @@ class ClusterManager(JsonConfig):
         self._nodes.append(new_node)
         return node_key
 
-    def remove_node(self, node_):
+    async def remove_node(self, node_, is_master_initiated):
         """Removing known node from cluster."""
+        if is_master_initiated:
+            is_success = await node_.leave_remote()
+            if is_success is False:
+                _LOGGER.warning("Failed to execute on remote. "
+                                "Perform manual change.")
         self._nodes.remove(node_)
         self.registered_nodes = (node_.slug, None)
         _LOGGER.info("Removed node %s from cluster", node_.slug)

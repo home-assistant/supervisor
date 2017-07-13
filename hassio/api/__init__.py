@@ -220,12 +220,10 @@ class ClusterAPI(RestAPIBase):
         """Registering cluster management functions."""
         api_cluster = APIClusterManagement(cluster, self.config, self.loop)
 
-        self.webapp.router.add_post('/cluster/register',
-                                    api_cluster.register_node)
-        self.webapp.router.add_post('/cluster/leave',
-                                    api_cluster.unregister_node)
-        self.webapp.router.add_post('/cluster/ping',
-                                    api_cluster.ping)
+        self.webapp.router.add_post('/cluster/register', api_cluster.register)
+        self.webapp.router.add_post('/cluster/leave', api_cluster.leave)
+        self.webapp.router.add_post('/cluster/ping', api_cluster.ping)
+        self.webapp.router.add_post('/cluster/kick', api_cluster.kick)
 
     def register_cluster_addons(self, cluster, addons, api_addons):
         """Registering cluster addons functions."""
