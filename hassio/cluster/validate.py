@@ -10,7 +10,7 @@ CLUSTER_IS_INITED = "is_inited"
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_CLUSTER_CONFIG = vol.Schema({
-    vol.Optional(CLUSTER_IS_INITED, default=True): vol.Boolean(),
+    vol.Optional(CLUSTER_IS_INITED, default=False): vol.Boolean(),
     vol.Optional(CLUSTER_IS_MASTER, default=True): vol.Boolean(),
     vol.Optional(CLUSTER_MASTER_IP, default=""): vol.Coerce(str),
     vol.Optional(CLUSTER_NODE_KEY, default=""): vol.Coerce(str),

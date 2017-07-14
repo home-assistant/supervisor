@@ -206,6 +206,7 @@ Return QR-Code
 See HostControl info command.
 ```json
 {
+    "node": "NODE_SLUG|null",
     "type": "",
     "version": "",
     "last_version": "",
@@ -300,6 +301,9 @@ Get all available addons
             "repository": "core|local|REP_ID",
             "version": "LAST_VERSION",
             "installed": "none|INSTALL_VERSION",
+            "cluster_installed": {
+              "NODE_SLUG": "INSTALL_VERSION"
+            },
             "detached": "bool",
             "build": "bool",
             "url": "null|url"
@@ -323,6 +327,7 @@ Get all available addons
 ```json
 {
     "name": "xy bla",
+    "node": "NODE_SLUG|null",
     "description": "description",
     "auto_update": "bool",
     "url": "null|url of addon",
@@ -476,3 +481,4 @@ All methods are `POST` and requires key (node or master)
 - `/cluster/kick` - forcing node to leave cluster
 - `/cluster/sync` - ping from slave node and additional data sync
 - `/cluster/addons/{addon}/{operation}` - proxy of `/addons` calls to slaves
+- `/cluster/host/{operation}` -- proxy of `/host` calls to slaves

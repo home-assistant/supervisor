@@ -88,7 +88,7 @@ class HassIO(object):
             self.host_control.load, RUN_UPDATE_INFO_TASKS)
 
         # rest api views
-        self.api.register_host(self.host_control)
+        self.api.register_host(self.host_control, self.cluster)
         self.api.register_network(self.host_control)
         self.api.register_supervisor(self.supervisor, self.snapshots,
                                      self.addons, self.host_control,
@@ -104,6 +104,7 @@ class HassIO(object):
         self.cluster_api.register_cluster_management(self.cluster)
         self.cluster_api.register_cluster_addons(self.cluster, self.addons,
                                                  self.api.api_addons)
+        self.cluster_api.register_cluster_host(self.cluster, self.api.api_host)
 
         # schedule api session cleanup
         self.scheduler.register_task(

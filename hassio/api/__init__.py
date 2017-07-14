@@ -6,7 +6,7 @@ from aiohttp import web
 
 from .cluster import APICluster
 from .cluster_management import APIClusterManagement
-from .cluster_proxy import APIClusterAddons
+from .cluster_proxy import APIClusterAddons, APIClusterHost
 from .addons import APIAddons
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
@@ -61,15 +61,26 @@ class RestAPI(RestAPIBase):
         super().__init__(config, loop)
         # shared api
         self.api_addons = None
+        self.api_host = None
 
-    def register_host(self, host_control):
+    def register_host(self, host_control, cluster):
         """Register hostcontrol function."""
-        api_host = APIHost(self.config, self.loop, host_control)
+        self.api_host = APIHost(self.config, self.loop, host_control, cluster)
 
-        self.webapp.router.add_get('/host/info', api_host.info)
-        self.webapp.router.add_post('/host/reboot', api_host.reboot)
-        self.webapp.router.add_post('/host/shutdown', api_host.shutdown)
-        self.webapp.router.add_post('/host/update', api_host.update)
+        self.webapp.router.add_get('/host/info', self.api_host.info)
+        self.webapp.router.add_get('/host/{node}/info', self.api_host.info)
+
+        self.webapp.router.add_post('/host/reboot', self.api_host.reboot)
+        self.webapp.router.add_post('/host/{node}/reboot',
+                                    self.api_host.reboot)
+
+        self.webapp.router.add_post('/host/shutdown', self.api_host.shutdown)
+        self.webapp.router.add_post('/host/{node}/shutdown',
+                                    self.api_host.shutdown)
+
+        self.webapp.router.add_post('/host/update', self.api_host.update)
+        self.webapp.router.add_post('/host/{node}/update',
+                                    self.api_host.update)
 
     def register_network(self, host_control):
         """Register network function."""
@@ -194,6 +205,7 @@ class RestAPI(RestAPIBase):
         """Register cluster function."""
         api_cluster = APICluster(cluster, self.config, self.loop)
 
+        self.webapp.router.add_post('/cluster/init', api_cluster.init)
         self.webapp.router.add_get('/cluster/info', api_cluster.info)
         self.webapp.router.add_post('/cluster/leave', api_cluster.leave)
         self.webapp.router.add_post('/cluster/register', api_cluster.register)
@@ -219,12 +231,19 @@ class ClusterAPI(RestAPIBase):
 
         self.webapp.router.add_post('/cluster/register', api_cluster.register)
         self.webapp.router.add_post('/cluster/leave', api_cluster.leave)
-        self.webapp.router.add_post('/cluster/sync', api_cluster.ping)
+        self.webapp.router.add_post('/cluster/sync', api_cluster.sync)
         self.webapp.router.add_post('/cluster/kick', api_cluster.kick)
 
     def register_cluster_addons(self, cluster, addons, api_addons):
         """Registering cluster addons functions."""
         api_cluster_addons = APIClusterAddons(cluster, self.config,
-                                              addons, api_addons, self.loop)
+                                              self.loop, addons, api_addons)
         self.webapp.router.add_post('/cluster/addons/{addon}/{path:.+}',
                                     api_cluster_addons.proxy)
+
+    def register_cluster_host(self, cluster, api_host):
+        """Registering cluster host functions."""
+        api_cluster_host = APIClusterHost(cluster, self.config,
+                                          self.loop, api_host)
+        self.webapp.router.add_post('/cluster/host/{path:.+}',
+                                    api_cluster_host.proxy)

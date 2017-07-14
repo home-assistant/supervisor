@@ -39,13 +39,21 @@ class APIClusterBase(object):
             raise RuntimeError("Duplicated nonce from master")
         self.nonce_queue.append(nonce)
 
+    def _check_if_inited(self):
+        """Validating if cluster was inited."""
+        if self.cluster.is_inited is False:
+            raise RuntimeError("Trying to perform cluster operations when "
+                               "addon is not inited yet")
+
     def _master_only(self):
         """Check if this method is executed on master node."""
+        self._check_if_inited()
         if self.cluster.is_master is False:
             raise RuntimeError("Unable to execute on slave")
 
     async def _slave_only_body(self, request):
         """Check if this method is executed on slave node."""
+        self._check_if_inited()
         if self.cluster.is_master is True:
             raise RuntimeError("Unable to execute on master")
         result = await cluster_decrypt_body_json(request,
@@ -90,10 +98,12 @@ class APIClusterBase(object):
 
     @property
     def _api_proxy(self):
+        """Return proxy API object."""
         raise RuntimeError("API proxy is not defined")
 
     @property
     def _proxy_module(self):
+        """Return name of current proxy module."""
         raise RuntimeError("Unknown proxy module")
 
 
@@ -160,3 +170,8 @@ class APICluster(APIClusterBase):
         self._master_only()
         node = self._get_node(request)
         return await self.cluster.remove_node(node, True)
+
+    @api_process
+    async def init(self, request):
+        """Initializing cluster addon."""
+        return await self.cluster.init()
