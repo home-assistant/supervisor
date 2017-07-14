@@ -73,11 +73,11 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGE_ALL)],
     vol.Required(ATTR_OPTIONS): dict,
-    vol.Required(ATTR_SCHEMA): vol.Any({
+    vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [
             vol.Any(ADDON_ELEMENT, {vol.Coerce(str): ADDON_ELEMENT})
         ], vol.Schema({vol.Coerce(str): ADDON_ELEMENT}))
-    }, False),
+    }), False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
     vol.Optional(ATTR_TIMEOUT, default=10):
         vol.All(vol.Coerce(int), vol.Range(min=10, max=120))
