@@ -44,28 +44,33 @@ class ClusterManager(JsonConfig):
         self.nodes = {}
         self._load_nodes()
 
+    @property
+    def list_nodes(self):
+        """Return list of nodes."""
+        return set(self.nodes.keys())
+
     def _load_nodes(self):
         """Loading existing known nodes."""
-        self._nodes.clear()
+        self.nodes.clear()
         for slug, data in self.registered_nodes:
             new_node = ClusterNode(slug, data.get(CLUSTER_NODE_NAME),
                                    data.get(CLUSTER_NODE_KEY), self.websession)
-            self._nodes.append(new_node)
+            self.nodes[new_node.slug] = new_node
 
     def _find_node(self, slug=None, key=None):
         """Searching known node by slug or key."""
-        for node_ in self._nodes:
-            if slug is None:
-                if node_.validate_key(key):
-                    return node_
-            else:
-                if node_.slug == slug:
-                    if key is None:
-                        return node_
-                    if node_.validate_key(key):
-                        return node_
-                    break
-        return None
+        if slug and key:
+            node = self.nodes.get(slug)
+            if node and key and node.validate_key(key):
+                return node
+            return
+
+        if slug:
+            return self.nodes.get(slug)
+
+        for node in self.list_nodes:
+            if node.validate_key(key):
+                return node
 
     async def _regenerate_master_key(self):
         """Periodically re-generating master key."""
@@ -200,7 +205,7 @@ class ClusterManager(JsonConfig):
                                  self._format_node(node_name, node_key))
         new_node = ClusterNode(node_slug, node_name, node_key,
                                self.websession, ip_address)
-        self._nodes.append(new_node)
+        self.nodes[new_node.slug] = new_node
         return node_key
 
     async def remove_node(self, node_, is_master_initiated):
@@ -210,7 +215,7 @@ class ClusterManager(JsonConfig):
             if is_success is False:
                 _LOGGER.warning("Failed to execute on remote. "
                                 "Perform manual change.")
-        self._nodes.remove(node_)
+        self.nodes.pop(node.slug, None)
         self.registered_nodes = (node_.slug, None)
         _LOGGER.info("Removed node %s from cluster", node_.slug)
 
@@ -265,11 +270,6 @@ class ClusterManager(JsonConfig):
     def master_key(self):
         """Return current master key."""
         return self._master_key
-
-    @property
-    def known_nodes(self):
-        """Return list of known nodes."""
-        return self._nodes
 
     @property
     def master_ip(self):

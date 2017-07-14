@@ -129,7 +129,7 @@ class APICluster(APIClusterBase):
         if is_master:
             response[ATTR_MASTER_KEY] = self.cluster.master_key
             response[ATR_KNOWN_NODES] = []
-            for node in self.cluster.known_nodes:
+            for node in self.cluster.list_nodes:
                 last_seen = int(node.last_seen) if node.last_seen is not None \
                     else None
                 response[ATR_KNOWN_NODES].append({
