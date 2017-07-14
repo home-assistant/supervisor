@@ -6,7 +6,7 @@ from aiohttp import web
 
 from .cluster import APICluster
 from .cluster_management import APIClusterManagement
-from .cluster_addons import APIClusterAddons
+from .cluster_proxy import APIClusterAddons
 from .addons import APIAddons
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
@@ -79,11 +79,11 @@ class RestAPI(RestAPIBase):
         self.webapp.router.add_post('/network/options', api_net.options)
 
     def register_supervisor(self, supervisor, snapshots, addons, host_control,
-                            websession, cluster):
+                            websession):
         """Register supervisor function."""
         api_supervisor = APISupervisor(
             self.config, self.loop, supervisor, snapshots, addons,
-            host_control, websession, cluster)
+            host_control, websession)
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
@@ -219,29 +219,12 @@ class ClusterAPI(RestAPIBase):
 
         self.webapp.router.add_post('/cluster/register', api_cluster.register)
         self.webapp.router.add_post('/cluster/leave', api_cluster.leave)
-        self.webapp.router.add_post('/cluster/ping', api_cluster.ping)
+        self.webapp.router.add_post('/cluster/sync', api_cluster.ping)
         self.webapp.router.add_post('/cluster/kick', api_cluster.kick)
 
     def register_cluster_addons(self, cluster, addons, api_addons):
         """Registering cluster addons functions."""
         api_cluster_addons = APIClusterAddons(cluster, self.config,
                                               addons, api_addons, self.loop)
-
-        self.webapp.router.add_post('/cluster/addons/{addon}/install',
-                                    api_cluster_addons.install)
-        self.webapp.router.add_post('/cluster/addons/{addon}/uninstall',
-                                    api_cluster_addons.uninstall)
-        self.webapp.router.add_post('/cluster/addons/{addon}/info',
-                                    api_cluster_addons.info)
-        self.webapp.router.add_post('/cluster/addons/{addon}/start',
-                                    api_cluster_addons.start)
-        self.webapp.router.add_post('/cluster/addons/{addon}/stop',
-                                    api_cluster_addons.stop)
-        self.webapp.router.add_post('/cluster/addons/{addon}/restart',
-                                    api_cluster_addons.restart)
-        self.webapp.router.add_post('/cluster/addons/{addon}/update',
-                                    api_cluster_addons.update)
-        self.webapp.router.add_post('/cluster/addons/{addon}/options',
-                                    api_cluster_addons.options)
-        self.webapp.router.add_post('/cluster/addons/{addon}/logs',
-                                    api_cluster_addons.logs)
+        self.webapp.router.add_post('/cluster/addons/{addon}/{path:.+}',
+                                    api_cluster_addons.proxy)

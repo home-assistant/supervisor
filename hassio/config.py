@@ -38,8 +38,6 @@ SECURITY_TOTP = 'security_totp'
 SECURITY_PASSWORD = 'security_password'
 SECURITY_SESSIONS = 'security_sessions'
 
-CLUSTER_IS_MASTER = 'is_master'
-
 # pylint: disable=no-value-for-parameter
 SCHEMA_CONFIG = vol.Schema({
     vol.Optional(UPSTREAM_BETA, default=False): vol.Boolean(),
@@ -52,8 +50,7 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(SECURITY_TOTP): vol.Coerce(str),
     vol.Optional(SECURITY_PASSWORD): vol.Coerce(str),
     vol.Optional(SECURITY_SESSIONS, default={}):
-        {vol.Coerce(str): vol.Coerce(str)},
-    vol.Optional(CLUSTER_IS_MASTER, default=True): vol.Boolean(),
+        {vol.Coerce(str): vol.Coerce(str)}
 }, extra=vol.REMOVE_EXTRA)
 
 
@@ -278,15 +275,4 @@ class CoreConfig(JsonConfig):
                 {session: valid.strftime(DATETIME_FORMAT)}
             )
 
-        self.save()
-
-    @property
-    def is_master(self):
-        """Return flag indicating whether this node operates as master."""
-        return self._data.get(CLUSTER_IS_MASTER)
-
-    @is_master.setter
-    def is_master(self, value):
-        """Set operation mode."""
-        self._data[CLUSTER_IS_MASTER] = value
         self.save()

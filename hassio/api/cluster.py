@@ -6,19 +6,19 @@ import voluptuous as vol
 from aiohttp import web
 
 from .util import api_process, api_validate
-from ..cluster.util import cluster_decrypt_body_json, cluster_encrypt_json, \
-    cluster_encrypt
-from ..const import (ATTR_IS_MASTER, ATTR_MASTER_KEY, ATTR_SLUG, ATTR_NODE_KEY,
-                     ATTR_NODE_NAME, ATTR_MASTER_IP, ATTR_VERSION, ATTR_ARCH,
-                     ATTR_TIMEZONE, ATR_KNOWN_NODES,
-                     ATTR_IP, ATTR_IS_ACTIVE, ATTR_LAST_SEEN, ATTR_NONCE,
-                     ATTR_CLUSTER_WRAP)
+from ..cluster.util import (
+    cluster_decrypt_body_json, cluster_encrypt_json, cluster_encrypt,
+    cluster_public_api_process)
+from ..const import (
+    ATTR_IS_MASTER, ATTR_MASTER_KEY, ATTR_SLUG, ATTR_NODE_KEY, ATTR_MASTER_IP,
+    ATTR_VERSION, ATTR_ARCH, ATTR_TIMEZONE, ATR_KNOWN_NODES, ATTR_IP,
+    ATTR_IS_ACTIVE, ATTR_LAST_SEEN, ATTR_NONCE, ATTR_CLUSTER_WRAP, ATTR_NAME)
 
 _LOGGER = logging.getLogger(__name__)
 
-SCHEMA_SLAVE_SWITCH = vol.Schema({
+SCHEMA_REGISTER = vol.Schema({
     vol.Required(ATTR_MASTER_KEY): vol.Coerce(str),
-    vol.Required(ATTR_NODE_NAME): vol.Coerce(str),
+    vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Required(ATTR_MASTER_IP): vol.Coerce(str),
 })
 
@@ -65,6 +65,37 @@ class APIClusterBase(object):
             return cluster_encrypt(str(json_obj), self.cluster.node_key)
         return cluster_encrypt_json(json_obj, self.cluster.node_key)
 
+    @cluster_public_api_process
+    async def proxy(self, request):
+        """Proxy requests to internal REST API."""
+        path = request.match_info.get("path")
+        method = getattr(self._api_proxy, path)
+        if method is None:
+            raise RuntimeError(
+                "Received unknown {0} command: {1}".format(
+                    self._proxy_module, path))
+
+        body = await self._slave_only_body(request)
+        _LOGGER.info("Received remote %s command: %s",
+                     self._proxy_module, path)
+
+        # Check if we have overwrite for method
+        wrapper = getattr(self, path, None)
+        if wrapper is not None:
+            return self._node_return(await wrapper(request, body))
+
+        if method.__name__.endswith("cluster_wrap"):
+            return self._node_return(await method(request, cluster_body=body))
+        return self._node_return(await method(request))
+
+    @property
+    def _api_proxy(self):
+        raise RuntimeError("API proxy is not defined")
+
+    @property
+    def _proxy_module(self):
+        raise RuntimeError("Unknown proxy module")
+
 
 class APICluster(APIClusterBase):
     """Handle rest api for cluster functions."""
@@ -72,7 +103,7 @@ class APICluster(APIClusterBase):
     def _get_node(self, request):
         """Return known node based on request data."""
         slug = request.match_info.get("node")
-        node = self.cluster.get_node(slug)
+        node = self.cluster.get(slug)
         if node is None:
             raise RuntimeError("Requested node not found")
         return node
@@ -93,6 +124,7 @@ class APICluster(APIClusterBase):
                     else None
                 response[ATR_KNOWN_NODES].append({
                     ATTR_SLUG: node.slug,
+                    ATTR_NAME: node.name,
                     ATTR_ARCH: node.arch,
                     ATTR_VERSION: node.version,
                     ATTR_TIMEZONE: node.time_zone,
@@ -102,7 +134,7 @@ class APICluster(APIClusterBase):
                 })
 
         else:
-            response[ATTR_NODE_NAME] = self.cluster.node_name
+            response[ATTR_NAME] = self.cluster.node_name
             response[ATTR_NODE_KEY] = self.cluster.node_key
             response[ATTR_MASTER_IP] = self.cluster.master_ip
 
@@ -117,10 +149,10 @@ class APICluster(APIClusterBase):
     @api_process
     async def register(self, request):
         """Changing current node status to slave."""
-        body = await api_validate(SCHEMA_SLAVE_SWITCH, request)
+        body = await api_validate(SCHEMA_REGISTER, request)
         return await self.cluster.switch_to_slave(body[ATTR_MASTER_IP],
                                                   body[ATTR_MASTER_KEY],
-                                                  body[ATTR_NODE_NAME])
+                                                  body[ATTR_NAME])
 
     @api_process
     async def kick(self, request):

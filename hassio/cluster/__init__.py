@@ -8,13 +8,12 @@ from .util import generate_cluster_key, get_node_slug
 from .util_rest import cluster_do_post, get_nonce_request
 from .validate import (
     SCHEMA_CLUSTER_CONFIG, CLUSTER_MASTER_IP, CLUSTER_NODE_KEY,
-    CLUSTER_NODE_NAME, CLUSTER_REGISTERED_NODES)
-from ..api.util import get_addons_list
+    CLUSTER_NODE_NAME, CLUSTER_REGISTERED_NODES, CLUSTER_IS_MASTER)
 from ..const import (
     RUN_REGENERATE_CLUSTER_KEY, ATTR_SLUG, ATTR_NODE_KEY,
     ATTR_ADDONS_REPOSITORIES, RUN_PING_CLUSTER_MASTER, ATTR_VERSION,
     HASSIO_VERSION, ATTR_TIMEZONE, ATTR_ARCH, FILE_HASSIO_CLUSTER,
-    ATTR_INSTALLED, ATTR_ADDONS)
+    ATTR_ADDONS, ATTR_INSTALLED, ATTR_NAME)
 from ..tools import JsonConfig
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ class ClusterManager(JsonConfig):
         self.scheduler.register_task(
             self._regenerate_master_key, RUN_REGENERATE_CLUSTER_KEY, now=True)
         self.scheduler.register_task(
-            self._ping_master, RUN_PING_CLUSTER_MASTER, now=True)
+            self._sync_master, RUN_PING_CLUSTER_MASTER, now=True)
 
         self._lock = asyncio.Lock(loop=loop)
 
@@ -47,8 +46,9 @@ class ClusterManager(JsonConfig):
     def _load_nodes(self):
         """Loading existing known nodes."""
         self._nodes.clear()
-        for slug, key in self.registered_nodes:
-            new_node = ClusterNode(slug, key, self.websession)
+        for slug, data in self.registered_nodes:
+            new_node = ClusterNode(slug, data.get(CLUSTER_NODE_NAME),
+                                   data.get(CLUSTER_NODE_KEY), self.websession)
             self._nodes.append(new_node)
 
     def _find_node(self, slug=None, key=None):
@@ -70,7 +70,18 @@ class ClusterManager(JsonConfig):
         """Periodically re-generating master key."""
         self._master_key = generate_cluster_key()
 
-    async def _ping_master(self):
+    def _get_local_addons(self):
+        """Only locally installed addons."""
+        addons = self.addons.get_addons_list_rest(True)
+        local_addons = []
+        for addon in addons:
+            if addon[ATTR_INSTALLED] is None:
+                continue
+            local_addons.append(addon)
+        return local_addons
+
+    async def _sync_master(self):
+        """Sync data with master."""
         if self.is_master is True:
             return
 
@@ -78,11 +89,11 @@ class ClusterManager(JsonConfig):
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_ARCH: self.config.arch,
             ATTR_TIMEZONE: self.config.timezone,
-            ATTR_ADDONS: get_addons_list(self.addons, False, True)
+            ATTR_ADDONS: self._get_local_addons()
         }
         data.update(get_nonce_request())
 
-        result = await cluster_do_post(data, self.master_ip, "/ping",
+        result = await cluster_do_post(data, self.master_ip, "/sync",
                                        self.node_key, self.websession,
                                        self.node_name)
         if result is None:
@@ -93,6 +104,44 @@ class ClusterManager(JsonConfig):
             node_key = result[ATTR_NODE_KEY]
             self.node_key = node_key
 
+    @staticmethod
+    def _format_node(name, key):
+        """Formatting registered node."""
+        return {
+            CLUSTER_NODE_NAME: name,
+            CLUSTER_NODE_KEY: key
+        }
+
+    def _sync_addons(self, node_, addons):
+        """Synchronizing addons."""
+        new_slugs = []
+        for addon in addons:
+            slug = addon[ATTR_SLUG]
+            try:
+                local_addon = self.addons.get(slug)
+                if local_addon is None:
+                    raise KeyError()
+            except KeyError:
+                _LOGGER.warning("Addon %s from %s is unknown",
+                                slug, node_.slug)
+                continue
+
+            new_slugs.append(slug)
+            local_addon.cluster_version = (node_.slug, addon[ATTR_INSTALLED])
+
+        for slug in node_.addon_slugs:
+            if slug not in new_slugs:
+                try:
+                    local_addon = self.addons.get(slug)
+                    if local_addon is None:
+                        raise KeyError()
+                except KeyError:
+                    continue
+                local_addon.cluster_version = (node_.slug, None)
+
+        node_.addon_slugs = new_slugs
+        node_.addons = addons
+
     async def switch_to_master(self, is_slave_initiated):
         """Switching operating mode to master."""
         if self.is_master is True:
@@ -100,7 +149,8 @@ class ClusterManager(JsonConfig):
         self.is_master = True
         if await self.homeassistant.is_running() is False:
             _LOGGER.info("Starting HASS because of switching to master mode")
-            await self.homeassistant.run()
+            # FIXME: Start HASS
+            # await self.homeassistant.run()
 
         if is_slave_initiated is False:
             return True
@@ -121,7 +171,7 @@ class ClusterManager(JsonConfig):
             return
 
         data = {
-            ATTR_SLUG: get_node_slug(node_name)
+            ATTR_NAME: node_name,
         }
 
         result = await cluster_do_post(data, master_ip, "/register",
@@ -132,7 +182,8 @@ class ClusterManager(JsonConfig):
 
         if await self.homeassistant.is_running():
             _LOGGER.info("Stopping HASS because of switching to slave mode")
-            await self.homeassistant.stop()
+            # FIXME: Stop HASS
+            # await self.homeassistant.stop()
 
         node_key = result[ATTR_NODE_KEY]
         self.node_key = node_key
@@ -147,8 +198,9 @@ class ClusterManager(JsonConfig):
                      master_ip, len(new))
         return True
 
-    def register_node(self, ip_address, node_slug):
+    def register_node(self, ip_address, node_name):
         """Registering new slave node."""
+        node_slug = get_node_slug(node_name)
         if self._find_node(node_slug) is not None:
             _LOGGER.error("Attempt to re-register node %s", node_slug)
             raise RuntimeError("Node already registered")
@@ -156,8 +208,9 @@ class ClusterManager(JsonConfig):
         _LOGGER.info("Registered new node %s from IP %s",
                      node_slug, ip_address)
         node_key = generate_cluster_key()
-        self.registered_nodes = (node_slug, node_key)
-        new_node = ClusterNode(node_slug, node_key,
+        self.registered_nodes = (node_slug,
+                                 self._format_node(node_name, node_key))
+        new_node = ClusterNode(node_slug, node_name, node_key,
                                self.websession, ip_address)
         self._nodes.append(new_node)
         return node_key
@@ -173,38 +226,21 @@ class ClusterManager(JsonConfig):
         self.registered_nodes = (node_.slug, None)
         _LOGGER.info("Removed node %s from cluster", node_.slug)
 
-    def ping(self, node_, ip_address, version, arch, time_zone, addons):
+    def sync(self, node_, ip_address, version, arch, time_zone, addons):
         """Responding to ping from slave node."""
-        node_.ping(ip_address, version, arch, time_zone, addons)
+        node_.sync(ip_address, version, arch, time_zone)
+        self._sync_addons(node_, addons)
         new_key = None
         if random.SystemRandom().randint(1, 100) <= 20:
             new_key = generate_cluster_key()
-            self.registered_nodes = (node_.slug, new_key)
+            self.registered_nodes = (node_.slug,
+                                     self._format_node(node_.name, new_key))
             node_.update_key(new_key)
         return new_key
 
-    def get_node(self, slug):
+    def get(self, slug):
         """Retrieving known node by slug."""
         return self._find_node(slug=slug)
-
-    async def get_addons_list(self, only_installed=False):
-        """Return a list of addons."""
-        local = get_addons_list(self.addons,
-                                self.is_master,
-                                only_installed)
-        if self.is_master is False:
-            return local
-
-        for node_ in self._nodes:
-            for addon in node_.addons:
-                local_addon = next((x for x in local
-                                    if x[ATTR_SLUG] == addon[ATTR_SLUG]), None)
-                if local_addon is not None:
-                    local_addon[ATTR_INSTALLED] \
-                        .update(addon[ATTR_INSTALLED])
-                else:
-                    local.append(addon)
-        return local
 
     @property
     def master_key(self):
@@ -257,19 +293,20 @@ class ClusterManager(JsonConfig):
     @registered_nodes.setter
     def registered_nodes(self, value):
         """Set known node."""
-        slug, key = value
-        if key is None:
+        slug, info = value
+        if info is None:
             self._data[CLUSTER_REGISTERED_NODES].pop(slug, None)
         else:
-            self._data[CLUSTER_REGISTERED_NODES][slug] = key
+            self._data[CLUSTER_REGISTERED_NODES][slug] = info
         self.save()
 
     @property
     def is_master(self):
         """Return flag indicating whether this node operates as master."""
-        return self.config.is_master
+        return self._data.get(CLUSTER_IS_MASTER)
 
     @is_master.setter
     def is_master(self, value):
         """Set operation mode."""
-        self.config.is_master = value
+        self._data[CLUSTER_IS_MASTER] = value
+        self.save()

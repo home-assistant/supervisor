@@ -40,8 +40,12 @@ class DockerHomeAssistant(DockerBase):
 
         Need run inside executor.
         """
-        if self._is_running() or self.config.is_master is False:
+        if self._is_running():
             return
+
+        # FIXME: If it's not Master -- don't run HASS
+        # if self.config.is_master is False:
+            # return
 
         # cleanup
         self._stop()

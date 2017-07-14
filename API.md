@@ -43,8 +43,9 @@ The addons from `addons` are only installed one.
             "arch": ["armhf", "aarch64", "i386", "amd64"],
             "repository": "12345678|null",
             "version": "LAST_VERSION",
-            "installed": {
-              "node_name": "INSTALL_VERSION"
+            "installed": "INSTALL_VERSION",
+            "cluster_installed": {
+              "NODE_SLUG": "INSTALL_VERSION"
             },
             "detached": "bool",
             "build": "bool",
@@ -390,16 +391,17 @@ Example result:
 ```json
    
  {
-  "is_master": <master or slave node>,
-  "master_key": "key",
+  "is_master": "bool",
+  "master_key": "CURRENT_KEY",
   "nodes": [{
-     "slug": "registration name",
-     "arch": "armhf|aarch64|i386|amd64",
-     "version": "hassio version",
-     "timezone": "node tz",
-     "ip": "last known IP",
-     "is_active": <any recent activitiy from node>,
-     "last_seen": <second since last activity>
+     "slug": "NODE_SLUG",
+     "name": "NODE_NAME",
+     "arch": "{armhf|aarch64|i386|amd64}",
+     "version": "0.43",
+     "timezone": "America/Los_Angeles",
+     "ip": "10.0.0.0.",
+     "is_active": "bool",
+     "last_seen": "int"
   }]
 }
 ``` 
@@ -411,7 +413,7 @@ Registering this instance as a slave node in cluster
 {
 	"master_ip": "ip address of master node", 
 	"master_key": "master key", 
-	"node_name": "registration name" 
+	"name": "registration name" 
 }
 ```
 
@@ -472,5 +474,5 @@ All methods are `POST` and requires key (node or master)
 - `/cluster/register` - registration within cluster
 - `/cluster/leave` - leaving cluster
 - `/cluster/kick` - forcing node to leave cluster
-- `/cluster/ping` - ping from slave node and additional data sync
+- `/cluster/sync` - ping from slave node and additional data sync
 - `/cluster/addons/{addon}/{operation}` - proxy of `/addons` calls to slaves

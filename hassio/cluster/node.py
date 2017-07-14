@@ -17,10 +17,11 @@ INACTIVE_TIME = 2 * RUN_PING_CLUSTER_MASTER
 class ClusterNode(object):
     """Cluster node."""
 
-    def __init__(self, slug, key, websession, ip_address=None):
+    def __init__(self, slug, name, key, websession, ip_address=None):
         """Initialize new cluster node."""
         self.slug = slug
         self.key = key
+        self.name = name
         self.websession = websession
         self.hashed_key = hash_password(key)
         self.last_seen_time = None
@@ -28,8 +29,9 @@ class ClusterNode(object):
         self.version = None
         self.arch = None
         self.time_zone = None
-        self.addons = []
         self.nonce_queue = deque(maxlen=100)
+        self.addon_slugs = []
+        self.addons = []
 
     def _process_response(self, response):
         """Processing response from remote node."""
@@ -83,14 +85,13 @@ class ClusterNode(object):
         self.key = key
         self.hashed_key = hash_password(key)
 
-    def ping(self, ip_address, version, arch, time_zone, addons):
+    def sync(self, ip_address, version, arch, time_zone):
         """Updating information about remote node."""
         self.last_seen_time = datetime.utcnow()
         self.last_ip = ip_address
         self.version = version
         self.arch = arch
         self.time_zone = time_zone
-        self.addons = addons
 
     def validate_key(self, key):
         """Validating security key."""

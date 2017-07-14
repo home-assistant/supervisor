@@ -2,6 +2,7 @@
 
 import json
 import logging
+import hashlib
 
 from aiohttp import web
 from jwcrypto import jwk, jwe
@@ -24,7 +25,7 @@ def generate_cluster_key():
 
 def get_node_slug(node_name):
     """Fixing node name."""
-    return node_name.replace(" ", "_")
+    return hashlib.sha1(node_name.encode()).hexdigest()[:8]
 
 
 def get_key(key):

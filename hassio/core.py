@@ -90,9 +90,9 @@ class HassIO(object):
         # rest api views
         self.api.register_host(self.host_control)
         self.api.register_network(self.host_control)
-        self.api.register_supervisor(
-            self.supervisor, self.snapshots, self.addons, self.host_control,
-            self.websession, self.cluster)
+        self.api.register_supervisor(self.supervisor, self.snapshots,
+                                     self.addons, self.host_control,
+                                     self.websession)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons, self.cluster)
         self.api.register_security()
@@ -147,15 +147,10 @@ class HassIO(object):
         _LOGGER.info("Starting API on %s. Hassio port %d. Cluster port %d",
                      self.config.api_endpoint, HASSIO_API_PORT,
                      HASSIO_PUBLIC_CLUSTER_PORT)
-        tasks, _ = await asyncio.wait([
+        await asyncio.wait([
             self.api.start(HASSIO_API_PORT),
             self.cluster_api.start(HASSIO_PUBLIC_CLUSTER_PORT)
         ], loop=self.loop)
-
-        for task in tasks:
-            err = task.exception()
-            if err is not None:
-                _LOGGER.error("Failed to start API: %s", str(err))
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
@@ -166,9 +161,10 @@ class HassIO(object):
             # start addon mark as before
             await self.addons.auto_boot(STARTUP_BEFORE)
 
+            # FIXME: Do it only on master
             # run HomeAssistant if we're not on slave node
-            if self.cluster.is_master is True:
-                await self.homeassistant.run()
+            # if self.cluster.is_master is True:
+            await self.homeassistant.run()
 
             # start addon mark as after
             await self.addons.auto_boot(STARTUP_AFTER)

@@ -5,7 +5,10 @@ import logging
 from .addon import Addon
 from .repository import Repository
 from .data import Data
-from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO
+from ..const import (
+    REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO, ATTR_NAME, ATTR_SLUG,
+    ATTR_DESCRIPTON, ATTR_VERSION, ATTR_INSTALLED, ATTR_ARCH, ATTR_DETACHED,
+    ATTR_REPOSITORY, ATTR_BUILD, ATTR_URL, ATTR_CLUSTER_INSTALLED)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -125,9 +128,33 @@ class AddonManager(object):
         tasks = []
         for addon in self.addons.values():
             if addon.is_installed and addon.boot == BOOT_AUTO and \
-                    addon.startup == stage:
+                            addon.startup == stage:
                 tasks.append(addon.start())
 
         _LOGGER.info("Startup %s run %d addons", stage, len(tasks))
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
+
+    def get_addons_list_rest(self, only_installed=False):
+        """Return a list of addons."""
+        data = []
+        for addon in self.list_addons:
+            is_installed = addon.is_installed or len(addon.cluster_version) > 0
+            if only_installed and not is_installed:
+                continue
+
+            data.append({
+                ATTR_NAME: addon.name,
+                ATTR_SLUG: addon.slug,
+                ATTR_DESCRIPTON: addon.description,
+                ATTR_VERSION: addon.last_version,
+                ATTR_INSTALLED: addon.version_installed,
+                ATTR_CLUSTER_INSTALLED: addon.cluster_version,
+                ATTR_ARCH: addon.supported_arch,
+                ATTR_DETACHED: addon.is_detached,
+                ATTR_REPOSITORY: addon.repository,
+                ATTR_BUILD: addon.need_build,
+                ATTR_URL: addon.url,
+            })
+
+        return data

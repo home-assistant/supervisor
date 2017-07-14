@@ -112,6 +112,7 @@ ATTR_IS_ACTIVE = 'is_active'
 ATTR_LAST_SEEN = 'last_seen'
 ATTR_CLUSTER_WRAP = 'wrap'
 ATTR_NONCE = 'nonce'
+ATTR_CLUSTER_INSTALLED = 'cluster_installed'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_BEFORE = 'before'

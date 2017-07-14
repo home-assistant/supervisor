@@ -30,7 +30,7 @@ class APISupervisor(object):
     """Handle rest api for supervisor functions."""
 
     def __init__(self, config, loop, supervisor, snapshots, addons,
-                 host_control, websession, cluster):
+                 host_control, websession):
         """Initialize supervisor rest api part."""
         self.config = config
         self.loop = loop
@@ -39,7 +39,6 @@ class APISupervisor(object):
         self.snapshots = snapshots
         self.host_control = host_control
         self.websession = websession
-        self.cluster = cluster
 
     def _repositories_list(self):
         """Return a list of addons repositories."""
@@ -69,8 +68,7 @@ class APISupervisor(object):
             ATTR_BETA_CHANNEL: self.config.upstream_beta,
             ATTR_ARCH: self.config.arch,
             ATTR_TIMEZONE: self.config.timezone,
-            ATTR_ADDONS: await self.cluster.get_addons_list(
-                only_installed=True),
+            ATTR_ADDONS: self.addons.get_addons_list_rest(True),
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories,
         }
 
@@ -78,7 +76,7 @@ class APISupervisor(object):
     async def available_addons(self, request):
         """Return information for all available addons."""
         return {
-            ATTR_ADDONS: await self.cluster.get_addons_list(),
+            ATTR_ADDONS: self.addons.get_addons_list_rest(),
             ATTR_REPOSITORIES: self._repositories_list(),
         }
 

@@ -10,8 +10,8 @@ from ..cluster.util import (
     cluster_decrypt_schema, cluster_encrypt_json, cluster_public_api_process,
     cluster_encrypt_ok)
 from ..const import (
-    ATTR_SLUG, ATTR_NODE_KEY, ATTR_ADDONS_REPOSITORIES, ATTR_VERSION,
-    ATTR_ARCH, ATTR_TIMEZONE, ATTR_NONCE, HTTP_HEADER_X_NODE, ATTR_ADDONS)
+    ATTR_NODE_KEY, ATTR_ADDONS_REPOSITORIES, ATTR_VERSION, ATTR_ARCH,
+    ATTR_TIMEZONE, ATTR_NONCE, HTTP_HEADER_X_NODE, ATTR_ADDONS, ATTR_NAME)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ SCHEMA_PING = SCHEMA_NONCE.extend({
 }, extra=True)
 
 SCHEMA_NODE_REGISTER = vol.Schema({
-    vol.Required(ATTR_SLUG): vol.Coerce(str),
+    vol.Required(ATTR_NAME): vol.Coerce(str),
 })
 
 
@@ -37,8 +37,7 @@ class APIClusterManagement(APIClusterBase):
         """Return known node based on public request data."""
         node = None
         if HTTP_HEADER_X_NODE in request.headers:
-            node = self.cluster.get_node(
-                request.headers.get(HTTP_HEADER_X_NODE))
+            node = self.cluster.get(request.headers.get(HTTP_HEADER_X_NODE))
 
         if node is None:
             raise RuntimeError("Requested node not found")
@@ -52,7 +51,7 @@ class APIClusterManagement(APIClusterBase):
         old_key = node.key
         body = await cluster_decrypt_schema(SCHEMA_PING, request, node.key)
         node.validate_nonce(body[ATTR_NONCE])
-        new_key = self.cluster.ping(node,
+        new_key = self.cluster.sync(node,
                                     get_real_ip(request),
                                     body[ATTR_VERSION],
                                     body[ATTR_ARCH],
@@ -84,8 +83,7 @@ class APIClusterManagement(APIClusterBase):
         body = await cluster_decrypt_schema(SCHEMA_NODE_REGISTER, request,
                                             self.cluster.master_key)
         ip_address = get_real_ip(request)
-        node_key = self.cluster.register_node(ip_address,
-                                              body[ATTR_SLUG])
+        node_key = self.cluster.register_node(ip_address, body[ATTR_NAME])
         return cluster_encrypt_json({
             ATTR_NODE_KEY: node_key,
             ATTR_ADDONS_REPOSITORIES: self.config.addons_repositories

@@ -11,9 +11,7 @@ from aiohttp.web_exceptions import HTTPServiceUnavailable
 
 from ..const import (
     JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
-    HTTP_HEADER_X_FORWARDED_FOR, ATTR_NAME, ATTR_SLUG, ATTR_DESCRIPTON,
-    ATTR_VERSION, ATTR_INSTALLED, ATTR_ARCH, ATTR_DETACHED, ATTR_REPOSITORY,
-    ATTR_BUILD, ATTR_URL, CLUSTER_NODE_MASTER)
+    HTTP_HEADER_X_FORWARDED_FOR)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +22,17 @@ def json_loads(data):
         return json.loads(data)
     except json.JSONDecodeError:
         return {}
+
+
+def cluster_api_process(method):
+    """Wrapper to indicate that this method has additional params
+    when called from within cluster proxy."""
+
+    async def cluster_wrap(api, *args, **kwargs):
+        """Simple wrap."""
+        return await method(api, *args, **kwargs)
+
+    return cluster_wrap
 
 
 def api_process(method):
@@ -135,35 +144,3 @@ def get_real_ip(request):
             real_ip = ip_address(peername[0])
 
     return real_ip
-
-
-def get_addons_list(addons, is_master, only_installed=False):
-    """Return a list of addons."""
-    if is_master:
-        node = CLUSTER_NODE_MASTER
-    else:
-        node = 'slave'
-
-    data = []
-    for addon in addons.list_addons:
-        if only_installed and not addon.is_installed:
-            continue
-
-        installed = {}
-        if addon.is_installed:
-            installed[node] = addon.version_installed
-
-        data.append({
-            ATTR_NAME: addon.name,
-            ATTR_SLUG: addon.slug,
-            ATTR_DESCRIPTON: addon.description,
-            ATTR_VERSION: addon.last_version,
-            ATTR_INSTALLED: installed,
-            ATTR_ARCH: addon.supported_arch,
-            ATTR_DETACHED: addon.is_detached,
-            ATTR_REPOSITORY: addon.repository,
-            ATTR_BUILD: addon.need_build,
-            ATTR_URL: addon.url,
-        })
-
-    return data
