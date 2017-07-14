@@ -3,13 +3,14 @@ import voluptuous as vol
 
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_STARTUP,
-    ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE, STARTUP_AFTER,
-    STARTUP_BEFORE, STARTUP_INITIALIZE, BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA,
-    ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER, ATTR_ARCH, ATTR_DEVICES,
-    ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64,
-    ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_USER, ATTR_STATE, ATTR_SYSTEM,
-    STATE_STARTED, STATE_STOPPED, ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT,
-    ATTR_NETWORK, ATTR_AUTO_UPDATE)
+    ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE,
+    STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION, STARTUP_INITIALIZE,
+    BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER,
+    ATTR_ARCH, ATTR_DEVICES, ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF,
+    ARCH_AARCH64, ARCH_AMD64, ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED,
+    ATTR_USER, ATTR_STATE, ATTR_SYSTEM, STATE_STARTED, STATE_STOPPED,
+    ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK,
+    ATTR_AUTO_UPDATE)
 from ..validate import NETWORK_PORT, DOCKER_PORTS
 
 
@@ -29,9 +30,26 @@ ARCH_ALL = [
     ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386
 ]
 
+STARTUP_ALL = [
+    STARTUP_ONCE, STARTUP_INITIALIZE, STARTUP_SYSTEM, STARTUP_SERVICES,
+    STARTUP_APPLICATION
+]
+
 PRIVILEGE_ALL = [
     "NET_ADMIN"
 ]
+
+
+def _migrate_startup(value):
+    """Migrate startup schema.
+
+    REMOVE after 0.50-
+    """
+    if value == "before":
+        return STARTUP_SERVICES
+    if value == "after":
+        return STARTUP_APPLICATION
+    return value
 
 
 # pylint: disable=no-value-for-parameter
@@ -43,8 +61,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_URL): vol.Url(),
     vol.Optional(ATTR_ARCH, default=ARCH_ALL): [vol.In(ARCH_ALL)],
     vol.Required(ATTR_STARTUP):
-        vol.In([STARTUP_BEFORE, STARTUP_AFTER, STARTUP_ONCE,
-                STARTUP_INITIALIZE]),
+        vol.All(_migrate_startup, vol.In([STARTUP_ALL])),
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): DOCKER_PORTS,
@@ -59,7 +76,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_SCHEMA): vol.Any({
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [
             vol.Any(ADDON_ELEMENT, {vol.Coerce(str): ADDON_ELEMENT})
-        ])
+        ], vol.Schema({vol.Coerce(str): ADDON_ELEMENT}))
     }, False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
     vol.Optional(ATTR_TIMEOUT, default=10):
@@ -124,8 +141,11 @@ def validate_options(raw_schema):
             typ = raw_schema[key]
             try:
                 if isinstance(typ, list):
-                    # nested value
-                    options[key] = _nested_validate(typ[0], value, key)
+                    # nested value list
+                    options[key] = _nested_validate_list(typ[0], value, key)
+                elif isinstance(typ, dict):
+                    # nested value dict
+                    options[key] = _nested_validate_dict(typ, value, key)
                 else:
                     # normal value
                     options[key] = _single_validate(typ, value, key)
@@ -161,13 +181,13 @@ def _single_validate(typ, value, key):
         elif typ == V_PORT:
             return NETWORK_PORT(value)
 
-        raise vol.Invalid("Fatal error for {} type {}.".format(key, typ))
+        raise vol.Invalid("Fatal error for {} type {}".format(key, typ))
     except ValueError:
         raise vol.Invalid(
             "Type {} error for '{}' on {}.".format(typ, value, key)) from None
 
 
-def _nested_validate(typ, data_list, key):
+def _nested_validate_list(typ, data_list, key):
     """Validate nested items."""
     options = []
 
@@ -178,12 +198,25 @@ def _nested_validate(typ, data_list, key):
             for c_key, c_value in element.items():
                 if c_key not in typ:
                     raise vol.Invalid(
-                        "Unknown nested options {}.".format(c_key))
+                        "Unknown nested options {}".format(c_key))
 
                 c_options[c_key] = _single_validate(typ[c_key], c_value, c_key)
             options.append(c_options)
         # normal list
         else:
             options.append(_single_validate(typ, element, key))
+
+    return options
+
+
+def _nested_validate_dict(typ, data_dict, key):
+    """Validate nested items."""
+    options = {}
+
+    for c_key, c_value in data_list.items():
+        if c_key not in typ:
+            raise vol.Invalid("Unknow nested dict options {}".format(c_key))
+
+        options[c_key] = _single_validate(typ[c_key], c_value, c_key)
 
     return options
