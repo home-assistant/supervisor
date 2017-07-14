@@ -166,24 +166,39 @@ class ClusterNode(object):
                                        is_raw=True)
 
     def leave_remote(self):
-        """Passing leave node from cluster command to slave node."""
+        """Passing leave node from cluster command to slave node.
+
+        Return a coroutine.
+        """
         return self._call_remote("/kick", is_raw=True)
 
-    async def host_info(self):
-        """Retrieving host information from remote node."""
-        return await self._call_remote("/host/info")
+    def host_info(self):
+        """Retrieving host information from remote node.
 
-    async def host_reboot(self):
-        """Rebooting host OS on remote node."""
-        return await self._call_remote("/host/reboot")
+        Return a coroutine.
+        """
+        return self._call_remote("/host/info")
 
-    async def host_shutdown(self):
-        """Shutting down remote node."""
-        return await self._call_remote("/host/shutdown")
+    def host_reboot(self):
+        """Rebooting host OS on remote node.
 
-    async def host_update(self, body):
-        """Updating host OS on remote node."""
-        return await self._call_remote("/host/update", body)
+        Return a coroutine.
+        """
+        return self._call_remote("/host/reboot")
+
+    def host_shutdown(self):
+        """Shutting down remote node.
+
+        Return a coroutine.
+        """
+        return self._call_remote("/host/shutdown")
+
+    def host_update(self, body):
+        """Updating host OS on remote node.
+
+        Return a coroutine.
+        """
+        return self._call_remote("/host/update", body)
 
     def validate_nonce(self, nonce):
         """Validating nonce received from remote node."""
