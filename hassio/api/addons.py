@@ -12,7 +12,7 @@ from ..const import (
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
     ATTR_SLUG, ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_MAINTAINER,
     ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, BOOT_AUTO,
-    BOOT_MANUAL, CLUSTER_NODE_MASTER)
+    BOOT_MANUAL, ATTR_NODE)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,18 +50,6 @@ class APIAddons(object):
 
         return addon
 
-    def _get_cluster_node(self, request):
-        """Return cluster node if it's known and active."""
-        node_slug = request.match_info.get('node')
-        if node_slug is None or node_slug == CLUSTER_NODE_MASTER:
-            return None
-        node = self.cluster.get(node_slug)
-        if node is None:
-            raise RuntimeError("Node is unknown")
-        if node.is_active is False:
-            raise RuntimeError("Node is not active")
-        return node
-
     @api_process
     async def list(self, request):
         """Return all addons / repositories ."""
@@ -88,7 +76,7 @@ class APIAddons(object):
     @api_process
     async def info(self, request, **kwargs):
         """Return addon information."""
-        node = self._get_cluster_node(request)
+        node = self.cluster.get_cluster_node(request)
         if node:
             return await node.addon_info(request)
 
@@ -101,6 +89,7 @@ class APIAddons(object):
             ATTR_AUTO_UPDATE: addon.auto_update,
             ATTR_REPOSITORY: addon.repository,
             ATTR_LAST_VERSION: addon.last_version,
+            ATTR_NODE: self.cluster.get_node_name(),
             ATTR_STATE: await addon.state(),
             ATTR_BOOT: addon.boot,
             ATTR_OPTIONS: addon.options,
@@ -121,7 +110,7 @@ class APIAddons(object):
         })
         body = await api_validate(addon_schema, request) \
             if cluster_body is None else addon_schema(cluster_body)
-        node = self._get_cluster_node(request)
+        node = self.cluster.get_cluster_node(request)
         if node:
             return await node.addon_options(request, body)
 
@@ -144,7 +133,7 @@ class APIAddons(object):
         """Install addon."""
         body = await api_validate(SCHEMA_VERSION, request) \
             if cluster_body is None else SCHEMA_VERSION(cluster_body)
-        node = self._get_cluster_node(request)
+        node = self.cluster.get_cluster_node(request)
         if node:
             return await node.addon_install(request, body, self.config)
 
@@ -157,7 +146,7 @@ class APIAddons(object):
     @api_process
     async def uninstall(self, request):
         """Uninstall addon."""
-        node = self._get_cluster_node(request)
+        node = self.cluster.get_cluster_node(request)
         if node:
             return await node.addon_uninstall(request)
         addon = self._extract_addon(request)
@@ -166,7 +155,7 @@ class APIAddons(object):
     @api_process
     async def start(self, request):
         """Start addon."""
-        node = self._get_cluster_node(request)
+        node = self.cluster.get_cluster_node(request)
         if node:
             return await node.addon_start(request)
 
@@ -184,7 +173,7 @@ class APIAddons(object):
     @api_process
     async def stop(self, request):
         """Stop addon."""
-        node = self._get_cluster_node(request)
+        node = self.cluster.get_cluster_node(request)
         if node:
             return await node.addon_stop(request)
         addon = self._extract_addon(request)
@@ -196,7 +185,7 @@ class APIAddons(object):
         """Update addon."""
         body = await api_validate(SCHEMA_VERSION, request) \
             if cluster_body is None else SCHEMA_VERSION(cluster_body)
-        node = self._get_cluster_node(request)
+        node = self.cluster.get_cluster_node(request)
         if node:
             return await node.addon_update(request, body)
         addon = self._extract_addon(request)
@@ -208,7 +197,7 @@ class APIAddons(object):
     @api_process
     async def restart(self, request):
         """Restart addon."""
-        node = self._get_cluster_node(request)
+        node = self.cluster.get_cluster_node(request)
         if node:
             return await node.addon_restart(request)
         addon = self._extract_addon(request)
@@ -217,7 +206,7 @@ class APIAddons(object):
     @api_process_raw
     async def logs(self, request):
         """Return logs from addon."""
-        node = self._get_cluster_node(request)
+        node = self.cluster.get_cluster_node(request)
         if node:
             return await node.addon_logs(request)
 

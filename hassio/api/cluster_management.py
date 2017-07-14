@@ -44,7 +44,7 @@ class APIClusterManagement(APIClusterBase):
         return node
 
     @cluster_public_api_process
-    async def ping(self, request):
+    async def sync(self, request):
         """Ping request from slave node."""
         self._master_only()
         node = self._get_calling_node(request)

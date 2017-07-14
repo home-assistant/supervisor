@@ -10,9 +10,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class APIClusterAddons(APIClusterBase):
-    """Addons management rest API on remote slave node."""
+    """Addons management REST API on remote slave node."""
 
-    def __init__(self, cluster, config, addons, api_addons, loop):
+    def __init__(self, cluster, config, loop, addons, api_addons):
         """Initialize cluster REST API object."""
         super().__init__(cluster, config, loop)
         self.addons = addons
@@ -20,10 +20,12 @@ class APIClusterAddons(APIClusterBase):
 
     @property
     def _api_proxy(self):
+        """Return proxy API object."""
         return self.api_addons
 
     @property
     def _proxy_module(self):
+        """Return name of current proxy module."""
         return "addons"
 
     async def install(self, request, body):
@@ -44,3 +46,21 @@ class APIClusterAddons(APIClusterBase):
             last_result = result.result()
 
         return last_result
+
+
+class APIClusterHost(APIClusterBase):
+    """Host management REST API on remote slave node."""
+
+    def __init__(self, cluster, config, loop, api_host):
+        super().__init__(cluster, config, loop)
+        self.api_host = api_host
+
+    @property
+    def _api_proxy(self):
+        """Return proxy API object."""
+        return self.api_host
+
+    @property
+    def _proxy_module(self):
+        """Return name of current proxy module."""
+        return "host"

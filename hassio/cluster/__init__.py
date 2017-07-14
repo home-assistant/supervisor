@@ -8,12 +8,13 @@ from .util import generate_cluster_key, get_node_slug
 from .util_rest import cluster_do_post, get_nonce_request
 from .validate import (
     SCHEMA_CLUSTER_CONFIG, CLUSTER_MASTER_IP, CLUSTER_NODE_KEY,
-    CLUSTER_NODE_NAME, CLUSTER_REGISTERED_NODES, CLUSTER_IS_MASTER)
+    CLUSTER_NODE_NAME, CLUSTER_REGISTERED_NODES, CLUSTER_IS_MASTER,
+    CLUSTER_IS_INITED)
 from ..const import (
     RUN_REGENERATE_CLUSTER_KEY, ATTR_SLUG, ATTR_NODE_KEY,
     ATTR_ADDONS_REPOSITORIES, RUN_PING_CLUSTER_MASTER, ATTR_VERSION,
     HASSIO_VERSION, ATTR_TIMEZONE, ATTR_ARCH, FILE_HASSIO_CLUSTER,
-    ATTR_ADDONS, ATTR_INSTALLED, ATTR_NAME)
+    ATTR_ADDONS, ATTR_INSTALLED, ATTR_NAME, CLUSTER_NODE_MASTER)
 from ..tools import JsonConfig
 
 _LOGGER = logging.getLogger(__name__)
@@ -115,6 +116,12 @@ class ClusterManager(JsonConfig):
             else:
                 addon.cluster = (node.slug, None)
 
+    async def _stop_addon(self):
+        """Stopping cluster addon."""
+        _LOGGER.info("Stopping cluster addon because left cluster.")
+        # FIXME: Stop cluster addon
+        self.is_inited = False
+
     async def switch_to_master(self, is_slave_initiated):
         """Switching operating mode to master."""
         if self.is_master is True:
@@ -124,6 +131,8 @@ class ClusterManager(JsonConfig):
             _LOGGER.info("Starting HASS because of switching to master mode")
             # FIXME: Start HASS
             # await self.homeassistant.run()
+
+        await asyncio.shield(self._stop_addon())
 
         if is_slave_initiated is False:
             return True
@@ -142,6 +151,9 @@ class ClusterManager(JsonConfig):
         """Switching operating mode to slave."""
         if self.is_master is False:
             return
+
+        if self.is_inited is False:
+            await asyncio.shield(self.init())
 
         data = {
             ATTR_NAME: node_name,
@@ -173,6 +185,9 @@ class ClusterManager(JsonConfig):
 
     def register_node(self, ip_address, node_name):
         """Registering new slave node."""
+        if self.is_inited is False:
+            raise RuntimeError("Cluster is not initialized yet.")
+
         node_slug = get_node_slug(node_name)
         if self._find_node(node_slug) is not None:
             _LOGGER.error("Attempt to re-register node %s", node_slug)
@@ -211,6 +226,36 @@ class ClusterManager(JsonConfig):
                                      self._format_node(node_.name, new_key))
             node_.update_key(new_key)
         return new_key
+
+    async def init(self):
+        """Cluster addon initialization."""
+        if self.is_inited:
+            raise RuntimeError("Cluster already inited")
+
+        _LOGGER.info("Starting cluster addon because joining cluster")
+        # FIXME: Install cluster addon
+        self.is_inited = True
+        return True
+
+    def get_cluster_node(self, request):
+        """Parsing request to get remote node."""
+        node_slug = request.match_info.get("node")
+        if node_slug is None or node_slug == CLUSTER_NODE_MASTER:
+            return None
+        node_ = self.get(node_slug)
+        if node_ is None:
+            raise RuntimeError("Node is unknown")
+        if node_.is_active is False:
+            raise RuntimeError("Node is not active")
+        return node_
+
+    def get_node_name(self):
+        """Return current cluster node name."""
+        if self.is_inited is False:
+            return None
+        if self.is_master is True:
+            return CLUSTER_NODE_MASTER
+        return get_node_slug(self.node_name)
 
     def get(self, slug):
         """Retrieving known node by slug."""
@@ -283,4 +328,15 @@ class ClusterManager(JsonConfig):
     def is_master(self, value):
         """Set operation mode."""
         self._data[CLUSTER_IS_MASTER] = value
+        self.save()
+
+    @property
+    def is_inited(self):
+        """Return flag indicating whether cluster addon is inited."""
+        return self._data[CLUSTER_IS_INITED]
+
+    @is_inited.setter
+    def is_inited(self, value):
+        """Set inited status."""
+        self._data[CLUSTER_IS_INITED] = value
         self.save()

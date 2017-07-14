@@ -169,6 +169,22 @@ class ClusterNode(object):
         """Passing leave node from cluster command to slave node."""
         return self._call_remote("/kick", is_raw=True)
 
+    async def host_info(self):
+        """Retrieving host information from remote node."""
+        return await self._call_remote("/host/info")
+
+    async def host_reboot(self):
+        """Rebooting host OS on remote node."""
+        return await self._call_remote("/host/reboot")
+
+    async def host_shutdown(self):
+        """Shutting down remote node."""
+        return await self._call_remote("/host/shutdown")
+
+    async def host_update(self, body):
+        """Updating host OS on remote node."""
+        return await self._call_remote("/host/update", body)
+
     def validate_nonce(self, nonce):
         """Validating nonce received from remote node."""
         if nonce in self.nonce_queue:
