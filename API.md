@@ -35,6 +35,7 @@ The addons from `addons` are only installed one.
     "arch": "armhf|aarch64|i386|amd64",
     "beta_channel": "true|false",
     "timezone": "TIMEZONE",
+    "cluster": "bool",
     "addons": [
         {
             "name": "xy bla",
@@ -44,6 +45,7 @@ The addons from `addons` are only installed one.
             "repository": "12345678|null",
             "version": "LAST_VERSION",
             "installed": "INSTALL_VERSION",
+            "node": "NODE ID|null",
             "detached": "bool",
             "build": "bool",
             "url": "null|url"

@@ -3,6 +3,9 @@ from pathlib import Path
 
 HASSIO_VERSION = '0.44'
 
+PORT_HASSIO = 80
+PORT_CLUSTER = 9123
+
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
 URL_HASSIO_VERSION_BETA = ('https://raw.githubusercontent.com/home-assistant/'
@@ -25,6 +28,7 @@ RESTART_EXIT_CODE = 100
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
 FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
+FILE_HASSIO_CLUSTER = Path(HASSIO_DATA, "cluster.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 SOCKET_HC = Path("/var/run/hassio-hc.sock")
@@ -96,6 +100,10 @@ ATTR_TYPE = 'type'
 ATTR_TIMEOUT = 'timeout'
 ATTR_AUTO_UPDATE = 'auto_update'
 ATTR_CUSTOM = 'custom'
+ATTR_MASTER_KEY = 'master_key'
+ATTR_MASTER_IP = 'master_ip'
+ATTR_NODE = 'node'
+ATTR_MASTER = 'master'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'
