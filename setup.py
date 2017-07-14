@@ -34,7 +34,8 @@ setup(
         'hassio.dock',
         'hassio.api',
         'hassio.addons',
-        'hassio.snapshots'
+        'hassio.snapshots',
+        'hassio.cluster'
     ],
     include_package_data=True,
     install_requires=[
@@ -46,6 +47,8 @@ setup(
         'gitpython',
         'pyotp',
         'pyqrcode',
-        'pytz'
+        'pytz',
+        'ipaddress',
+        'jwcrypto'
     ]
 )

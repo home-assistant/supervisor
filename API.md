@@ -44,6 +44,9 @@ The addons from `addons` are only installed one.
             "repository": "12345678|null",
             "version": "LAST_VERSION",
             "installed": "INSTALL_VERSION",
+            "cluster_installed": {
+              "NODE_SLUG": "INSTALL_VERSION"
+            },
             "detached": "bool",
             "build": "bool",
             "url": "null|url"
@@ -203,6 +206,7 @@ Return QR-Code
 See HostControl info command.
 ```json
 {
+    "node": "NODE_SLUG|null",
     "type": "",
     "version": "",
     "last_version": "",
@@ -297,6 +301,9 @@ Get all available addons
             "repository": "core|local|REP_ID",
             "version": "LAST_VERSION",
             "installed": "none|INSTALL_VERSION",
+            "cluster_installed": {
+              "NODE_SLUG": "INSTALL_VERSION"
+            },
             "detached": "bool",
             "build": "bool",
             "url": "null|url"
@@ -320,6 +327,7 @@ Get all available addons
 ```json
 {
     "name": "xy bla",
+    "node": "NODE_SLUG|null",
     "description": "description",
     "auto_update": "bool",
     "url": "null|url of addon",
@@ -378,6 +386,51 @@ Output the raw docker log
 
 - POST `/addons/{addon}/restart`
 
+## REST API Cluster 
+- GET `/cluster/info`
+
+Retrieving information about cluster. If it's a master node will return list 
+of all known slaves. 
+
+Example result:
+```json
+   
+ {
+  "is_master": "bool",
+  "master_key": "CURRENT_KEY",
+  "nodes": [{
+     "slug": "NODE_SLUG",
+     "name": "NODE_NAME",
+     "arch": "{armhf|aarch64|i386|amd64}",
+     "version": "0.43",
+     "timezone": "America/Los_Angeles",
+     "ip": "10.0.0.0.",
+     "is_active": "bool",
+     "last_seen": "int"
+  }]
+}
+``` 
+
+- POST `/cluster/register`
+
+Registering this instance as a slave node in cluster
+ ```json
+{
+	"master_ip": "ip address of master node", 
+	"master_key": "master key", 
+	"name": "registration name" 
+}
+```
+
+- POST `/cluster/leave`
+
+Can be executed on registered slave to leave cluster
+
+- POST  `/cluster/{node}/kick`
+
+Can be executed on master to remove one of known nodes. Will make attempt to 
+notify this node if it's online.  
+
 ## Host Control
 
 Communicate over unix socket with a host daemon.
@@ -418,3 +471,14 @@ Answer:
 - OK: call was successfully
 - ERROR: error on call
 - WRONG: not supported
+
+## Cluster internal
+Internal communications are held on port `9123` with JWE and nonce validation.
+All methods are `POST` and requires key (node or master)
+
+- `/cluster/register` - registration within cluster
+- `/cluster/leave` - leaving cluster
+- `/cluster/kick` - forcing node to leave cluster
+- `/cluster/sync` - ping from slave node and additional data sync
+- `/cluster/addons/{addon}/{operation}` - proxy of `/addons` calls to slaves
+- `/cluster/host/{operation}` -- proxy of `/host` calls to slaves

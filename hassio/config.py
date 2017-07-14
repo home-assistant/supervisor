@@ -38,7 +38,6 @@ SECURITY_TOTP = 'security_totp'
 SECURITY_PASSWORD = 'security_password'
 SECURITY_SESSIONS = 'security_sessions'
 
-
 # pylint: disable=no-value-for-parameter
 SCHEMA_CONFIG = vol.Schema({
     vol.Optional(UPSTREAM_BETA, default=False): vol.Boolean(),
@@ -51,7 +50,7 @@ SCHEMA_CONFIG = vol.Schema({
     vol.Optional(SECURITY_TOTP): vol.Coerce(str),
     vol.Optional(SECURITY_PASSWORD): vol.Coerce(str),
     vol.Optional(SECURITY_SESSIONS, default={}):
-        {vol.Coerce(str): vol.Coerce(str)},
+        {vol.Coerce(str): vol.Coerce(str)}
 }, extra=vol.REMOVE_EXTRA)
 
 

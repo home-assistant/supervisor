@@ -31,6 +31,7 @@ class Data(JsonConfig):
         self.config = config
         self._repositories = {}
         self._cache = {}
+        self._cluster = {}
 
     @property
     def user(self):
@@ -51,6 +52,11 @@ class Data(JsonConfig):
     def repositories(self):
         """Return addon data from repositories."""
         return self._repositories
+
+    @property
+    def cluster(self):
+        """Return addon cluster install info."""
+        return self._cluster
 
     def reload(self):
         """Read data from addons repository."""

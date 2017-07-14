@@ -1,15 +1,17 @@
 """Init file for HassIO util for rest api."""
-import json
 import hashlib
+import json
 import logging
+from ipaddress import ip_address
 
-from aiohttp import web
-from aiohttp.web_exceptions import HTTPServiceUnavailable
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
+from aiohttp import web
+from aiohttp.web_exceptions import HTTPServiceUnavailable
 
 from ..const import (
-    JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR)
+    JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
+    HTTP_HEADER_X_FORWARDED_FOR)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,8 +24,20 @@ def json_loads(data):
         return {}
 
 
+def cluster_api_process(method):
+    """Wrapper to indicate that this method has additional params
+    when called from within cluster proxy."""
+
+    async def cluster_wrap(api, *args, **kwargs):
+        """Simple wrap."""
+        return await method(api, *args, **kwargs)
+
+    return cluster_wrap
+
+
 def api_process(method):
     """Wrap function with true/false calls to rest api."""
+
     async def wrap_api(api, *args, **kwargs):
         """Return api information."""
         try:
@@ -44,6 +58,7 @@ def api_process(method):
 
 def api_process_hostcontrol(method):
     """Wrap HostControl calls to rest api."""
+
     async def wrap_hostcontrol(api, *args, **kwargs):
         """Return host information."""
         if not api.host_control.active:
@@ -67,6 +82,7 @@ def api_process_hostcontrol(method):
 
 def api_process_raw(method):
     """Wrap function with raw output to rest api."""
+
     async def wrap_api(api, *args, **kwargs):
         """Return api information."""
         try:
@@ -113,3 +129,18 @@ def hash_password(password):
     """Hash and salt our passwords."""
     key = ")*()*SALT_HASSIO2123{}6554547485HSKA!!*JSLAfdasda$".format(password)
     return hashlib.sha256(key.encode()).hexdigest()
+
+
+def get_real_ip(request):
+    """Get IP address of client."""
+    real_ip = None
+
+    if HTTP_HEADER_X_FORWARDED_FOR in request.headers:
+        real_ip = ip_address(
+            request.headers.get(HTTP_HEADER_X_FORWARDED_FOR).split(',')[0])
+    else:
+        peername = request.transport.get_extra_info('peername')
+        if peername:
+            real_ip = ip_address(peername[0])
+
+    return real_ip
