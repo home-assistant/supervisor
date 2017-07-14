@@ -11,8 +11,9 @@ from .host_control import HostControl
 from .const import (
     SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
-    RUN_CLEANUP_API_SESSIONS, STARTUP_AFTER, STARTUP_BEFORE,
-    STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS, RUN_UPDATE_ADDONS_TASKS)
+    RUN_CLEANUP_API_SESSIONS, STARTUP_SYSTEM, STARTUP_SERVICES,
+    STARTUP_APPLICATION, STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS,
+    RUN_UPDATE_ADDONS_TASKS)
 from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
 from .dock.supervisor import DockerSupervisor
@@ -133,20 +134,23 @@ class HassIO(object):
         await self.api.start()
         _LOGGER.info("Start hassio api on %s", self.config.api_endpoint)
 
+        # start addon mark as system
+        await self.addons.auto_boot(STARTUP_SYSTEM)
+
         try:
             # HomeAssistant is already running / supervisor have only reboot
             if await self.homeassistant.is_running():
                 _LOGGER.info("HassIO reboot detected")
                 return
 
-            # start addon mark as before
-            await self.addons.auto_boot(STARTUP_BEFORE)
+            # start addon mark as services
+            await self.addons.auto_boot(STARTUP_SERVICES)
 
             # run HomeAssistant
             await self.homeassistant.run()
 
-            # start addon mark as after
-            await self.addons.auto_boot(STARTUP_AFTER)
+            # start addon mark as application
+            await self.addons.auto_boot(STARTUP_APPLICATION)
 
         finally:
             # schedule homeassistant watchdog
