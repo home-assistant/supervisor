@@ -213,7 +213,7 @@ def _nested_validate_dict(typ, data_dict, key):
     """Validate nested items."""
     options = {}
 
-    for c_key, c_value in data_list.items():
+    for c_key, c_value in data_dict.items():
         if c_key not in typ:
             raise vol.Invalid("Unknow nested dict options {}".format(c_key))
 
