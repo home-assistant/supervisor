@@ -30,8 +30,6 @@ class ClusterNode(object):
         self.arch = None
         self.time_zone = None
         self.nonce_queue = deque(maxlen=100)
-        self.addon_slugs = []
-        self.addons = []
 
     def _process_response(self, response):
         """Processing response from remote node."""
@@ -97,52 +95,79 @@ class ClusterNode(object):
         """Validating security key."""
         return self.hashed_key == key
 
-    async def addon_info(self, request):
-        """Retrieving addon information from remote slave node."""
-        return await self._call_remote(self._get_addons_url("/info", request))
+    def addon_info(self, request):
+        """Retrieving addon information from remote slave node.
 
-    async def addon_options(self, request, body):
-        """Updating addon options on remote slave node."""
-        return await self._call_remote(self._get_addons_url("/options",
+        Return a coroutine.
+        """
+        return self._call_remote(self._get_addons_url("/info", request))
+
+    def addon_options(self, request, body):
+        """Updating addon options on remote slave node.
+
+        Return a coroutine.
+        """
+        return self._call_remote(self._get_addons_url("/options",
                                                             request), body)
 
-    async def addon_install(self, request, body, config):
-        """Installing addon on remote slave node."""
+    def addon_install(self, request, body, config):
+        """Installing addon on remote slave node.
+
+        Return a coroutine.
+        """
         body[ATTR_ADDONS_REPOSITORIES] = config.addons_repositories
-        return await self._call_remote(self._get_addons_url("/install",
+        return self._call_remote(self._get_addons_url("/install",
                                                             request), body)
 
-    async def addon_uninstall(self, request):
-        """Uninstalling addon on remote slave node."""
-        return await self._call_remote(self._get_addons_url("/uninstall",
+    def addon_uninstall(self, request):
+        """Uninstalling addon on remote slave node.
+
+        Return a coroutine.
+        """
+        return self._call_remote(self._get_addons_url("/uninstall",
                                                             request))
 
-    async def addon_start(self, request):
-        """Starting addon on remote slave node."""
-        return await self._call_remote(self._get_addons_url("/start", request))
+    def addon_start(self, request):
+        """Starting addon on remote slave node.
 
-    async def addon_stop(self, request):
-        """Stopping addon on remote slave node."""
-        return await self._call_remote(self._get_addons_url("/stop", request))
+        Return a coroutine.
+        """
+        return self._call_remote(self._get_addons_url("/start", request))
 
-    async def addon_update(self, request, body):
-        """Updating addin on remote slave node."""
-        return await self._call_remote(self._get_addons_url("/update",
+    def addon_stop(self, request):
+        """Stopping addon on remote slave node.
+
+        Return a coroutine.
+        """
+        return self._call_remote(self._get_addons_url("/stop", request))
+
+    def addon_update(self, request, body):
+        """Updating addin on remote slave node.
+
+        Return a coroutine.
+        """
+        return self._call_remote(self._get_addons_url("/update",
                                                             request), body)
 
-    async def addon_restart(self, request):
-        """Restarting addon on remote slave node."""
-        return await self._call_remote(self._get_addons_url("/restart",
+    def addon_restart(self, request):
+        """Restarting addon on remote slave node.
+
+        Return a coroutine.
+        """
+        return self._call_remote(self._get_addons_url("/restart",
                                                             request))
 
-    async def addon_logs(self, request):
-        """Retrieving addon logs from remote slave node."""
-        return await self._call_remote(self._get_addons_url("/logs", request),
+    def addon_logs(self, request):
+        """Retrieving addon logs from remote slave node.
+
+        Return a coroutine.
+        """
+        return self._call_remote(self._get_addons_url("/logs", request),
                                        is_raw=True)
 
-    async def leave_remote(self):
+    def leave_remote(self):
         """Passing leave node from cluster command to slave node."""
-        return await self._call_remote("/kick", is_raw=True)
+        return self._call_remote("/kick", is_raw=True)
 
     def validate_nonce(self, nonce):
         """Validating nonce received from remote node."""

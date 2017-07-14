@@ -139,7 +139,7 @@ class AddonManager(object):
         """Return a list of addons."""
         data = []
         for addon in self.list_addons:
-            is_installed = addon.is_installed or len(addon.cluster_version) > 0
+            is_installed = addon.is_installed or len(addon.cluster) > 0
             if only_installed and not is_installed:
                 continue
 
@@ -149,7 +149,7 @@ class AddonManager(object):
                 ATTR_DESCRIPTON: addon.description,
                 ATTR_VERSION: addon.last_version,
                 ATTR_INSTALLED: addon.version_installed,
-                ATTR_CLUSTER_INSTALLED: addon.cluster_version,
+                ATTR_CLUSTER_INSTALLED: addon.cluster,
                 ATTR_ARCH: addon.supported_arch,
                 ATTR_DETACHED: addon.is_detached,
                 ATTR_REPOSITORY: addon.repository,

@@ -62,14 +62,14 @@ class Addon(object):
         return self._id in self.data.system
 
     @property
-    def cluster_version(self):
+    def cluster(self):
         """Return information about installed versions across cluster."""
         if self._id not in self.data.cluster:
             return {}
         return self.data.cluster[self._id]
 
-    @cluster_version.setter
-    def cluster_version(self, value):
+    @cluster.setter
+    def cluster(self, value):
         """Sets cluster information."""
         if self._id not in self.data.cluster:
             self.data.cluster[self._id] = {}

@@ -40,7 +40,7 @@ class ClusterManager(JsonConfig):
 
         self._lock = asyncio.Lock(loop=loop)
 
-        self._nodes = []
+        self.nodes = {}
         self._load_nodes()
 
     def _load_nodes(self):
@@ -70,26 +70,21 @@ class ClusterManager(JsonConfig):
         """Periodically re-generating master key."""
         self._master_key = generate_cluster_key()
 
-    def _get_local_addons(self):
-        """Only locally installed addons."""
-        addons = self.addons.get_addons_list_rest(True)
-        local_addons = []
-        for addon in addons:
-            if addon[ATTR_INSTALLED] is None:
-                continue
-            local_addons.append(addon)
-        return local_addons
-
     async def _sync_master(self):
         """Sync data with master."""
         if self.is_master is True:
             return
 
+        addon_list = {}
+        for addon in self.addons.list_addons:
+            if addon.is_installed:
+                addon_list[addon.slug] = addon.installed_version
+
         data = {
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_ARCH: self.config.arch,
             ATTR_TIMEZONE: self.config.timezone,
-            ATTR_ADDONS: self._get_local_addons()
+            ATTR_ADDONS: addon_list
         }
         data.update(get_nonce_request())
 
@@ -112,35 +107,13 @@ class ClusterManager(JsonConfig):
             CLUSTER_NODE_KEY: key
         }
 
-    def _sync_addons(self, node_, addons):
+    def sync_node_addons(self, node, addon_list):
         """Synchronizing addons."""
-        new_slugs = []
-        for addon in addons:
-            slug = addon[ATTR_SLUG]
-            try:
-                local_addon = self.addons.get(slug)
-                if local_addon is None:
-                    raise KeyError()
-            except KeyError:
-                _LOGGER.warning("Addon %s from %s is unknown",
-                                slug, node_.slug)
-                continue
-
-            new_slugs.append(slug)
-            local_addon.cluster_version = (node_.slug, addon[ATTR_INSTALLED])
-
-        for slug in node_.addon_slugs:
-            if slug not in new_slugs:
-                try:
-                    local_addon = self.addons.get(slug)
-                    if local_addon is None:
-                        raise KeyError()
-                except KeyError:
-                    continue
-                local_addon.cluster_version = (node_.slug, None)
-
-        node_.addon_slugs = new_slugs
-        node_.addons = addons
+        for addon in self.addons.list_addons:
+            if addon.slug in addon_list:
+                addon.cluster = (node.slug, addon_list[addon.slug])
+            else:
+                addon.cluster = (node.slug, None)
 
     async def switch_to_master(self, is_slave_initiated):
         """Switching operating mode to master."""
@@ -226,10 +199,11 @@ class ClusterManager(JsonConfig):
         self.registered_nodes = (node_.slug, None)
         _LOGGER.info("Removed node %s from cluster", node_.slug)
 
-    def sync(self, node_, ip_address, version, arch, time_zone, addons):
+    def sync(self, node, ip_address, version, arch, time_zone, addon_list):
         """Responding to ping from slave node."""
-        node_.sync(ip_address, version, arch, time_zone)
-        self._sync_addons(node_, addons)
+        node.sync(ip_address, version, arch, time_zone)
+        self.sync_node_addons(node, addon_list)
+
         new_key = None
         if random.SystemRandom().randint(1, 100) <= 20:
             new_key = generate_cluster_key()
