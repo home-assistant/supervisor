@@ -406,6 +406,12 @@ Output the raw docker log
 
 - POST `/cluster/leave`
 
+- POST `/cluster/create`
+```json
+{
+    "name": "",
+}
+```
 - POST `/cluster/join`
 ```json
 {

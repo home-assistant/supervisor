@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 RE_VOLUME = re.compile(MAP_VOLUME)
 
 
-class Data(JsonConfig):
+class AddonsData(JsonConfig):
     """Hold data for addons inside HassIO."""
 
     def __init__(self, config):

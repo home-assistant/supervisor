@@ -4,7 +4,7 @@ import logging
 
 from .addon import Addon
 from .repository import Repository
-from .data import Data
+from .data import AddonsData
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class AddonManager(object):
         self.loop = loop
         self.config = config
         self.dock = dock
-        self.data = Data(config)
+        self.data = AddonsData(config)
         self.addons = {}
         self.repositories = {}
 
