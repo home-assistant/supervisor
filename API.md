@@ -425,6 +425,8 @@ Answer:
 
 ## Cluster
 
+It work like a mesh and exists no master node.
+
 ```json
 {
     "node": "slug",
@@ -437,6 +439,10 @@ Answer:
 It exists a master key that will be used on all nodes for communication. Every
 node have a unique session key, that will change all 30min. You need this key
 to connect a new node over this exists node into cluster network.
+
+The cluster data have a level. Every change that need to by on all nodes, like
+a join, leave of a node or update repositories change this level local on node.
+If a level is higher as his own, we need update local info with this broadcast.
 
 ### Proxy payload
 - POST `/cluster/proxy`
@@ -470,6 +476,12 @@ Receive
 {
     "profile": "leave",
     "node": "slug",
+}
+```
+```json
+{
+    "profile": "repositories",
+    "repositories": [],
 }
 ```
 ```json
