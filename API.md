@@ -20,6 +20,9 @@ On success
 }
 ```
 
+All function they support on cluster, you can add `node: slug` to execute it
+on a other node.
+
 ### HassIO
 
 - GET `/supervisor/ping`
@@ -35,7 +38,6 @@ The addons from `addons` are only installed one.
     "arch": "armhf|aarch64|i386|amd64",
     "beta_channel": "true|false",
     "timezone": "TIMEZONE",
-    "cluster": "bool",
     "addons": [
         {
             "name": "xy bla",
@@ -420,3 +422,50 @@ Answer:
 - OK: call was successfully
 - ERROR: error on call
 - WRONG: not supported
+
+## Cluster
+
+```json
+{
+    "node": "slug",
+    "date": "ISO",
+    "salt": "randum stuff",
+    "payload": ""
+}
+```
+
+### Proxy payload
+
+Send: `raw json`
+
+Receive
+```json
+{
+    "data": {},
+    "status": "Error state code"
+}
+```
+
+### cluster message/broadcast
+```json
+{
+    "profile": "register",
+    "node": "slug",
+    "ip": "ip adress"
+}
+```
+```json
+{
+    "profile": "leave",
+    "node": "slug",
+}
+```
+```json
+{
+    "profile": "info",
+    "level": 0,
+    "nodes": {
+        "slug": "ip"
+    }
+}
+```
