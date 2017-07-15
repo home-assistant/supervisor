@@ -498,6 +498,11 @@ Receive
     }
 }
 ```
+```json
+{
+    "profile": "reload",
+}
+```
 
 ### cluster registration
 - POST `/cluster/join`
