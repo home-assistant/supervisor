@@ -434,22 +434,34 @@ Answer:
 }
 ```
 
-### Proxy payload
+It exists a master key that will be used on all nodes for communication. Every
+node have a unique session key, that will change all 30min. You need this key
+to connect a new node over this exists node into cluster network.
 
-Send: `raw json`
+### Proxy payload
+- POST `/cluster/proxy`
+
+Send:
+```json
+{
+    "origin": {}
+}
+```
 
 Receive
 ```json
 {
-    "data": {},
+    "origin": {},
     "status": "Error state code"
 }
 ```
 
-### cluster message/broadcast
+### cluster broadcast
+- POST `/cluster/broadcast`
+
 ```json
 {
-    "profile": "register",
+    "profile": "join",
     "node": "slug",
     "ip": "ip adress"
 }
@@ -463,9 +475,18 @@ Receive
 ```json
 {
     "profile": "info",
+    "name": "NODE NAME",
     "level": 0,
     "nodes": {
         "slug": "ip"
+    },
+    "repositories": [],
+    "addons": {
+        "slug": "version"
     }
 }
 ```
+
+### cluster registration
+- POST `/cluster/join`
+send a broadcast `join` to this url.
