@@ -300,7 +300,7 @@ Get all available addons
             "arch": ["armhf", "aarch64", "i386", "amd64"],
             "repository": "core|local|REP_ID",
             "version": "LAST_VERSION",
-            "installed": "none|INSTALL_VERSION",
+            "installed": "none|INSTALL_VERSION|{}",
             "detached": "bool",
             "build": "bool",
             "url": "null|url"
