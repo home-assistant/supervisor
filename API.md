@@ -284,7 +284,7 @@ Output the raw docker log
 
 Image with `null` and last_version with `null` reset this options.
 
-### REST API addons
+### Addons
 
 - GET `/addons`
 
@@ -381,6 +381,38 @@ Optional:
 Output the raw docker log
 
 - POST `/addons/{addon}/restart`
+
+## cluster
+
+- GET `/cluster/info`
+```json
+{
+    "slug": "NODE_SLUG",
+    "session_key": "KEY",
+    "level": 0,
+    "nodes": {
+        "SLUG": {
+            "name": "name",
+            "ip": "IP",
+            "last_seen": "ISO",
+            "active": "bool",
+            "addons": {
+                "SLUG": "VERSION"
+            }
+        }
+    }
+}
+```
+
+- POST `/cluster/leave`
+
+- POST `/cluster/join`
+```json
+{
+    "name": "",
+    "session_key": ""
+}
+```
 
 ## Host Control
 
@@ -486,15 +518,22 @@ Receive
 ```
 ```json
 {
+    "profile": "renew",
+    "node": "slug",
+    "ip": "ip adress"
+}
+```
+```json
+{
     "profile": "info",
     "name": "NODE NAME",
     "level": 0,
     "nodes": {
-        "slug": "ip"
+        "SLUG": "ip"
     },
     "repositories": [],
     "addons": {
-        "slug": "version"
+        "SLUG": "version"
     }
 }
 ```
@@ -507,3 +546,14 @@ Receive
 ### cluster registration
 - POST `/cluster/join`
 send a broadcast `join` to this url.
+
+return
+```json
+{
+    "master_key": "KEY",
+    "slug": "YOUR_NODE_SLUG",
+    "nodes": {
+        "slug": "ip"
+    }
+}
+```
