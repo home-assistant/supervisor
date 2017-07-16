@@ -1,4 +1,5 @@
 """Cluster utilities for hassio."""
+from collections import deque
 from datetime import datetime, timedelta
 import json
 import os
@@ -15,6 +16,9 @@ from ..const import (
 
 
 def api_broadcast(schema):
+    """Wrapper for broadcast api calls."""
+    protector = deque(maxlen=10)
+
     def wrap_method(method):
         """Wrapper for api cluster commands."""
         async def warp_api(api, requests):
@@ -23,6 +27,11 @@ def api_broadcast(schema):
                 with async_timeout.timeout(5, loop=api.loop):
                     raw await requests.read()
                 data = cluster_decode(api.data.master_key, raw, schema)
+
+                # protect repeat attack
+                assert not data[ATTR_SALT] in protector
+                protector.append(data[ATTR_SALT])
+
                 await method(api, requests, data)
             except (JWException, vol.Invalid, AssertionError):
                 _LOGGER.error("Error on process broadcast message")
@@ -42,7 +51,7 @@ def cluster_encode(raw_key, node_slug, json_data):
     # make hassio cluster message
     cluser_msg = {
         ATTR_NODE: node_slug,
-        ATTR_SALT: os.urandom(64),
+        ATTR_SALT: os.urandom(32),
         ATTR_DATE: now.timestamp()
         ATTR_PAYLOAD: json_data,
     }

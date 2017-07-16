@@ -22,3 +22,11 @@ SCHEMA_CLUSTER_CONFIG = vol.Schema({
         })
     }),
 })
+
+
+SCHEMA_BROADCAST = vol.Schema({
+    vol.Required(JSON_NODE): vol.Any(vol.Coerce(str), None),
+    vol.Required(JSON_DATE): vol.Coerce(float),
+    vol.Required(JSON_SALT): vol.Coerce(str),
+    vol.Required(JSON_PAYLOAD): dict,
+})
