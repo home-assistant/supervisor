@@ -25,7 +25,7 @@ def api_broadcast(schema):
             """Process api calls."""
             try:
                 with async_timeout.timeout(5, loop=api.loop):
-                    raw await requests.read()
+                    raw = await requests.read()
                 data = cluster_decode(api.data.master_key, raw, schema)
 
                 # protect repeat attack
