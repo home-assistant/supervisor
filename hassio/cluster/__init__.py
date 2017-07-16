@@ -38,3 +38,17 @@ class ClusterManager(RestServer):
         """Init cluster data."""
         for slug in self._data.notes:
             self.nodes[slug] = ClusterNode(slug, self.data)
+
+        self.webapp.router.add_post("/cluster/proxy/{d+}", self.api_proxy)
+        self.webapp.router.add_post(
+            "/cluster/broadcast/join", self.api_broadcast_join)
+        self.webapp.router.add_post(
+            "/cluster/broadcast/leave", self.api_broadcast_leave)
+        self.webapp.router.add_post(
+            "/cluster/broadcast/renew", self.api_broadcast_renew)
+        self.webapp.router.add_post(
+            "/cluster/broadcast/repositories", self.api_broadcast_repositories)
+        self.webapp.router.add_post(
+            "/cluster/broadcast/info", self.api_broadcast_info)
+        self.webapp.router.add_post(
+            "/cluster/broadcast/reload", self.api_broadcast_reload)

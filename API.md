@@ -463,7 +463,7 @@ Answer:
 
 ## Cluster
 
-It work like a mesh and exists no master node.
+It work like a mesh and exists no master node. We use JWE for encryption.
 
 ```json
 {
@@ -488,50 +488,53 @@ If a level is higher as his own, we need update local info with this broadcast.
 Send:
 ```json
 {
-    "origin": {}
+    "data": {}
 }
 ```
 
 Receive
 ```json
 {
-    "origin": {},
+    "data": {},
     "status": "Error state code"
 }
 ```
 
 ### cluster broadcast
-- POST `/cluster/broadcast`
+- POST `/cluster/broadcast/join`
 
 ```json
 {
-    "profile": "join",
     "node": "slug",
     "ip": "ip adress"
 }
 ```
+
+- POST `/cluster/broadcast/leave`
 ```json
 {
-    "profile": "leave",
     "node": "slug",
 }
 ```
+
+- POST `/cluster/broadcast/repositories`
 ```json
 {
-    "profile": "repositories",
     "repositories": [],
 }
 ```
+
+- POST `/cluster/broadcast/renew`
 ```json
 {
-    "profile": "renew",
     "node": "slug",
     "ip": "ip adress"
 }
 ```
+
+- POST `/cluster/broadcast/info`
 ```json
 {
-    "profile": "info",
     "name": "NODE NAME",
     "level": 0,
     "nodes": {
@@ -543,11 +546,8 @@ Receive
     }
 }
 ```
-```json
-{
-    "profile": "reload",
-}
-```
+
+- POST `/cluster/broadcast/reload`
 
 ### cluster registration
 - POST `/cluster/join`
