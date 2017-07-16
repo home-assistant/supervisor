@@ -1,10 +1,13 @@
 """Const file for HassIO."""
+from datetie import timedelta
 from pathlib import Path
 
 HASSIO_VERSION = '0.44'
 
 PORT_HASSIO = 80
 PORT_CLUSTER = 9123
+
+TIMEDELTA_CLUSTER = timedelta(sec=10)
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')

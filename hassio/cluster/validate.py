@@ -19,7 +19,6 @@ SCHEMA_CLUSTER_CONFIG = vol.Schema({
             vol.Required(ATTR_NAME): vol.Coerce(str),
             vol.Required(ATTR_IP): vol.Coerce(str),
             vol.Required(ATTR_LAST_SEEN): vol.Coerce(str),
-            vol.Required(ATTR_ACTIVE): vol.Boolean(),
         })
     }),
 })
