@@ -6,7 +6,10 @@ import random
 from .data import ClusterData
 from .node import ClusterNode
 from .util import api_broadcast
-from .validate import SCHEMA_CLUSTER_CONFIG
+from .validate import (
+    SCEHMA_BROADCAST_JOIN, SCHEMA_BROADCAST_LEAVE, SCHEMA_BROADCAST_RENEW,
+    SCHEMA_BROADCAST_INFO, SCHEMA_BROADCAST_REPOSITORIES,
+    SCHEMA_BROADCAST_RELOAD)
 from ..const import (
     PORT_CLUSTER)
 from ..tools import RestServer
@@ -58,6 +61,12 @@ class ClusterManager(RestServer):
     @api_broadcast(SCHEMA_BROADCAST_JOIN)
     async def api_broadcast_join(self, request, data):
         """API broadcast/join commando."""
+        node_slug = data[JSON_PAYLOAD][ATTR_NODE]
+        ip = data[JSON_PAYLOAD][ATTR_IP]
+
+        if node_slug in self.nodes:
+            _LOGGER.warning("Receive join of exsits node!")
+            return
 
     @api_broadcast(SCHEMA_BROADCAST_LEAVE)
     async def api_broadcast_leave(self, request, data):
@@ -66,6 +75,18 @@ class ClusterManager(RestServer):
     @api_broadcast(SCHEMA_BROADCAST_RENEW)
     async def api_broadcast_renew(self, request, data):
         """API broadcast/renew commando."""
+        node = self.get(data[JSON_PAYLOAD][ATTR_NODE])
+        ip = data[JSON_PAYLOAD][ATTR_IP]
+
+        if not node:
+            _LOGGER.warning("Receive join of exsits node!")
+            return
+
+        if node.ip == node:
+            return
+
+        node.ip = ip
+        self.data.level += 1
 
     @api_broadcast(SCHEMA_BROADCAST_REPOSITORIES)
     async def api_broadcast_repositories(self, request, data):

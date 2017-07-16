@@ -506,7 +506,8 @@ Receive
 ```json
 {
     "node": "slug",
-    "ip": "ip adress"
+    "ip": "ip adress",
+    "name": "NAME"
 }
 ```
 

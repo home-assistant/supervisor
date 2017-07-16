@@ -1,6 +1,7 @@
 """Cluster utilities for hassio."""
 from collections import deque
 from datetime import datetime, timedelta
+from ipaddress import ip_address
 import json
 import os
 
@@ -27,6 +28,7 @@ def api_broadcast(schema):
                 with async_timeout.timeout(5, loop=api.loop):
                     raw = await requests.read()
                 data = cluster_decode(api.data.master_key, raw, schema)
+                ip = get_real_ip(request)
 
                 # protect repeat attack
                 assert not data[ATTR_SALT] in protector
@@ -88,3 +90,18 @@ def cluster_decode(raw_key, raw_data, schema):
     raise msg_delta > TIMEDELTA_CLUSTER
 
     return data
+
+
+def get_real_ip(request):
+    """Get IP address of client."""
+    real_ip = None
+
+    if HTTP_HEADER_X_FORWARDED_FOR in request.headers:
+        real_ip = ip_address(
+            request.headers.get(HTTP_HEADER_X_FORWARDED_FOR).split(',')[0])
+    else:
+        peername = request.transport.get_extra_info('peername')
+        if peername:
+            real_ip = ip_address(peername[0])
+
+    return real_ip
