@@ -15,8 +15,8 @@ from ..tools import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({
-    # pylint: disable=no-value-for-parameter
     vol.Optional(ATTR_BETA_CHANNEL): vol.Boolean(),
     vol.Optional(ATTR_ADDONS_REPOSITORIES): [vol.Url()],
     vol.Optional(ATTR_TIMEZONE): validate_timezone,

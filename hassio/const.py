@@ -1,7 +1,13 @@
 """Const file for HassIO."""
+from datetie import timedelta
 from pathlib import Path
 
 HASSIO_VERSION = '0.46'
+
+PORT_HASSIO = 80
+PORT_CLUSTER = 9123
+
+TIMEDELTA_CLUSTER = timedelta(sec=10)
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
@@ -25,6 +31,7 @@ RESTART_EXIT_CODE = 100
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
 FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
+FILE_HASSIO_CLUSTER = Path(HASSIO_DATA, "cluster.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 SOCKET_HC = Path("/var/run/hassio-hc.sock")
@@ -39,11 +46,19 @@ META_HOMEASSISTANT = 'homeassistant'
 
 JSON_RESULT = 'result'
 JSON_DATA = 'data'
+JSON_DATE = 'data'
 JSON_MESSAGE = 'message'
+JSON_SALT = 'salt'
+JSON_PAYLOAD = 'payload'
+JSON_NODE = 'payload'
+
+JWE_ALG = 'A256KW'
+JWE_ENC = 'A256CBC-HS512'
 
 RESULT_ERROR = 'error'
 RESULT_OK = 'ok'
 
+ATTR_DATA = 'data'
 ATTR_DATE = 'date'
 ATTR_ARCH = 'arch'
 ATTR_HOSTNAME = 'hostname'
@@ -76,7 +91,6 @@ ATTR_URL = 'url'
 ATTR_MAINTAINER = 'maintainer'
 ATTR_PASSWORD = 'password'
 ATTR_TOTP = 'totp'
-ATTR_INITIALIZE = 'initialize'
 ATTR_SESSION = 'session'
 ATTR_LOCATON = 'location'
 ATTR_BUILD = 'build'
@@ -96,6 +110,14 @@ ATTR_TYPE = 'type'
 ATTR_TIMEOUT = 'timeout'
 ATTR_AUTO_UPDATE = 'auto_update'
 ATTR_CUSTOM = 'custom'
+ATTR_MASTER_KEY = 'master_key'
+ATTR_SESSION_KEY = 'session_key'
+ATTR_NODE = 'node'
+ATTR_NODES = 'nodes'
+ATTR_ACTIVE = 'active'
+ATTR_LAST_SEEN = 'last_seen'
+ATTR_LEVEL = 'level'
+ATTR_IP = 'ip'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'

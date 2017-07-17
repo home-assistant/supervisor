@@ -140,3 +140,40 @@ class JsonConfig(object):
             _LOGGER.error("Can't store config in %s", self._file)
             return False
         return True
+
+
+class RestServer(object):
+    """Base REST API server."""
+
+    def __init__(self, loop, port):
+        """Initialize docker base wrapper."""
+        self.loop = loop
+        self.webapp = web.Application(loop=self.loop)
+
+        # service stuff
+        self._port = None
+        self._handler = None
+        self.server = None
+
+    async def start(self):
+        """Run rest api webserver."""
+        self._handler = self.webapp.make_handler(loop=self.loop)
+
+        try:
+            self.server = await self.loop.create_server(
+                self._handler, "0.0.0.0", self._port)
+        except OSError as err:
+            _LOGGER.fatal(
+                "Failed to create HTTP server at 0.0.0.0:%d -> %s",
+                self._port, err)
+
+    async def stop(self):
+        """Stop rest api webserver."""
+        if self.server:
+            self.server.close()
+            await self.server.wait_closed()
+        await self.webapp.shutdown()
+
+        if self._handler:
+            await self._handler.finish_connections(60)
+        await self.webapp.cleanup()

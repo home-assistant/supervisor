@@ -11,22 +11,19 @@ from .network import APINetwork
 from .supervisor import APISupervisor
 from .security import APISecurity
 from .snapshots import APISnapshots
+from ..const import PORT_HASSIO
+from ..tools import RestServer
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class RestAPI(object):
+class RestAPI(RestServer):
     """Handle rest api for hassio."""
 
     def __init__(self, config, loop):
         """Initialize docker base wrapper."""
+        super().__init__(loop, PORT_HASSIO)
         self.config = config
-        self.loop = loop
-        self.webapp = web.Application(loop=self.loop)
-
-        # service stuff
-        self._handler = None
-        self.server = None
 
     def register_host(self, host_control):
         """Register hostcontrol function."""
@@ -135,25 +132,3 @@ class RestAPI(object):
             return web.FileResponse(panel)
 
         self.webapp.router.add_get('/panel', get_panel)
-
-    async def start(self):
-        """Run rest api webserver."""
-        self._handler = self.webapp.make_handler(loop=self.loop)
-
-        try:
-            self.server = await self.loop.create_server(
-                self._handler, "0.0.0.0", "80")
-        except OSError as err:
-            _LOGGER.fatal(
-                "Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
-
-    async def stop(self):
-        """Stop rest api webserver."""
-        if self.server:
-            self.server.close()
-            await self.server.wait_closed()
-        await self.webapp.shutdown()
-
-        if self._handler:
-            await self._handler.finish_connections(60)
-        await self.webapp.cleanup()

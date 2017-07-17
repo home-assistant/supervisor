@@ -20,6 +20,9 @@ On success
 }
 ```
 
+All function they support on cluster, you can add `node: slug` to execute it
+on a other node.
+
 ### HassIO
 
 - GET `/supervisor/ping`
@@ -44,6 +47,7 @@ The addons from `addons` are only installed one.
             "repository": "12345678|null",
             "version": "LAST_VERSION",
             "installed": "INSTALL_VERSION",
+            "node": "NODE ID|null",
             "detached": "bool",
             "build": "bool",
             "url": "null|url"
@@ -280,7 +284,7 @@ Output the raw docker log
 
 Image with `null` and last_version with `null` reset this options.
 
-### REST API addons
+### Addons
 
 - GET `/addons`
 
@@ -296,7 +300,7 @@ Get all available addons
             "arch": ["armhf", "aarch64", "i386", "amd64"],
             "repository": "core|local|REP_ID",
             "version": "LAST_VERSION",
-            "installed": "none|INSTALL_VERSION",
+            "installed": "none|INSTALL_VERSION|{}",
             "detached": "bool",
             "build": "bool",
             "url": "null|url"
@@ -378,6 +382,44 @@ Output the raw docker log
 
 - POST `/addons/{addon}/restart`
 
+## cluster
+
+- GET `/cluster/info`
+```json
+{
+    "slug": "NODE_SLUG",
+    "session_key": "KEY",
+    "level": 0,
+    "nodes": {
+        "SLUG": {
+            "name": "name",
+            "ip": "IP",
+            "last_seen": "ISO",
+            "active": "bool",
+            "addons": {
+                "SLUG": "VERSION"
+            }
+        }
+    }
+}
+```
+
+- POST `/cluster/leave`
+
+- POST `/cluster/create`
+```json
+{
+    "name": "",
+}
+```
+- POST `/cluster/join`
+```json
+{
+    "name": "",
+    "session_key": ""
+}
+```
+
 ## Host Control
 
 Communicate over unix socket with a host daemon.
@@ -418,3 +460,107 @@ Answer:
 - OK: call was successfully
 - ERROR: error on call
 - WRONG: not supported
+
+## Cluster
+
+It work like a mesh and exists no master node. We use JWE for encryption.
+
+```json
+{
+    "node": "slug",
+    "date": "ISO",
+    "salt": "randum stuff",
+    "payload": ""
+}
+```
+
+It exists a master key that will be used on all nodes for communication. Every
+node have a unique session key, that will change all 30min. You need this key
+to connect a new node over this exists node into cluster network.
+
+The cluster data have a level. Every change that need to by on all nodes, like
+a join, leave of a node or update repositories change this level local on node.
+If a level is higher as his own, we need update local info with this broadcast.
+
+### Proxy payload
+- POST `/cluster/proxy`
+
+Send:
+```json
+{
+    "data": {}
+}
+```
+
+Receive
+```json
+{
+    "data": {},
+    "status": "Error state code"
+}
+```
+
+### cluster broadcast
+- POST `/cluster/broadcast/join`
+
+```json
+{
+    "node": "slug",
+    "ip": "ip adress",
+    "name": "NAME"
+}
+```
+
+- POST `/cluster/broadcast/leave`
+```json
+{
+    "node": "slug",
+}
+```
+
+- POST `/cluster/broadcast/repositories`
+```json
+{
+    "repositories": [],
+}
+```
+
+- POST `/cluster/broadcast/renew`
+```json
+{
+    "node": "slug",
+    "ip": "ip adress"
+}
+```
+
+- POST `/cluster/broadcast/info`
+```json
+{
+    "name": "NODE NAME",
+    "level": 0,
+    "nodes": {
+        "SLUG": "ip"
+    },
+    "repositories": [],
+    "addons": {
+        "SLUG": "version"
+    }
+}
+```
+
+- POST `/cluster/broadcast/reload`
+
+### cluster registration
+- POST `/cluster/join`
+send a broadcast `join` to this url.
+
+return
+```json
+{
+    "master_key": "KEY",
+    "slug": "YOUR_NODE_SLUG",
+    "nodes": {
+        "slug": "ip"
+    }
+}
+```
