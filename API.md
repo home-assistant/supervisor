@@ -299,7 +299,8 @@ Get all available addons
             "installed": "none|INSTALL_VERSION",
             "detached": "bool",
             "build": "bool",
-            "url": "null|url"
+            "url": "null|url",
+            "logo": "bool"
         }
     ],
     "repositories": [

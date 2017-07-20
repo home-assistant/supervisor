@@ -66,21 +66,23 @@ def api_process_hostcontrol(method):
     return wrap_hostcontrol
 
 
-def api_process_raw(content=CONTENT_TYPE_BINARY):
-    def api_raw(method):
+def api_process_raw(content):
+    """Wrap content_type into function."""
+    def wrap_method(method):
         """Wrap function with raw output to rest api."""
         async def wrap_api(api, *args, **kwargs):
             """Return api information."""
             try:
-                message = await method(api, *args, **kwargs)
+                msg_data = await method(api, *args, **kwargs)
+                msg_type = content
             except RuntimeError as err:
-                message = str(err).encode()
-                content = CONTENT_TYPE_BINARY
+                msg_data = str(err).encode()
+                msg_type = CONTENT_TYPE_BINARY
 
-            return web.Response(body=message, content_type=content)
+            return web.Response(body=msg_data, content_type=msg_type)
 
         return wrap_api
-    return api_raw
+    return wrap_method
 
 
 def api_return_error(message=None):

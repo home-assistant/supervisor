@@ -19,7 +19,7 @@ from ..const import (
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
-    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_LOGO)
+    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -130,7 +130,8 @@ class Addon(object):
     @property
     def auto_update(self):
         """Return if auto update is enable."""
-        return self.data.user[self._id][ATTR_AUTO_UPDATE]
+        if ATTR_AUTO_UPDATE in self.data.user.get(self._id, {}):
+            return self.data.user[self._id][ATTR_AUTO_UPDATE]
 
     @auto_update.setter
     def auto_update(self, value):
