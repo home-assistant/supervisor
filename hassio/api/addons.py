@@ -194,7 +194,7 @@ class APIAddons(object):
     @api_process_raw(CONTENT_TYPE_PNG)
     async def logo(self, request):
         """Return logo from addon."""
-        addon = self._extract_addon(request)
+        addon = self._extract_addon(request, check_installed=False)
         if not addon.with_logo:
             raise RuntimeError("No image found!")
 
