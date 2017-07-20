@@ -190,7 +190,7 @@ class APIAddons(object):
         return addon.logs()
 
     @api_process_raw(CONTENT_TYPE_PNG)
-    def png(self, request):
+    async def png(self, request):
         """Return logo from addon."""
         addon = self._extract_addon(request)
         if addon.with_logo:
