@@ -67,6 +67,7 @@ def api_process_hostcontrol(method):
 
 
 def api_process_raw(content=CONTENT_TYPE_BINARY):
+    """Wrap content_type into function."""
     def api_raw(method):
         """Wrap function with raw output to rest api."""
         async def wrap_api(api, *args, **kwargs):
