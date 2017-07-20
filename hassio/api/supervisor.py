@@ -10,7 +10,7 @@ from ..const import (
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_REPOSITORIES,
     ATTR_REPOSITORY, ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED,
     ATTR_DETACHED, ATTR_SOURCE, ATTR_MAINTAINER, ATTR_URL, ATTR_ARCH,
-    ATTR_BUILD, ATTR_TIMEZONE)
+    ATTR_BUILD, ATTR_TIMEZONE, CONTENT_TYPE_BINARY)
 from ..tools import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ class APISupervisor(object):
 
         return True
 
-    @api_process_raw()
+    @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
         """Return supervisor docker logs.
 
