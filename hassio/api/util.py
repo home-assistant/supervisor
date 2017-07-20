@@ -69,7 +69,7 @@ def api_process_raw(content):
     """Wrap content_type into function."""
     def wrap_method(method):
         """Wrap function with raw output to rest api."""
-        async def wrap_api(api, content=content, *args, **kwargs):
+        async def wrap_api(api, *args, **kwargs):
             """Return api information."""
             try:
                 message = await method(api, *args, **kwargs)
