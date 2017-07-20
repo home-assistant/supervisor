@@ -67,9 +67,9 @@ def api_process_hostcontrol(method):
 
 def api_process_raw(content):
     """Wrap content_type into function."""
-    def api_raw(method):
+    def wrap_method(method):
         """Wrap function with raw output to rest api."""
-        async def wrap_api(api, *args, **kwargs):
+        async def wrap_api(api, content=content, *args, **kwargs):
             """Return api information."""
             try:
                 message = await method(api, *args, **kwargs)
@@ -79,7 +79,7 @@ def api_process_raw(content):
             return web.Response(body=message, content_type=content)
 
         return wrap_api
-    return api_raw
+    return wrap_method
 
 
 def api_return_error(message=None):
