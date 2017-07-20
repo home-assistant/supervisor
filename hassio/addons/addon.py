@@ -215,7 +215,7 @@ class Addon(object):
         if isinstance(real_port, (tuple, list)):
             real_port = real_port[-1]
 
-        return RE_WEBUI.sub(r"\1{}\3".format(real_port), webui)
+        return RE_WEBUI.sub(r"\g<1>{}\g<3>".format(real_port), webui)
 
     @property
     def network_mode(self):
