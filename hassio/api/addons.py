@@ -11,8 +11,8 @@ from ..const import (
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
     ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, ATTR_SLUG,
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
-    ATTR_INSTALLED, ATTR_LOGO, BOOT_AUTO, BOOT_MANUAL, CONTENT_TYPE_PNG,
-    CONTENT_TYPE_BINARY)
+    ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, BOOT_AUTO, BOOT_MANUAL,
+    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -109,6 +109,7 @@ class APIAddons(object):
             ATTR_NETWORK: addon.ports,
             ATTR_HOST_NETWORK: addon.network_mode == 'host',
             ATTR_LOGO: addon.with_logo,
+            ATTR_WEBUI: addon.webui,
         }
 
     @api_process

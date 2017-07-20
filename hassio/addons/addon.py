@@ -19,7 +19,7 @@ from ..const import (
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
-    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK)
+    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -27,6 +27,7 @@ from ..tools import write_json_file, read_json_file
 _LOGGER = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(MAP_VOLUME)
+RE_WEBUI = re.compile(r"^(.*\[HOST\]:)\[PORT:(\d+)\](.*)$")
 
 
 class Addon(object):
@@ -196,6 +197,21 @@ class Addon(object):
             self.data.user[self._id][ATTR_NETWORK] = new_ports
 
         self.data.save()
+
+    @property
+    def webui(self):
+        """Return URL to webui or None."""
+        if ATTR_WEBUI not in self._mesh:
+            return
+
+        webui = self._mesh[ATTR_WEBUI]
+        dock_port = RE_WEBUI.sub("\2", webui)
+        if self.ports is None:
+            real_port = dock_port
+        else:
+            real_port = self.ports.get("{}/tcp".format(dock_port), dock_port)
+
+        return RE_WEBUI.sub("\1{}\3".format(real_port), webui)
 
     @property
     def network_mode(self):

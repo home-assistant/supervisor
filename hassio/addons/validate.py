@@ -10,7 +10,7 @@ from ..const import (
     ARCH_AARCH64, ARCH_AMD64, ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED,
     ATTR_USER, ATTR_STATE, ATTR_SYSTEM, STATE_STARTED, STATE_STOPPED,
     ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK,
-    ATTR_AUTO_UPDATE)
+    ATTR_AUTO_UPDATE, ATTR_WEBUI)
 from ..validate import NETWORK_PORT, DOCKER_PORTS
 
 
@@ -65,6 +65,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): DOCKER_PORTS,
+    vol.Optional(ATTR_WEBUI):
+        vol.Match(r"^(?:https?):\/\/\[HOST\]:\[PORT:\d+\].*$"),
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
     vol.Optional(ATTR_TMPFS):
