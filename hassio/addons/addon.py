@@ -205,13 +205,17 @@ class Addon(object):
             return
 
         webui = self._mesh[ATTR_WEBUI]
-        dock_port = RE_WEBUI.sub("\2", webui)
+        dock_port = RE_WEBUI.sub(r"\2", webui)
         if self.ports is None:
             real_port = dock_port
         else:
             real_port = self.ports.get("{}/tcp".format(dock_port), dock_port)
 
-        return RE_WEBUI.sub("\1{}\3".format(real_port), webui)
+        # for interface config or port lists
+        if isinstance(real_port, (tuple, list)):
+            real_port = real_port[-1]
+
+        return RE_WEBUI.sub(r"\1{}\3".format(real_port), webui)
 
     @property
     def network_mode(self):
