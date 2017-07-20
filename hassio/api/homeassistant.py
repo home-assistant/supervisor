@@ -79,7 +79,7 @@ class APIHomeAssistant(object):
         return await asyncio.shield(
             self.homeassistant.restart(), loop=self.loop)
 
-    @api_process_raw
+    @api_process_raw()
     def logs(self, request):
         """Return homeassistant docker logs.
 

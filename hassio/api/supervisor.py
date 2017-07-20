@@ -150,7 +150,7 @@ class APISupervisor(object):
 
         return True
 
-    @api_process_raw
+    @api_process_raw()
     def logs(self, request):
         """Return supervisor docker logs.
 
