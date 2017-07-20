@@ -94,6 +94,7 @@ class RestAPI(object):
         self.webapp.router.add_post(
             '/addons/{addon}/options', api_addons.options)
         self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
+        self.webapp.router.add_get('/addons/{addon}/logo', api_addons.logo)
 
     def register_security(self):
         """Register security function."""

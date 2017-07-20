@@ -332,9 +332,12 @@ Get all available addons
     "build": "bool",
     "options": "{}",
     "network": "{}|null",
-    "host_network": "bool"
+    "host_network": "bool",
+    "logo": "bool"
 }
 ```
+
+- GET `/addons/{addon}/logo`
 
 - POST `/addons/{addon}/options`
 ```json

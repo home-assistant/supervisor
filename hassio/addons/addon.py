@@ -19,7 +19,7 @@ from ..const import (
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
-    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK)
+    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_LOGO)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -229,6 +229,11 @@ class Addon(object):
         return self._mesh.get(ATTR_URL)
 
     @property
+    def with_logo(self):
+        """Return True if a logo exists."""
+        return self.path_logo.exists()
+
+    @property
     def supported_arch(self):
         """Return list of supported arch."""
         return self._mesh[ATTR_ARCH]
@@ -273,14 +278,19 @@ class Addon(object):
         return PurePath(self.config.path_extern_addons_data, self._id)
 
     @property
-    def path_addon_options(self):
+    def path_options(self):
         """Return path to addons options."""
         return Path(self.path_data, "options.json")
 
     @property
-    def path_addon_location(self):
+    def path_location(self):
         """Return path to this addon."""
         return Path(self._mesh[ATTR_LOCATON])
+
+    @property
+    def path_logo(self):
+        """Return path to addon logo."""
+        return Path(self.path_location, 'logo.png')
 
     def write_options(self):
         """Return True if addon options is written to data."""
@@ -289,7 +299,7 @@ class Addon(object):
 
         try:
             schema(options)
-            return write_json_file(self.path_addon_options, options)
+            return write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error("Addon %s have wrong options -> %s", self._id,
                           humanize_error(options, ex))

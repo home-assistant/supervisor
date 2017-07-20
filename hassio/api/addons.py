@@ -11,7 +11,7 @@ from ..const import (
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
     ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, ATTR_SLUG,
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
-    ATTR_INSTALLED, BOOT_AUTO, BOOT_MANUAL)
+    ATTR_INSTALLED, ATTR_LOGO, BOOT_AUTO, BOOT_MANUAL, CONTENT_TYPE_PNG)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,6 +64,7 @@ class APIAddons(object):
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
                 ATTR_URL: addon.url,
+                ATTR_LOGO: addon.with_logo,
             })
 
         data_repositories = []
@@ -187,3 +188,13 @@ class APIAddons(object):
         """Return logs from addon."""
         addon = self._extract_addon(request)
         return addon.logs()
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    def png(self, request):
+        """Return logo from addon."""
+        addon = self._extract_addon(request)
+        if addon.with_logo:
+            raise RuntimeError("No image found!")
+
+        with addon.path_logo.open('rb') as png:
+            return png.read()
