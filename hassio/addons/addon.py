@@ -130,7 +130,8 @@ class Addon(object):
     @property
     def auto_update(self):
         """Return if auto update is enable."""
-        return self.data.user[self._id][ATTR_AUTO_UPDATE]
+        if ATTR_AUTO_UPDATE in self.data.user.get(self._id, {}):
+            return self.data.user[self._id][ATTR_AUTO_UPDATE]
 
     @auto_update.setter
     def auto_update(self, value):
