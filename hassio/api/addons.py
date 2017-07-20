@@ -107,6 +107,7 @@ class APIAddons(object):
             ATTR_BUILD: addon.need_build,
             ATTR_NETWORK: addon.ports,
             ATTR_HOST_NETWORK: addon.network_mode == 'host',
+            ATTR_LOGO: addon.with_logo,
         }
 
     @api_process
