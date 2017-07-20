@@ -334,7 +334,8 @@ Get all available addons
     "options": "{}",
     "network": "{}|null",
     "host_network": "bool",
-    "logo": "bool"
+    "logo": "bool",
+    "webui": "null|http(s)://[HOST]:port/xy/zx"
 }
 ```
 
