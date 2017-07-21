@@ -46,7 +46,8 @@ The addons from `addons` are only installed one.
             "installed": "INSTALL_VERSION",
             "detached": "bool",
             "build": "bool",
-            "url": "null|url"
+            "url": "null|url",
+            "logo": "bool"
         }
     ],
     "addons_repositories": [
@@ -54,10 +55,6 @@ The addons from `addons` are only installed one.
     ]
 }
 ```
-
-- GET `/supervisor/addons`
-
-Get all available addons. Will be delete soon. Look to `/addons`
 
 - POST `/supervisor/update`
 Optional:
