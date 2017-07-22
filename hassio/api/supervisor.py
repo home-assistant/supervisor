@@ -6,10 +6,10 @@ import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
-    ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
+    ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL, ATTR_ARCH,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_LOGO, ATTR_REPOSITORY,
     ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED, ATTR_TIMEZONE,
-    CONTENT_TYPE_BINARY)
+    ATTR_STATE, CONTENT_TYPE_BINARY)
 from ..tools import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
