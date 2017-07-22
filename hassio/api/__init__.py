@@ -53,8 +53,6 @@ class RestAPI(object):
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
-        self.webapp.router.add_get(
-            '/supervisor/addons', api_supervisor.available_addons)
         self.webapp.router.add_post(
             '/supervisor/update', api_supervisor.update)
         self.webapp.router.add_post(
@@ -94,6 +92,7 @@ class RestAPI(object):
         self.webapp.router.add_post(
             '/addons/{addon}/options', api_addons.options)
         self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
+        self.webapp.router.add_get('/addons/{addon}/logo', api_addons.logo)
 
     def register_security(self):
         """Register security function."""

@@ -9,7 +9,8 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
-    JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR)
+    JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
+    CONTENT_TYPE_BINARY)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,18 +66,23 @@ def api_process_hostcontrol(method):
     return wrap_hostcontrol
 
 
-def api_process_raw(method):
-    """Wrap function with raw output to rest api."""
-    async def wrap_api(api, *args, **kwargs):
-        """Return api information."""
-        try:
-            message = await method(api, *args, **kwargs)
-        except RuntimeError as err:
-            message = str(err).encode()
+def api_process_raw(content):
+    """Wrap content_type into function."""
+    def wrap_method(method):
+        """Wrap function with raw output to rest api."""
+        async def wrap_api(api, *args, **kwargs):
+            """Return api information."""
+            try:
+                msg_data = await method(api, *args, **kwargs)
+                msg_type = content
+            except RuntimeError as err:
+                msg_data = str(err).encode()
+                msg_type = CONTENT_TYPE_BINARY
 
-        return web.Response(body=message)
+            return web.Response(body=msg_data, content_type=msg_type)
 
-    return wrap_api
+        return wrap_api
+    return wrap_method
 
 
 def api_return_error(message=None):

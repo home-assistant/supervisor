@@ -63,9 +63,10 @@ class APISnapshots(object):
         }
 
     @api_process
-    def reload(self, request):
+    async def reload(self, request):
         """Reload snapshot list."""
-        return asyncio.shield(self.snapshots.reload(), loop=self.loop)
+        await asyncio.shield(self.snapshots.reload(), loop=self.loop)
+        return True
 
     @api_process
     async def info(self, request):

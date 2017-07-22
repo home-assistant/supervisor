@@ -40,13 +40,11 @@ The addons from `addons` are only installed one.
             "name": "xy bla",
             "slug": "xy",
             "description": "description",
-            "arch": ["armhf", "aarch64", "i386", "amd64"],
             "repository": "12345678|null",
             "version": "LAST_VERSION",
             "installed": "INSTALL_VERSION",
-            "detached": "bool",
-            "build": "bool",
-            "url": "null|url"
+            "logo": "bool",
+            "state": "started|stopped",
         }
     ],
     "addons_repositories": [
@@ -54,10 +52,6 @@ The addons from `addons` are only installed one.
     ]
 }
 ```
-
-- GET `/supervisor/addons`
-
-Get all available addons. Will be delete soon. Look to `/addons`
 
 - POST `/supervisor/update`
 Optional:
@@ -299,7 +293,8 @@ Get all available addons
             "installed": "none|INSTALL_VERSION",
             "detached": "bool",
             "build": "bool",
-            "url": "null|url"
+            "url": "null|url",
+            "logo": "bool"
         }
     ],
     "repositories": [
@@ -332,9 +327,13 @@ Get all available addons
     "build": "bool",
     "options": "{}",
     "network": "{}|null",
-    "host_network": "bool"
+    "host_network": "bool",
+    "logo": "bool",
+    "webui": "null|http(s)://[HOST]:port/xy/zx"
 }
 ```
+
+- GET `/addons/{addon}/logo`
 
 - POST `/addons/{addon}/options`
 ```json

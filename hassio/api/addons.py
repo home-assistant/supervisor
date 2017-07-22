@@ -11,7 +11,8 @@ from ..const import (
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
     ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, ATTR_SLUG,
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
-    ATTR_INSTALLED, BOOT_AUTO, BOOT_MANUAL)
+    ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, BOOT_AUTO, BOOT_MANUAL,
+    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ class APIAddons(object):
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
                 ATTR_URL: addon.url,
+                ATTR_LOGO: addon.with_logo,
             })
 
         data_repositories = []
@@ -82,9 +84,10 @@ class APIAddons(object):
         }
 
     @api_process
-    def reload(self, request):
+    async def reload(self, request):
         """Reload all addons data."""
-        return self.addons.reload()
+        await asyncio.shield(self.addons.reload(), loop=self.loop)
+        return True
 
     @api_process
     async def info(self, request):
@@ -106,6 +109,8 @@ class APIAddons(object):
             ATTR_BUILD: addon.need_build,
             ATTR_NETWORK: addon.ports,
             ATTR_HOST_NETWORK: addon.network_mode == 'host',
+            ATTR_LOGO: addon.with_logo,
+            ATTR_WEBUI: addon.webui,
         }
 
     @api_process
@@ -182,8 +187,18 @@ class APIAddons(object):
         addon = self._extract_addon(request)
         return await asyncio.shield(addon.restart(), loop=self.loop)
 
-    @api_process_raw
+    @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
         """Return logs from addon."""
         addon = self._extract_addon(request)
         return addon.logs()
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    async def logo(self, request):
+        """Return logo from addon."""
+        addon = self._extract_addon(request, check_installed=False)
+        if not addon.with_logo:
+            raise RuntimeError("No image found!")
+
+        with addon.path_logo.open('rb') as png:
+            return png.read()

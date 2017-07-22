@@ -1,7 +1,7 @@
 """Const file for HassIO."""
 from pathlib import Path
 
-HASSIO_VERSION = '0.45'
+HASSIO_VERSION = '0.46'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/master/version.json')
@@ -44,6 +44,9 @@ JSON_MESSAGE = 'message'
 RESULT_ERROR = 'error'
 RESULT_OK = 'ok'
 
+CONTENT_TYPE_BINARY = 'application/octet-stream'
+CONTENT_TYPE_PNG = 'image/png'
+
 ATTR_DATE = 'date'
 ATTR_ARCH = 'arch'
 ATTR_HOSTNAME = 'hostname'
@@ -63,12 +66,14 @@ ATTR_STARTUP = 'startup'
 ATTR_BOOT = 'boot'
 ATTR_PORTS = 'ports'
 ATTR_MAP = 'map'
+ATTR_WEBUI = 'webui'
 ATTR_OPTIONS = 'options'
 ATTR_INSTALLED = 'installed'
 ATTR_DETACHED = 'detached'
 ATTR_STATE = 'state'
 ATTR_SCHEMA = 'schema'
 ATTR_IMAGE = 'image'
+ATTR_LOGO = 'logo'
 ATTR_ADDONS_REPOSITORIES = 'addons_repositories'
 ATTR_REPOSITORY = 'repository'
 ATTR_REPOSITORIES = 'repositories'

@@ -6,7 +6,8 @@ import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM)
+    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM,
+    CONTENT_TYPE_BINARY)
 from ..validate import HASS_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ class APIHomeAssistant(object):
         return await asyncio.shield(
             self.homeassistant.restart(), loop=self.loop)
 
-    @api_process_raw
+    @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
         """Return homeassistant docker logs.
 

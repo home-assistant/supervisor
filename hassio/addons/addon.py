@@ -19,7 +19,7 @@ from ..const import (
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
-    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK)
+    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -27,6 +27,7 @@ from ..tools import write_json_file, read_json_file
 _LOGGER = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(MAP_VOLUME)
+RE_WEBUI = re.compile(r"^(.*\[HOST\]:)\[PORT:(\d+)\](.*)$")
 
 
 class Addon(object):
@@ -130,7 +131,8 @@ class Addon(object):
     @property
     def auto_update(self):
         """Return if auto update is enable."""
-        return self.data.user[self._id][ATTR_AUTO_UPDATE]
+        if ATTR_AUTO_UPDATE in self.data.user.get(self._id, {}):
+            return self.data.user[self._id][ATTR_AUTO_UPDATE]
 
     @auto_update.setter
     def auto_update(self, value):
@@ -197,6 +199,25 @@ class Addon(object):
         self.data.save()
 
     @property
+    def webui(self):
+        """Return URL to webui or None."""
+        if ATTR_WEBUI not in self._mesh:
+            return
+
+        webui = self._mesh[ATTR_WEBUI]
+        dock_port = RE_WEBUI.sub(r"\2", webui)
+        if self.ports is None:
+            real_port = dock_port
+        else:
+            real_port = self.ports.get("{}/tcp".format(dock_port), dock_port)
+
+        # for interface config or port lists
+        if isinstance(real_port, (tuple, list)):
+            real_port = real_port[-1]
+
+        return RE_WEBUI.sub(r"\g<1>{}\g<3>".format(real_port), webui)
+
+    @property
     def network_mode(self):
         """Return network mode of addon."""
         if self._mesh[ATTR_HOST_NETWORK]:
@@ -227,6 +248,11 @@ class Addon(object):
     def url(self):
         """Return url of addon."""
         return self._mesh.get(ATTR_URL)
+
+    @property
+    def with_logo(self):
+        """Return True if a logo exists."""
+        return self.path_logo.exists()
 
     @property
     def supported_arch(self):
@@ -273,14 +299,19 @@ class Addon(object):
         return PurePath(self.config.path_extern_addons_data, self._id)
 
     @property
-    def path_addon_options(self):
+    def path_options(self):
         """Return path to addons options."""
         return Path(self.path_data, "options.json")
 
     @property
-    def path_addon_location(self):
+    def path_location(self):
         """Return path to this addon."""
         return Path(self._mesh[ATTR_LOCATON])
+
+    @property
+    def path_logo(self):
+        """Return path to addon logo."""
+        return Path(self.path_location, 'logo.png')
 
     def write_options(self):
         """Return True if addon options is written to data."""
@@ -289,7 +320,7 @@ class Addon(object):
 
         try:
             schema(options)
-            return write_json_file(self.path_addon_options, options)
+            return write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error("Addon %s have wrong options -> %s", self._id,
                           humanize_error(options, ex))
