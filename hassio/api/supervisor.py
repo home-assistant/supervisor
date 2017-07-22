@@ -57,13 +57,10 @@ class APISupervisor(object):
                 ATTR_NAME: addon.name,
                 ATTR_SLUG: addon.slug,
                 ATTR_DESCRIPTON: addon.description,
+                ATTR_STATE: await addon.state(),
                 ATTR_VERSION: addon.last_version,
                 ATTR_INSTALLED: addon.version_installed,
-                ATTR_ARCH: addon.supported_arch,
-                ATTR_DETACHED: addon.is_detached,
                 ATTR_REPOSITORY: addon.repository,
-                ATTR_BUILD: addon.need_build,
-                ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
             })
 
