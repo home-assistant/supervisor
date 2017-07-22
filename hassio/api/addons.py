@@ -84,9 +84,10 @@ class APIAddons(object):
         }
 
     @api_process
-    def reload(self, request):
+    async def reload(self, request):
         """Reload all addons data."""
-        return self.addons.reload()
+        await asyncio.shield(self.addons.reload(), loop=self.loop)
+        return True
 
     @api_process
     async def info(self, request):
