@@ -50,7 +50,7 @@ class APISupervisor(object):
         """Return host information."""
         list_addons = []
         for addon in self.addons.list_addons:
-            if not addon.is_installed:
+            if addon.is_installed:
                 list_addons.append({
                     ATTR_NAME: addon.name,
                     ATTR_SLUG: addon.slug,
