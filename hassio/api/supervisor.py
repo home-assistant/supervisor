@@ -8,8 +8,8 @@ from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_LOGO, ATTR_REPOSITORY,
-    ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED, ATTR_DETACHED,
-    ATTR_URL, ATTR_ARCH, ATTR_BUILD, ATTR_TIMEZONE, CONTENT_TYPE_BINARY)
+    ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED, ATTR_TIMEZONE,
+    CONTENT_TYPE_BINARY)
 from ..tools import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,18 +51,16 @@ class APISupervisor(object):
         list_addons = []
         for addon in self.addons.list_addons:
             if not addon.is_installed:
-                continue
-
-            list_addons.append({
-                ATTR_NAME: addon.name,
-                ATTR_SLUG: addon.slug,
-                ATTR_DESCRIPTON: addon.description,
-                ATTR_STATE: await addon.state(),
-                ATTR_VERSION: addon.last_version,
-                ATTR_INSTALLED: addon.version_installed,
-                ATTR_REPOSITORY: addon.repository,
-                ATTR_LOGO: addon.with_logo,
-            })
+                list_addons.append({
+                    ATTR_NAME: addon.name,
+                    ATTR_SLUG: addon.slug,
+                    ATTR_DESCRIPTON: addon.description,
+                    ATTR_STATE: await addon.state(),
+                    ATTR_VERSION: addon.last_version,
+                    ATTR_INSTALLED: addon.version_installed,
+                    ATTR_REPOSITORY: addon.repository,
+                    ATTR_LOGO: addon.with_logo,
+                })
 
         return {
             ATTR_VERSION: HASSIO_VERSION,
