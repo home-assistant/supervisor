@@ -35,8 +35,9 @@ STARTUP_ALL = [
     STARTUP_APPLICATION
 ]
 
-PRIVILEGE_ALL = [
-    "NET_ADMIN"
+PRIVILEGED_ALL = [
+    "NET_ADMIN",
+    "SYS_ADMIN",
 ]
 
 
@@ -73,7 +74,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
     vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
-    vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGE_ALL)],
+    vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [

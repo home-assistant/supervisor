@@ -293,6 +293,8 @@ Get all available addons
             "installed": "none|INSTALL_VERSION",
             "detached": "bool",
             "build": "bool",
+            "privileged": ["NET_ADMIN", "SYS_ADMIN"],
+            "devices": ["/dev/xy"],
             "url": "null|url",
             "logo": "bool"
         }
@@ -328,6 +330,8 @@ Get all available addons
     "options": "{}",
     "network": "{}|null",
     "host_network": "bool",
+    "privileged": ["NET_ADMIN", "SYS_ADMIN"],
+    "devices": ["/dev/xy"],
     "logo": "bool",
     "webui": "null|http(s)://[HOST]:port/xy/zx"
 }
