@@ -98,7 +98,7 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
-    vol.Required(ATTR_OPTIONS): dict,
+    vol.Optional(ATTR_OPTIONS, default={}): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
