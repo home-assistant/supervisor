@@ -358,15 +358,16 @@ class Addon(object):
             **default_options,
         }
 
+        # create voluptuous
+        new_schema = \
+            vol.Schema(vol.All(dict, validate_options(new_raw_schema)))
+
         # validate
-        new_schema = vol.Schema(vol.All(
-            dict, validate_options(new_raw_schema)))
         try:
             new_schema(options)
         except vol.Invalid:
             return False
-
-        return False
+        return True
 
     async def install(self, version=None):
         """Install a addon."""
