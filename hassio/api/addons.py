@@ -50,7 +50,7 @@ class APIAddons(object):
         return addon
 
     @staticmethod
-    def _pretty_devces(addon):
+    def _pretty_devices(addon):
         """Return a simplified device list."""
         dev_list = addon.devices
         if not dev_list:
@@ -73,7 +73,7 @@ class APIAddons(object):
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
                 ATTR_PRIVILEGED: addon.privileged,
-                ATTR_DEVICES: self._pretty_devces(addon),
+                ATTR_DEVICES: self._pretty_devices(addon),
                 ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
             })
@@ -120,7 +120,7 @@ class APIAddons(object):
             ATTR_NETWORK: addon.ports,
             ATTR_HOST_NETWORK: addon.network_mode == 'host',
             ATTR_PRIVILEGED: addon.privileged,
-            ATTR_DEVICES: self._pretty_devces(addon),
+            ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,
             ATTR_WEBUI: addon.webui,
         }
