@@ -55,7 +55,7 @@ class APIAddons(object):
         dev_list = addon.devices
         if not dev_list:
             return
-        return set(row.split(':')[0] for row in dev_list)
+        return [row.split(':')[0] for row in dev_list]
 
     @api_process
     async def list(self, request):
