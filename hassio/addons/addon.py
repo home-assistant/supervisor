@@ -338,15 +338,12 @@ class Addon(object):
 
     def test_udpate_schema(self):
         """Check if the exists config valid after update."""
-        if not self.is_installed:
+        if not self.is_installed or self.is_detached:
             return True
 
         # load next schema
-        for target in (self.data.cache, self.data.system):
-            if self._id not in target:
-                continue
-            new_raw_schema = target[self._id][ATTR_SCHEMA]
-            default_options = target[self._id][ATTR_OPTIONS]
+        new_raw_schema = self.data.cache[self._id][ATTR_SCHEMA]
+        default_options = self.data.cache[self._id][ATTR_OPTIONS]
 
         # if disabled
         if isinstance(new_raw_schema, bool):
