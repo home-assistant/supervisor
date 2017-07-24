@@ -27,7 +27,7 @@ def addons_update(loop, addons):
             if not addon.is_installed or not addon.auto_update:
                 continue
 
-            if addon.version_installed != addon.version:
+            if addon.version_installed != addon.last_version:
                 tasks.append(addon.update())
 
         if tasks:
