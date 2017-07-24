@@ -1,4 +1,4 @@
-# HassIO
+# Hass.io
 ### First private cloud solution for home automation.
 
 Hass.io is a Docker based system for managing your Home Assistant installation and related applications. The system is controlled via Home Assistant which communicates with the supervisor. The supervisor provides an API to manage the installation. This includes changing network settings or installing and updating software.
