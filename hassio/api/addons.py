@@ -11,8 +11,8 @@ from ..const import (
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
     ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, ATTR_SLUG,
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
-    ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, BOOT_AUTO, BOOT_MANUAL,
-    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
+    ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, ATTR_DEVICES, ATTR_PRIVILEGED,
+    BOOT_AUTO, BOOT_MANUAL, CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,6 +49,14 @@ class APIAddons(object):
 
         return addon
 
+    @staticmethod
+    def _pretty_devices(addon):
+        """Return a simplified device list."""
+        dev_list = addon.devices
+        if not dev_list:
+            return
+        return [row.split(':')[0] for row in dev_list]
+
     @api_process
     async def list(self, request):
         """Return all addons / repositories ."""
@@ -64,6 +72,8 @@ class APIAddons(object):
                 ATTR_DETACHED: addon.is_detached,
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
+                ATTR_PRIVILEGED: addon.privileged,
+                ATTR_DEVICES: self._pretty_devices(addon),
                 ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
             })
@@ -109,6 +119,8 @@ class APIAddons(object):
             ATTR_BUILD: addon.need_build,
             ATTR_NETWORK: addon.ports,
             ATTR_HOST_NETWORK: addon.network_mode == 'host',
+            ATTR_PRIVILEGED: addon.privileged,
+            ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,
             ATTR_WEBUI: addon.webui,
         }

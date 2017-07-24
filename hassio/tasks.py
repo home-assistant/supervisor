@@ -27,8 +27,14 @@ def addons_update(loop, addons):
             if not addon.is_installed or not addon.auto_update:
                 continue
 
-            if addon.version_installed != addon.version:
+            if addon.version_installed == addon.last_version:
+                continue
+
+            if addon.test_udpate_schema():
                 tasks.append(addon.update())
+            else:
+                _LOGGER.warning(
+                    "Addon %s will be ignore, schema tests fails", addon.slug)
 
         if tasks:
             _LOGGER.info("Addon auto update process %d tasks", len(tasks))

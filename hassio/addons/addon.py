@@ -336,6 +336,36 @@ class Addon(object):
             return vol.Schema(dict)
         return vol.Schema(vol.All(dict, validate_options(raw_schema)))
 
+    def test_udpate_schema(self):
+        """Check if the exists config valid after update."""
+        if not self.is_installed or self.is_detached:
+            return True
+
+        # load next schema
+        new_raw_schema = self.data.cache[self._id][ATTR_SCHEMA]
+        default_options = self.data.cache[self._id][ATTR_OPTIONS]
+
+        # if disabled
+        if isinstance(new_raw_schema, bool):
+            return True
+
+        # merge options
+        options = {
+            **self.data.user[self._id][ATTR_OPTIONS],
+            **default_options,
+        }
+
+        # create voluptuous
+        new_schema = \
+            vol.Schema(vol.All(dict, validate_options(new_raw_schema)))
+
+        # validate
+        try:
+            new_schema(options)
+        except vol.Invalid:
+            return False
+        return True
+
     async def install(self, version=None):
         """Install a addon."""
         if self.config.arch not in self.supported_arch:
