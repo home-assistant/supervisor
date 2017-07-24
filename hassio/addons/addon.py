@@ -342,20 +342,27 @@ class Addon(object):
             return True
 
         # load next schema
-        if self._id in self.data.cache:
-            new_raw_schema = self.data.cache[self._id][ATTR_SCHEMA]
-        else:
-            new_raw_schema = self.data.user[self._id][ATTR_SCHEMA]
+        for target in (self.data.cache, self.data.system):
+            if self._id not in target:
+                continue
+            new_raw_schema = target[self._id][ATTR_SCHEMA]
+            default_options = target[self._id][ATTR_OPTIONS]
 
         # if disabled
         if isinstance(new_raw_schema, bool):
             return True
 
+        # merge options
+        options = {
+            **self.data.user[self._id][ATTR_OPTIONS],
+            **default_options,
+        }
+
         # validate
         new_schema = vol.Schema(vol.All(
             dict, validate_options(new_raw_schema)))
         try:
-            new_schema(self.data.user[self._id][ATTR_OPTIONS])
+            new_schema(options)
         except vol.Invalid:
             return False
 
