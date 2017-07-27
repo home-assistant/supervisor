@@ -226,6 +226,12 @@ Optional:
 }
 ```
 
+### Hardware
+
+- GET `/Hardware/serial`
+- GET `/Hardware/audio`
+- GET `/Hardware/input`
+
 ### Network
 
 - GET `/network/info`
