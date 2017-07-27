@@ -50,6 +50,7 @@ class DockerHomeAssistant(DockerBase):
             self.dock.containers.run(
                 self.image,
                 name=self.name,
+                hostname=self.name,
                 detach=True,
                 privileged=True,
                 devices=self.devices,
