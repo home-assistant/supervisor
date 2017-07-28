@@ -27,7 +27,7 @@ class Hardware(object):
     def serial_devices(self):
         """Return all serial and connected devices."""
         dev_list = set()
-        for device in context.list_devices(subsystem='tty'):
+        for device in self.context.list_devices(subsystem='tty'):
             if 'ID_VENDOR' in device:
                 dev_list.add(device.device_node)
 
@@ -37,7 +37,7 @@ class Hardware(object):
     def input_devices(self):
         """Return all input devices."""
         dev_list = set()
-        for device in context.list_devices(subsystem='input'):
+        for device in self.context.list_devices(subsystem='input'):
             if 'NAME' in device:
                 dev_list.add(device['NAME'])
 
@@ -47,7 +47,7 @@ class Hardware(object):
     def block_devices(self):
         """Return all block devices."""
         dev_list = set()
-        for device in context.list_devices(subsystem='block'):
+        for device in self.context.list_devices(subsystem='block'):
             if 'ID_VENDOR' in device:
                 dev_list.add(device.device_node)
 
