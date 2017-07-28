@@ -46,6 +46,7 @@ setup(
         'gitpython',
         'pyotp',
         'pyqrcode',
-        'pytz'
+        'pytz',
+        'pyudev'
     ]
 )

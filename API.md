@@ -226,6 +226,24 @@ Optional:
 }
 ```
 
+- GET `/host/hardware`
+```json
+{
+    "serial": ["/dev/xy"],
+    "input": ["Input device name"],
+    "disk": ["/dev/sdax"],
+    "audio": {
+        "CARD_ID": {
+            "name": "xy",
+            "type": "microphone",
+            "devices": {
+                "DEV_ID": "type of device"
+            }
+        }
+    }
+}
+```
+
 ### Network
 
 - GET `/network/info`
