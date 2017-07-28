@@ -1,10 +1,11 @@
-# HassIO Server
+# Hass.io Server
 
-## HassIO REST API
+## Hass.io RESTful API
 
-Interface for HomeAssistant to control things from supervisor.
+Interface for Home Assistant to control things from supervisor.
 
 On error:
+
 ```json
 {
     "result": "error",
@@ -12,7 +13,8 @@ On error:
 }
 ```
 
-On success
+On success:
+
 ```json
 {
     "result": "ok",
@@ -20,10 +22,9 @@ On success
 }
 ```
 
-### HassIO
+### Hass.io
 
 - GET `/supervisor/ping`
-
 - GET `/supervisor/info`
 
 The addons from `addons` are only installed one.
@@ -54,7 +55,9 @@ The addons from `addons` are only installed one.
 ```
 
 - POST `/supervisor/update`
+
 Optional:
+
 ```json
 {
     "version": "VERSION"
@@ -62,6 +65,7 @@ Optional:
 ```
 
 - POST `/supervisor/options`
+
 ```json
 {
     "beta_channel": "true|false",
@@ -78,11 +82,12 @@ Reload addons/version.
 
 - GET `/supervisor/logs`
 
-Output the raw docker log
+Output is the raw docker log.
 
 ### Security
 
 - GET `/security/info`
+
 ```json
 {
     "initialize": "bool",
@@ -91,6 +96,7 @@ Output the raw docker log
 ```
 
 - POST `/security/options`
+
 ```json
 {
     "password": "xy"
@@ -98,6 +104,7 @@ Output the raw docker log
 ```
 
 - POST `/security/totp`
+
 ```json
 {
     "password": "xy"
@@ -117,6 +124,7 @@ Return QR-Code
 ### Backup/Snapshot
 
 - GET `/snapshots`
+
 ```json
 {
     "snapshots": [
@@ -132,6 +140,7 @@ Return QR-Code
 - POST `/snapshots/reload`
 
 - POST `/snapshots/new/full`
+
 ```json
 {
     "name": "Optional"
@@ -139,6 +148,7 @@ Return QR-Code
 ```
 
 - POST `/snapshots/new/partial`
+
 ```json
 {
     "name": "Optional",
@@ -150,6 +160,7 @@ Return QR-Code
 - POST `/snapshots/reload`
 
 - GET `/snapshots/{slug}/info`
+
 ```json
 {
     "slug": "SNAPSHOT ID",
@@ -174,10 +185,9 @@ Return QR-Code
 ```
 
 - POST `/snapshots/{slug}/remove`
-
 - POST `/snapshots/{slug}/restore/full`
-
 - POST `/snapshots/{slug}/restore/partial`
+
 ```json
 {
     "homeassistant": "bool",
@@ -187,14 +197,14 @@ Return QR-Code
 ```
 
 ### Host
+
 - POST `/host/reload`
-
 - POST `/host/shutdown`
-
 - POST `/host/reboot`
-
 - GET `/host/info`
+
 See HostControl info command.
+
 ```json
 {
     "type": "",
@@ -207,16 +217,37 @@ See HostControl info command.
 ```
 
 - POST `/host/update`
+
 Optional:
+
 ```json
 {
     "version": "VERSION"
 }
 ```
 
+- GET `/host/hardware`
+```json
+{
+    "serial": ["/dev/xy"],
+    "input": ["Input device name"],
+    "disk": ["/dev/sdax"],
+    "audio": {
+        "CARD_ID": {
+            "name": "xy",
+            "type": "microphone",
+            "devices": {
+                "DEV_ID": "type of device"
+            }
+        }
+    }
+}
+```
+
 ### Network
 
 - GET `/network/info`
+
 ```json
 {
     "hostname": ""
@@ -224,6 +255,7 @@ Optional:
 ```
 
 - POST `/network/options`
+
 ```json
 {
     "hostname": "",
@@ -235,7 +267,7 @@ Optional:
 }
 ```
 
-### HomeAssistant
+### Home Assistant
 
 - GET `/homeassistant/info`
 
@@ -250,7 +282,9 @@ Optional:
 ```
 
 - POST `/homeassistant/update`
+
 Optional:
+
 ```json
 {
     "version": "VERSION"
@@ -259,11 +293,11 @@ Optional:
 
 - GET `/homeassistant/logs`
 
-Output the raw docker log
+Output is the raw Docker log.
 
 - POST `/homeassistant/restart`
-
 - POST `/homeassistant/options`
+
 ```json
 {
     "devices": [],
@@ -274,11 +308,11 @@ Output the raw docker log
 
 Image with `null` and last_version with `null` reset this options.
 
-### REST API addons
+### RESTful for API addons
 
 - GET `/addons`
 
-Get all available addons
+Get all available addons.
 
 ```json
 {
@@ -312,8 +346,8 @@ Get all available addons
 ```
 
 - POST `/addons/reload`
-
 - GET `/addons/{addon}/info`
+
 ```json
 {
     "name": "xy bla",
@@ -340,6 +374,7 @@ Get all available addons
 - GET `/addons/{addon}/logo`
 
 - POST `/addons/{addon}/options`
+
 ```json
 {
     "boot": "auto|manual",
@@ -358,7 +393,9 @@ For reset custom network settings, set it `null`.
 - POST `/addons/{addon}/stop`
 
 - POST `/addons/{addon}/install`
+
 Optional:
+
 ```json
 {
     "version": "VERSION"
@@ -368,7 +405,9 @@ Optional:
 - POST `/addons/{addon}/uninstall`
 
 - POST `/addons/{addon}/update`
+
 Optional:
+
 ```json
 {
     "version": "VERSION"
@@ -377,15 +416,16 @@ Optional:
 
 - GET `/addons/{addon}/logs`
 
-Output the raw docker log
+Output is the raw Docker log.
 
 - POST `/addons/{addon}/restart`
 
 ## Host Control
 
-Communicate over unix socket with a host daemon.
+Communicate over UNIX socket with a host daemon.
 
 - commands
+
 ```
 # info
 -> {'type', 'version', 'last_version', 'features', 'hostname'}
@@ -404,7 +444,8 @@ Communicate over unix socket with a host daemon.
 # network int route xy
 ```
 
-features:
+Features:
+
 - shutdown
 - reboot
 - update
