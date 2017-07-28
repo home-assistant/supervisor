@@ -24,7 +24,7 @@ class APIHost(object):
         self.config = config
         self.loop = loop
         self.host_control = host_control
-        self.hardware = hardware
+        self.local_hw = hardware
 
     @api_process
     async def info(self, request):
@@ -64,8 +64,8 @@ class APIHost(object):
     async def hardware(self, request):
         """Return local hardware infos."""
         return {
-            ATTR_SERIAL: self.hardware.serial_devices,
-            ATTR_INPUT: self.hardware.input_devices,
-            ATTR_DISK: self.hardware.disk_devices,
-            ATTR_AUDIO: self.hardware.audio_devices,
+            ATTR_SERIAL: self.local_hw.serial_devices,
+            ATTR_INPUT: self.local_hw.input_devices,
+            ATTR_DISK: self.local_hw.disk_devices,
+            ATTR_AUDIO: self.local_hw.audio_devices,
         }
