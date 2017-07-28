@@ -14,6 +14,7 @@ from .const import (
     RUN_CLEANUP_API_SESSIONS, STARTUP_SYSTEM, STARTUP_SERVICES,
     STARTUP_APPLICATION, STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS,
     RUN_UPDATE_ADDONS_TASKS)
+from .hardware import Hardware
 from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
 from .dock.supervisor import DockerSupervisor
@@ -36,6 +37,7 @@ class HassIO(object):
         self.websession = aiohttp.ClientSession(loop=loop)
         self.scheduler = Scheduler(loop)
         self.api = RestAPI(config, loop)
+        self.hardware = Hardware()
         self.dock = docker.DockerClient(
             base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
 
@@ -81,7 +83,7 @@ class HassIO(object):
             self.host_control.load, RUN_UPDATE_INFO_TASKS)
 
         # rest api views
-        self.api.register_host(self.host_control)
+        self.api.register_host(self.host_control, self.hardware)
         self.api.register_network(self.host_control)
         self.api.register_supervisor(
             self.supervisor, self.snapshots, self.addons, self.host_control,
