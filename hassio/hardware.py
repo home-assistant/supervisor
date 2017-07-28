@@ -76,7 +76,7 @@ class Hardware(object):
             }
 
         # parse devices
-        for match in RE_DEVICES(devices):
+        for match in RE_DEVICES.finditer(devices):
             try:
                 audio_list[match.group(1)][ATTR_DEVICES][match.group(2)] = \
                     match.group(3)

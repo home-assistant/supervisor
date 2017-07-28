@@ -33,10 +33,10 @@ class RestAPI(object):
         api_host = APIHost(self.config, self.loop, host_control, hardware)
 
         self.webapp.router.add_get('/host/info', api_host.info)
+        self.webapp.router.add_get('/host/hardware', api_host.hardware)
         self.webapp.router.add_post('/host/reboot', api_host.reboot)
         self.webapp.router.add_post('/host/shutdown', api_host.shutdown)
         self.webapp.router.add_post('/host/update', api_host.update)
-        self.webapp.router.add_post('/host/hardware', api_host.hardware)
 
     def register_network(self, host_control):
         """Register network function."""
