@@ -226,11 +226,23 @@ Optional:
 }
 ```
 
-### Hardware
-
-- GET `/Hardware/serial`
-- GET `/Hardware/audio`
-- GET `/Hardware/input`
+- GET `/host/hardware`
+```json
+{
+    "serial": ["/dev/xy"],
+    "input": ["Input device name"],
+    "block": ["/dev/sdax"],
+    "audio": {
+        "CARD_ID": {
+            "name": "xy",
+            "type": "microphone",
+            "devices": {
+                "DEV_ID": "type of device"
+            }
+        }
+    }
+}
+```
 
 ### Network
 

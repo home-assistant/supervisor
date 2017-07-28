@@ -5,6 +5,8 @@ import re
 
 import pyudev
 
+from .const import ATTR_NAME, ATTR_TYPE, ATTR_DEVICES
+
 _LOGGER = logging.getLogger(__name__)
 
 ASOUND_CARDS = Path("/proc/asound/cards")
@@ -66,5 +68,20 @@ class Hardware(object):
         audio_list = {}
 
         # parse cards
+        for match in RE_CARDS.finditer(cards):
+            audio_list[match.group(1)] = {
+                ATTR_NAME: match.group(3),
+                ATTR_TYPE: match.group(2),
+                ATTR_DEVICES: {},
+            }
 
         # parse devices
+        for match in RE_DEVICES(devices):
+            try:
+                audio_list[match.group(1)][ATTR_DEVICES][match.group(2)] = \
+                    match.group(3)
+            except KeyError:
+                _LOGGER.warning("Wrong audio device found %s", match.group(0))
+                continue
+
+        return audio_list
