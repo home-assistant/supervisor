@@ -39,7 +39,7 @@ class Hardware(object):
         dev_list = set()
         for device in self.context.list_devices(subsystem='input'):
             if 'NAME' in device:
-                dev_list.add(device['NAME'])
+                dev_list.add(device['NAME'].replace('"', ''))
 
         return list(dev_list)
 
