@@ -44,8 +44,8 @@ class Hardware(object):
         return list(dev_list)
 
     @property
-    def block_devices(self):
-        """Return all block devices."""
+    def disk_devices(self):
+        """Return all disk devices."""
         dev_list = set()
         for device in self.context.list_devices(subsystem='block'):
             if 'ID_VENDOR' in device:

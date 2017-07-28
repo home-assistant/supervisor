@@ -7,7 +7,7 @@ import voluptuous as vol
 from .util import api_process_hostcontrol, api_process, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES,
-    ATTR_OS)
+    ATTR_OS, ATTR_SERIAL, ATTR_INPUT, ATTR_DISK, ATTR_AUDIO)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,11 +19,12 @@ SCHEMA_VERSION = vol.Schema({
 class APIHost(object):
     """Handle rest api for host functions."""
 
-    def __init__(self, config, loop, host_control):
+    def __init__(self, config, loop, host_control, hardware):
         """Initialize host rest api part."""
         self.config = config
         self.loop = loop
         self.host_control = host_control
+        self.hardware = hardware
 
     @api_process
     async def info(self, request):
@@ -58,3 +59,13 @@ class APIHost(object):
 
         return await asyncio.shield(
             self.host_control.update(version=version), loop=self.loop)
+
+    @api_process
+    async def hardware(self, request):
+        """Return local hardware infos."""
+        return {
+            ATTR_SERIAL: self.hardware.serial_devices,
+            ATTR_INPUT: self.hardware.input_devices,
+            ATTR_DISK: self.hardware.disk_devices,
+            ATTR_AUDIO: self.hardware.audio_devices,
+        }

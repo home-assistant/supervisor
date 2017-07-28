@@ -231,7 +231,7 @@ Optional:
 {
     "serial": ["/dev/xy"],
     "input": ["Input device name"],
-    "block": ["/dev/sdax"],
+    "disk": ["/dev/sdax"],
     "audio": {
         "CARD_ID": {
             "name": "xy",
