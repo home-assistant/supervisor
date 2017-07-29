@@ -48,7 +48,7 @@ class Hardware(object):
         """Return all disk devices."""
         dev_list = set()
         for device in self.context.list_devices(subsystem='block'):
-            if 'ID_VENDOR' in device:
+            if device.device_node.startswith('/dev/sd'):
                 dev_list.add(device.device_node)
 
         return list(dev_list)
