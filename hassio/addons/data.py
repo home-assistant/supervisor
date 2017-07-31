@@ -118,7 +118,7 @@ class Data(JsonConfig):
                 addon_config[ATTR_LOCATON] = str(addon.parent)
                 self._cache[addon_slug] = addon_config
 
-            except OSError:
+            except (OSError, json.JSONDecodeError):
                 _LOGGER.warning("Can't read %s", addon)
 
             except vol.Invalid as ex:
