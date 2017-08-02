@@ -60,18 +60,15 @@ class APIHomeAssistant(object):
         return True
 
     @api_process
-    def update(self, request):
-        """Update homeassistant.
-
-        Return a coroutine.
-        """
+    async def update(self, request):
+        """Update homeassistant."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.config.last_homeassistant)
 
         if version == self.homeassistant.version:
             raise RuntimeError("Version %s is already in use", version)
 
-        return asyncio.shield(
+        return await asyncio.shield(
             self.homeassistant.update(version), loop=self.loop)
 
     @api_process

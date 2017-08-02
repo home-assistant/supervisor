@@ -55,18 +55,15 @@ class APIHost(object):
         return self.host_control.shutdown()
 
     @api_process_hostcontrol
-    def update(self, request):
-        """Update host OS.
-
-        Return a coroutine.
-        """
+    async def update(self, request):
+        """Update host OS."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.host_control.last_version)
 
         if version == self.host_control.version:
             raise RuntimeError("Version %s is already in use", version)
 
-        return self.host_control.update(version=version), loop=self.loop)
+        return await self.host_control.update(version=version), loop=self.loop)
 
     @api_process
     async def hardware(self, request):

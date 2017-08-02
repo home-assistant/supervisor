@@ -148,16 +148,14 @@ class APIAddons(object):
         return True
 
     @api_process
-    def install(self, request):
-        """Install addon.
-
-        Return a coroutine.
-        """
+    await def install(self, request):
+        """Install addon."""
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request, check_installed=False)
         version = body.get(ATTR_VERSION)
 
-        return asyncio.shield(addon.install(version=version), loop=self.loop)
+        return await asyncio.shield(
+            addon.install(version=version), loop=self.loop)
 
     @api_process
     def uninstall(self, request):
@@ -195,11 +193,8 @@ class APIAddons(object):
         return asyncio.shield(addon.stop(), loop=self.loop)
 
     @api_process
-    def update(self, request):
-        """Update addon.
-
-        Return a coroutine.
-        """
+    async def update(self, request):
+        """Update addon."""
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request)
         version = body.get(ATTR_VERSION)
@@ -207,7 +202,8 @@ class APIAddons(object):
         if version == self.addon.version_installed:
             raise RuntimeError("Version %s is already in use", version)
 
-        return asyncio.shield(addon.update(version=version), loop=self.loop)
+        return await asyncio.shield(
+            addon.update(version=version), loop=self.loop)
 
     @api_process
     def restart(self, request):
