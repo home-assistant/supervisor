@@ -61,9 +61,9 @@ class APIHost(object):
         version = body.get(ATTR_VERSION, self.host_control.last_version)
 
         if version == self.host_control.version:
-            raise RuntimeError("Version %s is already in use", version)
+            raise RuntimeError("Version {} is already in use".format(version))
 
-        return await self.host_control.update(version=version), loop=self.loop)
+        return await self.host_control.update(version=version)
 
     @api_process
     async def hardware(self, request):

@@ -96,9 +96,10 @@ class APISupervisor(object):
         version = body.get(ATTR_VERSION, self.config.last_hassio)
 
         if version == self.supervisor.version:
-            raise RuntimeError("Version %s is already in use", version)
+            raise RuntimeError("Version {} is already in use".format(version))
 
-        return await asyncio.shield(self.supervisor.update(version), loop=self.loop)
+        return await asyncio.shield(
+            self.supervisor.update(version=version), loop=self.loop)
 
     @api_process
     async def reload(self, request):

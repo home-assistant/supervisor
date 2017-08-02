@@ -66,7 +66,7 @@ class APIHomeAssistant(object):
         version = body.get(ATTR_VERSION, self.config.last_homeassistant)
 
         if version == self.homeassistant.version:
-            raise RuntimeError("Version %s is already in use", version)
+            raise RuntimeError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
             self.homeassistant.update(version), loop=self.loop)
