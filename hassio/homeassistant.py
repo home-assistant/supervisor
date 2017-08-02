@@ -130,6 +130,13 @@ class HomeAssistant(JsonConfig):
         """
         return self.docker.run()
 
+    def stop(self):
+        """Stop HomeAssistant docker.
+
+        Return a coroutine.
+        """
+        return self.docker.stop()
+
     def restart(self):
         """Restart HomeAssistant docker.
 
