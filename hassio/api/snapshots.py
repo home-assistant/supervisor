@@ -97,35 +97,48 @@ class APISnapshots(object):
         }
 
     @api_process
-    async def snapshot_full(self, request):
-        """Full-Snapshot a snapshot."""
+    def snapshot_full(self, request):
+        """Full-Snapshot a snapshot.
+
+        Return a coroutine.
+        """
         body = await api_validate(SCHEMA_SNAPSHOT_FULL, request)
-        return await asyncio.shield(
+        return asyncio.shield(
             self.snapshots.do_snapshot_full(**body), loop=self.loop)
 
     @api_process
-    async def snapshot_partial(self, request):
-        """Partial-Snapshot a snapshot."""
+    def snapshot_partial(self, request):
+        """Partial-Snapshot a snapshot.
+
+        Return a coroutine.
+        """
         body = await api_validate(SCHEMA_SNAPSHOT_PARTIAL, request)
-        return await asyncio.shield(
+        return asyncio.shield(
             self.snapshots.do_snapshot_partial(**body), loop=self.loop)
 
     @api_process
-    async def restore_full(self, request):
-        """Full-Restore a snapshot."""
+    def restore_full(self, request):
+        """Full-Restore a snapshot.
+
+        Return a coroutine.
+        """
         snapshot = self._extract_snapshot(request)
-        return await asyncio.shield(
+        return asyncio.shield(
             self.snapshots.do_restore_full(snapshot), loop=self.loop)
 
     @api_process
-    async def restore_partial(self, request):
-        """Partial-Restore a snapshot."""
+    def restore_partial(self, request):
+        """Partial-Restore a snapshot.
+
+        Return a coroutine.
+        """
         snapshot = self._extract_snapshot(request)
         body = await api_validate(SCHEMA_SNAPSHOT_PARTIAL, request)
 
-        return await asyncio.shield(
+        return asyncio.shield(
             self.snapshots.do_restore_partial(snapshot, **body),
-            loop=self.loop)
+            loop=self.loop
+        )
 
     @api_process
     async def remove(self, request):

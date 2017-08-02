@@ -148,24 +148,32 @@ class APIAddons(object):
         return True
 
     @api_process
-    async def install(self, request):
-        """Install addon."""
+    def install(self, request):
+        """Install addon.
+
+        Return a coroutine.
+        """
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request, check_installed=False)
         version = body.get(ATTR_VERSION)
 
-        return await asyncio.shield(
-            addon.install(version=version), loop=self.loop)
+        return asyncio.shield(addon.install(version=version), loop=self.loop)
 
     @api_process
-    async def uninstall(self, request):
-        """Uninstall addon."""
+    def uninstall(self, request):
+        """Uninstall addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
-        return await asyncio.shield(addon.uninstall(), loop=self.loop)
+        return asyncio.shield(addon.uninstall(), loop=self.loop)
 
     @api_process
-    async def start(self, request):
-        """Start addon."""
+    def start(self, request):
+        """Start addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
 
         # check options
@@ -175,33 +183,47 @@ class APIAddons(object):
         except vol.Invalid as ex:
             raise RuntimeError(humanize_error(options, ex)) from None
 
-        return await asyncio.shield(addon.start(), loop=self.loop)
+        return asyncio.shield(addon.start(), loop=self.loop)
 
     @api_process
-    async def stop(self, request):
-        """Stop addon."""
+    def stop(self, request):
+        """Stop addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
-        return await asyncio.shield(addon.stop(), loop=self.loop)
+        return asyncio.shield(addon.stop(), loop=self.loop)
 
     @api_process
-    async def update(self, request):
-        """Update addon."""
+    def update(self, request):
+        """Update addon.
+
+        Return a coroutine.
+        """
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request)
         version = body.get(ATTR_VERSION)
 
-        return await asyncio.shield(
-            addon.update(version=version), loop=self.loop)
+        if version == self.addon.version_installed:
+            raise RuntimeError("Version %s is already in use", version)
+
+        return asyncio.shield(addon.update(version=version), loop=self.loop)
 
     @api_process
-    async def restart(self, request):
-        """Restart addon."""
+    def restart(self, request):
+        """Restart addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
-        return await asyncio.shield(addon.restart(), loop=self.loop)
+        return asyncio.shield(addon.restart(), loop=self.loop)
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
-        """Return logs from addon."""
+        """Return logs from addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
         return addon.logs()
 

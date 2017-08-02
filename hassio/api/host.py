@@ -40,25 +40,33 @@ class APIHost(object):
 
     @api_process_hostcontrol
     def reboot(self, request):
-        """Reboot host."""
+        """Reboot host.
+
+        Return a coroutine.
+        """
         return self.host_control.reboot()
 
     @api_process_hostcontrol
     def shutdown(self, request):
-        """Poweroff host."""
+        """Poweroff host.
+
+        Return a coroutine.
+        """
         return self.host_control.shutdown()
 
     @api_process_hostcontrol
-    async def update(self, request):
-        """Update host OS."""
+    def update(self, request):
+        """Update host OS.
+
+        Return a coroutine.
+        """
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.host_control.last_version)
 
         if version == self.host_control.version:
-            raise RuntimeError("Version is already in use")
+            raise RuntimeError("Version %s is already in use", version)
 
-        return await asyncio.shield(
-            self.host_control.update(version=version), loop=self.loop)
+        return self.host_control.update(version=version), loop=self.loop)
 
     @api_process
     async def hardware(self, request):
