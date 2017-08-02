@@ -40,12 +40,18 @@ class APIHost(object):
 
     @api_process_hostcontrol
     def reboot(self, request):
-        """Reboot host."""
+        """Reboot host.
+
+        Return a coroutine.
+        """
         return self.host_control.reboot()
 
     @api_process_hostcontrol
     def shutdown(self, request):
-        """Poweroff host."""
+        """Poweroff host.
+
+        Return a coroutine.
+        """
         return self.host_control.shutdown()
 
     @api_process_hostcontrol
@@ -55,7 +61,7 @@ class APIHost(object):
         version = body.get(ATTR_VERSION, self.host_control.last_version)
 
         if version == self.host_control.version:
-            raise RuntimeError("Version is already in use")
+            raise RuntimeError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
             self.host_control.update(version=version), loop=self.loop)

@@ -113,13 +113,15 @@ class HomeAssistant(JsonConfig):
         _LOGGER.info("HomeAssistant docker now installed")
         await self.docker.cleanup()
 
-    def update(self, version=None):
-        """Update HomeAssistant version.
-
-        Return a coroutine.
-        """
+    async def update(self, version=None):
+        """Update HomeAssistant version."""
         version = version or self.last_version
-        return self.docker.update(version)
+
+        if version == self.docker.version:
+            _LOGGER.warning("Version %s is already installed", version)
+            return False
+
+        return await self.docker.update(version)
 
     def run(self):
         """Run HomeAssistant docker.
