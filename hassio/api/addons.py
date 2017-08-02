@@ -199,7 +199,7 @@ class APIAddons(object):
         addon = self._extract_addon(request)
         version = body.get(ATTR_VERSION, addon.last_version)
 
-        if version == self.addon.version_installed:
+        if version == addon.version_installed:
             raise RuntimeError("Version %s is already in use", version)
 
         return await asyncio.shield(
