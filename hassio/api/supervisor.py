@@ -90,18 +90,15 @@ class APISupervisor(object):
         return True
 
     @api_process
-    def update(self, request):
-        """Update supervisor OS.
-
-        Return a coroutine.
-        """
+    async def update(self, request):
+        """Update supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.config.last_hassio)
 
         if version == self.supervisor.version:
             raise RuntimeError("Version %s is already in use", version)
 
-        return asyncio.shield(self.supervisor.update(version), loop=self.loop)
+        return await asyncio.shield(self.supervisor.update(version), loop=self.loop)
 
     @api_process
     async def reload(self, request):
