@@ -148,7 +148,7 @@ class APIAddons(object):
         return True
 
     @api_process
-    await def install(self, request):
+    async def install(self, request):
         """Install addon."""
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request, check_installed=False)
