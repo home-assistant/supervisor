@@ -413,14 +413,20 @@ class Addon(object):
         return STATE_STOPPED
 
     @check_installed
-    async def start(self):
-        """Set options and start addon."""
-        return await self.addon_docker.run()
+    def start(self):
+        """Set options and start addon.
+
+        Return a coroutine.
+        """
+        return self.addon_docker.run()
 
     @check_installed
-    async def stop(self):
-        """Stop addon."""
-        return await self.addon_docker.stop()
+    def stop(self):
+        """Stop addon.
+
+        Return a coroutine.
+        """
+        return self.addon_docker.stop()
 
     @check_installed
     async def update(self, version=None):
@@ -430,7 +436,7 @@ class Addon(object):
         if version == self.version_installed:
             _LOGGER.warning(
                 "Addon %s is already installed in %s", self._id, version)
-            return True
+            return False
 
         if not await self.addon_docker.update(version):
             return False
@@ -439,14 +445,20 @@ class Addon(object):
         return True
 
     @check_installed
-    async def restart(self):
-        """Restart addon."""
-        return await self.addon_docker.restart()
+    def restart(self):
+        """Restart addon.
+
+        Return a coroutine.
+        """
+        return self.addon_docker.restart()
 
     @check_installed
-    async def logs(self):
-        """Return addons log output."""
-        return await self.addon_docker.logs()
+    def logs(self):
+        """Return addons log output.
+
+        Return a coroutine.
+        """
+        return self.addon_docker.logs()
 
     @check_installed
     async def snapshot(self, tar_file):
