@@ -152,7 +152,7 @@ class APIAddons(object):
         """Install addon."""
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request, check_installed=False)
-        version = body.get(ATTR_VERSION)
+        version = body.get(ATTR_VERSION, addon.last_version)
 
         return await asyncio.shield(
             addon.install(version=version), loop=self.loop)
@@ -197,7 +197,7 @@ class APIAddons(object):
         """Update addon."""
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request)
-        version = body.get(ATTR_VERSION)
+        version = body.get(ATTR_VERSION, addon.last_version)
 
         if version == self.addon.version_installed:
             raise RuntimeError("Version %s is already in use", version)
