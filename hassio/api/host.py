@@ -1,5 +1,4 @@
 """Init file for HassIO host rest api."""
-import asyncio
 import logging
 
 import voluptuous as vol
