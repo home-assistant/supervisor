@@ -430,7 +430,7 @@ class Addon(object):
         if version == self.version_installed:
             _LOGGER.warning(
                 "Addon %s is already installed in %s", self._id, version)
-            return True
+            return False
 
         if not await self.addon_docker.update(version):
             return False
