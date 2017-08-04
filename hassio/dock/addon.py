@@ -107,7 +107,7 @@ class DockerAddon(DockerBase):
             self.dock.containers.run(
                 self.image,
                 name=self.name,
-                hostname=self.name,
+                hostname=self.addon.slug,
                 detach=True,
                 network_mode=self.addon.network_mode,
                 ports=self.addon.ports,
