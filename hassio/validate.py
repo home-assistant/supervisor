@@ -74,7 +74,7 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
     vol.Optional(ATTR_TIMEZONE, default='UTC'): validate_timezone,
     vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
     vol.Optional(ATTR_SECURITY, default={}): vol.Schema({
-        vol.Optional(ATTR_INITIALIZE default=False): vol.Boolean(),
+        vol.Optional(ATTR_INITIALIZE, default=False): vol.Boolean(),
         vol.Optional(ATTR_TOTP): vol.Coerce(str),
         vol.Optional(ATTR_PASSWORD): vol.Coerce(str),
         vol.Optional(ATTR_SESSIONS, default={}):

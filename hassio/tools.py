@@ -115,11 +115,14 @@ class AsyncThrottle(object):
     time period.
     """
     def __init__(self, delta):
+        """Initialize async throttle."""
         self.throttle_period = delta
         self.time_of_last_call = datetime.min
 
     def __call__(self, fn):
+        """Throttle function"""
         async def wrapper(*args, **kwargs):
+            """Throttle function wrapper"""
             now = datetime.now()
             time_since_last_call = now - self.time_of_last_call
 
