@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 class Updater(JsonConfig):
     """Fetch last versions from version.json."""
 
-    def __ini__(self, config, loop, websession):
+    def __init__(self, config, loop, websession):
         """Initialize updater."""
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
         self.config = config
@@ -37,7 +37,7 @@ class Updater(JsonConfig):
         return self._data.get(ATTR_HASSIO)
 
     @property
-    def upsream(self):
+    def upstream(self):
         """Return Upstream branch for version."""
         if self.beta_channel:
             return 'dev'
@@ -54,7 +54,7 @@ class Updater(JsonConfig):
         self._data[ATTR_BETA_CHANNEL] = bool(value)
         self.save()
 
-    @AsyncThrottle(timedelta(min=1))
+    @AsyncThrottle(timedelta(seconds=60))
     async def fetch_data(self):
         """Fetch current versions from github.
 
@@ -63,7 +63,7 @@ class Updater(JsonConfig):
         url = URL_HASSIO_VERSION.format(self.upstream)
         try:
             with async_timeout.timeout(10, loop=self.loop):
-                async with websession.get(url) as request:
+                async with self.websession.get(url) as request:
                     data = await request.json(content_type=None)
 
         except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:

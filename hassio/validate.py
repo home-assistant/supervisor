@@ -61,6 +61,7 @@ SCHEMA_HASS_CONFIG = vol.Schema({
 })
 
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_UPDATER_CONFIG = vol.Schema({
     vol.Optional(ATTR_BETA_CHANNEL, default=False): vol.Boolean(),
     vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
