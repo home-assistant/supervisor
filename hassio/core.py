@@ -19,6 +19,7 @@ from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
 from .dock.supervisor import DockerSupervisor
 from .snapshots import SnapshotsManager
+from .updater import Updater
 from .tasks import (
     hassio_update, homeassistant_watchdog, api_sessions_cleanup, addons_update)
 from .tools import get_local_ip, fetch_timezone
@@ -35,6 +36,7 @@ class HassIO(object):
         self.loop = loop
         self.config = config
         self.websession = aiohttp.ClientSession(loop=loop)
+        self.updater = Updater(config, loop, self.websession)
         self.scheduler = Scheduler(loop)
         self.api = RestAPI(config, loop)
         self.hardware = Hardware()
@@ -46,7 +48,7 @@ class HassIO(object):
 
         # init homeassistant
         self.homeassistant = HomeAssistant(
-            config, loop, self.dock, self.websession)
+            config, loop, self.dock, self.updater)
 
         # init HostControl
         self.host_control = HostControl(loop)
@@ -87,7 +89,7 @@ class HassIO(object):
         self.api.register_network(self.host_control)
         self.api.register_supervisor(
             self.supervisor, self.snapshots, self.addons, self.host_control,
-            self.websession)
+            self.updater)
         self.api.register_homeassistant(self.homeassistant)
         self.api.register_addons(self.addons)
         self.api.register_security()
@@ -113,7 +115,7 @@ class HassIO(object):
 
         # schedule self update task
         self.scheduler.register_task(
-            hassio_update(self.config, self.supervisor, self.websession),
+            hassio_update(self.supervisor, self.updater),
             RUN_UPDATE_SUPERVISOR_TASKS)
 
         # schedule snapshot update tasks
@@ -128,7 +130,7 @@ class HassIO(object):
         # on release channel, try update itself
         # on beta channel, only read new versions
         await asyncio.wait(
-            [hassio_update(self.config, self.supervisor, self.websession)()],
+            [hassio_update(self.supervisor, self.updater)()],
             loop=self.loop
         )
 

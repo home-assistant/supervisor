@@ -46,11 +46,11 @@ class RestAPI(object):
         self.webapp.router.add_post('/network/options', api_net.options)
 
     def register_supervisor(self, supervisor, snapshots, addons, host_control,
-                            websession):
+                            updater):
         """Register supervisor function."""
         api_supervisor = APISupervisor(
             self.config, self.loop, supervisor, snapshots, addons,
-            host_control, websession)
+            host_control, updater)
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)

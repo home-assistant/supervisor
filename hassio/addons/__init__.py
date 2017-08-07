@@ -78,7 +78,7 @@ class AddonManager(object):
 
             # don't add built-in repository to config
             if url not in BUILTIN_REPOSITORIES:
-                self.config.addons_repositories = url
+                self.config.add_addon_repository(url)
 
         tasks = [_add_repository(url) for url in new_rep - old_rep]
         if tasks:

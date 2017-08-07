@@ -13,7 +13,7 @@ def api_sessions_cleanup(config):
         now = datetime.now()
         for session, until_valid in config.security_sessions.items():
             if now >= until_valid:
-                config.security_sessions = (session, None)
+                config.drop_security_session(session)
 
     return _api_sessions_cleanup
 
@@ -43,21 +43,21 @@ def addons_update(loop, addons):
     return _addons_update
 
 
-def hassio_update(config, supervisor, websession):
+def hassio_update(supervisor, updater):
     """Create scheduler task for update of supervisor hassio."""
     async def _hassio_update():
         """Check and run update of supervisor hassio."""
-        await config.fetch_update_infos(websession)
-        if config.last_hassio == supervisor.version:
+        await updater.fetch_data()
+        if updater.version_hassio == supervisor.version:
             return
 
         # don't perform a update on beta/dev channel
-        if config.upstream_beta:
+        if updater.upstream_beta:
             _LOGGER.warning("Ignore Hass.IO update on beta upstream!")
             return
 
-        _LOGGER.info("Found new HassIO version %s.", config.last_hassio)
-        await supervisor.update(config.last_hassio)
+        _LOGGER.info("Found new HassIO version %s.", updater.version_hassio)
+        await supervisor.update(updater.version_hassio)
 
     return _hassio_update
 

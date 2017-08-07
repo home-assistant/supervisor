@@ -1,39 +1,19 @@
 """Tools file for HassIO."""
 import asyncio
 from contextlib import suppress
+from datetime import datetime, timedelta
 import json
 import logging
 import socket
 
 import aiohttp
 import async_timeout
-import pytz
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
-
-from .const import URL_HASSIO_VERSION, URL_HASSIO_VERSION_BETA
 
 _LOGGER = logging.getLogger(__name__)
 
 FREEGEOIP_URL = "https://freegeoip.io/json/"
-
-
-async def fetch_last_versions(websession, beta=False):
-    """Fetch current versions from github.
-
-    Is a coroutine.
-    """
-    url = URL_HASSIO_VERSION_BETA if beta else URL_HASSIO_VERSION
-    try:
-        with async_timeout.timeout(10, loop=websession.loop):
-            async with websession.get(url) as request:
-                return await request.json(content_type=None)
-
-    except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:
-        _LOGGER.warning("Can't fetch versions from %s! %s", url, err)
-
-    except json.JSONDecodeError as err:
-        _LOGGER.warning("Can't parse versions from %s! %s", url, err)
 
 
 def get_local_ip(loop):
@@ -74,19 +54,6 @@ def read_json_file(jsonfile):
     """Read a json file and return a dict."""
     with jsonfile.open('r') as cfile:
         return json.loads(cfile.read())
-
-
-def validate_timezone(timezone):
-    """Validate voluptuous timezone."""
-    try:
-        pytz.timezone(timezone)
-    except pytz.exceptions.UnknownTimeZoneError:
-        raise vol.Invalid(
-            "Invalid time zone passed in. Valid options can be found here: "
-            "http://en.wikipedia.org/wiki/List_of_tz_database_time_zones") \
-                from None
-
-    return timezone
 
 
 async def fetch_timezone(websession):
@@ -140,3 +107,24 @@ class JsonConfig(object):
             _LOGGER.error("Can't store config in %s", self._file)
             return False
         return True
+
+
+class AsyncThrottle(object):
+    """
+    Decorator that prevents a function from being called more than once every
+    time period.
+    """
+    def __init__(self, delta):
+        self.throttle_period = delta
+        self.time_of_last_call = datetime.min
+
+    def __call__(self, fn):
+        async def wrapper(*args, **kwargs):
+            now = datetime.now()
+            time_since_last_call = now - self.time_of_last_call
+
+            if time_since_last_call > self.throttle_period:
+                self.time_of_last_call = now
+                return await fn(*args, **kwargs)
+
+        return wrapper

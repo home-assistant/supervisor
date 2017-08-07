@@ -41,11 +41,8 @@ PRIVILEGED_ALL = [
 ]
 
 
-def _migrate_startup(value):
-    """Migrate startup schema.
-
-    REMOVE after 0.50-
-    """
+def _simple_startup(value):
+    """Simple startup schema."""
     if value == "before":
         return STARTUP_SERVICES
     if value == "after":
@@ -62,7 +59,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_URL): vol.Url(),
     vol.Optional(ATTR_ARCH, default=ARCH_ALL): [vol.In(ARCH_ALL)],
     vol.Required(ATTR_STARTUP):
-        vol.All(_migrate_startup, vol.In(STARTUP_ALL)),
+        vol.All(_simple_startup, vol.In(STARTUP_ALL)),
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): DOCKER_PORTS,
