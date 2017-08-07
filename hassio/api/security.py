@@ -98,5 +98,5 @@ class APISecurity(object):
         session = hashlib.sha256(os.urandom(54)).hexdigest()
 
         # store session
-        self.config.security_sessions = (session, valid_until)
+        self.config.add_security_session(session, valid_until)
         return {ATTR_SESSION: session}
