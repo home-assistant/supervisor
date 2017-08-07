@@ -1,7 +1,7 @@
 """Tools file for HassIO."""
 import asyncio
 from contextlib import suppress
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import logging
 import socket

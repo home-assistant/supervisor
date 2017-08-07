@@ -4,12 +4,10 @@ import logging
 import os
 from pathlib import Path, PurePath
 
-import voluptuous as vol
-
 from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
     ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_API_ENDPOINT,
-    ATTR_INITIALIZE, ATTR_BETA_CHANNEL, ATTR_ADDONS_CUSTOM_LIST)
+    ATTR_INITIALIZE, ATTR_ADDONS_CUSTOM_LIST)
 from .tools import JsonConfig
 from .validate import SCHEMA_HASSIO_CONFIG
 
@@ -48,17 +46,6 @@ class CoreConfig(JsonConfig):
     def api_endpoint(self, value):
         """Store IP address of api endpoint."""
         self._data[ATTR_API_ENDPOINT] = value
-
-    @property
-    def upstream_beta(self):
-        """Return True if we run in beta upstream."""
-        return self._data[ATTR_UPSTREAM_BETA]
-
-    @upstream_beta.setter
-    def upstream_beta(self, value):
-        """Set beta upstream mode."""
-        self._data[ATTR_UPSTREAM_BETA] = bool(value)
-        self.save()
 
     @property
     def timezone(self):

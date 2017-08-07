@@ -65,7 +65,7 @@ class APISupervisor(object):
         return {
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.updater.version_hassio,
-            ATTR_BETA_CHANNEL: self.config.upstream_beta,
+            ATTR_BETA_CHANNEL: self.beta_channel,
             ATTR_ARCH: self.config.arch,
             ATTR_TIMEZONE: self.config.timezone,
             ATTR_ADDONS: list_addons,
@@ -78,7 +78,7 @@ class APISupervisor(object):
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_BETA_CHANNEL in body:
-            self.config.upstream_beta = body[ATTR_BETA_CHANNEL]
+            self.updater.beta_channel = body[ATTR_BETA_CHANNEL]
 
         if ATTR_TIMEZONE in body:
             self.config.timezone = body[ATTR_TIMEZONE]

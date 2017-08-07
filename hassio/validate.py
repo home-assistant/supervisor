@@ -62,6 +62,7 @@ SCHEMA_HASS_CONFIG = vol.Schema({
 
 
 SCHEMA_UPDATER_CONFIG = vol.Schema({
+    vol.Optional(ATTR_BETA_CHANNEL, default=False): vol.Boolean(),
     vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
     vol.Optional(ATTR_HASSIO): vol.Coerce(str),
 })
@@ -69,7 +70,6 @@ SCHEMA_UPDATER_CONFIG = vol.Schema({
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASSIO_CONFIG = vol.Schema({
-    vol.Optional(ATTR_UPSTREAM_BETA, default=False): vol.Boolean(),
     vol.Optional(ATTR_API_ENDPOINT): vol.Coerce(str),
     vol.Optional(ATTR_TIMEZONE, default='UTC'): validate_timezone,
     vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],

@@ -8,7 +8,8 @@ import aiohttp
 import async_timeout
 
 from .const import (
-    URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO)
+    URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
+    ATTR_BETA_CHANNEL)
 from .tools import AsyncThrottle, JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG
 
@@ -44,8 +45,14 @@ class Updater(JsonConfig):
 
     @property
     def beta_channel(self):
-        """Return True if we are on beta channel."""
-        return self.config.beta_channel
+        """Return True if we run in beta upstream."""
+        return self._data[ATTR_BETA_CHANNEL]
+
+    @beta_channel.setter
+    def beta_channel(self, value):
+        """Set beta upstream mode."""
+        self._data[ATTR_BETA_CHANNEL] = bool(value)
+        self.save()
 
     @AsyncThrottle(timedelta(min=1))
     async def fetch_data(self):
