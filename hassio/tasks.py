@@ -52,7 +52,7 @@ def hassio_update(supervisor, updater):
             return
 
         # don't perform a update on beta/dev channel
-        if updater.upstream_beta:
+        if updater.beta_channel:
             _LOGGER.warning("Ignore Hass.IO update on beta upstream!")
             return
 

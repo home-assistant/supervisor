@@ -201,6 +201,9 @@ class CoreConfig(JsonConfig):
     @property
     def security_sessions(self):
         """Return api sessions."""
+        if ATTR_SESSIONS not in self._data[ATTR_SECURITY]:
+            return {}
+
         return {
             session: datetime.strptime(until, DATETIME_FORMAT) for
             session, until in self._data[ATTR_SECURITY][ATTR_SESSIONS].items()
@@ -215,6 +218,9 @@ class CoreConfig(JsonConfig):
 
     def drop_security_session(self, session):
         """Delete the a session."""
+        if ATTR_SESSIONS not in self._data[ATTR_SECURITY]:
+            return
+
         self._data[ATTR_SECURITY][ATTR_SESSIONS].pop(session, None)
         self.save()
 
