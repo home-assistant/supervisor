@@ -203,16 +203,29 @@ Return QR-Code
 - POST `/host/reboot`
 - GET `/host/info`
 
-See HostControl info command.
-
 ```json
 {
     "type": "",
     "version": "",
     "last_version": "",
-    "features": ["shutdown", "reboot", "update", "network_info", "network_control"],
+    "features": ["shutdown", "reboot", "update", "hostname", "network_info", "network_control"],
     "hostname": "",
-    "os": ""
+    "os": "",
+    "audio": {
+        "input": "0,0",
+        "output": "0,0"
+    }
+}
+```
+
+- POST `/host/options`
+
+```json
+{
+    "audio": {
+        "input": "0,0",
+        "output": "0,0"
+    }
 }
 ```
 
@@ -259,11 +272,6 @@ Optional:
 ```json
 {
     "hostname": "",
-    "mode": "dhcp|fixed",
-    "ssid": "",
-    "ip": "",
-    "netmask": "",
-    "gateway": ""
 }
 ```
 

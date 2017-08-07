@@ -16,12 +16,12 @@ _LOGGER = logging.getLogger(__name__)
 class HomeAssistant(JsonConfig):
     """Hass core object for handle it."""
 
-    def __init__(self, config, loop, dock, websession):
+    def __init__(self, config, loop, dock, updater):
         """Initialize hass object."""
         super().__init__(FILE_HASSIO_HOMEASSISTANT, SCHEMA_HASS_CONFIG)
         self.config = config
         self.loop = loop
-        self.websession = websession
+        self.updater = updater
         self.docker = DockerHomeAssistant(config, loop, dock, self)
 
     async def prepare(self):
@@ -45,7 +45,7 @@ class HomeAssistant(JsonConfig):
         """Return last available version of homeassistant."""
         if self.is_custom_image:
             return self._data.get(ATTR_LAST_VERSION)
-        return self.config.last_homeassistant
+        return self.updater.version_homeassistant
 
     @property
     def image(self):
@@ -101,7 +101,7 @@ class HomeAssistant(JsonConfig):
         while True:
             # read homeassistant tag and install it
             if not self.last_version:
-                await self.config.fetch_update_infos(self.websession)
+                await self.updater.fetch_data()
 
             tag = self.last_version
             if tag and await self.docker.install(tag):

@@ -4,9 +4,7 @@ from pathlib import Path
 HASSIO_VERSION = '0.51'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
-                      'hassio/master/version.json')
-URL_HASSIO_VERSION_BETA = ('https://raw.githubusercontent.com/home-assistant/'
-                           'hassio/dev/version.json')
+                      'hassio/{}/version.json')
 
 URL_HASSIO_ADDONS = 'https://github.com/home-assistant/hassio-addons'
 
@@ -25,6 +23,7 @@ RESTART_EXIT_CODE = 100
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
 FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
+FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 SOCKET_HC = Path("/var/run/hassio-hc.sock")
@@ -83,6 +82,7 @@ ATTR_PASSWORD = 'password'
 ATTR_TOTP = 'totp'
 ATTR_INITIALIZE = 'initialize'
 ATTR_SESSION = 'session'
+ATTR_SESSIONS = 'sessions'
 ATTR_LOCATON = 'location'
 ATTR_BUILD = 'build'
 ATTR_DEVICES = 'devices'
@@ -95,6 +95,7 @@ ATTR_USER = 'user'
 ATTR_SYSTEM = 'system'
 ATTR_SNAPSHOTS = 'snapshots'
 ATTR_HOMEASSISTANT = 'homeassistant'
+ATTR_HASSIO = 'hassio'
 ATTR_FOLDERS = 'folders'
 ATTR_SIZE = 'size'
 ATTR_TYPE = 'type'
@@ -103,8 +104,12 @@ ATTR_AUTO_UPDATE = 'auto_update'
 ATTR_CUSTOM = 'custom'
 ATTR_AUDIO = 'audio'
 ATTR_INPUT = 'input'
+ATTR_OUTPUT = 'output'
 ATTR_DISK = 'disk'
 ATTR_SERIAL = 'serial'
+ATTR_SECURITY = 'security'
+ATTR_API_ENDPOINT = 'api_endpoint'
+ATTR_ADDONS_CUSTOM_LIST = 'addons_custom_list'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'
