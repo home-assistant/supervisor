@@ -78,6 +78,7 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
         vol.Optional(ATTR_TOTP): vol.Coerce(str),
         vol.Optional(ATTR_PASSWORD): vol.Coerce(str),
         vol.Optional(ATTR_SESSIONS, default={}):
+            vol.Schema({vol.Coerce(str): vol.Coerce(str)}),
     }),
     vol.Optional(ATTR_AUDIO, default={}): vol.Schema({
         vol.Optional(ATTR_OUTPUT): vol.Match(r"\d+,\d+"),

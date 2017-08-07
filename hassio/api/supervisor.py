@@ -65,7 +65,7 @@ class APISupervisor(object):
         return {
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.updater.version_hassio,
-            ATTR_BETA_CHANNEL: self.beta_channel,
+            ATTR_BETA_CHANNEL: self.updater.beta_channel,
             ATTR_ARCH: self.config.arch,
             ATTR_TIMEZONE: self.config.timezone,
             ATTR_ADDONS: list_addons,

@@ -119,7 +119,7 @@ class AsyncThrottle(object):
         self.throttle_period = delta
         self.time_of_last_call = datetime.min
 
-    def __call__(self, fn):
+    def __call__(self, method):
         """Throttle function"""
         async def wrapper(*args, **kwargs):
             """Throttle function wrapper"""
@@ -128,6 +128,6 @@ class AsyncThrottle(object):
 
             if time_since_last_call > self.throttle_period:
                 self.time_of_last_call = now
-                return await fn(*args, **kwargs)
+                return await method(*args, **kwargs)
 
         return wrapper

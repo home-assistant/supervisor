@@ -71,7 +71,7 @@ class Updater(JsonConfig):
             return
 
         except json.JSONDecodeError as err:
-            _LOGGER.warning("Can't parse versions from %s -> %s", url, err
+            _LOGGER.warning("Can't parse versions from %s -> %s", url, err)
             return
 
         # data valid?
