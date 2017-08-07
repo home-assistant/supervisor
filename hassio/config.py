@@ -7,7 +7,8 @@ from pathlib import Path, PurePath
 from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
     ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_API_ENDPOINT,
-    ATTR_INITIALIZE, ATTR_ADDONS_CUSTOM_LIST)
+    ATTR_INITIALIZE, ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO, ATTR_INPUT,
+    ATTR_OUTPUT)
 from .tools import JsonConfig
 from .validate import SCHEMA_HASSIO_CONFIG
 
@@ -215,4 +216,26 @@ class CoreConfig(JsonConfig):
     def drop_security_session(self, session):
         """Delete the a session."""
         self._data[ATTR_SECURITY][ATTR_SESSIONS].pop(session, None)
+        self.save()
+
+    @property
+    def audio_output(self):
+        """Return ALSA audio output card,dev."""
+        return self._data[ATTR_AUDIO].get(ATTR_OUTPUT)
+
+    @audio_output.setter
+    def audio_output(self, value):
+        """Set ALSA audio output card,dev."""
+        self._data[ATTR_AUDIO][ATTR_OUTPUT] = value
+        self.save()
+
+    @property
+    def audio_input(self):
+        """Return ALSA audio input card,dev."""
+        return self._data[ATTR_AUDIO].get(ATTR_INPUT)
+
+    @audio_input.setter
+    def audio_input(self, value):
+        """Set ALSA audio input card,dev."""
+        self._data[ATTR_AUDIO][ATTR_INPUT] = value
         self.save()

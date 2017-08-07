@@ -12,6 +12,7 @@ from .const import (
 
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 HASS_DEVICES = [vol.Match(r"^[^/]*$")]
+ALSA_CHANNEL = vol.Match(r"\d+,\d+")
 
 
 def validate_timezone(timezone):
@@ -82,7 +83,7 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
             vol.Schema({vol.Coerce(str): vol.Coerce(str)}),
     }),
     vol.Optional(ATTR_AUDIO, default={}): vol.Schema({
-        vol.Optional(ATTR_OUTPUT): vol.Match(r"\d+,\d+"),
-        vol.Optional(ATTR_INPUT): vol.Match(r"\d+,\d+"),
+        vol.Optional(ATTR_OUTPUT): ALSA_CHANNEL,
+        vol.Optional(ATTR_INPUT): ALSA_CHANNEL,
     }),
 }, extra=vol.REMOVE_EXTRA)
