@@ -38,6 +38,7 @@ STARTUP_ALL = [
 PRIVILEGED_ALL = [
     "NET_ADMIN",
     "SYS_ADMIN",
+    "SYS_RAWIO"
 ]
 
 
