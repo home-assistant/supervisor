@@ -220,7 +220,7 @@ class CoreConfig(JsonConfig):
     @property
     def audio_output(self):
         """Return ALSA audio output card,dev."""
-        return self._data.get(ATTR_OUTPUT)
+        return self._data.get(ATTR_AUDIO_OUTPUT)
 
     @audio_output.setter
     def audio_output(self, value):
@@ -231,7 +231,7 @@ class CoreConfig(JsonConfig):
     @property
     def audio_input(self):
         """Return ALSA audio input card,dev."""
-        return self._data.get(ATTR_INPUT)
+        return self._data.get(ATTR_AUDIO_INPUT)
 
     @audio_input.setter
     def audio_input(self, value):

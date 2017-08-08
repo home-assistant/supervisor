@@ -7,8 +7,8 @@ import voluptuous as vol
 from .util import api_process_hostcontrol, api_process, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES,
-    ATTR_OS, ATTR_SERIAL, ATTR_INPUT, ATTR_DISK, ATTR_AUDIO, ATTR_OUTPUT,
-    ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT)
+    ATTR_OS, ATTR_SERIAL, ATTR_INPUT, ATTR_DISK, ATTR_AUDIO, ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT)
 from ..validate import ALSA_CHANNEL
 
 _LOGGER = logging.getLogger(__name__)
