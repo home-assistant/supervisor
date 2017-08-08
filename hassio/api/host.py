@@ -7,7 +7,8 @@ import voluptuous as vol
 from .util import api_process_hostcontrol, api_process, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES,
-    ATTR_OS, ATTR_SERIAL, ATTR_INPUT, ATTR_DISK, ATTR_AUDIO, ATTR_OUTPUT)
+    ATTR_OS, ATTR_SERIAL, ATTR_INPUT, ATTR_DISK, ATTR_AUDIO, ATTR_OUTPUT,
+    ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT)
 from ..validate import ALSA_CHANNEL
 
 _LOGGER = logging.getLogger(__name__)
@@ -17,10 +18,8 @@ SCHEMA_VERSION = vol.Schema({
 })
 
 SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_AUDIO): vol.Schema({
-        vol.Optional(ATTR_OUTPUT): ALSA_CHANNEL,
-        vol.Optional(ATTR_INPUT): ALSA_CHANNEL,
-    })
+    vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
+    vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
 })
 
 
@@ -51,11 +50,11 @@ class APIHost(object):
         """Process host options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_AUDIO in body:
-            if ATTR_OUTPUT in body[ATTR_AUDIO]:
-                self.config.audio_output = body[ATTR_AUDIO][ATTR_OUTPUT]
-            if ATTR_INPUT in body[ATTR_AUDIO]:
-                self.config.audio_input = body[ATTR_AUDIO][ATTR_INPUT]
+        if ATTR_AUDIO_OUTPUT in body:
+            self.config.audio_output = body[ATTR_AUDIO_OUTPUT]
+
+        if ATTR_AUDIO_INPUT in body:
+            self.config.audio_input = body[ATTR_AUDIO_INPUT]
 
         return True
 
