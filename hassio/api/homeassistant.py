@@ -63,7 +63,7 @@ class APIHomeAssistant(object):
     async def update(self, request):
         """Update homeassistant."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.homeassistant.last_homeassistant)
+        version = body.get(ATTR_VERSION, self.homeassistant.last_version)
 
         if version == self.homeassistant.version:
             raise RuntimeError("Version {} is already in use".format(version))
