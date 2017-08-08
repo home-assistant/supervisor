@@ -273,7 +273,7 @@ class Addon(object):
             self.data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
         else:
             self.data.user[self._id][ATTR_AUDIO_OUTPUT] = value
-        self.save()
+        self.data.save()
 
     @property
     def audio_input(self):
@@ -282,7 +282,7 @@ class Addon(object):
             return
 
         setting = self.config.audio_input
-        if self.is_installed and ATTR_AUDIO_IPUT in self.data.user[self._id]:
+        if self.is_installed and ATTR_AUDIO_INPUT in self.data.user[self._id]:
             setting = self.data.user[self._id][ATTR_AUDIO_INPUT]
         return setting
 
@@ -293,7 +293,7 @@ class Addon(object):
             self.data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
         else:
             self.data.user[self._id][ATTR_AUDIO_INPUT] = value
-        self.save()
+        self.data.save()
 
     @property
     def url(self):
