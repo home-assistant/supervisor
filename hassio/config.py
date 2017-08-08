@@ -7,8 +7,7 @@ from pathlib import Path, PurePath
 from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
     ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_API_ENDPOINT,
-    ATTR_INITIALIZE, ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO, ATTR_INPUT,
-    ATTR_OUTPUT)
+    ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT)
 from .tools import JsonConfig
 from .validate import SCHEMA_HASSIO_CONFIG
 
@@ -168,80 +167,74 @@ class CoreConfig(JsonConfig):
     @property
     def security_initialize(self):
         """Return is security was initialize."""
-        return self._data[ATTR_SECURITY][ATTR_INITIALIZE]
+        return self._data[ATTR_SECURITY]
 
     @security_initialize.setter
     def security_initialize(self, value):
         """Set is security initialize."""
-        self._data[ATTR_SECURITY][ATTR_INITIALIZE] = value
+        self._data[ATTR_SECURITY] = value
         self.save()
 
     @property
     def security_totp(self):
         """Return the TOTP key."""
-        return self._data[ATTR_SECURITY].get(ATTR_TOTP)
+        return self._data.get(ATTR_TOTP)
 
     @security_totp.setter
     def security_totp(self, value):
         """Set the TOTP key."""
-        self._data[ATTR_SECURITY][ATTR_TOTP] = value
+        self._data[ATTR_TOTP] = value
         self.save()
 
     @property
     def security_password(self):
         """Return the password key."""
-        return self._data[ATTR_SECURITY].get(ATTR_PASSWORD)
+        return self._data.get(ATTR_PASSWORD)
 
     @security_password.setter
     def security_password(self, value):
         """Set the password key."""
-        self._data[ATTR_SECURITY][ATTR_PASSWORD] = value
+        self._data[ATTR_PASSWORD] = value
         self.save()
 
     @property
     def security_sessions(self):
         """Return api sessions."""
-        if ATTR_SESSIONS not in self._data[ATTR_SECURITY]:
-            return {}
-
         return {
             session: datetime.strptime(until, DATETIME_FORMAT) for
-            session, until in self._data[ATTR_SECURITY][ATTR_SESSIONS].items()
+            session, until in self._data[ATTR_SESSIONS].items()
         }
 
     def add_security_session(self, session, valid):
         """Set the a new session."""
-        self._data[ATTR_SECURITY][ATTR_SESSIONS].update(
+        self._data[ATTR_SESSIONS].update(
             {session: valid.strftime(DATETIME_FORMAT)}
         )
         self.save()
 
     def drop_security_session(self, session):
         """Delete the a session."""
-        if ATTR_SESSIONS not in self._data[ATTR_SECURITY]:
-            return
-
-        self._data[ATTR_SECURITY][ATTR_SESSIONS].pop(session, None)
+        self._data[ATTR_SESSIONS].pop(session, None)
         self.save()
 
     @property
     def audio_output(self):
         """Return ALSA audio output card,dev."""
-        return self._data[ATTR_AUDIO].get(ATTR_OUTPUT)
+        return self._data.get(ATTR_AUDIO_OUTPUT)
 
     @audio_output.setter
     def audio_output(self, value):
         """Set ALSA audio output card,dev."""
-        self._data[ATTR_AUDIO][ATTR_OUTPUT] = value
+        self._data[ATTR_AUDIO_OUTPUT] = value
         self.save()
 
     @property
     def audio_input(self):
         """Return ALSA audio input card,dev."""
-        return self._data[ATTR_AUDIO].get(ATTR_INPUT)
+        return self._data.get(ATTR_AUDIO_INPUT)
 
     @audio_input.setter
     def audio_input(self, value):
         """Set ALSA audio input card,dev."""
-        self._data[ATTR_AUDIO][ATTR_INPUT] = value
+        self._data[ATTR_AUDIO_INPUT] = value
         self.save()
