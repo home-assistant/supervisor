@@ -12,8 +12,8 @@ from ..const import (
     ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, ATTR_SLUG,
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
     ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, ATTR_DEVICES, ATTR_PRIVILEGED,
-    ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO, BOOT_AUTO,
-    BOOT_MANUAL, CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
+    ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API,
+    BOOT_AUTO, BOOT_MANUAL, CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ class APIAddons(object):
                 ATTR_DEVICES: self._pretty_devices(addon),
                 ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
-                ATTR_HASSIO: addon.with_hassio,
+                ATTR_HASSIO_API: addon.with_hassio_api,
                 ATTR_AUDIO: addon.with_audio,
             })
 
@@ -126,7 +126,7 @@ class APIAddons(object):
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,
             ATTR_WEBUI: addon.webui,
-            ATTR_HASSIO: addon.with_hassio,
+            ATTR_HASSIO_API: addon.with_hassio_api,
             ATTR_AUDIO: addon.with_audio,
             ATTR_AUDIO_INPUT: addon.audio_input,
             ATTR_AUDIO_OUTPUT: addon.audio_output,

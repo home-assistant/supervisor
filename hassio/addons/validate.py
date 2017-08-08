@@ -11,7 +11,7 @@ from ..const import (
     ATTR_USER, ATTR_STATE, ATTR_SYSTEM, STATE_STARTED, STATE_STOPPED,
     ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK,
     ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT,
-    ATTR_AUDIO_OUTPUT, ATTR_HASSIO)
+    ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
 
 
@@ -75,7 +75,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],
     vol.Optional(ATTR_AUDIO, default=False): vol.Boolean(),
-    vol.Optional(ATTR_HASSIO, default=False): vol.Boolean(),
+    vol.Optional(ATTR_HASSIO_API, default=False): vol.Boolean(),
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [

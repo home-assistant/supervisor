@@ -338,7 +338,7 @@ Get all available addons.
             "url": "null|url",
             "logo": "bool",
             "audio": "bool",
-            "hassio": "bool"
+            "hassio_api": "bool"
         }
     ],
     "repositories": [
@@ -375,7 +375,7 @@ Get all available addons.
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "devices": ["/dev/xy"],
     "logo": "bool",
-    "hassio": "bool",
+    "hassio_api": "bool",
     "webui": "null|http(s)://[HOST]:port/xy/zx",
     "audio": "bool",
     "audio_input": "null|0,0",
