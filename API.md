@@ -222,10 +222,8 @@ Return QR-Code
 
 ```json
 {
-    "audio": {
-        "input": "0,0",
-        "output": "0,0"
-    }
+    "audio_input": "0,0",
+    "audio_output": "0,0"
 }
 ```
 
