@@ -77,7 +77,7 @@ class APIAddons(object):
                 ATTR_DEVICES: self._pretty_devices(addon),
                 ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
-                ATTR_HASSIO_API: addon.with_hassio_api,
+                ATTR_HASSIO_API: addon.use_hassio_api,
                 ATTR_AUDIO: addon.with_audio,
             })
 
@@ -126,7 +126,7 @@ class APIAddons(object):
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,
             ATTR_WEBUI: addon.webui,
-            ATTR_HASSIO_API: addon.with_hassio_api,
+            ATTR_HASSIO_API: addon.use_hassio_api,
             ATTR_AUDIO: addon.with_audio,
             ATTR_AUDIO_INPUT: addon.audio_input,
             ATTR_AUDIO_OUTPUT: addon.audio_output,

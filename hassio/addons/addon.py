@@ -246,7 +246,7 @@ class Addon(object):
         return self._mesh.get(ATTR_PRIVILEGED)
 
     @property
-    def with_hassio_api(self):
+    def use_hassio_api(self):
         """Return True if the add-on access to hassio api."""
         return self._mesh[ATTR_HASSIO_API]
 
