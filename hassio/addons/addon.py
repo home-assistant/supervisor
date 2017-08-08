@@ -19,7 +19,8 @@ from ..const import (
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
-    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI)
+    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
+    ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -243,6 +244,56 @@ class Addon(object):
     def privileged(self):
         """Return list of privilege."""
         return self._mesh.get(ATTR_PRIVILEGED)
+
+    @property
+    def use_hassio_api(self):
+        """Return True if the add-on access to hassio api."""
+        return self._mesh[ATTR_HASSIO_API]
+
+    @property
+    def with_audio(self):
+        """Return True if the add-on access to audio."""
+        return self._mesh[ATTR_AUDIO]
+
+    @property
+    def audio_output(self):
+        """Return ALSA config for output or None."""
+        if not self.with_audio:
+            return
+
+        setting = self.config.audio_output
+        if self.is_installed and ATTR_AUDIO_OUTPUT in self.data.user[self._id]:
+            setting = self.data.user[self._id][ATTR_AUDIO_OUTPUT]
+        return setting
+
+    @audio_output.setter
+    def audio_output(self, value):
+        """Set/remove custom audio output settings."""
+        if value is None:
+            self.data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
+        else:
+            self.data.user[self._id][ATTR_AUDIO_OUTPUT] = value
+        self.data.save()
+
+    @property
+    def audio_input(self):
+        """Return ALSA config for input or None."""
+        if not self.with_audio:
+            return
+
+        setting = self.config.audio_input
+        if self.is_installed and ATTR_AUDIO_INPUT in self.data.user[self._id]:
+            setting = self.data.user[self._id][ATTR_AUDIO_INPUT]
+        return setting
+
+    @audio_input.setter
+    def audio_input(self, value):
+        """Set/remove custom audio input settings."""
+        if value is None:
+            self.data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
+        else:
+            self.data.user[self._id][ATTR_AUDIO_INPUT] = value
+        self.data.save()
 
     @property
     def url(self):

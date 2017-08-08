@@ -62,6 +62,7 @@ class Updater(JsonConfig):
         """
         url = URL_HASSIO_VERSION.format(self.upstream)
         try:
+            _LOGGER.info("Fetch update data from %s", url)
             with async_timeout.timeout(10, loop=self.loop):
                 async with self.websession.get(url) as request:
                     data = await request.json(content_type=None)

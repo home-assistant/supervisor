@@ -52,7 +52,6 @@ class APIHost(object):
 
         if ATTR_AUDIO_OUTPUT in body:
             self.config.audio_output = body[ATTR_AUDIO_OUTPUT]
-
         if ATTR_AUDIO_INPUT in body:
             self.config.audio_input = body[ATTR_AUDIO_INPUT]
 
