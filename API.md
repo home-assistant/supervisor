@@ -336,7 +336,9 @@ Get all available addons.
             "privileged": ["NET_ADMIN", "SYS_ADMIN"],
             "devices": ["/dev/xy"],
             "url": "null|url",
-            "logo": "bool"
+            "logo": "bool",
+            "audio": "bool",
+            "hassio": "bool"
         }
     ],
     "repositories": [
@@ -373,7 +375,11 @@ Get all available addons.
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "devices": ["/dev/xy"],
     "logo": "bool",
-    "webui": "null|http(s)://[HOST]:port/xy/zx"
+    "hassio": "bool",
+    "webui": "null|http(s)://[HOST]:port/xy/zx",
+    "audio": "bool",
+    "audio_input": "null|0,0",
+    "audio_output": "null|0,0"
 }
 ```
 
@@ -389,10 +395,12 @@ Get all available addons.
       "CONTAINER": "port|[ip, port]"
     },
     "options": {},
+    "audio_output": "null|0,0",
+    "audio_input": "null|0,0"
 }
 ```
 
-For reset custom network settings, set it `null`.
+For reset custom network/audio settings, set it `null`.
 
 - POST `/addons/{addon}/start`
 

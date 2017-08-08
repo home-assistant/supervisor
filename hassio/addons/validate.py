@@ -10,8 +10,9 @@ from ..const import (
     ARCH_AARCH64, ARCH_AMD64, ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED,
     ATTR_USER, ATTR_STATE, ATTR_SYSTEM, STATE_STARTED, STATE_STOPPED,
     ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK,
-    ATTR_AUTO_UPDATE, ATTR_WEBUI)
-from ..validate import NETWORK_PORT, DOCKER_PORTS
+    ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT, ATTR_HASSIO)
+from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
 
 
 MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
@@ -73,6 +74,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],
+    vol.Optional(ATTR_AUDIO, default=False): vol.Boolean(),
+    vol.Optional(ATTR_HASSIO, default=False): vol.Boolean(),
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(ADDON_ELEMENT, [
@@ -101,6 +104,8 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Optional(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
+    vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
+    vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
 })
 
 
