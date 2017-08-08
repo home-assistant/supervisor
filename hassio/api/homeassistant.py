@@ -63,22 +63,21 @@ class APIHomeAssistant(object):
     async def update(self, request):
         """Update homeassistant."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.config.last_homeassistant)
+        version = body.get(ATTR_VERSION, self.homeassistant.last_version)
 
-        if self.homeassistant.in_progress:
-            raise RuntimeError("Other task is in progress")
+        if version == self.homeassistant.version:
+            raise RuntimeError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
             self.homeassistant.update(version), loop=self.loop)
 
     @api_process
-    async def restart(self, request):
-        """Restart homeassistant."""
-        if self.homeassistant.in_progress:
-            raise RuntimeError("Other task is in progress")
+    def restart(self, request):
+        """Restart homeassistant.
 
-        return await asyncio.shield(
-            self.homeassistant.restart(), loop=self.loop)
+        Return a coroutine.
+        """
+        return asyncio.shield(self.homeassistant.restart(), loop=self.loop)
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):

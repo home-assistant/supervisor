@@ -4,55 +4,29 @@ import logging
 import os
 from pathlib import Path, PurePath
 
-import voluptuous as vol
-
-from .const import FILE_HASSIO_CONFIG, HASSIO_DATA
-from .tools import fetch_last_versions, JsonConfig, validate_timezone
+from .const import (
+    FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
+    ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_API_ENDPOINT,
+    ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT)
+from .tools import JsonConfig
+from .validate import SCHEMA_HASSIO_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
 DATETIME_FORMAT = "%Y%m%d %H:%M:%S"
 
 HOMEASSISTANT_CONFIG = PurePath("homeassistant")
-HOMEASSISTANT_LAST = 'homeassistant_last'
 
 HASSIO_SSL = PurePath("ssl")
-HASSIO_LAST = 'hassio_last'
 
 ADDONS_CORE = PurePath("addons/core")
 ADDONS_LOCAL = PurePath("addons/local")
 ADDONS_GIT = PurePath("addons/git")
 ADDONS_DATA = PurePath("addons/data")
-ADDONS_CUSTOM_LIST = 'addons_custom_list'
 
 BACKUP_DATA = PurePath("backup")
 SHARE_DATA = PurePath("share")
 TMP_DATA = PurePath("tmp")
-
-UPSTREAM_BETA = 'upstream_beta'
-API_ENDPOINT = 'api_endpoint'
-TIMEZONE = 'timezone'
-
-SECURITY_INITIALIZE = 'security_initialize'
-SECURITY_TOTP = 'security_totp'
-SECURITY_PASSWORD = 'security_password'
-SECURITY_SESSIONS = 'security_sessions'
-
-
-# pylint: disable=no-value-for-parameter
-SCHEMA_CONFIG = vol.Schema({
-    vol.Optional(UPSTREAM_BETA, default=False): vol.Boolean(),
-    vol.Optional(API_ENDPOINT): vol.Coerce(str),
-    vol.Optional(TIMEZONE, default='UTC'): validate_timezone,
-    vol.Optional(HOMEASSISTANT_LAST): vol.Coerce(str),
-    vol.Optional(HASSIO_LAST): vol.Coerce(str),
-    vol.Optional(ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
-    vol.Optional(SECURITY_INITIALIZE, default=False): vol.Boolean(),
-    vol.Optional(SECURITY_TOTP): vol.Coerce(str),
-    vol.Optional(SECURITY_PASSWORD): vol.Coerce(str),
-    vol.Optional(SECURITY_SESSIONS, default={}):
-        {vol.Coerce(str): vol.Coerce(str)},
-}, extra=vol.REMOVE_EXTRA)
 
 
 class CoreConfig(JsonConfig):
@@ -60,64 +34,29 @@ class CoreConfig(JsonConfig):
 
     def __init__(self):
         """Initialize config object."""
-        super().__init__(FILE_HASSIO_CONFIG, SCHEMA_CONFIG)
+        super().__init__(FILE_HASSIO_CONFIG, SCHEMA_HASSIO_CONFIG)
         self.arch = None
-
-    async def fetch_update_infos(self, websession):
-        """Read current versions from web."""
-        last = await fetch_last_versions(websession, beta=self.upstream_beta)
-
-        if last:
-            self._data.update({
-                HOMEASSISTANT_LAST: last.get('homeassistant'),
-                HASSIO_LAST: last.get('hassio'),
-            })
-            self.save()
-            return True
-
-        return False
 
     @property
     def api_endpoint(self):
         """Return IP address of api endpoint."""
-        return self._data[API_ENDPOINT]
+        return self._data[ATTR_API_ENDPOINT]
 
     @api_endpoint.setter
     def api_endpoint(self, value):
         """Store IP address of api endpoint."""
-        self._data[API_ENDPOINT] = value
-
-    @property
-    def upstream_beta(self):
-        """Return True if we run in beta upstream."""
-        return self._data[UPSTREAM_BETA]
-
-    @upstream_beta.setter
-    def upstream_beta(self, value):
-        """Set beta upstream mode."""
-        self._data[UPSTREAM_BETA] = bool(value)
-        self.save()
+        self._data[ATTR_API_ENDPOINT] = value
 
     @property
     def timezone(self):
         """Return system timezone."""
-        return self._data[TIMEZONE]
+        return self._data[ATTR_TIMEZONE]
 
     @timezone.setter
     def timezone(self, value):
         """Set system timezone."""
-        self._data[TIMEZONE] = value
+        self._data[ATTR_TIMEZONE] = value
         self.save()
-
-    @property
-    def last_homeassistant(self):
-        """Actual version of homeassistant."""
-        return self._data.get(HOMEASSISTANT_LAST)
-
-    @property
-    def last_hassio(self):
-        """Actual version of hassio."""
-        return self._data.get(HASSIO_LAST)
 
     @property
     def path_hassio(self):
@@ -207,73 +146,95 @@ class CoreConfig(JsonConfig):
     @property
     def addons_repositories(self):
         """Return list of addons custom repositories."""
-        return self._data[ADDONS_CUSTOM_LIST]
+        return self._data[ATTR_ADDONS_CUSTOM_LIST]
 
-    @addons_repositories.setter
-    def addons_repositories(self, repo):
+    def add_addon_repository(self, repo):
         """Add a custom repository to list."""
-        if repo in self._data[ADDONS_CUSTOM_LIST]:
+        if repo in self._data[ATTR_ADDONS_CUSTOM_LIST]:
             return
 
-        self._data[ADDONS_CUSTOM_LIST].append(repo)
+        self._data[ATTR_ADDONS_CUSTOM_LIST].append(repo)
         self.save()
 
     def drop_addon_repository(self, repo):
         """Remove a custom repository from list."""
-        if repo not in self._data[ADDONS_CUSTOM_LIST]:
+        if repo not in self._data[ATTR_ADDONS_CUSTOM_LIST]:
             return
 
-        self._data[ADDONS_CUSTOM_LIST].remove(repo)
+        self._data[ATTR_ADDONS_CUSTOM_LIST].remove(repo)
         self.save()
 
     @property
     def security_initialize(self):
         """Return is security was initialize."""
-        return self._data[SECURITY_INITIALIZE]
+        return self._data[ATTR_SECURITY]
 
     @security_initialize.setter
     def security_initialize(self, value):
         """Set is security initialize."""
-        self._data[SECURITY_INITIALIZE] = value
+        self._data[ATTR_SECURITY] = value
         self.save()
 
     @property
     def security_totp(self):
         """Return the TOTP key."""
-        return self._data.get(SECURITY_TOTP)
+        return self._data.get(ATTR_TOTP)
 
     @security_totp.setter
     def security_totp(self, value):
         """Set the TOTP key."""
-        self._data[SECURITY_TOTP] = value
+        self._data[ATTR_TOTP] = value
         self.save()
 
     @property
     def security_password(self):
         """Return the password key."""
-        return self._data.get(SECURITY_PASSWORD)
+        return self._data.get(ATTR_PASSWORD)
 
     @security_password.setter
     def security_password(self, value):
         """Set the password key."""
-        self._data[SECURITY_PASSWORD] = value
+        self._data[ATTR_PASSWORD] = value
         self.save()
 
     @property
     def security_sessions(self):
         """Return api sessions."""
-        return {session: datetime.strptime(until, DATETIME_FORMAT) for
-                session, until in self._data[SECURITY_SESSIONS].items()}
+        return {
+            session: datetime.strptime(until, DATETIME_FORMAT) for
+            session, until in self._data[ATTR_SESSIONS].items()
+        }
 
-    @security_sessions.setter
-    def security_sessions(self, value):
+    def add_security_session(self, session, valid):
         """Set the a new session."""
-        session, valid = value
-        if valid is None:
-            self._data[SECURITY_SESSIONS].pop(session, None)
-        else:
-            self._data[SECURITY_SESSIONS].update(
-                {session: valid.strftime(DATETIME_FORMAT)}
-            )
+        self._data[ATTR_SESSIONS].update(
+            {session: valid.strftime(DATETIME_FORMAT)}
+        )
+        self.save()
 
+    def drop_security_session(self, session):
+        """Delete the a session."""
+        self._data[ATTR_SESSIONS].pop(session, None)
+        self.save()
+
+    @property
+    def audio_output(self):
+        """Return ALSA audio output card,dev."""
+        return self._data.get(ATTR_AUDIO_OUTPUT)
+
+    @audio_output.setter
+    def audio_output(self, value):
+        """Set ALSA audio output card,dev."""
+        self._data[ATTR_AUDIO_OUTPUT] = value
+        self.save()
+
+    @property
+    def audio_input(self):
+        """Return ALSA audio input card,dev."""
+        return self._data.get(ATTR_AUDIO_INPUT)
+
+    @audio_input.setter
+    def audio_input(self, value):
+        """Set ALSA audio input card,dev."""
+        self._data[ATTR_AUDIO_INPUT] = value
         self.save()

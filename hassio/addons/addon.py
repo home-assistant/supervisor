@@ -19,7 +19,8 @@ from ..const import (
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
     ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
-    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI)
+    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
+    ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -245,6 +246,56 @@ class Addon(object):
         return self._mesh.get(ATTR_PRIVILEGED)
 
     @property
+    def use_hassio_api(self):
+        """Return True if the add-on access to hassio api."""
+        return self._mesh[ATTR_HASSIO_API]
+
+    @property
+    def with_audio(self):
+        """Return True if the add-on access to audio."""
+        return self._mesh[ATTR_AUDIO]
+
+    @property
+    def audio_output(self):
+        """Return ALSA config for output or None."""
+        if not self.with_audio:
+            return
+
+        setting = self.config.audio_output
+        if self.is_installed and ATTR_AUDIO_OUTPUT in self.data.user[self._id]:
+            setting = self.data.user[self._id][ATTR_AUDIO_OUTPUT]
+        return setting
+
+    @audio_output.setter
+    def audio_output(self, value):
+        """Set/remove custom audio output settings."""
+        if value is None:
+            self.data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
+        else:
+            self.data.user[self._id][ATTR_AUDIO_OUTPUT] = value
+        self.data.save()
+
+    @property
+    def audio_input(self):
+        """Return ALSA config for input or None."""
+        if not self.with_audio:
+            return
+
+        setting = self.config.audio_input
+        if self.is_installed and ATTR_AUDIO_INPUT in self.data.user[self._id]:
+            setting = self.data.user[self._id][ATTR_AUDIO_INPUT]
+        return setting
+
+    @audio_input.setter
+    def audio_input(self, value):
+        """Set/remove custom audio input settings."""
+        if value is None:
+            self.data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
+        else:
+            self.data.user[self._id][ATTR_AUDIO_INPUT] = value
+        self.data.save()
+
+    @property
     def url(self):
         """Return url of addon."""
         return self._mesh.get(ATTR_URL)
@@ -413,14 +464,20 @@ class Addon(object):
         return STATE_STOPPED
 
     @check_installed
-    async def start(self):
-        """Set options and start addon."""
-        return await self.addon_docker.run()
+    def start(self):
+        """Set options and start addon.
+
+        Return a coroutine.
+        """
+        return self.addon_docker.run()
 
     @check_installed
-    async def stop(self):
-        """Stop addon."""
-        return await self.addon_docker.stop()
+    def stop(self):
+        """Stop addon.
+
+        Return a coroutine.
+        """
+        return self.addon_docker.stop()
 
     @check_installed
     async def update(self, version=None):
@@ -430,7 +487,7 @@ class Addon(object):
         if version == self.version_installed:
             _LOGGER.warning(
                 "Addon %s is already installed in %s", self._id, version)
-            return True
+            return False
 
         if not await self.addon_docker.update(version):
             return False
@@ -439,14 +496,20 @@ class Addon(object):
         return True
 
     @check_installed
-    async def restart(self):
-        """Restart addon."""
-        return await self.addon_docker.restart()
+    def restart(self):
+        """Restart addon.
+
+        Return a coroutine.
+        """
+        return self.addon_docker.restart()
 
     @check_installed
-    async def logs(self):
-        """Return addons log output."""
-        return await self.addon_docker.logs()
+    def logs(self):
+        """Return addons log output.
+
+        Return a coroutine.
+        """
+        return self.addon_docker.logs()
 
     @check_installed
     async def snapshot(self, tar_file):

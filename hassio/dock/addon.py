@@ -32,6 +32,11 @@ class DockerAddon(DockerBase):
     def environment(self):
         """Return environment for docker add-on."""
         addon_env = self.addon.environment or {}
+        if self.addon.with_audio:
+            addon_env.update({
+                'ALSA_OUTPUT': self.addon.audio_output,
+                'ALSA_INPUT': self.addon.audio_input,
+            })
 
         return {
             **addon_env,
@@ -45,6 +50,16 @@ class DockerAddon(DockerBase):
         if options:
             return {"/tmpfs": "{}".format(options)}
         return None
+
+    @property
+    def mapping(self):
+        """Return hosts mapping."""
+        if not self.addon.use_hassio_api:
+            return None
+
+        return {
+            'hassio': self.config.api_endpoint,
+        }
 
     @property
     def volumes(self):
@@ -107,10 +122,11 @@ class DockerAddon(DockerBase):
             self.dock.containers.run(
                 self.image,
                 name=self.name,
-                hostname=self.name,
+                hostname=self.addon.slug,
                 detach=True,
                 network_mode=self.addon.network_mode,
                 ports=self.addon.ports,
+                extra_hosts=self.mapping,
                 devices=self.addon.devices,
                 cap_add=self.addon.privileged,
                 environment=self.environment,

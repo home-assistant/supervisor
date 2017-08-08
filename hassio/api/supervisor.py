@@ -10,7 +10,7 @@ from ..const import (
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_LOGO, ATTR_REPOSITORY,
     ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED, ATTR_TIMEZONE,
     ATTR_STATE, CONTENT_TYPE_BINARY)
-from ..tools import validate_timezone
+from ..validate import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class APISupervisor(object):
     """Handle rest api for supervisor functions."""
 
     def __init__(self, config, loop, supervisor, snapshots, addons,
-                 host_control, websession):
+                 host_control, updater):
         """Initialize supervisor rest api part."""
         self.config = config
         self.loop = loop
@@ -38,7 +38,7 @@ class APISupervisor(object):
         self.addons = addons
         self.snapshots = snapshots
         self.host_control = host_control
-        self.websession = websession
+        self.updater = updater
 
     @api_process
     async def ping(self, request):
@@ -64,8 +64,8 @@ class APISupervisor(object):
 
         return {
             ATTR_VERSION: HASSIO_VERSION,
-            ATTR_LAST_VERSION: self.config.last_hassio,
-            ATTR_BETA_CHANNEL: self.config.upstream_beta,
+            ATTR_LAST_VERSION: self.updater.version_hassio,
+            ATTR_BETA_CHANNEL: self.updater.beta_channel,
             ATTR_ARCH: self.config.arch,
             ATTR_TIMEZONE: self.config.timezone,
             ATTR_ADDONS: list_addons,
@@ -78,7 +78,7 @@ class APISupervisor(object):
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_BETA_CHANNEL in body:
-            self.config.upstream_beta = body[ATTR_BETA_CHANNEL]
+            self.updater.beta_channel = body[ATTR_BETA_CHANNEL]
 
         if ATTR_TIMEZONE in body:
             self.config.timezone = body[ATTR_TIMEZONE]
@@ -93,10 +93,10 @@ class APISupervisor(object):
     async def update(self, request):
         """Update supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.config.last_hassio)
+        version = body.get(ATTR_VERSION, self.updater.version_hassio)
 
         if version == self.supervisor.version:
-            raise RuntimeError("Version is already in use")
+            raise RuntimeError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
             self.supervisor.update(version), loop=self.loop)
@@ -107,7 +107,7 @@ class APISupervisor(object):
         tasks = [
             self.addons.reload(),
             self.snapshots.reload(),
-            self.config.fetch_update_infos(self.websession),
+            self.updater.fetch_data(),
             self.host_control.load()
         ]
         results, _ = await asyncio.shield(
