@@ -203,16 +203,27 @@ Return QR-Code
 - POST `/host/reboot`
 - GET `/host/info`
 
-See HostControl info command.
-
 ```json
 {
     "type": "",
     "version": "",
     "last_version": "",
-    "features": ["shutdown", "reboot", "update", "network_info", "network_control"],
+    "features": ["shutdown", "reboot", "update", "hostname", "network_info", "network_control"],
     "hostname": "",
-    "os": ""
+    "os": "",
+    "audio": {
+        "input": "0,0",
+        "output": "0,0"
+    }
+}
+```
+
+- POST `/host/options`
+
+```json
+{
+    "audio_input": "0,0",
+    "audio_output": "0,0"
 }
 ```
 
@@ -259,11 +270,6 @@ Optional:
 ```json
 {
     "hostname": "",
-    "mode": "dhcp|fixed",
-    "ssid": "",
-    "ip": "",
-    "netmask": "",
-    "gateway": ""
 }
 ```
 
@@ -330,7 +336,9 @@ Get all available addons.
             "privileged": ["NET_ADMIN", "SYS_ADMIN"],
             "devices": ["/dev/xy"],
             "url": "null|url",
-            "logo": "bool"
+            "logo": "bool",
+            "audio": "bool",
+            "hassio_api": "bool"
         }
     ],
     "repositories": [
@@ -367,7 +375,11 @@ Get all available addons.
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "devices": ["/dev/xy"],
     "logo": "bool",
-    "webui": "null|http(s)://[HOST]:port/xy/zx"
+    "hassio_api": "bool",
+    "webui": "null|http(s)://[HOST]:port/xy/zx",
+    "audio": "bool",
+    "audio_input": "null|0,0",
+    "audio_output": "null|0,0"
 }
 ```
 
@@ -383,10 +395,12 @@ Get all available addons.
       "CONTAINER": "port|[ip, port]"
     },
     "options": {},
+    "audio_output": "null|0,0",
+    "audio_input": "null|0,0"
 }
 ```
 
-For reset custom network settings, set it `null`.
+For reset custom network/audio settings, set it `null`.
 
 - POST `/addons/{addon}/start`
 

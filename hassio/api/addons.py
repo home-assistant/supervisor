@@ -12,6 +12,7 @@ from ..const import (
     ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, ATTR_SLUG,
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
     ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, ATTR_DEVICES, ATTR_PRIVILEGED,
+    ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API,
     BOOT_AUTO, BOOT_MANUAL, CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
 from ..validate import DOCKER_PORTS
 
@@ -76,6 +77,8 @@ class APIAddons(object):
                 ATTR_DEVICES: self._pretty_devices(addon),
                 ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
+                ATTR_HASSIO_API: addon.use_hassio_api,
+                ATTR_AUDIO: addon.with_audio,
             })
 
         data_repositories = []
@@ -123,6 +126,10 @@ class APIAddons(object):
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,
             ATTR_WEBUI: addon.webui,
+            ATTR_HASSIO_API: addon.use_hassio_api,
+            ATTR_AUDIO: addon.with_audio,
+            ATTR_AUDIO_INPUT: addon.audio_input,
+            ATTR_AUDIO_OUTPUT: addon.audio_output,
         }
 
     @api_process
@@ -144,6 +151,10 @@ class APIAddons(object):
             addon.auto_update = body[ATTR_AUTO_UPDATE]
         if ATTR_NETWORK in body:
             addon.ports = body[ATTR_NETWORK]
+        if ATTR_AUDIO_INPUT in body:
+            addon.audio_input = body[ATTR_AUDIO_INPUT]
+        if ATTR_AUDIO_OUTPUT in body:
+            addon.audio_output = body[ATTR_AUDIO_OUTPUT]
 
         return True
 
@@ -152,20 +163,26 @@ class APIAddons(object):
         """Install addon."""
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request, check_installed=False)
-        version = body.get(ATTR_VERSION)
+        version = body.get(ATTR_VERSION, addon.last_version)
 
         return await asyncio.shield(
             addon.install(version=version), loop=self.loop)
 
     @api_process
-    async def uninstall(self, request):
-        """Uninstall addon."""
+    def uninstall(self, request):
+        """Uninstall addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
-        return await asyncio.shield(addon.uninstall(), loop=self.loop)
+        return asyncio.shield(addon.uninstall(), loop=self.loop)
 
     @api_process
-    async def start(self, request):
-        """Start addon."""
+    def start(self, request):
+        """Start addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
 
         # check options
@@ -175,33 +192,45 @@ class APIAddons(object):
         except vol.Invalid as ex:
             raise RuntimeError(humanize_error(options, ex)) from None
 
-        return await asyncio.shield(addon.start(), loop=self.loop)
+        return asyncio.shield(addon.start(), loop=self.loop)
 
     @api_process
-    async def stop(self, request):
-        """Stop addon."""
+    def stop(self, request):
+        """Stop addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
-        return await asyncio.shield(addon.stop(), loop=self.loop)
+        return asyncio.shield(addon.stop(), loop=self.loop)
 
     @api_process
     async def update(self, request):
         """Update addon."""
         body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request)
-        version = body.get(ATTR_VERSION)
+        version = body.get(ATTR_VERSION, addon.last_version)
+
+        if version == addon.version_installed:
+            raise RuntimeError("Version %s is already in use", version)
 
         return await asyncio.shield(
             addon.update(version=version), loop=self.loop)
 
     @api_process
-    async def restart(self, request):
-        """Restart addon."""
+    def restart(self, request):
+        """Restart addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
-        return await asyncio.shield(addon.restart(), loop=self.loop)
+        return asyncio.shield(addon.restart(), loop=self.loop)
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
-        """Return logs from addon."""
+        """Return logs from addon.
+
+        Return a coroutine.
+        """
         addon = self._extract_addon(request)
         return addon.logs()
 
