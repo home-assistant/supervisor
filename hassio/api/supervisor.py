@@ -99,7 +99,7 @@ class APISupervisor(object):
             raise RuntimeError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
-            self.supervisor.update(version=version), loop=self.loop)
+            self.supervisor.update(version), loop=self.loop)
 
     @api_process
     async def reload(self, request):
