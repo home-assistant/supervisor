@@ -13,6 +13,8 @@ from ..const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
+
 
 class DockerAddon(DockerBase):
     """Docker hassio wrapper for HomeAssistant."""
@@ -29,6 +31,11 @@ class DockerAddon(DockerBase):
         return "addon_{}".format(self.addon.slug)
 
     @property
+    def hostname(self):
+        """Return slug/id of addon."""
+        return self.addon.slug.replace('_', '-')
+
+    @property
     def environment(self):
         """Return environment for docker add-on."""
         addon_env = self.addon.environment or {}
@@ -42,6 +49,20 @@ class DockerAddon(DockerBase):
             **addon_env,
             'TZ': self.config.timezone,
         }
+
+    @property
+    def devices(self):
+        """Return needed devices."""
+        devices = self.addon.devices or []
+
+        # use audio devices
+        if self.addon.with_audio and AUDIO_DEVICE not in devices:
+            devices.append(AUDIO_DEVICE)
+
+        # Return None if no devices is present
+        if devices:
+            return devices
+        return None
 
     @property
     def tmpfs(self):
@@ -122,12 +143,12 @@ class DockerAddon(DockerBase):
             self.dock.containers.run(
                 self.image,
                 name=self.name,
-                hostname=self.addon.slug,
+                hostname=self.hostname,
                 detach=True,
                 network_mode=self.addon.network_mode,
                 ports=self.addon.ports,
                 extra_hosts=self.mapping,
-                devices=self.addon.devices,
+                devices=self.devices,
                 cap_add=self.addon.privileged,
                 environment=self.environment,
                 volumes=self.volumes,
