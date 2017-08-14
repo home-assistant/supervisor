@@ -41,12 +41,12 @@ class Addon(object):
         self.data = data
         self._id = slug
 
-        self.addon_docker = DockerAddon(config, loop, dock, self)
+        self.docker = DockerAddon(config, loop, dock, self)
 
     async def load(self):
         """Async initialize of object."""
         if self.is_installed:
-            await self.addon_docker.attach()
+            await self.docker.attach()
 
     @property
     def slug(self):
@@ -434,7 +434,7 @@ class Addon(object):
             self.path_data.mkdir()
 
         version = version or self.last_version
-        if not await self.addon_docker.install(version):
+        if not await self.docker.install(version):
             return False
 
         self._set_install(version)
@@ -443,7 +443,7 @@ class Addon(object):
     @check_installed
     async def uninstall(self):
         """Remove a addon."""
-        if not await self.addon_docker.remove():
+        if not await self.docker.remove():
             return False
 
         if self.path_data.is_dir():
@@ -459,7 +459,7 @@ class Addon(object):
         if not self.is_installed:
             return STATE_NONE
 
-        if await self.addon_docker.is_running():
+        if await self.docker.is_running():
             return STATE_STARTED
         return STATE_STOPPED
 
@@ -469,7 +469,7 @@ class Addon(object):
 
         Return a coroutine.
         """
-        return self.addon_docker.run()
+        return self.docker.run()
 
     @check_installed
     def stop(self):
@@ -477,22 +477,26 @@ class Addon(object):
 
         Return a coroutine.
         """
-        return self.addon_docker.stop()
+        return self.docker.stop()
 
     @check_installed
     async def update(self, version=None):
         """Update addon."""
         version = version or self.last_version
+        last_state = await self.state()
 
         if version == self.version_installed:
             _LOGGER.warning(
                 "Addon %s is already installed in %s", self._id, version)
             return False
 
-        if not await self.addon_docker.update(version):
+        if not await self.docker.update(version):
             return False
-
         self._set_update(version)
+
+        # restore state
+        if last_state == STATE_STARTED:
+            return await self.docker.run()
         return True
 
     @check_installed
@@ -501,7 +505,7 @@ class Addon(object):
 
         Return a coroutine.
         """
-        return self.addon_docker.restart()
+        return self.docker.restart()
 
     @check_installed
     def logs(self):
@@ -509,7 +513,7 @@ class Addon(object):
 
         Return a coroutine.
         """
-        return self.addon_docker.logs()
+        return self.docker.logs()
 
     @check_installed
     async def snapshot(self, tar_file):
@@ -517,7 +521,7 @@ class Addon(object):
         with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
             # store local image
             if self.need_build and not await \
-                    self.addon_docker.export_image(Path(temp, "image.tar")):
+                    self.docker.export_image(Path(temp, "image.tar")):
                 return False
 
             data = {
@@ -582,15 +586,15 @@ class Addon(object):
 
             # check version / restore image
             version = data[ATTR_VERSION]
-            if version != self.addon_docker.version:
+            if version != self.docker.version:
                 image_file = Path(temp, "image.tar")
                 if image_file.is_file():
-                    await self.addon_docker.import_image(image_file, version)
+                    await self.docker.import_image(image_file, version)
                 else:
-                    if await self.addon_docker.install(version):
-                        await self.addon_docker.cleanup()
+                    if await self.docker.install(version):
+                        await self.docker.cleanup()
             else:
-                await self.addon_docker.stop()
+                await self.docker.stop()
 
             # restore data
             def _restore_data():
