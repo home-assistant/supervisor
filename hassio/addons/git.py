@@ -48,7 +48,8 @@ class GitRepo(object):
             try:
                 _LOGGER.info("Clone addon %s repository", self.url)
                 self.repo = await self.loop.run_in_executor(
-                    None, git.Repo.clone_from, self.url, str(self.path))
+                    None, git.Repo.clone_from, self.url, str(self.path),
+                    recursive=True)
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
