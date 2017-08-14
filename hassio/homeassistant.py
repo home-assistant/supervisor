@@ -121,7 +121,10 @@ class HomeAssistant(JsonConfig):
             _LOGGER.warning("Version %s is already installed", version)
             return False
 
-        return await self.docker.update(version)
+        try:
+            return await self.docker.update(version)
+        finally:
+            await self.docker.run()
 
     def run(self):
         """Run HomeAssistant docker.
