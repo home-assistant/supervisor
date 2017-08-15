@@ -183,6 +183,6 @@ class HomeAssistant(JsonConfig):
         log = log.decode()
         valid = True
 
-        if RE_CONFIG_CHECK.match(log):
+        if RE_CONFIG_CHECK.search(log):
             valid = False
         return (valid, log)
