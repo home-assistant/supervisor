@@ -1,8 +1,10 @@
 """HassIO docker utilitys."""
+import logging
 import re
 
 from ..const import ARCH_AARCH64, ARCH_ARMHF, ARCH_I386, ARCH_AMD64
 
+_LOGGER = logging.getLogger(__name__)
 
 HASSIO_BASE_IMAGE = {
     ARCH_ARMHF: "homeassistant/armhf-base:latest",
@@ -51,5 +53,7 @@ def docker_process(method):
                 "Can't excute %s while a task is in progress", method.__name__)
             return False
 
-        async with self._lock:
+        async with api._lock:
             return await method(api, *args, **kwargs)
+
+    return wrap_api
