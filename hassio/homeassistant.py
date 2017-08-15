@@ -175,12 +175,15 @@ class HomeAssistant(JsonConfig):
             "python3 -m homeassistant -c /config --script check_config"
         )
 
+        _LOGGER.info("Check config return %s", log.decode())
+
         # if not valid
         if not log:
             return (False, "")
 
         # parse output
         log = convert_to_ascii(log)
+        _LOGGER.info("Check config return %s", log)
         if RE_CONFIG_CHECK.search(log):
             return (False, log)
 
