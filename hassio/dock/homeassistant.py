@@ -1,4 +1,5 @@
 """Init file for HassIO docker object."""
+from contextlib import suppress
 import logging
 
 import docker
@@ -84,11 +85,10 @@ class DockerHomeAssistant(DockerBase):
         """
         _LOGGER.info("Run command '%s' on %s", command, self.image)
         try:
-            output = self.dock.containers.run(
+            container = self.dock.containers.run(
                 self.image,
                 command=command,
-                remove=True,
-                detach=False,
+                detach=True,
                 stdout=True,
                 stderr=True,
                 environment={
@@ -102,11 +102,16 @@ class DockerHomeAssistant(DockerBase):
                 }
             )
 
-        except docker.errors.ContainerError as err:
-            return str(err).encode()
+            # wait until command is done
+            container.wait()
+            output = container.logs()
 
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't execute command -> %s", err)
             return b""
+
+        # cleanup container
+        with suppress(docker.errors.DockerException):
+            container.remove(force=True)
 
         return output
