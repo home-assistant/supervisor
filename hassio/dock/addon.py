@@ -220,10 +220,7 @@ class DockerAddon(DockerBase):
 
     @docker_process
     def export_image(self, path):
-        """Export current images into a tar file.
-
-        Return a Future.
-        """
+        """Export current images into a tar file."""
         return self.loop.run_in_executor(None, self._export_image, path)
 
     def _export_image(self, tar_file):
@@ -250,10 +247,7 @@ class DockerAddon(DockerBase):
 
     @docker_process
     def import_image(self, path, tag):
-        """Import a tar file as image.
-
-        Return a Future.
-        """
+        """Import a tar file as image."""
         return self.loop.run_in_executor(None, self._import_image, path, tag)
 
     def _import_image(self, tar_file, tag):
