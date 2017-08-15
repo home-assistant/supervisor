@@ -325,7 +325,7 @@ class DockerBase(object):
             output = self.dock.containers.run(
                 self.image,
                 command=command,
-                auto_remove=True,
+                remove=True,
                 detach=False,
                 stdout=True,
                 stderr=True
