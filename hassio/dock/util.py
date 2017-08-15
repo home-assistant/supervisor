@@ -44,6 +44,7 @@ def create_metadata(version, arch, meta_type):
             'io.hass.type="{}"').format(version, arch, meta_type)
 
 
+# pylint: disable=protected-access
 def docker_process(method):
     """Wrap function with only run once."""
     async def wrap_api(api, *args, **kwargs):
