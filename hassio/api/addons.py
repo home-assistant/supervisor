@@ -170,19 +170,13 @@ class APIAddons(object):
 
     @api_process
     def uninstall(self, request):
-        """Uninstall addon.
-
-        Return a coroutine.
-        """
+        """Uninstall addon."""
         addon = self._extract_addon(request)
         return asyncio.shield(addon.uninstall(), loop=self.loop)
 
     @api_process
     def start(self, request):
-        """Start addon.
-
-        Return a coroutine.
-        """
+        """Start addon."""
         addon = self._extract_addon(request)
 
         # check options
@@ -196,10 +190,7 @@ class APIAddons(object):
 
     @api_process
     def stop(self, request):
-        """Stop addon.
-
-        Return a coroutine.
-        """
+        """Stop addon."""
         addon = self._extract_addon(request)
         return asyncio.shield(addon.stop(), loop=self.loop)
 
@@ -218,19 +209,13 @@ class APIAddons(object):
 
     @api_process
     def restart(self, request):
-        """Restart addon.
-
-        Return a coroutine.
-        """
+        """Restart addon."""
         addon = self._extract_addon(request)
         return asyncio.shield(addon.restart(), loop=self.loop)
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
-        """Return logs from addon.
-
-        Return a coroutine.
-        """
+        """Return logs from addon."""
         addon = self._extract_addon(request)
         return addon.logs()
 

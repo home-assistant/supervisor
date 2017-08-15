@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import re
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
@@ -11,6 +12,8 @@ from .tools import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
+
+RE_CONFIG_CHECK = re.compile(r"error", re.IGNORECASE)
 
 
 class HomeAssistant(JsonConfig):
@@ -165,3 +168,21 @@ class HomeAssistant(JsonConfig):
     def in_progress(self):
         """Return True if a task is in progress."""
         return self.docker.in_progress
+
+    async def check_config(self):
+        """Run homeassistant config check."""
+        log = self.docker.execute_command(
+            "python3 -m homeassistant -c /config --script check_config"
+        )
+
+        # if not valid
+        if not log:
+            return (False, "")
+
+        # parse output
+        log = log.decode()
+        valid = True
+
+        if RE_CONFIG_CHECK.match(log):
+            valid = False
+        return (valid, log)

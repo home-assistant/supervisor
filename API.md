@@ -304,6 +304,13 @@ Output is the raw Docker log.
 - POST `/homeassistant/restart`
 - POST `/homeassistant/options`
 
+- POST `/homeassistant/check`
+```json
+{
+    "output": "logoutput"
+}
+```
+
 ```json
 {
     "devices": [],

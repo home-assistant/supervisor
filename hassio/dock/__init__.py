@@ -5,6 +5,7 @@ import logging
 
 import docker
 
+from .util import docker_process
 from ..const import LABEL_VERSION, LABEL_ARCH
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,14 +53,10 @@ class DockerBase(object):
         if need_arch and LABEL_ARCH in metadata['Config']['Labels']:
             self.arch = metadata['Config']['Labels'][LABEL_ARCH]
 
-    async def install(self, tag):
+    @docker_process
+    def install(self, tag):
         """Pull docker image."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute install while a task is in progress")
-            return False
-
-        async with self._lock:
-            return await self.loop.run_in_executor(None, self._install, tag)
+        return self.loop.run_in_executor(None, self._install, tag)
 
     def _install(self, tag):
         """Pull docker image.
@@ -80,10 +77,7 @@ class DockerBase(object):
         return True
 
     def exists(self):
-        """Return True if docker image exists in local repo.
-
-        Return a Future.
-        """
+        """Return True if docker image exists in local repo."""
         return self.loop.run_in_executor(None, self._exists)
 
     def _exists(self):
@@ -126,14 +120,10 @@ class DockerBase(object):
 
         return True
 
-    async def attach(self):
+    @docker_process
+    def attach(self):
         """Attach to running docker container."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute attach while a task is in progress")
-            return False
-
-        async with self._lock:
-            return await self.loop.run_in_executor(None, self._attach)
+        return self.loop.run_in_executor(None, self._attach)
 
     def _attach(self):
         """Attach to running docker container.
@@ -154,14 +144,10 @@ class DockerBase(object):
 
         return True
 
-    async def run(self):
+    @docker_process
+    def run(self):
         """Run docker image."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute run while a task is in progress")
-            return False
-
-        async with self._lock:
-            return await self.loop.run_in_executor(None, self._run)
+        return self.loop.run_in_executor(None, self._run)
 
     def _run(self):
         """Run docker image.
@@ -170,15 +156,10 @@ class DockerBase(object):
         """
         raise NotImplementedError()
 
-    async def stop(self):
+    @docker_process
+    def stop(self):
         """Stop/remove docker container."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute stop while a task is in progress")
-            return False
-
-        async with self._lock:
-            await self.loop.run_in_executor(None, self._stop)
-            return True
+        return self.loop.run_in_executor(None, self._stop)
 
     def _stop(self):
         """Stop/remove and remove docker container.
@@ -188,7 +169,7 @@ class DockerBase(object):
         try:
             container = self.dock.containers.get(self.name)
         except docker.errors.DockerException:
-            return
+            return False
 
         if container.status == 'running':
             _LOGGER.info("Stop %s docker application", self.image)
@@ -199,14 +180,12 @@ class DockerBase(object):
             _LOGGER.info("Clean %s docker application", self.image)
             container.remove(force=True)
 
-    async def remove(self):
-        """Remove docker images."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute remove while a task is in progress")
-            return False
+        return True
 
-        async with self._lock:
-            return await self.loop.run_in_executor(None, self._remove)
+    @docker_process
+    def remove(self):
+        """Remove docker images."""
+        return self.loop.run_in_executor(None, self._remove)
 
     def _remove(self):
         """remove docker images.
@@ -235,16 +214,13 @@ class DockerBase(object):
         # clean metadata
         self.version = None
         self.arch = None
+
         return True
 
-    async def update(self, tag):
+    @docker_process
+    def update(self, tag):
         """Update a docker image."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute update while a task is in progress")
-            return False
-
-        async with self._lock:
-            return await self.loop.run_in_executor(None, self._update, tag)
+        return self.loop.run_in_executor(None, self._update, tag)
 
     def _update(self, tag):
         """Update a docker image.
@@ -258,22 +234,16 @@ class DockerBase(object):
         if not self._install(tag):
             return False
 
-        # container
+        # stop container & cleanup
         self._stop()
-
-        # cleanup images
         self._cleanup()
 
         return True
 
-    async def logs(self):
+    @docker_process
+    def logs(self):
         """Return docker logs of container."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute logs while a task is in progress")
-            return b""
-
-        async with self._lock:
-            return await self.loop.run_in_executor(None, self._logs)
+        return self.loop.run_in_executor(None, self._logs)
 
     def _logs(self):
         """Return docker logs of container.
@@ -290,14 +260,10 @@ class DockerBase(object):
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't grap logs from %s -> %s", self.image, err)
 
-    async def restart(self):
+    @docker_process
+    def restart(self):
         """Restart docker container."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute restart while a task is in progress")
-            return False
-
-        async with self._lock:
-            return await self.loop.run_in_executor(None, self._restart)
+        return self.loop.run_in_executor(None, self._restart)
 
     def _restart(self):
         """Restart docker container.
@@ -319,14 +285,10 @@ class DockerBase(object):
 
         return True
 
-    async def cleanup(self):
+    @docker_process
+    def cleanup(self):
         """Check if old version exists and cleanup."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute cleanup while a task is in progress")
-            return False
-
-        async with self._lock:
-            await self.loop.run_in_executor(None, self._cleanup)
+        return self.loop.run_in_executor(None, self._cleanup)
 
     def _cleanup(self):
         """Check if old version exists and cleanup.
@@ -337,7 +299,7 @@ class DockerBase(object):
             latest = self.dock.images.get(self.image)
         except docker.errors.DockerException:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
-            return
+            return False
 
         for image in self.dock.images.list(name=self.image):
             if latest.id == image.id:
@@ -346,3 +308,31 @@ class DockerBase(object):
             with suppress(docker.errors.DockerException):
                 _LOGGER.info("Cleanup docker images: %s", image.tags)
                 self.dock.images.remove(image.id, force=True)
+
+        return True
+
+    @docker_process
+    def execute_command(self, command):
+        """Create a temporary container and run command."""
+        return self.loop.run_in_executor(None, self._execute_command, command)
+
+    def _execute_command(self, command):
+        """Create a temporary container and run command.
+
+        Need run inside executor.
+        """
+        try:
+            output = self.dock.containers.run(
+                self.image,
+                command=command,
+                auto_remove=True,
+                detach=False,
+                stdout=True,
+                stderr=True
+            )
+
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't execute %s -> %s", command, err)
+            return b""
+
+        return output

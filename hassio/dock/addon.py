@@ -7,7 +7,7 @@ import docker
 import requests
 
 from . import DockerBase
-from .util import dockerfile_template
+from .util import dockerfile_template, docker_process
 from ..const import (
     META_ADDON, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE)
 
@@ -218,15 +218,13 @@ class DockerAddon(DockerBase):
         finally:
             shutil.rmtree(str(build_dir), ignore_errors=True)
 
-    async def export_image(self, path):
-        """Export current images into a tar file."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute export while a task is in progress")
-            return False
+    @docker_process
+    def export_image(self, path):
+        """Export current images into a tar file.
 
-        async with self._lock:
-            return await self.loop.run_in_executor(
-                None, self._export_image, path)
+        Return a Future.
+        """
+        return self.loop.run_in_executor(None, self._export_image, path)
 
     def _export_image(self, tar_file):
         """Export current images into a tar file.
@@ -250,15 +248,13 @@ class DockerAddon(DockerBase):
         _LOGGER.info("Export image %s to %s", self.image, tar_file)
         return True
 
-    async def import_image(self, path, tag):
-        """Import a tar file as image."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute import while a task is in progress")
-            return False
+    @docker_process
+    def import_image(self, path, tag):
+        """Import a tar file as image.
 
-        async with self._lock:
-            return await self.loop.run_in_executor(
-                None, self._import_image, path, tag)
+        Return a Future.
+        """
+        return self.loop.run_in_executor(None, self._import_image, path, tag)
 
     def _import_image(self, tar_file, tag):
         """Import a tar file as image.
