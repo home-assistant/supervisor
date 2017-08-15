@@ -171,7 +171,7 @@ class HomeAssistant(JsonConfig):
 
     async def check_config(self):
         """Run homeassistant config check."""
-        log = self.docker.execute_command(
+        log = await self.docker.execute_command(
             "python3 -m homeassistant -c /config --script check_config"
         )
 
