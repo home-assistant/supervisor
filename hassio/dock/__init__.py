@@ -321,6 +321,7 @@ class DockerBase(object):
 
         Need run inside executor.
         """
+        _LOGGER.info("Run command '%s' on %s", command, self.image)
         try:
             output = self.dock.containers.run(
                 self.image,
