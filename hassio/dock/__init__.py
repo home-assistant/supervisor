@@ -321,19 +321,4 @@ class DockerBase(object):
 
         Need run inside executor.
         """
-        _LOGGER.info("Run command '%s' on %s", command, self.image)
-        try:
-            output = self.dock.containers.run(
-                self.image,
-                command=command,
-                remove=True,
-                detach=False,
-                stdout=True,
-                stderr=True
-            )
-
-        except docker.errors.DockerException as err:
-            _LOGGER.error("Can't execute %s -> %s", command, err)
-            return b""
-
-        return output
+        raise NotImplementedError()

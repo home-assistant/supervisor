@@ -84,6 +84,10 @@ class APIHomeAssistant(object):
     @api_process
     async def check(self, request):
         """Check config of homeassistant."""
+        code, message = await self.homeassistant.check_config()
+        if not code:
+            raise RuntimeError(message)
+
         return {
-            ATTR_OUTPUT: await self.homeassistant.check_config(),
+            ATTR_OUTPUT: message,
         }
