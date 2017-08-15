@@ -90,7 +90,7 @@ class DockerHomeAssistant(DockerBase):
                 remove=True,
                 detach=False,
                 stdout=True,
-                stderr=True
+                stderr=True,
                 environment={
                     'TZ': self.config.timezone,
                 },
