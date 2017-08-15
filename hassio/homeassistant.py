@@ -8,7 +8,7 @@ from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
     ATTR_VERSION)
 from .dock.homeassistant import DockerHomeAssistant
-from .tools import JsonConfig
+from .tools import JsonConfig, convert_to_ascii
 from .validate import SCHEMA_HASS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
@@ -180,9 +180,8 @@ class HomeAssistant(JsonConfig):
             return (False, "")
 
         # parse output
-        log = log.decode()
-        valid = True
-
+        log = convert_to_ascii(log)
         if RE_CONFIG_CHECK.search(log):
-            valid = False
-        return (valid, log)
+            return (False, log)
+
+        return (True, log)

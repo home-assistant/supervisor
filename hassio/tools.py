@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 import logging
 import socket
+import re
 
 import aiohttp
 import async_timeout
@@ -14,6 +15,8 @@ from voluptuous.humanize import humanize_error
 _LOGGER = logging.getLogger(__name__)
 
 FREEGEOIP_URL = "https://freegeoip.io/json/"
+
+RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 
 
 def get_local_ip(loop):
@@ -66,6 +69,11 @@ async def fetch_timezone(websession):
                 data = await request.json()
 
     return data.get('time_zone', 'UTC')
+
+
+def convert_to_ascii(raw):
+    """Convert binary to ascii and remove colors."""
+    return RE_STRING.sub("", raw.decode())
 
 
 class JsonConfig(object):
