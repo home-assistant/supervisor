@@ -106,7 +106,7 @@ class DockerHomeAssistant(DockerBase):
             return str(err).encode()
 
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't execute command -> %s", command, err)
+            _LOGGER.error("Can't execute command -> %s", err)
             return b""
 
         return output
