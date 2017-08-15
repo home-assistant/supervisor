@@ -496,7 +496,7 @@ class Addon(object):
 
         # restore state
         if last_state == STATE_STARTED:
-            return await self.docker.run()
+            await self.docker.run()
         return True
 
     @check_installed
