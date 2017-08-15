@@ -7,7 +7,7 @@ import voluptuous as vol
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM,
-    ATTR_OUTPUT, CONTENT_TYPE_BINARY)
+    CONTENT_TYPE_BINARY)
 from ..validate import HASS_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,6 +88,4 @@ class APIHomeAssistant(object):
         if not code:
             raise RuntimeError(message)
 
-        return {
-            ATTR_OUTPUT: message,
-        }
+        return True
