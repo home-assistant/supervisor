@@ -59,18 +59,12 @@ class APIHost(object):
 
     @api_process_hostcontrol
     def reboot(self, request):
-        """Reboot host.
-
-        Return a coroutine.
-        """
+        """Reboot host."""
         return self.host_control.reboot()
 
     @api_process_hostcontrol
     def shutdown(self, request):
-        """Poweroff host.
-
-        Return a coroutine.
-        """
+        """Poweroff host."""
         return self.host_control.shutdown()
 
     @api_process_hostcontrol
