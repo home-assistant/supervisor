@@ -3,6 +3,7 @@ import logging
 import os
 
 from . import DockerBase
+from .util import docker_process
 from ..const import RESTART_EXIT_CODE
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,20 +22,16 @@ class DockerSupervisor(DockerBase):
         """Return name of docker container."""
         return os.environ['SUPERVISOR_NAME']
 
+    @docker_process
     async def update(self, tag):
         """Update a supervisor docker image."""
-        if self._lock.locked():
-            _LOGGER.error("Can't excute update while a task is in progress")
-            return False
-
         _LOGGER.info("Update supervisor docker to %s:%s", self.image, tag)
 
-        async with self._lock:
-            if await self.loop.run_in_executor(None, self._install, tag):
-                self.loop.create_task(self.stop_callback(RESTART_EXIT_CODE))
-                return True
+        if await self.loop.run_in_executor(None, self._install, tag):
+            self.loop.create_task(self.stop_callback(RESTART_EXIT_CODE))
+            return True
 
-            return False
+        return False
 
     async def run(self):
         """Run docker image."""

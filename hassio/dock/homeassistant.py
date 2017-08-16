@@ -1,4 +1,5 @@
 """Init file for HassIO docker object."""
+from contextlib import suppress
 import logging
 
 import docker
@@ -66,7 +67,8 @@ class DockerHomeAssistant(DockerBase):
                         {'bind': '/ssl', 'mode': 'ro'},
                     str(self.config.path_extern_share):
                         {'bind': '/share', 'mode': 'rw'},
-                })
+                }
+            )
 
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't run %s -> %s", self.image, err)
@@ -75,3 +77,41 @@ class DockerHomeAssistant(DockerBase):
         _LOGGER.info(
             "Start homeassistant %s with version %s", self.image, self.version)
         return True
+
+    def _execute_command(self, command):
+        """Create a temporary container and run command.
+
+        Need run inside executor.
+        """
+        _LOGGER.info("Run command '%s' on %s", command, self.image)
+        try:
+            container = self.dock.containers.run(
+                self.image,
+                command=command,
+                detach=True,
+                stdout=True,
+                stderr=True,
+                environment={
+                    'TZ': self.config.timezone,
+                },
+                volumes={
+                    str(self.config.path_extern_config):
+                        {'bind': '/config', 'mode': 'ro'},
+                    str(self.config.path_extern_ssl):
+                        {'bind': '/ssl', 'mode': 'ro'},
+                }
+            )
+
+            # wait until command is done
+            container.wait()
+            output = container.logs()
+
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't execute command -> %s", err)
+            return b""
+
+        # cleanup container
+        with suppress(docker.errors.DockerException):
+            container.remove(force=True)
+
+        return output

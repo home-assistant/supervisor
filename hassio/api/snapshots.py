@@ -112,10 +112,7 @@ class APISnapshots(object):
 
     @api_process
     def restore_full(self, request):
-        """Full-Restore a snapshot.
-
-        Return a coroutine.
-        """
+        """Full-Restore a snapshot."""
         snapshot = self._extract_snapshot(request)
         return asyncio.shield(
             self.snapshots.do_restore_full(snapshot), loop=self.loop)
