@@ -73,16 +73,19 @@ class APIHomeAssistant(object):
 
     @api_process
     def restart(self, request):
-        """Restart homeassistant.
-
-        Return a coroutine.
-        """
+        """Restart homeassistant."""
         return asyncio.shield(self.homeassistant.restart(), loop=self.loop)
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
-        """Return homeassistant docker logs.
-
-        Return a coroutine.
-        """
+        """Return homeassistant docker logs."""
         return self.homeassistant.logs()
+
+    @api_process
+    async def check(self, request):
+        """Check config of homeassistant."""
+        code, message = await self.homeassistant.check_config()
+        if not code:
+            raise RuntimeError(message)
+
+        return True
