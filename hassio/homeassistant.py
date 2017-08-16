@@ -13,7 +13,7 @@ from .validate import SCHEMA_HASS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
-RE_CONFIG_CHECK = re.compile(r"error", re.IGNORECASE)
+RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
 
 class HomeAssistant(JsonConfig):
@@ -171,17 +171,16 @@ class HomeAssistant(JsonConfig):
 
     async def check_config(self):
         """Run homeassistant config check."""
-        log = await self.docker.execute_command(
+        exit_code, log = await self.docker.execute_command(
             "python3 -m homeassistant -c /config --script check_config"
         )
 
         # if not valid
-        if not log:
+        if exit_code is None:
             return (False, "")
 
         # parse output
         log = convert_to_ascii(log)
-        if RE_CONFIG_CHECK.search(log):
+        if exit_code != 0 or RE_YAML_ERROR.search(log):
             return (False, log)
-
         return (True, log)

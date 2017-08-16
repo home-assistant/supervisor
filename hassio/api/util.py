@@ -87,9 +87,6 @@ def api_process_raw(content):
 
 def api_return_error(message=None):
     """Return a API error message."""
-    if message:
-        _LOGGER.error(message)
-
     return web.json_response({
         JSON_RESULT: RESULT_ERROR,
         JSON_MESSAGE: message,

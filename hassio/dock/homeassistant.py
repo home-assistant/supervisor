@@ -103,15 +103,15 @@ class DockerHomeAssistant(DockerBase):
             )
 
             # wait until command is done
-            container.wait()
+            exit_code = container.wait()
             output = container.logs()
 
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't execute command -> %s", err)
-            return b""
+            return (None, b"")
 
         # cleanup container
         with suppress(docker.errors.DockerException):
             container.remove(force=True)
 
-        return output
+        return (exit_code, output)
