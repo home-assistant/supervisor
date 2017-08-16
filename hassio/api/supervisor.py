@@ -121,8 +121,5 @@ class APISupervisor(object):
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
-        """Return supervisor docker logs.
-
-        Return a coroutine.
-        """
+        """Return supervisor docker logs."""
         return self.supervisor.logs()
