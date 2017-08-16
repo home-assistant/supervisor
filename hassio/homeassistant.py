@@ -2,7 +2,6 @@
 import asyncio
 import logging
 import os
-import re
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
@@ -12,8 +11,6 @@ from .tools import JsonConfig, convert_to_ascii
 from .validate import SCHEMA_HASS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
-
-RE_CONFIG_CHECK = re.compile(r"error", re.IGNORECASE)
 
 
 class HomeAssistant(JsonConfig):
@@ -171,17 +168,16 @@ class HomeAssistant(JsonConfig):
 
     async def check_config(self):
         """Run homeassistant config check."""
-        log = await self.docker.execute_command(
+        exit_code, log = await self.docker.execute_command(
             "python3 -m homeassistant -c /config --script check_config"
         )
 
         # if not valid
-        if not log:
+        if exit_code is None:
             return (False, "")
 
         # parse output
         log = convert_to_ascii(log)
-        if RE_CONFIG_CHECK.search(log):
+        if exit_code != 0:
             return (False, log)
-
         return (True, log)
