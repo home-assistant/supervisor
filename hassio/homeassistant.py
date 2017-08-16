@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import re
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
@@ -11,6 +12,8 @@ from .tools import JsonConfig, convert_to_ascii
 from .validate import SCHEMA_HASS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
+
+RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
 
 class HomeAssistant(JsonConfig):
@@ -178,6 +181,6 @@ class HomeAssistant(JsonConfig):
 
         # parse output
         log = convert_to_ascii(log)
-        if exit_code != 0:
+        if exit_code != 0 or RE_YAML_ERROR.search(log):
             return (False, log)
         return (True, log)
