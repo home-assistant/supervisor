@@ -47,6 +47,7 @@ setup(
         'pyotp',
         'pyqrcode',
         'pytz',
-        'pyudev'
+        'pyudev',
+        'deepmerge'
     ]
 )
