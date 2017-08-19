@@ -519,6 +519,27 @@ class Addon(object):
         return self.docker.logs()
 
     @check_installed
+    async def rebuild(self):
+        """Performe a rebuild of local build addon."""
+        last_state = await self.state()
+
+        if not self.need_build:
+            _LOGGER.error("Can't rebuild a none local build addon!")
+            return False
+
+        # remove docker container but not addon config
+        if not await self.docker.remove():
+            return False
+
+        if not await self.docker.install(self.version_installed):
+            return False
+
+        # restore state
+        if last_state == STATE_STARTED:
+            await self.docker.run()
+        return True
+
+    @check_installed
     async def snapshot(self, tar_file):
         """Snapshot a state of a addon."""
         with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
