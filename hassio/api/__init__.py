@@ -94,6 +94,8 @@ class RestAPI(object):
             '/addons/{addon}/update', api_addons.update)
         self.webapp.router.add_post(
             '/addons/{addon}/options', api_addons.options)
+        self.webapp.router.add_post(
+            '/addons/{addon}/rebuild', api_addons.rebuild)
         self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
         self.webapp.router.add_get('/addons/{addon}/logo', api_addons.logo)
 
