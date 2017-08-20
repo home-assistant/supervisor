@@ -37,14 +37,14 @@ MERGE_OPT = Merger([(dict, ['merge'])], ['override'], ['override'])
 class Addon(object):
     """Hold data for addon inside HassIO."""
 
-    def __init__(self, config, loop, dock, data, slug):
+    def __init__(self, config, loop, docker, data, slug):
         """Initialize data holder."""
         self.loop = loop
         self.config = config
         self.data = data
         self._id = slug
 
-        self.docker = DockerAddon(config, loop, dock, self)
+        self.docker = DockerAddon(config, loop, docker, self)
 
     async def load(self):
         """Async initialize of object."""

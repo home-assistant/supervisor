@@ -14,9 +14,9 @@ HASS_DOCKER_NAME = 'homeassistant'
 class DockerHomeAssistant(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, dock, data):
+    def __init__(self, config, loop, docker, data):
         """Initialize docker homeassistant wrapper."""
-        super().__init__(config, loop, dock, image=data.image)
+        super().__init__(config, loop, docker, image=data.image)
         self.data = data
 
     @property
@@ -48,7 +48,7 @@ class DockerHomeAssistant(DockerInterface):
         self._stop()
 
         try:
-            self.dock.containers.run(
+            self.docker.containers.run(
                 self.image,
                 name=self.name,
                 hostname=self.name,
@@ -85,7 +85,7 @@ class DockerHomeAssistant(DockerInterface):
         """
         _LOGGER.info("Run command '%s' on %s", command, self.image)
         try:
-            container = self.dock.containers.run(
+            container = self.docker.containers.run(
                 self.image,
                 command=command,
                 detach=True,

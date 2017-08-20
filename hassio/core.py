@@ -40,20 +40,20 @@ class HassIO(object):
         self.scheduler = Scheduler(loop)
         self.api = RestAPI(config, loop)
         self.hardware = Hardware()
-        self.dock = DockerBase(config loop)
+        self.docker = DockerBase(config loop)
 
         # init basic docker container
-        self.supervisor = DockerSupervisor(config, loop, self.dock, self.stop)
+        self.supervisor = DockerSupervisor(config, loop, self.docker, self.stop)
 
         # init homeassistant
         self.homeassistant = HomeAssistant(
-            config, loop, self.dock, self.updater)
+            config, loop, self.docker, self.updater)
 
         # init HostControl
         self.host_control = HostControl(loop)
 
         # init addon system
-        self.addons = AddonManager(config, loop, self.dock)
+        self.addons = AddonManager(config, loop, self.docker)
 
         # init snapshot system
         self.snapshots = SnapshotsManager(

@@ -19,10 +19,10 @@ AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 class DockerAddon(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, dock, addon):
+    def __init__(self, config, loop, docker, addon):
         """Initialize docker homeassistant wrapper."""
         super().__init__(
-            config, loop, dock, image=addon.image, timeout=addon.timeout)
+            config, loop, docker, image=addon.image, timeout=addon.timeout)
         self.addon = addon
 
     @property
@@ -140,7 +140,7 @@ class DockerAddon(DockerInterface):
             return False
 
         try:
-            self.dock.containers.run(
+            self.docker.containers.run(
                 self.image,
                 name=self.name,
                 hostname=self.hostname,
@@ -202,7 +202,7 @@ class DockerAddon(DockerInterface):
                 build_tag = "{}:{}".format(self.image, tag)
 
                 _LOGGER.info("Start build %s on %s", build_tag, build_dir)
-                image = self.dock.images.build(
+                image = self.docker.images.build(
                     path=str(build_dir), tag=build_tag, pull=True,
                     forcerm=True
                 )
@@ -231,7 +231,7 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         try:
-            image = self.dock.api.get_image(self.image)
+            image = self.docker.api.get_image(self.image)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't fetch image %s -> %s", self.image, err)
             return False
@@ -259,9 +259,9 @@ class DockerAddon(DockerInterface):
         """
         try:
             with tar_file.open("rb") as read_tar:
-                self.dock.api.load_image(read_tar)
+                self.docker.api.load_image(read_tar)
 
-            image = self.dock.images.get(self.image)
+            image = self.docker.images.get(self.image)
             image.tag(self.image, tag=tag)
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s -> %s", self.image, err)

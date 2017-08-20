@@ -14,11 +14,12 @@ _LOGGER = logging.getLogger(__name__)
 class DockerInterface(object):
     """Docker hassio interface."""
 
-    def __init__(self, config, loop, dock, image=None, timeout=30):
+    def __init__(self, config, loop, docker, image=None, timeout=30):
         """Initialize docker base wrapper."""
         self.config = config
         self.loop = loop
-        self.dock = dock
+        self.docker = docker
+
         self.image = image
         self.timeout = timeout
         self.version = None
@@ -65,7 +66,7 @@ class DockerInterface(object):
         """
         try:
             _LOGGER.info("Pull image %s tag %s.", self.image, tag)
-            image = self.dock.images.pull("{}:{}".format(self.image, tag))
+            image = self.docker.images.pull("{}:{}".format(self.image, tag))
 
             image.tag(self.image, tag='latest')
             self.process_metadata(image.attrs, force=True)
@@ -86,7 +87,7 @@ class DockerInterface(object):
         Need run inside executor.
         """
         try:
-            self.dock.images.get(self.image)
+            self.docker.images.get(self.image)
         except docker.errors.DockerException:
             return False
 
@@ -105,8 +106,8 @@ class DockerInterface(object):
         Need run inside executor.
         """
         try:
-            container = self.dock.containers.get(self.name)
-            image = self.dock.images.get(self.image)
+            container = self.docker.containers.get(self.name)
+            image = self.docker.images.get(self.image)
         except docker.errors.DockerException:
             return False
 
@@ -132,9 +133,9 @@ class DockerInterface(object):
         """
         try:
             if self.image:
-                obj_data = self.dock.images.get(self.image).attrs
+                obj_data = self.docker.images.get(self.image).attrs
             else:
-                obj_data = self.dock.containers.get(self.name).attrs
+                obj_data = self.docker.containers.get(self.name).attrs
         except docker.errors.DockerException:
             return False
 
@@ -167,7 +168,7 @@ class DockerInterface(object):
         Need run inside executor.
         """
         try:
-            container = self.dock.containers.get(self.name)
+            container = self.docker.containers.get(self.name)
         except docker.errors.DockerException:
             return False
 
@@ -200,11 +201,11 @@ class DockerInterface(object):
 
         try:
             with suppress(docker.errors.ImageNotFound):
-                self.dock.images.remove(
+                self.docker.images.remove(
                     image="{}:latest".format(self.image), force=True)
 
             with suppress(docker.errors.ImageNotFound):
-                self.dock.images.remove(
+                self.docker.images.remove(
                     image="{}:{}".format(self.image, self.version), force=True)
 
         except docker.errors.DockerException as err:
@@ -251,7 +252,7 @@ class DockerInterface(object):
         Need run inside executor.
         """
         try:
-            container = self.dock.containers.get(self.name)
+            container = self.docker.containers.get(self.name)
         except docker.errors.DockerException:
             return b""
 
@@ -271,7 +272,7 @@ class DockerInterface(object):
         Need run inside executor.
         """
         try:
-            container = self.dock.containers.get(self.name)
+            container = self.docker.containers.get(self.name)
         except docker.errors.DockerException:
             return False
 
@@ -296,18 +297,18 @@ class DockerInterface(object):
         Need run inside executor.
         """
         try:
-            latest = self.dock.images.get(self.image)
+            latest = self.docker.images.get(self.image)
         except docker.errors.DockerException:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
             return False
 
-        for image in self.dock.images.list(name=self.image):
+        for image in self.docker.images.list(name=self.image):
             if latest.id == image.id:
                 continue
 
             with suppress(docker.errors.DockerException):
                 _LOGGER.info("Cleanup docker images: %s", image.tags)
-                self.dock.images.remove(image.id, force=True)
+                self.docker.images.remove(image.id, force=True)
 
         return True
 
