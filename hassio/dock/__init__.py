@@ -9,7 +9,7 @@ from ..const import SOCKET_DOCKER
 _LOGGER = logging.getLogger(__name__)
 
 
-class DockerBase(object):
+class DockerAPI(object):
     """Docker hassio wrapper."""
 
     def __init__(self, config, loop):

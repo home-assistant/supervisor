@@ -16,7 +16,7 @@ from .const import (
 from .hardware import Hardware
 from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
-from .dock import DockerBase
+from .dock import DockerAPI
 from .dock.supervisor import DockerSupervisor
 from .snapshots import SnapshotsManager
 from .updater import Updater
@@ -40,10 +40,11 @@ class HassIO(object):
         self.scheduler = Scheduler(loop)
         self.api = RestAPI(config, loop)
         self.hardware = Hardware()
-        self.docker = DockerBase(config loop)
+        self.docker = DockerAPI(config, loop)
 
         # init basic docker container
-        self.supervisor = DockerSupervisor(config, loop, self.docker, self.stop)
+        self.supervisor = DockerSupervisor(
+            config, loop, self.docker, self.stop)
 
         # init homeassistant
         self.homeassistant = HomeAssistant(

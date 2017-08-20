@@ -14,11 +14,11 @@ _LOGGER = logging.getLogger(__name__)
 class DockerInterface(object):
     """Docker hassio interface."""
 
-    def __init__(self, config, loop, docker, image=None, timeout=30):
+    def __init__(self, config, loop, api, image=None, timeout=30):
         """Initialize docker base wrapper."""
         self.config = config
         self.loop = loop
-        self.docker = docker
+        self.docker = api
 
         self.image = image
         self.timeout = timeout

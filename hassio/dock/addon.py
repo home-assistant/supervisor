@@ -19,10 +19,10 @@ AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 class DockerAddon(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, docker, addon):
+    def __init__(self, config, loop, api, addon):
         """Initialize docker homeassistant wrapper."""
         super().__init__(
-            config, loop, docker, image=addon.image, timeout=addon.timeout)
+            config, loop, api, image=addon.image, timeout=addon.timeout)
         self.addon = addon
 
     @property
