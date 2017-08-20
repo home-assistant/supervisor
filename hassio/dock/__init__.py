@@ -1,5 +1,4 @@
 """Init file for HassIO docker object."""
-import asyncio
 import logging
 
 import docker
