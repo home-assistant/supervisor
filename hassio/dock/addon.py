@@ -203,7 +203,9 @@ class DockerAddon(DockerBase):
 
                 _LOGGER.info("Start build %s on %s", build_tag, build_dir)
                 image = self.dock.images.build(
-                    path=str(build_dir), tag=build_tag, pull=True, forcerm=True)
+                    path=str(build_dir), tag=build_tag, pull=True,
+                    forcerm=True
+                )
 
                 image.tag(self.image, tag='latest')
                 self.process_metadata(image.attrs, force=True)
