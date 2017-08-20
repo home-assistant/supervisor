@@ -4,14 +4,14 @@ import logging
 
 import docker
 
-from . import DockerBase
+from .interface import DockerInterface
 
 _LOGGER = logging.getLogger(__name__)
 
 HASS_DOCKER_NAME = 'homeassistant'
 
 
-class DockerHomeAssistant(DockerBase):
+class DockerHomeAssistant(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
     def __init__(self, config, loop, dock, data):

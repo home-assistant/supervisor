@@ -6,7 +6,7 @@ import shutil
 import docker
 import requests
 
-from . import DockerBase
+from .interface import DockerInterface
 from .util import dockerfile_template, docker_process
 from ..const import (
     META_ADDON, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE)
@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 
 
-class DockerAddon(DockerBase):
+class DockerAddon(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
     def __init__(self, config, loop, dock, addon):

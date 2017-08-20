@@ -2,14 +2,14 @@
 import logging
 import os
 
-from . import DockerBase
+from .interface import DockerInterface
 from .util import docker_process
 from ..const import RESTART_EXIT_CODE
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class DockerSupervisor(DockerBase):
+class DockerSupervisor(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
     def __init__(self, config, loop, dock, stop_callback, image=None):

@@ -3,13 +3,12 @@ import asyncio
 import logging
 
 import aiohttp
-import docker
 
 from .addons import AddonManager
 from .api import RestAPI
 from .host_control import HostControl
 from .const import (
-    SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
+    RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
     RUN_CLEANUP_API_SESSIONS, STARTUP_SYSTEM, STARTUP_SERVICES,
     STARTUP_APPLICATION, STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS,
@@ -17,6 +16,7 @@ from .const import (
 from .hardware import Hardware
 from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
+from .dock import DockerBase
 from .dock.supervisor import DockerSupervisor
 from .snapshots import SnapshotsManager
 from .updater import Updater
@@ -40,8 +40,7 @@ class HassIO(object):
         self.scheduler = Scheduler(loop)
         self.api = RestAPI(config, loop)
         self.hardware = Hardware()
-        self.dock = docker.DockerClient(
-            base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
+        self.dock = DockerBase(config loop)
 
         # init basic docker container
         self.supervisor = DockerSupervisor(config, loop, self.dock, self.stop)
