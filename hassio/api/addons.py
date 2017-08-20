@@ -217,6 +217,9 @@ class APIAddons(object):
     def rebuild(self, request):
         """Rebuild local build addon."""
         addon = self._extract_addon(request)
+        if not addon.need_build:
+            raise RuntimeError("Only local build addons are supported")
+
         return asyncio.shield(addon.rebuild(), loop=self.loop)
 
     @api_process_raw(CONTENT_TYPE_BINARY)
