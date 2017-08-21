@@ -3,7 +3,7 @@ import logging
 
 import docker
 
-from ..const import SOCKET_DOCKER
+from ..const import SOCKET_DOCKER, DOCKER_NETWORK
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,3 +32,33 @@ class DockerAPI(object):
     def api(self):
         """Return api containers."""
         return self.docker.api
+
+    def run_command(self, image, command=None, **kwargs):
+        """Create a temporary container and run command.
+
+        Need run inside executor.
+        """
+        stdout = kwargs.get('stdout', True)
+        stderr = kwargs.get('stderr', True)
+
+        _LOGGER.info("Run command '%s' on %s", command, image)
+        try:
+            container = self.docker.containers.run(
+                image,
+                command=command
+                **kwargs
+            )
+
+            # wait until command is done
+            exit_code = container.wait()
+            output = container.logs(stdout=stdout, stderr=stderr)
+
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't execute command -> %s", err)
+            return (None, b"")
+
+        # cleanup container
+        with suppress(docker.errors.DockerException):
+            container.remove(force=True)
+
+        return (exit_code, output)

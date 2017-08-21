@@ -83,35 +83,19 @@ class DockerHomeAssistant(DockerInterface):
 
         Need run inside executor.
         """
-        _LOGGER.info("Run command '%s' on %s", command, self.image)
-        try:
-            container = self.docker.containers.run(
-                self.image,
-                command=command,
-                detach=True,
-                stdout=True,
-                stderr=True,
-                environment={
-                    'TZ': self.config.timezone,
-                },
-                volumes={
-                    str(self.config.path_extern_config):
-                        {'bind': '/config', 'mode': 'ro'},
-                    str(self.config.path_extern_ssl):
-                        {'bind': '/ssl', 'mode': 'ro'},
-                }
-            )
-
-            # wait until command is done
-            exit_code = container.wait()
-            output = container.logs()
-
-        except docker.errors.DockerException as err:
-            _LOGGER.error("Can't execute command -> %s", err)
-            return (None, b"")
-
-        # cleanup container
-        with suppress(docker.errors.DockerException):
-            container.remove(force=True)
-
-        return (exit_code, output)
+        return self.docker.run_command(
+            self.image,
+            command,
+            detach=True,
+            stdout=True,
+            stderr=True,
+            environment={
+                'TZ': self.config.timezone,
+            },
+            volumes={
+                str(self.config.path_extern_config):
+                    {'bind': '/config', 'mode': 'ro'},
+                str(self.config.path_extern_ssl):
+                    {'bind': '/ssl', 'mode': 'ro'},
+            }
+        )
