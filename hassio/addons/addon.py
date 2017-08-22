@@ -8,6 +8,7 @@ import shutil
 import tarfile
 from tempfile import TemporaryDirectory
 
+from deepmerge import Merger
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -29,6 +30,8 @@ _LOGGER = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(MAP_VOLUME)
 RE_WEBUI = re.compile(r"^(.*\[HOST\]:)\[PORT:(\d+)\](.*)$")
+
+MERGE_OPT = Merger([(dict, ['merge'])], ['override'], ['override'])
 
 
 class Addon(object):
@@ -104,10 +107,10 @@ class Addon(object):
     def options(self):
         """Return options with local changes."""
         if self.is_installed:
-            return {
-                **self.data.system[self._id][ATTR_OPTIONS],
-                **self.data.user[self._id][ATTR_OPTIONS],
-            }
+            return MERGE_OPT.merge(
+                self.data.system[self._id][ATTR_OPTIONS],
+                self.data.user[self._id][ATTR_OPTIONS],
+            )
         return self.data.cache[self._id][ATTR_OPTIONS]
 
     @options.setter
@@ -514,6 +517,27 @@ class Addon(object):
         Return a coroutine.
         """
         return self.docker.logs()
+
+    @check_installed
+    async def rebuild(self):
+        """Performe a rebuild of local build addon."""
+        last_state = await self.state()
+
+        if not self.need_build:
+            _LOGGER.error("Can't rebuild a none local build addon!")
+            return False
+
+        # remove docker container but not addon config
+        if not await self.docker.remove():
+            return False
+
+        if not await self.docker.install(self.version_installed):
+            return False
+
+        # restore state
+        if last_state == STATE_STARTED:
+            await self.docker.run()
+        return True
 
     @check_installed
     async def snapshot(self, tar_file):

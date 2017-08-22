@@ -435,6 +435,10 @@ Output is the raw Docker log.
 
 - POST `/addons/{addon}/restart`
 
+- POST `/addons/{addon}/rebuild`
+
+Only supported for local build addons
+
 ## Host Control
 
 Communicate over UNIX socket with a host daemon.
