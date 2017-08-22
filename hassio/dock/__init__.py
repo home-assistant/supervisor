@@ -3,7 +3,8 @@ import logging
 
 import docker
 
-from ..const import SOCKET_DOCKER, DOCKER_NETWORK
+from .network import DockerNetwork
+from ..const import SOCKET_DOCKER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ class DockerAPI(object):
         self.loop = loop
         self.docker = docker.DockerClient(
             base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
+        self.network = DockerNetwork(self.docker)
 
     @property
     def images(self):
@@ -33,6 +35,12 @@ class DockerAPI(object):
         """Return api containers."""
         return self.docker.api
 
+    def run(self):
+        """"Create a docker and run it.
+
+        Need run inside executor.
+        """
+
     def run_command(self, image, command=None, **kwargs):
         """Create a temporary container and run command.
 
@@ -45,7 +53,8 @@ class DockerAPI(object):
         try:
             container = self.docker.containers.run(
                 image,
-                command=command
+                command=command,
+                network=self.network.name,
                 **kwargs
             )
 

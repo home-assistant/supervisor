@@ -1,5 +1,6 @@
 """Const file for HassIO."""
 from pathlib import Path
+from ipaddress import ip_network
 
 HASSIO_VERSION = '0.58'
 
@@ -29,8 +30,8 @@ SOCKET_DOCKER = Path("/var/run/docker.sock")
 SOCKET_HC = Path("/var/run/hassio-hc.sock")
 
 DOCKER_NETWORK = 'hassio'
-DOCKER_NETWORK_MASK = '172.30.32.0/23'
-DOCKER_NETWORK_RANGE = '172.30.33.0/24'
+DOCKER_NETWORK_MASK = ip_network('172.30.32.0/23')
+DOCKER_NETWORK_RANGE = ip_network('172.30.33.0/24')
 
 LABEL_VERSION = 'io.hass.version'
 LABEL_ARCH = 'io.hass.arch'
