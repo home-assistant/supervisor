@@ -46,7 +46,7 @@ class DockerNetwork(object):
 
         ipam_config = docker.types.IPAMConfig(pool_configs=ipam_pool)
 
-        return self.docker.network.create(
+        return self.docker.networks.create(
             DOCKER_NETWORK, driver='bridge', ipam=ipam_config)
 
     def attach_container(self, container, alias=None, ipv4=None):
