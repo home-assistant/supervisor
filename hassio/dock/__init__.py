@@ -9,6 +9,8 @@ from ..const import SOCKET_DOCKER
 
 _LOGGER = logging.getLogger(__name__)
 
+NETWORK_MODE_HOST = 'host'
+
 
 class DockerAPI(object):
     """Docker hassio wrapper.
@@ -45,9 +47,9 @@ class DockerAPI(object):
         name = kwargs.get('name', image)
 
         # setup network
-        if network_mode == 'host':
+        if network_mode == NETWORK_MODE_HOST:
             kwargs['dns'] = [str(self.network.supervisor)]
-            kwargs['network_mode'] = 'host'
+            kwargs['network_mode'] = NETWORK_MODE_HOST
         else:
             kwargs['network'] = self.network.name
 
@@ -63,9 +65,10 @@ class DockerAPI(object):
             return False
 
         # attach network
-        alias = [hostname] if hostname else None
-        if not self.network.attach_container(container, alias=alias):
-            _LOGGER.warning("Can't attach %s to hassio-net!", name)
+        if network_mode != NETWORK_MODE_HOST:
+            alias = [hostname] if hostname else None
+            if not self.network.attach_container(container, alias=alias):
+                _LOGGER.warning("Can't attach %s to hassio-net!", name)
 
         # run container
         try:
