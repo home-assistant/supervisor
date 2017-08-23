@@ -44,7 +44,7 @@ class DockerNetwork(object):
             iprange=str(DOCKER_NETWORK_RANGE)
         )
 
-        ipam_config = docker.types.IPAMConfig(pool_configs=ipam_pool)
+        ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
 
         return self.docker.networks.create(
             DOCKER_NETWORK, driver='bridge', ipam=ipam_config)
