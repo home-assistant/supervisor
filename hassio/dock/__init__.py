@@ -47,6 +47,7 @@ class DockerAPI(object):
         # setup network
         if network_mode == 'host':
             kwargs['dns'] = [str(self.network.supervisor)]
+            kwargs['network_mode'] = 'host'
         else:
             kwargs['network'] = self.network.name
 
