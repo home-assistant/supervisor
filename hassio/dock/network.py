@@ -54,7 +54,7 @@ class DockerNetwork(object):
 
         Need run inside executor.
         """
-        ipv4 = str(ipv4) if ipv4 or None
+        ipv4 = str(ipv4) if ipv4 else None
 
         try:
             self.network.connect(container, aliases=alias, ipv4_address=ipv4)
