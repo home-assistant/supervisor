@@ -2,6 +2,7 @@
 import logging
 import os
 import signal
+import shutil
 from pathlib import Path
 
 from colorlog import ColoredFormatter
@@ -100,6 +101,7 @@ def initialize_logging():
 
 def check_environment():
     """Check if all environment are exists."""
+    # check environment variables
     for key in ('SUPERVISOR_SHARE', 'SUPERVISOR_NAME',
                 'HOMEASSISTANT_REPOSITORY'):
         try:
@@ -108,8 +110,14 @@ def check_environment():
             _LOGGER.fatal("Can't find %s in env!", key)
             return False
 
+    # check docker socket
     if not SOCKET_DOCKER.is_socket():
         _LOGGER.fatal("Can't find docker socket!")
+        return False
+
+    # check socat exec
+    if not shutil.which('socat'):
+        _LOGGER.fatal("Can0t find socat program!")
         return False
 
     return True

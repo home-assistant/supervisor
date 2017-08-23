@@ -18,6 +18,7 @@ from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
 from .dock import DockerAPI
 from .dock.supervisor import DockerSupervisor
+from .dns import DNSForward
 from .snapshots import SnapshotsManager
 from .updater import Updater
 from .tasks import (
@@ -41,6 +42,7 @@ class HassIO(object):
         self.api = RestAPI(config, loop)
         self.hardware = Hardware()
         self.docker = DockerAPI()
+        self.dns = DNSForward()
 
         # init basic docker container
         self.supervisor = DockerSupervisor(
@@ -119,6 +121,9 @@ class HassIO(object):
         self.scheduler.register_task(
             self.snapshots.reload, RUN_RELOAD_SNAPSHOTS_TASKS, now=True)
 
+        # start dns forwarding
+        self.loop.create_task(self.dns.start())
+
         # start addon mark as initialize
         await self.addons.auto_boot(STARTUP_INITIALIZE)
 
@@ -170,7 +175,7 @@ class HassIO(object):
 
         # process stop tasks
         self.websession.close()
-        await self.api.stop()
+        await asyncio.wait([self.api.stop(), self.dns.stop()], loop=self.loop)
 
         self.exit_code = exit_code
         self.loop.stop()
