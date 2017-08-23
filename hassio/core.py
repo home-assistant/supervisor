@@ -64,7 +64,7 @@ class HassIO(object):
         """Setup HassIO orchestration."""
         # supervisor
         if not await self.supervisor.attach():
-            _LOGGER.fatal("Can't attach to supervisor docker container!")
+            _LOGGER.fatal("Can't setup supervisor docker container!")
         await self.supervisor.cleanup()
 
         # set running arch

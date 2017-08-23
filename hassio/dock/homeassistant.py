@@ -2,8 +2,6 @@
 from contextlib import suppress
 import logging
 
-import docker
-
 from .interface import DockerInterface
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,7 +46,7 @@ class DockerHomeAssistant(DockerInterface):
         self._stop()
 
         try:
-            self.docker.containers.run(
+            return self.docker.run(
                 self.image,
                 name=self.name,
                 hostname=self.name,
@@ -69,14 +67,10 @@ class DockerHomeAssistant(DockerInterface):
                         {'bind': '/share', 'mode': 'rw'},
                 }
             )
-
-        except docker.errors.DockerException as err:
-            _LOGGER.error("Can't run %s -> %s", self.image, err)
-            return False
-
-        _LOGGER.info(
-            "Start homeassistant %s with version %s", self.image, self.version)
-        return True
+        else:
+            _LOGGER.info(
+                "Start homeassistant %s with version %s",
+                self.image, self.version)
 
     def _execute_command(self, command):
         """Create a temporary container and run command.

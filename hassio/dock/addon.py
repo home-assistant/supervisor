@@ -140,7 +140,7 @@ class DockerAddon(DockerInterface):
             return False
 
         try:
-            self.docker.containers.run(
+            return self.docker.run(
                 self.image,
                 name=self.name,
                 hostname=self.hostname,
@@ -154,14 +154,10 @@ class DockerAddon(DockerInterface):
                 volumes=self.volumes,
                 tmpfs=self.tmpfs
             )
-
-        except docker.errors.DockerException as err:
-            _LOGGER.error("Can't run %s -> %s", self.image, err)
-            return False
-
-        _LOGGER.info(
-            "Start docker addon %s with version %s", self.image, self.version)
-        return True
+        else:
+            _LOGGER.info(
+                "Start docker addon %s with version %s",
+                 self.image, self.version)
 
     def _install(self, tag):
         """Pull docker image or build it.

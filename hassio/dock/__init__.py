@@ -10,12 +10,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DockerAPI(object):
-    """Docker hassio wrapper."""
+    """Docker hassio wrapper.
+
+    This class is not AsyncIO safe!
+    """
 
     def __init__(self, config, loop):
         """Initialize docker base wrapper."""
         self.config = config
-        self.loop = loop
         self.docker = docker.DockerClient(
             base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
         self.network = DockerNetwork(self.docker)
@@ -35,11 +37,42 @@ class DockerAPI(object):
         """Return api containers."""
         return self.docker.api
 
-    def run(self):
+    def run(self, image, network_mode=None, hostname=None, **kwargs):
         """"Create a docker and run it.
 
         Need run inside executor.
         """
+        name = kwargs.get('name', image)
+
+        # setup network
+        if network_mode == 'host':
+            kwargs['dns'] = [str(self.network.supervisor)]
+        else:
+            kwargs['network'] = self.network.name
+
+        # create container
+        try:
+            container = self.docker.containers.create(
+                image,
+                hostname=hostname,
+                **kwargs
+            )
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't create container from %s -> %s", name, err)
+            return False
+
+        # attach network
+        alias = [hostname] if hostname else None
+        if not self.network.attach_container(container, alias=alias):
+            _LOGGER.warning("Can't attach %s to hassio-net!", name)
+
+        try:
+            container.start()
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't start %s -> %s", name, err)
+            return False
+
+        return True
 
     def run_command(self, image, command=None, **kwargs):
         """Create a temporary container and run command.

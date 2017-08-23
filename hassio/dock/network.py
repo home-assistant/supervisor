@@ -49,3 +49,16 @@ class DockerNetwork(object):
 
         return docker.networks.create(
             DOCKER_NETWORK, driver='bridge', ipam=ipam_config)
+
+    def attach_container(self, container, alias=None, ipv4=None):
+        """Attach container to hassio network.
+
+        Need run inside executor.
+        """
+        try:
+            self.network.connect(container, aliases=alias, ipv4_address=ipv4)
+        except docker.errors.APIError as err:
+            _LOGGER.error("Can't link container to hassio-net -> %s", err)
+            return False
+
+        return True

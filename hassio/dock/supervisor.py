@@ -22,6 +22,25 @@ class DockerSupervisor(DockerInterface):
         """Return name of docker container."""
         return os.environ['SUPERVISOR_NAME']
 
+    def _attach(self):
+        """Attach to running docker container.
+
+        Need run inside executor.
+        """
+        try:
+            container = self.docker.containers.get(self.name).attrs
+        except docker.errors.DockerException:
+            return False
+        else:
+            self.process_metadata(container)
+
+        _LOGGER.info("Attach to supervisor %s with version %s",
+                     self.image, self.version)
+
+        # attach to network
+        return self.docker.network.attach_container(
+            container, alias=['hassio'], ipv4=self.docker.network.supervisor)
+
     @docker_process
     async def update(self, tag):
         """Update a supervisor docker image."""
