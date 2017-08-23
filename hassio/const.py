@@ -31,7 +31,7 @@ SOCKET_HC = Path("/var/run/hassio-hc.sock")
 
 DOCKER_NETWORK = 'hassio'
 DOCKER_NETWORK_MASK = ip_network('172.30.32.0/23')
-DOCKER_NETWORK_RANGE = ip_network('172.30.33.1/24')
+DOCKER_NETWORK_RANGE = ip_network('172.30.33.0/24')
 
 LABEL_VERSION = 'io.hass.version'
 LABEL_ARCH = 'io.hass.arch'
