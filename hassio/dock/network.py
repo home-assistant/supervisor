@@ -47,7 +47,9 @@ class DockerNetwork(object):
         ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
 
         return self.docker.networks.create(
-            DOCKER_NETWORK, driver='bridge', ipam=ipam_config)
+            DOCKER_NETWORK, driver='bridge', ipam=ipam_config, options={
+                "com.docker.network.bridge.name": DOCKER_NETWORK,
+            })
 
     def attach_container(self, container, alias=None, ipv4=None):
         """Attach container to hassio network.
