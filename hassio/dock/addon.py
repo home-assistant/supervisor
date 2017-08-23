@@ -73,13 +73,10 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def mapping(self):
+    def network_mapping(self):
         """Return hosts mapping."""
-        if not self.addon.use_hassio_api:
-            return None
-
         return {
-            'hassio': self.config.api_endpoint,
+            'homeassistant': self.docker.network.gateway,
         }
 
     @property
@@ -147,7 +144,7 @@ class DockerAddon(DockerInterface):
                 detach=True,
                 network_mode=self.addon.network_mode,
                 ports=self.addon.ports,
-                extra_hosts=self.mapping,
+                extra_hosts=self.network_mapping,
                 devices=self.devices,
                 cap_add=self.addon.privileged,
                 environment=self.environment,

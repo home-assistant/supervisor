@@ -116,7 +116,6 @@ ATTR_OUTPUT = 'output'
 ATTR_DISK = 'disk'
 ATTR_SERIAL = 'serial'
 ATTR_SECURITY = 'security'
-ATTR_API_ENDPOINT = 'api_endpoint'
 ATTR_ADDONS_CUSTOM_LIST = 'addons_custom_list'
 
 STARTUP_INITIALIZE = 'initialize'

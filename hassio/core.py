@@ -22,7 +22,7 @@ from .snapshots import SnapshotsManager
 from .updater import Updater
 from .tasks import (
     hassio_update, homeassistant_watchdog, api_sessions_cleanup, addons_update)
-from .tools import get_local_ip, fetch_timezone
+from .tools import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class HassIO(object):
         self.scheduler = Scheduler(loop)
         self.api = RestAPI(config, loop)
         self.hardware = Hardware()
-        self.docker = DockerAPI(config, loop)
+        self.docker = DockerAPI()
 
         # init basic docker container
         self.supervisor = DockerSupervisor(
@@ -69,9 +69,6 @@ class HassIO(object):
 
         # set running arch
         self.config.arch = self.supervisor.arch
-
-        # set api endpoint
-        self.config.api_endpoint = await get_local_ip(self.loop)
 
         # update timezone
         if self.config.timezone == 'UTC':
@@ -136,7 +133,7 @@ class HassIO(object):
 
         # start api
         await self.api.start()
-        _LOGGER.info("Start hassio api on %s", self.config.api_endpoint)
+        _LOGGER.info("Start hassio api on %s", self.docker.network.supervisor)
 
         try:
             # HomeAssistant is already running / supervisor have only reboot

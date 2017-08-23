@@ -55,7 +55,7 @@ class DockerHomeAssistant(DockerInterface):
                 devices=self.devices,
                 network_mode='host',
                 environment={
-                    'HASSIO': self.config.api_endpoint,
+                    'HASSIO': self.docker.network.supervisor,
                     'TZ': self.config.timezone,
                 },
                 volumes={
