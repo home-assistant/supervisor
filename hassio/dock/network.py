@@ -55,7 +55,8 @@ class DockerNetwork(object):
         Need run inside executor.
         """
         try:
-            self.network.connect(container, aliases=alias, ipv4_address=ipv4)
+            self.network.connect(
+                container, aliases=alias, ipv4_address=str(ipv4))
         except docker.errors.APIError as err:
             _LOGGER.error("Can't link container to hassio-net -> %s", err)
             return False
