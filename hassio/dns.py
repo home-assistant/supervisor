@@ -1,6 +1,6 @@
 """Setup the internal DNS service for host applications."""
 import asyncio
-import logger
+import logging
 import shlex
 
 _LOGGER = logging.getLogger(__name__)

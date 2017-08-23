@@ -37,7 +37,6 @@ class DockerNetwork(object):
             return self.docker.networks.get(DOCKER_NETWORK)
         except docker.errors.NotFound:
             _LOGGER.info("Can't find HassIO network, create new network")
-            pass
 
         ipam_pool = docker.types.IPAMPool(
             subnet=str(DOCKER_NETWORK_MASK),
@@ -47,7 +46,7 @@ class DockerNetwork(object):
 
         ipam_config = docker.types.IPAMConfig(pool_configs=ipam_pool)
 
-        return docker.networks.create(
+        return self.docker.network.create(
             DOCKER_NETWORK, driver='bridge', ipam=ipam_config)
 
     def attach_container(self, container, alias=None, ipv4=None):

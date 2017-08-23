@@ -4,7 +4,6 @@ from contextlib import suppress
 from datetime import datetime
 import json
 import logging
-import socket
 import re
 
 import aiohttp
