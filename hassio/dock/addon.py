@@ -136,25 +136,26 @@ class DockerAddon(DockerInterface):
         if not self.addon.write_options():
             return False
 
-        try:
-            return self.docker.run(
-                self.image,
-                name=self.name,
-                hostname=self.hostname,
-                detach=True,
-                network_mode=self.addon.network_mode,
-                ports=self.addon.ports,
-                extra_hosts=self.network_mapping,
-                devices=self.devices,
-                cap_add=self.addon.privileged,
-                environment=self.environment,
-                volumes=self.volumes,
-                tmpfs=self.tmpfs
-            )
-        else:
-            _LOGGER.info(
-                "Start docker addon %s with version %s",
-                 self.image, self.version)
+        ret = self.docker.run(
+            self.image,
+            name=self.name,
+            hostname=self.hostname,
+            detach=True,
+            network_mode=self.addon.network_mode,
+            ports=self.addon.ports,
+            extra_hosts=self.network_mapping,
+            devices=self.devices,
+            cap_add=self.addon.privileged,
+            environment=self.environment,
+            volumes=self.volumes,
+            tmpfs=self.tmpfs
+        )
+
+        if ret:
+            _LOGGER.info("Start docker addon %s with version %s",
+                         self.image, self.version)
+
+        return ret
 
     def _install(self, tag):
         """Pull docker image or build it.

@@ -45,32 +45,33 @@ class DockerHomeAssistant(DockerInterface):
         # cleanup
         self._stop()
 
-        try:
-            return self.docker.run(
-                self.image,
-                name=self.name,
-                hostname=self.name,
-                detach=True,
-                privileged=True,
-                devices=self.devices,
-                network_mode='host',
-                environment={
-                    'HASSIO': self.docker.network.supervisor,
-                    'TZ': self.config.timezone,
-                },
-                volumes={
-                    str(self.config.path_extern_config):
-                        {'bind': '/config', 'mode': 'rw'},
-                    str(self.config.path_extern_ssl):
-                        {'bind': '/ssl', 'mode': 'ro'},
-                    str(self.config.path_extern_share):
-                        {'bind': '/share', 'mode': 'rw'},
-                }
-            )
-        else:
-            _LOGGER.info(
-                "Start homeassistant %s with version %s",
-                self.image, self.version)
+        ret =  self.docker.run(
+            self.image,
+            name=self.name,
+            hostname=self.name,
+            detach=True,
+            privileged=True,
+            devices=self.devices,
+            network_mode='host',
+            environment={
+                'HASSIO': self.docker.network.supervisor,
+                'TZ': self.config.timezone,
+            },
+            volumes={
+                str(self.config.path_extern_config):
+                    {'bind': '/config', 'mode': 'rw'},
+                str(self.config.path_extern_ssl):
+                    {'bind': '/ssl', 'mode': 'ro'},
+                str(self.config.path_extern_share):
+                    {'bind': '/share', 'mode': 'rw'},
+            }
+        )
+
+        if ret:
+            _LOGGER.info("Start homeassistant %s with version %s",
+                         self.image, self.version)
+
+        return ret
 
     def _execute_command(self, command):
         """Create a temporary container and run command.

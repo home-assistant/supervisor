@@ -66,6 +66,7 @@ class DockerAPI(object):
         if not self.network.attach_container(container, alias=alias):
             _LOGGER.warning("Can't attach %s to hassio-net!", name)
 
+        # run container
         try:
             container.start()
         except docker.errors.DockerException as err:
