@@ -1,7 +1,7 @@
 """Setup the internal DNS service for host applications."""
 import asyncio
 import logger
-import shutil
+import shlex
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class DNSForward(object):
         """Start DNS forwarding."""
         try:
             self.proc = await asyncio.create_subprocess_exec(
-                *COMMAND,
+                *shlex.split(COMMAND),
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
