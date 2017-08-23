@@ -61,7 +61,7 @@ class DockerAPI(object):
 
         # attach network
         if not network_mode:
-            alias = ["test"] if hostname else None
+            alias = [hostname] if hostname else None
             if not self.network.attach_container(container, alias=alias):
                 _LOGGER.warning("Can't attach %s to hassio-net!", name)
 

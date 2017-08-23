@@ -39,6 +39,10 @@ class DockerSupervisor(DockerInterface):
         _LOGGER.info("Attach to supervisor %s with version %s",
                      self.image, self.version)
 
+        # if already attach
+        if container in self.docker.network.containers:
+            return True
+
         # attach to network
         return self.docker.network.attach_container(
             container, alias=['hassio'], ipv4=self.docker.network.supervisor)
