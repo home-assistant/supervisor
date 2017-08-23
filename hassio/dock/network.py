@@ -62,4 +62,5 @@ class DockerNetwork(object):
             _LOGGER.error("Can't link container to hassio-net -> %s", err)
             return False
 
+        self.network.reload()
         return True
