@@ -179,8 +179,8 @@ class Addon(object):
     @property
     def ports(self):
         """Return ports of addon."""
-        if self.network_mode != 'bridge' or ATTR_PORTS not in self._mesh:
-            return
+        if self.network_mode or ATTR_PORTS not in self._mesh:
+            return None
 
         if not self.is_installed or \
                 ATTR_NETWORK not in self.data.user[self._id]:
@@ -206,7 +206,7 @@ class Addon(object):
     def webui(self):
         """Return URL to webui or None."""
         if ATTR_WEBUI not in self._mesh:
-            return
+            return None
 
         webui = self._mesh[ATTR_WEBUI]
         dock_port = RE_WEBUI.sub(r"\2", webui)
@@ -226,7 +226,7 @@ class Addon(object):
         """Return network mode of addon."""
         if self._mesh[ATTR_HOST_NETWORK]:
             return 'host'
-        return 'bridge'
+        return None
 
     @property
     def devices(self):
@@ -262,7 +262,7 @@ class Addon(object):
     def audio_output(self):
         """Return ALSA config for output or None."""
         if not self.with_audio:
-            return
+            return None
 
         setting = self.config.audio_output
         if self.is_installed and ATTR_AUDIO_OUTPUT in self.data.user[self._id]:

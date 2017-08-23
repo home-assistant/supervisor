@@ -9,8 +9,6 @@ from ..const import SOCKET_DOCKER
 
 _LOGGER = logging.getLogger(__name__)
 
-NETWORK_MODE_HOST = 'host'
-
 
 class DockerAPI(object):
     """Docker hassio wrapper.
@@ -39,33 +37,30 @@ class DockerAPI(object):
         """Return api containers."""
         return self.docker.api
 
-    def run(self, image, network_mode=None, hostname=None, **kwargs):
+    def run(self, image, **kwargs):
         """"Create a docker and run it.
 
         Need run inside executor.
         """
         name = kwargs.get('name', image)
+        network_mode = kwargs.get('network_mode')
+        hostname = kwargs.get('hostname')
 
         # setup network
-        if network_mode == NETWORK_MODE_HOST:
+        if network_mode:
             kwargs['dns'] = [str(self.network.supervisor)]
-            kwargs['network_mode'] = NETWORK_MODE_HOST
         else:
             kwargs['network'] = self.network.name
 
         # create container
         try:
-            container = self.docker.containers.create(
-                image,
-                hostname=hostname,
-                **kwargs
-            )
+            container = self.docker.containers.create(image, **kwargs)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't create container from %s -> %s", name, err)
             return False
 
         # attach network
-        if network_mode != NETWORK_MODE_HOST:
+        if not network_mode:
             alias = [hostname] if hostname else None
             if not self.network.attach_container(container, alias=alias):
                 _LOGGER.warning("Can't attach %s to hassio-net!", name)
