@@ -1,5 +1,4 @@
 """Init file for HassIO docker object."""
-from contextlib import suppress
 import logging
 
 from .interface import DockerInterface
