@@ -45,7 +45,7 @@ class DockerHomeAssistant(DockerInterface):
         # cleanup
         self._stop()
 
-        ret =  self.docker.run(
+        ret = self.docker.run(
             self.image,
             name=self.name,
             hostname=self.name,

@@ -14,9 +14,9 @@ _LOGGER = logging.getLogger(__name__)
 class DockerSupervisor(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, docker, stop_callback, image=None):
+    def __init__(self, config, loop, api, stop_callback, image=None):
         """Initialize docker base wrapper."""
-        super().__init__(config, loop, docker, image=image)
+        super().__init__(config, loop, api, image=image)
         self.stop_callback = stop_callback
 
     @property
