@@ -21,6 +21,10 @@ class DockerNetwork(object):
         """Return name of network."""
         return DOCKER_NETWORK
 
+    def containers(self):
+        """Return of connected containers from network."""
+        return self.network.containers
+
     @property
     def gateway(self):
         """Return gateway of the network."""
@@ -66,8 +70,3 @@ class DockerNetwork(object):
 
         self.network.reload()
         return True
-
-    def container_mapped(self, container):
-        """Return True if a container is already mapped to network."""
-        container_list = set(i_cont.id for i_cont in self.network.containers)
-        return container.id in container_list

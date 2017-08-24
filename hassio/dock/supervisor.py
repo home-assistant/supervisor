@@ -30,17 +30,16 @@ class DockerSupervisor(DockerInterface):
         Need run inside executor.
         """
         try:
-            container = self.docker.containers.get(self.name).attrs
+            container = self.docker.containers.get(self.name)
         except docker.errors.DockerException:
             return False
-        else:
-            self.process_metadata(container)
 
+        self.process_metadata(container.attrs)
         _LOGGER.info("Attach to supervisor %s with version %s",
                      self.image, self.version)
 
         # if already attach
-        if self.docker.network.container_mapped(container):
+        if container in self.docker.network.containers:
             return True
 
         # attach to network
