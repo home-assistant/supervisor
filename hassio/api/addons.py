@@ -121,7 +121,7 @@ class APIAddons(object):
             ATTR_DETACHED: addon.is_detached,
             ATTR_BUILD: addon.need_build,
             ATTR_NETWORK: addon.ports,
-            ATTR_HOST_NETWORK: addon.network_mode == 'host',
+            ATTR_HOST_NETWORK: addon.host_network,
             ATTR_PRIVILEGED: addon.privileged,
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,
