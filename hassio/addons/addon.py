@@ -179,7 +179,7 @@ class Addon(object):
     @property
     def ports(self):
         """Return ports of addon."""
-        if self.network_mode or ATTR_PORTS not in self._mesh:
+        if self.host_network or ATTR_PORTS not in self._mesh:
             return None
 
         if not self.is_installed or \
@@ -222,11 +222,9 @@ class Addon(object):
         return RE_WEBUI.sub(r"\g<1>{}\g<3>".format(real_port), webui)
 
     @property
-    def network_mode(self):
-        """Return network mode of addon."""
-        if self._mesh[ATTR_HOST_NETWORK]:
-            return 'host'
-        return None
+    def host_network(self):
+        """Return True if addon run on host network."""
+        return self._mesh[ATTR_HOST_NETWORK]
 
     @property
     def devices(self):
