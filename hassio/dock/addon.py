@@ -65,6 +65,18 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
+    def ports(self):
+        """Filter None from addon ports."""
+        if not self.addon.ports:
+            return None
+
+        return {
+            container_port: host_port
+            from container_port, host_port in self.addon.ports.items()
+            if host_port
+        }
+
+    @property
     def tmpfs(self):
         """Return tmpfs for docker add-on."""
         options = self.addon.tmpfs
@@ -78,6 +90,13 @@ class DockerAddon(DockerInterface):
         return {
             'homeassistant': self.docker.network.gateway,
         }
+
+    @property
+    def network_mode(self):
+        """Return network mode for addon."""
+        if self.addon.host_network:
+            return 'host'
+        return None
 
     @property
     def volumes(self):
@@ -141,8 +160,8 @@ class DockerAddon(DockerInterface):
             name=self.name,
             hostname=self.hostname,
             detach=True,
-            network_mode=self.addon.network_mode,
-            ports=self.addon.ports,
+            network_mode=self.network_mode,
+            ports=self.ports,
             extra_hosts=self.network_mapping,
             devices=self.devices,
             cap_add=self.addon.privileged,
