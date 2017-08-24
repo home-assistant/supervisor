@@ -40,7 +40,7 @@ class DockerSupervisor(DockerInterface):
                      self.image, self.version)
 
         # if already attach
-        if container in self.docker.network.containers:
+        if self.docker.network.container_mapped(container):
             return True
 
         # attach to network
