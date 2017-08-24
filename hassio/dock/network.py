@@ -22,6 +22,11 @@ class DockerNetwork(object):
         return DOCKER_NETWORK
 
     @property
+    def containers(self):
+        """Return of connected containers from network."""
+        return self.network.containers
+
+    @property
     def gateway(self):
         """Return gateway of the network."""
         return DOCKER_NETWORK_MASK[1]
@@ -56,7 +61,7 @@ class DockerNetwork(object):
 
         Need run inside executor.
         """
-        ipv4 = str(ipv4) if ipv4 else None
+        ipv4 = str(ipv4) if ipv4 else ""
 
         try:
             self.network.connect(container, aliases=alias, ipv4_address=ipv4)
