@@ -71,3 +71,19 @@ class DockerNetwork(object):
 
         self.network.reload()
         return True
+
+    def detach_default_bridge(self, container):
+        """Detach default docker bridge.
+
+        Need run inside executor.
+        """
+        try:
+            default_network = self.docker.networks.get(DOCKER_NETWORK)
+            default_network.disconnect(container)
+
+        except docker.errors.NotFound:
+            return
+
+        except docker.errors.APIError as err:
+            _LOGGER.warning(
+                "Can't disconnect container from default -> %s", err)
