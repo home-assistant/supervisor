@@ -54,7 +54,7 @@ class DockerAPI(object):
 
         # create container
         try:
-            container = self.docker.containers.create(image, **kwargs)
+            container = self.docker.containers.run(image, **kwargs)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't create container from %s -> %s", name, err)
             return False
@@ -62,12 +62,13 @@ class DockerAPI(object):
         # attach network
         if not network_mode:
             alias = [hostname] if hostname else None
-            if not self.network.attach_container(container, alias=alias, ipv4="172.30.33.1"):
+            if not self.network.attach_container(container, alias=alias):
                 _LOGGER.warning("Can't attach %s to hassio-net!", name)
 
         # run container
         try:
-            container.start()
+            #container.start()
+            pass
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't start %s -> %s", name, err)
             return False
