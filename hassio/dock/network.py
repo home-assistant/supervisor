@@ -21,6 +21,7 @@ class DockerNetwork(object):
         """Return name of network."""
         return DOCKER_NETWORK
 
+    @property
     def containers(self):
         """Return of connected containers from network."""
         return self.network.containers
