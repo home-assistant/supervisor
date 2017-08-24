@@ -96,7 +96,7 @@ class DockerAddon(DockerInterface):
         """Return network mode for addon."""
         if self.addon.host_network:
             return 'host'
-        return None
+        return 'none'
 
     @property
     def volumes(self):
