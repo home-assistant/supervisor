@@ -72,7 +72,7 @@ class DockerAddon(DockerInterface):
 
         return {
             container_port: host_port
-            from container_port, host_port in self.addon.ports.items()
+            for container_port, host_port in self.addon.ports.items()
             if host_port
         }
 
