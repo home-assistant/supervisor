@@ -4,7 +4,6 @@ from contextlib import suppress
 from datetime import datetime
 import json
 import logging
-import socket
 import re
 
 import aiohttp
@@ -17,28 +16,6 @@ _LOGGER = logging.getLogger(__name__)
 FREEGEOIP_URL = "https://freegeoip.io/json/"
 
 RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
-
-
-def get_local_ip(loop):
-    """Retrieve local IP address.
-
-    Return a future.
-    """
-    def local_ip():
-        """Return local ip."""
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-            # Use Google Public DNS server to determine own IP
-            sock.connect(('8.8.8.8', 80))
-
-            return sock.getsockname()[0]
-        except socket.error:
-            return socket.gethostbyname(socket.gethostname())
-        finally:
-            sock.close()
-
-    return loop.run_in_executor(None, local_ip)
 
 
 def write_json_file(jsonfile, data):

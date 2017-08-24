@@ -15,11 +15,11 @@ BUILTIN_REPOSITORIES = set((REPOSITORY_CORE, REPOSITORY_LOCAL))
 class AddonManager(object):
     """Manage addons inside HassIO."""
 
-    def __init__(self, config, loop, dock):
+    def __init__(self, config, loop, docker):
         """Initialize docker base wrapper."""
         self.loop = loop
         self.config = config
-        self.dock = dock
+        self.docker = docker
         self.data = Data(config)
         self.addons = {}
         self.repositories = {}
@@ -108,7 +108,7 @@ class AddonManager(object):
         tasks = []
         for addon_slug in add_addons:
             addon = Addon(
-                self.config, self.loop, self.dock, self.data, addon_slug)
+                self.config, self.loop, self.docker, self.data, addon_slug)
 
             tasks.append(addon.load())
             self.addons[addon_slug] = addon

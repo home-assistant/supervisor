@@ -19,13 +19,13 @@ RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 class HomeAssistant(JsonConfig):
     """Hass core object for handle it."""
 
-    def __init__(self, config, loop, dock, updater):
+    def __init__(self, config, loop, docker, updater):
         """Initialize hass object."""
         super().__init__(FILE_HASSIO_HOMEASSISTANT, SCHEMA_HASS_CONFIG)
         self.config = config
         self.loop = loop
         self.updater = updater
-        self.docker = DockerHomeAssistant(config, loop, dock, self)
+        self.docker = DockerHomeAssistant(config, loop, docker, self)
 
     async def prepare(self):
         """Prepare HomeAssistant object."""

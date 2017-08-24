@@ -3,13 +3,12 @@ import asyncio
 import logging
 
 import aiohttp
-import docker
 
 from .addons import AddonManager
 from .api import RestAPI
 from .host_control import HostControl
 from .const import (
-    SOCKET_DOCKER, RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
+    RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
     RUN_CLEANUP_API_SESSIONS, STARTUP_SYSTEM, STARTUP_SERVICES,
     STARTUP_APPLICATION, STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS,
@@ -17,12 +16,14 @@ from .const import (
 from .hardware import Hardware
 from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
+from .dock import DockerAPI
 from .dock.supervisor import DockerSupervisor
+from .dns import DNSForward
 from .snapshots import SnapshotsManager
 from .updater import Updater
 from .tasks import (
     hassio_update, homeassistant_watchdog, api_sessions_cleanup, addons_update)
-from .tools import get_local_ip, fetch_timezone
+from .tools import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,21 +41,22 @@ class HassIO(object):
         self.scheduler = Scheduler(loop)
         self.api = RestAPI(config, loop)
         self.hardware = Hardware()
-        self.dock = docker.DockerClient(
-            base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
+        self.docker = DockerAPI()
+        self.dns = DNSForward()
 
         # init basic docker container
-        self.supervisor = DockerSupervisor(config, loop, self.dock, self.stop)
+        self.supervisor = DockerSupervisor(
+            config, loop, self.docker, self.stop)
 
         # init homeassistant
         self.homeassistant = HomeAssistant(
-            config, loop, self.dock, self.updater)
+            config, loop, self.docker, self.updater)
 
         # init HostControl
         self.host_control = HostControl(loop)
 
         # init addon system
-        self.addons = AddonManager(config, loop, self.dock)
+        self.addons = AddonManager(config, loop, self.docker)
 
         # init snapshot system
         self.snapshots = SnapshotsManager(
@@ -64,14 +66,11 @@ class HassIO(object):
         """Setup HassIO orchestration."""
         # supervisor
         if not await self.supervisor.attach():
-            _LOGGER.fatal("Can't attach to supervisor docker container!")
+            _LOGGER.fatal("Can't setup supervisor docker container!")
         await self.supervisor.cleanup()
 
         # set running arch
         self.config.arch = self.supervisor.arch
-
-        # set api endpoint
-        self.config.api_endpoint = await get_local_ip(self.loop)
 
         # update timezone
         if self.config.timezone == 'UTC':
@@ -122,6 +121,9 @@ class HassIO(object):
         self.scheduler.register_task(
             self.snapshots.reload, RUN_RELOAD_SNAPSHOTS_TASKS, now=True)
 
+        # start dns forwarding
+        self.loop.create_task(self.dns.start())
+
         # start addon mark as initialize
         await self.addons.auto_boot(STARTUP_INITIALIZE)
 
@@ -136,7 +138,7 @@ class HassIO(object):
 
         # start api
         await self.api.start()
-        _LOGGER.info("Start hassio api on %s", self.config.api_endpoint)
+        _LOGGER.info("Start hassio api on %s", self.docker.network.supervisor)
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
@@ -173,7 +175,7 @@ class HassIO(object):
 
         # process stop tasks
         self.websession.close()
-        await self.api.stop()
+        await asyncio.wait([self.api.stop(), self.dns.stop()], loop=self.loop)
 
         self.exit_code = exit_code
         self.loop.stop()
