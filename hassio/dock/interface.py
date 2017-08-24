@@ -241,9 +241,11 @@ class DockerInterface(object):
 
         return True
 
-    @docker_process
     def logs(self):
-        """Return docker logs of container."""
+        """Return docker logs of container.
+
+        Return a Future.
+        """
         return self.loop.run_in_executor(None, self._logs)
 
     def _logs(self):
