@@ -6,7 +6,7 @@ import shutil
 import docker
 import requests
 
-from . import DockerBase
+from .interface import DockerInterface
 from .util import dockerfile_template, docker_process
 from ..const import (
     META_ADDON, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE)
@@ -16,13 +16,13 @@ _LOGGER = logging.getLogger(__name__)
 AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 
 
-class DockerAddon(DockerBase):
+class DockerAddon(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, dock, addon):
+    def __init__(self, config, loop, api, addon):
         """Initialize docker homeassistant wrapper."""
         super().__init__(
-            config, loop, dock, image=addon.image, timeout=addon.timeout)
+            config, loop, api, image=addon.image, timeout=addon.timeout)
         self.addon = addon
 
     @property
@@ -73,13 +73,10 @@ class DockerAddon(DockerBase):
         return None
 
     @property
-    def mapping(self):
+    def network_mapping(self):
         """Return hosts mapping."""
-        if not self.addon.use_hassio_api:
-            return None
-
         return {
-            'hassio': self.config.api_endpoint,
+            'homeassistant': self.docker.network.gateway,
         }
 
     @property
@@ -139,29 +136,26 @@ class DockerAddon(DockerBase):
         if not self.addon.write_options():
             return False
 
-        try:
-            self.dock.containers.run(
-                self.image,
-                name=self.name,
-                hostname=self.hostname,
-                detach=True,
-                network_mode=self.addon.network_mode,
-                ports=self.addon.ports,
-                extra_hosts=self.mapping,
-                devices=self.devices,
-                cap_add=self.addon.privileged,
-                environment=self.environment,
-                volumes=self.volumes,
-                tmpfs=self.tmpfs
-            )
+        ret = self.docker.run(
+            self.image,
+            name=self.name,
+            hostname=self.hostname,
+            detach=True,
+            network_mode=self.addon.network_mode,
+            ports=self.addon.ports,
+            extra_hosts=self.network_mapping,
+            devices=self.devices,
+            cap_add=self.addon.privileged,
+            environment=self.environment,
+            volumes=self.volumes,
+            tmpfs=self.tmpfs
+        )
 
-        except docker.errors.DockerException as err:
-            _LOGGER.error("Can't run %s -> %s", self.image, err)
-            return False
+        if ret:
+            _LOGGER.info("Start docker addon %s with version %s",
+                         self.image, self.version)
 
-        _LOGGER.info(
-            "Start docker addon %s with version %s", self.image, self.version)
-        return True
+        return ret
 
     def _install(self, tag):
         """Pull docker image or build it.
@@ -202,7 +196,7 @@ class DockerAddon(DockerBase):
                 build_tag = "{}:{}".format(self.image, tag)
 
                 _LOGGER.info("Start build %s on %s", build_tag, build_dir)
-                image = self.dock.images.build(
+                image = self.docker.images.build(
                     path=str(build_dir), tag=build_tag, pull=True,
                     forcerm=True
                 )
@@ -231,7 +225,7 @@ class DockerAddon(DockerBase):
         Need run inside executor.
         """
         try:
-            image = self.dock.api.get_image(self.image)
+            image = self.docker.api.get_image(self.image)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't fetch image %s -> %s", self.image, err)
             return False
@@ -259,9 +253,9 @@ class DockerAddon(DockerBase):
         """
         try:
             with tar_file.open("rb") as read_tar:
-                self.dock.api.load_image(read_tar)
+                self.docker.api.load_image(read_tar)
 
-            image = self.dock.images.get(self.image)
+            image = self.docker.images.get(self.image)
             image.tag(self.image, tag=tag)
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s -> %s", self.image, err)
