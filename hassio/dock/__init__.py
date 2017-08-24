@@ -50,11 +50,11 @@ class DockerAPI(object):
         if network_mode:
             kwargs['dns'] = [str(self.network.supervisor)]
         else:
-            kwargs['network'] = self.network.name
+            kwargs['network'] = None
 
         # create container
         try:
-            container = self.docker.containers.run(image, **kwargs)
+            container = self.docker.containers.create(image, **kwargs)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't create container from %s -> %s", name, err)
             return False
@@ -67,8 +67,7 @@ class DockerAPI(object):
 
         # run container
         try:
-            #container.start()
-            pass
+            container.start()
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't start %s -> %s", name, err)
             return False
