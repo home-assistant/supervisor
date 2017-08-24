@@ -78,7 +78,7 @@ class DockerNetwork(object):
         Need run inside executor.
         """
         try:
-            default_network = self.docker.networks.get(DOCKER_NETWORK)
+            default_network = self.docker.networks.get('bridge')
             default_network.disconnect(container)
 
         except docker.errors.NotFound:
