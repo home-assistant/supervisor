@@ -5,7 +5,7 @@ import shlex
 
 _LOGGER = logging.getLogger(__name__)
 
-COMMAND = "socat UDP-LISTEN:53,fork SENDTO:127.0.0.11:53"
+COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:127.0.0.11:53"
 
 
 class DNSForward(object):
