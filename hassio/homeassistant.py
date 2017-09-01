@@ -6,7 +6,7 @@ import re
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
-    ATTR_VERSION)
+    ATTR_VERSION, ATTR_BOOT)
 from .dock.homeassistant import DockerHomeAssistant
 from .tools import JsonConfig, convert_to_ascii
 from .validate import SCHEMA_HASS_CONFIG
@@ -72,6 +72,16 @@ class HomeAssistant(JsonConfig):
         """Set extend device mapping."""
         self._data[ATTR_DEVICES] = value
         self.save()
+
+    @property
+    def boot(self):
+        """Return True if home-assistant boot is enabled."""
+        return self._data[ATTR_BOOT]
+
+    @enable.setter
+    def boot(self):
+        """Set home-assistant boot options."""
+        return self._data[ATTR_BOOT]
 
     def set_custom(self, image, version):
         """Set a custom image for homeassistant."""
