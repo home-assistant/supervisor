@@ -153,7 +153,8 @@ class HassIO(object):
             await self.addons.auto_boot(STARTUP_SERVICES)
 
             # run HomeAssistant
-            await self.homeassistant.run()
+            if self.homeassistant.boot:
+                await self.homeassistant.run()
 
             # start addon mark as application
             await self.addons.auto_boot(STARTUP_APPLICATION)
