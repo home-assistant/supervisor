@@ -174,6 +174,13 @@ class HomeAssistant(JsonConfig):
         """
         return self.docker.is_running()
 
+    def is_initialize(self):
+        """Return True if a docker container is exists.
+
+        Return a coroutine.
+        """
+        return self.docker.is_initialize()
+
     @property
     def in_progress(self):
         """Return True if a task is in progress."""
