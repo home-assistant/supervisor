@@ -142,7 +142,7 @@ class HassIO(object):
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
-            if await self.homeassistant.is_running():
+            if self.hardware.last_boot == self.config.last_boot:
                 _LOGGER.info("HassIO reboot detected")
                 return
 
@@ -158,6 +158,9 @@ class HassIO(object):
 
             # start addon mark as application
             await self.addons.auto_boot(STARTUP_APPLICATION)
+
+            # store new last boot
+            self.config.last_boot == self.hardware.last_boot
 
         finally:
             # schedule homeassistant watchdog

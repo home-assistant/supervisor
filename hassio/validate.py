@@ -7,7 +7,7 @@ from .const import (
     ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_SESSIONS, ATTR_PASSWORD,
     ATTR_TOTP, ATTR_SECURITY, ATTR_BETA_CHANNEL, ATTR_TIMEZONE,
     ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
-    ATTR_HOMEASSISTANT, ATTR_HASSIO, ATTR_BOOT)
+    ATTR_HOMEASSISTANT, ATTR_HASSIO, ATTR_BOOT, ATTR_LAST_BOOT)
 
 
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
@@ -75,6 +75,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASSIO_CONFIG = vol.Schema({
     vol.Optional(ATTR_TIMEZONE, default='UTC'): validate_timezone,
+    vol.Optional(ATTR_LAST_BOOT, default=0): vol.Coerce(int),
     vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
     vol.Optional(ATTR_SECURITY, default=False): vol.Boolean(),
     vol.Optional(ATTR_TOTP): vol.Coerce(str),

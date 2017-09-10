@@ -7,7 +7,7 @@ from pathlib import Path, PurePath
 from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
     ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT)
+    ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_LAST_BOOT)
 from .tools import JsonConfig
 from .validate import SCHEMA_HASSIO_CONFIG
 
@@ -47,6 +47,16 @@ class CoreConfig(JsonConfig):
         """Set system timezone."""
         self._data[ATTR_TIMEZONE] = value
         self.save()
+
+    @property
+    def last_boot(self):
+        """Return last boot datetime."""
+        return datetime.utcfromtimestamp(self._data[ATTR_LAST_BOOT])
+
+    @last_boot.setter
+    def last_boot(self, value):
+        """Set last boot datetime."""
+        self._data[ATTR_LAST_BOOT] = value.timestamp()
 
     @property
     def path_hassio(self):

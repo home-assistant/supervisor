@@ -1,4 +1,5 @@
 """Read hardware info from system."""
+from datetime import datetime
 import logging
 from pathlib import Path
 import re
@@ -14,6 +15,9 @@ RE_CARDS = re.compile(r"(\d+) \[(\w*) *\]: (.*\w)")
 
 ASOUND_DEVICES = Path("/proc/asound/devices")
 RE_DEVICES = re.compile(r"\[.*(\d+)- (\d+).*\]: ([\w ]*)")
+
+PROC_STAT = Path("/proc/stat")
+RE_BOOT_TIME = re.compile("btime (\d+)")
 
 
 class Hardware(object):
@@ -85,3 +89,21 @@ class Hardware(object):
                 continue
 
         return audio_list
+
+    @property
+    def last_boot(self):
+        """Return last boot time."""
+        try:
+            with PROC_STAT.open("r") as stat_file:
+                stats = stat_file.read()
+        except OSError as err:
+            _LOGGER.error("Can't read stat data -> %s", err)
+            return
+
+        # parse stat file
+        found = RE_BOOT_TIME.search()
+        if not found:
+            _LOGGER.error("Can't found last boot time!")
+            return
+
+        return datetime.utcfromtimestamp(found.group(1))
