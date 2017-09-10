@@ -17,6 +17,16 @@ FREEGEOIP_URL = "https://freegeoip.io/json/"
 
 RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 
+# Copyright (c) Django Software Foundation and individual contributors.
+# All rights reserved.
+# https://github.com/django/django/blob/master/LICENSE
+DATETIME_RE = re.compile(
+    r'(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})'
+    r'[T ](?P<hour>\d{1,2}):(?P<minute>\d{1,2})'
+    r'(?::(?P<second>\d{1,2})(?:\.(?P<microsecond>\d{1,6})\d{0,6})?)?'
+    r'(?P<tzinfo>Z|[+-]\d{2}(?::?\d{2})?)?$'
+)
+
 
 def write_json_file(jsonfile, data):
     """Write a json file."""
@@ -51,6 +61,42 @@ async def fetch_timezone(websession):
 def convert_to_ascii(raw):
     """Convert binary to ascii and remove colors."""
     return RE_STRING.sub("", raw.decode())
+
+
+# Copyright (c) Django Software Foundation and individual contributors.
+# All rights reserved.
+# https://github.com/django/django/blob/master/LICENSE
+def parse_datetime(dt_str: str) -> dt.datetime:
+    """Parse a string and return a datetime.datetime.
+
+    This function supports time zone offsets. When the input contains one,
+    the output uses a timezone with a fixed offset from UTC.
+    Raises ValueError if the input is well formatted but not a valid datetime.
+    Returns None if the input isn't well formatted.
+    """
+    match = DATETIME_RE.match(dt_str)
+    if not match:
+        return None
+    kws = match.groupdict()  # type: Dict[str, Any]
+    if kws['microsecond']:
+        kws['microsecond'] = kws['microsecond'].ljust(6, '0')
+    tzinfo_str = kws.pop('tzinfo')
+
+    tzinfo = None  # type: Optional[dt.tzinfo]
+    if tzinfo_str == 'Z':
+        tzinfo = UTC
+    elif tzinfo_str is not None:
+        offset_mins = int(tzinfo_str[-2:]) if len(tzinfo_str) > 3 else 0
+        offset_hours = int(tzinfo_str[1:3])
+        offset = dt.timedelta(hours=offset_hours, minutes=offset_mins)
+        if tzinfo_str[0] == '-':
+            offset = -offset
+        tzinfo = dt.timezone(offset)
+    else:
+        tzinfo = None
+    kws = {k: int(v) for k, v in kws.items() if v is not None}
+    kws['tzinfo'] = tzinfo
+    return dt.datetime(**kws)
 
 
 class JsonConfig(object):

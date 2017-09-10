@@ -8,7 +8,7 @@ from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
     ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
     ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_LAST_BOOT)
-from .tools import JsonConfig
+from .tools import JsonConfig, parse_datetime
 from .validate import SCHEMA_HASSIO_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,12 +51,18 @@ class CoreConfig(JsonConfig):
     @property
     def last_boot(self):
         """Return last boot datetime."""
-        return datetime.utcfromtimestamp(self._data[ATTR_LAST_BOOT])
+        boot_str = self._date.get(ATTR_LAST_BOOT, "")
+
+        boot_time = parse_datetime(boot_str)
+        if not boot_time:
+            return datetime.utcfromtimestamp(1)
+        return boot_time
 
     @last_boot.setter
     def last_boot(self, value):
         """Set last boot datetime."""
-        self._data[ATTR_LAST_BOOT] = value.timestamp()
+        self._data[ATTR_LAST_BOOT] = value.isoformat()
+        self.save()
 
     @property
     def path_hassio(self):

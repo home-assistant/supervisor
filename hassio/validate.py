@@ -75,7 +75,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASSIO_CONFIG = vol.Schema({
     vol.Optional(ATTR_TIMEZONE, default='UTC'): validate_timezone,
-    vol.Optional(ATTR_LAST_BOOT, default=0): vol.Coerce(int),
+    vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
     vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
     vol.Optional(ATTR_SECURITY, default=False): vol.Boolean(),
     vol.Optional(ATTR_TOTP): vol.Coerce(str),
