@@ -106,4 +106,4 @@ class Hardware(object):
             _LOGGER.error("Can't found last boot time!")
             return
 
-        return datetime.utcfromtimestamp(found.group(1))
+        return datetime.utcfromtimestamp(int(found.group(1)))
