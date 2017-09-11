@@ -1,6 +1,8 @@
 """Init file for HassIO docker object."""
 import logging
 
+import docker
+
 from .interface import DockerInterface
 
 _LOGGER = logging.getLogger(__name__)

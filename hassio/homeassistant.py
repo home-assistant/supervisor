@@ -78,7 +78,7 @@ class HomeAssistant(JsonConfig):
         """Return True if home-assistant boot is enabled."""
         return self._data[ATTR_BOOT]
 
-    @enable.setter
+    @boot.setter
     def boot(self, value):
         """Set home-assistant boot options."""
         self._data[ATTR_BOOT] = value

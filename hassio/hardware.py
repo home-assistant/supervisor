@@ -17,7 +17,7 @@ ASOUND_DEVICES = Path("/proc/asound/devices")
 RE_DEVICES = re.compile(r"\[.*(\d+)- (\d+).*\]: ([\w ]*)")
 
 PROC_STAT = Path("/proc/stat")
-RE_BOOT_TIME = re.compile("btime (\d+)")
+RE_BOOT_TIME = re.compile(r"btime (\d+)")
 
 
 class Hardware(object):
@@ -101,7 +101,7 @@ class Hardware(object):
             return
 
         # parse stat file
-        found = RE_BOOT_TIME.search()
+        found = RE_BOOT_TIME.search(stats)
         if not found:
             _LOGGER.error("Can't found last boot time!")
             return

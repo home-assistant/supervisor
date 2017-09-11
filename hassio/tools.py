@@ -1,13 +1,14 @@
 """Tools file for HassIO."""
 import asyncio
 from contextlib import suppress
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import json
 import logging
 import re
 
 import aiohttp
 import async_timeout
+import pytz
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -66,7 +67,7 @@ def convert_to_ascii(raw):
 # Copyright (c) Django Software Foundation and individual contributors.
 # All rights reserved.
 # https://github.com/django/django/blob/master/LICENSE
-def parse_datetime(dt_str: str) -> dt.datetime:
+def parse_datetime(dt_str):
     """Parse a string and return a datetime.datetime.
 
     This function supports time zone offsets. When the input contains one,
@@ -84,19 +85,19 @@ def parse_datetime(dt_str: str) -> dt.datetime:
 
     tzinfo = None  # type: Optional[dt.tzinfo]
     if tzinfo_str == 'Z':
-        tzinfo = UTC
+        tzinfo = pytz.utc
     elif tzinfo_str is not None:
         offset_mins = int(tzinfo_str[-2:]) if len(tzinfo_str) > 3 else 0
         offset_hours = int(tzinfo_str[1:3])
-        offset = dt.timedelta(hours=offset_hours, minutes=offset_mins)
+        offset = timedelta(hours=offset_hours, minutes=offset_mins)
         if tzinfo_str[0] == '-':
             offset = -offset
-        tzinfo = dt.timezone(offset)
+        tzinfo = timezone(offset)
     else:
         tzinfo = None
     kws = {k: int(v) for k, v in kws.items() if v is not None}
     kws['tzinfo'] = tzinfo
-    return dt.datetime(**kws)
+    return datetime(**kws)
 
 
 class JsonConfig(object):

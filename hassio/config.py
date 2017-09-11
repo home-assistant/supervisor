@@ -51,7 +51,7 @@ class CoreConfig(JsonConfig):
     @property
     def last_boot(self):
         """Return last boot datetime."""
-        boot_str = self._date.get(ATTR_LAST_BOOT, "")
+        boot_str = self._data.get(ATTR_LAST_BOOT, "")
 
         boot_time = parse_datetime(boot_str)
         if not boot_time:
