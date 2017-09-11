@@ -6,7 +6,7 @@ import re
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
-    ATTR_VERSION)
+    ATTR_VERSION, ATTR_BOOT)
 from .dock.homeassistant import DockerHomeAssistant
 from .tools import JsonConfig, convert_to_ascii
 from .validate import SCHEMA_HASS_CONFIG
@@ -73,6 +73,17 @@ class HomeAssistant(JsonConfig):
         self._data[ATTR_DEVICES] = value
         self.save()
 
+    @property
+    def boot(self):
+        """Return True if home-assistant boot is enabled."""
+        return self._data[ATTR_BOOT]
+
+    @boot.setter
+    def boot(self, value):
+        """Set home-assistant boot options."""
+        self._data[ATTR_BOOT] = value
+        self.save()
+
     def set_custom(self, image, version):
         """Set a custom image for homeassistant."""
         # reset
@@ -119,6 +130,7 @@ class HomeAssistant(JsonConfig):
     async def update(self, version=None):
         """Update HomeAssistant version."""
         version = version or self.last_version
+        running = await self.docker.is_running()
 
         if version == self.docker.version:
             _LOGGER.warning("Version %s is already installed", version)
@@ -127,7 +139,8 @@ class HomeAssistant(JsonConfig):
         try:
             return await self.docker.update(version)
         finally:
-            await self.docker.run()
+            if running:
+                await self.docker.run()
 
     def run(self):
         """Run HomeAssistant docker.
@@ -163,6 +176,13 @@ class HomeAssistant(JsonConfig):
         Return a coroutine.
         """
         return self.docker.is_running()
+
+    def is_initialize(self):
+        """Return True if a docker container is exists.
+
+        Return a coroutine.
+        """
+        return self.docker.is_initialize()
 
     @property
     def in_progress(self):

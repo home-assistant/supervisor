@@ -66,6 +66,11 @@ def homeassistant_watchdog(loop, homeassistant):
     """Create scheduler task for montoring running state."""
     async def _homeassistant_watchdog():
         """Check running state and start if they is close."""
+        # if Home-Assistant is active
+        if not await homeassistant.is_initialize():
+            return
+
+        # If Home-Assistant is running
         if homeassistant.in_progress or await homeassistant.is_running():
             return
 
