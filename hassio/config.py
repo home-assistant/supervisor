@@ -13,8 +13,6 @@ from .validate import SCHEMA_HASSIO_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
-DATETIME_FORMAT = "%Y%m%d %H:%M:%S"
-
 HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 
 HASSIO_SSL = PurePath("ssl")
@@ -27,6 +25,8 @@ ADDONS_DATA = PurePath("addons/data")
 BACKUP_DATA = PurePath("backup")
 SHARE_DATA = PurePath("share")
 TMP_DATA = PurePath("tmp")
+
+DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
 
 class CoreConfig(JsonConfig):
@@ -51,7 +51,7 @@ class CoreConfig(JsonConfig):
     @property
     def last_boot(self):
         """Return last boot datetime."""
-        boot_str = self._data.get(ATTR_LAST_BOOT, "")
+        boot_str = self._data.get(ATTR_LAST_BOOT, DEFAULT_BOOT_TIME)
 
         boot_time = parse_datetime(boot_str)
         if not boot_time:
@@ -207,14 +207,14 @@ class CoreConfig(JsonConfig):
     def security_sessions(self):
         """Return api sessions."""
         return {
-            session: datetime.strptime(until, DATETIME_FORMAT) for
+            session: parse_datetime(until) for
             session, until in self._data[ATTR_SESSIONS].items()
         }
 
     def add_security_session(self, session, valid):
         """Set the a new session."""
         self._data[ATTR_SESSIONS].update(
-            {session: valid.strftime(DATETIME_FORMAT)}
+            {session: valid.isoformat()}
         )
         self.save()
 
