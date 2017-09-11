@@ -160,7 +160,7 @@ class HassIO(object):
             await self.addons.auto_boot(STARTUP_APPLICATION)
 
             # store new last boot
-            self.config.last_boot == self.hardware.last_boot
+            self.config.last_boot = self.hardware.last_boot
 
         finally:
             # schedule homeassistant watchdog
