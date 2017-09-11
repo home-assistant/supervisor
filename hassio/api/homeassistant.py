@@ -7,14 +7,16 @@ import voluptuous as vol
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM,
-    CONTENT_TYPE_BINARY)
+    ATTR_BOOT, CONTENT_TYPE_BINARY)
 from ..validate import HASS_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
 
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_DEVICES): HASS_DEVICES,
+    vol.Optional(ATTR_BOOT): vol.Boolean(),
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Any(None, vol.Coerce(str)),
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'):
         vol.Any(None, vol.Coerce(str)),
@@ -43,6 +45,7 @@ class APIHomeAssistant(object):
             ATTR_IMAGE: self.homeassistant.image,
             ATTR_DEVICES: self.homeassistant.devices,
             ATTR_CUSTOM: self.homeassistant.is_custom_image,
+            ATTR_BOOT: self.homeassistant.boot,
         }
 
     @api_process
@@ -57,6 +60,9 @@ class APIHomeAssistant(object):
             self.homeassistant.set_custom(
                 body[ATTR_IMAGE], body[ATTR_LAST_VERSION])
 
+        if ATTR_BOOT in body:
+            self.homeassistant.boot = body[ATTR_BOOT]
+
         return True
 
     @api_process
@@ -70,6 +76,16 @@ class APIHomeAssistant(object):
 
         return await asyncio.shield(
             self.homeassistant.update(version), loop=self.loop)
+
+    @api_process
+    def stop(self, request):
+        """Stop homeassistant."""
+        return asyncio.shield(self.homeassistant.stop(), loop=self.loop)
+
+    @api_process
+    def start(self, request):
+        """Start homeassistant."""
+        return asyncio.shield(self.homeassistant.run(), loop=self.loop)
 
     @api_process
     def restart(self, request):
