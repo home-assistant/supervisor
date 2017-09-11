@@ -7,13 +7,11 @@ from pathlib import Path, PurePath
 from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
     ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT)
-from .tools import JsonConfig
+    ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_LAST_BOOT)
+from .tools import JsonConfig, parse_datetime
 from .validate import SCHEMA_HASSIO_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
-
-DATETIME_FORMAT = "%Y%m%d %H:%M:%S"
 
 HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 
@@ -27,6 +25,8 @@ ADDONS_DATA = PurePath("addons/data")
 BACKUP_DATA = PurePath("backup")
 SHARE_DATA = PurePath("share")
 TMP_DATA = PurePath("tmp")
+
+DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
 
 class CoreConfig(JsonConfig):
@@ -46,6 +46,22 @@ class CoreConfig(JsonConfig):
     def timezone(self, value):
         """Set system timezone."""
         self._data[ATTR_TIMEZONE] = value
+        self.save()
+
+    @property
+    def last_boot(self):
+        """Return last boot datetime."""
+        boot_str = self._data.get(ATTR_LAST_BOOT, DEFAULT_BOOT_TIME)
+
+        boot_time = parse_datetime(boot_str)
+        if not boot_time:
+            return datetime.utcfromtimestamp(1)
+        return boot_time
+
+    @last_boot.setter
+    def last_boot(self, value):
+        """Set last boot datetime."""
+        self._data[ATTR_LAST_BOOT] = value.isoformat()
         self.save()
 
     @property
@@ -191,14 +207,14 @@ class CoreConfig(JsonConfig):
     def security_sessions(self):
         """Return api sessions."""
         return {
-            session: datetime.strptime(until, DATETIME_FORMAT) for
+            session: parse_datetime(until) for
             session, until in self._data[ATTR_SESSIONS].items()
         }
 
     def add_security_session(self, session, valid):
         """Set the a new session."""
         self._data[ATTR_SESSIONS].update(
-            {session: valid.strftime(DATETIME_FORMAT)}
+            {session: valid.isoformat()}
         )
         self.save()
 

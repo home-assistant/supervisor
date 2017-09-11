@@ -283,7 +283,8 @@ Optional:
     "last_version": "LAST_VERSION",
     "devices": [""],
     "image": "str",
-    "custom": "bool -> if custom image"
+    "custom": "bool -> if custom image",
+    "boot": "bool"
 }
 ```
 
@@ -304,6 +305,8 @@ Output is the raw Docker log.
 - POST `/homeassistant/restart`
 - POST `/homeassistant/options`
 - POST `/homeassistant/check`
+- POST `/homeassistant/start`
+- POST `/homeassistant/stop`
 
 ```json
 {
