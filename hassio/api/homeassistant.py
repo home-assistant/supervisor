@@ -45,6 +45,7 @@ class APIHomeAssistant(object):
             ATTR_IMAGE: self.homeassistant.image,
             ATTR_DEVICES: self.homeassistant.devices,
             ATTR_CUSTOM: self.homeassistant.is_custom_image,
+            ATTR_BOOT: self.homeassistant.boot,
         }
 
     @api_process
