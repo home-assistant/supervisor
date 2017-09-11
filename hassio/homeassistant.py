@@ -130,6 +130,7 @@ class HomeAssistant(JsonConfig):
     async def update(self, version=None):
         """Update HomeAssistant version."""
         version = version or self.last_version
+        running = await self.docker.is_running()
 
         if version == self.docker.version:
             _LOGGER.warning("Version %s is already installed", version)
@@ -138,7 +139,8 @@ class HomeAssistant(JsonConfig):
         try:
             return await self.docker.update(version)
         finally:
-            await self.docker.run()
+            if running:
+                await self.docker.run()
 
     def run(self):
         """Run HomeAssistant docker.
