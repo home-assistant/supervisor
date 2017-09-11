@@ -1,6 +1,8 @@
 """Init file for HassIO docker object."""
 import logging
 
+import docker
+
 from .interface import DockerInterface
 
 _LOGGER = logging.getLogger(__name__)
@@ -93,3 +95,19 @@ class DockerHomeAssistant(DockerInterface):
                     {'bind': '/ssl', 'mode': 'ro'},
             }
         )
+
+    def is_initialize(self):
+        """Return True if docker container exists."""
+        return self.loop.run_in_executor(None, self._is_initialize)
+
+    def _is_initialize(self):
+        """Return True if docker container exists.
+
+        Need run inside executor.
+        """
+        try:
+            self.docker.containers.get(self.name)
+        except docker.errors.DockerException:
+            return False
+
+        return True
