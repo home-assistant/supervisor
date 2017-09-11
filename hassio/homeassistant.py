@@ -79,9 +79,10 @@ class HomeAssistant(JsonConfig):
         return self._data[ATTR_BOOT]
 
     @enable.setter
-    def boot(self):
+    def boot(self, value):
         """Set home-assistant boot options."""
-        return self._data[ATTR_BOOT]
+        self._data[ATTR_BOOT] = value
+        self.save()
 
     def set_custom(self, image, version):
         """Set a custom image for homeassistant."""
