@@ -192,7 +192,7 @@ def _single_validate(typ, value, key):
         for group_name in ('i_min', 'i_max', 'f_min', 'f_max'):
             group_value = match.group(group_name)
             if group_value:
-                range_args(group_name[2:-1]) = group_value
+                range_args(group_name[2:-1]) = float(group_value)
 
         if typ.startswith(V_STR):
             return str(value)
