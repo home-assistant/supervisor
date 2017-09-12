@@ -1,4 +1,6 @@
 """Validate addons options schema."""
+import re
+
 import voluptuous as vol
 
 from ..const import (
@@ -15,7 +17,7 @@ from ..const import (
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
 
 
-MAP_VOLUME = r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$"
+RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$")
 
 V_STR = 'str'
 V_INT = 'int'
@@ -24,8 +26,18 @@ V_BOOL = 'bool'
 V_EMAIL = 'email'
 V_URL = 'url'
 V_PORT = 'port'
+V_MATCH = 'match'
 
-ADDON_ELEMENT = vol.In([V_STR, V_INT, V_FLOAT, V_BOOL, V_EMAIL, V_URL, V_PORT])
+RE_SCHEMA_ELEMENT = re.compile(
+    r"^(?:"
+    r"|str|bool|email|url|port"
+    r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
+    r"|float(?:\((?P<f_min>[\d\.]+)?,(?P<f_max>[\d\.]+)?\))?"
+    r"|match\((?P<match>.*)\)"
+    r")$"
+)
+
+SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
 
 ARCH_ALL = [
     ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386
@@ -71,16 +83,16 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
     vol.Optional(ATTR_TMPFS):
         vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
-    vol.Optional(ATTR_MAP, default=[]): [vol.Match(MAP_VOLUME)],
+    vol.Optional(ATTR_MAP, default=[]): [vol.Match(RE_VOLUME)],
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],
     vol.Optional(ATTR_AUDIO, default=False): vol.Boolean(),
     vol.Optional(ATTR_HASSIO_API, default=False): vol.Boolean(),
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
-        vol.Coerce(str): vol.Any(ADDON_ELEMENT, [
-            vol.Any(ADDON_ELEMENT, {vol.Coerce(str): ADDON_ELEMENT})
-        ], vol.Schema({vol.Coerce(str): ADDON_ELEMENT}))
+        vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [
+            vol.Any(SCHEMA_ELEMENT, {vol.Coerce(str): SCHEMA_ELEMENT})
+        ], vol.Schema({vol.Coerce(str): SCHEMA_ELEMENT}))
     }), False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"\w*/\w*"),
     vol.Optional(ATTR_TIMEOUT, default=10):
@@ -172,20 +184,32 @@ def _single_validate(typ, value, key):
         if value is None:
             raise vol.Invalid("Missing required option '{}'.".format(key))
 
-        if typ == V_STR:
+        # parse extend data from type
+        match = RE_SCHEMA_ELEMENT.match(typ)
+
+        # prepare range
+        range_args = {}
+        for group_name in ('i_min', 'i_max', 'f_min', 'f_max'):
+            group_value = match.group(group_name)
+            if group_value:
+                range_args[group_name[2:]] = float(group_value)
+
+        if typ.startswith(V_STR):
             return str(value)
-        elif typ == V_INT:
-            return int(value)
-        elif typ == V_FLOAT:
-            return float(value)
-        elif typ == V_BOOL:
+        elif typ.startswith(V_INT):
+            return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
+        elif typ.startswith(V_FLOAT):
+            return vol.All(vol.Coerce(float), vol.Range(**range_args))(value)
+        elif typ.startswith(V_BOOL):
             return vol.Boolean()(value)
-        elif typ == V_EMAIL:
+        elif typ.startswith(V_EMAIL):
             return vol.Email()(value)
-        elif typ == V_URL:
+        elif typ.startswith(V_URL):
             return vol.Url()(value)
-        elif typ == V_PORT:
+        elif typ.startswith(V_PORT):
             return NETWORK_PORT(value)
+        elif typ.startswith(V_MATCH):
+            return vol.Match(match.group('match'))(str(value))
 
         raise vol.Invalid("Fatal error for {} type {}".format(key, typ))
     except ValueError:
