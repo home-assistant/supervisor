@@ -3,7 +3,6 @@ import copy
 import logging
 import json
 from pathlib import Path
-import re
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
