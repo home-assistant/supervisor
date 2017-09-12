@@ -10,16 +10,13 @@ from voluptuous.humanize import humanize_error
 
 from .util import extract_hash_from_path
 from .validate import (
-    SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_FILE, SCHEMA_REPOSITORY_CONFIG,
-    MAP_VOLUME)
+    SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_FILE, SCHEMA_REPOSITORY_CONFIG)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
 from ..tools import JsonConfig, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
-
-RE_VOLUME = re.compile(MAP_VOLUME)
 
 
 class Data(JsonConfig):
