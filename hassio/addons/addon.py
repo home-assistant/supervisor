@@ -13,7 +13,7 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import (
-    validate_options, SCHEMA_ADDON_SNAPSHOT, MAP_VOLUME)
+    validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME)
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
@@ -28,7 +28,6 @@ from ..tools import write_json_file, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
-RE_VOLUME = re.compile(MAP_VOLUME)
 RE_WEBUI = re.compile(r"^(.*\[HOST\]:)\[PORT:(\d+)\](.*)$")
 
 MERGE_OPT = Merger([(dict, ['merge'])], ['override'], ['override'])
