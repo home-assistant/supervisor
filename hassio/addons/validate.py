@@ -209,7 +209,7 @@ def _single_validate(typ, value, key):
         elif typ.startswith(V_PORT):
             return NETWORK_PORT(value)
         elif typ.startswith(V_MATCH):
-            return vol.Match(match.group('match'))(value)
+            return vol.Match(match.group('match'))(str(value))
 
         raise vol.Invalid("Fatal error for {} type {}".format(key, typ))
     except ValueError:
