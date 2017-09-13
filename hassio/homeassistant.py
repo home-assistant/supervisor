@@ -126,9 +126,11 @@ class HomeAssistant(JsonConfig):
             _LOGGER.warning("Error on install HomeAssistant. Retry in 60sec")
             await asyncio.sleep(60, loop=self.loop)
 
-        # store version
+        # finishing
         _LOGGER.info("HomeAssistant docker now installed")
         await self.docker.cleanup()
+        if self.boot:
+            await self.docker.run()
 
     async def update(self, version=None):
         """Update HomeAssistant version."""
