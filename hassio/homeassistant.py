@@ -109,6 +109,9 @@ class HomeAssistant(JsonConfig):
             _LOGGER.warning("Fails install landingpage, retry after 60sec")
             await asyncio.sleep(60, loop=self.loop)
 
+        # run landingpage after installation
+        await self.docker.run()
+
     async def install(self):
         """Install a landingpage."""
         _LOGGER.info("Setup HomeAssistant")
