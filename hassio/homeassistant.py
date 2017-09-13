@@ -128,9 +128,9 @@ class HomeAssistant(JsonConfig):
 
         # finishing
         _LOGGER.info("HomeAssistant docker now installed")
-        await self.docker.cleanup()
         if self.boot:
             await self.docker.run()
+        await self.docker.cleanup()
 
     async def update(self, version=None):
         """Update HomeAssistant version."""
