@@ -1,6 +1,5 @@
 """HassIO docker utilitys."""
 import logging
-import re
 
 _LOGGER = logging.getLogger(__name__)
 

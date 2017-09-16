@@ -121,7 +121,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema({
     vol.Optional(ATTR_BUILD_FROM, default=BASE_IMAGE): vol.Schema({
         vol.In(ARCH_ALL): vol.Match(r"\w*/\w*:\w*"),
     }),
-    vol.Optional(ATTR_SQUASH, default=False): cv.Boolean(),
+    vol.Optional(ATTR_SQUASH, default=False): vol.Boolean(),
     vol.Optional(ATTR_ARGS, default={}): vol.Schema({
         vol.Coerce(str): vol.Coerce(str)
     }),

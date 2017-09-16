@@ -1,7 +1,5 @@
 """Init file for HassIO addon docker object."""
 import logging
-from pathlib import Path
-import shutil
 
 import docker
 import requests
