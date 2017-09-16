@@ -13,7 +13,8 @@ from ..const import (
     ATTR_USER, ATTR_STATE, ATTR_SYSTEM, STATE_STARTED, STATE_STOPPED,
     ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK,
     ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT,
-    ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API)
+    ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BASE_IMAGE, ATTR_SQUASH,
+    ATTR_ARGS)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
 
 
@@ -53,6 +54,13 @@ PRIVILEGED_ALL = [
     "SYS_ADMIN",
     "SYS_RAWIO"
 ]
+
+BASE_IMAGE = {
+    ARCH_ARMHF: "homeassistant/armhf-base:latest",
+    ARCH_AARCH64: "homeassistant/aarch64-base:latest",
+    ARCH_I386: "homeassistant/i386-base:latest",
+    ARCH_AMD64: "homeassistant/amd64-base:latest",
+}
 
 
 def _simple_startup(value):
@@ -106,6 +114,18 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
     vol.Optional(ATTR_URL): vol.Url(),
     vol.Optional(ATTR_MAINTAINER): vol.Coerce(str),
 }, extra=vol.ALLOW_EXTRA)
+
+
+# pylint: disable=no-value-for-parameter
+SCHEMA_BUILD_CONFIG = vol.Schema({
+    vol.Optional(ATTR_BASE_IMAGE, default=BASE_IMAGE): vol.Schema({
+        vol.In(ARCH_ALL): vol.Match(r"\w*/\w*:\w*"),
+    }),
+    vol.Optional(ATTR_SQUASH, default=False): cv.Boolean(),
+    vol.Optional(ATTR_ARGS, default={}): vol.Schema({
+        vol.Coerce(str): vol.Coerce(str)
+    }),
+})
 
 
 # pylint: disable=no-value-for-parameter
