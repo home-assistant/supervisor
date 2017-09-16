@@ -46,7 +46,7 @@ class AddonBuild(JsonConfig):
             'pull': True,
             'forcerm': True,
             'squash': self.squash,
-            'label': {
+            'labels': {
                 'io.hass.version': version,
                 'io.hass.arch': self.config.arch,
                 'io.hass.type': META_ADDON,
