@@ -118,7 +118,7 @@ ATTR_OUTPUT = 'output'
 ATTR_DISK = 'disk'
 ATTR_SERIAL = 'serial'
 ATTR_SECURITY = 'security'
-ATTR_BASE_IMAGE = 'base_image'
+ATTR_BUILD_FROM = 'build_from'
 ATTR_SQUASH = 'squash'
 ATTR_ADDONS_CUSTOM_LIST = 'addons_custom_list'
 

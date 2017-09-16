@@ -13,7 +13,7 @@ from ..const import (
     ATTR_USER, ATTR_STATE, ATTR_SYSTEM, STATE_STARTED, STATE_STOPPED,
     ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK,
     ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT,
-    ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BASE_IMAGE, ATTR_SQUASH,
+    ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
     ATTR_ARGS)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
 
@@ -118,7 +118,7 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_BUILD_CONFIG = vol.Schema({
-    vol.Optional(ATTR_BASE_IMAGE, default=BASE_IMAGE): vol.Schema({
+    vol.Optional(ATTR_BUILD_FROM, default=BASE_IMAGE): vol.Schema({
         vol.In(ARCH_ALL): vol.Match(r"\w*/\w*:\w*"),
     }),
     vol.Optional(ATTR_SQUASH, default=False): cv.Boolean(),
