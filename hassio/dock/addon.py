@@ -199,7 +199,7 @@ class DockerAddon(DockerInterface):
             image.tag(self.image, tag='latest')
             self.process_metadata(image.attrs, force=True)
 
-        except (docker.errors.DockerException, TypeError) as err:
+        except (docker.errors.DockerException) as err:
             _LOGGER.error("Can't build %s:%s -> %s", self.image, tag, err)
             return False
 
