@@ -123,6 +123,8 @@ class JsonConfig(object):
         except vol.Invalid as ex:
             _LOGGER.error("Can't parse %s -> %s",
                           self._file, humanize_error(self._data, ex))
+            # reset data to default
+            self._data = self._schema({})
 
     def save(self):
         """Store data to config file."""
