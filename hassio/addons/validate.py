@@ -105,7 +105,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_IMAGE): vol.Match(r"^[\-\w{}]+/[\-\w{}]+$"),
     vol.Optional(ATTR_TIMEOUT, default=10):
         vol.All(vol.Coerce(int), vol.Range(min=10, max=120))
-}, extra=vol.ALLOW_EXTRA)
+})
 
 
 # pylint: disable=no-value-for-parameter
