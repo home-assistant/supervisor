@@ -566,11 +566,13 @@ class Addon(object):
                     snapshot.add(self.path_data, arcname="data")
 
             try:
+                _LOGGER.info("Build snapshot for addon %s", self._id)
                 await self.loop.run_in_executor(None, _create_tar)
             except tarfile.TarError as err:
                 _LOGGER.error("Can't write tarfile %s -> %s", tar_file, err)
                 return False
 
+        _LOGGER.info("Finish snapshot for addon %s", self._id)
         return True
 
     async def restore(self, tar_file):
@@ -625,6 +627,7 @@ class Addon(object):
                 shutil.copytree(str(Path(temp, "data")), str(self.path_data))
 
             try:
+                _LOGGER.info("Restore data for addon %s", self._id)
                 await self.loop.run_in_executor(None, _restore_data)
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data -> %s", err)
@@ -634,4 +637,5 @@ class Addon(object):
             if data[ATTR_STATE] == STATE_STARTED:
                 return await self.start()
 
+        _LOGGER.info("Finish restore for addon %s", self._id)
         return True
