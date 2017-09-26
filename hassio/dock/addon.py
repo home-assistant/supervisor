@@ -1,15 +1,14 @@
 """Init file for HassIO addon docker object."""
 import logging
-from pathlib import Path
-import shutil
 
 import docker
 import requests
 
 from .interface import DockerInterface
-from .util import dockerfile_template, docker_process
+from .util import docker_process
+from ..addons.build import AddonBuild
 from ..const import (
-    META_ADDON, MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE)
+    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -191,47 +190,21 @@ class DockerAddon(DockerInterface):
 
         Need run inside executor.
         """
-        build_dir = Path(self.config.path_tmp, self.addon.slug)
+        build_env = AddonBuild(self.config, self.addon)
+
+        _LOGGER.info("Start build %s:%s", self.image, tag)
         try:
-            # prepare temporary addon build folder
-            try:
-                source = self.addon.path_location
-                shutil.copytree(str(source), str(build_dir))
-            except shutil.Error as err:
-                _LOGGER.error("Can't copy %s to temporary build folder -> %s",
-                              source, err)
-                return False
+            image = self.docker.images.build(**build_env.get_docker_args(tag))
 
-            # prepare Dockerfile
-            try:
-                dockerfile_template(
-                    Path(build_dir, 'Dockerfile'), self.config.arch,
-                    tag, META_ADDON)
-            except OSError as err:
-                _LOGGER.error("Can't prepare dockerfile -> %s", err)
+            image.tag(self.image, tag='latest')
+            self.process_metadata(image.attrs, force=True)
 
-            # run docker build
-            try:
-                build_tag = "{}:{}".format(self.image, tag)
+        except (docker.errors.DockerException) as err:
+            _LOGGER.error("Can't build %s:%s -> %s", self.image, tag, err)
+            return False
 
-                _LOGGER.info("Start build %s on %s", build_tag, build_dir)
-                image = self.docker.images.build(
-                    path=str(build_dir), tag=build_tag, pull=True,
-                    forcerm=True
-                )
-
-                image.tag(self.image, tag='latest')
-                self.process_metadata(image.attrs, force=True)
-
-            except (docker.errors.DockerException, TypeError) as err:
-                _LOGGER.error("Can't build %s -> %s", build_tag, err)
-                return False
-
-            _LOGGER.info("Build %s done", build_tag)
-            return True
-
-        finally:
-            shutil.rmtree(str(build_dir), ignore_errors=True)
+        _LOGGER.info("Build %s:%s done", self.image, tag)
+        return True
 
     @docker_process
     def export_image(self, path):
