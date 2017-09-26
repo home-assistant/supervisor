@@ -50,6 +50,8 @@ class AddonBuild(JsonConfig):
                 'io.hass.version': version,
                 'io.hass.arch': self.config.arch,
                 'io.hass.type': META_ADDON,
+                'io.hass.name': self.addon.name,
+                'io.hass.description': self.addon.description,
             },
             'buildargs': {
                 'BUILD_FROM': self.base_image,
