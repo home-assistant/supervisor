@@ -1,0 +1,9 @@
+# General files
+.git
+.github
+
+# Test related files
+.tox
+
+# Temporary files
+**/__pycache__
