@@ -59,7 +59,7 @@ class AddonBuild(JsonConfig):
             }
         }
 
-        if addon.url:
-            args['labels']['io.hass.url'] = addon.url
+        if self.addon.url:
+            args['labels']['io.hass.url'] = self.addon.url
 
         return args
