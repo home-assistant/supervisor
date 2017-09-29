@@ -342,6 +342,7 @@ Get all available addons.
             "url": "null|url",
             "logo": "bool",
             "audio": "bool",
+            "audio": "bool",
             "hassio_api": "bool"
         }
     ],
@@ -381,6 +382,7 @@ Get all available addons.
     "logo": "bool",
     "hassio_api": "bool",
     "webui": "null|http(s)://[HOST]:port/xy/zx",
+    "gpio": "bool",
     "audio": "bool",
     "audio_input": "null|0,0",
     "audio_output": "null|0,0"
