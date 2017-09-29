@@ -137,6 +137,15 @@ class DockerAddon(DockerInterface):
                     'bind': '/share', 'mode': addon_mapping[MAP_SHARE]
                 }})
 
+        # Init other hardware mappings
+
+        if self.addon.with_gpio:
+            volumes.update({
+                '/sys/class/gpio': {
+                    'bind': '/sys/class/gpio', 'mode': "rw"
+                }})
+
+
         return volumes
 
     def _run(self):
