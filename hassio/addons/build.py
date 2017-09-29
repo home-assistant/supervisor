@@ -38,11 +38,9 @@ class AddonBuild(JsonConfig):
 
     def get_docker_args(self, version):
         """Create a dict with docker build arguments."""
-        build_tag = "{}:{}".format(self.addon.image, version)
-
-        return {
+        args = {
             'path': str(self.addon.path_location),
-            'tag': build_tag,
+            'tag': "{}:{}".format(self.addon.image, version),
             'pull': True,
             'forcerm': True,
             'squash': self.squash,
@@ -50,6 +48,8 @@ class AddonBuild(JsonConfig):
                 'io.hass.version': version,
                 'io.hass.arch': self.config.arch,
                 'io.hass.type': META_ADDON,
+                'io.hass.name': self.addon.name,
+                'io.hass.description': self.addon.description,
             },
             'buildargs': {
                 'BUILD_FROM': self.base_image,
@@ -58,3 +58,8 @@ class AddonBuild(JsonConfig):
                 **self.additional_args,
             }
         }
+
+        if self.addon.url:
+            args['labels']['io.hass.url'] = self.addon.url
+
+        return args
