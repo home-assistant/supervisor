@@ -107,6 +107,7 @@ class DockerAddon(DockerInterface):
 
         addon_mapping = self.addon.map_volumes
 
+        # setup config mappings
         if MAP_CONFIG in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_config): {
@@ -137,14 +138,12 @@ class DockerAddon(DockerInterface):
                     'bind': '/share', 'mode': addon_mapping[MAP_SHARE]
                 }})
 
-        # Init other hardware mappings
-
+        # init other hardware mappings
         if self.addon.with_gpio:
             volumes.update({
                 '/sys/class/gpio': {
                     'bind': '/sys/class/gpio', 'mode': "rw"
                 }})
-
 
         return volumes
 
