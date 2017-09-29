@@ -342,7 +342,7 @@ Get all available addons.
             "url": "null|url",
             "logo": "bool",
             "audio": "bool",
-            "audio": "bool",
+            "gpio": "bool",
             "hassio_api": "bool"
         }
     ],
