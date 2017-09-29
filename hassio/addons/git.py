@@ -73,7 +73,7 @@ class GitRepo(object):
                     None, self.repo.remotes.origin.pull)
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
-                    git.exc.GitCommandError) as err:
+                    git.GitCommandError) as err:
                 _LOGGER.error("Can't pull %s repo: %s.", self.url, err)
                 return False
 
