@@ -29,7 +29,9 @@ from ..tools import write_json_file, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
-RE_WEBUI = re.compile(r"^(.*\[HOST\]:)\[PORT:(\d+)\](.*)$")
+RE_WEBUI = re.compile(
+    r"^(?:(?P<s_prefix>https?)|\[PROTO:(?P<t_proto>\w+)\])"
+    r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$")
 
 MERGE_OPT = Merger([(dict, ['merge'])], ['override'], ['override'])
 
@@ -207,19 +209,31 @@ class Addon(object):
         """Return URL to webui or None."""
         if ATTR_WEBUI not in self._mesh:
             return None
+        webui = RE_WEBUI.match(self._mesh[ATTR_WEBUI])
 
-        webui = self._mesh[ATTR_WEBUI]
-        dock_port = RE_WEBUI.sub(r"\2", webui)
+        # extract arguments
+        t_port = webui.group('t_port')
+        t_proto = webui.group('t_proto')
+        s_prefix = webui.group('s_prefix') or ""
+        s_suffix = webui.group('s_prefix') or ""
+
+        # search host port for this docker port
         if self.ports is None:
-            real_port = dock_port
+            port = self.ports.get("{}/tcp".format(dock_port), t_port)
         else:
-            real_port = self.ports.get("{}/tcp".format(dock_port), dock_port)
+            port = t_port
 
         # for interface config or port lists
-        if isinstance(real_port, (tuple, list)):
-            real_port = real_port[-1]
+        if isinstance(port, (tuple, list)):
+            port = port[-1]
 
-        return RE_WEBUI.sub(r"\g<1>{}\g<3>".format(real_port), webui)
+        # lookup the correct protocol from config
+        if t_proto:
+            proto = 'https' if self.options[t_proto] else 'http'
+        else:
+            proto = s_prefix
+
+        return "{}://[HOST]:{}{}".format(proto, port, s_suffix)
 
     @property
     def host_network(self):

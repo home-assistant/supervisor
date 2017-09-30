@@ -86,7 +86,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): DOCKER_PORTS,
     vol.Optional(ATTR_WEBUI):
-        vol.Match(r"^(?:https?):\/\/\[HOST\]:\[PORT:\d+\].*$"),
+        vol.Match(r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"),
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
     vol.Optional(ATTR_TMPFS):
