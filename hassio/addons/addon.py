@@ -215,7 +215,7 @@ class Addon(object):
         t_port = webui.group('t_port')
         t_proto = webui.group('t_proto')
         s_prefix = webui.group('s_prefix') or ""
-        s_suffix = webui.group('s_prefix') or ""
+        s_suffix = webui.group('s_suffix') or ""
 
         # search host port for this docker port
         if self.ports is None:
