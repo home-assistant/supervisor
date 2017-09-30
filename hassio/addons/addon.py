@@ -219,7 +219,7 @@ class Addon(object):
 
         # search host port for this docker port
         if self.ports is None:
-            port = self.ports.get("{}/tcp".format(dock_port), t_port)
+            port = self.ports.get("{}/tcp".format(t_port), t_port)
         else:
             port = t_port
 
