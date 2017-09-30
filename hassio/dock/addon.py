@@ -143,7 +143,11 @@ class DockerAddon(DockerInterface):
             volumes.update({
                 '/sys/class/gpio': {
                     'bind': '/sys/class/gpio', 'mode': "rw"
-                }})
+                },
+                '/sys/devices/platform/soc': {
+                    'bind': '/sys/devices/platform/soc', 'mode': "rw"
+                },
+            })
 
         return volumes
 
