@@ -2,12 +2,15 @@
 import asyncio
 import logging
 
+import aiohttp
+from aiohttp import web
 import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM,
-    ATTR_BOOT, ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, CONTENT_TYPE_BINARY)
+    ATTR_BOOT, ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, CONTENT_TYPE_BINARY,
+    HEADER_HA_ACCESS)
 from ..validate import HASS_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,7 +61,7 @@ class APIHomeAssistant(object):
 
             # need api password?
             if self.homeassistant.api_password:
-                headers = {'x-ha-access': self.homeassistant.api_password}
+                headers = {HEADER_HA_ACCESS: self.homeassistant.api_password}
 
             # reset headers
             if not headers:

@@ -50,6 +50,7 @@ RESULT_OK = 'ok'
 
 CONTENT_TYPE_BINARY = 'application/octet-stream'
 CONTENT_TYPE_PNG = 'image/png'
+HEADER_HA_ACCESS = 'x-ha-access'
 
 ATTR_DATE = 'date'
 ATTR_ARCH = 'arch'
