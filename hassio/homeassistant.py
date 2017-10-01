@@ -6,7 +6,7 @@ import re
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
-    ATTR_VERSION, ATTR_BOOT)
+    ATTR_VERSION, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL)
 from .dock.homeassistant import DockerHomeAssistant
 from .tools import JsonConfig, convert_to_ascii
 from .validate import SCHEMA_HASS_CONFIG
@@ -37,6 +37,44 @@ class HomeAssistant(JsonConfig):
                 await self.install_landingpage()
         else:
             await self.docker.attach()
+
+    @property
+    def api_ip(self):
+        """Return IP to home-assistant instance."""
+        return self.docker.network.gateway
+
+    @property
+    def api_port(self):
+        """Return network port to home-assistant instance."""
+        return self._data[ATTR_PORT]
+
+    @api_port.setter
+    def api_port(self, value):
+        """Set network port for home-assistant instance."""
+        self._data[ATTR_PORT] = value
+        self.save()
+
+    @property
+    def api_password(self):
+        """Return password for home-assistant instance."""
+        return self._data.get(ATTR_PASSWORD)
+
+    @api_password.setter
+    def api_password(self, value):
+        """Set password for home-assistant instance."""
+        self._data[ATTR_PASSWORD] = value
+        self.save()
+
+    @property
+    def api_ssl(self):
+        """Return if we need ssl to home-assistant instance."""
+        return self._data[ATTR_SSL]
+
+    @api_ssl.setter
+    def api_ssl(self, value):
+        """Set SSL for home-assistant instance."""
+        self._data[ATTR_SSL] = value
+        self.save()
 
     @property
     def version(self):

@@ -303,20 +303,28 @@ Optional:
 Output is the raw Docker log.
 
 - POST `/homeassistant/restart`
-- POST `/homeassistant/options`
 - POST `/homeassistant/check`
 - POST `/homeassistant/start`
 - POST `/homeassistant/stop`
+
+- POST `/homeassistant/options`
 
 ```json
 {
     "devices": [],
     "image": "Optional|null",
-    "last_version": "Optional for custom image|null"
+    "last_version": "Optional for custom image|null",
+    "api_password": "password for hass",
+    "api_port": "port for access hass",
+    "api_ssl": "bool"
 }
 ```
 
 Image with `null` and last_version with `null` reset this options.
+
+- POST/GET `/homeassistant/api`
+
+Proxy to real home-assistant instance.
 
 ### RESTful for API addons
 
