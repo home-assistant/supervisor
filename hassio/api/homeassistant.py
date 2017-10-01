@@ -7,7 +7,7 @@ import voluptuous as vol
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM,
-    ATTR_BOOT, CONTENT_TYPE_BINARY)
+    ATTR_BOOT, ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, CONTENT_TYPE_BINARY)
 from ..validate import HASS_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,6 +20,9 @@ SCHEMA_OPTIONS = vol.Schema({
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Any(None, vol.Coerce(str)),
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'):
         vol.Any(None, vol.Coerce(str)),
+    vol.Optional(ATTR_PORT): NETWORK_PORT,
+    vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
+    vol.Optional(ATTR_SSL): vol.Boolean(),
 })
 
 SCHEMA_VERSION = vol.Schema({
@@ -62,6 +65,15 @@ class APIHomeAssistant(object):
 
         if ATTR_BOOT in body:
             self.homeassistant.boot = body[ATTR_BOOT]
+
+        if ATTR_PORT in body:
+            self.homeassistant.api_port = body[ATTR_PORT]
+
+        if ATTR_PASSWORD in body:
+            self.homeassistant.api_password = body[ATTR_PASSWORD]
+
+        if ATTR_SSL in body:
+            self.homeassistant.api_ssl = body[ATTR_SSL]
 
         return True
 

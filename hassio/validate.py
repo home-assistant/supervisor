@@ -63,7 +63,7 @@ SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Coerce(str),
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
     vol.Optional(ATTR_PORT, default=8123): NETWORK_PORT,
-    vol.Optional(ATTR_PASSWORD): vol.Coerce(str),
+    vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
     vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
 }, extra=vol.REMOVE_EXTRA)
 
