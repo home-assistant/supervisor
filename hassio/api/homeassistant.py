@@ -57,7 +57,7 @@ class APIHomeAssistant(object):
 
             # read data
             with async_timeout.timeout(10, loop=self.loop):
-                data = yield from request.read()
+                data = await request.read()
 
             if data:
                 headers.update({CONTENT_TYPE: request.content_type})
@@ -70,7 +70,7 @@ class APIHomeAssistant(object):
             if not headers:
                 headers = None
 
-            client = yield from method(
+            client = await method(
                 url, data=data, headers=headers, timeout=300
             )
 
