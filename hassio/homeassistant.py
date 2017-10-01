@@ -4,6 +4,8 @@ import logging
 import os
 import re
 
+import aiohttp
+
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
     ATTR_VERSION, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL)
@@ -26,6 +28,7 @@ class HomeAssistant(JsonConfig):
         self.loop = loop
         self.updater = updater
         self.docker = DockerHomeAssistant(config, loop, docker, self)
+        self.api_ip = docker.network.gateway
         self.websession = aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(verify_ssl=False), loop=loop)
 
@@ -39,11 +42,6 @@ class HomeAssistant(JsonConfig):
                 await self.install_landingpage()
         else:
             await self.docker.attach()
-
-    @property
-    def api_ip(self):
-        """Return IP to home-assistant instance."""
-        return self.docker.network.gateway
 
     @property
     def api_port(self):
