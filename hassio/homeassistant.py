@@ -26,6 +26,8 @@ class HomeAssistant(JsonConfig):
         self.loop = loop
         self.updater = updater
         self.docker = DockerHomeAssistant(config, loop, docker, self)
+        self.websession = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(verify_ssl=False), loop=loop)
 
     async def prepare(self):
         """Prepare HomeAssistant object."""
@@ -75,6 +77,13 @@ class HomeAssistant(JsonConfig):
         """Set SSL for home-assistant instance."""
         self._data[ATTR_SSL] = value
         self.save()
+
+    @property
+    def api_url(self):
+        """Return API url to Home-Assistant."""
+        return "{}://{}:{}".format(
+            'https' if self.api_ssl else 'http', self.api_ip, self.api_port
+        )
 
     @property
     def version(self):

@@ -179,6 +179,7 @@ class HassIO(object):
 
         # process stop tasks
         self.websession.close()
+        self.homeassistant.websession.close()
         await asyncio.wait([self.api.stop(), self.dns.stop()], loop=self.loop)
 
         self.exit_code = exit_code

@@ -75,6 +75,10 @@ class RestAPI(object):
         self.webapp.router.add_post('/homeassistant/stop', api_hass.stop)
         self.webapp.router.add_post('/homeassistant/start', api_hass.start)
         self.webapp.router.add_post('/homeassistant/check', api_hass.check)
+        self.webapp.router.add_post(
+            '/homeassistant/api/{path:.+}', api_hass.api)
+        self.webapp.router.add_get(
+            '/homeassistant/api/{path:.+}', api_hass.api)
 
     def register_addons(self, addons):
         """Register homeassistant function."""
