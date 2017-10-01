@@ -18,14 +18,19 @@ FREEGEOIP_URL = "https://freegeoip.io/json/"
 
 RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 
+RE_YAML_CAPTER = re.compile(
+    r"(^(?P<name>\w+):\n(?P<data>(?:^[ ].*\n?|\n)*)$)", re.M)
+RE_YAML_OPTS = re.compile(
+    r"(^[ ]+(?P<param>\w+): (\"|')?(?P<value>.*)(\"|')?\n?$)", re.M)
+
 # Copyright (c) Django Software Foundation and individual contributors.
 # All rights reserved.
 # https://github.com/django/django/blob/master/LICENSE
-DATETIME_RE = re.compile(
-    r'(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})'
-    r'[T ](?P<hour>\d{1,2}):(?P<minute>\d{1,2})'
-    r'(?::(?P<second>\d{1,2})(?:\.(?P<microsecond>\d{1,6})\d{0,6})?)?'
-    r'(?P<tzinfo>Z|[+-]\d{2}(?::?\d{2})?)?$'
+RE_DATETIME = re.compile(
+    r"(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})"
+    r"[T ](?P<hour>\d{1,2}):(?P<minute>\d{1,2})"
+    r"(?::(?P<second>\d{1,2})(?:\.(?P<microsecond>\d{1,6})\d{0,6})?)?"
+    r"(?P<tzinfo>Z|[+-]\d{2}(?::?\d{2})?)?$"
 )
 
 
@@ -75,7 +80,7 @@ def parse_datetime(dt_str):
     Raises ValueError if the input is well formatted but not a valid datetime.
     Returns None if the input isn't well formatted.
     """
-    match = DATETIME_RE.match(dt_str)
+    match = RE_DATETIME.match(dt_str)
     if not match:
         return None
     kws = match.groupdict()  # type: Dict[str, Any]
@@ -98,6 +103,25 @@ def parse_datetime(dt_str):
     kws = {k: int(v) for k, v in kws.items() if v is not None}
     kws['tzinfo'] = tzinfo
     return datetime(**kws)
+
+
+def parse_yaml_file(yamlfile):
+    """Parse a simple yaml (2 depts) file with regex."""
+    with yamlfile.open('r') as yaml:
+        data = yaml.read()
+
+    yaml_data = {}
+    # read level 1
+    for capter in RE_YAML_CAPTER.finditer(data):
+        options = {}
+
+        # read level 2
+        for option in RE_YAML_OPTS(capter.group('data')):
+            options[option.group('param')] = option.group('value')
+
+        yaml_data[capter.group('name')] = options
+
+    return yaml_data
 
 
 class JsonConfig(object):
