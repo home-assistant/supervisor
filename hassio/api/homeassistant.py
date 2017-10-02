@@ -97,6 +97,7 @@ class APIHomeAssistant(object):
             ATTR_BOOT: self.homeassistant.boot,
             ATTR_PORT: self.homeassistant.api_port,
             ATTR_SSL: self.homeassistant.api_ssl,
+            ATTR_WATCHDOG: self.homeassistant.watchdog,
         }
 
     @api_process

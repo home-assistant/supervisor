@@ -286,8 +286,8 @@ Optional:
     "custom": "bool -> if custom image",
     "boot": "bool",
     "port": 8123,
-    "password": null,
-    "ssl": "bool"
+    "ssl": "bool",
+    "watchdog": "bool"
 }
 ```
 
@@ -318,7 +318,9 @@ Output is the raw Docker log.
     "image": "Optional|null",
     "last_version": "Optional for custom image|null",
     "port": "port for access hass",
-    "ssl": "bool"
+    "ssl": "bool",
+    "password": "",
+    "watchdog": "bool"
 }
 ```
 
