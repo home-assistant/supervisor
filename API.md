@@ -317,7 +317,6 @@ Output is the raw Docker log.
     "devices": [],
     "image": "Optional|null",
     "last_version": "Optional for custom image|null",
-    "password": "password for hass",
     "port": "port for access hass",
     "ssl": "bool"
 }
