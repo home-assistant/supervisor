@@ -67,7 +67,8 @@ def homeassistant_watchdog_docker(loop, homeassistant):
     async def _homeassistant_watchdog_docker():
         """Check running state of docker and start if they is close."""
         # if Home-Assistant is active
-        if not await homeassistant.is_initialize():
+        if not await homeassistant.is_initialize() or \
+                not homeassistant.watchdog:
             return
 
         # if Home-Assistant is running
@@ -93,7 +94,8 @@ def homeassistant_watchdog_api(loop, homeassistant):
         nonlocal retry_scan
 
         # if Home-Assistant is active
-        if not await homeassistant.is_initialize():
+        if not await homeassistant.is_initialize() or \
+                not homeassistant.watchdog:
             return
 
         # if Home-Assistant API is up

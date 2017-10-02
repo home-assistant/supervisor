@@ -54,6 +54,7 @@ CONTENT_TYPE_PNG = 'image/png'
 CONTENT_TYPE_JSON = 'application/json'
 HEADER_HA_ACCESS = 'x-ha-access'
 
+ATTR_WATCHDOG = 'watchdog'
 ATTR_DATE = 'date'
 ATTR_ARCH = 'arch'
 ATTR_HOSTNAME = 'hostname'

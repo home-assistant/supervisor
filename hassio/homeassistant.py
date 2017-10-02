@@ -10,7 +10,7 @@ import async_timeout
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
-    ATTR_VERSION, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL,
+    ATTR_VERSION, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
     HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .dock.homeassistant import DockerHomeAssistant
 from .tools import JsonConfig, convert_to_ascii
@@ -85,6 +85,17 @@ class HomeAssistant(JsonConfig):
         return "{}://{}:{}".format(
             'https' if self.api_ssl else 'http', self.api_ip, self.api_port
         )
+
+    @property
+    def watchdog(self):
+        """Return True if the watchdog should protect Home-Assistant."""
+        return self._data[ATTR_WATCHDOG]
+
+    @watchdog.setter
+    def watchdog(self, value):
+        """Return True if the watchdog should protect Home-Assistant."""
+        self._data[ATTR_WATCHDOG] = value
+        self._data.save()
 
     @property
     def version(self):
@@ -271,19 +282,9 @@ class HomeAssistant(JsonConfig):
                 async with self.websession.get(url, headers=header) as request:
                     status = request.status
 
-        # detect wrong SSL config
-        except aiohttp.ServerDisconnectedError as err:
-            if err.message is None:
-                _LOGGER.warning("Detected invalid SSL options, flip config")
-                self.api_ssl = not self.api_ssl
-
-        # other errors
         except (asyncio.TimeoutError, aiohttp.ClientError):
-            pass
+            return False
 
-        else:
-            if status not in (200, 201):
-                _LOGGER.warning("Home-Assistant API config missmatch")
-            return True
-
-        return False
+        if status not in (200, 201):
+            _LOGGER.warning("Home-Assistant API config missmatch")
+        return True

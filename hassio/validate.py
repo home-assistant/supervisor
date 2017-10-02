@@ -8,7 +8,7 @@ from .const import (
     ATTR_TOTP, ATTR_SECURITY, ATTR_BETA_CHANNEL, ATTR_TIMEZONE,
     ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_HOMEASSISTANT, ATTR_HASSIO, ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL,
-    ATTR_PORT)
+    ATTR_PORT, ATTR_WATCHDOG)
 
 
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
@@ -65,6 +65,7 @@ SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Optional(ATTR_PORT, default=8123): NETWORK_PORT,
     vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
     vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
+    vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
 }, extra=vol.REMOVE_EXTRA)
 
 
