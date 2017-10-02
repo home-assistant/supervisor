@@ -62,18 +62,49 @@ def hassio_update(supervisor, updater):
     return _hassio_update
 
 
-def homeassistant_watchdog(loop, homeassistant):
-    """Create scheduler task for montoring running state."""
-    async def _homeassistant_watchdog():
-        """Check running state and start if they is close."""
+def homeassistant_watchdog_docker(loop, homeassistant):
+    """Create scheduler task for montoring running state of docker."""
+    async def _homeassistant_watchdog_docker():
+        """Check running state of docker and start if they is close."""
         # if Home-Assistant is active
         if not await homeassistant.is_initialize():
             return
 
-        # If Home-Assistant is running
+        # if Home-Assistant is running
         if homeassistant.in_progress or await homeassistant.is_running():
             return
 
         loop.create_task(homeassistant.run())
+        _LOGGER.error("Watchdog found a problem with Home-Assistant docker!")
 
-    return _homeassistant_watchdog
+    return _homeassistant_watchdog_docker
+
+
+def homeassistant_watchdog_api(loop, homeassistant):
+    """Create scheduler task for montoring running state of API.
+
+    Try 2 times to call API before we restart Home-Assistant. Maybe we had a
+    delay in our system.
+    """
+    retry_scan = 0
+
+    async def _homeassistant_watchdog_api():
+        """Check running state of API and start if they is close."""
+        # if Home-Assistant is active
+        if not await homeassistant.is_initialize():
+            return
+
+        # if Home-Assistant API is up
+        if homeassistant.in_progress or await homeassistant.check_api_state():
+            return
+        retry_scan += 1
+
+        # Retry active
+        if retry_scan == 1:
+            _LOGGER.warning("Watchdog miss API response from Home-Assistant")
+            return
+
+        loop.create_task(homeassistant.restart())
+        _LOGGER.error("Watchdog found a problem with Home-Assistant API!")
+
+    return _homeassistant_watchdog_api

@@ -269,9 +269,11 @@ class HomeAssistant(JsonConfig):
         try:
             async with async_timeout.timeout(30, loop=self.loop):
                 async with self.websession.get(url, headers=header) as request:
-                    if request.state not in (200, 201):
-                        _LOGGER.warning("Home-Assistant API config missmatch")
-        except (aiohttp.ClientErro, asyncio.TimeoutError):
+                    status = response.status
+
+        except (aiohttp.ClientError, asyncio.TimeoutError):
             return False
 
+        if status not in (200, 201):
+            _LOGGER.warning("Home-Assistant API config missmatch")
         return True

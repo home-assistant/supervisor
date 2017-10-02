@@ -9,10 +9,10 @@ from .api import RestAPI
 from .host_control import HostControl
 from .const import (
     RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
-    RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT,
+    RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT_DOCKER,
     RUN_CLEANUP_API_SESSIONS, STARTUP_SYSTEM, STARTUP_SERVICES,
     STARTUP_APPLICATION, STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS,
-    RUN_UPDATE_ADDONS_TASKS)
+    RUN_UPDATE_ADDONS_TASKS, RUN_WATCHDOG_HOMEASSISTANT_API)
 from .hardware import Hardware
 from .homeassistant import HomeAssistant
 from .scheduler import Scheduler
@@ -22,7 +22,8 @@ from .dns import DNSForward
 from .snapshots import SnapshotsManager
 from .updater import Updater
 from .tasks import (
-    hassio_update, homeassistant_watchdog, api_sessions_cleanup, addons_update)
+    hassio_update, homeassistant_watchdog_docker, api_sessions_cleanup,
+    addons_update, homeassistant_watchdog_api)
 from .tools import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -165,8 +166,12 @@ class HassIO(object):
         finally:
             # schedule homeassistant watchdog
             self.scheduler.register_task(
-                homeassistant_watchdog(self.loop, self.homeassistant),
-                RUN_WATCHDOG_HOMEASSISTANT)
+                homeassistant_watchdog_docker(self.loop, self.homeassistant),
+                RUN_WATCHDOG_HOMEASSISTANT_DOCKER)
+
+            self.scheduler.register_task(
+                homeassistant_watchdog_api(self.loop, self.homeassistant),
+                RUN_WATCHDOG_HOMEASSISTANT_API)
 
             # If landingpage / run upgrade in background
             if self.homeassistant.version == 'landingpage':
