@@ -47,7 +47,7 @@ class APIHomeAssistant(object):
 
     async def homeassistant_proxy(self, path, request):
         """Return a client request with proxy origin for Home-Assistant."""
-        url = "{}/{}".format(self.homeassistant.api_url, path)
+        url = "{}/api/{}".format(self.homeassistant.api_url, path)
 
         try:
             data = None
