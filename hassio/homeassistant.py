@@ -4,9 +4,14 @@ import logging
 import os
 import re
 
+import aiohttp
+from aiohttp.hdrs import CONTENT_TYPE
+import async_timeout
+
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
-    ATTR_VERSION, ATTR_BOOT)
+    ATTR_VERSION, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
+    HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .dock.homeassistant import DockerHomeAssistant
 from .tools import JsonConfig, convert_to_ascii
 from .validate import SCHEMA_HASS_CONFIG
@@ -26,6 +31,9 @@ class HomeAssistant(JsonConfig):
         self.loop = loop
         self.updater = updater
         self.docker = DockerHomeAssistant(config, loop, docker, self)
+        self.api_ip = docker.network.gateway
+        self.websession = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(verify_ssl=False), loop=loop)
 
     async def prepare(self):
         """Prepare HomeAssistant object."""
@@ -37,6 +45,57 @@ class HomeAssistant(JsonConfig):
                 await self.install_landingpage()
         else:
             await self.docker.attach()
+
+    @property
+    def api_port(self):
+        """Return network port to home-assistant instance."""
+        return self._data[ATTR_PORT]
+
+    @api_port.setter
+    def api_port(self, value):
+        """Set network port for home-assistant instance."""
+        self._data[ATTR_PORT] = value
+        self.save()
+
+    @property
+    def api_password(self):
+        """Return password for home-assistant instance."""
+        return self._data.get(ATTR_PASSWORD)
+
+    @api_password.setter
+    def api_password(self, value):
+        """Set password for home-assistant instance."""
+        self._data[ATTR_PASSWORD] = value
+        self.save()
+
+    @property
+    def api_ssl(self):
+        """Return if we need ssl to home-assistant instance."""
+        return self._data[ATTR_SSL]
+
+    @api_ssl.setter
+    def api_ssl(self, value):
+        """Set SSL for home-assistant instance."""
+        self._data[ATTR_SSL] = value
+        self.save()
+
+    @property
+    def api_url(self):
+        """Return API url to Home-Assistant."""
+        return "{}://{}:{}".format(
+            'https' if self.api_ssl else 'http', self.api_ip, self.api_port
+        )
+
+    @property
+    def watchdog(self):
+        """Return True if the watchdog should protect Home-Assistant."""
+        return self._data[ATTR_WATCHDOG]
+
+    @watchdog.setter
+    def watchdog(self, value):
+        """Return True if the watchdog should protect Home-Assistant."""
+        self._data[ATTR_WATCHDOG] = value
+        self._data.save()
 
     @property
     def version(self):
@@ -209,3 +268,23 @@ class HomeAssistant(JsonConfig):
         if exit_code != 0 or RE_YAML_ERROR.search(log):
             return (False, log)
         return (True, log)
+
+    async def check_api_state(self):
+        """Check if Home-Assistant up and running."""
+        url = "{}/api/".format(self.api_url)
+        header = {CONTENT_TYPE: CONTENT_TYPE_JSON}
+
+        if self.api_password:
+            header.update({HEADER_HA_ACCESS: self.api_password})
+
+        try:
+            async with async_timeout.timeout(30, loop=self.loop):
+                async with self.websession.get(url, headers=header) as request:
+                    status = request.status
+
+        except (asyncio.TimeoutError, aiohttp.ClientError):
+            return False
+
+        if status not in (200, 201):
+            _LOGGER.warning("Home-Assistant API config missmatch")
+        return True
