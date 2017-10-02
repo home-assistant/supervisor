@@ -271,10 +271,19 @@ class HomeAssistant(JsonConfig):
                 async with self.websession.get(url, headers=header) as request:
                     status = request.status
 
-        except asyncio.TimeoutError:
-            return False
+        # detect wrong SSL config
+        except aiohttp.ServerDisconnectedError as err:
+            if err.message is None:
+                _LOGGER.warning("Detected invalid SSL options, flip config")
+                self.api_ssl = not self.api_ssl
 
-        if status not in (200, 201):
-            _LOGGER.warning("Home-Assistant API config missmatch")
+        # other errors
+        except (asyncio.TimeoutError, aiohttp.ClientError):
+            pass
 
-        return True
+        else:
+            if status not in (200, 201):
+                _LOGGER.warning("Home-Assistant API config missmatch")
+            return True
+
+        return False
