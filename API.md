@@ -284,7 +284,10 @@ Optional:
     "devices": [""],
     "image": "str",
     "custom": "bool -> if custom image",
-    "boot": "bool"
+    "boot": "bool",
+    "port": 8123,
+    "password": null,
+    "ssl": "bool"
 }
 ```
 
@@ -314,9 +317,9 @@ Output is the raw Docker log.
     "devices": [],
     "image": "Optional|null",
     "last_version": "Optional for custom image|null",
-    "api_password": "password for hass",
-    "api_port": "port for access hass",
-    "api_ssl": "bool"
+    "password": "password for hass",
+    "port": "port for access hass",
+    "ssl": "bool"
 }
 ```
 
