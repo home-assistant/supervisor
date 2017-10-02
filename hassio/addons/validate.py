@@ -106,7 +106,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_IMAGE): vol.Match(r"^[\-\w{}]+/[\-\w{}]+$"),
     vol.Optional(ATTR_TIMEOUT, default=10):
         vol.All(vol.Coerce(int), vol.Range(min=10, max=120))
-})
+}, extra=vol.REMOVE_EXTRA)
 
 
 # pylint: disable=no-value-for-parameter
@@ -114,7 +114,7 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
     vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Optional(ATTR_URL): vol.Url(),
     vol.Optional(ATTR_MAINTAINER): vol.Coerce(str),
-})
+}, extra=vol.REMOVE_EXTRA)
 
 
 # pylint: disable=no-value-for-parameter
