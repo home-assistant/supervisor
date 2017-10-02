@@ -5,10 +5,13 @@ import os
 import re
 
 import aiohttp
+from aiohttp.hdrs import CONTENT_TYPE
+import async_timeout
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
-    ATTR_VERSION, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL)
+    ATTR_VERSION, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL,
+    HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .dock.homeassistant import DockerHomeAssistant
 from .tools import JsonConfig, convert_to_ascii
 from .validate import SCHEMA_HASS_CONFIG
@@ -254,3 +257,21 @@ class HomeAssistant(JsonConfig):
         if exit_code != 0 or RE_YAML_ERROR.search(log):
             return (False, log)
         return (True, log)
+
+    async def check_api_state(self):
+        """Check if Home-Assistant up and running."""
+        url = "{}/api".format(self.api_url)
+        header = {CONTENT_TYPE: CONTENT_TYPE_JSON}
+
+        if self.api_password:
+            header.update({HEADER_HA_ACCESS: self.api_password})
+
+        try:
+            async with async_timeout.timeout(30, loop=self.loop):
+                async with self.websession.get(url, headers=header) as request:
+                    if request.state not in (200, 201):
+                        _LOGGER.warning("Home-Assistant API config missmatch")
+        except (aiohttp.ClientErro, asyncio.TimeoutError):
+            return False
+
+        return True
