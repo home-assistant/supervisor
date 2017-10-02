@@ -94,6 +94,8 @@ class APIHomeAssistant(object):
             ATTR_DEVICES: self.homeassistant.devices,
             ATTR_CUSTOM: self.homeassistant.is_custom_image,
             ATTR_BOOT: self.homeassistant.boot,
+            ATTR_PORT: self.homeassistant.api_port,
+            ATTR_SSL: self.homeassistant.api_ssl,
         }
 
     @api_process
