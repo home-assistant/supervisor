@@ -274,11 +274,7 @@ class HomeAssistant(JsonConfig):
         except asyncio.TimeoutError:
             return False
 
-        except aiohttp.ClientError:
-            status = 302
-
-        else:
-            if status not in (200, 201):
-                _LOGGER.warning("Home-Assistant API config missmatch")
+        if status not in (200, 201):
+            _LOGGER.warning("Home-Assistant API config missmatch")
 
         return True
