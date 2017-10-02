@@ -260,7 +260,7 @@ class HomeAssistant(JsonConfig):
 
     async def check_api_state(self):
         """Check if Home-Assistant up and running."""
-        url = "{}/api".format(self.api_url)
+        url = "{}/api/".format(self.api_url)
         header = {CONTENT_TYPE: CONTENT_TYPE_JSON}
 
         if self.api_password:
