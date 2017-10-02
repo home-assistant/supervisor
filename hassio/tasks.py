@@ -90,6 +90,8 @@ def homeassistant_watchdog_api(loop, homeassistant):
 
     async def _homeassistant_watchdog_api():
         """Check running state of API and start if they is close."""
+        nonlocal retry_scan
+
         # if Home-Assistant is active
         if not await homeassistant.is_initialize():
             return
@@ -106,5 +108,6 @@ def homeassistant_watchdog_api(loop, homeassistant):
 
         loop.create_task(homeassistant.restart())
         _LOGGER.error("Watchdog found a problem with Home-Assistant API!")
+        retry_scan = 0
 
     return _homeassistant_watchdog_api

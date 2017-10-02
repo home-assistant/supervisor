@@ -269,7 +269,7 @@ class HomeAssistant(JsonConfig):
         try:
             async with async_timeout.timeout(30, loop=self.loop):
                 async with self.websession.get(url, headers=header) as request:
-                    status = response.status
+                    status = request.status
 
         except (aiohttp.ClientError, asyncio.TimeoutError):
             return False
