@@ -22,7 +22,7 @@ from ..const import (
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
     ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
-    ATTR_GPIO, ATTR_HOMEASSISTANT_API)
+    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -269,6 +269,11 @@ class Addon(object):
     def access_homeassistant_api(self):
         """Return True if the add-on access to Home-Assistant api proxy."""
         return self._mesh[ATTR_HOMEASSISTANT_API]
+
+    @property
+    def with_stdin(self):
+        """Return True if the add-on access use stdin input."""
+        return self._mesh[ATTR_STDIN]
 
     @property
     def with_gpio(self):
@@ -560,6 +565,18 @@ class Addon(object):
         if last_state == STATE_STARTED:
             await self.docker.run()
         return True
+
+    @check_installed
+    async def write_stdin(self, data):
+        """Write data to add-on stdin.
+
+        Return a coroutine.
+        """
+        if not self.with_stdin:
+            _LOGGER.error("Add-on don't support write to stdin!")
+            return False
+
+        return await self.docker.write_stdin(data)
 
     @check_installed
     async def snapshot(self, tar_file):

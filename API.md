@@ -355,6 +355,7 @@ Get all available addons.
             "logo": "bool",
             "audio": "bool",
             "gpio": "bool",
+            "stdin": "bool",
             "hassio_api": "bool",
             "homeassistant_api": "bool"
         }
@@ -395,6 +396,7 @@ Get all available addons.
     "logo": "bool",
     "hassio_api": "bool",
     "homeassistant_api": "bool",
+    "stdin": "bool",
     "webui": "null|http(s)://[HOST]:port/xy/zx",
     "gpio": "bool",
     "audio": "bool",
