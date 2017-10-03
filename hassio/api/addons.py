@@ -13,7 +13,7 @@ from ..const import (
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
     ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, ATTR_DEVICES, ATTR_PRIVILEGED,
     ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API,
-    ATTR_GPIO, ATTR_HOMEASSISTANT_API, BOOT_AUTO, BOOT_MANUAL,
+    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, BOOT_AUTO, BOOT_MANUAL,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
 from ..validate import DOCKER_PORTS
 
@@ -78,6 +78,7 @@ class APIAddons(object):
                 ATTR_DEVICES: self._pretty_devices(addon),
                 ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
+                ATTR_STDIN: addon.with_stdin,
                 ATTR_HASSIO_API: addon.access_hassio_api,
                 ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
                 ATTR_AUDIO: addon.with_audio,
@@ -129,6 +130,7 @@ class APIAddons(object):
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,
             ATTR_WEBUI: addon.webui,
+            ATTR_STDIN: addon.with_stdin,
             ATTR_HASSIO_API: addon.access_hassio_api,
             ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
             ATTR_GPIO: addon.with_gpio,
@@ -242,3 +244,13 @@ class APIAddons(object):
 
         with addon.path_logo.open('rb') as png:
             return png.read()
+
+    @api_process
+    async def stdin(self, request):
+        """Write to stdin of addon."""
+        addon = self._extract_addon(request)
+        if not addon.with_stdin:
+            raise RuntimeError("STDIN not supported by addons")
+
+        data = await request.read()
+        return asyncio.shield(addon.write_stdin(data), loop=self.loop)
