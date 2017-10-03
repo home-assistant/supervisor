@@ -460,6 +460,10 @@ Output is the raw Docker log.
 
 Only supported for local build addons
 
+- POST `/addons/{addon}/stdin`
+
+Write data to add-on stdin
+
 ## Host Control
 
 Communicate over UNIX socket with a host daemon.
