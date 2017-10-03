@@ -13,7 +13,8 @@ from ..const import (
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
     ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, ATTR_DEVICES, ATTR_PRIVILEGED,
     ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API,
-    ATTR_GPIO, BOOT_AUTO, BOOT_MANUAL, CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
+    ATTR_GPIO, ATTR_HOMEASSISTANT_API, BOOT_AUTO, BOOT_MANUAL,
+    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,7 +78,8 @@ class APIAddons(object):
                 ATTR_DEVICES: self._pretty_devices(addon),
                 ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
-                ATTR_HASSIO_API: addon.use_hassio_api,
+                ATTR_HASSIO_API: addon.access_hassio_api,
+                ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
                 ATTR_AUDIO: addon.with_audio,
                 ATTR_GPIO: addon.with_gpio,
             })
@@ -127,7 +129,8 @@ class APIAddons(object):
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,
             ATTR_WEBUI: addon.webui,
-            ATTR_HASSIO_API: addon.use_hassio_api,
+            ATTR_HASSIO_API: addon.access_hassio_api,
+            ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
             ATTR_GPIO: addon.with_gpio,
             ATTR_AUDIO: addon.with_audio,
             ATTR_AUDIO_INPUT: addon.audio_input,
