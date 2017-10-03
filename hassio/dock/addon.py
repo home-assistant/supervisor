@@ -1,5 +1,6 @@
 """Init file for HassIO addon docker object."""
 import logging
+import os
 
 import docker
 import requests
@@ -171,6 +172,7 @@ class DockerAddon(DockerInterface):
             name=self.name,
             hostname=self.hostname,
             detach=True,
+            stdin_open=self.addon.with_stdin,
             network_mode=self.network_mode,
             ports=self.ports,
             extra_hosts=self.network_mapping,
@@ -278,3 +280,35 @@ class DockerAddon(DockerInterface):
         """
         self._stop()
         return self._run()
+
+    @docker_process
+    def write_stdin(self, data):
+        """Write to add-on stdin."""
+        return self.loop.run_in_executor(None, self._write_stdin, data)
+
+    def _write_stdin(self, data):
+        """Write to add-on stdin.
+
+        Need run inside executor.
+        """
+        if not self._is_running():
+            return False
+
+        try:
+            # load needed docker objects
+            container = self.docker.containers.get(self.name)
+            socket = container.attach_socket(params={'stdin': 1, 'stream': 1})
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't attach to %s stdin -> %s", self.name, err)
+            return False
+
+        try:
+            # write to stdin
+            data += b"\n"
+            os.write(socket.fileno(), data)
+            socket.close()
+        except OSError as err:
+            _LOGGER.error("Can't write to %s stdin -> %s", self.name, err)
+            return False
+
+        return True
