@@ -14,7 +14,7 @@ from ..const import (
     ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK,
     ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT,
     ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
-    ATTR_ARGS, ATTR_GPIO)
+    ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
 
 
@@ -97,6 +97,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_AUDIO, default=False): vol.Boolean(),
     vol.Optional(ATTR_GPIO, default=False): vol.Boolean(),
     vol.Optional(ATTR_HASSIO_API, default=False): vol.Boolean(),
+    vol.Optional(ATTR_HOMEASSISTANT_API, default=False): vol.Boolean(),
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [

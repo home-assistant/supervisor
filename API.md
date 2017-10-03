@@ -355,7 +355,8 @@ Get all available addons.
             "logo": "bool",
             "audio": "bool",
             "gpio": "bool",
-            "hassio_api": "bool"
+            "hassio_api": "bool",
+            "homeassistant_api": "bool"
         }
     ],
     "repositories": [
@@ -393,6 +394,7 @@ Get all available addons.
     "devices": ["/dev/xy"],
     "logo": "bool",
     "hassio_api": "bool",
+    "homeassistant_api": "bool",
     "webui": "null|http(s)://[HOST]:port/xy/zx",
     "gpio": "bool",
     "audio": "bool",
