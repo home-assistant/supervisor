@@ -1,5 +1,6 @@
 """Init file for HassIO addon docker object."""
 import logging
+import os
 
 import docker
 import requests
