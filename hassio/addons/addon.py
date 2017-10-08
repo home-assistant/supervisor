@@ -447,7 +447,7 @@ class Addon(object):
             return False
         return True
 
-    async def install(self, version=None):
+    async def install(self):
         """Install a addon."""
         if self.config.arch not in self.supported_arch:
             _LOGGER.error(
@@ -463,11 +463,10 @@ class Addon(object):
                 "Create Home-Assistant addon data folder %s", self.path_data)
             self.path_data.mkdir()
 
-        version = version or self.last_version
-        if not await self.docker.install(version):
+        if not await self.docker.install(self.last_version):
             return False
 
-        self._set_install(version)
+        self._set_install(self.last_version)
         return True
 
     @check_installed
@@ -510,19 +509,19 @@ class Addon(object):
         return self.docker.stop()
 
     @check_installed
-    async def update(self, version=None):
+    async def update(self):
         """Update addon."""
         version = version or self.last_version
         last_state = await self.state()
 
-        if version == self.version_installed:
+        if self.last_version == self.version_installed:
             _LOGGER.warning(
-                "Addon %s is already installed in %s", self._id, version)
+                "No update available for Addon %s", self._id)
             return False
 
-        if not await self.docker.update(version):
+        if not await self.docker.update(self.last_version):
             return False
-        self._set_update(version)
+        self._set_update(self.last_version)
 
         # restore state
         if last_state == STATE_STARTED:
