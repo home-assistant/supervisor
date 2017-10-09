@@ -176,8 +176,10 @@ def validate_options(raw_schema):
 
         # read options
         for key, value in struct.items():
+            # Ignore unknown options / remove from list
             if key not in raw_schema:
-                raise vol.Invalid("Unknown options {}.".format(key))
+                _LOGGER.warning("Unknown options %s", key)
+                continue
 
             typ = raw_schema[key]
             try:
@@ -249,9 +251,10 @@ def _nested_validate_list(typ, data_list, key):
         if isinstance(typ, dict):
             c_options = {}
             for c_key, c_value in element.items():
+                # Ignore unknown options / remove from list
                 if c_key not in typ:
-                    raise vol.Invalid(
-                        "Unknown nested options {}".format(c_key))
+                    _LOGGER.warning("Unknown options %s", c_key)
+                    continue
 
                 c_options[c_key] = _single_validate(typ[c_key], c_value, c_key)
             options.append(c_options)
@@ -267,8 +270,10 @@ def _nested_validate_dict(typ, data_dict, key):
     options = {}
 
     for c_key, c_value in data_dict.items():
+        # Ignore unknown options / remove from list
         if c_key not in typ:
-            raise vol.Invalid("Unknow nested dict options {}".format(c_key))
+            _LOGGER.warning("Unknown options %s", c_key)
+            continue
 
         options[c_key] = _single_validate(typ[c_key], c_value, c_key)
 
