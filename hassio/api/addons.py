@@ -166,14 +166,10 @@ class APIAddons(object):
         return True
 
     @api_process
-    async def install(self, request):
+    def install(self, request):
         """Install addon."""
-        body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request, check_installed=False)
-        version = body.get(ATTR_VERSION, addon.last_version)
-
-        return await asyncio.shield(
-            addon.install(version=version), loop=self.loop)
+        return asyncio.shield(addon.install(), loop=self.loop)
 
     @api_process
     def uninstall(self, request):
@@ -202,17 +198,14 @@ class APIAddons(object):
         return asyncio.shield(addon.stop(), loop=self.loop)
 
     @api_process
-    async def update(self, request):
+    def update(self, request):
         """Update addon."""
-        body = await api_validate(SCHEMA_VERSION, request)
         addon = self._extract_addon(request)
-        version = body.get(ATTR_VERSION, addon.last_version)
 
-        if version == addon.version_installed:
-            raise RuntimeError("Version %s is already in use", version)
+        if addon.last_version == addon.version_installed:
+            raise RuntimeError("No update available!")
 
-        return await asyncio.shield(
-            addon.update(version=version), loop=self.loop)
+        return asyncio.shield(addon.update(), loop=self.loop)
 
     @api_process
     def restart(self, request):
@@ -253,4 +246,4 @@ class APIAddons(object):
             raise RuntimeError("STDIN not supported by addons")
 
         data = await request.read()
-        return asyncio.shield(addon.write_stdin(data), loop=self.loop)
+        return await asyncio.shield(addon.write_stdin(data), loop=self.loop)
