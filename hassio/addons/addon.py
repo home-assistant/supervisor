@@ -511,7 +511,6 @@ class Addon(object):
     @check_installed
     async def update(self):
         """Update addon."""
-        version = version or self.last_version
         last_state = await self.state()
 
         if self.last_version == self.version_installed:
