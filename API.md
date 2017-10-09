@@ -430,25 +430,9 @@ For reset custom network/audio settings, set it `null`.
 
 - POST `/addons/{addon}/install`
 
-Optional:
-
-```json
-{
-    "version": "VERSION"
-}
-```
-
 - POST `/addons/{addon}/uninstall`
 
 - POST `/addons/{addon}/update`
-
-Optional:
-
-```json
-{
-    "version": "VERSION"
-}
-```
 
 - GET `/addons/{addon}/logs`
 
