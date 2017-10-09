@@ -323,9 +323,11 @@ class Snapshot(object):
             origin_dir = Path(self.config.path_hassio, name)
 
             try:
+                _LOGGER.info("Snapshot folder %s", name)
                 with tarfile.open(snapshot_tar, "w:gz",
                                   compresslevel=1) as tar_file:
                     tar_file.add(origin_dir, arcname=".")
+                    _LOGGER.info("Snapshot folder %s done", name)
 
                 self._data[ATTR_FOLDERS].append(name)
             except tarfile.TarError as err:
@@ -352,8 +354,10 @@ class Snapshot(object):
                 remove_folder(origin_dir)
 
             try:
+                _LOGGER.info("Restore folder %s", name)
                 with tarfile.open(snapshot_tar, "r:gz") as tar_file:
                     tar_file.extractall(path=origin_dir)
+                    _LOGGER.info("Restore folder %s done", name)
             except tarfile.TarError as err:
                 _LOGGER.warning("Can't restore folder %s -> %s", name, err)
 
