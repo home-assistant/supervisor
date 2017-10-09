@@ -258,10 +258,10 @@ def _nested_validate_list(typ, data_list, key):
                 c_options[c_key] = _single_validate(typ[c_key], c_value, c_key)
 
             # check if all options are exists
-            missing_opts = set(typ) - set(c_options)
-            if missing_opts:
+            missing = set(typ) - set(c_options)
+            if missing:
                 raise vol.Invalid(
-                    "Missing %s options inside nested list".format(missing_opts))
+                    "Missing {} options inside nested list".format(missing))
 
             options.append(c_options)
         # normal list
