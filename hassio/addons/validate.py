@@ -1,4 +1,5 @@
 """Validate addons options schema."""
+import logging
 import re
 
 import voluptuous as vol
@@ -16,6 +17,8 @@ from ..const import (
     ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
     ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
+
+_LOGGER = logging.getLogger(__name__)
 
 
 RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$")
