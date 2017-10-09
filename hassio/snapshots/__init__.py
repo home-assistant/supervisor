@@ -197,6 +197,8 @@ class SnapshotsManager(object):
                 await snapshot.restore_folders()
 
                 # start homeassistant restore
+                _LOGGER.info("Full-Restore %s restore Home-Assistant",
+                             snapshot.slug)
                 snapshot.restore_homeassistant(self.homeassistant)
                 task_hass = self.loop.create_task(
                     self.homeassistant.update(snapshot.homeassistant_version))
@@ -279,6 +281,8 @@ class SnapshotsManager(object):
                     await snapshot.restore_folders(folders)
 
                 if homeassistant:
+                    _LOGGER.info("Partial-Restore %s restore Home-Assistant",
+                                 snapshot.slug)
                     snapshot.restore_homeassistant(self.homeassistant)
                     tasks.append(self.homeassistant.update(
                         snapshot.homeassistant_version))
