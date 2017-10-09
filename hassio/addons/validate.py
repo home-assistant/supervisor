@@ -1,4 +1,5 @@
 """Validate addons options schema."""
+import logging
 import re
 
 import voluptuous as vol
@@ -16,6 +17,8 @@ from ..const import (
     ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
     ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
+
+_LOGGER = logging.getLogger(__name__)
 
 
 RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$")
@@ -176,8 +179,10 @@ def validate_options(raw_schema):
 
         # read options
         for key, value in struct.items():
+            # Ignore unknown options / remove from list
             if key not in raw_schema:
-                raise vol.Invalid("Unknown options {}.".format(key))
+                _LOGGER.warning("Unknown options %s", key)
+                continue
 
             typ = raw_schema[key]
             try:
@@ -202,42 +207,38 @@ def validate_options(raw_schema):
 # pylint: disable=no-value-for-parameter
 def _single_validate(typ, value, key):
     """Validate a single element."""
-    try:
-        # if required argument
-        if value is None:
-            raise vol.Invalid("Missing required option '{}'.".format(key))
+    # if required argument
+    if value is None:
+        raise vol.Invalid("Missing required option '{}'.".format(key))
 
-        # parse extend data from type
-        match = RE_SCHEMA_ELEMENT.match(typ)
+    # parse extend data from type
+    match = RE_SCHEMA_ELEMENT.match(typ)
 
-        # prepare range
-        range_args = {}
-        for group_name in ('i_min', 'i_max', 'f_min', 'f_max'):
-            group_value = match.group(group_name)
-            if group_value:
-                range_args[group_name[2:]] = float(group_value)
+    # prepare range
+    range_args = {}
+    for group_name in ('i_min', 'i_max', 'f_min', 'f_max'):
+        group_value = match.group(group_name)
+        if group_value:
+            range_args[group_name[2:]] = float(group_value)
 
-        if typ.startswith(V_STR):
-            return str(value)
-        elif typ.startswith(V_INT):
-            return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
-        elif typ.startswith(V_FLOAT):
-            return vol.All(vol.Coerce(float), vol.Range(**range_args))(value)
-        elif typ.startswith(V_BOOL):
-            return vol.Boolean()(value)
-        elif typ.startswith(V_EMAIL):
-            return vol.Email()(value)
-        elif typ.startswith(V_URL):
-            return vol.Url()(value)
-        elif typ.startswith(V_PORT):
-            return NETWORK_PORT(value)
-        elif typ.startswith(V_MATCH):
-            return vol.Match(match.group('match'))(str(value))
+    if typ.startswith(V_STR):
+        return str(value)
+    elif typ.startswith(V_INT):
+        return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
+    elif typ.startswith(V_FLOAT):
+        return vol.All(vol.Coerce(float), vol.Range(**range_args))(value)
+    elif typ.startswith(V_BOOL):
+        return vol.Boolean()(value)
+    elif typ.startswith(V_EMAIL):
+        return vol.Email()(value)
+    elif typ.startswith(V_URL):
+        return vol.Url()(value)
+    elif typ.startswith(V_PORT):
+        return NETWORK_PORT(value)
+    elif typ.startswith(V_MATCH):
+        return vol.Match(match.group('match'))(str(value))
 
-        raise vol.Invalid("Fatal error for {} type {}".format(key, typ))
-    except ValueError:
-        raise vol.Invalid(
-            "Type {} error for '{}' on {}.".format(typ, value, key)) from None
+    raise vol.Invalid("Fatal error for {} type {}".format(key, typ))
 
 
 def _nested_validate_list(typ, data_list, key):
@@ -249,9 +250,10 @@ def _nested_validate_list(typ, data_list, key):
         if isinstance(typ, dict):
             c_options = {}
             for c_key, c_value in element.items():
+                # Ignore unknown options / remove from list
                 if c_key not in typ:
-                    raise vol.Invalid(
-                        "Unknown nested options {}".format(c_key))
+                    _LOGGER.warning("Unknown options %s", c_key)
+                    continue
 
                 c_options[c_key] = _single_validate(typ[c_key], c_value, c_key)
             options.append(c_options)
@@ -267,8 +269,10 @@ def _nested_validate_dict(typ, data_dict, key):
     options = {}
 
     for c_key, c_value in data_dict.items():
+        # Ignore unknown options / remove from list
         if c_key not in typ:
-            raise vol.Invalid("Unknow nested dict options {}".format(c_key))
+            _LOGGER.warning("Unknown options %s", c_key)
+            continue
 
         options[c_key] = _single_validate(typ[c_key], c_value, c_key)
 
