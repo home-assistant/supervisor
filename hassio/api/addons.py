@@ -198,7 +198,7 @@ class APIAddons(object):
         return asyncio.shield(addon.stop(), loop=self.loop)
 
     @api_process
-    async def update(self, request):
+    def update(self, request):
         """Update addon."""
         addon = self._extract_addon(request)
 
