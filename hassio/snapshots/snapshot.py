@@ -262,7 +262,6 @@ class Snapshot(object):
         # exists snapshot or exception on build
         if self.tar_file.is_file() or exception_type is not None:
             self._tmp.cleanup()
-            self._tmp = None
             return
 
         # validate data
@@ -285,7 +284,6 @@ class Snapshot(object):
             _LOGGER.error("Can't write snapshot.json")
 
         self._tmp.cleanup()
-        self._tmp = None
 
     async def import_addon(self, addon):
         """Add a addon into snapshot."""
