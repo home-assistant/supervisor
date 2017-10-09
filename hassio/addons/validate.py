@@ -207,42 +207,38 @@ def validate_options(raw_schema):
 # pylint: disable=no-value-for-parameter
 def _single_validate(typ, value, key):
     """Validate a single element."""
-    try:
-        # if required argument
-        if value is None:
-            raise vol.Invalid("Missing required option '{}'.".format(key))
+    # if required argument
+    if value is None:
+        raise vol.Invalid("Missing required option '{}'.".format(key))
 
-        # parse extend data from type
-        match = RE_SCHEMA_ELEMENT.match(typ)
+    # parse extend data from type
+    match = RE_SCHEMA_ELEMENT.match(typ)
 
-        # prepare range
-        range_args = {}
-        for group_name in ('i_min', 'i_max', 'f_min', 'f_max'):
-            group_value = match.group(group_name)
-            if group_value:
-                range_args[group_name[2:]] = float(group_value)
+    # prepare range
+    range_args = {}
+    for group_name in ('i_min', 'i_max', 'f_min', 'f_max'):
+        group_value = match.group(group_name)
+        if group_value:
+            range_args[group_name[2:]] = float(group_value)
 
-        if typ.startswith(V_STR):
-            return str(value)
-        elif typ.startswith(V_INT):
-            return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
-        elif typ.startswith(V_FLOAT):
-            return vol.All(vol.Coerce(float), vol.Range(**range_args))(value)
-        elif typ.startswith(V_BOOL):
-            return vol.Boolean()(value)
-        elif typ.startswith(V_EMAIL):
-            return vol.Email()(value)
-        elif typ.startswith(V_URL):
-            return vol.Url()(value)
-        elif typ.startswith(V_PORT):
-            return NETWORK_PORT(value)
-        elif typ.startswith(V_MATCH):
-            return vol.Match(match.group('match'))(str(value))
+    if typ.startswith(V_STR):
+        return str(value)
+    elif typ.startswith(V_INT):
+        return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
+    elif typ.startswith(V_FLOAT):
+        return vol.All(vol.Coerce(float), vol.Range(**range_args))(value)
+    elif typ.startswith(V_BOOL):
+        return vol.Boolean()(value)
+    elif typ.startswith(V_EMAIL):
+        return vol.Email()(value)
+    elif typ.startswith(V_URL):
+        return vol.Url()(value)
+    elif typ.startswith(V_PORT):
+        return NETWORK_PORT(value)
+    elif typ.startswith(V_MATCH):
+        return vol.Match(match.group('match'))(str(value))
 
-        raise vol.Invalid("Fatal error for {} type {}".format(key, typ))
-    except ValueError:
-        raise vol.Invalid(
-            "Type {} error for '{}' on {}.".format(typ, value, key)) from None
+    raise vol.Invalid("Fatal error for {} type {}".format(key, typ))
 
 
 def _nested_validate_list(typ, data_list, key):
