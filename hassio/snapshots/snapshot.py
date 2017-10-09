@@ -261,7 +261,9 @@ class Snapshot(object):
         """Async context to close a snapshot."""
         # exists snapshot or exception on build
         if self.tar_file.is_file() or exception_type is not None:
-            return self._tmp.cleanup()
+            self._tmp.cleanup()
+            self._tmp = None
+            return
 
         # validate data
         try:
