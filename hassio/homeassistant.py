@@ -95,7 +95,7 @@ class HomeAssistant(JsonConfig):
     def watchdog(self, value):
         """Return True if the watchdog should protect Home-Assistant."""
         self._data[ATTR_WATCHDOG] = value
-        self._data.save()
+        self.save()
 
     @property
     def version(self):
