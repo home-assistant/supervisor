@@ -285,7 +285,7 @@ def _nested_validate_dict(typ, data_dict, key):
 
 def _check_missing_options(origin, exists):
     """Check if all options are exists."""
-    missing = set(typ) - set(c_options)
+    missing = set(typ) - set(exists)
     for miss_opt in missing:
         if typ[miss_opt].endswith("?"):
             continue
