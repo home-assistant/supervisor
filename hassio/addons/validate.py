@@ -109,7 +109,9 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
                 SCHEMA_ELEMENT,
                 {vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}
             ),
-        ], vol.Schema({vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}))
+        ], vol.Schema({
+            vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])
+        }))
     }), False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"^[\-\w{}]+/[\-\w{}]+$"),
     vol.Optional(ATTR_TIMEOUT, default=10):
