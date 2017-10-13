@@ -38,7 +38,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
     r"|float(?:\((?P<f_min>[\d\.]+)?,(?P<f_max>[\d\.]+)?\))?"
     r"|match\((?P<match>.*)\)"
-    r")$"
+    r")\??$"
 )
 
 SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
@@ -105,8 +105,13 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [
-            vol.Any(SCHEMA_ELEMENT, {vol.Coerce(str): SCHEMA_ELEMENT})
-        ], vol.Schema({vol.Coerce(str): SCHEMA_ELEMENT}))
+            vol.Any(
+                SCHEMA_ELEMENT,
+                {vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}
+            ),
+        ], vol.Schema({
+            vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])
+        }))
     }), False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"^[\-\w{}]+/[\-\w{}]+$"),
     vol.Optional(ATTR_TIMEOUT, default=10):
@@ -199,6 +204,7 @@ def validate_options(raw_schema):
                 raise vol.Invalid(
                     "Type error for {}.".format(key)) from None
 
+        _check_missing_options(raw_schema, options, 'root')
         return options
 
     return validate
@@ -246,25 +252,10 @@ def _nested_validate_list(typ, data_list, key):
     options = []
 
     for element in data_list:
-        # dict list
+        # Nested?
         if isinstance(typ, dict):
-            c_options = {}
-            for c_key, c_value in element.items():
-                # Ignore unknown options / remove from list
-                if c_key not in typ:
-                    _LOGGER.warning("Unknown options %s", c_key)
-                    continue
-
-                c_options[c_key] = _single_validate(typ[c_key], c_value, c_key)
-
-            # check if all options are exists
-            missing = set(typ) - set(c_options)
-            if missing:
-                raise vol.Invalid(
-                    "Missing {} options inside nested list".format(missing))
-
+            c_options = _nested_validate_dict(typ, element, key)
             options.append(c_options)
-        # normal list
         else:
             options.append(_single_validate(typ, element, key))
 
@@ -281,6 +272,23 @@ def _nested_validate_dict(typ, data_dict, key):
             _LOGGER.warning("Unknown options %s", c_key)
             continue
 
-        options[c_key] = _single_validate(typ[c_key], c_value, c_key)
+        # Nested?
+        if isinstance(typ[c_key], list):
+            options[c_key] = _nested_validate_list(typ[c_key][0],
+                                                   c_value, c_key)
+        else:
+            options[c_key] = _single_validate(typ[c_key], c_value, c_key)
 
+    _check_missing_options(typ, options, key)
     return options
+
+
+def _check_missing_options(origin, exists, root):
+    """Check if all options are exists."""
+    missing = set(origin) - set(exists)
+    for miss_opt in missing:
+        if isinstance(origin[miss_opt], str) and \
+                origin[miss_opt].endswith("?"):
+            continue
+        raise vol.Invalid(
+            "Missing option {} in {}".format(miss_opt, root))
