@@ -38,7 +38,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
     r"|float(?:\((?P<f_min>[\d\.]+)?,(?P<f_max>[\d\.]+)?\))?"
     r"|match\((?P<match>.*)\)"
-    r")$"
+    r")\??)$"
 )
 
 SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
@@ -257,13 +257,9 @@ def _nested_validate_list(typ, data_list, key):
 
                 c_options[c_key] = _single_validate(typ[c_key], c_value, c_key)
 
-            # check if all options are exists
-            missing = set(typ) - set(c_options)
-            if missing:
-                raise vol.Invalid(
-                    "Missing {} options inside nested list".format(missing))
-
+            _check_missing_options(typ, options)
             options.append(c_options)
+
         # normal list
         else:
             options.append(_single_validate(typ, element, key))
@@ -283,4 +279,14 @@ def _nested_validate_dict(typ, data_dict, key):
 
         options[c_key] = _single_validate(typ[c_key], c_value, c_key)
 
+    _check_missing_options(typ, options)
     return options
+
+
+def _check_missing_options(origin, exists):
+    """Check if all options are exists."""
+    missing = set(typ) - set(c_options)
+    for miss_opt in missing:
+        if typ[miss_opt].endswith("?"):
+            continue
+        raise vol.Invalid("Missing {} option inside options".format(miss_opt))
