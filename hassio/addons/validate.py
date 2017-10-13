@@ -288,6 +288,7 @@ def _check_missing_options(origin, exists):
     """Check if all options are exists."""
     missing = set(origin) - set(exists)
     for miss_opt in missing:
-        if isinstance(origin[miss_opt], str) and origin[miss_opt].endswith("?"):
+        if isinstance(origin[miss_opt], str) and \
+                origin[miss_opt].endswith("?"):
             continue
         raise vol.Invalid("Missing {} option inside options".format(miss_opt))
