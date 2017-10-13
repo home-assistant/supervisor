@@ -258,7 +258,7 @@ def _nested_validate_list(typ, data_list, key):
 
                 c_options[c_key] = _single_validate(typ[c_key], c_value, c_key)
 
-            _check_missing_options(typ, options)
+            _check_missing_options(typ, c_options)
             options.append(c_options)
 
         # normal list
@@ -291,4 +291,4 @@ def _check_missing_options(origin, exists):
         if isinstance(origin[miss_opt], str) and \
                 origin[miss_opt].endswith("?"):
             continue
-        raise vol.Invalid("Missing {} option inside options".format(miss_opt))
+        raise vol.Invalid("Missing opton {}".format(miss_opt))
