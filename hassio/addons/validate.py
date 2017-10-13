@@ -274,7 +274,8 @@ def _nested_validate_dict(typ, data_dict, key):
 
         # Nested?
         if isinstance(typ[c_key], list):
-            options[c_key] = _nested_validate_list(typ[c_key], c_value, c_key)
+            options[c_key] = _nested_validate_list(typ[c_key][0],
+                                                   c_value, c_key)
         else:
             options[c_key] = _single_validate(typ[c_key], c_value, c_key)
 
