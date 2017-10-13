@@ -8,7 +8,6 @@ import shutil
 import tarfile
 from tempfile import TemporaryDirectory
 
-from deepmerge import Merger
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -32,8 +31,6 @@ _LOGGER = logging.getLogger(__name__)
 RE_WEBUI = re.compile(
     r"^(?:(?P<s_prefix>https?)|\[PROTO:(?P<t_proto>\w+)\])"
     r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$")
-
-MERGE_OPT = Merger([(dict, ['merge'])], ['override'], ['override'])
 
 
 class Addon(object):
@@ -109,10 +106,10 @@ class Addon(object):
     def options(self):
         """Return options with local changes."""
         if self.is_installed:
-            return MERGE_OPT.merge(
-                self.data.system[self._id][ATTR_OPTIONS],
-                self.data.user[self._id][ATTR_OPTIONS],
-            )
+            return {
+                **self.data.system[self._id][ATTR_OPTIONS],
+                **self.data.user[self._id][ATTR_OPTIONS]
+            }
         return self.data.cache[self._id][ATTR_OPTIONS]
 
     @options.setter
