@@ -105,8 +105,9 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [
-            vol.Any(SCHEMA_ELEMENT,
-                    {vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}
+            vol.Any(
+                SCHEMA_ELEMENT,
+                {vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}
             ),
         ], vol.Schema({vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}))
     }), False),
