@@ -199,6 +199,7 @@ def validate_options(raw_schema):
                 raise vol.Invalid(
                     "Type error for {}.".format(key)) from None
 
+        _check_missing_options(typ, options)
         return options
 
     return validate
@@ -285,8 +286,8 @@ def _nested_validate_dict(typ, data_dict, key):
 
 def _check_missing_options(origin, exists):
     """Check if all options are exists."""
-    missing = set(typ) - set(exists)
+    missing = set(origin) - set(exists)
     for miss_opt in missing:
-        if typ[miss_opt].endswith("?"):
+        if isinstance(origin[miss_opt], str) and origin[miss_opt].endswith("?"):
             continue
         raise vol.Invalid("Missing {} option inside options".format(miss_opt))
