@@ -204,7 +204,7 @@ def validate_options(raw_schema):
                 raise vol.Invalid(
                     "Type error for {}.".format(key)) from None
 
-        _check_missing_options(typ, options)
+        _check_missing_options(typ, options, 'root')
         return options
 
     return validate
@@ -290,4 +290,4 @@ def _check_missing_options(origin, exists, root):
                 origin[miss_opt].endswith("?"):
             continue
         raise vol.Invalid(
-            "Missing opton {} in {}".format(miss_opt, root))
+            "Missing option {} in {}".format(miss_opt, root))
