@@ -113,7 +113,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
             vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])
         }))
     }), False),
-    vol.Optional(ATTR_IMAGE): vol.Match(r"^[\-\w{}]+/[\-\w{}]+$"),
+    vol.Optional(ATTR_IMAGE): vol.Match(r"^[\w{}]+/[\-\w{}]+$"),
     vol.Optional(ATTR_TIMEOUT, default=10):
         vol.All(vol.Coerce(int), vol.Range(min=10, max=120))
 }, extra=vol.REMOVE_EXTRA)
@@ -130,7 +130,7 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_BUILD_CONFIG = vol.Schema({
     vol.Optional(ATTR_BUILD_FROM, default=BASE_IMAGE): vol.Schema({
-        vol.In(ARCH_ALL): vol.Match(r"^[\-\w{}]+/[\-\w{}]+:[\-\w{}]+$"),
+        vol.In(ARCH_ALL): vol.Match(r"(?:^[\w{}]+/)?[\-\w{}]+:[\.\-\w{}]+$"),
     }),
     vol.Optional(ATTR_SQUASH, default=False): vol.Boolean(),
     vol.Optional(ATTR_ARGS, default={}): vol.Schema({
