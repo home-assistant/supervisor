@@ -15,7 +15,7 @@ if __name__ == "__main__":
     bootstrap.initialize_logging()
 
     if not bootstrap.check_environment():
-        exit(1)
+        sys.exit(1)
 
     loop = asyncio.get_event_loop()
     executor = ThreadPoolExecutor(thread_name_prefix="SyncWorker")
@@ -43,4 +43,4 @@ if __name__ == "__main__":
         loop.close()
 
     _LOGGER.info("Close Hassio")
-    sys.exit(hassio.exit_code)
+    sys.exit(0)
