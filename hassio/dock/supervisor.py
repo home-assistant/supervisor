@@ -52,7 +52,7 @@ class DockerSupervisor(DockerInterface):
         _LOGGER.info("Update supervisor docker to %s:%s", self.image, tag)
 
         if await self.loop.run_in_executor(None, self._install, tag):
-            self.loop.create_task(self.stop_callback(RESTART_EXIT_CODE))
+            self.loop.call_later(2, self.loop.stop)
             return True
 
         return False
