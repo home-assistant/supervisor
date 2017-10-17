@@ -6,7 +6,6 @@ import docker
 
 from .interface import DockerInterface
 from .util import docker_process
-from ..const import RESTART_EXIT_CODE
 
 _LOGGER = logging.getLogger(__name__)
 
