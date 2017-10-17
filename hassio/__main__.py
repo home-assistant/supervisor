@@ -27,19 +27,20 @@ if __name__ == "__main__":
 
     bootstrap.migrate_system_env(config)
 
-    _LOGGER.info("Run Hassio setup")
+    _LOGGER.info("Setup HassIO")
     loop.run_until_complete(hassio.setup())
 
-    _LOGGER.info("Start Hassio")
     loop.call_soon_threadsafe(loop.create_task, hassio.start())
     loop.call_soon_threadsafe(bootstrap.reg_signal, loop, hassio)
 
-    _LOGGER.info("Run Hassio loop")
-    loop.run_forever()
-
-    _LOGGER.info("Cleanup system")
-    executor.shutdown(wait=False)
-    loop.close()
+    try:
+        _LOGGER.info("Run HassIO")
+        loop.run_forever()
+    finally:
+        _LOGGER.info("Stopping HassIO")
+        loop.run_until_complete(hassio.stop())
+        executor.shutdown(wait=False)
+        loop.close()
 
     _LOGGER.info("Close Hassio")
     sys.exit(hassio.exit_code)
