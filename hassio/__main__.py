@@ -31,7 +31,7 @@ if __name__ == "__main__":
     loop.run_until_complete(hassio.setup())
 
     loop.call_soon_threadsafe(loop.create_task, hassio.start())
-    loop.call_soon_threadsafe(bootstrap.reg_signal, loop, hassio)
+    loop.call_soon_threadsafe(bootstrap.reg_signal, loop)
 
     try:
         _LOGGER.info("Run HassIO")
