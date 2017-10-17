@@ -123,22 +123,22 @@ def check_environment():
     return True
 
 
-def reg_signal(loop, hassio):
+def reg_signal(loop):
     """Register SIGTERM, SIGKILL to stop system."""
     try:
         loop.add_signal_handler(
-            signal.SIGTERM, lambda: loop.create_task(hassio.stop()))
+            signal.SIGTERM, lambda: loop.call_soon(loop.stop))
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGTERM")
 
     try:
         loop.add_signal_handler(
-            signal.SIGHUP, lambda: loop.create_task(hassio.stop()))
+            signal.SIGHUP, lambda: loop.call_soon(loop.stop))
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGHUP")
 
     try:
         loop.add_signal_handler(
-            signal.SIGINT, lambda: loop.create_task(hassio.stop()))
+            signal.SIGINT, lambda: loop.call_soon(loop.stop))
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGINT")
