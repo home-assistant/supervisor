@@ -13,11 +13,12 @@ _LOGGER = logging.getLogger(__name__)
 # pylint: disable=invalid-name
 if __name__ == "__main__":
     bootstrap.initialize_logging()
+    loop = asyncio.get_event_loop()
 
     if not bootstrap.check_environment():
         sys.exit(1)
 
-    loop = asyncio.get_event_loop()
+    # init executor pool
     executor = ThreadPoolExecutor(thread_name_prefix="SyncWorker")
     loop.set_default_executor(executor)
 
