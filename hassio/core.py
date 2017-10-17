@@ -177,7 +177,7 @@ class HassIO(object):
             if self.homeassistant.version == 'landingpage':
                 self.loop.create_task(self.homeassistant.install())
 
-    async def stop(self, exit_code=0):
+    async def stop(self):
         """Stop a running orchestration."""
         # don't process scheduler anymore
         self.scheduler.suspend = True
@@ -185,7 +185,6 @@ class HassIO(object):
         # process stop tasks
         self.websession.close()
         self.homeassistant.websession.close()
-        await asyncio.wait([self.api.stop(), self.dns.stop()], loop=self.loop)
 
-        self.exit_code = exit_code
-        self.loop.stop()
+        # process async stop tasks
+        await asyncio.wait([self.api.stop(), self.dns.stop()], loop=self.loop)
