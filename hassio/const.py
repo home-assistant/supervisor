@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '0.71'
+HASSIO_VERSION = '0.72'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/{}/version.json')
@@ -19,8 +19,6 @@ RUN_RELOAD_SNAPSHOTS_TASKS = 72000
 RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
 RUN_WATCHDOG_HOMEASSISTANT_API = 300
 RUN_CLEANUP_API_SESSIONS = 900
-
-RESTART_EXIT_CODE = 100
 
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
 FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
