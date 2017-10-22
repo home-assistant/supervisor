@@ -89,6 +89,7 @@ class DockerAddon(DockerInterface):
         """Return hosts mapping."""
         return {
             'homeassistant': self.docker.network.gateway,
+            'hassio': self.docker.network.supervisor,
         }
 
     @property
