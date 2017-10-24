@@ -29,13 +29,13 @@ class DockerAddon(DockerInterface):
         """Use addon data instead meta data with legacy."""
         if not self.addon.legacy:
             return super().process_metadata(metadata, force=force)
- 
+
         # set meta data
         if not self.version or force:
             if force:  # called on install/update/build
-                self.version = addon.last_version
+                self.version = self.addon.last_version
             else:
-                self.version = addon.installed_version
+                self.version = self.addon.installed_version
 
         if not self.arch:
             self.arch = self.config.arch
