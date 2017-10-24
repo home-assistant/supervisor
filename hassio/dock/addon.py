@@ -28,7 +28,7 @@ class DockerAddon(DockerInterface):
     def process_metadata(self, metadata, force=False):
         """Use addon data instead meta data with legacy."""
         if not self.addon.legacy:
-            return self.process_metadata(metadata, force=force)
+            return super().process_metadata(metadata, force=force)
  
         # set meta data
         if not self.version or force:
