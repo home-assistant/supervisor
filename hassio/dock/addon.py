@@ -25,6 +25,21 @@ class DockerAddon(DockerInterface):
             config, loop, api, image=addon.image, timeout=addon.timeout)
         self.addon = addon
 
+    def process_metadata(self, metadata, force=False):
+        """Use addon data instead meta data with legacy."""
+        if not self.addon.legacy:
+            return self.process_metadata(metadata, force=force)
+ 
+        # set meta data
+        if not self.version or force:
+            if force:  # called on install/update/build
+                self.version = addon.last_version
+            else:
+                self.version = addon.installed_version
+
+        if not self.arch:
+            self.arch = self.config.arch
+
     @property
     def name(self):
         """Return name of docker container."""
