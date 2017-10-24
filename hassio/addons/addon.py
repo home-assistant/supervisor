@@ -21,7 +21,7 @@ from ..const import (
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
     ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
-    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN)
+    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -256,6 +256,11 @@ class Addon(object):
     def privileged(self):
         """Return list of privilege."""
         return self._mesh.get(ATTR_PRIVILEGED)
+
+    @property
+    def legacy(self):
+        """Return if the add-on don't support hass labels."""
+        return self._mesh.get(ATTR_LEGACY)
 
     @property
     def access_hassio_api(self):
