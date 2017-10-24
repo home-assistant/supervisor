@@ -35,7 +35,7 @@ class DockerAddon(DockerInterface):
             if force:  # called on install/update/build
                 self.version = self.addon.last_version
             else:
-                self.version = self.addon.installed_version
+                self.version = self.addon.version_installed
 
         if not self.arch:
             self.arch = self.config.arch
