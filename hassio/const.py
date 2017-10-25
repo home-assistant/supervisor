@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '0.72'
+HASSIO_VERSION = '0.73'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/{}/version.json')
@@ -127,6 +127,7 @@ ATTR_SECURITY = 'security'
 ATTR_BUILD_FROM = 'build_from'
 ATTR_SQUASH = 'squash'
 ATTR_GPIO = 'gpio'
+ATTR_LEGACY = 'ATTR_LEGACY'
 ATTR_ADDONS_CUSTOM_LIST = 'addons_custom_list'
 
 STARTUP_INITIALIZE = 'initialize'

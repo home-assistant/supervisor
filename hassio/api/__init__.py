@@ -166,5 +166,5 @@ class RestAPI(object):
         await self.webapp.shutdown()
 
         if self._handler:
-            await self._handler.finish_connections(60)
+            await self._handler.shutdown(60)
         await self.webapp.cleanup()
