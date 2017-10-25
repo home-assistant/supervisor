@@ -8,7 +8,7 @@ from .util import api_process_hostcontrol, api_process, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES,
     ATTR_OS, ATTR_SERIAL, ATTR_INPUT, ATTR_DISK, ATTR_AUDIO, ATTR_AUDIO_INPUT,
-    ATTR_AUDIO_OUTPUT)
+    ATTR_AUDIO_OUTPUT, ATTR_GPIO)
 from ..validate import ALSA_CHANNEL
 
 _LOGGER = logging.getLogger(__name__)
@@ -83,8 +83,9 @@ class APIHost(object):
     async def hardware(self, request):
         """Return local hardware infos."""
         return {
-            ATTR_SERIAL: self.local_hw.serial_devices,
-            ATTR_INPUT: self.local_hw.input_devices,
-            ATTR_DISK: self.local_hw.disk_devices,
+            ATTR_SERIAL: list(self.local_hw.serial_devices),
+            ATTR_INPUT: list(self.local_hw.input_devices),
+            ATTR_DISK: list(self.local_hw.disk_devices),
+            ATTR_GPIO: list(self.local_hw.gpio_devices),
             ATTR_AUDIO: self.local_hw.audio_devices,
         }
