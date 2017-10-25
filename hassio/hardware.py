@@ -91,7 +91,7 @@ class Hardware(object):
                 continue
 
         return audio_list
-    
+
     @property
     def gpio_devices(self):
         """Return list of GPIO interface on device."""
