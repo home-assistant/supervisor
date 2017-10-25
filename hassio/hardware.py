@@ -19,6 +19,8 @@ RE_DEVICES = re.compile(r"\[.*(\d+)- (\d+).*\]: ([\w ]*)")
 PROC_STAT = Path("/proc/stat")
 RE_BOOT_TIME = re.compile(r"btime (\d+)")
 
+GPIO_DEVICES = Path("/sys/class/gpio")
+
 
 class Hardware(object):
     """Represent a interface to procfs, sysfs and udev."""
@@ -35,7 +37,7 @@ class Hardware(object):
             if 'ID_VENDOR' in device:
                 dev_list.add(device.device_node)
 
-        return list(dev_list)
+        return dev_list
 
     @property
     def input_devices(self):
@@ -45,7 +47,7 @@ class Hardware(object):
             if 'NAME' in device:
                 dev_list.add(device['NAME'].replace('"', ''))
 
-        return list(dev_list)
+        return dev_list
 
     @property
     def disk_devices(self):
@@ -55,7 +57,7 @@ class Hardware(object):
             if device.device_node.startswith('/dev/sd'):
                 dev_list.add(device.device_node)
 
-        return list(dev_list)
+        return dev_list
 
     @property
     def audio_devices(self):
@@ -89,6 +91,15 @@ class Hardware(object):
                 continue
 
         return audio_list
+
+    @property
+    def gpio_devices(self):
+        """Return list of GPIO interface on device."""
+        dev_list = set()
+        for interface in GPIO_DEVICES.glob("gpio*"):
+            dev_list.add(interface.name)
+
+        return dev_list
 
     @property
     def last_boot(self):
