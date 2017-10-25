@@ -243,6 +243,7 @@ Optional:
     "serial": ["/dev/xy"],
     "input": ["Input device name"],
     "disk": ["/dev/sdax"],
+    "gpio": ["gpiochip0", "gpiochip100"]
     "audio": {
         "CARD_ID": {
             "name": "xy",
