@@ -189,7 +189,6 @@ class DockerAddon(DockerInterface):
             hostname=self.hostname,
             detach=True,
             init=True,
-            init_path=self.addon.init_system,
             stdin_open=self.addon.with_stdin,
             network_mode=self.network_mode,
             ports=self.ports,
