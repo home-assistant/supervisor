@@ -128,7 +128,6 @@ ATTR_BUILD_FROM = 'build_from'
 ATTR_SQUASH = 'squash'
 ATTR_GPIO = 'gpio'
 ATTR_LEGACY = 'legacy'
-ATTR_INIT = 'init'
 ATTR_ADDONS_CUSTOM_LIST = 'addons_custom_list'
 
 STARTUP_INITIALIZE = 'initialize'
