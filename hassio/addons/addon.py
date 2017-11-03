@@ -21,7 +21,7 @@ from ..const import (
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
     ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
-    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY)
+    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_INIT)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -152,6 +152,11 @@ class Addon(object):
     def timeout(self):
         """Return timeout of addon for docker stop."""
         return self._mesh[ATTR_TIMEOUT]
+
+    @property
+    def init_system(self):
+        """Return init system for the add-on."""
+        return self._mesh.get(ATTR_INIT)
 
     @property
     def description(self):
