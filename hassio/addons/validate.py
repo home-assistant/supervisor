@@ -138,7 +138,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema({
     vol.Optional(ATTR_ARGS, default={}): vol.Schema({
         vol.Coerce(str): vol.Coerce(str)
     }),
-})
+}, extra=vol.REMOVE_EXTRA)
 
 
 # pylint: disable=no-value-for-parameter
@@ -153,7 +153,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
-})
+}, extra=vol.REMOVE_EXTRA)
 
 
 SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_CONFIG.extend({
