@@ -144,7 +144,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
-    vol.Optional(ATTR_UUID, default=uuid.uuid4().hex):
+    vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
         vol.Match(r"^[0-9a-f]{32}$"),
     vol.Optional(ATTR_OPTIONS, default={}): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
