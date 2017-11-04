@@ -1,6 +1,7 @@
 """Validate addons options schema."""
 import logging
 import re
+import uuid
 
 import voluptuous as vol
 
@@ -12,7 +13,7 @@ from ..const import (
     ATTR_ARCH, ATTR_DEVICES, ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF,
     ARCH_AARCH64, ARCH_AMD64, ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED,
     ATTR_USER, ATTR_STATE, ATTR_SYSTEM, STATE_STARTED, STATE_STOPPED,
-    ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK,
+    ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK, ATTR_UUID,
     ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT,
     ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
     ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY)
@@ -116,7 +117,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     }), False),
     vol.Optional(ATTR_IMAGE): vol.Match(r"^[\w{}]+/[\-\w{}]+$"),
     vol.Optional(ATTR_TIMEOUT, default=10):
-        vol.All(vol.Coerce(int), vol.Range(min=10, max=120))
+        vol.All(vol.Coerce(int), vol.Range(min=10, max=120)),
 }, extra=vol.REMOVE_EXTRA)
 
 
@@ -137,12 +138,14 @@ SCHEMA_BUILD_CONFIG = vol.Schema({
     vol.Optional(ATTR_ARGS, default={}): vol.Schema({
         vol.Coerce(str): vol.Coerce(str)
     }),
-})
+}, extra=vol.REMOVE_EXTRA)
 
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
+    vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
+        vol.Match(r"^[0-9a-f]{32}$"),
     vol.Optional(ATTR_OPTIONS, default={}): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):
@@ -150,7 +153,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
-})
+}, extra=vol.REMOVE_EXTRA)
 
 
 SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_CONFIG.extend({
