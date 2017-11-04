@@ -60,6 +60,10 @@ class DockerAddon(DockerInterface):
                 'ALSA_INPUT': self.addon.audio_input,
             })
 
+        # Set api token if any API access is needed
+        if self.addon.access_hassio_api or self.addon.access_homeassistant_api:
+            addon_env['API_TOKEN'] = self.addon.api_token
+
         return {
             **addon_env,
             'TZ': self.config.timezone,
@@ -188,6 +192,7 @@ class DockerAddon(DockerInterface):
             name=self.name,
             hostname=self.hostname,
             detach=True,
+            init=True,
             stdin_open=self.addon.with_stdin,
             network_mode=self.network_mode,
             ports=self.ports,
