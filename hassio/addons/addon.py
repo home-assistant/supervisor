@@ -17,7 +17,7 @@ from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
     ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
-    ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP,
+    ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP, ATTR_UUID,
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
     ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
@@ -152,6 +152,12 @@ class Addon(object):
     def timeout(self):
         """Return timeout of addon for docker stop."""
         return self._mesh[ATTR_TIMEOUT]
+
+    @property
+    def api_token(self):
+        """Return a API token for this add-on."""
+        if self.is_installed:
+            return self.data.user[self._id][ATTR_UUID]
 
     @property
     def description(self):
