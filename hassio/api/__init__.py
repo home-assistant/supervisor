@@ -139,13 +139,17 @@ class RestAPI(object):
 
     def register_panel(self):
         """Register panel for homeassistant."""
-        panel = Path(__file__).parents[1].joinpath('panel/hassio-main.html')
+        def create_panel_response(build_type):
+            """Create a function to generate a response."""
+            path = Path(__file__).parents[1].joinpath(
+                'panel/hassio-main-{}.html'.format(build_type))
 
-        def get_panel(request):
-            """Return file response with panel."""
-            return web.FileResponse(panel)
+            return lambda request: web.FileResponse(path)
 
-        self.webapp.router.add_get('/panel', get_panel)
+        for build_type in ('es5', 'latest'):
+            self.webapp.router.add_get(
+                '/panel_{}'.format(build_type),
+                create_panel_response(build_type))
 
     async def start(self):
         """Run rest api webserver."""
