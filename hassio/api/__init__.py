@@ -146,10 +146,10 @@ class RestAPI(object):
 
             return lambda request: web.FileResponse(path)
 
-        for build_type in ('es5', 'latest'):
-            self.webapp.router.add_get(
-                '/panel_{}'.format(build_type),
-                create_panel_response(build_type))
+        self.webapp.router.add_get('/panel', create_panel_response('es5'))
+        self.webapp.router.add_get('/panel_es5', create_panel_response('es5'))
+        self.webapp.router.add_get(
+            '/panel_latest', create_panel_response('latest'))
 
     async def start(self):
         """Run rest api webserver."""
