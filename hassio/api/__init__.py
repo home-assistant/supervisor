@@ -146,6 +146,7 @@ class RestAPI(object):
 
             return lambda request: web.FileResponse(path)
 
+        # This route is for backwards compatibility with HA < 0.58
         self.webapp.router.add_get('/panel', create_panel_response('es5'))
         self.webapp.router.add_get('/panel_es5', create_panel_response('es5'))
         self.webapp.router.add_get(
