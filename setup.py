@@ -12,7 +12,7 @@ setup(
     url='https://home-assistant.io/',
     description=('Open-source private cloud os for Home-Assistant'
                  ' based on ResinOS'),
-    long_description=('A maintenainless private cloud operator system that'
+    long_description=('A maintainless private cloud operator system that'
                       'setup a Home-Assistant instance. Based on ResinOS'),
     classifiers=[
         'Intended Audience :: End Users/Desktop',
