@@ -52,6 +52,7 @@ class DockerHomeAssistant(DockerInterface):
             hostname=self.name,
             detach=True,
             privileged=True,
+            init=True,
             devices=self.devices,
             network_mode='host',
             environment={
