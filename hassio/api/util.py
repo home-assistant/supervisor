@@ -17,10 +17,12 @@ _LOGGER = logging.getLogger(__name__)
 
 def json_loads(data):
     """Extract json from string with support for '' and None."""
+    if not data:
+        return {}
     try:
         return json.loads(data)
     except json.JSONDecodeError:
-        return {}
+        raise RuntimeError("Invalid json")
 
 
 def api_process(method):
