@@ -261,7 +261,11 @@ class Addon(object):
     @property
     def privileged(self):
         """Return list of privilege."""
-        return self._mesh.get(ATTR_PRIVILEGED)
+        caps = self._mesh.get(ATTR_PRIVILEGED, [])
+        
+        # disable AppArmor on all platforms
+        caps.append('apparmor:unconfined')
+        return caps
 
     @property
     def legacy(self):
