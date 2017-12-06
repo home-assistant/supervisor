@@ -264,8 +264,8 @@ class Addon(object):
         caps = self._mesh.get(ATTR_PRIVILEGED, [])
 
         # disable AppArmor/SecComp on all platforms
-        caps.append('apparmor:unconfined')
-        caps.append('seccomp:unconfined')
+        caps.append('apparmor=unconfined')
+        caps.append('seccomp=unconfined')
         return caps
 
     @property
