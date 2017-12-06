@@ -44,7 +44,7 @@ class DockerAddon(DockerInterface):
     def name(self):
         """Return name of docker container."""
         return "addon_{}".format(self.addon.slug)
-    
+
     @property
     def ipc(self):
         """Return the IPC namespace."""
