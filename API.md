@@ -395,6 +395,7 @@ Get all available addons.
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "devices": ["/dev/xy"],
     "logo": "bool",
+    "changelog": "bool",
     "hassio_api": "bool",
     "homeassistant_api": "bool",
     "stdin": "bool",
@@ -407,6 +408,8 @@ Get all available addons.
 ```
 
 - GET `/addons/{addon}/logo`
+
+- GET `/addons/{addon}/changelog`
 
 - POST `/addons/{addon}/options`
 
