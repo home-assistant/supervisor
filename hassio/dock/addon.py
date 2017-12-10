@@ -199,6 +199,10 @@ class DockerAddon(DockerInterface):
             extra_hosts=self.network_mapping,
             devices=self.devices,
             cap_add=self.addon.privileged,
+            security_opt=[
+                "apparmor=unconfined",
+                "seccomp=unconfined",
+            ],
             environment=self.environment,
             volumes=self.volumes,
             tmpfs=self.tmpfs
