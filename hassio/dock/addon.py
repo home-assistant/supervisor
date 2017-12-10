@@ -46,6 +46,12 @@ class DockerAddon(DockerInterface):
         return "addon_{}".format(self.addon.slug)
 
     @property
+    def ipc(self):
+        """Return the IPC namespace."""
+        if self.addon.host_ipc:
+            return 'host'
+
+    @property
     def hostname(self):
         """Return slug/id of addon."""
         return self.addon.slug.replace('_', '-')
@@ -204,6 +210,7 @@ class DockerAddon(DockerInterface):
             hostname=self.hostname,
             detach=True,
             init=True,
+            ipc_mode=self.ipc,
             stdin_open=self.addon.with_stdin,
             network_mode=self.network_mode,
             ports=self.ports,
