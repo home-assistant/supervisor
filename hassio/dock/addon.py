@@ -96,6 +96,17 @@ class DockerAddon(DockerInterface):
         }
 
     @property
+    def security_opt(self):
+        """Controlling security opt."""
+        privileged = self.addon.privileged or []
+
+        # Disable AppArmor sinse it make troubles wit SYS_ADMIN
+        if 'SYS_ADMIN' in privileged:
+            return [
+                "apparmor:unconfined",
+            ]
+
+    @property
     def tmpfs(self):
         """Return tmpfs for docker add-on."""
         options = self.addon.tmpfs
@@ -199,6 +210,7 @@ class DockerAddon(DockerInterface):
             extra_hosts=self.network_mapping,
             devices=self.devices,
             cap_add=self.addon.privileged,
+            security_opt=self.security_opt,
             environment=self.environment,
             volumes=self.volumes,
             tmpfs=self.tmpfs
