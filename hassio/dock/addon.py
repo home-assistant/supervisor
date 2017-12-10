@@ -46,6 +46,12 @@ class DockerAddon(DockerInterface):
         return "addon_{}".format(self.addon.slug)
 
     @property
+    def ipc(self):
+        """Return the IPC namespace."""
+        if self.addon.host_ipc:
+            return 'host'
+
+    @property
     def hostname(self):
         """Return slug/id of addon."""
         return self.addon.slug.replace('_', '-')
@@ -94,6 +100,17 @@ class DockerAddon(DockerInterface):
             for container_port, host_port in self.addon.ports.items()
             if host_port
         }
+
+    @property
+    def security_opt(self):
+        """Controlling security opt."""
+        privileged = self.addon.privileged or []
+
+        # Disable AppArmor sinse it make troubles wit SYS_ADMIN
+        if 'SYS_ADMIN' in privileged:
+            return [
+                "apparmor:unconfined",
+            ]
 
     @property
     def tmpfs(self):
@@ -193,12 +210,14 @@ class DockerAddon(DockerInterface):
             hostname=self.hostname,
             detach=True,
             init=True,
+            ipc_mode=self.ipc,
             stdin_open=self.addon.with_stdin,
             network_mode=self.network_mode,
             ports=self.ports,
             extra_hosts=self.network_mapping,
             devices=self.devices,
             cap_add=self.addon.privileged,
+            security_opt=self.security_opt,
             environment=self.environment,
             volumes=self.volumes,
             tmpfs=self.tmpfs

@@ -14,7 +14,8 @@ from ..const import (
     ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, ATTR_DEVICES, ATTR_PRIVILEGED,
     ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, BOOT_AUTO, BOOT_MANUAL,
-    ATTR_CHANGELOG, CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
+    ATTR_CHANGELOG, ATTR_HOST_IPC,
+    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,6 +76,8 @@ class APIAddons(object):
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
                 ATTR_PRIVILEGED: addon.privileged,
+                ATTR_HOST_NETWORK: addon.host_network,
+                ATTR_HOST_IPC: addon.host_ipc,
                 ATTR_DEVICES: self._pretty_devices(addon),
                 ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
@@ -126,6 +129,7 @@ class APIAddons(object):
             ATTR_BUILD: addon.need_build,
             ATTR_NETWORK: addon.ports,
             ATTR_HOST_NETWORK: addon.host_network,
+            ATTR_HOST_IPC: addon.host_ipc,
             ATTR_PRIVILEGED: addon.privileged,
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,

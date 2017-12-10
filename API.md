@@ -357,6 +357,8 @@ Get all available addons.
             "audio": "bool",
             "gpio": "bool",
             "stdin": "bool",
+            "host_ipc": "bool",
+            "host_network": "bool",
             "hassio_api": "bool",
             "homeassistant_api": "bool"
         }
@@ -392,6 +394,7 @@ Get all available addons.
     "options": "{}",
     "network": "{}|null",
     "host_network": "bool",
+    "host_ipc": "bool",
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "devices": ["/dev/xy"],
     "logo": "bool",
