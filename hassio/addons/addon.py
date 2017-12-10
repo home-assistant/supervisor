@@ -349,6 +349,11 @@ class Addon(object):
         return self.path_logo.exists()
 
     @property
+    def with_changelog(self):
+        """Return True if a changelog exists."""
+        return self.path_changelog.exists()
+
+    @property
     def supported_arch(self):
         """Return list of supported arch."""
         return self._mesh[ATTR_ARCH]
@@ -406,6 +411,11 @@ class Addon(object):
     def path_logo(self):
         """Return path to addon logo."""
         return Path(self.path_location, 'logo.png')
+
+    @property
+    def path_changelog(self):
+        """Return path to addon changelog."""
+        return Path(self.path_location, 'CHANGELOG.md')
 
     def write_options(self):
         """Return True if addon options is written to data."""

@@ -13,9 +13,9 @@ from ..const import (
     ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
     ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, ATTR_DEVICES, ATTR_PRIVILEGED,
     ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API,
-    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_HOST_IPC,
-    BOOT_AUTO, BOOT_MANUAL,
-    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY)
+    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, BOOT_AUTO, BOOT_MANUAL,
+    ATTR_CHANGELOG, ATTR_HOST_IPC,
+    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -133,6 +133,7 @@ class APIAddons(object):
             ATTR_PRIVILEGED: addon.privileged,
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_LOGO: addon.with_logo,
+            ATTR_CHANGELOG: addon.with_changelog,
             ATTR_WEBUI: addon.webui,
             ATTR_STDIN: addon.with_stdin,
             ATTR_HASSIO_API: addon.access_hassio_api,
@@ -241,6 +242,16 @@ class APIAddons(object):
 
         with addon.path_logo.open('rb') as png:
             return png.read()
+
+    @api_process_raw(CONTENT_TYPE_TEXT)
+    async def changelog(self, request):
+        """Return changelog from addon."""
+        addon = self._extract_addon(request, check_installed=False)
+        if not addon.with_changelog:
+            raise RuntimeError("No changelog found!")
+
+        with addon.path_changelog.open('r') as changelog:
+            return changelog.read()
 
     @api_process
     async def stdin(self, request):
