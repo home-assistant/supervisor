@@ -140,7 +140,7 @@ class DockerAddon(DockerInterface):
         """Generate volumes for mappings."""
         volumes = {
             str(self.addon.path_extern_data): {
-                'bind': '/data', 'mode': 'rw'
+                'bind': "/data", 'mode': 'rw'
             }}
 
         addon_mapping = self.addon.map_volumes
@@ -149,43 +149,50 @@ class DockerAddon(DockerInterface):
         if MAP_CONFIG in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_config): {
-                    'bind': '/config', 'mode': addon_mapping[MAP_CONFIG]
+                    'bind': "/config", 'mode': addon_mapping[MAP_CONFIG]
                 }})
 
         if MAP_SSL in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_ssl): {
-                    'bind': '/ssl', 'mode': addon_mapping[MAP_SSL]
+                    'bind': "/ssl", 'mode': addon_mapping[MAP_SSL]
                 }})
 
         if MAP_ADDONS in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_addons_local): {
-                    'bind': '/addons', 'mode': addon_mapping[MAP_ADDONS]
+                    'bind': "/addons", 'mode': addon_mapping[MAP_ADDONS]
                 }})
 
         if MAP_BACKUP in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_backup): {
-                    'bind': '/backup', 'mode': addon_mapping[MAP_BACKUP]
+                    'bind': "/backup", 'mode': addon_mapping[MAP_BACKUP]
                 }})
 
         if MAP_SHARE in addon_mapping:
             volumes.update({
                 str(self.config.path_extern_share): {
-                    'bind': '/share', 'mode': addon_mapping[MAP_SHARE]
+                    'bind': "/share", 'mode': addon_mapping[MAP_SHARE]
                 }})
 
         # init other hardware mappings
         if self.addon.with_gpio:
             volumes.update({
-                '/sys/class/gpio': {
-                    'bind': '/sys/class/gpio', 'mode': "rw"
+                "/sys/class/gpio": {
+                    'bind': "/sys/class/gpio", 'mode': 'rw'
                 },
-                '/sys/devices/platform/soc': {
-                    'bind': '/sys/devices/platform/soc', 'mode': "rw"
+                "/sys/devices/platform/soc": {
+                    'bind': "/sys/devices/platform/soc", 'mode': 'rw'
                 },
             })
+
+        # host dbus system
+        if self.addon.host_dbus:
+            volumes.update({
+                "/var/run/dbus": {
+                    'bind': "/var/run/dbus", 'mode': 'rw'
+                }})
 
         return volumes
 
