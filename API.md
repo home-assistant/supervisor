@@ -350,17 +350,8 @@ Get all available addons.
             "installed": "none|INSTALL_VERSION",
             "detached": "bool",
             "build": "bool",
-            "privileged": ["NET_ADMIN", "SYS_ADMIN"],
-            "devices": ["/dev/xy"],
             "url": "null|url",
-            "logo": "bool",
-            "audio": "bool",
-            "gpio": "bool",
-            "stdin": "bool",
-            "host_ipc": "bool",
-            "host_network": "bool",
-            "hassio_api": "bool",
-            "homeassistant_api": "bool"
+            "logo": "bool"
         }
     ],
     "repositories": [
