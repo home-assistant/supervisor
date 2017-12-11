@@ -75,17 +75,8 @@ class APIAddons(object):
                 ATTR_DETACHED: addon.is_detached,
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
-                ATTR_PRIVILEGED: addon.privileged,
-                ATTR_HOST_NETWORK: addon.host_network,
-                ATTR_HOST_IPC: addon.host_ipc,
-                ATTR_DEVICES: self._pretty_devices(addon),
                 ATTR_URL: addon.url,
                 ATTR_LOGO: addon.with_logo,
-                ATTR_STDIN: addon.with_stdin,
-                ATTR_HASSIO_API: addon.access_hassio_api,
-                ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
-                ATTR_AUDIO: addon.with_audio,
-                ATTR_GPIO: addon.with_gpio,
             })
 
         data_repositories = []
