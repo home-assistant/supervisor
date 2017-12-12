@@ -389,6 +389,7 @@ Get all available addons.
     "host_dbus": "bool",
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "devices": ["/dev/xy"],
+    "auto_uart": "bool",
     "logo": "bool",
     "changelog": "bool",
     "hassio_api": "bool",

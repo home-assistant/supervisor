@@ -11,8 +11,9 @@ COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:127.0.0.11:53"
 class DNSForward(object):
     """Manage DNS forwarding to internal DNS."""
 
-    def __init__(self):
+    def __init__(self, loop):
         """Initialize DNS forwarding."""
+        self.loop = loop
         self.proc = None
 
     async def start(self):
@@ -23,6 +24,7 @@ class DNSForward(object):
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
+                loop=self.loop
             )
         except OSError as err:
             _LOGGER.error("Can't start DNS forwarding -> %s", err)

@@ -42,8 +42,8 @@ class HassIO(object):
         self.scheduler = Scheduler(loop)
         self.api = RestAPI(config, loop)
         self.hardware = Hardware()
-        self.docker = DockerAPI()
-        self.dns = DNSForward()
+        self.docker = DockerAPI(self.hardware)
+        self.dns = DNSForward(loop)
 
         # init basic docker container
         self.supervisor = DockerSupervisor(
