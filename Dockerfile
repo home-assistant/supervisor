@@ -14,8 +14,7 @@ RUN apk add --no-cache \
         make \
         python3-dev \
         g++ \
-        pkgconf \
-    && pip3 install -vvv --no-cache-dir \
+    && pip3 install --no-cache-dir \
         uvloop \
         cchardet \
     && apk del .build-dependencies
