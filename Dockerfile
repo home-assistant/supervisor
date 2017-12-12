@@ -15,6 +15,7 @@ RUN apk add --no-cache \
         python3-dev \
         g++ \
         file \
+        pkgconfig \
     && pip3 install -vvv --no-cache-dir \
         uvloop \
         cchardet \
