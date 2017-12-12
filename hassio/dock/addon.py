@@ -80,14 +80,17 @@ class DockerAddon(DockerInterface):
         """Return needed devices."""
         devices = self.addon.devices or []
 
-        # use audio devices
+        # Use audio devices
         if self.addon.with_audio and AUDIO_DEVICE not in devices:
             devices.append(AUDIO_DEVICE)
 
+        # Auto mapping UART devices
+        if self.addon.auto_uart:
+            for uart_dev in self.docker.hardware.serial_devices:
+                devices.append("{0}:{0}:rwm".format(uart_dev))
+
         # Return None if no devices is present
-        if devices:
-            return devices
-        return None
+        return devices or None
 
     @property
     def ports(self):

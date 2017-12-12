@@ -35,7 +35,7 @@ class Hardware(object):
         """Return all serial and connected devices."""
         dev_list = set()
         for device in self.context.list_devices(subsystem='tty'):
-            if 'ID_VENDOR' in device or RE_TTY.match(device.device_node):
+            if 'ID_VENDOR' in device or RE_TTY.search(device.device_node):
                 dev_list.add(device.device_node)
 
         return dev_list
