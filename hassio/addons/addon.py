@@ -258,7 +258,7 @@ class Addon(object):
     def devices(self):
         """Return devices of addon."""
         return self._mesh.get(ATTR_DEVICES)
-    
+
     @property
     def auto_uart(self):
         """Return True if we should map all uart device."""
