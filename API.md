@@ -386,6 +386,7 @@ Get all available addons.
     "network": "{}|null",
     "host_network": "bool",
     "host_ipc": "bool",
+    "host_dbus": "bool",
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "devices": ["/dev/xy"],
     "logo": "bool",
