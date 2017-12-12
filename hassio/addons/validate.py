@@ -14,9 +14,10 @@ from ..const import (
     ARCH_AARCH64, ARCH_AMD64, ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED,
     ATTR_USER, ATTR_STATE, ATTR_SYSTEM, STATE_STARTED, STATE_STOPPED,
     ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK, ATTR_UUID,
-    ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT,
+    ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_HOST_IPC,
     ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
-    ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY)
+    ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY,
+    ATTR_HOST_DBUS, ATTR_AUTO_UART)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
 
 _LOGGER = logging.getLogger(__name__)
@@ -92,7 +93,10 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_WEBUI):
         vol.Match(r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"),
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
+    vol.Optional(ATTR_HOST_IPC, default=False): vol.Boolean(),
+    vol.Optional(ATTR_HOST_DBUS, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
+    vol.Optional(ATTR_AUTO_UART, default=False): vol.Boolean(),
     vol.Optional(ATTR_TMPFS):
         vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
     vol.Optional(ATTR_MAP, default=[]): [vol.Match(RE_VOLUME)],

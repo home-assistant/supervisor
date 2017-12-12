@@ -104,6 +104,8 @@ class RestAPI(object):
             '/addons/{addon}/rebuild', api_addons.rebuild)
         self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
         self.webapp.router.add_get('/addons/{addon}/logo', api_addons.logo)
+        self.webapp.router.add_get(
+            '/addons/{addon}/changelog', api_addons.changelog)
         self.webapp.router.add_post('/addons/{addon}/stdin', api_addons.stdin)
 
     def register_security(self):
