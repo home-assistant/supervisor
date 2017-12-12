@@ -12,6 +12,7 @@ RUN apk add --no-cache \
         libstdc++ \
         libgcc \
     && apk add --no-cache --virtual .build-dependencies \
+        make \
         python3-dev \
         g++ \
     && pip3 install --no-cache-dir \
