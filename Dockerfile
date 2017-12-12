@@ -9,9 +9,11 @@ RUN apk add --no-cache \
         python3 \
         git \
         socat \
+        libstdc++ \
+        libgcc \
     && apk add --no-cache --virtual .build-dependencies \
         python3-dev \
-        gcc \
+        g++ \
     && pip3 install --no-cache-dir \
         uvloop \
         cchardet \
