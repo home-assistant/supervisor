@@ -43,7 +43,7 @@ class HassIO(object):
         self.api = RestAPI(config, loop)
         self.hardware = Hardware()
         self.docker = DockerAPI(self.hardware)
-        self.dns = DNSForward()
+        self.dns = DNSForward(loop)
 
         # init basic docker container
         self.supervisor = DockerSupervisor(
