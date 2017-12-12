@@ -21,7 +21,8 @@ from ..const import (
     STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
     ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
-    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY)
+    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
+    ATTR_HOST_DBUS, ATTR_AUTO_UART)
 from .util import check_installed
 from ..dock.addon import DockerAddon
 from ..tools import write_json_file, read_json_file
@@ -244,9 +245,24 @@ class Addon(object):
         return self._mesh[ATTR_HOST_NETWORK]
 
     @property
+    def host_ipc(self):
+        """Return True if addon run on host IPC namespace."""
+        return self._mesh[ATTR_HOST_IPC]
+
+    @property
+    def host_dbus(self):
+        """Return True if addon run on host DBUS."""
+        return self._mesh[ATTR_HOST_DBUS]
+
+    @property
     def devices(self):
         """Return devices of addon."""
         return self._mesh.get(ATTR_DEVICES)
+
+    @property
+    def auto_uart(self):
+        """Return True if we should map all uart device."""
+        return self._mesh.get(ATTR_AUTO_UART)
 
     @property
     def tmpfs(self):
@@ -344,6 +360,11 @@ class Addon(object):
         return self.path_logo.exists()
 
     @property
+    def with_changelog(self):
+        """Return True if a changelog exists."""
+        return self.path_changelog.exists()
+
+    @property
     def supported_arch(self):
         """Return list of supported arch."""
         return self._mesh[ATTR_ARCH]
@@ -401,6 +422,11 @@ class Addon(object):
     def path_logo(self):
         """Return path to addon logo."""
         return Path(self.path_location, 'logo.png')
+
+    @property
+    def path_changelog(self):
+        """Return path to addon changelog."""
+        return Path(self.path_location, 'CHANGELOG.md')
 
     def write_options(self):
         """Return True if addon options is written to data."""

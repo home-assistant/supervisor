@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '0.75'
+HASSIO_VERSION = '0.76'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/{}/version.json')
@@ -50,9 +50,11 @@ RESULT_OK = 'ok'
 CONTENT_TYPE_BINARY = 'application/octet-stream'
 CONTENT_TYPE_PNG = 'image/png'
 CONTENT_TYPE_JSON = 'application/json'
+CONTENT_TYPE_TEXT = 'text/plain'
 HEADER_HA_ACCESS = 'x-ha-access'
 
 ATTR_WATCHDOG = 'watchdog'
+ATTR_CHANGELOG = 'changelog'
 ATTR_DATE = 'date'
 ATTR_ARCH = 'arch'
 ATTR_HOSTNAME = 'hostname'
@@ -64,6 +66,7 @@ ATTR_SOURCE = 'source'
 ATTR_FEATURES = 'features'
 ATTR_ADDONS = 'addons'
 ATTR_VERSION = 'version'
+ATTR_AUTO_UART = 'auto_uart'
 ATTR_LAST_BOOT = 'last_boot'
 ATTR_LAST_VERSION = 'last_version'
 ATTR_BETA_CHANNEL = 'beta_channel'
@@ -100,6 +103,8 @@ ATTR_BUILD = 'build'
 ATTR_DEVICES = 'devices'
 ATTR_ENVIRONMENT = 'environment'
 ATTR_HOST_NETWORK = 'host_network'
+ATTR_HOST_IPC = 'host_ipc'
+ATTR_HOST_DBUS = 'host_dbus'
 ATTR_NETWORK = 'network'
 ATTR_TMPFS = 'tmpfs'
 ATTR_PRIVILEGED = 'privileged'
