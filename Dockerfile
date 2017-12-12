@@ -6,9 +6,16 @@ ENV LANG C.UTF-8
 
 # Setup base
 RUN apk add --no-cache \
-    python3 \
-    git \
-    socat
+        python3 \
+        git \
+        socat \
+    && apk add --no-cache --virtual .build-dependencies \
+        python3-dev \
+        gcc \
+    && pip3 install --no-cache-dir \
+        uvloop \
+        cchardet \
+    && apk del .build-dependencies
 
 # Install HassIO
 COPY . /usr/src/hassio
