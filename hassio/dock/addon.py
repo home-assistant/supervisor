@@ -90,9 +90,7 @@ class DockerAddon(DockerInterface):
                 devices.append("{0}:{0}:rwm".format(uart_dev))
 
         # Return None if no devices is present
-        if not devices:
-            return None
-        return devices
+        return devices or None
 
     @property
     def ports(self):
