@@ -14,7 +14,6 @@ RUN apk add --no-cache \
         make \
         python3-dev \
         g++ \
-        file \
         pkgconf \
     && pip3 install -vvv --no-cache-dir \
         uvloop \
