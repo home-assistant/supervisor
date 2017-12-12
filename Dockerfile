@@ -10,7 +10,6 @@ RUN apk add --no-cache \
         git \
         socat \
         libstdc++ \
-        libgcc \
     && apk add --no-cache --virtual .build-dependencies \
         make \
         python3-dev \
