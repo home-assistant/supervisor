@@ -3,7 +3,7 @@ from pathlib import Path
 
 from .validate import SCHEMA_BUILD_CONFIG
 from ..const import (
-        ATTR_SQUASH, ATTR_BUILD_FROM, ATTR_ARGS, META_ADDON, BASE_IMAGE)
+    ATTR_SQUASH, ATTR_BUILD_FROM, ATTR_ARGS, META_ADDON, BASE_IMAGES)
 from ..tools import JsonConfig
 
 
@@ -26,7 +26,7 @@ class AddonBuild(JsonConfig):
     def base_image(self):
         """Base images for this addon."""
         return self._data[ATTR_BUILD_FROM].get(
-            self.config.arch, BASE_IMAGE[self.config.arch])
+            self.config.arch, BASE_IMAGES[self.config.arch])
 
     @property
     def squash(self):
