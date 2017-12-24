@@ -182,6 +182,7 @@ class APIHomeAssistant(object):
             response = web.StreamResponse()
             response.content_type = request.headers.get(CONTENT_TYPE)
             try:
+                await response.prepare(request)
                 while True:
                     data = await client.read()
                     if not data:
