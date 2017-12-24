@@ -172,7 +172,7 @@ class APIHomeAssistant(object):
 
     async def api(self, request):
         """Proxy API request to Home-Assistant."""
-        path = request.match_info.get('path')
+        path = request.match_info.get('path', '')
         _LOGGER.info("Proxy /api/%s request", path)
 
         # API stream
