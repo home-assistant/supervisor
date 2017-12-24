@@ -57,7 +57,7 @@ class APIHomeAssistant(object):
                 self.homeassistant.websession, request.method.lower())
 
             # read data
-            with async_timeout.timeout(timeout, loop=self.loop):
+            with async_timeout.timeout(30, loop=self.loop):
                 data = await request.read()
 
             if data:
@@ -177,14 +177,15 @@ class APIHomeAssistant(object):
 
         # API stream
         if path.startswith("stream"):
-            client = await self.homeassistant_proxy(path, request, timeout=0)
+            client = await self.homeassistant_proxy(
+                path, request, timeout=None)
 
             response = web.StreamResponse()
             response.content_type = request.headers.get(CONTENT_TYPE)
             try:
                 await response.prepare(request)
                 while True:
-                    data = await client.read()
+                    data = await client.content.read(10)
                     if not data:
                         await response.write_eof()
                         break
