@@ -178,16 +178,15 @@ class APIHomeAssistant(object):
         # API stream
         if path.startswith("stream"):
             client = await self.homeassistant_proxy(path, request, timeout=0)
+
             response = web.StreamResponse()
             response.content_type = request.headers.get(CONTENT_TYPE)
-
             try:
                 while True:
                     data = client.read()
                     if not data:
                         await response.write_eof()
                         break
-
                     response.write(data)
 
             except aiohttp.ClientError:
