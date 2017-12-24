@@ -46,9 +46,9 @@ class APIHomeAssistant(object):
         self.loop = loop
         self.homeassistant = homeassistant
 
-    async def homeassistant_proxy(self, path, request):
+    async def homeassistant_proxy(self, path, request, timeout=300):
         """Return a client request with proxy origin for Home-Assistant."""
-        url = "{}/api/{}".format(self.homeassistant.api_url, path)
+        url = f"{self.homeassistant.api_url}/api/{path}"
 
         try:
             data = None
@@ -57,7 +57,7 @@ class APIHomeAssistant(object):
                 self.homeassistant.websession, request.method.lower())
 
             # read data
-            with async_timeout.timeout(10, loop=self.loop):
+            with async_timeout.timeout(30, loop=self.loop):
                 data = await request.read()
 
             if data:
@@ -72,7 +72,7 @@ class APIHomeAssistant(object):
                 headers = None
 
             client = await method(
-                url, data=data, headers=headers, timeout=300
+                url, data=data, headers=headers, timeout=timeout
             )
 
             return client
@@ -172,11 +172,41 @@ class APIHomeAssistant(object):
 
     async def api(self, request):
         """Proxy API request to Home-Assistant."""
-        path = request.match_info.get('path')
+        path = request.match_info.get('path', '')
+        _LOGGER.info("Proxy /api/%s request", path)
 
-        client = await self.homeassistant_proxy(path, request)
-        return web.Response(
-            body=await client.read(),
-            status=client.status,
-            content_type=client.content_type
-        )
+        # API stream
+        if path.startswith("stream"):
+            client = await self.homeassistant_proxy(
+                path, request, timeout=None)
+
+            response = web.StreamResponse()
+            response.content_type = request.headers.get(CONTENT_TYPE)
+            try:
+                await response.prepare(request)
+                while True:
+                    data = await client.content.read(10)
+                    if not data:
+                        await response.write_eof()
+                        break
+                    response.write(data)
+
+            except aiohttp.ClientError:
+                await response.write_eof()
+
+            except asyncio.TimeoutError:
+                pass
+
+            finally:
+                client.close()
+
+        # Normal request
+        else:
+            client = await self.homeassistant_proxy(path, request)
+
+            data = await client.read()
+            return web.Response(
+                body=data,
+                status=client.status,
+                content_type=client.content_type
+            )

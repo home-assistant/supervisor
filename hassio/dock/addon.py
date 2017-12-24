@@ -25,6 +25,7 @@ class DockerAddon(DockerInterface):
             config, loop, api, image=addon.image, timeout=addon.timeout)
         self.addon = addon
 
+    # pylint: disable=inconsistent-return-statements
     def process_metadata(self, metadata, force=False):
         """Use addon data instead meta data with legacy."""
         if not self.addon.legacy:
@@ -50,6 +51,7 @@ class DockerAddon(DockerInterface):
         """Return the IPC namespace."""
         if self.addon.host_ipc:
             return 'host'
+        return None
 
     @property
     def hostname(self):
@@ -114,6 +116,7 @@ class DockerAddon(DockerInterface):
             return [
                 "apparmor:unconfined",
             ]
+        return None
 
     @property
     def tmpfs(self):

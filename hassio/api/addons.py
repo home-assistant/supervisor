@@ -57,7 +57,7 @@ class APIAddons(object):
         """Return a simplified device list."""
         dev_list = addon.devices
         if not dev_list:
-            return
+            return None
         return [row.split(':')[0] for row in dev_list]
 
     @api_process
