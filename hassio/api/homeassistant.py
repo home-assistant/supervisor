@@ -183,7 +183,7 @@ class APIHomeAssistant(object):
             response.content_type = request.headers.get(CONTENT_TYPE)
             try:
                 while True:
-                    data = client.read()
+                    data = await client.read()
                     if not data:
                         await response.write_eof()
                         break
