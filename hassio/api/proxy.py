@@ -102,7 +102,7 @@ class APIProxy(object):
 
     async def _websocket_client(self):
         """Initialize a websocket api connection."""
-        url = f"{self.homeassistant.api_url}/websocket"
+        url = f"{self.homeassistant.api_url}/api/websocket"
 
         try:
             client = await self.websession.ws_connect(

@@ -88,7 +88,7 @@ class RestAPI(object):
         self.webapp.router.add_get(
             '/homeassistant/api', api_proxy.api)
         self.webapp.router.add_get(
-            '/homeassistant/websocket', api_proxy.websocket)
+            '/homeassistant/api/websocket', api_proxy.websocket)
 
     def register_addons(self, addons):
         """Register homeassistant function."""
