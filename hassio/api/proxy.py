@@ -147,11 +147,15 @@ class APIProxy(object):
 
         _LOGGER.info("Home-Assistant Websocket API request running")
         try:
+            client_read = None
+            server_read = None
             while not server.closed and not client.closed:
-                client_read = asyncio.ensure_future(
-                    client.receive_str(), loop=self.loop)
-                server_read = asyncio.ensure_future(
-                    client.receive_str(), loop=self.loop)
+                if not client_read:
+                    client_read = asyncio.ensure_future(
+                        client.receive_str(), loop=self.loop)
+                if not server_read:
+                    server_read = asyncio.ensure_future(
+                        client.receive_str(), loop=self.loop)
 
                 # wait until data need to be processed
                 await asyncio.wait(
@@ -161,20 +165,21 @@ class APIProxy(object):
 
                 # server
                 if server_read.done():
+                    server_read.exception()
                     await client.send_str(server_read.result())
+                    server_read = None
+
                 # client
                 if client_read.done():
+                    client_read.exception()
                     await server.send_str(client_read.result())
-
-                # error handling
-                client_read.exception()
-                server_read.exception()
+                    client_read = None
 
         except asyncio.CancelledError:
             pass
 
         except RuntimeError as err:
-            _LOGGER.info("Home-Assistant Websocket API error %s", err)
+            _LOGGER.info("Home-Assistant Websocket API error: %s", err)
 
         finally:
             await client.close()
