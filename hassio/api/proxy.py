@@ -103,7 +103,7 @@ async def homeassistant_websocket_client(homeassistant):
             url, heartbeat=60)
 
         # handle authentication
-        for _ in xrange(2):
+        for _ in range(2):
             data = await client.receive_json()
             if data.get('type') == 'auth_ok':
                 return client
@@ -123,7 +123,7 @@ async def homeassistant_websocket_client(homeassistant):
 
 async def homeassistant_websocket_proxy(loop, request, homeassistant):
     """Initialize a websocket api connection."""
-    server = web.WebSocketResponse(loop=loop)
+    server = web.WebSocketResponse(heartbeat=60)
     await server.prepare(request)
 
     # handle authentication
