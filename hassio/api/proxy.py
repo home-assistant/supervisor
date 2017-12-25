@@ -7,7 +7,7 @@ from aiohttp.web_exceptions import HTTPBadGateway
 from aiohttp.hdrs import CONTENT_TYPE
 import async_timeout
 
-from ....const import HEADER_HA_ACCESS
+from ..const import HEADER_HA_ACCESS
 
 _LOGGER = logging.getLogger(__name__)
 

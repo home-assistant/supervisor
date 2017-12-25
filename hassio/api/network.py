@@ -3,7 +3,7 @@ import logging
 
 import voluptuous as vol
 
-from .utils import api_process, api_process_hostcontrol, api_validate
+from .util import api_process, api_process_hostcontrol, api_validate
 from ..const import ATTR_HOSTNAME
 
 _LOGGER = logging.getLogger(__name__)

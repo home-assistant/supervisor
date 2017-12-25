@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 
-from .utils import api_process, api_validate
+from .util import api_process, api_validate
 from ..snapshots.validate import ALL_FOLDERS
 from ..const import (
     ATTR_NAME, ATTR_SLUG, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,

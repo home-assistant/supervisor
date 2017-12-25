@@ -5,7 +5,7 @@ import logging
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .utils import api_process, api_process_raw, api_validate
+from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,

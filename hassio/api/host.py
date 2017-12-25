@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 
-from .utils import api_process_hostcontrol, api_process, api_validate
+from .util import api_process_hostcontrol, api_process, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES,
     ATTR_OS, ATTR_SERIAL, ATTR_INPUT, ATTR_DISK, ATTR_AUDIO, ATTR_AUDIO_INPUT,
