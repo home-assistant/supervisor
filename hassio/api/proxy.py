@@ -182,6 +182,12 @@ class APIProxy(object):
             _LOGGER.info("Home-Assistant Websocket API error: %s", err)
 
         finally:
+            if client_read:
+                client_read.cancel()
+            if server_read:
+                server_read.cancel()
+
+            # close connections
             await client.close()
             await server.close()
 
