@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 
-from .util import api_process, api_process_raw, api_validate
+from .utils import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL, ATTR_ARCH,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_LOGO, ATTR_REPOSITORY,

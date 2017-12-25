@@ -33,6 +33,7 @@ setup(
         'hassio',
         'hassio.dock',
         'hassio.api',
+        'hassio.api.utils',
         'hassio.addons',
         'hassio.snapshots'
     ],

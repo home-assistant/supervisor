@@ -10,7 +10,7 @@ import voluptuous as vol
 import pyotp
 import pyqrcode
 
-from .util import api_process, api_validate, hash_password
+from .utils import api_process, api_validate, hash_password
 from ..const import ATTR_INITIALIZE, ATTR_PASSWORD, ATTR_TOTP, ATTR_SESSION
 
 _LOGGER = logging.getLogger(__name__)
