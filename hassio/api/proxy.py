@@ -127,7 +127,7 @@ async def homeassistant_websocket_proxy(loop, request, homeassistant):
 
     # handle authentication
     await server.send_json({'type': 'auth_required'})
-    auth = await.server.receive_json()
+    auth = await server.receive_json()
     await server.send_json({'type': 'auth_ok'})
 
     # init connection to hass
