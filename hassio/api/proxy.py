@@ -1,4 +1,5 @@
 """Utils for HomeAssistant Proxy."""
+import asyncio
 import logging
 
 import aiohttp
@@ -102,7 +103,7 @@ async def homeassistant_websocket_client(homeassistant):
             url, heartbeat=60)
 
         # handle authentication
-        for _ in xrand(2):
+        for _ in xrange(2):
             data = await client.receive_json()
             if data.get('type') == 'auth_ok':
                 return client
@@ -127,7 +128,7 @@ async def homeassistant_websocket_proxy(loop, request, homeassistant):
 
     # handle authentication
     await server.send_json({'type': 'auth_required'})
-    auth = await server.receive_json()
+    await server.receive_json()  # get internal token
     await server.send_json({'type': 'auth_ok'})
 
     # init connection to hass
