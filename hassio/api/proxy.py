@@ -178,3 +178,4 @@ class APIProxy(object):
             await server.close()
 
         _LOGGER.info("Home-Assistant Websocket API connection is closed")
+        return server
