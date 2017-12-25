@@ -144,8 +144,10 @@ class APIProxy(object):
 
         try:
             while True:
-                client_read = asyncio.ensure_future(client.receive_str())
-                server_read = asyncio.ensure_future(client.receive_str())
+                client_read = asyncio.ensure_future(
+                    client.receive_str(), loop=self.loop)
+                server_read = asyncio.ensure_future(
+                    client.receive_str(), loop=self.loop)
 
                 # wait until data need to be processed
                 await asyncio.wait(
