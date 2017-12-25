@@ -128,7 +128,7 @@ class APIProxy(object):
 
     async def websocket(self, request):
         """Initialize a websocket api connection."""
-        _LOGGER.info("Proxy /websocket request")
+        _LOGGER.info("Proxy api websocket request")
 
         # init server
         server = web.WebSocketResponse(heartbeat=60)
