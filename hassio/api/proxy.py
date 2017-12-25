@@ -65,8 +65,8 @@ class APIProxy(object):
         path = request.match_info.get('path', '')
 
         # API stream
-        _LOGGER.info("Proxy /api/%s request", path)
         if path.startswith("stream"):
+            _LOGGER.info("Home-Assistant Event-Stream start")
             client = await self._api_client(request, path, timeout=None)
 
             response = web.StreamResponse()
@@ -83,14 +83,17 @@ class APIProxy(object):
             except aiohttp.ClientError:
                 await response.write_eof()
 
-            except asyncio.TimeoutError:
+            except asyncio.CancelledError:
                 pass
 
             finally:
                 client.close()
 
+            _LOGGER.info("Home-Assistant Event-Stream close")
+
         # Normal request
         else:
+            _LOGGER.info("Home-Assistant '/api/%s' request", path)
             client = await self._api_client(request, path)
 
             data = await client.read()
@@ -128,7 +131,7 @@ class APIProxy(object):
 
     async def websocket(self, request):
         """Initialize a websocket api connection."""
-        _LOGGER.info("Proxy api websocket request")
+        _LOGGER.info("Home-Assistant Websocket API request initialze")
 
         # init server
         server = web.WebSocketResponse(heartbeat=60)
@@ -142,8 +145,9 @@ class APIProxy(object):
         # init connection to hass
         client = await self._websocket_client()
 
+        _LOGGER.info("Home-Assistant Websocket API request running")
         try:
-            while True:
+            while not server.closed and not client.closed:
                 client_read = asyncio.ensure_future(
                     client.receive_str(), loop=self.loop)
                 server_read = asyncio.ensure_future(
@@ -166,9 +170,11 @@ class APIProxy(object):
                 client_read.exception()
                 server_read.exception()
 
-        except RuntimeError:
-            _LOGGER.info("Websocket API connection is closed")
+        except (RuntimeError, asyncio.CancelledError):
+            pass
 
         finally:
             await client.close()
             await server.close()
+
+        _LOGGER.info("Home-Assistant Websocket API connection is closed")
