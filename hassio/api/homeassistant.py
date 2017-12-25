@@ -5,7 +5,7 @@ import logging
 import voluptuous as vol
 
 from .utils import api_process, api_process_raw, api_validate
-from .utils.proxy import homeassistant_api_proxy
+from .utils.proxy import homeassistant_api_proxy, homeassistant_websocket_proxy
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM,
     ATTR_BOOT, ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG,
@@ -134,3 +134,10 @@ class APIHomeAssistant(object):
 
         return await homeassistant_api_proxy(
             self.loop, request, path, self.homeassistant)
+
+    async def websocket(self, request):
+        """Proxy websocket API to Home-Assistant."""
+        _LOGGER.info("Proxy /websocket request")
+
+        return await homeassistant_websocket_proxy(
+            self.loop, request, self.homeassistant)

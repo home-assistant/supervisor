@@ -1,4 +1,5 @@
 """Utils for HomeAssistant Proxy."""
+import logging
 
 import aiohttp
 from aiohttp import web
@@ -7,6 +8,8 @@ from aiohttp.hdrs import CONTENT_TYPE
 import async_timeout
 
 from ..const import HEADER_HA_ACCESS
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def homeassistant_api_client(loop, request, path, homeassistant,
@@ -109,7 +112,9 @@ async def homeassistant_websocket_client(homeassistant):
                     'api_password': homeassistant.api_password,
                 })
 
-    except aiohttp.ClientError as err:
+        _LOGGER.error("Authentication handling to Home-Assistant websocket")
+
+    except (aiohttp.ClientError, RuntimeError) as err:
         _LOGGER.error("Client error on websocket API %s.", err)
 
     raise HTTPBadGateway()
@@ -133,6 +138,29 @@ async def homeassistant_websocket_proxy(loop, request, homeassistant):
     client = await homeassistant_websocket_client(homeassistant)
 
     try:
+        while True:
+            client_read = client.receive_str()
+            server_read = client.receive_str()
+
+            # wait until data need to be processed
+            await asyncio.wait(
+                [client_read, server_read],
+                loop=loop, return_when=asyncio.FIRST_COMPLETED
+            )
+
+            # server
+            if server_read.done():
+                await client.send_str(server_read.result())
+            # client
+            if client_read.done():
+                await server.send_str(client_read.result())
+
+            # error handling
+            client_read.exception()
+            server_read.exception()
+
+    except RuntimeError:
+        _LOGGER.info("Websocket API connection is closed")
 
     finally:
         await client.close()
