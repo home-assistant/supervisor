@@ -331,6 +331,10 @@ Image with `null` and last_version with `null` reset this options.
 
 Proxy to real home-assistant instance.
 
+- GET `/homeassistant/websocket`
+
+Proxy to real websocket instance.
+
 ### RESTful for API addons
 
 - GET `/addons`
