@@ -8,7 +8,7 @@ from aiohttp.web_exceptions import HTTPServiceUnavailable
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ....const import (
+from ..const import (
     JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
     CONTENT_TYPE_BINARY)
 
