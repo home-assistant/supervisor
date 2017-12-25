@@ -7,7 +7,7 @@ from aiohttp.web_exceptions import HTTPBadGateway
 from aiohttp.hdrs import CONTENT_TYPE
 import async_timeout
 
-from ..const import HEADER_HA_ACCESS
+from ....const import HEADER_HA_ACCESS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -126,13 +126,9 @@ async def homeassistant_websocket_proxy(loop, request, homeassistant):
     await server.prepare(request)
 
     # handle authentication
-    await server.send_json({
-        'type': 'auth_required'
-    })
+    await server.send_json({'type': 'auth_required'})
     auth = await.server.receive_json()
-    await server.send_json({
-        'type': 'auth_ok'
-    })
+    await server.send_json({'type': 'auth_ok'})
 
     # init connection to hass
     client = await homeassistant_websocket_client(homeassistant)
