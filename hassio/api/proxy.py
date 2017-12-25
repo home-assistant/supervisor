@@ -24,7 +24,7 @@ class APIProxy(object):
 
     async def _api_client(self, request, path, timeout=300):
         """Return a client request with proxy origin for Home-Assistant."""
-        url = f"{homeassistant.api_url}/api/{path}"
+        url = f"{self.homeassistant.api_url}/api/{path}"
 
         try:
             data = None
@@ -32,14 +32,14 @@ class APIProxy(object):
             method = getattr(self.websession, request.method.lower())
 
             # read data
-            with async_timeout.timeout(30, loop=loop):
+            with async_timeout.timeout(30, loop=self.loop):
                 data = await request.read()
 
             if data:
                 headers.update({CONTENT_TYPE: request.content_type})
 
             # need api password?
-            if homeassistant.api_password:
+            if self.homeassistant.api_password:
                 headers = {HEADER_HA_ACCESS: self.homeassistant.api_password}
 
             # reset headers
@@ -63,9 +63,9 @@ class APIProxy(object):
     async def api(self, request):
         """Proxy HomeAssistant API Requests."""
         path = request.match_info.get('path', '')
-        _LOGGER.info("Proxy /api/%s request", path)
 
         # API stream
+        _LOGGER.info("Proxy /api/%s request", path)
         if path.startswith("stream"):
             client = await self._api_client(request, path, timeout=None)
 
@@ -102,7 +102,7 @@ class APIProxy(object):
 
     async def _websocket_client(self):
         """Initialize a websocket api connection."""
-        url = f"{homeassistant.api_url}/websocket"
+        url = f"{self.homeassistant.api_url}/websocket"
 
         try:
             client = await self.websession.ws_connect(
@@ -139,6 +139,7 @@ class APIProxy(object):
         # init connection to hass
         client = await self._websocket_client()
 
+        _LOGGER.info("Proxy /websocket request")
         try:
             while True:
                 client_read = client.receive_str()
@@ -147,7 +148,7 @@ class APIProxy(object):
                 # wait until data need to be processed
                 await asyncio.wait(
                     [client_read, server_read],
-                    loop=loop, return_when=asyncio.FIRST_COMPLETED
+                    loop=self.loop, return_when=asyncio.FIRST_COMPLETED
                 )
 
                 # server
