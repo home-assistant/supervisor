@@ -164,13 +164,13 @@ class APIProxy(object):
                 )
 
                 # server
-                if server_read.done():
+                if server_read.done() and not client.closed:
                     server_read.exception()
                     await client.send_str(server_read.result())
                     server_read = None
 
                 # client
-                if client_read.done():
+                if client_read.done() and not server.closed:
                     client_read.exception()
                     await server.send_str(client_read.result())
                     client_read = None
