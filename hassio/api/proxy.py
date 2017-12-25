@@ -128,6 +128,9 @@ class APIProxy(object):
 
     async def websocket(self, request):
         """Initialize a websocket api connection."""
+        _LOGGER.info("Proxy /websocket request")
+
+        # init server
         server = web.WebSocketResponse(heartbeat=60)
         await server.prepare(request)
 
@@ -139,7 +142,6 @@ class APIProxy(object):
         # init connection to hass
         client = await self._websocket_client()
 
-        _LOGGER.info("Proxy /websocket request")
         try:
             while True:
                 client_read = client.receive_str()
