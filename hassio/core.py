@@ -91,6 +91,7 @@ class HassIO(object):
             self.supervisor, self.snapshots, self.addons, self.host_control,
             self.updater)
         self.api.register_homeassistant(self.homeassistant)
+        self.api.register_proxy(self.homeassistant)
         self.api.register_addons(self.addons)
         self.api.register_security()
         self.api.register_snapshots(self.snapshots)
