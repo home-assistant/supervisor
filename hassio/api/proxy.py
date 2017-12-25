@@ -170,8 +170,11 @@ class APIProxy(object):
                 client_read.exception()
                 server_read.exception()
 
-        except (RuntimeError, asyncio.CancelledError):
+        except asyncio.CancelledError:
             pass
+
+        except RuntimeError as err:
+            _LOGGER.info("Home-Assistant Websocket API error %s", err)
 
         finally:
             await client.close()
