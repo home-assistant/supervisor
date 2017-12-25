@@ -90,7 +90,7 @@ async def homeassistant_api_proxy(loop, request, path, homeassistant):
         )
 
 
-async def homeassistant_websocket_client(loop, homeassistant):
+async def homeassistant_websocket_client(homeassistant):
     """Initialize a websocket api connection."""
     url = f"{homeassistant.api_url}/websocket"
 
@@ -98,15 +98,42 @@ async def homeassistant_websocket_client(loop, homeassistant):
         client = await homeassistant.websession.ws_connect(
             url, heartbeat=60)
 
-        data = await client.receive_json()
-        if data.get('type') == 'auth_required':
-            await client.send_json({
-                'type': 'auth',
-                'api_password': homeassistant.api_password,
-            })
-        return client
+        # handle authentication
+        for _ in xrand(2):
+            data = await client.receive_json()
+            if data.get('type') == 'auth_ok':
+                return client
+            elif data.get('type') == 'auth_required':
+                await client.send_json({
+                    'type': 'auth',
+                    'api_password': homeassistant.api_password,
+                })
 
     except aiohttp.ClientError as err:
         _LOGGER.error("Client error on websocket API %s.", err)
 
     raise HTTPBadGateway()
+
+
+async def homeassistant_websocket_proxy(loop, request, homeassistant):
+    """Initialize a websocket api connection."""
+    server = web.WebSocketResponse(loop=loop)
+    await server.prepare(request)
+
+    # handle authentication
+    await server.send_json({
+        'type': 'auth_required'
+    })
+    auth = await.server.receive_json()
+    await server.send_json({
+        'type': 'auth_ok'
+    })
+
+    # init connection to hass
+    client = await homeassistant_websocket_client(homeassistant)
+
+    try:
+
+    finally:
+        await client.close()
+        await server.close()
