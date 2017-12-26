@@ -168,6 +168,19 @@ class Addon(object):
         return self._mesh[ATTR_DESCRIPTON]
 
     @property
+    def readme(self):
+        """Return README.md as text."""
+        readme = Path(self.path_location, 'README.md')
+
+        # If readme not exists
+        if not readme.exists():
+            return None
+
+        # Return data
+        with readme.open('r') as readme_file:
+            return readme_file.read()
+
+    @property
     def repository(self):
         """Return repository of addon."""
         return self._mesh[ATTR_REPOSITORY]

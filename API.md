@@ -377,6 +377,7 @@ Get all available addons.
 {
     "name": "xy bla",
     "description": "description",
+    "long_description": "null|markdown",
     "auto_update": "bool",
     "url": "null|url of addon",
     "detached": "bool",
