@@ -1,7 +1,7 @@
 """HassIO addons build environment."""
 from pathlib import Path
 
-from .validate import SCHEMA_BUILD_CONFIG
+from .validate import SCHEMA_BUILD_CONFIG, BASE_IMAGE
 from ..const import ATTR_SQUASH, ATTR_BUILD_FROM, ATTR_ARGS, META_ADDON
 from ..tools import JsonConfig
 
@@ -24,7 +24,8 @@ class AddonBuild(JsonConfig):
     @property
     def base_image(self):
         """Base images for this addon."""
-        return self._data[ATTR_BUILD_FROM][self.config.arch]
+        return self._data[ATTR_BUILD_FROM].get(
+            self.config.arch, BASE_IMAGE[self.config.arch])
 
     @property
     def squash(self):

@@ -8,6 +8,7 @@ from .addons import APIAddons
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .network import APINetwork
+from .proxy import APIProxy
 from .supervisor import APISupervisor
 from .security import APISecurity
 from .snapshots import APISnapshots
@@ -63,9 +64,9 @@ class RestAPI(object):
             '/supervisor/options', api_supervisor.options)
         self.webapp.router.add_get('/supervisor/logs', api_supervisor.logs)
 
-    def register_homeassistant(self, dock_homeassistant):
+    def register_homeassistant(self, homeassistant):
         """Register homeassistant function."""
-        api_hass = APIHomeAssistant(self.config, self.loop, dock_homeassistant)
+        api_hass = APIHomeAssistant(self.config, self.loop, homeassistant)
 
         self.webapp.router.add_get('/homeassistant/info', api_hass.info)
         self.webapp.router.add_get('/homeassistant/logs', api_hass.logs)
@@ -75,10 +76,21 @@ class RestAPI(object):
         self.webapp.router.add_post('/homeassistant/stop', api_hass.stop)
         self.webapp.router.add_post('/homeassistant/start', api_hass.start)
         self.webapp.router.add_post('/homeassistant/check', api_hass.check)
-        self.webapp.router.add_post(
-            '/homeassistant/api/{path:.+}', api_hass.api)
+
+    def register_proxy(self, homeassistant, websession):
+        """Register HomeAssistant API Proxy."""
+        api_proxy = APIProxy(self.loop, homeassistant, websession)
+
         self.webapp.router.add_get(
-            '/homeassistant/api/{path:.+}', api_hass.api)
+            '/homeassistant/api/websocket', api_proxy.websocket)
+        self.webapp.router.add_get(
+            '/homeassistant/websocket', api_proxy.websocket)
+        self.webapp.router.add_post(
+            '/homeassistant/api/{path:.+}', api_proxy.api)
+        self.webapp.router.add_get(
+            '/homeassistant/api/{path:.+}', api_proxy.api)
+        self.webapp.router.add_get(
+            '/homeassistant/api', api_proxy.api)
 
     def register_addons(self, addons):
         """Register homeassistant function."""

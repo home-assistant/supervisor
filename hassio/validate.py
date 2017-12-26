@@ -29,11 +29,12 @@ def validate_timezone(timezone):
     return timezone
 
 
+# pylint: disable=inconsistent-return-statements
 def convert_to_docker_ports(data):
     """Convert data into docker port list."""
     # dynamic ports
     if data is None:
-        return
+        return None
 
     # single port
     if isinstance(data, int):

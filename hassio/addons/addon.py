@@ -137,6 +137,7 @@ class Addon(object):
         """Return if auto update is enable."""
         if ATTR_AUTO_UPDATE in self.data.user.get(self._id, {}):
             return self.data.user[self._id][ATTR_AUTO_UPDATE]
+        return None
 
     @auto_update.setter
     def auto_update(self, value):
@@ -159,11 +160,25 @@ class Addon(object):
         """Return a API token for this add-on."""
         if self.is_installed:
             return self.data.user[self._id][ATTR_UUID]
+        return None
 
     @property
     def description(self):
         """Return description of addon."""
         return self._mesh[ATTR_DESCRIPTON]
+
+    @property
+    def long_description(self):
+        """Return README.md as long_description."""
+        readme = Path(self.path_location, 'README.md')
+
+        # If readme not exists
+        if not readme.exists():
+            return None
+
+        # Return data
+        with readme.open('r') as readme_file:
+            return readme_file.read()
 
     @property
     def repository(self):
@@ -333,7 +348,7 @@ class Addon(object):
     def audio_input(self):
         """Return ALSA config for input or None."""
         if not self.with_audio:
-            return
+            return None
 
         setting = self.config.audio_input
         if self.is_installed and ATTR_AUDIO_INPUT in self.data.user[self._id]:

@@ -2,7 +2,7 @@
     "local": {
         "name": "Local Add-Ons",
         "url": "https://home-assistant.io/hassio",
-        "maintainer": "By our self"
+        "maintainer": "you"
     },
     "core": {
         "name": "Built-in Add-Ons",
