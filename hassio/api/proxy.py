@@ -111,7 +111,7 @@ class APIProxy(object):
 
         try:
             client = await self.websession.ws_connect(
-                url, heartbeat=60)
+                url, heartbeat=60, verify_ssl=False)
 
             # handle authentication
             for _ in range(2):
@@ -136,7 +136,7 @@ class APIProxy(object):
         _LOGGER.info("Home-Assistant Websocket API request initialze")
 
         # init server
-        server = web.WebSocketResponse(heartbeat=60, verify_ssl=False)
+        server = web.WebSocketResponse(heartbeat=60)
         await server.prepare(request)
 
         # handle authentication
