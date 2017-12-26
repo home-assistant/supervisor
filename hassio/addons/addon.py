@@ -168,8 +168,8 @@ class Addon(object):
         return self._mesh[ATTR_DESCRIPTON]
 
     @property
-    def readme(self):
-        """Return README.md as text."""
+    def long_description(self):
+        """Return README.md as long_description."""
         readme = Path(self.path_location, 'README.md')
 
         # If readme not exists
