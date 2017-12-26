@@ -77,9 +77,9 @@ class RestAPI(object):
         self.webapp.router.add_post('/homeassistant/start', api_hass.start)
         self.webapp.router.add_post('/homeassistant/check', api_hass.check)
 
-    def register_proxy(self, homeassistant, websession):
+    def register_proxy(self, homeassistant):
         """Register HomeAssistant API Proxy."""
-        api_proxy = APIProxy(self.loop, homeassistant, websession)
+        api_proxy = APIProxy(self.loop, homeassistant)
 
         self.webapp.router.add_get(
             '/homeassistant/api/websocket', api_proxy.websocket)
