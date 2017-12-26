@@ -27,7 +27,7 @@ class DockerHomeAssistant(DockerInterface):
     def devices(self):
         """Create list of special device to map into docker."""
         if not self.data.devices:
-            return
+            return None
 
         devices = []
         for device in self.data.devices:
@@ -41,7 +41,7 @@ class DockerHomeAssistant(DockerInterface):
         Need run inside executor.
         """
         if self._is_running():
-            return
+            return False
 
         # cleanup
         self._stop()

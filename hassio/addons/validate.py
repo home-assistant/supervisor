@@ -219,6 +219,7 @@ def validate_options(raw_schema):
 
 
 # pylint: disable=no-value-for-parameter
+# pylint: disable=inconsistent-return-statements
 def _single_validate(typ, value, key):
     """Validate a single element."""
     # if required argument

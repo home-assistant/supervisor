@@ -70,7 +70,7 @@ class Hardware(object):
                 devices = devices_file.read()
         except OSError as err:
             _LOGGER.error("Can't read asound data -> %s", err)
-            return
+            return None
 
         audio_list = {}
 
@@ -110,12 +110,12 @@ class Hardware(object):
                 stats = stat_file.read()
         except OSError as err:
             _LOGGER.error("Can't read stat data -> %s", err)
-            return
+            return None
 
         # parse stat file
         found = RE_BOOT_TIME.search(stats)
         if not found:
             _LOGGER.error("Can't found last boot time!")
-            return
+            return None
 
         return datetime.utcfromtimestamp(int(found.group(1)))

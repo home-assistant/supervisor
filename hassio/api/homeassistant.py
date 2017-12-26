@@ -2,18 +2,13 @@
 import asyncio
 import logging
 
-import aiohttp
-from aiohttp import web
-from aiohttp.web_exceptions import HTTPBadGateway
-from aiohttp.hdrs import CONTENT_TYPE
-import async_timeout
 import voluptuous as vol
 
 from .util import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM,
     ATTR_BOOT, ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG,
-    CONTENT_TYPE_BINARY, HEADER_HA_ACCESS)
+    CONTENT_TYPE_BINARY)
 from ..validate import HASS_DEVICES, NETWORK_PORT
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,45 +40,6 @@ class APIHomeAssistant(object):
         self.config = config
         self.loop = loop
         self.homeassistant = homeassistant
-
-    async def homeassistant_proxy(self, path, request):
-        """Return a client request with proxy origin for Home-Assistant."""
-        url = "{}/api/{}".format(self.homeassistant.api_url, path)
-
-        try:
-            data = None
-            headers = {}
-            method = getattr(
-                self.homeassistant.websession, request.method.lower())
-
-            # read data
-            with async_timeout.timeout(10, loop=self.loop):
-                data = await request.read()
-
-            if data:
-                headers.update({CONTENT_TYPE: request.content_type})
-
-            # need api password?
-            if self.homeassistant.api_password:
-                headers = {HEADER_HA_ACCESS: self.homeassistant.api_password}
-
-            # reset headers
-            if not headers:
-                headers = None
-
-            client = await method(
-                url, data=data, headers=headers, timeout=300
-            )
-
-            return client
-
-        except aiohttp.ClientError as err:
-            _LOGGER.error("Client error on api %s request %s.", path, err)
-
-        except asyncio.TimeoutError:
-            _LOGGER.error("Client timeout error on api request %s.", path)
-
-        raise HTTPBadGateway()
 
     @api_process
     async def info(self, request):
@@ -169,14 +125,3 @@ class APIHomeAssistant(object):
             raise RuntimeError(message)
 
         return True
-
-    async def api(self, request):
-        """Proxy API request to Home-Assistant."""
-        path = request.match_info.get('path')
-
-        client = await self.homeassistant_proxy(path, request)
-        return web.Response(
-            body=await client.read(),
-            status=client.status,
-            content_type=client.content_type
-        )
