@@ -16,11 +16,13 @@ _LOGGER = logging.getLogger(__name__)
 class APIProxy(object):
     """API Proxy for Home-Assistant."""
 
-    def __init__(self, loop, homeassistant, websession):
+    def __init__(self, loop, homeassistant):
         """Initialize api proxy."""
         self.loop = loop
         self.homeassistant = homeassistant
-        self.websession = websession
+
+        # Use homeassistant websession to ignore SSL
+        self.websession = homeassistant.websession
 
     async def _api_client(self, request, path, timeout=300):
         """Return a client request with proxy origin for Home-Assistant."""
@@ -134,7 +136,7 @@ class APIProxy(object):
         _LOGGER.info("Home-Assistant Websocket API request initialze")
 
         # init server
-        server = web.WebSocketResponse(heartbeat=60)
+        server = web.WebSocketResponse(heartbeat=60, verify_ssl=False)
         await server.prepare(request)
 
         # handle authentication
