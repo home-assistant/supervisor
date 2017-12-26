@@ -14,7 +14,7 @@ from ..const import (
     ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, ATTR_DEVICES, ATTR_PRIVILEGED,
     ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, BOOT_AUTO, BOOT_MANUAL,
-    ATTR_CHANGELOG, ATTR_HOST_IPC, ATTR_HOST_DBUS,
+    ATTR_CHANGELOG, ATTR_HOST_IPC, ATTR_HOST_DBUS, ATTR_LONG_DESCRIPTION,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
 from ..validate import DOCKER_PORTS
 
@@ -108,6 +108,7 @@ class APIAddons(object):
         return {
             ATTR_NAME: addon.name,
             ATTR_DESCRIPTON: addon.description,
+            ATTR_LONG_DESCRIPTION: addon.long_description,
             ATTR_VERSION: addon.version_installed,
             ATTR_AUTO_UPDATE: addon.auto_update,
             ATTR_REPOSITORY: addon.repository,
