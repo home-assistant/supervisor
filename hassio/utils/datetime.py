@@ -1,6 +1,5 @@
 """Tools file for HassIO."""
 import asyncio
-from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 import json
 import logging
