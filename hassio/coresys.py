@@ -3,8 +3,11 @@
 import aiohttp
 
 from .config import CoreConfig
-from .hardware import Hardware
 from .dock import DockerAPI
+from .dns import DNSForward
+from .hardware import Hardware
+from .host_control import HostControl
+from .scheduler import Scheduler
 
 
 class CoreSys(object):
@@ -24,6 +27,9 @@ class CoreSys(object):
         self._config = CoreConfig()
         self._hardware = Hardware()
         self._docker = DockerAPI()
+        self._scheduler = Scheduler(loop=loop)
+        self._dns = DNSForward(loop=loop)
+        self._host_control = HostControl(loop=loop)
 
     @property
     def loop(self):
@@ -37,15 +43,30 @@ class CoreSys(object):
 
     @property
     def config(self):
-        """Return config object."""
+        """Return CoreConfig object."""
         return self._config
 
     @property
     def hardware(self):
-        """Return hardware object."""
+        """Return Hardware object."""
         return self._hardware
 
     @property
     def docker(self):
-        """Return docker object."""
+        """Return DockerAPI object."""
         return self._docker
+
+    @property
+    def scheduler(self):
+        """Return Scheduler object."""
+        return self._scheduler
+
+    @property
+    def dns(self):
+        """Return DNSForward object."""
+        return self._dns
+
+    @property
+    def host_control(self):
+        """Return HostControl object."""
+        return self._host_control

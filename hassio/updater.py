@@ -19,10 +19,9 @@ _LOGGER = logging.getLogger(__name__)
 class Updater(JsonConfig):
     """Fetch last versions from version.json."""
 
-    def __init__(self, config, loop, websession):
+    def __init__(self, loop, websession):
         """Initialize updater."""
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
-        self.config = config
         self.loop = loop
         self.websession = websession
 

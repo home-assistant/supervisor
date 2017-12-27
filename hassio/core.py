@@ -2,29 +2,22 @@
 import asyncio
 import logging
 
-import aiohttp
-
 from .addons import AddonManager
 from .api import RestAPI
-from .host_control import HostControl
 from .const import (
     RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT_DOCKER,
     RUN_CLEANUP_API_SESSIONS, STARTUP_SYSTEM, STARTUP_SERVICES,
     STARTUP_APPLICATION, STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS,
     RUN_UPDATE_ADDONS_TASKS)
-from .hardware import Hardware
 from .homeassistant import HomeAssistant
-from .scheduler import Scheduler
-from .dock import DockerAPI
 from .dock.supervisor import DockerSupervisor
-from .dns import DNSForward
 from .snapshots import SnapshotsManager
 from .updater import Updater
 from .tasks import (
     hassio_update, homeassistant_watchdog_docker, api_sessions_cleanup,
     addons_update)
-from .tools import fetch_timezone
+from .utils.datetime import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,36 +25,22 @@ _LOGGER = logging.getLogger(__name__)
 class HassIO(object):
     """Main object of hassio."""
 
-    def __init__(self, loop, config):
+    def __init__(self, coresys):
         """Initialize hassio object."""
-        self.exit_code = 0
-        self.loop = loop
-        self.config = config
-        self.websession = aiohttp.ClientSession(loop=loop)
-        self.updater = Updater(config, loop, self.websession)
-        self.scheduler = Scheduler(loop)
-        self.api = RestAPI(config, loop)
-        self.hardware = Hardware()
-        self.docker = DockerAPI(self.hardware)
-        self.dns = DNSForward(loop)
+        self.coresys = coresys
+        self.loop = coresys.loop
+        self.config = coresys.config
+        self.hardware = coresys.hardware
+        self.host_control = coresys.host_control
+        self.websession = coresys.websession
 
-        # init basic docker container
-        self.supervisor = DockerSupervisor(
-            config, loop, self.docker, self.stop)
-
-        # init homeassistant
-        self.homeassistant = HomeAssistant(
-            config, loop, self.docker, self.updater)
-
-        # init HostControl
-        self.host_control = HostControl(loop)
-
-        # init addon system
-        self.addons = AddonManager(config, loop, self.docker)
-
-        # init snapshot system
+        self.updater = Updater(coresys)
+        self.api = RestAPI(coresys)
+        self.supervisor = DockerSupervisor(coresys)
+        self.homeassistant = HomeAssistant(coresys, self.updater)
+        self.addons = AddonManager(coresys)
         self.snapshots = SnapshotsManager(
-            config, loop, self.scheduler, self.addons, self.homeassistant)
+            coresys, self.addons, self.homeassistant)
 
     async def setup(self):
         """Setup HassIO orchestration."""
@@ -71,7 +50,7 @@ class HassIO(object):
         await self.supervisor.cleanup()
 
         # set running arch
-        self.config.arch = self.supervisor.arch
+        self.coresys.arch = self.supervisor.arch
 
         # update timezone
         if self.config.timezone == 'UTC':

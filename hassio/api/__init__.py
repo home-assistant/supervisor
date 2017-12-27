@@ -19,10 +19,10 @@ _LOGGER = logging.getLogger(__name__)
 class RestAPI(object):
     """Handle rest api for hassio."""
 
-    def __init__(self, config, loop):
+    def __init__(self, coresys):
         """Initialize docker base wrapper."""
-        self.config = config
-        self.loop = loop
+        self.coresys = coresys
+        self.loop = coresys.loop
         self.webapp = web.Application(loop=self.loop)
 
         # service stuff
@@ -31,7 +31,7 @@ class RestAPI(object):
 
     def register_host(self, host_control, hardware):
         """Register hostcontrol function."""
-        api_host = APIHost(self.config, self.loop, host_control, hardware)
+        api_host = APIHost(self.coresys)
 
         self.webapp.router.add_get('/host/info', api_host.info)
         self.webapp.router.add_get('/host/hardware', api_host.hardware)
