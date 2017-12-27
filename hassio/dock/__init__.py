@@ -16,12 +16,11 @@ class DockerAPI(object):
     This class is not AsyncIO safe!
     """
 
-    def __init__(self, hardware):
+    def __init__(self):
         """Initialize docker base wrapper."""
         self.docker = docker.DockerClient(
             base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
         self.network = DockerNetwork(self.docker)
-        self.hardware = hardware
 
     @property
     def images(self):
