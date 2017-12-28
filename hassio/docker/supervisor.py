@@ -5,7 +5,7 @@ import os
 import docker
 
 from .interface import DockerInterface
-from .util import docker_process
+from .utils import docker_process
 
 _LOGGER = logging.getLogger(__name__)
 

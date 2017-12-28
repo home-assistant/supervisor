@@ -6,11 +6,12 @@ import docker
 
 from .network import DockerNetwork
 from ..const import SOCKET_DOCKER
+from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class DockerAPI(object):
+class DockerAPI(CoreSysAttributes):
     """Docker hassio wrapper.
 
     This class is not AsyncIO safe!

@@ -13,10 +13,14 @@ HASS_DOCKER_NAME = 'homeassistant'
 class DockerHomeAssistant(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, api, data):
+    def __init__(self, coresys):
         """Initialize docker homeassistant wrapper."""
-        super().__init__(config, loop, api, image=data.image)
-        self.data = data
+        super().__init__(coresys)
+
+    @property
+    def image(self):
+        """Return name of docker image."""
+        return self._homeassistant.image
 
     @property
     def name(self):

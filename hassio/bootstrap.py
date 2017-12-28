@@ -11,7 +11,7 @@ from .addons import AddonManager
 from .api import RestAPI
 from .const import SOCKET_DOCKER
 from .coresys import CoreSys
-from .dock.supervisor import DockerSupervisor
+from .docker.supervisor import DockerSupervisor
 from .homeassistant import HomeAssistant
 from .snapshots import SnapshotsManager
 from .updater import Updater
