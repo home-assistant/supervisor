@@ -2,18 +2,13 @@
 import asyncio
 import logging
 
-from .addons import AddonManager
-from .api import RestAPI
+from .coresys import CoreSysAttributes
 from .const import (
     RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
     RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT_DOCKER,
     RUN_CLEANUP_API_SESSIONS, STARTUP_SYSTEM, STARTUP_SERVICES,
     STARTUP_APPLICATION, STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS,
     RUN_UPDATE_ADDONS_TASKS)
-from .homeassistant import HomeAssistant
-from .dock.supervisor import DockerSupervisor
-from .snapshots import SnapshotsManager
-from .updater import Updater
 from .tasks import (
     hassio_update, homeassistant_watchdog_docker, api_sessions_cleanup,
     addons_update)
@@ -22,46 +17,33 @@ from .utils.datetime import fetch_timezone
 _LOGGER = logging.getLogger(__name__)
 
 
-class HassIO(object):
+class HassIO(CoreSysAttributes):
     """Main object of hassio."""
 
     def __init__(self, coresys):
         """Initialize hassio object."""
         self.coresys = coresys
-        self.loop = coresys.loop
-        self.config = coresys.config
-        self.hardware = coresys.hardware
-        self.host_control = coresys.host_control
-        self.websession = coresys.websession
-
-        self.updater = Updater(coresys)
-        self.api = RestAPI(coresys)
-        self.supervisor = DockerSupervisor(coresys)
-        self.homeassistant = HomeAssistant(coresys, self.updater)
-        self.addons = AddonManager(coresys)
-        self.snapshots = SnapshotsManager(
-            coresys, self.addons, self.homeassistant)
 
     async def setup(self):
         """Setup HassIO orchestration."""
         # supervisor
-        if not await self.supervisor.attach():
+        if not await self._supervisor.attach():
             _LOGGER.fatal("Can't setup supervisor docker container!")
-        await self.supervisor.cleanup()
+        await self._supervisor.cleanup()
 
         # set running arch
-        self.coresys.arch = self.supervisor.arch
+        self.coresys.arch = self._supervisor.arch
 
         # update timezone
-        if self.config.timezone == 'UTC':
-            self.config.timezone = await fetch_timezone(self.websession)
+        if self._config.timezone == 'UTC':
+            self._config.timezone = await fetch_timezone(self._websession)
 
         # hostcontrol
-        await self.host_control.load()
+        await self._host_control.load()
 
         # schedule update info tasks
-        self.scheduler.register_task(
-            self.host_control.load, RUN_UPDATE_INFO_TASKS)
+        self._scheduler.register_task(
+            self._host_control.load, RUN_UPDATE_INFO_TASKS)
 
         # rest api views
         self.api.register_host(self.host_control, self.hardware)
@@ -77,8 +59,8 @@ class HassIO(object):
         self.api.register_panel()
 
         # schedule api session cleanup
-        self.scheduler.register_task(
-            api_sessions_cleanup(self.config), RUN_CLEANUP_API_SESSIONS,
+        self._scheduler.register_task(
+            api_sessions_cleanup(self._config), RUN_CLEANUP_API_SESSIONS,
             now=True)
 
         # Load homeassistant

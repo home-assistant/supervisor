@@ -33,10 +33,10 @@ if __name__ == "__main__":
     loop.set_default_executor(executor)
 
     _LOGGER.info("Initialize Hassio setup")
-    config = bootstrap.initialize_system_data()
-    hassio = core.HassIO(loop, config)
+    coresys = bootstrap.initialize_coresys(loop)
+    hassio = core.HassIO(coresys)
 
-    bootstrap.migrate_system_env(config)
+    bootstrap.migrate_system_env(coresys)
 
     _LOGGER.info("Setup HassIO")
     loop.run_until_complete(hassio.setup())

@@ -1,7 +1,6 @@
 """Tools file for HassIO."""
 import asyncio
 from datetime import datetime, timedelta, timezone
-import json
 import logging
 import re
 
@@ -31,9 +30,12 @@ async def fetch_timezone(websession):
         with async_timeout.timeout(10, loop=websession.loop):
             async with websession.get(FREEGEOIP_URL) as request:
                 data = await request.json()
-    except (aiohttp.ClientError, asyncio.TimeoutError,
-            json.JSONDecodeError, KeyError) as err:
+
+    except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:
         _LOGGER.warning("Can't fetch freegeoip data: %s", err)
+
+    except ValueError as err:
+        _LOGGER.warning("Error on parse freegeoip data: %s", err)
 
     return data.get('time_zone', 'UTC')
 
