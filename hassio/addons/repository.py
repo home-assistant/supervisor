@@ -3,15 +3,17 @@ from .git import GitRepoHassIO, GitRepoCustom
 from .util import get_hash_from_repository
 from ..const import (
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_NAME, ATTR_URL, ATTR_MAINTAINER)
+from ..coresys import CoreSysAttributes
 
 UNKNOWN = 'unknown'
 
 
-class Repository(object):
+class Repository(CoreSysAttributes):
     """Repository in HassIO."""
 
-    def __init__(self, config, loop, data, repository):
+    def __init__(self, coresys, data, repository):
         """Initialize repository object."""
+        self.coresys = coresys
         self.data = data
         self.source = None
         self.git = None
@@ -20,10 +22,10 @@ class Repository(object):
             self._id = repository
         elif repository == REPOSITORY_CORE:
             self._id = repository
-            self.git = GitRepoHassIO(config, loop)
+            self.git = GitRepoHassIO(coresys)
         else:
             self._id = get_hash_from_repository(repository)
-            self.git = GitRepoCustom(config, loop, repository)
+            self.git = GitRepoCustom(coresys, repository)
             self.source = repository
 
     @property

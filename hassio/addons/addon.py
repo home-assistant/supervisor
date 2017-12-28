@@ -13,6 +13,7 @@ from voluptuous.humanize import humanize_error
 
 from .validate import (
     validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME)
+from .utils import check_installed
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
@@ -23,9 +24,9 @@ from ..const import (
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART)
-from .util import check_installed
+from ..coresys import CoreSysAttributes
 from ..dock.addon import DockerAddon
-from ..tools import write_json_file, read_json_file
+from ..utils.json import write_json_file, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,17 +35,16 @@ RE_WEBUI = re.compile(
     r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$")
 
 
-class Addon(object):
+class Addon(CoreSysAttributes):
     """Hold data for addon inside HassIO."""
 
-    def __init__(self, config, loop, docker, data, slug):
+    def __init__(self, coresys, data, slug):
         """Initialize data holder."""
-        self.loop = loop
-        self.config = config
+        self.coresys = coresys
         self.data = data
-        self._id = slug
+        self.docker = DockerAddon(coresys, self)
 
-        self.docker = DockerAddon(config, loop, docker, self)
+        self._id = slug
 
     async def load(self):
         """Async initialize of object."""
@@ -330,7 +330,7 @@ class Addon(object):
         if not self.with_audio:
             return None
 
-        setting = self.config.audio_output
+        setting = self._config.audio_output
         if self.is_installed and ATTR_AUDIO_OUTPUT in self.data.user[self._id]:
             setting = self.data.user[self._id][ATTR_AUDIO_OUTPUT]
         return setting
@@ -350,7 +350,7 @@ class Addon(object):
         if not self.with_audio:
             return None
 
-        setting = self.config.audio_input
+        setting = self._config.audio_input
         if self.is_installed and ATTR_AUDIO_INPUT in self.data.user[self._id]:
             setting = self.data.user[self._id][ATTR_AUDIO_INPUT]
         return setting
@@ -391,11 +391,11 @@ class Addon(object):
 
         # Repository with dockerhub images
         if ATTR_IMAGE in addon_data:
-            return addon_data[ATTR_IMAGE].format(arch=self.config.arch)
+            return addon_data[ATTR_IMAGE].format(arch=self._arch)
 
         # local build
         return "{}/{}-addon-{}".format(
-            addon_data[ATTR_REPOSITORY], self.config.arch,
+            addon_data[ATTR_REPOSITORY], self._arch,
             addon_data[ATTR_SLUG])
 
     @property
@@ -416,12 +416,12 @@ class Addon(object):
     @property
     def path_data(self):
         """Return addon data path inside supervisor."""
-        return Path(self.config.path_addons_data, self._id)
+        return Path(self._config.path_addons_data, self._id)
 
     @property
     def path_extern_data(self):
         """Return addon data path external for docker."""
-        return PurePath(self.config.path_extern_addons_data, self._id)
+        return PurePath(self._config.path_extern_addons_data, self._id)
 
     @property
     def path_options(self):
@@ -498,9 +498,9 @@ class Addon(object):
 
     async def install(self):
         """Install a addon."""
-        if self.config.arch not in self.supported_arch:
+        if self._arch not in self.supported_arch:
             _LOGGER.error(
-                "Addon %s not supported on %s", self._id, self.config.arch)
+                "Addon %s not supported on %s", self._id, self._arch)
             return False
 
         if self.is_installed:
@@ -628,7 +628,7 @@ class Addon(object):
     @check_installed
     async def snapshot(self, tar_file):
         """Snapshot a state of a addon."""
-        with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp:
             # store local image
             if self.need_build and not await \
                     self.docker.export_image(Path(temp, "image.tar")):
@@ -656,7 +656,7 @@ class Addon(object):
 
             try:
                 _LOGGER.info("Build snapshot for addon %s", self._id)
-                await self.loop.run_in_executor(None, _create_tar)
+                await self._loop.run_in_executor(None, _create_tar)
             except tarfile.TarError as err:
                 _LOGGER.error("Can't write tarfile %s -> %s", tar_file, err)
                 return False
@@ -666,7 +666,7 @@ class Addon(object):
 
     async def restore(self, tar_file):
         """Restore a state of a addon."""
-        with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp:
             # extract snapshot
             def _extract_tar():
                 """Extract tar snapshot."""
@@ -674,7 +674,7 @@ class Addon(object):
                     snapshot.extractall(path=Path(temp))
 
             try:
-                await self.loop.run_in_executor(None, _extract_tar)
+                await self._loop.run_in_executor(None, _extract_tar)
             except tarfile.TarError as err:
                 _LOGGER.error("Can't read tarfile %s -> %s", tar_file, err)
                 return False
@@ -717,7 +717,7 @@ class Addon(object):
 
             try:
                 _LOGGER.info("Restore data for addon %s", self._id)
-                await self.loop.run_in_executor(None, _restore_data)
+                await self._loop.run_in_executor(None, _restore_data)
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data -> %s", err)
                 return False
