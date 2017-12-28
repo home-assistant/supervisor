@@ -38,10 +38,9 @@ RE_WEBUI = re.compile(
 class Addon(CoreSysAttributes):
     """Hold data for addon inside HassIO."""
 
-    def __init__(self, coresys, data, slug):
+    def __init__(self, coresys, slug):
         """Initialize data holder."""
         self.coresys = coresys
-        self.data = data
         self.docker = DockerAddon(coresys, self)
 
         self._id = slug
@@ -59,91 +58,96 @@ class Addon(CoreSysAttributes):
     @property
     def _mesh(self):
         """Return addon data from system or cache."""
-        return self.data.system.get(self._id, self.data.cache.get(self._id))
+        return self._data.system.get(self._id, self._data.cache.get(self._id))
+
+    @property
+    def _data(self):
+        """Return addons data storage."""
+        return self._addons.data
 
     @property
     def is_installed(self):
         """Return True if a addon is installed."""
-        return self._id in self.data.system
+        return self._id in self._data.system
 
     @property
     def is_detached(self):
         """Return True if addon is detached."""
-        return self._id not in self.data.cache
+        return self._id not in self._data.cache
 
     @property
     def version_installed(self):
         """Return installed version."""
-        return self.data.user.get(self._id, {}).get(ATTR_VERSION)
+        return self._data.user.get(self._id, {}).get(ATTR_VERSION)
 
     def _set_install(self, version):
         """Set addon as installed."""
-        self.data.system[self._id] = deepcopy(self.data.cache[self._id])
-        self.data.user[self._id] = {
+        self._data.system[self._id] = deepcopy(self._data.cache[self._id])
+        self._data.user[self._id] = {
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
         }
-        self.data.save()
+        self._data.save()
 
     def _set_uninstall(self):
         """Set addon as uninstalled."""
-        self.data.system.pop(self._id, None)
-        self.data.user.pop(self._id, None)
-        self.data.save()
+        self._data.system.pop(self._id, None)
+        self._data.user.pop(self._id, None)
+        self._data.save()
 
     def _set_update(self, version):
         """Update version of addon."""
-        self.data.system[self._id] = deepcopy(self.data.cache[self._id])
-        self.data.user[self._id][ATTR_VERSION] = version
-        self.data.save()
+        self._data.system[self._id] = deepcopy(self._data.cache[self._id])
+        self._data.user[self._id][ATTR_VERSION] = version
+        self._data.save()
 
     def _restore_data(self, user, system):
         """Restore data to addon."""
-        self.data.user[self._id] = deepcopy(user)
-        self.data.system[self._id] = deepcopy(system)
-        self.data.save()
+        self._data.user[self._id] = deepcopy(user)
+        self._data.system[self._id] = deepcopy(system)
+        self._data.save()
 
     @property
     def options(self):
         """Return options with local changes."""
         if self.is_installed:
             return {
-                **self.data.system[self._id][ATTR_OPTIONS],
-                **self.data.user[self._id][ATTR_OPTIONS]
+                **self._data.system[self._id][ATTR_OPTIONS],
+                **self._data.user[self._id][ATTR_OPTIONS]
             }
-        return self.data.cache[self._id][ATTR_OPTIONS]
+        return self._data.cache[self._id][ATTR_OPTIONS]
 
     @options.setter
     def options(self, value):
         """Store user addon options."""
-        self.data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
-        self.data.save()
+        self._data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
+        self._data.save()
 
     @property
     def boot(self):
         """Return boot config with prio local settings."""
-        if ATTR_BOOT in self.data.user.get(self._id, {}):
-            return self.data.user[self._id][ATTR_BOOT]
+        if ATTR_BOOT in self._data.user.get(self._id, {}):
+            return self._data.user[self._id][ATTR_BOOT]
         return self._mesh[ATTR_BOOT]
 
     @boot.setter
     def boot(self, value):
         """Store user boot options."""
-        self.data.user[self._id][ATTR_BOOT] = value
-        self.data.save()
+        self._data.user[self._id][ATTR_BOOT] = value
+        self._data.save()
 
     @property
     def auto_update(self):
         """Return if auto update is enable."""
-        if ATTR_AUTO_UPDATE in self.data.user.get(self._id, {}):
-            return self.data.user[self._id][ATTR_AUTO_UPDATE]
+        if ATTR_AUTO_UPDATE in self._data.user.get(self._id, {}):
+            return self._data.user[self._id][ATTR_AUTO_UPDATE]
         return None
 
     @auto_update.setter
     def auto_update(self, value):
         """Set auto update."""
-        self.data.user[self._id][ATTR_AUTO_UPDATE] = value
-        self.data.save()
+        self._data.user[self._id][ATTR_AUTO_UPDATE] = value
+        self._data.save()
 
     @property
     def name(self):
@@ -159,7 +163,7 @@ class Addon(CoreSysAttributes):
     def api_token(self):
         """Return a API token for this add-on."""
         if self.is_installed:
-            return self.data.user[self._id][ATTR_UUID]
+            return self._data.user[self._id][ATTR_UUID]
         return None
 
     @property
@@ -188,8 +192,8 @@ class Addon(CoreSysAttributes):
     @property
     def last_version(self):
         """Return version of addon."""
-        if self._id in self.data.cache:
-            return self.data.cache[self._id][ATTR_VERSION]
+        if self._id in self._data.cache:
+            return self._data.cache[self._id][ATTR_VERSION]
         return self.version_installed
 
     @property
@@ -204,24 +208,24 @@ class Addon(CoreSysAttributes):
             return None
 
         if not self.is_installed or \
-                ATTR_NETWORK not in self.data.user[self._id]:
+                ATTR_NETWORK not in self._data.user[self._id]:
             return self._mesh[ATTR_PORTS]
-        return self.data.user[self._id][ATTR_NETWORK]
+        return self._data.user[self._id][ATTR_NETWORK]
 
     @ports.setter
     def ports(self, value):
         """Set custom ports of addon."""
         if value is None:
-            self.data.user[self._id].pop(ATTR_NETWORK, None)
+            self._data.user[self._id].pop(ATTR_NETWORK, None)
         else:
             new_ports = {}
             for container_port, host_port in value.items():
                 if container_port in self._mesh.get(ATTR_PORTS, {}):
                     new_ports[container_port] = host_port
 
-            self.data.user[self._id][ATTR_NETWORK] = new_ports
+            self._data.user[self._id][ATTR_NETWORK] = new_ports
 
-        self.data.save()
+        self._data.save()
 
     @property
     def webui(self):
@@ -331,18 +335,19 @@ class Addon(CoreSysAttributes):
             return None
 
         setting = self._config.audio_output
-        if self.is_installed and ATTR_AUDIO_OUTPUT in self.data.user[self._id]:
-            setting = self.data.user[self._id][ATTR_AUDIO_OUTPUT]
+        if self.is_installed and \
+                ATTR_AUDIO_OUTPUT in self._data.user[self._id]:
+            setting = self._data.user[self._id][ATTR_AUDIO_OUTPUT]
         return setting
 
     @audio_output.setter
     def audio_output(self, value):
         """Set/remove custom audio output settings."""
         if value is None:
-            self.data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
+            self._data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
         else:
-            self.data.user[self._id][ATTR_AUDIO_OUTPUT] = value
-        self.data.save()
+            self._data.user[self._id][ATTR_AUDIO_OUTPUT] = value
+        self._data.save()
 
     @property
     def audio_input(self):
@@ -351,18 +356,18 @@ class Addon(CoreSysAttributes):
             return None
 
         setting = self._config.audio_input
-        if self.is_installed and ATTR_AUDIO_INPUT in self.data.user[self._id]:
-            setting = self.data.user[self._id][ATTR_AUDIO_INPUT]
+        if self.is_installed and ATTR_AUDIO_INPUT in self._data.user[self._id]:
+            setting = self._data.user[self._id][ATTR_AUDIO_INPUT]
         return setting
 
     @audio_input.setter
     def audio_input(self, value):
         """Set/remove custom audio input settings."""
         if value is None:
-            self.data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
+            self._data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
         else:
-            self.data.user[self._id][ATTR_AUDIO_INPUT] = value
-        self.data.save()
+            self._data.user[self._id][ATTR_AUDIO_INPUT] = value
+        self._data.save()
 
     @property
     def url(self):
@@ -472,8 +477,8 @@ class Addon(CoreSysAttributes):
             return True
 
         # load next schema
-        new_raw_schema = self.data.cache[self._id][ATTR_SCHEMA]
-        default_options = self.data.cache[self._id][ATTR_OPTIONS]
+        new_raw_schema = self._data.cache[self._id][ATTR_SCHEMA]
+        default_options = self._data.cache[self._id][ATTR_OPTIONS]
 
         # if disabled
         if isinstance(new_raw_schema, bool):
@@ -481,7 +486,7 @@ class Addon(CoreSysAttributes):
 
         # merge options
         options = {
-            **self.data.user[self._id][ATTR_OPTIONS],
+            **self._data.user[self._id][ATTR_OPTIONS],
             **default_options,
         }
 
@@ -635,8 +640,8 @@ class Addon(CoreSysAttributes):
                 return False
 
             data = {
-                ATTR_USER: self.data.user.get(self._id, {}),
-                ATTR_SYSTEM: self.data.system.get(self._id, {}),
+                ATTR_USER: self._data.user.get(self._id, {}),
+                ATTR_SYSTEM: self._data.system.get(self._id, {}),
                 ATTR_VERSION: self.version_installed,
                 ATTR_STATE: await self.state(),
             }

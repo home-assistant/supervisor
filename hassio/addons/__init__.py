@@ -106,7 +106,7 @@ class AddonManager(CoreSysAttributes):
         # new addons
         tasks = []
         for addon_slug in add_addons:
-            addon = Addon(self.coresys, self.data, addon_slug)
+            addon = Addon(self.coresys, addon_slug)
 
             tasks.append(addon.load())
             self.addons_obj[addon_slug] = addon
