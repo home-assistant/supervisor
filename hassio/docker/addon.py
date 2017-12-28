@@ -19,31 +19,39 @@ AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 class DockerAddon(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, coresys, addon):
+    def __init__(self, coresys, slug):
         """Initialize docker homeassistant wrapper."""
-        super().__init__(coresys, timeout=addon.timeout)
-        self.addon = addon
+        super().__init__(coresys)
+        self._id = slug
+
+    @property
+    def addon(self):
+        """Return name of docker image."""
+        return self._addons.get(self._id)
 
     @property
     def image(self):
         """Return name of docker image."""
-        self.addon.image
+        return self.addon.image
 
-    # pylint: disable=inconsistent-return-statements
-    def process_metadata(self, metadata, force=False):
-        """Use addon data instead meta data with legacy."""
+    @property
+    def timeout(self):
+        """Return timeout for docker actions."""
+        return self.addon.timeout
+
+    @property
+    def version(self):
+        """Return version of docker image."""
         if not self.addon.legacy:
-            return super().process_metadata(metadata, force=force)
+            return super().version
+        return self.addon.version_installed
 
-        # set meta data
-        if not self.version or force:
-            if force:  # called on install/update/build
-                self.version = self.addon.last_version
-            else:
-                self.version = self.addon.version_installed
-
-        if not self.arch:
-            self.arch = self._arch
+    @property
+    def arch(self):
+        """Return arch of docker image."""
+        if not self.addon.legacy:
+            return super().arch
+        return self._arch
 
     @property
     def name(self):

@@ -15,18 +15,16 @@ _LOGGER = logging.getLogger(__name__)
 class DockerInterface(CoreSysAttributes):
     """Docker hassio interface."""
 
-    def __init__(self, coresys, timeout=30):
+    def __init__(self, coresys):
         """Initialize docker base wrapper."""
         self.coresys = coresys
-        self.timeout = timeout
-        self.version = None
-        self.arch = None
+        self.meta = None
         self._lock = asyncio.Lock(loop=self._loop)
 
     @property
-    def image(self):
-        """Return name of docker image."""
-        return None
+    def timeout(self):
+        """Return timeout for docker actions."""
+        return 30
 
     @property
     def name(self):
@@ -34,27 +32,30 @@ class DockerInterface(CoreSysAttributes):
         return None
 
     @property
+    def image(self):
+        """Return name of docker image."""
+        if not self.meta:
+            return None
+        return self.meta['Config']['Image']
+
+    @property
+    def version(self):
+        """Return version of docker image."""
+        if not self.meta or LABEL_VERSION not in self.meta['Config']['Labels']:
+            return None
+        return self.meta['Config']['Labels'][LABEL_VERSION]
+
+    @property
+    def arch(self):
+        """Return arch of docker image."""
+        if self.meta or LABEL_ARCH not in self.meta['Config']['Labels']:
+            return None
+        return self.meta['Config']['Labels'][LABEL_ARCH]
+
+    @property
     def in_progress(self):
         """Return True if a task is in progress."""
         return self._lock.locked()
-
-    def process_metadata(self, metadata, force=False):
-        """Read metadata and set it to object."""
-        # read image
-        if not self.image:
-            self.image = metadata['Config']['Image']
-
-        # read version
-        need_version = force or not self.version
-        if need_version and LABEL_VERSION in metadata['Config']['Labels']:
-            self.version = metadata['Config']['Labels'][LABEL_VERSION]
-        elif need_version:
-            _LOGGER.warning("Can't read version from %s", self.name)
-
-        # read arch
-        need_arch = force or not self.arch
-        if need_arch and LABEL_ARCH in metadata['Config']['Labels']:
-            self.arch = metadata['Config']['Labels'][LABEL_ARCH]
 
     @docker_process
     def install(self, tag):
@@ -71,7 +72,7 @@ class DockerInterface(CoreSysAttributes):
             image = self._docker.images.pull("{}:{}".format(self.image, tag))
 
             image.tag(self.image, tag='latest')
-            self.process_metadata(image.attrs, force=True)
+            self.meta = image.attrs
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", self.image, tag, err)
             return False
@@ -135,13 +136,12 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             if self.image:
-                obj_data = self._docker.images.get(self.image).attrs
+                self.meta = self._docker.images.get(self.image).attrs
             else:
-                obj_data = self._docker.containers.get(self.name).attrs
+                self.meta = self._docker.containers.get(self.name).attrs
         except docker.errors.DockerException:
             return False
 
-        self.process_metadata(obj_data)
         _LOGGER.info(
             "Attach to image %s with version %s", self.image, self.version)
 
@@ -214,10 +214,7 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.warning("Can't remove image %s -> %s", self.image, err)
             return False
 
-        # clean metadata
-        self.version = None
-        self.arch = None
-
+        self.meta = None
         return True
 
     @docker_process

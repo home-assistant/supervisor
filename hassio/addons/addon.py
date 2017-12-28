@@ -41,14 +41,14 @@ class Addon(CoreSysAttributes):
     def __init__(self, coresys, slug):
         """Initialize data holder."""
         self.coresys = coresys
-        self.docker = DockerAddon(coresys, self)
+        self.instance = DockerAddon(coresys, slug)
 
         self._id = slug
 
     async def load(self):
         """Async initialize of object."""
         if self.is_installed:
-            await self.docker.attach()
+            await self.instance.attach()
 
     @property
     def slug(self):
@@ -517,7 +517,7 @@ class Addon(CoreSysAttributes):
                 "Create Home-Assistant addon data folder %s", self.path_data)
             self.path_data.mkdir()
 
-        if not await self.docker.install(self.last_version):
+        if not await self.instance.install(self.last_version):
             return False
 
         self._set_install(self.last_version)
@@ -526,7 +526,7 @@ class Addon(CoreSysAttributes):
     @check_installed
     async def uninstall(self):
         """Remove a addon."""
-        if not await self.docker.remove():
+        if not await self.instance.remove():
             return False
 
         if self.path_data.is_dir():
@@ -542,7 +542,7 @@ class Addon(CoreSysAttributes):
         if not self.is_installed:
             return STATE_NONE
 
-        if await self.docker.is_running():
+        if await self.instance.is_running():
             return STATE_STARTED
         return STATE_STOPPED
 
@@ -552,7 +552,7 @@ class Addon(CoreSysAttributes):
 
         Return a coroutine.
         """
-        return self.docker.run()
+        return self.instance.run()
 
     @check_installed
     def stop(self):
@@ -560,7 +560,7 @@ class Addon(CoreSysAttributes):
 
         Return a coroutine.
         """
-        return self.docker.stop()
+        return self.instance.stop()
 
     @check_installed
     async def update(self):
@@ -572,13 +572,13 @@ class Addon(CoreSysAttributes):
                 "No update available for Addon %s", self._id)
             return False
 
-        if not await self.docker.update(self.last_version):
+        if not await self.instance.update(self.last_version):
             return False
         self._set_update(self.last_version)
 
         # restore state
         if last_state == STATE_STARTED:
-            await self.docker.run()
+            await self.instance.run()
         return True
 
     @check_installed
@@ -587,7 +587,7 @@ class Addon(CoreSysAttributes):
 
         Return a coroutine.
         """
-        return self.docker.restart()
+        return self.instance.restart()
 
     @check_installed
     def logs(self):
@@ -595,7 +595,7 @@ class Addon(CoreSysAttributes):
 
         Return a coroutine.
         """
-        return self.docker.logs()
+        return self.instance.logs()
 
     @check_installed
     async def rebuild(self):
@@ -607,15 +607,15 @@ class Addon(CoreSysAttributes):
             return False
 
         # remove docker container but not addon config
-        if not await self.docker.remove():
+        if not await self.instance.remove():
             return False
 
-        if not await self.docker.install(self.version_installed):
+        if not await self.instance.install(self.version_installed):
             return False
 
         # restore state
         if last_state == STATE_STARTED:
-            await self.docker.run()
+            await self.instance.run()
         return True
 
     @check_installed
@@ -628,7 +628,7 @@ class Addon(CoreSysAttributes):
             _LOGGER.error("Add-on don't support write to stdin!")
             return False
 
-        return await self.docker.write_stdin(data)
+        return await self.instance.write_stdin(data)
 
     @check_installed
     async def snapshot(self, tar_file):
@@ -636,7 +636,7 @@ class Addon(CoreSysAttributes):
         with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp:
             # store local image
             if self.need_build and not await \
-                    self.docker.export_image(Path(temp, "image.tar")):
+                    self.instance.export_image(Path(temp, "image.tar")):
                 return False
 
             data = {
@@ -703,15 +703,15 @@ class Addon(CoreSysAttributes):
 
             # check version / restore image
             version = data[ATTR_VERSION]
-            if version != self.docker.version:
+            if version != self.instance.version:
                 image_file = Path(temp, "image.tar")
                 if image_file.is_file():
-                    await self.docker.import_image(image_file, version)
+                    await self.instance.import_image(image_file, version)
                 else:
-                    if await self.docker.install(version):
-                        await self.docker.cleanup()
+                    if await self.instance.install(version):
+                        await self.instance.cleanup()
             else:
-                await self.docker.stop()
+                await self.instance.stop()
 
             # restore data
             def _restore_data():

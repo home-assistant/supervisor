@@ -30,11 +30,11 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def devices(self):
         """Create list of special device to map into docker."""
-        if not self.data.devices:
+        if not self._homeassistant.devices:
             return None
 
         devices = []
-        for device in self.data.devices:
+        for device in self._homeassistant.devices:
             devices.append("/dev/{0}:/dev/{0}:rwm".format(device))
 
         return devices
@@ -50,7 +50,7 @@ class DockerHomeAssistant(DockerInterface):
         # cleanup
         self._stop()
 
-        ret = self.docker.run(
+        ret = self._docker.run(
             self.image,
             name=self.name,
             hostname=self.name,
@@ -60,15 +60,15 @@ class DockerHomeAssistant(DockerInterface):
             devices=self.devices,
             network_mode='host',
             environment={
-                'HASSIO': self.docker.network.supervisor,
-                'TZ': self.config.timezone,
+                'HASSIO': self._docker.network.supervisor,
+                'TZ': self._config.timezone,
             },
             volumes={
-                str(self.config.path_extern_config):
+                str(self._config.path_extern_config):
                     {'bind': '/config', 'mode': 'rw'},
-                str(self.config.path_extern_ssl):
+                str(self._config.path_extern_ssl):
                     {'bind': '/ssl', 'mode': 'ro'},
-                str(self.config.path_extern_share):
+                str(self._config.path_extern_share):
                     {'bind': '/share', 'mode': 'rw'},
             }
         )
@@ -84,19 +84,19 @@ class DockerHomeAssistant(DockerInterface):
 
         Need run inside executor.
         """
-        return self.docker.run_command(
+        return self._docker.run_command(
             self.image,
             command,
             detach=True,
             stdout=True,
             stderr=True,
             environment={
-                'TZ': self.config.timezone,
+                'TZ': self._config.timezone,
             },
             volumes={
-                str(self.config.path_extern_config):
+                str(self._config.path_extern_config):
                     {'bind': '/config', 'mode': 'ro'},
-                str(self.config.path_extern_ssl):
+                str(self._config.path_extern_ssl):
                     {'bind': '/ssl', 'mode': 'ro'},
             }
         )
@@ -111,7 +111,7 @@ class DockerHomeAssistant(DockerInterface):
         Need run inside executor.
         """
         try:
-            self.docker.containers.get(self.name)
+            self._docker.containers.get(self.name)
         except docker.errors.DockerException:
             return False
 
