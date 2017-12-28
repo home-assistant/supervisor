@@ -11,10 +11,9 @@ UNKNOWN = 'unknown'
 class Repository(CoreSysAttributes):
     """Repository in HassIO."""
 
-    def __init__(self, coresys, data, repository):
+    def __init__(self, coresys, repository):
         """Initialize repository object."""
         self.coresys = coresys
-        self.data = data
         self.source = None
         self.git = None
 
@@ -31,7 +30,7 @@ class Repository(CoreSysAttributes):
     @property
     def _mesh(self):
         """Return data struct repository."""
-        return self.data.repositories.get(self._id, {})
+        return self._addons.data.repositories.get(self._id, {})
 
     @property
     def slug(self):
