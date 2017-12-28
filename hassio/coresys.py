@@ -168,3 +168,4 @@ class CoreSysAttributes(object):
         """Mapping to coresys."""
         if name[0] == '_' and hasattr(self.coresys, name[1:]):
             return getattr(self.coresys, name[1:])
+        return getattr(self, name)

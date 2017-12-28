@@ -9,40 +9,33 @@ from aiohttp.hdrs import CONTENT_TYPE
 import async_timeout
 
 from ..const import HEADER_HA_ACCESS
+from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class APIProxy(object):
+class APIProxy(CoreSysAttributes):
     """API Proxy for Home-Assistant."""
-
-    def __init__(self, loop, homeassistant):
-        """Initialize api proxy."""
-        self.loop = loop
-        self.homeassistant = homeassistant
-
-        # Use homeassistant websession to ignore SSL
-        self.websession = homeassistant.websession
 
     async def _api_client(self, request, path, timeout=300):
         """Return a client request with proxy origin for Home-Assistant."""
-        url = f"{self.homeassistant.api_url}/api/{path}"
+        url = f"{self._homeassistant.api_url}/api/{path}"
 
         try:
             data = None
             headers = {}
-            method = getattr(self.websession, request.method.lower())
+            method = getattr(self._websession_ssl, request.method.lower())
 
             # read data
-            with async_timeout.timeout(30, loop=self.loop):
+            with async_timeout.timeout(30, loop=self._loop):
                 data = await request.read()
 
             if data:
                 headers.update({CONTENT_TYPE: request.content_type})
 
             # need api password?
-            if self.homeassistant.api_password:
-                headers = {HEADER_HA_ACCESS: self.homeassistant.api_password}
+            if self._homeassistant.api_password:
+                headers = {HEADER_HA_ACCESS: self._homeassistant.api_password}
 
             # reset headers
             if not headers:
@@ -110,7 +103,7 @@ class APIProxy(object):
         url = f"{self.homeassistant.api_url}/api/websocket"
 
         try:
-            client = await self.websession.ws_connect(
+            client = await self._websession_ssl.ws_connect(
                 url, heartbeat=60, verify_ssl=False)
 
             # handle authentication
@@ -121,7 +114,7 @@ class APIProxy(object):
                 elif data.get('type') == 'auth_required':
                     await client.send_json({
                         'type': 'auth',
-                        'api_password': self.homeassistant.api_password,
+                        'api_password': self._homeassistant.api_password,
                     })
 
             _LOGGER.error("Authentication to Home-Assistant websocket")
@@ -154,15 +147,15 @@ class APIProxy(object):
             while not server.closed and not client.closed:
                 if not client_read:
                     client_read = asyncio.ensure_future(
-                        client.receive_str(), loop=self.loop)
+                        client.receive_str(), loop=self._loop)
                 if not server_read:
                     server_read = asyncio.ensure_future(
-                        server.receive_str(), loop=self.loop)
+                        server.receive_str(), loop=self._loop)
 
                 # wait until data need to be processed
                 await asyncio.wait(
                     [client_read, server_read],
-                    loop=self.loop, return_when=asyncio.FIRST_COMPLETED
+                    loop=self._loop, return_when=asyncio.FIRST_COMPLETED
                 )
 
                 # server

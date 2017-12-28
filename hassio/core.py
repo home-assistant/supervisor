@@ -46,17 +46,7 @@ class HassIO(CoreSysAttributes):
             self._host_control.load, RUN_UPDATE_INFO_TASKS)
 
         # rest api views
-        self.api.register_host(self.host_control, self.hardware)
-        self.api.register_network(self.host_control)
-        self.api.register_supervisor(
-            self.supervisor, self.snapshots, self.addons, self.host_control,
-            self.updater)
-        self.api.register_homeassistant(self.homeassistant)
-        self.api.register_proxy(self.homeassistant)
-        self.api.register_addons(self.addons)
-        self.api.register_security()
-        self.api.register_snapshots(self.snapshots)
-        self.api.register_panel()
+        self._api.register()
 
         # schedule api session cleanup
         self._scheduler.register_task(

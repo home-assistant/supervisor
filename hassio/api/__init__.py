@@ -22,16 +22,28 @@ class RestAPI(object):
     def __init__(self, coresys):
         """Initialize docker base wrapper."""
         self.coresys = coresys
-        self.loop = coresys.loop
-        self.webapp = web.Application(loop=self.loop)
+        self.webapp = web.Application(loop=self._loop)
 
         # service stuff
         self._handler = None
         self.server = None
 
-    def register_host(self, host_control, hardware):
+    def register(self):
+        """Register REST API Calls."""
+        self._register_supervisor()
+        self._register_host()
+        self._register_homeassistant()
+        self._register_proxy()
+        self._register_panel()
+        self._register_addons()
+        self._register_snapshots()
+        self._register_security()
+        self._register_network()
+
+    def _register_host(self):
         """Register hostcontrol function."""
-        api_host = APIHost(self.coresys)
+        api_host = APIHost()
+        api_host.coresys = self.coresys
 
         self.webapp.router.add_get('/host/info', api_host.info)
         self.webapp.router.add_get('/host/hardware', api_host.hardware)
@@ -40,19 +52,18 @@ class RestAPI(object):
         self.webapp.router.add_post('/host/update', api_host.update)
         self.webapp.router.add_post('/host/options', api_host.options)
 
-    def register_network(self, host_control):
+    def _register_network(self):
         """Register network function."""
-        api_net = APINetwork(self.config, self.loop, host_control)
+        api_net = APINetwork()
+        api_net.coresys = self.coresys
 
         self.webapp.router.add_get('/network/info', api_net.info)
         self.webapp.router.add_post('/network/options', api_net.options)
 
-    def register_supervisor(self, supervisor, snapshots, addons, host_control,
-                            updater):
+    def _register_supervisor(self):
         """Register supervisor function."""
-        api_supervisor = APISupervisor(
-            self.config, self.loop, supervisor, snapshots, addons,
-            host_control, updater)
+        api_supervisor = APISupervisor()
+        api_supervisor.coresys = self.coresys
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
@@ -64,9 +75,10 @@ class RestAPI(object):
             '/supervisor/options', api_supervisor.options)
         self.webapp.router.add_get('/supervisor/logs', api_supervisor.logs)
 
-    def register_homeassistant(self, homeassistant):
+    def _register_homeassistant(self):
         """Register homeassistant function."""
-        api_hass = APIHomeAssistant(self.config, self.loop, homeassistant)
+        api_hass = APIHomeAssistant()
+        api_hass.coresys = self.coresys
 
         self.webapp.router.add_get('/homeassistant/info', api_hass.info)
         self.webapp.router.add_get('/homeassistant/logs', api_hass.logs)
@@ -77,9 +89,10 @@ class RestAPI(object):
         self.webapp.router.add_post('/homeassistant/start', api_hass.start)
         self.webapp.router.add_post('/homeassistant/check', api_hass.check)
 
-    def register_proxy(self, homeassistant):
+    def _register_proxy(self):
         """Register HomeAssistant API Proxy."""
-        api_proxy = APIProxy(self.loop, homeassistant)
+        api_proxy = APIProxy()
+        api_proxy.coresys = self.coresys
 
         self.webapp.router.add_get(
             '/homeassistant/api/websocket', api_proxy.websocket)
@@ -92,9 +105,10 @@ class RestAPI(object):
         self.webapp.router.add_get(
             '/homeassistant/api', api_proxy.api)
 
-    def register_addons(self, addons):
+    def _register_addons(self):
         """Register homeassistant function."""
-        api_addons = APIAddons(self.config, self.loop, addons)
+        api_addons = APIAddons()
+        api_addons.coresys = self.coresys
 
         self.webapp.router.add_get('/addons', api_addons.list)
         self.webapp.router.add_post('/addons/reload', api_addons.reload)
@@ -120,18 +134,20 @@ class RestAPI(object):
             '/addons/{addon}/changelog', api_addons.changelog)
         self.webapp.router.add_post('/addons/{addon}/stdin', api_addons.stdin)
 
-    def register_security(self):
+    def _register_security(self):
         """Register security function."""
-        api_security = APISecurity(self.config, self.loop)
+        api_security = APISecurity()
+        api_security.coresys = self.coresys
 
         self.webapp.router.add_get('/security/info', api_security.info)
         self.webapp.router.add_post('/security/options', api_security.options)
         self.webapp.router.add_post('/security/totp', api_security.totp)
         self.webapp.router.add_post('/security/session', api_security.session)
 
-    def register_snapshots(self, snapshots):
+    def _register_snapshots(self):
         """Register snapshots function."""
-        api_snapshots = APISnapshots(self.config, self.loop, snapshots)
+        api_snapshots = APISnapshots()
+        api_snapshots.coresys = self.coresys
 
         self.webapp.router.add_get('/snapshots', api_snapshots.list)
         self.webapp.router.add_post('/snapshots/reload', api_snapshots.reload)
@@ -151,11 +167,11 @@ class RestAPI(object):
             '/snapshots/{snapshot}/restore/partial',
             api_snapshots.restore_partial)
 
-    def register_panel(self):
+    def _register_panel(self):
         """Register panel for homeassistant."""
         def create_panel_response(build_type):
             """Create a function to generate a response."""
-            path = Path(__file__).parents[1].joinpath(
+            path = Path(__file__).joinpath(
                 'panel/hassio-main-{}.html'.format(build_type))
 
             return lambda request: web.FileResponse(path)
@@ -168,10 +184,10 @@ class RestAPI(object):
 
     async def start(self):
         """Run rest api webserver."""
-        self._handler = self.webapp.make_handler(loop=self.loop)
+        self._handler = self.webapp.make_handler(loop=self._loop)
 
         try:
-            self.server = await self.loop.create_server(
+            self.server = await self._loop.create_server(
                 self._handler, "0.0.0.0", "80")
         except OSError as err:
             _LOGGER.fatal(

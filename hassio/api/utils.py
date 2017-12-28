@@ -49,7 +49,7 @@ def api_process_hostcontrol(method):
     """Wrap HostControl calls to rest api."""
     async def wrap_hostcontrol(api, *args, **kwargs):
         """Return host information."""
-        if not api.host_control.active:
+        if not api._host_control.active:
             raise HTTPServiceUnavailable()
 
         try:
