@@ -41,7 +41,7 @@ class AddonBuild(JsonConfig):
         """Create a dict with docker build arguments."""
         args = {
             'path': str(self.addon.path_location),
-            'tag': "{}:{}".format(self.addon.image, version),
+            'tag': f"{self.addon.image}:{version}",
             'pull': True,
             'forcerm': True,
             'squash': self.squash,

@@ -244,7 +244,7 @@ class Addon(CoreSysAttributes):
         if self.ports is None:
             port = t_port
         else:
-            port = self.ports.get("{}/tcp".format(t_port), t_port)
+            port = self.ports.get(f"{t_port}/tcp", t_port)
 
         # for interface config or port lists
         if isinstance(port, (tuple, list)):
@@ -256,7 +256,7 @@ class Addon(CoreSysAttributes):
         else:
             proto = s_prefix
 
-        return "{}://[HOST]:{}{}".format(proto, port, s_suffix)
+        return f"{proto}://[HOST]:{port}{s_suffix}"
 
     @property
     def host_network(self):

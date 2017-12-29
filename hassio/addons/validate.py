@@ -209,8 +209,7 @@ def validate_options(raw_schema):
                     # normal value
                     options[key] = _single_validate(typ, value, key)
             except (IndexError, KeyError):
-                raise vol.Invalid(
-                    "Type error for {}.".format(key)) from None
+                raise vol.Invalid(f"Type error for {key}") from None
 
         _check_missing_options(raw_schema, options, 'root')
         return options
@@ -224,7 +223,7 @@ def _single_validate(typ, value, key):
     """Validate a single element."""
     # if required argument
     if value is None:
-        raise vol.Invalid("Missing required option '{}'.".format(key))
+        raise vol.Invalid(f"Missing required option '{key}'")
 
     # parse extend data from type
     match = RE_SCHEMA_ELEMENT.match(typ)
@@ -253,7 +252,7 @@ def _single_validate(typ, value, key):
     elif typ.startswith(V_MATCH):
         return vol.Match(match.group('match'))(str(value))
 
-    raise vol.Invalid("Fatal error for {} type {}".format(key, typ))
+    raise vol.Invalid(f"Fatal error for {key} type {typ}")
 
 
 def _nested_validate_list(typ, data_list, key):
@@ -299,5 +298,4 @@ def _check_missing_options(origin, exists, root):
         if isinstance(origin[miss_opt], str) and \
                 origin[miss_opt].endswith("?"):
             continue
-        raise vol.Invalid(
-            "Missing option {} in {}".format(miss_opt, root))
+        raise vol.Invalid(f"Missing option {miss_opt} in {root}")
