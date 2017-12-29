@@ -10,23 +10,22 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
-from .util import remove_folder
+from .utils import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_DEVICES,
     ATTR_IMAGE, ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT)
+from ..coresys import CoreSysAttributes
 from ..tools import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Snapshot(object):
+class Snapshot(CoreSysAttributes):
     """A signle hassio snapshot."""
 
-    def __init__(self, config, loop, tar_file):
+    def __init__(self, coresys, tar_file):
         """Initialize a snapshot."""
-        self.loop = loop
-        self.config = config
         self.tar_file = tar_file
         self._data = {}
         self._tmp = None
@@ -158,7 +157,7 @@ class Snapshot(object):
             return 0
         return self.tar_file.stat().st_size / 1048576  # calc mbyte
 
-    def create(self, slug, name, date, sys_type):
+    async def create(self, slug, name, date, sys_type):
         """Initialize a new snapshot."""
         # init metadata
         self._data[ATTR_SLUG] = slug
@@ -166,43 +165,8 @@ class Snapshot(object):
         self._data[ATTR_DATE] = date
         self._data[ATTR_TYPE] = sys_type
 
-        # init other constructs
-        self._data[ATTR_HOMEASSISTANT] = {}
-        self._data[ATTR_ADDONS] = []
-        self._data[ATTR_REPOSITORIES] = []
-        self._data[ATTR_FOLDERS] = []
-
-    def snapshot_homeassistant(self, homeassistant):
-        """Read all data from homeassistant object."""
-        self.homeassistant_version = homeassistant.version
-        self.homeassistant_devices = homeassistant.devices
-        self.homeassistant_watchdog = homeassistant.watchdog
-        self.homeassistant_boot = homeassistant.boot
-
-        # custom image
-        if homeassistant.is_custom_image:
-            self.homeassistant_image = homeassistant.image
-
-        # api
-        self.homeassistant_port = homeassistant.api_port
-        self.homeassistant_ssl = homeassistant.api_ssl
-        self.homeassistant_password = homeassistant.api_password
-
-    def restore_homeassistant(self, homeassistant):
-        """Write all data to homeassistant object."""
-        homeassistant.devices = self.homeassistant_devices
-        homeassistant.watchdog = self.homeassistant_watchdog
-        homeassistant.boot = self.homeassistant_boot
-
-        # custom image
-        if self.homeassistant_image:
-            homeassistant.set_custom(
-                self.homeassistant_image, self.homeassistant_version)
-
-        # api
-        homeassistant.api_port = self.homeassistant_port
-        homeassistant.api_ssl = self.homeassistant_ssl
-        homeassistant.api_password = self.homeassistant_password
+        # Add defaults
+        self._data = SCHEMA_SNAPSHOT(self._data)
 
     async def load(self):
         """Read snapshot.json from tar file."""
@@ -366,3 +330,43 @@ class Snapshot(object):
                  for folder in folder_list]
         if tasks:
             await asyncio.wait(tasks, loop=self.loop)
+
+    def store_homeassistant(self):
+        """Read all data from homeassistant object."""
+        self.homeassistant_version = self._homeassistant.version
+        self.homeassistant_devices = self._homeassistant.devices
+        self.homeassistant_watchdog = self._homeassistant.watchdog
+        self.homeassistant_boot = self._homeassistant.boot
+
+        # custom image
+        if self._homeassistant.is_custom_image:
+            self.homeassistant_image = self._homeassistant.image
+
+        # api
+        self.homeassistant_port = self._homeassistant.api_port
+        self.homeassistant_ssl = self._homeassistant.api_ssl
+        self.homeassistant_password = self._homeassistant.api_password
+
+    def restore_homeassistant(self):
+        """Write all data to homeassistant object."""
+        self._homeassistant.devices = self.homeassistant_devices
+        self._homeassistant.watchdog = self.homeassistant_watchdog
+        self._homeassistant.boot = self.homeassistant_boot
+
+        # custom image
+        if self.homeassistant_image:
+            self._homeassistant.set_custom(
+                self.homeassistant_image, self.homeassistant_version)
+
+        # api
+        self._homeassistant.api_port = self.homeassistant_port
+        self._homeassistant.api_ssl = self.homeassistant_ssl
+        self._homeassistant.api_password = self.homeassistant_password
+
+    def store_repositories(self):
+        """Store repository list into snapshot."""
+        self.repositories = self._config.addons_repositories
+
+    async def restore_repositories(self):
+        """Restore repositories from snapshot."""
+        await self._addons.load_repositories(self.repositories)

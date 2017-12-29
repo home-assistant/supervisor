@@ -10,20 +10,21 @@ import async_timeout
 from .const import (
     URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
     ATTR_BETA_CHANNEL)
-from .tools import AsyncThrottle, JsonConfig
+from coresys import CoreSysAttributes
+from .utils import AsyncThrottle
+from .utils.json import JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Updater(JsonConfig):
+class Updater(JsonConfig, CoreSysAttributes):
     """Fetch last versions from version.json."""
 
-    def __init__(self, loop, websession):
+    def __init__(self, coresys):
         """Initialize updater."""
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
-        self.loop = loop
-        self.websession = websession
+        self.coresys = coresys
 
     @property
     def version_homeassistant(self):
@@ -62,8 +63,8 @@ class Updater(JsonConfig):
         url = URL_HASSIO_VERSION.format(self.upstream)
         try:
             _LOGGER.info("Fetch update data from %s", url)
-            with async_timeout.timeout(10, loop=self.loop):
-                async with self.websession.get(url) as request:
+            with async_timeout.timeout(10, loop=self._loop):
+                async with self._websession.get(url) as request:
                     data = await request.json(content_type=None)
 
         except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:

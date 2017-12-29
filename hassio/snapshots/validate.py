@@ -18,7 +18,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
     vol.Required(ATTR_TYPE): vol.In([SNAPSHOT_FULL, SNAPSHOT_PARTIAL]),
     vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Required(ATTR_DATE): vol.Coerce(str),
-    vol.Required(ATTR_HOMEASSISTANT): vol.Schema({
+    vol.Optional(ATTR_HOMEASSISTANT, default={}): vol.Schema({
         vol.Required(ATTR_VERSION): vol.Coerce(str),
         vol.Optional(ATTR_DEVICES, default=[]): HASS_DEVICES,
         vol.Optional(ATTR_IMAGE): vol.Coerce(str),

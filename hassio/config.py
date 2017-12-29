@@ -8,7 +8,7 @@ from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
     ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
     ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_LAST_BOOT)
-from .tools import JsonConfig, parse_datetime
+from .utils.json import JsonConfig, parse_datetime
 from .validate import SCHEMA_HASSIO_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,7 +35,6 @@ class CoreConfig(JsonConfig):
     def __init__(self):
         """Initialize config object."""
         super().__init__(FILE_HASSIO_CONFIG, SCHEMA_HASSIO_CONFIG)
-        self.arch = None
 
     @property
     def timezone(self):
