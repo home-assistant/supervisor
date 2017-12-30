@@ -41,16 +41,16 @@ class DockerInterface(CoreSysAttributes):
     @property
     def version(self):
         """Return version of docker image."""
-        if not self._meta or LABEL_VERSION not in self._meta['Config']['Labels']:
-            return None
-        return self._meta['Config']['Labels'][LABEL_VERSION]
+        if self._meta and LABEL_VERSION in self._meta['Config']['Labels']:
+            return self._meta['Config']['Labels'][LABEL_VERSION]
+        return None
 
     @property
     def arch(self):
         """Return arch of docker image."""
-        if self._meta or LABEL_ARCH not in self._meta['Config']['Labels']:
-            return None
-        return self._meta['Config']['Labels'][LABEL_ARCH]
+        if self._meta and LABEL_ARCH in self._meta['Config']['Labels']:
+            return self._meta['Config']['Labels'][LABEL_ARCH]
+        return None
 
     @property
     def in_progress(self):
