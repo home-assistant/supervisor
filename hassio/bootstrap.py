@@ -14,6 +14,7 @@ from .coresys import CoreSys
 from .docker.supervisor import DockerSupervisor
 from .homeassistant import HomeAssistant
 from .snapshots import SnapshotsManager
+from .tasks import Tasks
 from .updater import Updater
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ def initialize_coresys(loop):
     coresys.homeassistant = HomeAssistant(coresys)
     coresys.addons = AddonManager(coresys)
     coresys.snapshots = SnapshotsManager(coresys)
+    coresys.tasks = Tasks(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)

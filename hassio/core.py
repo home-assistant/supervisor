@@ -31,19 +31,16 @@ class HassIO(CoreSysAttributes):
             _LOGGER.fatal("Can't setup supervisor docker container!")
         await self._supervisor.cleanup()
 
-        # set running arch
-        self.coresys.arch = self._supervisor.arch
-
         # update timezone
         if self._config.timezone == 'UTC':
             self._config.timezone = await fetch_timezone(self._websession)
 
         # hostcontrol
-        await self._host_control.load()
+        await self._host_control.prepare()
 
         # schedule update info tasks
         self._scheduler.register_task(
-            self._host_control.load, RUN_UPDATE_INFO_TASKS)
+            self._host_control.prepare, RUN_UPDATE_INFO_TASKS)
 
         # rest api views
         self._api.register()

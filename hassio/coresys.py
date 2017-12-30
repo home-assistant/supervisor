@@ -40,6 +40,14 @@ class CoreSys(object):
         self._api = None
         self._updater = None
         self._snapshots = None
+        self._tasks = None
+
+    @property
+    def arch(self):
+        """Return running arch of hass.io system."""
+        if self._supervisor:
+            return self._supervisor.arch
+        return None
 
     @property
     def loop(self):
@@ -157,6 +165,18 @@ class CoreSys(object):
         if self._snapshots:
             raise RuntimeError("SnapshotsManager already set!")
         self._snapshots = value
+
+    @property
+    def tasks(self):
+        """Return SnapshotsManager object."""
+        return self._tasks
+
+    @tasks.setter
+    def tasks(self, value):
+        """Set a Tasks object."""
+        if self._tasks:
+            raise RuntimeError("Tasks already set!")
+        self._tasks = value
 
 
 class CoreSysAttributes(object):

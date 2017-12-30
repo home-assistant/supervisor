@@ -71,7 +71,7 @@ class SnapshotsManager(CoreSysAttributes):
             snapshot.tar_file.unlink()
             self.snapshots_obj.pop(snapshot.slug, None)
         except OSError as err:
-            _LOGGER.error("Can't remove snapshot %s -> %s", snapshot.slug, err)
+            _LOGGER.error("Can't remove snapshot %s: %s", snapshot.slug, err)
             return False
 
         return True
@@ -110,7 +110,7 @@ class SnapshotsManager(CoreSysAttributes):
             return True
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Full-Snapshot %s error -> %s", snapshot.slug, err)
+            _LOGGER.info("Full-Snapshot %s error: %s", snapshot.slug, err)
             return False
 
         finally:
@@ -155,7 +155,7 @@ class SnapshotsManager(CoreSysAttributes):
             return True
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Partial-Snapshot %s error -> %s", snapshot.slug, err)
+            _LOGGER.info("Partial-Snapshot %s error: %s", snapshot.slug, err)
             return False
 
         finally:
@@ -244,7 +244,7 @@ class SnapshotsManager(CoreSysAttributes):
             return True
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Full-Restore %s error -> %s", slug, err)
+            _LOGGER.info("Full-Restore %s error: %s", slug, err)
             return False
 
         finally:
@@ -303,7 +303,7 @@ class SnapshotsManager(CoreSysAttributes):
             return True
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Partial-Restore %s error -> %s", slug, err)
+            _LOGGER.info("Partial-Restore %s error: %s", slug, err)
             return False
 
         finally:

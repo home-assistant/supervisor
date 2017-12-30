@@ -279,7 +279,7 @@ class DockerAddon(DockerInterface):
             self._meta = image.attrs
 
         except (docker.errors.DockerException) as err:
-            _LOGGER.error("Can't build %s:%s -> %s", self.image, tag, err)
+            _LOGGER.error("Can't build %s:%s: %s", self.image, tag, err)
             return False
 
         _LOGGER.info("Build %s:%s done", self.image, tag)
@@ -298,7 +298,7 @@ class DockerAddon(DockerInterface):
         try:
             image = self._docker.api.get_image(self.image)
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't fetch image %s -> %s", self.image, err)
+            _LOGGER.error("Can't fetch image %s: %s", self.image, err)
             return False
 
         try:
@@ -306,7 +306,7 @@ class DockerAddon(DockerInterface):
                 for chunk in image.stream():
                     write_tar.write(chunk)
         except (OSError, requests.exceptions.ReadTimeout) as err:
-            _LOGGER.error("Can't write tar file %s -> %s", tar_file, err)
+            _LOGGER.error("Can't write tar file %s: %s", tar_file, err)
             return False
 
         _LOGGER.info("Export image %s to %s", self.image, tar_file)
@@ -329,7 +329,7 @@ class DockerAddon(DockerInterface):
             image = self._docker.images.get(self.image)
             image.tag(self.image, tag=tag)
         except (docker.errors.DockerException, OSError) as err:
-            _LOGGER.error("Can't import image %s -> %s", self.image, err)
+            _LOGGER.error("Can't import image %s: %s", self.image, err)
             return False
 
         _LOGGER.info("Import image %s and tag %s", tar_file, tag)
@@ -364,7 +364,7 @@ class DockerAddon(DockerInterface):
             container = self._docker.containers.get(self.name)
             socket = container.attach_socket(params={'stdin': 1, 'stream': 1})
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't attach to %s stdin -> %s", self.name, err)
+            _LOGGER.error("Can't attach to %s stdin: %s", self.name, err)
             return False
 
         try:
@@ -373,7 +373,7 @@ class DockerAddon(DockerInterface):
             os.write(socket.fileno(), data)
             socket.close()
         except OSError as err:
-            _LOGGER.error("Can't write to %s stdin -> %s", self.name, err)
+            _LOGGER.error("Can't write to %s stdin: %s", self.name, err)
             return False
 
         return True

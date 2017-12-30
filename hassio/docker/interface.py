@@ -211,7 +211,7 @@ class DockerInterface(CoreSysAttributes):
                     image="{}:{}".format(self.image, self.version), force=True)
 
         except docker.errors.DockerException as err:
-            _LOGGER.warning("Can't remove image %s -> %s", self.image, err)
+            _LOGGER.warning("Can't remove image %s: %s", self.image, err)
             return False
 
         self._meta = None
@@ -260,7 +260,7 @@ class DockerInterface(CoreSysAttributes):
         try:
             return container.logs(tail=100, stdout=True, stderr=True)
         except docker.errors.DockerException as err:
-            _LOGGER.warning("Can't grap logs from %s -> %s", self.image, err)
+            _LOGGER.warning("Can't grap logs from %s: %s", self.image, err)
 
     @docker_process
     def restart(self):
@@ -282,7 +282,7 @@ class DockerInterface(CoreSysAttributes):
         try:
             container.restart(timeout=self.timeout)
         except docker.errors.DockerException as err:
-            _LOGGER.warning("Can't restart %s -> %s", self.image, err)
+            _LOGGER.warning("Can't restart %s: %s", self.image, err)
             return False
 
         return True

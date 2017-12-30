@@ -68,11 +68,11 @@ class Updater(JsonConfig, CoreSysAttributes):
                     data = await request.json(content_type=None)
 
         except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:
-            _LOGGER.warning("Can't fetch versions from %s -> %s", url, err)
+            _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
             return
 
         except json.JSONDecodeError as err:
-            _LOGGER.warning("Can't parse versions from %s -> %s", url, err)
+            _LOGGER.warning("Can't parse versions from %s: %s", url, err)
             return
 
         # data valid?

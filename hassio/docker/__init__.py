@@ -56,7 +56,7 @@ class DockerAPI(object):
         try:
             container = self.docker.containers.create(image, **kwargs)
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't create container from %s -> %s", name, err)
+            _LOGGER.error("Can't create container from %s: %s", name, err)
             return False
 
         # attach network
@@ -71,7 +71,7 @@ class DockerAPI(object):
         try:
             container.start()
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't start %s -> %s", name, err)
+            _LOGGER.error("Can't start %s: %s", name, err)
             return False
 
         return True
@@ -98,7 +98,7 @@ class DockerAPI(object):
             output = container.logs(stdout=stdout, stderr=stderr)
 
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't execute command -> %s", err)
+            _LOGGER.error("Can't execute command: %s", err)
             return (None, b"")
 
         # cleanup container

@@ -3,7 +3,17 @@ import asyncio
 from datetime import datetime
 import logging
 
+from .coresys import CoreSysAttributes
+
 _LOGGER = logging.getLogger(__name__)
+
+
+class Tasks(CoreSysAttributes):
+    """Handle Tasks inside HassIO."""
+
+    def __ini__(self, coresys):
+        """Initialize Tasks."""
+        self.coresys = coresys
 
 
 def api_sessions_cleanup(config):

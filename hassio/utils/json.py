@@ -47,7 +47,7 @@ class JsonConfig(object):
         try:
             self._data = self._schema(self._data)
         except vol.Invalid as ex:
-            _LOGGER.error("Can't parse %s -> %s",
+            _LOGGER.error("Can't parse %s: %s",
                           self._file, humanize_error(self._data, ex))
             # reset data to default
             self._data = self._schema({})
@@ -58,7 +58,7 @@ class JsonConfig(object):
         try:
             self._data = self._schema(self._data)
         except vol.Invalid as ex:
-            _LOGGER.error("Can't parse data -> %s",
+            _LOGGER.error("Can't parse data: %s",
                           humanize_error(self._data, ex))
             return False
 

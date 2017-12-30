@@ -457,7 +457,7 @@ class Addon(CoreSysAttributes):
             schema(options)
             return write_json_file(self.path_options, options)
         except vol.Invalid as ex:
-            _LOGGER.error("Addon %s have wrong options -> %s", self._id,
+            _LOGGER.error("Addon %s have wrong options: %s", self._id,
                           humanize_error(options, ex))
 
         return False
@@ -663,7 +663,7 @@ class Addon(CoreSysAttributes):
                 _LOGGER.info("Build snapshot for addon %s", self._id)
                 await self._loop.run_in_executor(None, _create_tar)
             except tarfile.TarError as err:
-                _LOGGER.error("Can't write tarfile %s -> %s", tar_file, err)
+                _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
                 return False
 
         _LOGGER.info("Finish snapshot for addon %s", self._id)
@@ -681,20 +681,20 @@ class Addon(CoreSysAttributes):
             try:
                 await self._loop.run_in_executor(None, _extract_tar)
             except tarfile.TarError as err:
-                _LOGGER.error("Can't read tarfile %s -> %s", tar_file, err)
+                _LOGGER.error("Can't read tarfile %s: %s", tar_file, err)
                 return False
 
             # read snapshot data
             try:
                 data = read_json_file(Path(temp, "addon.json"))
             except (OSError, json.JSONDecodeError) as err:
-                _LOGGER.error("Can't read addon.json -> %s", err)
+                _LOGGER.error("Can't read addon.json: %s", err)
 
             # validate
             try:
                 data = SCHEMA_ADDON_SNAPSHOT(data)
             except vol.Invalid as err:
-                _LOGGER.error("Can't validate %s, snapshot data -> %s",
+                _LOGGER.error("Can't validate %s, snapshot data: %s",
                               self._id, humanize_error(data, err))
                 return False
 
@@ -724,7 +724,7 @@ class Addon(CoreSysAttributes):
                 _LOGGER.info("Restore data for addon %s", self._id)
                 await self._loop.run_in_executor(None, _restore_data)
             except shutil.Error as err:
-                _LOGGER.error("Can't restore origin data -> %s", err)
+                _LOGGER.error("Can't restore origin data: %s", err)
                 return False
 
             # run addon

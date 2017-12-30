@@ -119,7 +119,7 @@ class Data(JsonConfig, CoreSysAttributes):
                 _LOGGER.warning("Can't read %s", addon)
 
             except vol.Invalid as ex:
-                _LOGGER.warning("Can't read %s -> %s", addon,
+                _LOGGER.warning("Can't read %s: %s", addon,
                                 humanize_error(addon_config, ex))
 
     def _set_builtin_repositories(self):
@@ -128,7 +128,7 @@ class Data(JsonConfig, CoreSysAttributes):
             builtin_file = Path(__file__).parent.joinpath('built-in.json')
             builtin_data = read_json_file(builtin_file)
         except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.warning("Can't read built-in.json -> %s", err)
+            _LOGGER.warning("Can't read built-in json: %s", err)
             return
 
         # core repository

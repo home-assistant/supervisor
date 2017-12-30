@@ -185,21 +185,21 @@ class Snapshot(CoreSysAttributes):
             raw = await self.loop.run_in_executor(None, _load_file)
         except (tarfile.TarError, KeyError) as err:
             _LOGGER.error(
-                "Can't read snapshot tarfile %s -> %s", self.tar_file, err)
+                "Can't read snapshot tarfile %s: %s", self.tar_file, err)
             return False
 
         # parse data
         try:
             raw_dict = json.loads(raw)
         except json.JSONDecodeError as err:
-            _LOGGER.error("Can't read data for %s -> %s", self.tar_file, err)
+            _LOGGER.error("Can't read data for %s: %s", self.tar_file, err)
             return False
 
         # validate
         try:
             self._data = SCHEMA_SNAPSHOT(raw_dict)
         except vol.Invalid as err:
-            _LOGGER.error("Can't validate data for %s -> %s", self.tar_file,
+            _LOGGER.error("Can't validate data for %s: %s", self.tar_file,
                           humanize_error(raw_dict, err))
             return False
 
@@ -232,7 +232,7 @@ class Snapshot(CoreSysAttributes):
         try:
             self._data = SCHEMA_SNAPSHOT(self._data)
         except vol.Invalid as err:
-            _LOGGER.error("Invalid data for %s -> %s", self.tar_file,
+            _LOGGER.error("Invalid data for %s: %s", self.tar_file,
                           humanize_error(self._data, err))
             raise ValueError("Invalid config") from None
 
@@ -295,7 +295,7 @@ class Snapshot(CoreSysAttributes):
 
                 self._data[ATTR_FOLDERS].append(name)
             except tarfile.TarError as err:
-                _LOGGER.warning("Can't snapshot folder %s -> %s", name, err)
+                _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
 
         # run tasks
         tasks = [self.loop.run_in_executor(None, _folder_save, folder)
@@ -323,7 +323,7 @@ class Snapshot(CoreSysAttributes):
                     tar_file.extractall(path=origin_dir)
                     _LOGGER.info("Restore folder %s done", name)
             except tarfile.TarError as err:
-                _LOGGER.warning("Can't restore folder %s -> %s", name, err)
+                _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
         # run tasks
         tasks = [self.loop.run_in_executor(None, _folder_restore, folder)
