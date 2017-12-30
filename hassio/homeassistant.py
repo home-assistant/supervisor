@@ -6,7 +6,6 @@ import re
 
 import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
-import async_timeout
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
@@ -280,10 +279,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             header.update({HEADER_HA_ACCESS: self.api_password})
 
         try:
-            async with async_timeout.timeout(30, loop=self._loop):
-                async with self._websession_ssl.get(
-                        url, headers=header) as request:
-                    status = request.status
+            # pylint: disable=bad-continuation
+            async with self._websession_ssl.get(
+                    url, headers=header, timeout=30) as request:
+                status = request.status
 
         except (asyncio.TimeoutError, aiohttp.ClientError):
             return False
