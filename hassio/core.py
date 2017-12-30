@@ -12,7 +12,7 @@ from .const import (
 from .tasks import (
     hassio_update, homeassistant_watchdog_docker, api_sessions_cleanup,
     addons_update)
-from .utils.datetime import fetch_timezone
+from .utils.dt import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
