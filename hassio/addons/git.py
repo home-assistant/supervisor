@@ -7,7 +7,7 @@ import shutil
 
 import git
 
-from .util import get_hash_from_repository
+from .utils import get_hash_from_repository
 from ..const import URL_HASSIO_ADDONS
 from ..coresys import CoreSysAttributes
 

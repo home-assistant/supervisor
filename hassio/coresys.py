@@ -3,7 +3,7 @@
 import aiohttp
 
 from .config import CoreConfig
-from .dock import DockerAPI
+from .docker import DockerAPI
 from .dns import DNSForward
 from .hardware import Hardware
 from .host_control import HostControl
