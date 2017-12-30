@@ -18,7 +18,7 @@ class DockerInterface(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize docker base wrapper."""
         self.coresys = coresys
-        self.meta = None
+        self._meta = None
         self._lock = asyncio.Lock(loop=self._loop)
 
     @property
@@ -34,23 +34,23 @@ class DockerInterface(CoreSysAttributes):
     @property
     def image(self):
         """Return name of docker image."""
-        if not self.meta:
+        if not self._meta:
             return None
-        return self.meta['Config']['Image']
+        return self._meta['Config']['Image']
 
     @property
     def version(self):
         """Return version of docker image."""
-        if not self.meta or LABEL_VERSION not in self.meta['Config']['Labels']:
+        if not self._meta or LABEL_VERSION not in self._meta['Config']['Labels']:
             return None
-        return self.meta['Config']['Labels'][LABEL_VERSION]
+        return self._meta['Config']['Labels'][LABEL_VERSION]
 
     @property
     def arch(self):
         """Return arch of docker image."""
-        if self.meta or LABEL_ARCH not in self.meta['Config']['Labels']:
+        if self._meta or LABEL_ARCH not in self._meta['Config']['Labels']:
             return None
-        return self.meta['Config']['Labels'][LABEL_ARCH]
+        return self._meta['Config']['Labels'][LABEL_ARCH]
 
     @property
     def in_progress(self):
@@ -72,7 +72,7 @@ class DockerInterface(CoreSysAttributes):
             image = self._docker.images.pull("{}:{}".format(self.image, tag))
 
             image.tag(self.image, tag='latest')
-            self.meta = image.attrs
+            self._meta = image.attrs
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", self.image, tag, err)
             return False
@@ -136,9 +136,9 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             if self.image:
-                self.meta = self._docker.images.get(self.image).attrs
+                self._meta = self._docker.images.get(self.image).attrs
             else:
-                self.meta = self._docker.containers.get(self.name).attrs
+                self._meta = self._docker.containers.get(self.name).attrs
         except docker.errors.DockerException:
             return False
 
@@ -214,7 +214,7 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.warning("Can't remove image %s -> %s", self.image, err)
             return False
 
-        self.meta = None
+        self._meta = None
         return True
 
     @docker_process

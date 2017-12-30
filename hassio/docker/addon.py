@@ -276,7 +276,7 @@ class DockerAddon(DockerInterface):
             image = self._docker.images.build(**build_env.get_docker_args(tag))
 
             image.tag(self.image, tag='latest')
-            self.process_metadata(image.attrs, force=True)
+            self._meta = image.attrs
 
         except (docker.errors.DockerException) as err:
             _LOGGER.error("Can't build %s:%s -> %s", self.image, tag, err)
@@ -333,7 +333,7 @@ class DockerAddon(DockerInterface):
             return False
 
         _LOGGER.info("Import image %s and tag %s", tar_file, tag)
-        self.process_metadata(image.attrs, force=True)
+        self._meta = image.attrs
         self._cleanup()
         return True
 

@@ -28,7 +28,7 @@ class DockerSupervisor(DockerInterface):
         except docker.errors.DockerException:
             return False
 
-        self.process_metadata(container.attrs)
+        self._meta = container.attrs
         _LOGGER.info("Attach to supervisor %s with version %s",
                      self.image, self.version)
 

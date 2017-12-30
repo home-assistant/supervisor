@@ -168,4 +168,4 @@ class CoreSysAttributes(object):
         """Mapping to coresys."""
         if hasattr(self.coresys, name[1:]):
             return getattr(self.coresys, name[1:])
-        raise AttributeError()
+        raise AttributeError(f"Can't find {name} on {self.__class__}")
