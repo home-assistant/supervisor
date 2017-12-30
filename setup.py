@@ -31,8 +31,8 @@ setup(
     platforms='any',
     packages=[
         'hassio',
-        'hassio.utils'
-        'hassio.dock',
+        'hassio.utils',
+        'hassio.docker',
         'hassio.api',
         'hassio.addons',
         'hassio.snapshots'
