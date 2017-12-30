@@ -54,7 +54,7 @@ class SnapshotsManager(CoreSysAttributes):
 
         async def _load_snapshot(tar_file):
             """Internal function to load snapshot."""
-            snapshot = Snapshot(self._config, self._loop, tar_file)
+            snapshot = Snapshot(self.coresys, tar_file)
             if await snapshot.load():
                 self.snapshots_obj[snapshot.slug] = snapshot
 

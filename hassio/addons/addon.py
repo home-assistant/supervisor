@@ -25,7 +25,7 @@ from ..const import (
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART)
 from ..coresys import CoreSysAttributes
-from ..dock.addon import DockerAddon
+from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
 
 _LOGGER = logging.getLogger(__name__)

@@ -12,11 +12,12 @@ from .proxy import APIProxy
 from .supervisor import APISupervisor
 from .security import APISecurity
 from .snapshots import APISnapshots
+from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class RestAPI(object):
+class RestAPI(CoreSysAttributes):
     """Handle rest api for hassio."""
 
     def __init__(self, coresys):

@@ -269,7 +269,7 @@ class DockerAddon(DockerInterface):
 
         Need run inside executor.
         """
-        build_env = AddonBuild(self._config, self.addon)
+        build_env = AddonBuild(self.coresys, self.addon)
 
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:

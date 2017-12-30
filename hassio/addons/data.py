@@ -13,12 +13,13 @@ from .validate import (
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
+from ..coresys import CoreSysAttributes
 from ..utils.json import JsonConfig, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Data(JsonConfig):
+class Data(JsonConfig, CoreSysAttributes):
     """Hold data for addons inside HassIO."""
 
     def __init__(self, coresys):

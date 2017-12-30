@@ -16,7 +16,7 @@ from ..const import (
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_DEVICES,
     ATTR_IMAGE, ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT)
 from ..coresys import CoreSysAttributes
-from ..tools import write_json_file
+from ..utils.json import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 

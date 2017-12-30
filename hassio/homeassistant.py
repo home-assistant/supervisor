@@ -14,7 +14,8 @@ from .const import (
     HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
-from .tools import JsonConfig, convert_to_ascii
+from .utils import convert_to_ascii
+from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)

@@ -49,6 +49,7 @@ def api_process_hostcontrol(method):
     """Wrap HostControl calls to rest api."""
     async def wrap_hostcontrol(api, *args, **kwargs):
         """Return host information."""
+        # pylint: disable=protected-access
         if not api._host_control.active:
             raise HTTPServiceUnavailable()
 

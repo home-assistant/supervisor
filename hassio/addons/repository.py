@@ -1,6 +1,6 @@
 """Represent a HassIO repository."""
 from .git import GitRepoHassIO, GitRepoCustom
-from .util import get_hash_from_repository
+from .utils import get_hash_from_repository
 from ..const import (
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_NAME, ATTR_URL, ATTR_MAINTAINER)
 from ..coresys import CoreSysAttributes
