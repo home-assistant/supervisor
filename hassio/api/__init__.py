@@ -29,7 +29,7 @@ class RestAPI(CoreSysAttributes):
         self._handler = None
         self.server = None
 
-    await def prepare(self):
+    async def prepare(self):
         """Register REST API Calls."""
         self._register_supervisor()
         self._register_host()

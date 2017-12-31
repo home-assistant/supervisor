@@ -53,10 +53,8 @@ class HassIO(CoreSysAttributes):
         """Start HassIO orchestration."""
         # on release channel, try update itself
         # on beta channel, only read new versions
-        await asyncio.wait(
-            [hassio_update(self._supervisor, self._updater)()],
-            loop=self.loop
-        )
+        if not self._updater.beta_channel:
+            await self._supervisor.update()
 
         # start api
         await self._api.start()
