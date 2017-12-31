@@ -1,6 +1,6 @@
 """Schedule for HassIO."""
 import logging
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,8 +55,18 @@ class Scheduler(object):
         """Schedule a task on loop."""
         if isinstance(interval, int):
             job = self.loop.call_later(interval, self._run_task, task_id)
-        if isinstance(interval, datetime):
+        if isinstance(interval, time):
+            today = datetime.combine(date.today(), interval)
+            tomorrow = datetime.combine(
+                date.today() + timedelta(days=1), interval)
 
+            # check if we run it today or next day
+            if today > datetime.today():
+                calc = today
+            else:
+                calc = tomorrow
+
+            job = self.loop.call_at(calc.timestamp(), self._run_task, task_id)
         else:
             _LOGGER.fatal("Unknow interval {interval} for scheduler {task_id}")
 
