@@ -44,7 +44,7 @@ class Scheduler(object):
         data = self._data[task_id]
 
         if not self.suspend:
-            self.loop.create_task(data[CALL])
+            self.loop.create_task(data[CALL]())
 
         if data[REPEAT]:
             self._schedule_task(data[INTERVAL], task_id)
@@ -70,4 +70,5 @@ class Scheduler(object):
         else:
             _LOGGER.fatal("Unknow interval {interval} for scheduler {task_id}")
 
+        # Store job
         self._data[task_id][TASK] = job

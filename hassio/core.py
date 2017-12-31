@@ -4,14 +4,7 @@ import logging
 
 from .coresys import CoreSysAttributes
 from .const import (
-    RUN_UPDATE_INFO_TASKS, RUN_RELOAD_ADDONS_TASKS,
-    RUN_UPDATE_SUPERVISOR_TASKS, RUN_WATCHDOG_HOMEASSISTANT_DOCKER,
-    RUN_CLEANUP_API_SESSIONS, STARTUP_SYSTEM, STARTUP_SERVICES,
-    STARTUP_APPLICATION, STARTUP_INITIALIZE, RUN_RELOAD_SNAPSHOTS_TASKS,
-    RUN_UPDATE_ADDONS_TASKS)
-from .tasks import (
-    hassio_update, homeassistant_watchdog_docker, api_sessions_cleanup,
-    addons_update)
+    STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION, STARTUP_INITIALIZE)
 from .utils.dt import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,17 +31,8 @@ class HassIO(CoreSysAttributes):
         # hostcontrol
         await self._host_control.prepare()
 
-        # schedule update info tasks
-        self._scheduler.register_task(
-            self._host_control.prepare, RUN_UPDATE_INFO_TASKS)
-
         # rest api views
-        self._api.register()
-
-        # schedule api session cleanup
-        self._scheduler.register_task(
-            api_sessions_cleanup(self._config), RUN_CLEANUP_API_SESSIONS,
-            now=True)
+        await self._api.prepare()
 
         # Load homeassistant
         await self._homeassistant.prepare()
@@ -56,20 +40,8 @@ class HassIO(CoreSysAttributes):
         # Load addons
         await self._addons.prepare()
 
-        # schedule addon update task
-        self._scheduler.register_task(
-            self._addons.reload, RUN_RELOAD_ADDONS_TASKS, now=True)
-        self._scheduler.register_task(
-            addons_update(self._loop, self._addons), RUN_UPDATE_ADDONS_TASKS)
-
-        # schedule self update task
-        self._scheduler.register_task(
-            hassio_update(self._supervisor, self._updater),
-            RUN_UPDATE_SUPERVISOR_TASKS)
-
-        # schedule snapshot update tasks
-        self._scheduler.register_task(
-            self._snapshots.reload, RUN_RELOAD_SNAPSHOTS_TASKS, now=True)
+        # Add core tasks into scheduler
+        await self._tasks.prepare()
 
         # start dns forwarding
         self._loop.create_task(self._dns.start())
@@ -113,15 +85,6 @@ class HassIO(CoreSysAttributes):
             self._config.last_boot = self._hardware.last_boot
 
         finally:
-            # schedule homeassistant watchdog
-            self._scheduler.register_task(
-                homeassistant_watchdog_docker(self._loop, self._homeassistant),
-                RUN_WATCHDOG_HOMEASSISTANT_DOCKER)
-
-            # self.scheduler.register_task(
-            #    homeassistant_watchdog_api(self.loop, self.homeassistant),
-            #    RUN_WATCHDOG_HOMEASSISTANT_API)
-
             # If landingpage / run upgrade in background
             if self._homeassistant.version == 'landingpage':
                 self._loop.create_task(self._homeassistant.install())

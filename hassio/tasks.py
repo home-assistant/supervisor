@@ -11,29 +11,43 @@ _LOGGER = logging.getLogger(__name__)
 class Tasks(CoreSysAttributes):
     """Handle Tasks inside HassIO."""
 
+    RUN_UPDATE_SUPERVISOR = 29100
+    RUN_UPDATE_ADDONS = 57600
+
+    RUN_RELOAD_ADDONS = 28800
+    RUN_RELOAD_SNAPSHOTS = 72000
+    RUN_RELOAD_HOST_CONTROL = 28800
+
+    RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
+    RUN_WATCHDOG_HOMEASSISTANT_API = 300
+
+    RUN_CLEANUP_API_SESSIONS = 900
+
     def __ini__(self, coresys):
         """Initialize Tasks."""
         self.coresys = coresys
+        self._tasks = set()
+        self._data = {}
 
+    async def prepare(self):
+        """Add Tasks to scheduler."""
 
-def api_sessions_cleanup(config):
-    """Create scheduler task for cleanup api sessions."""
-    async def _api_sessions_cleanup():
+        self._tasks.add(self._scheduler.register_task(
+            self._update_addons, self.RUN_UPDATE_ADDONS))
+        self._tasks.add(self._scheduler.register_task(
+            self._update_supervisor, self.RUN_UPDATE_SUPERVISOR))
+
+    async def _cleanup_sessions(self):
         """Cleanup old api sessions."""
         now = datetime.now()
-        for session, until_valid in config.security_sessions.items():
+        for session, until_valid in self._config.security_sessions.items():
             if now >= until_valid:
-                config.drop_security_session(session)
+                self._config.drop_security_session(session)
 
-    return _api_sessions_cleanup
-
-
-def addons_update(loop, addons):
-    """Create scheduler task for auto update addons."""
-    async def _addons_update():
+    async def _update_addons(self):
         """Check if a update is available of a addon and update it."""
         tasks = []
-        for addon in addons.list_addons:
+        for addon in self._addons.list_addons:
             if not addon.is_installed or not addon.auto_update:
                 continue
 
@@ -48,78 +62,63 @@ def addons_update(loop, addons):
 
         if tasks:
             _LOGGER.info("Addon auto update process %d tasks", len(tasks))
-            await asyncio.wait(tasks, loop=loop)
+            await asyncio.wait(tasks, loop=self._loop)
 
-    return _addons_update
-
-
-def hassio_update(supervisor, updater):
-    """Create scheduler task for update of supervisor hassio."""
-    async def _hassio_update():
+    async def _update_supervisor(self):
         """Check and run update of supervisor hassio."""
-        await updater.fetch_data()
-        if updater.version_hassio == supervisor.version:
+        await self._updater.fetch_data()
+        if self._updater.version_hassio == self._supervisor.version:
             return
 
         # don't perform a update on beta/dev channel
-        if updater.beta_channel:
-            _LOGGER.warning("Ignore Hass.IO update on beta upstream!")
+        if self._updater.beta_channel:
+            _LOGGER.warning("Ignore Hass.io update on beta upstream!")
             return
 
-        _LOGGER.info("Found new HassIO version %s.", updater.version_hassio)
-        await supervisor.update(updater.version_hassio)
+        _LOGGER.info("Found new Hass.io version %s.",
+                     self._updater.version_hassio)
+        await self._supervisor.update(self._updater.version_hassio)
 
-    return _hassio_update
-
-
-def homeassistant_watchdog_docker(loop, homeassistant):
-    """Create scheduler task for montoring running state of docker."""
-    async def _homeassistant_watchdog_docker():
+    async def _watchdog_homeassistant_docker(self):
         """Check running state of docker and start if they is close."""
         # if Home-Assistant is active
-        if not await homeassistant.is_initialize() or \
-                not homeassistant.watchdog:
+        if not await self._homeassistant.is_initialize() or \
+                not self._homeassistant.watchdog:
             return
 
         # if Home-Assistant is running
-        if homeassistant.in_progress or await homeassistant.is_running():
+        if self._homeassistant.in_progress or \
+                await self._homeassistant.is_running():
             return
 
-        loop.create_task(homeassistant.run())
-        _LOGGER.error("Watchdog found a problem with Home-Assistant docker!")
+        _LOGGER.warning("Watchdog found a problem with Home-Assistant docker!")
+        await self._homeassistant.run()
 
-    return _homeassistant_watchdog_docker
+    async def _watchdog_homeassistant_api(self):
+        """Create scheduler task for montoring running state of API.
 
-
-def homeassistant_watchdog_api(loop, homeassistant):
-    """Create scheduler task for montoring running state of API.
-
-    Try 2 times to call API before we restart Home-Assistant. Maybe we had a
-    delay in our system.
-    """
-    retry_scan = 0
-
-    async def _homeassistant_watchdog_api():
-        """Check running state of API and start if they is close."""
-        nonlocal retry_scan
+        Try 2 times to call API before we restart Home-Assistant. Maybe we had
+        a delay in our system.
+        """
+        retry_scan = self._data.get('HASS_WATCHDOG_API', 0)
 
         # if Home-Assistant is active
-        if not await homeassistant.is_initialize() or \
-                not homeassistant.watchdog:
+        if not await self._homeassistant.is_initialize() or \
+                not self._homeassistant.watchdog:
             return
 
         # if Home-Assistant API is up
-        if homeassistant.in_progress or await homeassistant.check_api_state():
+        if self._homeassistant.in_progress or \
+                await self._homeassistant.check_api_state():
             return
         retry_scan += 1
 
         # Retry active
         if retry_scan == 1:
+            self._data['HASS_WATCHDOG_API'] = retry_scan
             _LOGGER.warning("Watchdog miss API response from Home-Assistant")
             return
 
-        loop.create_task(homeassistant.restart())
         _LOGGER.error("Watchdog found a problem with Home-Assistant API!")
-        retry_scan = 0
-
-    return _homeassistant_watchdog_api
+        await self._homeassistant.restart()
+        self._data['HASS_WATCHDOG_API'] = 0
