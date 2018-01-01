@@ -1,5 +1,4 @@
 """HomeAssistant control object."""
-import asyncio
 import logging
 
 from .coresys import CoreSysAttributes
