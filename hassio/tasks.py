@@ -14,9 +14,10 @@ class Tasks(CoreSysAttributes):
     RUN_UPDATE_SUPERVISOR = 29100
     RUN_UPDATE_ADDONS = 57600
 
-    RUN_RELOAD_ADDONS = 28800
+    RUN_RELOAD_ADDONS = 21600
     RUN_RELOAD_SNAPSHOTS = 72000
-    RUN_RELOAD_HOST_CONTROL = 28800
+    RUN_RELOAD_HOST_CONTROL = 72000
+    RUN_RELOAD_UPDATER = 21600
 
     RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
     RUN_WATCHDOG_HOMEASSISTANT_API = 300
@@ -36,6 +37,11 @@ class Tasks(CoreSysAttributes):
             self._update_addons, self.RUN_UPDATE_ADDONS))
         self._tasks.add(self._scheduler.register_task(
             self._update_supervisor, self.RUN_UPDATE_SUPERVISOR))
+
+        self._tasks.add(self._scheduler.register_task(
+            self._addons.reload, self.RUN_RELOAD_ADDONS))
+        self._tasks.add(self._scheduler.register_task(
+            self._updater.reload, self.RUN_RELOAD_UPDATER))
 
     async def _cleanup_sessions(self):
         """Cleanup old api sessions."""
@@ -66,8 +72,8 @@ class Tasks(CoreSysAttributes):
 
     async def _update_supervisor(self):
         """Check and run update of supervisor hassio."""
-        await self._updater.fetch_data()
-        if self._updater.version_hassio == self._supervisor.version:
+        await self._updater.reload()
+        if self._supervisor.last_version == self._supervisor.version:
             return
 
         # don't perform a update on beta/dev channel
@@ -75,9 +81,8 @@ class Tasks(CoreSysAttributes):
             _LOGGER.warning("Ignore Hass.io update on beta upstream!")
             return
 
-        _LOGGER.info("Found new Hass.io version %s.",
-                     self._updater.version_hassio)
-        await self._supervisor.update(self._updater.version_hassio)
+        _LOGGER.info("Found new Hass.io version")
+        await self._supervisor.update()
 
     async def _watchdog_homeassistant_docker(self):
         """Check running state of docker and start if they is close."""

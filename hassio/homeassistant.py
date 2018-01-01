@@ -178,7 +178,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         while True:
             # read homeassistant tag and install it
             if not self.last_version:
-                await self._updater.fetch_data()
+                await self._updater.reload()
 
             tag = self.last_version
             if tag and await self.instance.install(tag):

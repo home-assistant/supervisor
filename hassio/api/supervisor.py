@@ -97,7 +97,7 @@ class APISupervisor(CoreSysAttributes):
         tasks = [
             self._addons.reload(),
             self._snapshots.reload(),
-            self._updater.fetch_data(),
+            self._updater.reload(),
             self._host_control.load()
         ]
         results, _ = await asyncio.shield(

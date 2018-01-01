@@ -43,8 +43,7 @@ class Supervisor(CoreSysAttributes):
 
     async def update(self, version=None):
         """Update HomeAssistant version."""
-        await self._updater.fetch_data()
-        version = version or self._updater.version_hassio
+        version = version or self.last_version
 
         if version == self._supervisor.version:
             _LOGGER.info("Version %s is already installed", version)

@@ -55,7 +55,7 @@ class Updater(JsonConfig, CoreSysAttributes):
         self.save()
 
     @AsyncThrottle(timedelta(seconds=60))
-    async def fetch_data(self):
+    async def reload(self):
         """Fetch current versions from github.
 
         Is a coroutine.

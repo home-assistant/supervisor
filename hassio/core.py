@@ -29,17 +29,14 @@ class HassIO(CoreSysAttributes):
         # hostcontrol
         await self._host_control.prepare()
 
-        # rest api views
-        await self._api.prepare()
-
         # Load homeassistant
         await self._homeassistant.prepare()
 
         # Load addons
         await self._addons.prepare()
 
-        # Add core tasks into scheduler
-        await self._tasks.prepare()
+        # rest api views
+        await self._api.prepare()
 
         # start dns forwarding
         self._loop.create_task(self._dns.start())
@@ -53,15 +50,17 @@ class HassIO(CoreSysAttributes):
         # on beta channel, only read new versions
         if not self._updater.beta_channel:
             await self._supervisor.update()
+        else:
+            _LOGGER.info("Ignore Hass.io auto updates on beta mode")
 
         # start api
         await self._api.start()
-        _LOGGER.info("Start hassio api on %s", self._docker.network.supervisor)
+        _LOGGER.info("Start API on %s", self._docker.network.supervisor)
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
             if self._hardware.last_boot == self._config.last_boot:
-                _LOGGER.info("HassIO reboot detected")
+                _LOGGER.info("Hass.io reboot detected")
                 return
 
             # start addon mark as system
@@ -81,6 +80,9 @@ class HassIO(CoreSysAttributes):
             self._config.last_boot = self._hardware.last_boot
 
         finally:
+            # Add core tasks into scheduler
+            await self._tasks.prepare()
+
             # If landingpage / run upgrade in background
             if self._homeassistant.version == 'landingpage':
                 self._loop.create_task(self._homeassistant.install())
