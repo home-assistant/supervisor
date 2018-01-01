@@ -5,7 +5,6 @@ import os
 import docker
 
 from .interface import DockerInterface
-from .utils import docker_process
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,34 +38,3 @@ class DockerSupervisor(DockerInterface):
         # attach to network
         return self._docker.network.attach_container(
             container, alias=['hassio'], ipv4=self._docker.network.supervisor)
-
-    @docker_process
-    async def update(self, tag):
-        """Update a supervisor docker image."""
-        _LOGGER.info("Update supervisor docker to %s:%s", self.image, tag)
-
-        if await self._loop.run_in_executor(None, self._install, tag):
-            self._loop.call_later(1, self._loop.stop)
-            return True
-
-        return False
-
-    async def run(self):
-        """Run docker image."""
-        raise RuntimeError("Not support on supervisor docker container!")
-
-    async def install(self, tag):
-        """Pull docker image."""
-        raise RuntimeError("Not support on supervisor docker container!")
-
-    async def stop(self):
-        """Stop/remove docker container."""
-        raise RuntimeError("Not support on supervisor docker container!")
-
-    async def remove(self):
-        """Remove docker image."""
-        raise RuntimeError("Not support on supervisor docker container!")
-
-    async def restart(self):
-        """Restart docker container."""
-        raise RuntimeError("Not support on supervisor docker container!")

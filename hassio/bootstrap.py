@@ -11,7 +11,7 @@ from .addons import AddonManager
 from .api import RestAPI
 from .const import SOCKET_DOCKER
 from .coresys import CoreSys
-from .docker.supervisor import DockerSupervisor
+from .supervisor import Supervisor
 from .homeassistant import HomeAssistant
 from .snapshots import SnapshotsManager
 from .tasks import Tasks
@@ -27,7 +27,7 @@ def initialize_coresys(loop):
     # Initialize core objects
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
-    coresys.supervisor = DockerSupervisor(coresys)
+    coresys.supervisor = Supervisor(coresys)
     coresys.homeassistant = HomeAssistant(coresys)
     coresys.addons = AddonManager(coresys)
     coresys.snapshots = SnapshotsManager(coresys)

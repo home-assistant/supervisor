@@ -19,14 +19,12 @@ class HassIO(CoreSysAttributes):
 
     async def setup(self):
         """Setup HassIO orchestration."""
-        # supervisor
-        if not await self._supervisor.attach():
-            _LOGGER.fatal("Can't setup supervisor docker container!")
-        await self._supervisor.cleanup()
-
         # update timezone
         if self._config.timezone == 'UTC':
             self._config.timezone = await fetch_timezone(self._websession)
+
+        # supervisor
+        await self._supervisor.prepare()
 
         # hostcontrol
         await self._host_control.prepare()
