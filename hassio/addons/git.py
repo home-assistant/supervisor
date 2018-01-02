@@ -23,7 +23,7 @@ class GitRepo(CoreSysAttributes):
         self.repo = None
         self.path = path
         self.url = url
-        self. = asyncio.Lock(loop=coresys.loop)
+        self.lock= asyncio.Lock(loop=coresys.loop)
 
     async def load(self):
         """Init git addon repo."""
@@ -62,7 +62,7 @@ class GitRepo(CoreSysAttributes):
 
     async def pull(self):
         """Pull git addon repo."""
-        if self..locked():
+        if self.lock.locked():
             _LOGGER.warning("It is already a task in progress.")
             return False
 

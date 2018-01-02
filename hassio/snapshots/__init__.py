@@ -21,7 +21,7 @@ class SnapshotsManager(CoreSysAttributes):
         """Initialize a snapshot manager."""
         self.coresys = coresys
         self.snapshots_obj = {}
-        self. = asyncio.Lock(loop=coresys.loop)
+        self.lock= asyncio.Lock(loop=coresys.loop)
 
     @property
     def list_snapshots(self):
@@ -78,7 +78,7 @@ class SnapshotsManager(CoreSysAttributes):
 
     async def do_snapshot_full(self, name=""):
         """Create a full snapshot."""
-        if self..locked():
+        if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
             return False
 
@@ -86,7 +86,7 @@ class SnapshotsManager(CoreSysAttributes):
         _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
         try:
             self._scheduler.suspend = True
-            await self..acquire()
+            await self.lock.acquire()
 
             async with snapshot:
                 # snapshot addons
@@ -115,11 +115,11 @@ class SnapshotsManager(CoreSysAttributes):
 
         finally:
             self._scheduler.suspend = False
-            self..release()
+            self.lock.release()
 
     async def do_snapshot_partial(self, name="", addons=None, folders=None):
         """Create a partial snapshot."""
-        if self..locked():
+        if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
             return False
 
@@ -130,7 +130,7 @@ class SnapshotsManager(CoreSysAttributes):
         _LOGGER.info("Partial-Snapshot %s start", snapshot.slug)
         try:
             self._scheduler.suspend = True
-            await self..acquire()
+            await self.lock.acquire()
 
             async with snapshot:
                 # snapshot addons
@@ -160,11 +160,11 @@ class SnapshotsManager(CoreSysAttributes):
 
         finally:
             self._scheduler.suspend = False
-            self..release()
+            self.lock.release()
 
     async def do_restore_full(self, snapshot):
         """Restore a snapshot."""
-        if self..locked():
+        if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
             return False
 
@@ -176,7 +176,7 @@ class SnapshotsManager(CoreSysAttributes):
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
         try:
             self._scheduler.suspend = True
-            await self..acquire()
+            await self.lock.acquire()
 
             async with snapshot:
                 # stop system
@@ -249,12 +249,12 @@ class SnapshotsManager(CoreSysAttributes):
 
         finally:
             self._scheduler.suspend = False
-            self..release()
+            self.lock.release()
 
     async def do_restore_partial(self, snapshot, homeassistant=False,
                                  addons=None, folders=None):
         """Restore a snapshot."""
-        if self..locked():
+        if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
             return False
 
@@ -264,7 +264,7 @@ class SnapshotsManager(CoreSysAttributes):
         _LOGGER.info("Partial-Restore %s start", snapshot.slug)
         try:
             self._scheduler.suspend = True
-            await self..acquire()
+            await self.lock.acquire()
 
             async with snapshot:
                 tasks = []
@@ -308,4 +308,4 @@ class SnapshotsManager(CoreSysAttributes):
 
         finally:
             self._scheduler.suspend = False
-            self..release()
+            self.lock.release()

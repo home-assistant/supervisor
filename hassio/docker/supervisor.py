@@ -5,11 +5,12 @@ import os
 import docker
 
 from .interface import DockerInterface
+from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class DockerSupervisor(DockerInterface):
+class DockerSupervisor(DockerInterface, CoreSysAttributes):
     """Docker hassio wrapper for HomeAssistant."""
 
     @property
