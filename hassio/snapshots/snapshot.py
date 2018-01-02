@@ -158,7 +158,7 @@ class Snapshot(CoreSysAttributes):
             return 0
         return self.tar_file.stat().st_size / 1048576  # calc mbyte
 
-    async def create(self, slug, name, date, sys_type):
+    def create(self, slug, name, date, sys_type):
         """Initialize a new snapshot."""
         # init metadata
         self._data[ATTR_SLUG] = slug
