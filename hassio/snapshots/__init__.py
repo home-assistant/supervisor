@@ -203,7 +203,7 @@ class SnapshotsManager(CoreSysAttributes):
                 # start homeassistant restore
                 _LOGGER.info("Full-Restore %s restore Home-Assistant",
                              snapshot.slug)
-                snapshot.restore_homeassistant(self._homeassistant)
+                snapshot.restore_homeassistant()
                 task_hass = self._loop.create_task(
                     self._homeassistant.update(snapshot.homeassistant_version))
 
