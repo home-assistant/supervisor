@@ -14,7 +14,7 @@ def docker_process(method):
                 "Can't excute %s while a task is in progress", method.__name__)
             return False
 
-        async with api.:
+        async with api.lock:
             return await method(api, *args, **kwargs)
 
     return wrap_api

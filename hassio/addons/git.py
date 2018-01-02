@@ -23,14 +23,14 @@ class GitRepo(CoreSysAttributes):
         self.repo = None
         self.path = path
         self.url = url
-        self.lock= asyncio.Lock(loop=coresys.loop)
+        self.lock = asyncio.Lock(loop=coresys.loop)
 
     async def load(self):
         """Init git addon repo."""
         if not self.path.is_dir():
             return await self.clone()
 
-        async with self.:
+        async with self.lock:
             try:
                 _LOGGER.info("Load addon %s repository", self.path)
                 self.repo = await self._loop.run_in_executor(
@@ -45,7 +45,7 @@ class GitRepo(CoreSysAttributes):
 
     async def clone(self):
         """Clone git addon repo."""
-        async with self.:
+        async with self.lock:
             try:
                 _LOGGER.info("Clone addon %s repository", self.url)
                 self.repo = await self._loop.run_in_executor(
@@ -66,7 +66,7 @@ class GitRepo(CoreSysAttributes):
             _LOGGER.warning("It is already a task in progress.")
             return False
 
-        async with self.:
+        async with self.lock:
             try:
                 _LOGGER.info("Pull addon %s repository", self.url)
                 await self._loop.run_in_executor(
