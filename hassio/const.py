@@ -44,7 +44,7 @@ CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_TEXT = 'text/plain'
 HEADER_HA_ACCESS = 'x-ha-access'
 
-ATTR_BOOT_TIME = 'wait_boot'
+ATTR_WAIT_BOOT = 'wait_boot'
 ATTR_WATCHDOG = 'watchdog'
 ATTR_CHANGELOG = 'changelog'
 ATTR_DATE = 'date'
