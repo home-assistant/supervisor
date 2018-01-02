@@ -1,9 +1,10 @@
 """Schedule for HassIO."""
 import logging
+from datetime import date, datetime, time, timedelta
 
 _LOGGER = logging.getLogger(__name__)
 
-SEC = 'seconds'
+INTERVAL = 'interval'
 REPEAT = 'repeat'
 CALL = 'callback'
 TASK = 'task'
@@ -18,39 +19,57 @@ class Scheduler(object):
         self._data = {}
         self.suspend = False
 
-    def register_task(self, coro_callback, seconds, repeat=True,
-                      now=False):
+    def register_task(self, coro_callback, interval, repeat=True):
         """Schedule a coroutine.
 
         The coroutien need to be a callback without arguments.
         """
-        idx = hash(coro_callback)
+        task_id = hash(coro_callback)
 
         # generate data
         opts = {
             CALL: coro_callback,
-            SEC: seconds,
+            INTERVAL: interval,
             REPEAT: repeat,
         }
-        self._data[idx] = opts
 
         # schedule task
-        if now:
-            self._run_task(idx)
-        else:
-            task = self.loop.call_later(seconds, self._run_task, idx)
-            self._data[idx][TASK] = task
+        self._data[task_id] = opts
+        self._schedule_task(interval, task_id)
 
-        return idx
+        return task_id
 
-    def _run_task(self, idx):
+    def _run_task(self, task_id):
         """Run a scheduled task."""
-        data = self._data.pop(idx)
+        data = self._data[task_id]
 
         if not self.suspend:
             self.loop.create_task(data[CALL]())
 
         if data[REPEAT]:
-            task = self.loop.call_later(data[SEC], self._run_task, idx)
-            data[TASK] = task
-            self._data[idx] = data
+            self._schedule_task(data[INTERVAL], task_id)
+        else:
+            self._data.pop(task_id)
+
+    def _schedule_task(self, interval, task_id):
+        """Schedule a task on loop."""
+        if isinstance(interval, (int, float)):
+            job = self.loop.call_later(interval, self._run_task, task_id)
+        elif isinstance(interval, time):
+            today = datetime.combine(date.today(), interval)
+            tomorrow = datetime.combine(
+                date.today() + timedelta(days=1), interval)
+
+            # check if we run it today or next day
+            if today > datetime.today():
+                calc = today
+            else:
+                calc = tomorrow
+
+            job = self.loop.call_at(calc.timestamp(), self._run_task, task_id)
+        else:
+            _LOGGER.fatal("Unknow interval %s (type: %s) for scheduler %s",
+                          interval, type(interval), task_id)
+
+        # Store job
+        self._data[task_id][TASK] = job

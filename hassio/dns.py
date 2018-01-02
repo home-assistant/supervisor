@@ -27,7 +27,7 @@ class DNSForward(object):
                 loop=self.loop
             )
         except OSError as err:
-            _LOGGER.error("Can't start DNS forwarding -> %s", err)
+            _LOGGER.error("Can't start DNS forwarding: %s", err)
         else:
             _LOGGER.info("Start DNS port forwarding for host add-ons")
 

@@ -13,6 +13,7 @@ from voluptuous.humanize import humanize_error
 
 from .validate import (
     validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME)
+from .utils import check_installed
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
@@ -23,9 +24,9 @@ from ..const import (
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART)
-from .util import check_installed
-from ..dock.addon import DockerAddon
-from ..tools import write_json_file, read_json_file
+from ..coresys import CoreSysAttributes
+from ..docker.addon import DockerAddon
+from ..utils.json import write_json_file, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,22 +35,20 @@ RE_WEBUI = re.compile(
     r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$")
 
 
-class Addon(object):
+class Addon(CoreSysAttributes):
     """Hold data for addon inside HassIO."""
 
-    def __init__(self, config, loop, docker, data, slug):
+    def __init__(self, coresys, slug):
         """Initialize data holder."""
-        self.loop = loop
-        self.config = config
-        self.data = data
-        self._id = slug
+        self.coresys = coresys
+        self.instance = DockerAddon(coresys, slug)
 
-        self.docker = DockerAddon(config, loop, docker, self)
+        self._id = slug
 
     async def load(self):
         """Async initialize of object."""
         if self.is_installed:
-            await self.docker.attach()
+            await self.instance.attach()
 
     @property
     def slug(self):
@@ -59,91 +58,96 @@ class Addon(object):
     @property
     def _mesh(self):
         """Return addon data from system or cache."""
-        return self.data.system.get(self._id, self.data.cache.get(self._id))
+        return self._data.system.get(self._id, self._data.cache.get(self._id))
+
+    @property
+    def _data(self):
+        """Return addons data storage."""
+        return self._addons.data
 
     @property
     def is_installed(self):
         """Return True if a addon is installed."""
-        return self._id in self.data.system
+        return self._id in self._data.system
 
     @property
     def is_detached(self):
         """Return True if addon is detached."""
-        return self._id not in self.data.cache
+        return self._id not in self._data.cache
 
     @property
     def version_installed(self):
         """Return installed version."""
-        return self.data.user.get(self._id, {}).get(ATTR_VERSION)
+        return self._data.user.get(self._id, {}).get(ATTR_VERSION)
 
     def _set_install(self, version):
         """Set addon as installed."""
-        self.data.system[self._id] = deepcopy(self.data.cache[self._id])
-        self.data.user[self._id] = {
+        self._data.system[self._id] = deepcopy(self._data.cache[self._id])
+        self._data.user[self._id] = {
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
         }
-        self.data.save()
+        self._data.save()
 
     def _set_uninstall(self):
         """Set addon as uninstalled."""
-        self.data.system.pop(self._id, None)
-        self.data.user.pop(self._id, None)
-        self.data.save()
+        self._data.system.pop(self._id, None)
+        self._data.user.pop(self._id, None)
+        self._data.save()
 
     def _set_update(self, version):
         """Update version of addon."""
-        self.data.system[self._id] = deepcopy(self.data.cache[self._id])
-        self.data.user[self._id][ATTR_VERSION] = version
-        self.data.save()
+        self._data.system[self._id] = deepcopy(self._data.cache[self._id])
+        self._data.user[self._id][ATTR_VERSION] = version
+        self._data.save()
 
     def _restore_data(self, user, system):
         """Restore data to addon."""
-        self.data.user[self._id] = deepcopy(user)
-        self.data.system[self._id] = deepcopy(system)
-        self.data.save()
+        self._data.user[self._id] = deepcopy(user)
+        self._data.system[self._id] = deepcopy(system)
+        self._data.save()
 
     @property
     def options(self):
         """Return options with local changes."""
         if self.is_installed:
             return {
-                **self.data.system[self._id][ATTR_OPTIONS],
-                **self.data.user[self._id][ATTR_OPTIONS]
+                **self._data.system[self._id][ATTR_OPTIONS],
+                **self._data.user[self._id][ATTR_OPTIONS]
             }
-        return self.data.cache[self._id][ATTR_OPTIONS]
+        return self._data.cache[self._id][ATTR_OPTIONS]
 
     @options.setter
     def options(self, value):
         """Store user addon options."""
-        self.data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
-        self.data.save()
+        self._data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
+        self._data.save()
 
     @property
     def boot(self):
         """Return boot config with prio local settings."""
-        if ATTR_BOOT in self.data.user.get(self._id, {}):
-            return self.data.user[self._id][ATTR_BOOT]
+        if ATTR_BOOT in self._data.user.get(self._id, {}):
+            return self._data.user[self._id][ATTR_BOOT]
         return self._mesh[ATTR_BOOT]
 
     @boot.setter
     def boot(self, value):
         """Store user boot options."""
-        self.data.user[self._id][ATTR_BOOT] = value
-        self.data.save()
+        self._data.user[self._id][ATTR_BOOT] = value
+        self._data.save()
 
     @property
     def auto_update(self):
         """Return if auto update is enable."""
-        if ATTR_AUTO_UPDATE in self.data.user.get(self._id, {}):
-            return self.data.user[self._id][ATTR_AUTO_UPDATE]
+        if ATTR_AUTO_UPDATE in self._data.user.get(self._id, {}):
+            return self._data.user[self._id][ATTR_AUTO_UPDATE]
         return None
 
     @auto_update.setter
     def auto_update(self, value):
         """Set auto update."""
-        self.data.user[self._id][ATTR_AUTO_UPDATE] = value
-        self.data.save()
+        self._data.user[self._id][ATTR_AUTO_UPDATE] = value
+        self._data.save()
 
     @property
     def name(self):
@@ -159,7 +163,7 @@ class Addon(object):
     def api_token(self):
         """Return a API token for this add-on."""
         if self.is_installed:
-            return self.data.user[self._id][ATTR_UUID]
+            return self._data.user[self._id][ATTR_UUID]
         return None
 
     @property
@@ -188,8 +192,8 @@ class Addon(object):
     @property
     def last_version(self):
         """Return version of addon."""
-        if self._id in self.data.cache:
-            return self.data.cache[self._id][ATTR_VERSION]
+        if self._id in self._data.cache:
+            return self._data.cache[self._id][ATTR_VERSION]
         return self.version_installed
 
     @property
@@ -204,24 +208,24 @@ class Addon(object):
             return None
 
         if not self.is_installed or \
-                ATTR_NETWORK not in self.data.user[self._id]:
+                ATTR_NETWORK not in self._data.user[self._id]:
             return self._mesh[ATTR_PORTS]
-        return self.data.user[self._id][ATTR_NETWORK]
+        return self._data.user[self._id][ATTR_NETWORK]
 
     @ports.setter
     def ports(self, value):
         """Set custom ports of addon."""
         if value is None:
-            self.data.user[self._id].pop(ATTR_NETWORK, None)
+            self._data.user[self._id].pop(ATTR_NETWORK, None)
         else:
             new_ports = {}
             for container_port, host_port in value.items():
                 if container_port in self._mesh.get(ATTR_PORTS, {}):
                     new_ports[container_port] = host_port
 
-            self.data.user[self._id][ATTR_NETWORK] = new_ports
+            self._data.user[self._id][ATTR_NETWORK] = new_ports
 
-        self.data.save()
+        self._data.save()
 
     @property
     def webui(self):
@@ -240,7 +244,7 @@ class Addon(object):
         if self.ports is None:
             port = t_port
         else:
-            port = self.ports.get("{}/tcp".format(t_port), t_port)
+            port = self.ports.get(f"{t_port}/tcp", t_port)
 
         # for interface config or port lists
         if isinstance(port, (tuple, list)):
@@ -252,7 +256,7 @@ class Addon(object):
         else:
             proto = s_prefix
 
-        return "{}://[HOST]:{}{}".format(proto, port, s_suffix)
+        return f"{proto}://[HOST]:{port}{s_suffix}"
 
     @property
     def host_network(self):
@@ -330,19 +334,20 @@ class Addon(object):
         if not self.with_audio:
             return None
 
-        setting = self.config.audio_output
-        if self.is_installed and ATTR_AUDIO_OUTPUT in self.data.user[self._id]:
-            setting = self.data.user[self._id][ATTR_AUDIO_OUTPUT]
+        setting = self._config.audio_output
+        if self.is_installed and \
+                ATTR_AUDIO_OUTPUT in self._data.user[self._id]:
+            setting = self._data.user[self._id][ATTR_AUDIO_OUTPUT]
         return setting
 
     @audio_output.setter
     def audio_output(self, value):
         """Set/remove custom audio output settings."""
         if value is None:
-            self.data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
+            self._data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
         else:
-            self.data.user[self._id][ATTR_AUDIO_OUTPUT] = value
-        self.data.save()
+            self._data.user[self._id][ATTR_AUDIO_OUTPUT] = value
+        self._data.save()
 
     @property
     def audio_input(self):
@@ -350,19 +355,19 @@ class Addon(object):
         if not self.with_audio:
             return None
 
-        setting = self.config.audio_input
-        if self.is_installed and ATTR_AUDIO_INPUT in self.data.user[self._id]:
-            setting = self.data.user[self._id][ATTR_AUDIO_INPUT]
+        setting = self._config.audio_input
+        if self.is_installed and ATTR_AUDIO_INPUT in self._data.user[self._id]:
+            setting = self._data.user[self._id][ATTR_AUDIO_INPUT]
         return setting
 
     @audio_input.setter
     def audio_input(self, value):
         """Set/remove custom audio input settings."""
         if value is None:
-            self.data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
+            self._data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
         else:
-            self.data.user[self._id][ATTR_AUDIO_INPUT] = value
-        self.data.save()
+            self._data.user[self._id][ATTR_AUDIO_INPUT] = value
+        self._data.save()
 
     @property
     def url(self):
@@ -391,11 +396,11 @@ class Addon(object):
 
         # Repository with dockerhub images
         if ATTR_IMAGE in addon_data:
-            return addon_data[ATTR_IMAGE].format(arch=self.config.arch)
+            return addon_data[ATTR_IMAGE].format(arch=self._arch)
 
         # local build
         return "{}/{}-addon-{}".format(
-            addon_data[ATTR_REPOSITORY], self.config.arch,
+            addon_data[ATTR_REPOSITORY], self._arch,
             addon_data[ATTR_SLUG])
 
     @property
@@ -416,12 +421,12 @@ class Addon(object):
     @property
     def path_data(self):
         """Return addon data path inside supervisor."""
-        return Path(self.config.path_addons_data, self._id)
+        return Path(self._config.path_addons_data, self._id)
 
     @property
     def path_extern_data(self):
         """Return addon data path external for docker."""
-        return PurePath(self.config.path_extern_addons_data, self._id)
+        return PurePath(self._config.path_extern_addons_data, self._id)
 
     @property
     def path_options(self):
@@ -452,7 +457,7 @@ class Addon(object):
             schema(options)
             return write_json_file(self.path_options, options)
         except vol.Invalid as ex:
-            _LOGGER.error("Addon %s have wrong options -> %s", self._id,
+            _LOGGER.error("Addon %s have wrong options: %s", self._id,
                           humanize_error(options, ex))
 
         return False
@@ -472,8 +477,8 @@ class Addon(object):
             return True
 
         # load next schema
-        new_raw_schema = self.data.cache[self._id][ATTR_SCHEMA]
-        default_options = self.data.cache[self._id][ATTR_OPTIONS]
+        new_raw_schema = self._data.cache[self._id][ATTR_SCHEMA]
+        default_options = self._data.cache[self._id][ATTR_OPTIONS]
 
         # if disabled
         if isinstance(new_raw_schema, bool):
@@ -481,7 +486,7 @@ class Addon(object):
 
         # merge options
         options = {
-            **self.data.user[self._id][ATTR_OPTIONS],
+            **self._data.user[self._id][ATTR_OPTIONS],
             **default_options,
         }
 
@@ -498,9 +503,9 @@ class Addon(object):
 
     async def install(self):
         """Install a addon."""
-        if self.config.arch not in self.supported_arch:
+        if self._arch not in self.supported_arch:
             _LOGGER.error(
-                "Addon %s not supported on %s", self._id, self.config.arch)
+                "Addon %s not supported on %s", self._id, self._arch)
             return False
 
         if self.is_installed:
@@ -512,7 +517,7 @@ class Addon(object):
                 "Create Home-Assistant addon data folder %s", self.path_data)
             self.path_data.mkdir()
 
-        if not await self.docker.install(self.last_version):
+        if not await self.instance.install(self.last_version):
             return False
 
         self._set_install(self.last_version)
@@ -521,7 +526,7 @@ class Addon(object):
     @check_installed
     async def uninstall(self):
         """Remove a addon."""
-        if not await self.docker.remove():
+        if not await self.instance.remove():
             return False
 
         if self.path_data.is_dir():
@@ -537,7 +542,7 @@ class Addon(object):
         if not self.is_installed:
             return STATE_NONE
 
-        if await self.docker.is_running():
+        if await self.instance.is_running():
             return STATE_STARTED
         return STATE_STOPPED
 
@@ -547,7 +552,7 @@ class Addon(object):
 
         Return a coroutine.
         """
-        return self.docker.run()
+        return self.instance.run()
 
     @check_installed
     def stop(self):
@@ -555,7 +560,7 @@ class Addon(object):
 
         Return a coroutine.
         """
-        return self.docker.stop()
+        return self.instance.stop()
 
     @check_installed
     async def update(self):
@@ -563,17 +568,16 @@ class Addon(object):
         last_state = await self.state()
 
         if self.last_version == self.version_installed:
-            _LOGGER.warning(
-                "No update available for Addon %s", self._id)
+            _LOGGER.info("No update available for Addon %s", self._id)
             return False
 
-        if not await self.docker.update(self.last_version):
+        if not await self.instance.update(self.last_version):
             return False
         self._set_update(self.last_version)
 
         # restore state
         if last_state == STATE_STARTED:
-            await self.docker.run()
+            await self.instance.run()
         return True
 
     @check_installed
@@ -582,7 +586,7 @@ class Addon(object):
 
         Return a coroutine.
         """
-        return self.docker.restart()
+        return self.instance.restart()
 
     @check_installed
     def logs(self):
@@ -590,7 +594,7 @@ class Addon(object):
 
         Return a coroutine.
         """
-        return self.docker.logs()
+        return self.instance.logs()
 
     @check_installed
     async def rebuild(self):
@@ -602,15 +606,15 @@ class Addon(object):
             return False
 
         # remove docker container but not addon config
-        if not await self.docker.remove():
+        if not await self.instance.remove():
             return False
 
-        if not await self.docker.install(self.version_installed):
+        if not await self.instance.install(self.version_installed):
             return False
 
         # restore state
         if last_state == STATE_STARTED:
-            await self.docker.run()
+            await self.instance.run()
         return True
 
     @check_installed
@@ -623,20 +627,20 @@ class Addon(object):
             _LOGGER.error("Add-on don't support write to stdin!")
             return False
 
-        return await self.docker.write_stdin(data)
+        return await self.instance.write_stdin(data)
 
     @check_installed
     async def snapshot(self, tar_file):
         """Snapshot a state of a addon."""
-        with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp:
             # store local image
             if self.need_build and not await \
-                    self.docker.export_image(Path(temp, "image.tar")):
+                    self.instance.export_image(Path(temp, "image.tar")):
                 return False
 
             data = {
-                ATTR_USER: self.data.user.get(self._id, {}),
-                ATTR_SYSTEM: self.data.system.get(self._id, {}),
+                ATTR_USER: self._data.user.get(self._id, {}),
+                ATTR_SYSTEM: self._data.system.get(self._id, {}),
                 ATTR_VERSION: self.version_installed,
                 ATTR_STATE: await self.state(),
             }
@@ -656,9 +660,9 @@ class Addon(object):
 
             try:
                 _LOGGER.info("Build snapshot for addon %s", self._id)
-                await self.loop.run_in_executor(None, _create_tar)
+                await self._loop.run_in_executor(None, _create_tar)
             except tarfile.TarError as err:
-                _LOGGER.error("Can't write tarfile %s -> %s", tar_file, err)
+                _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
                 return False
 
         _LOGGER.info("Finish snapshot for addon %s", self._id)
@@ -666,7 +670,7 @@ class Addon(object):
 
     async def restore(self, tar_file):
         """Restore a state of a addon."""
-        with TemporaryDirectory(dir=str(self.config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp:
             # extract snapshot
             def _extract_tar():
                 """Extract tar snapshot."""
@@ -674,39 +678,41 @@ class Addon(object):
                     snapshot.extractall(path=Path(temp))
 
             try:
-                await self.loop.run_in_executor(None, _extract_tar)
+                await self._loop.run_in_executor(None, _extract_tar)
             except tarfile.TarError as err:
-                _LOGGER.error("Can't read tarfile %s -> %s", tar_file, err)
+                _LOGGER.error("Can't read tarfile %s: %s", tar_file, err)
                 return False
 
             # read snapshot data
             try:
                 data = read_json_file(Path(temp, "addon.json"))
             except (OSError, json.JSONDecodeError) as err:
-                _LOGGER.error("Can't read addon.json -> %s", err)
+                _LOGGER.error("Can't read addon.json: %s", err)
 
             # validate
             try:
                 data = SCHEMA_ADDON_SNAPSHOT(data)
             except vol.Invalid as err:
-                _LOGGER.error("Can't validate %s, snapshot data -> %s",
+                _LOGGER.error("Can't validate %s, snapshot data: %s",
                               self._id, humanize_error(data, err))
                 return False
 
             # restore data / reload addon
+            _LOGGER.info("Restore config for addon %s", self._id)
             self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM])
 
             # check version / restore image
             version = data[ATTR_VERSION]
-            if version != self.docker.version:
+            if version != self.instance.version:
+                _LOGGER.info("Restore image for addon %s", self._id)
                 image_file = Path(temp, "image.tar")
                 if image_file.is_file():
-                    await self.docker.import_image(image_file, version)
+                    await self.instance.import_image(image_file, version)
                 else:
-                    if await self.docker.install(version):
-                        await self.docker.cleanup()
+                    if await self.instance.install(version):
+                        await self.instance.cleanup()
             else:
-                await self.docker.stop()
+                await self.instance.stop()
 
             # restore data
             def _restore_data():
@@ -717,9 +723,9 @@ class Addon(object):
 
             try:
                 _LOGGER.info("Restore data for addon %s", self._id)
-                await self.loop.run_in_executor(None, _restore_data)
+                await self._loop.run_in_executor(None, _restore_data)
             except shutil.Error as err:
-                _LOGGER.error("Can't restore origin data -> %s", err)
+                _LOGGER.error("Can't restore origin data: %s", err)
                 return False
 
             # run addon

@@ -6,7 +6,7 @@ import docker
 import requests
 
 from .interface import DockerInterface
-from .util import docker_process
+from .utils import docker_process
 from ..addons.build import AddonBuild
 from ..const import (
     MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE)
@@ -19,27 +19,39 @@ AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 class DockerAddon(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
 
-    def __init__(self, config, loop, api, addon):
+    def __init__(self, coresys, slug):
         """Initialize docker homeassistant wrapper."""
-        super().__init__(
-            config, loop, api, image=addon.image, timeout=addon.timeout)
-        self.addon = addon
+        super().__init__(coresys)
+        self._id = slug
 
-    # pylint: disable=inconsistent-return-statements
-    def process_metadata(self, metadata, force=False):
-        """Use addon data instead meta data with legacy."""
+    @property
+    def addon(self):
+        """Return name of docker image."""
+        return self._addons.get(self._id)
+
+    @property
+    def image(self):
+        """Return name of docker image."""
+        return self.addon.image
+
+    @property
+    def timeout(self):
+        """Return timeout for docker actions."""
+        return self.addon.timeout
+
+    @property
+    def version(self):
+        """Return version of docker image."""
         if not self.addon.legacy:
-            return super().process_metadata(metadata, force=force)
+            return super().version
+        return self.addon.version_installed
 
-        # set meta data
-        if not self.version or force:
-            if force:  # called on install/update/build
-                self.version = self.addon.last_version
-            else:
-                self.version = self.addon.version_installed
-
-        if not self.arch:
-            self.arch = self.config.arch
+    @property
+    def arch(self):
+        """Return arch of docker image."""
+        if not self.addon.legacy:
+            return super().arch
+        return self._arch
 
     @property
     def name(self):
@@ -74,7 +86,7 @@ class DockerAddon(DockerInterface):
 
         return {
             **addon_env,
-            'TZ': self.config.timezone,
+            'TZ': self._config.timezone,
         }
 
     @property
@@ -88,7 +100,7 @@ class DockerAddon(DockerInterface):
 
         # Auto mapping UART devices
         if self.addon.auto_uart:
-            for uart_dev in self.docker.hardware.serial_devices:
+            for uart_dev in self._hardware.serial_devices:
                 devices.append("{0}:{0}:rwm".format(uart_dev))
 
         # Return None if no devices is present
@@ -130,8 +142,8 @@ class DockerAddon(DockerInterface):
     def network_mapping(self):
         """Return hosts mapping."""
         return {
-            'homeassistant': self.docker.network.gateway,
-            'hassio': self.docker.network.supervisor,
+            'homeassistant': self._docker.network.gateway,
+            'hassio': self._docker.network.supervisor,
         }
 
     @property
@@ -154,31 +166,31 @@ class DockerAddon(DockerInterface):
         # setup config mappings
         if MAP_CONFIG in addon_mapping:
             volumes.update({
-                str(self.config.path_extern_config): {
+                str(self._config.path_extern_config): {
                     'bind': "/config", 'mode': addon_mapping[MAP_CONFIG]
                 }})
 
         if MAP_SSL in addon_mapping:
             volumes.update({
-                str(self.config.path_extern_ssl): {
+                str(self._config.path_extern_ssl): {
                     'bind': "/ssl", 'mode': addon_mapping[MAP_SSL]
                 }})
 
         if MAP_ADDONS in addon_mapping:
             volumes.update({
-                str(self.config.path_extern_addons_local): {
+                str(self._config.path_extern_addons_local): {
                     'bind': "/addons", 'mode': addon_mapping[MAP_ADDONS]
                 }})
 
         if MAP_BACKUP in addon_mapping:
             volumes.update({
-                str(self.config.path_extern_backup): {
+                str(self._config.path_extern_backup): {
                     'bind': "/backup", 'mode': addon_mapping[MAP_BACKUP]
                 }})
 
         if MAP_SHARE in addon_mapping:
             volumes.update({
-                str(self.config.path_extern_share): {
+                str(self._config.path_extern_share): {
                     'bind': "/share", 'mode': addon_mapping[MAP_SHARE]
                 }})
 
@@ -217,7 +229,7 @@ class DockerAddon(DockerInterface):
         if not self.addon.write_options():
             return False
 
-        ret = self.docker.run(
+        ret = self._docker.run(
             self.image,
             name=self.name,
             hostname=self.hostname,
@@ -257,17 +269,17 @@ class DockerAddon(DockerInterface):
 
         Need run inside executor.
         """
-        build_env = AddonBuild(self.config, self.addon)
+        build_env = AddonBuild(self.coresys, self.addon)
 
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:
-            image = self.docker.images.build(**build_env.get_docker_args(tag))
+            image = self._docker.images.build(**build_env.get_docker_args(tag))
 
             image.tag(self.image, tag='latest')
-            self.process_metadata(image.attrs, force=True)
+            self._meta = image.attrs
 
         except (docker.errors.DockerException) as err:
-            _LOGGER.error("Can't build %s:%s -> %s", self.image, tag, err)
+            _LOGGER.error("Can't build %s:%s: %s", self.image, tag, err)
             return False
 
         _LOGGER.info("Build %s:%s done", self.image, tag)
@@ -276,7 +288,7 @@ class DockerAddon(DockerInterface):
     @docker_process
     def export_image(self, path):
         """Export current images into a tar file."""
-        return self.loop.run_in_executor(None, self._export_image, path)
+        return self._loop.run_in_executor(None, self._export_image, path)
 
     def _export_image(self, tar_file):
         """Export current images into a tar file.
@@ -284,9 +296,9 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         try:
-            image = self.docker.api.get_image(self.image)
+            image = self._docker.api.get_image(self.image)
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't fetch image %s -> %s", self.image, err)
+            _LOGGER.error("Can't fetch image %s: %s", self.image, err)
             return False
 
         try:
@@ -294,7 +306,7 @@ class DockerAddon(DockerInterface):
                 for chunk in image.stream():
                     write_tar.write(chunk)
         except (OSError, requests.exceptions.ReadTimeout) as err:
-            _LOGGER.error("Can't write tar file %s -> %s", tar_file, err)
+            _LOGGER.error("Can't write tar file %s: %s", tar_file, err)
             return False
 
         _LOGGER.info("Export image %s to %s", self.image, tar_file)
@@ -303,7 +315,7 @@ class DockerAddon(DockerInterface):
     @docker_process
     def import_image(self, path, tag):
         """Import a tar file as image."""
-        return self.loop.run_in_executor(None, self._import_image, path, tag)
+        return self._loop.run_in_executor(None, self._import_image, path, tag)
 
     def _import_image(self, tar_file, tag):
         """Import a tar file as image.
@@ -312,16 +324,16 @@ class DockerAddon(DockerInterface):
         """
         try:
             with tar_file.open("rb") as read_tar:
-                self.docker.api.load_image(read_tar)
+                self._docker.api.load_image(read_tar)
 
-            image = self.docker.images.get(self.image)
+            image = self._docker.images.get(self.image)
             image.tag(self.image, tag=tag)
         except (docker.errors.DockerException, OSError) as err:
-            _LOGGER.error("Can't import image %s -> %s", self.image, err)
+            _LOGGER.error("Can't import image %s: %s", self.image, err)
             return False
 
         _LOGGER.info("Import image %s and tag %s", tar_file, tag)
-        self.process_metadata(image.attrs, force=True)
+        self._meta = image.attrs
         self._cleanup()
         return True
 
@@ -337,7 +349,7 @@ class DockerAddon(DockerInterface):
     @docker_process
     def write_stdin(self, data):
         """Write to add-on stdin."""
-        return self.loop.run_in_executor(None, self._write_stdin, data)
+        return self._loop.run_in_executor(None, self._write_stdin, data)
 
     def _write_stdin(self, data):
         """Write to add-on stdin.
@@ -349,10 +361,10 @@ class DockerAddon(DockerInterface):
 
         try:
             # load needed docker objects
-            container = self.docker.containers.get(self.name)
+            container = self._docker.containers.get(self.name)
             socket = container.attach_socket(params={'stdin': 1, 'stream': 1})
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't attach to %s stdin -> %s", self.name, err)
+            _LOGGER.error("Can't attach to %s stdin: %s", self.name, err)
             return False
 
         try:
@@ -361,7 +373,7 @@ class DockerAddon(DockerInterface):
             os.write(socket.fileno(), data)
             socket.close()
         except OSError as err:
-            _LOGGER.error("Can't write to %s stdin -> %s", self.name, err)
+            _LOGGER.error("Can't write to %s stdin: %s", self.name, err)
             return False
 
         return True

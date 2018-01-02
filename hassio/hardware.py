@@ -69,7 +69,7 @@ class Hardware(object):
             with ASOUND_DEVICES.open('r') as devices_file:
                 devices = devices_file.read()
         except OSError as err:
-            _LOGGER.error("Can't read asound data -> %s", err)
+            _LOGGER.error("Can't read asound data: %s", err)
             return None
 
         audio_list = {}
@@ -109,7 +109,7 @@ class Hardware(object):
             with PROC_STAT.open("r") as stat_file:
                 stats = stat_file.read()
         except OSError as err:
-            _LOGGER.error("Can't read stat data -> %s", err)
+            _LOGGER.error("Can't read stat data: %s", err)
             return None
 
         # parse stat file

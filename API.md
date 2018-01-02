@@ -36,6 +36,7 @@ The addons from `addons` are only installed one.
     "arch": "armhf|aarch64|i386|amd64",
     "beta_channel": "true|false",
     "timezone": "TIMEZONE",
+    "wait_boot": "int",
     "addons": [
         {
             "name": "xy bla",
@@ -72,7 +73,8 @@ Optional:
     "timezone": "TIMEZONE",
     "addons_repositories": [
         "REPO_URL"
-    ]
+    ],
+    "wait_boot": "int"
 }
 ```
 
@@ -255,6 +257,8 @@ Optional:
     }
 }
 ```
+
+- POST `/host/reload`
 
 ### Network
 

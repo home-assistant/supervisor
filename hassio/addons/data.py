@@ -7,24 +7,25 @@ from pathlib import Path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .util import extract_hash_from_path
+from .utils import extract_hash_from_path
 from .validate import (
     SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_FILE, SCHEMA_REPOSITORY_CONFIG)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
-from ..tools import JsonConfig, read_json_file
+from ..coresys import CoreSysAttributes
+from ..utils.json import JsonConfig, read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Data(JsonConfig):
+class Data(JsonConfig, CoreSysAttributes):
     """Hold data for addons inside HassIO."""
 
-    def __init__(self, config):
+    def __init__(self, coresys):
         """Initialize data holder."""
         super().__init__(FILE_HASSIO_ADDONS, SCHEMA_ADDON_FILE)
-        self.config = config
+        self.coresys = coresys
         self._repositories = {}
         self._cache = {}
 
@@ -55,17 +56,17 @@ class Data(JsonConfig):
 
         # read core repository
         self._read_addons_folder(
-            self.config.path_addons_core, REPOSITORY_CORE)
+            self._config.path_addons_core, REPOSITORY_CORE)
 
         # read local repository
         self._read_addons_folder(
-            self.config.path_addons_local, REPOSITORY_LOCAL)
+            self._config.path_addons_local, REPOSITORY_LOCAL)
 
         # add built-in repositories information
         self._set_builtin_repositories()
 
         # read custom git repositories
-        for repository_element in self.config.path_addons_git.iterdir():
+        for repository_element in self._config.path_addons_git.iterdir():
             if repository_element.is_dir():
                 self._read_git_repository(repository_element)
 
@@ -118,7 +119,7 @@ class Data(JsonConfig):
                 _LOGGER.warning("Can't read %s", addon)
 
             except vol.Invalid as ex:
-                _LOGGER.warning("Can't read %s -> %s", addon,
+                _LOGGER.warning("Can't read %s: %s", addon,
                                 humanize_error(addon_config, ex))
 
     def _set_builtin_repositories(self):
@@ -127,7 +128,7 @@ class Data(JsonConfig):
             builtin_file = Path(__file__).parent.joinpath('built-in.json')
             builtin_data = read_json_file(builtin_file)
         except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.warning("Can't read built-in.json -> %s", err)
+            _LOGGER.warning("Can't read built-in json: %s", err)
             return
 
         # core repository

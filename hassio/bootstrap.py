@@ -7,15 +7,41 @@ from pathlib import Path
 
 from colorlog import ColoredFormatter
 
+from .addons import AddonManager
+from .api import RestAPI
 from .const import SOCKET_DOCKER
-from .config import CoreConfig
+from .coresys import CoreSys
+from .supervisor import Supervisor
+from .homeassistant import HomeAssistant
+from .snapshots import SnapshotsManager
+from .tasks import Tasks
+from .updater import Updater
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def initialize_system_data():
+def initialize_coresys(loop):
+    """Initialize HassIO coresys/objects."""
+    coresys = CoreSys(loop)
+
+    # Initialize core objects
+    coresys.updater = Updater(coresys)
+    coresys.api = RestAPI(coresys)
+    coresys.supervisor = Supervisor(coresys)
+    coresys.homeassistant = HomeAssistant(coresys)
+    coresys.addons = AddonManager(coresys)
+    coresys.snapshots = SnapshotsManager(coresys)
+    coresys.tasks = Tasks(coresys)
+
+    # bootstrap config
+    initialize_system_data(coresys)
+
+    return coresys
+
+
+def initialize_system_data(coresys):
     """Setup default config and create folders."""
-    config = CoreConfig()
+    config = coresys.config
 
     # homeassistant config folder
     if not config.path_config.is_dir():
@@ -62,8 +88,9 @@ def initialize_system_data():
     return config
 
 
-def migrate_system_env(config):
+def migrate_system_env(coresys):
     """Cleanup some stuff after update."""
+    config = coresys.config
 
     # hass.io 0.37 -> 0.38
     old_build = Path(config.path_hassio, "addons/build")

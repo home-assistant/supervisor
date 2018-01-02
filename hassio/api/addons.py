@@ -5,7 +5,7 @@ import logging
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .util import api_process, api_process_raw, api_validate
+from .utils import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
@@ -16,6 +16,7 @@ from ..const import (
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, BOOT_AUTO, BOOT_MANUAL,
     ATTR_CHANGELOG, ATTR_HOST_IPC, ATTR_HOST_DBUS, ATTR_LONG_DESCRIPTION,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
+from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,18 +33,12 @@ SCHEMA_OPTIONS = vol.Schema({
 })
 
 
-class APIAddons(object):
+class APIAddons(CoreSysAttributes):
     """Handle rest api for addons functions."""
-
-    def __init__(self, config, loop, addons):
-        """Initialize homeassistant rest api part."""
-        self.config = config
-        self.loop = loop
-        self.addons = addons
 
     def _extract_addon(self, request, check_installed=True):
         """Return addon and if not exists trow a exception."""
-        addon = self.addons.get(request.match_info.get('addon'))
+        addon = self._addons.get(request.match_info.get('addon'))
         if not addon:
             raise RuntimeError("Addon not exists")
 
@@ -64,7 +59,7 @@ class APIAddons(object):
     async def list(self, request):
         """Return all addons / repositories ."""
         data_addons = []
-        for addon in self.addons.list_addons:
+        for addon in self._addons.list_addons:
             data_addons.append({
                 ATTR_NAME: addon.name,
                 ATTR_SLUG: addon.slug,
@@ -80,7 +75,7 @@ class APIAddons(object):
             })
 
         data_repositories = []
-        for repository in self.addons.list_repositories:
+        for repository in self._addons.list_repositories:
             data_repositories.append({
                 ATTR_SLUG: repository.slug,
                 ATTR_NAME: repository.name,
@@ -97,7 +92,7 @@ class APIAddons(object):
     @api_process
     async def reload(self, request):
         """Reload all addons data."""
-        await asyncio.shield(self.addons.reload(), loop=self.loop)
+        await asyncio.shield(self._addons.reload(), loop=self._loop)
         return True
 
     @api_process
@@ -167,13 +162,13 @@ class APIAddons(object):
     def install(self, request):
         """Install addon."""
         addon = self._extract_addon(request, check_installed=False)
-        return asyncio.shield(addon.install(), loop=self.loop)
+        return asyncio.shield(addon.install(), loop=self._loop)
 
     @api_process
     def uninstall(self, request):
         """Uninstall addon."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.uninstall(), loop=self.loop)
+        return asyncio.shield(addon.uninstall(), loop=self._loop)
 
     @api_process
     def start(self, request):
@@ -187,13 +182,13 @@ class APIAddons(object):
         except vol.Invalid as ex:
             raise RuntimeError(humanize_error(options, ex)) from None
 
-        return asyncio.shield(addon.start(), loop=self.loop)
+        return asyncio.shield(addon.start(), loop=self._loop)
 
     @api_process
     def stop(self, request):
         """Stop addon."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.stop(), loop=self.loop)
+        return asyncio.shield(addon.stop(), loop=self._loop)
 
     @api_process
     def update(self, request):
@@ -203,13 +198,13 @@ class APIAddons(object):
         if addon.last_version == addon.version_installed:
             raise RuntimeError("No update available!")
 
-        return asyncio.shield(addon.update(), loop=self.loop)
+        return asyncio.shield(addon.update(), loop=self._loop)
 
     @api_process
     def restart(self, request):
         """Restart addon."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.restart(), loop=self.loop)
+        return asyncio.shield(addon.restart(), loop=self._loop)
 
     @api_process
     def rebuild(self, request):
@@ -218,7 +213,7 @@ class APIAddons(object):
         if not addon.need_build:
             raise RuntimeError("Only local build addons are supported")
 
-        return asyncio.shield(addon.rebuild(), loop=self.loop)
+        return asyncio.shield(addon.rebuild(), loop=self._loop)
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
@@ -254,4 +249,4 @@ class APIAddons(object):
             raise RuntimeError("STDIN not supported by addons")
 
         data = await request.read()
-        return await asyncio.shield(addon.write_stdin(data), loop=self.loop)
+        return await asyncio.shield(addon.write_stdin(data), loop=self._loop)
