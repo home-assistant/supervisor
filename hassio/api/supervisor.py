@@ -56,7 +56,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self._updater.version_hassio,
             ATTR_BETA_CHANNEL: self._updater.beta_channel,
-            ATTR_ARCH: self._config.arch,
+            ATTR_ARCH: self._arch,
             ATTR_TIMEZONE: self._config.timezone,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self._config.addons_repositories,
