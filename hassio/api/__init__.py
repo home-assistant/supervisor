@@ -52,6 +52,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.router.add_post('/host/shutdown', api_host.shutdown)
         self.webapp.router.add_post('/host/update', api_host.update)
         self.webapp.router.add_post('/host/options', api_host.options)
+        self.webapp.router.add_post('/host/reload', api_host.reload)
 
     def _register_network(self):
         """Register network function."""

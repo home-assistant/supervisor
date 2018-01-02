@@ -47,6 +47,12 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(self._scheduler.register_task(
             self._host_control.load, self.RUN_RELOAD_HOST_CONTROL))
 
+        self.jobs.add(self._scheduler.register_task(
+            self._watchdog_homeassistant_docker,
+            self.RUN_WATCHDOG_HOMEASSISTANT_DOCKER))
+        # self.jobs.add(self._scheduler.register_task(
+        #    self._watchdog_homeassistant_api,
+        #    self.RUN_WATCHDOG_HOMEASSISTANT_API))
 
     async def _cleanup_sessions(self):
         """Cleanup old api sessions."""

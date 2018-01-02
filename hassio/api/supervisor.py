@@ -95,10 +95,7 @@ class APISupervisor(CoreSysAttributes):
     async def reload(self, request):
         """Reload addons, config ect."""
         tasks = [
-            self._addons.reload(),
-            self._snapshots.reload(),
             self._updater.reload(),
-            self._host_control.load()
         ]
         results, _ = await asyncio.shield(
             asyncio.wait(tasks, loop=self._loop), loop=self._loop)

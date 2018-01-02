@@ -256,6 +256,8 @@ Optional:
 }
 ```
 
+- POST `/host/reload`
+
 ### Network
 
 - GET `/network/info`

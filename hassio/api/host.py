@@ -62,6 +62,12 @@ class APIHost(CoreSysAttributes):
         return self._host_control.shutdown()
 
     @api_process_hostcontrol
+    async def reload(self, request):
+        """Reload host data."""
+        await self._host_control.load()
+        return True
+
+    @api_process_hostcontrol
     async def update(self, request):
         """Update host OS."""
         body = await api_validate(SCHEMA_VERSION, request)
