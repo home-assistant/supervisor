@@ -17,7 +17,6 @@ class CoreSys(object):
         """Initialize coresys."""
         # Static attributes
         self.exit_code = 0
-        self.arch = None
 
         # External objects
         self._loop = loop
