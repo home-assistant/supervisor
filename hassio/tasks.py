@@ -24,7 +24,7 @@ class Tasks(CoreSysAttributes):
 
     RUN_CLEANUP_API_SESSIONS = 900
 
-    def __ini__(self, coresys):
+    def __init__(self, coresys):
         """Initialize Tasks."""
         self.coresys = coresys
         self.jobs = set()
