@@ -68,7 +68,6 @@ SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
     vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
     vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
-    vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,
 }, extra=vol.REMOVE_EXTRA)
 
 
@@ -92,4 +91,5 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
         vol.Schema({vol.Coerce(str): vol.Coerce(str)}),
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
+    vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,
 }, extra=vol.REMOVE_EXTRA)
