@@ -368,6 +368,9 @@ class Snapshot(CoreSysAttributes):
         """Store repository list into snapshot."""
         self.repositories = self._config.addons_repositories
 
-    async def restore_repositories(self):
-        """Restore repositories from snapshot."""
-        await self._addons.load_repositories(self.repositories)
+    def restore_repositories(self):
+        """Restore repositories from snapshot.
+
+        Return a coroutine.
+        """
+        return self._addons.load_repositories(self.repositories)

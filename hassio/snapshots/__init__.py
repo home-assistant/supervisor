@@ -208,6 +208,8 @@ class SnapshotsManager(CoreSysAttributes):
                     self._homeassistant.update(snapshot.homeassistant_version))
 
                 # restore repositories
+                _LOGGER.info("Full-Restore %s restore Repositories",
+                             snapshot.slug)
                 await snapshot.restore_repositories()
 
                 # restore addons
