@@ -129,3 +129,4 @@ class AddonManager(CoreSysAttributes):
         _LOGGER.info("Startup %s run %d addons", stage, len(tasks))
         if tasks:
             await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.sleep(self._config.wait_boot, loop=self._loop)

@@ -9,9 +9,9 @@ from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL, ATTR_ARCH,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_LOGO, ATTR_REPOSITORY,
     ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED, ATTR_TIMEZONE,
-    ATTR_STATE, CONTENT_TYPE_BINARY)
+    ATTR_STATE, ATTR_WAIT_BOOT, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
-from ..validate import validate_timezone
+from ..validate import validate_timezone, WAIT_BOOT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_BETA_CHANNEL): vol.Boolean(),
     vol.Optional(ATTR_ADDONS_REPOSITORIES): [vol.Url()],
     vol.Optional(ATTR_TIMEZONE): validate_timezone,
+    vol.Optional(ATTR_WAIT_BOOT): WAIT_BOOT,
 })
 
 SCHEMA_VERSION = vol.Schema({
@@ -57,6 +58,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_LAST_VERSION: self._updater.version_hassio,
             ATTR_BETA_CHANNEL: self._updater.beta_channel,
             ATTR_ARCH: self._arch,
+            ATTR_WAIT_BOOT: self._config.wait_boot,
             ATTR_TIMEZONE: self._config.timezone,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self._config.addons_repositories,
@@ -72,6 +74,9 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_TIMEZONE in body:
             self._config.timezone = body[ATTR_TIMEZONE]
+
+        if ATTR_WAIT_BOOT in body:
+            self._config.wait_boot = body[ATTR_WAIT_BOOT]
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
