@@ -41,6 +41,9 @@ class HassIO(CoreSysAttributes):
         # load last available data
         await self._updater.load()
 
+        # load last available data
+        await self._snapshots.load()
+
         # start dns forwarding
         self._loop.create_task(self._dns.start())
 

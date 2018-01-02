@@ -48,6 +48,13 @@ class SnapshotsManager(CoreSysAttributes):
 
         return snapshot
 
+    def load(self):
+        """Load exists snapshots data.
+
+        Return a coroutine.
+        """
+        return self.reload()
+
     async def reload(self):
         """Load exists backups."""
         self.snapshots_obj = {}
