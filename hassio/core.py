@@ -93,6 +93,8 @@ class HassIO(CoreSysAttributes):
             if self._homeassistant.version == 'landingpage':
                 self._loop.create_task(self._homeassistant.install())
 
+        _LOGGER.info("Hass.io is up and running")
+
     async def stop(self):
         """Stop a running orchestration."""
         # don't process scheduler anymore
