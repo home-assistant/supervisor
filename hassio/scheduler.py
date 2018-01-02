@@ -55,7 +55,7 @@ class Scheduler(object):
         """Schedule a task on loop."""
         if isinstance(interval, (int, float)):
             job = self.loop.call_later(interval, self._run_task, task_id)
-        if isinstance(interval, time):
+        elif isinstance(interval, time):
             today = datetime.combine(date.today(), interval)
             tomorrow = datetime.combine(
                 date.today() + timedelta(days=1), interval)
