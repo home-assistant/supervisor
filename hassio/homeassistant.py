@@ -6,14 +6,15 @@ import re
 
 import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
-import async_timeout
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
     ATTR_VERSION, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
     HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
-from .dock.homeassistant import DockerHomeAssistant
-from .tools import JsonConfig, convert_to_ascii
+from .coresys import CoreSysAttributes
+from .docker.homeassistant import DockerHomeAssistant
+from .utils import convert_to_ascii
+from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,30 +22,30 @@ _LOGGER = logging.getLogger(__name__)
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
 
-class HomeAssistant(JsonConfig):
+class HomeAssistant(JsonConfig, CoreSysAttributes):
     """Hass core object for handle it."""
 
-    def __init__(self, config, loop, docker, updater):
+    def __init__(self, coresys):
         """Initialize hass object."""
         super().__init__(FILE_HASSIO_HOMEASSISTANT, SCHEMA_HASS_CONFIG)
-        self.config = config
-        self.loop = loop
-        self.updater = updater
-        self.docker = DockerHomeAssistant(config, loop, docker, self)
-        self.api_ip = docker.network.gateway
-        self.websession = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(verify_ssl=False), loop=loop)
+        self.coresys = coresys
+        self.instance = DockerHomeAssistant(coresys)
 
-    async def prepare(self):
+    async def load(self):
         """Prepare HomeAssistant object."""
-        if not await self.docker.exists():
+        if not await self.instance.exists():
             _LOGGER.info("No HomeAssistant docker %s found.", self.image)
             if self.is_custom_image:
                 await self.install()
             else:
                 await self.install_landingpage()
         else:
-            await self.docker.attach()
+            await self.instance.attach()
+
+    @property
+    def api_ip(self):
+        """Return IP of HomeAssistant instance."""
+        return self._docker.network.gateway
 
     @property
     def api_port(self):
@@ -100,14 +101,14 @@ class HomeAssistant(JsonConfig):
     @property
     def version(self):
         """Return version of running homeassistant."""
-        return self.docker.version
+        return self.instance.version
 
     @property
     def last_version(self):
         """Return last available version of homeassistant."""
         if self.is_custom_image:
             return self._data.get(ATTR_LAST_VERSION)
-        return self.updater.version_homeassistant
+        return self._updater.version_homeassistant
 
     @property
     def image(self):
@@ -150,11 +151,11 @@ class HomeAssistant(JsonConfig):
             self._data.pop(ATTR_IMAGE, None)
             self._data.pop(ATTR_VERSION, None)
 
-            self.docker.image = self.image
+            self.instance.image = self.image
         else:
             if image:
                 self._data[ATTR_IMAGE] = image
-                self.docker.image = image
+                self.instance.image = image
             if version:
                 self._data[ATTR_VERSION] = version
         self.save()
@@ -163,13 +164,13 @@ class HomeAssistant(JsonConfig):
         """Install a landingpage."""
         _LOGGER.info("Setup HomeAssistant landingpage")
         while True:
-            if await self.docker.install('landingpage'):
+            if await self.instance.install('landingpage'):
                 break
             _LOGGER.warning("Fails install landingpage, retry after 60sec")
-            await asyncio.sleep(60, loop=self.loop)
+            await asyncio.sleep(60, loop=self._loop)
 
         # run landingpage after installation
-        await self.docker.run()
+        await self.instance.run()
 
     async def install(self):
         """Install a landingpage."""
@@ -177,85 +178,85 @@ class HomeAssistant(JsonConfig):
         while True:
             # read homeassistant tag and install it
             if not self.last_version:
-                await self.updater.fetch_data()
+                await self._updater.reload()
 
             tag = self.last_version
-            if tag and await self.docker.install(tag):
+            if tag and await self.instance.install(tag):
                 break
             _LOGGER.warning("Error on install HomeAssistant. Retry in 60sec")
-            await asyncio.sleep(60, loop=self.loop)
+            await asyncio.sleep(60, loop=self._loop)
 
         # finishing
         _LOGGER.info("HomeAssistant docker now installed")
         if self.boot:
-            await self.docker.run()
-        await self.docker.cleanup()
+            await self.instance.run()
+        await self.instance.cleanup()
 
     async def update(self, version=None):
         """Update HomeAssistant version."""
         version = version or self.last_version
-        running = await self.docker.is_running()
+        running = await self.instance.is_running()
 
-        if version == self.docker.version:
-            _LOGGER.warning("Version %s is already installed", version)
+        if version == self.instance.version:
+            _LOGGER.info("Version %s is already installed", version)
             return False
 
         try:
-            return await self.docker.update(version)
+            return await self.instance.update(version)
         finally:
             if running:
-                await self.docker.run()
+                await self.instance.run()
 
     def run(self):
         """Run HomeAssistant docker.
 
         Return a coroutine.
         """
-        return self.docker.run()
+        return self.instance.run()
 
     def stop(self):
         """Stop HomeAssistant docker.
 
         Return a coroutine.
         """
-        return self.docker.stop()
+        return self.instance.stop()
 
     def restart(self):
         """Restart HomeAssistant docker.
 
         Return a coroutine.
         """
-        return self.docker.restart()
+        return self.instance.restart()
 
     def logs(self):
         """Get HomeAssistant docker logs.
 
         Return a coroutine.
         """
-        return self.docker.logs()
+        return self.instance.logs()
 
     def is_running(self):
         """Return True if docker container is running.
 
         Return a coroutine.
         """
-        return self.docker.is_running()
+        return self.instance.is_running()
 
     def is_initialize(self):
         """Return True if a docker container is exists.
 
         Return a coroutine.
         """
-        return self.docker.is_initialize()
+        return self.instance.is_initialize()
 
     @property
     def in_progress(self):
         """Return True if a task is in progress."""
-        return self.docker.in_progress
+        return self.instance.in_progress
 
     async def check_config(self):
         """Run homeassistant config check."""
-        exit_code, log = await self.docker.execute_command(
+        exit_code, log = await self.instance.execute_command(
             "python3 -m homeassistant -c /config --script check_config"
         )
 
@@ -271,16 +272,17 @@ class HomeAssistant(JsonConfig):
 
     async def check_api_state(self):
         """Check if Home-Assistant up and running."""
-        url = "{}/api/".format(self.api_url)
+        url = f"{self.api_url}/api/"
         header = {CONTENT_TYPE: CONTENT_TYPE_JSON}
 
         if self.api_password:
             header.update({HEADER_HA_ACCESS: self.api_password})
 
         try:
-            async with async_timeout.timeout(30, loop=self.loop):
-                async with self.websession.get(url, headers=header) as request:
-                    status = request.status
+            # pylint: disable=bad-continuation
+            async with self._websession_ssl.get(
+                    url, headers=header, timeout=30) as request:
+                status = request.status
 
         except (asyncio.TimeoutError, aiohttp.ClientError):
             return False

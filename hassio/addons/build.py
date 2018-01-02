@@ -3,15 +3,16 @@ from pathlib import Path
 
 from .validate import SCHEMA_BUILD_CONFIG, BASE_IMAGE
 from ..const import ATTR_SQUASH, ATTR_BUILD_FROM, ATTR_ARGS, META_ADDON
-from ..tools import JsonConfig
+from ..coresys import CoreSysAttributes
+from ..utils.json import JsonConfig
 
 
-class AddonBuild(JsonConfig):
+class AddonBuild(JsonConfig, CoreSysAttributes):
     """Handle build options for addons."""
 
-    def __init__(self, config, addon):
+    def __init__(self, coresys, addon):
         """Initialize addon builder."""
-        self.config = config
+        self.coresys = coresys
         self.addon = addon
 
         super().__init__(
@@ -25,7 +26,7 @@ class AddonBuild(JsonConfig):
     def base_image(self):
         """Base images for this addon."""
         return self._data[ATTR_BUILD_FROM].get(
-            self.config.arch, BASE_IMAGE[self.config.arch])
+            self._arch, BASE_IMAGE[self._arch])
 
     @property
     def squash(self):
@@ -41,13 +42,13 @@ class AddonBuild(JsonConfig):
         """Create a dict with docker build arguments."""
         args = {
             'path': str(self.addon.path_location),
-            'tag': "{}:{}".format(self.addon.image, version),
+            'tag': f"{self.addon.image}:{version}",
             'pull': True,
             'forcerm': True,
             'squash': self.squash,
             'labels': {
                 'io.hass.version': version,
-                'io.hass.arch': self.config.arch,
+                'io.hass.arch': self._arch,
                 'io.hass.type': META_ADDON,
                 'io.hass.name': self.addon.name,
                 'io.hass.description': self.addon.description,
@@ -55,7 +56,7 @@ class AddonBuild(JsonConfig):
             'buildargs': {
                 'BUILD_FROM': self.base_image,
                 'BUILD_VERSION': version,
-                'BUILD_ARCH': self.config.arch,
+                'BUILD_ARCH': self._arch,
                 **self.additional_args,
             }
         }

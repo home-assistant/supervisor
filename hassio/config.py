@@ -7,8 +7,9 @@ from pathlib import Path, PurePath
 from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
     ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_LAST_BOOT)
-from .tools import JsonConfig, parse_datetime
+    ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_LAST_BOOT, ATTR_WAIT_BOOT)
+from .utils.dt import parse_datetime
+from .utils.json import JsonConfig
 from .validate import SCHEMA_HASSIO_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,7 +36,6 @@ class CoreConfig(JsonConfig):
     def __init__(self):
         """Initialize config object."""
         super().__init__(FILE_HASSIO_CONFIG, SCHEMA_HASSIO_CONFIG)
-        self.arch = None
 
     @property
     def timezone(self):
@@ -46,6 +46,17 @@ class CoreConfig(JsonConfig):
     def timezone(self, value):
         """Set system timezone."""
         self._data[ATTR_TIMEZONE] = value
+        self.save()
+
+    @property
+    def wait_boot(self):
+        """Return wait time for auto boot stages."""
+        return self._data[ATTR_WAIT_BOOT]
+
+    @wait_boot.setter
+    def wait_boot(self, value):
+        """Set wait boot time."""
+        self._data[ATTR_WAIT_BOOT] = value
         self.save()
 
     @property

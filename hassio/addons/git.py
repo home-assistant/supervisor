@@ -7,33 +7,33 @@ import shutil
 
 import git
 
-from .util import get_hash_from_repository
+from .utils import get_hash_from_repository
 from ..const import URL_HASSIO_ADDONS
+from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class GitRepo(object):
+class GitRepo(CoreSysAttributes):
     """Manage addons git repo."""
 
-    def __init__(self, config, loop, path, url):
+    def __init__(self, coresys, path, url):
         """Initialize git base wrapper."""
-        self.config = config
-        self.loop = loop
+        self.coresys = coresys
         self.repo = None
         self.path = path
         self.url = url
-        self._lock = asyncio.Lock(loop=loop)
+        self.lock = asyncio.Lock(loop=coresys.loop)
 
     async def load(self):
         """Init git addon repo."""
         if not self.path.is_dir():
             return await self.clone()
 
-        async with self._lock:
+        async with self.lock:
             try:
                 _LOGGER.info("Load addon %s repository", self.path)
-                self.repo = await self.loop.run_in_executor(
+                self.repo = await self._loop.run_in_executor(
                     None, git.Repo, str(self.path))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
@@ -45,10 +45,10 @@ class GitRepo(object):
 
     async def clone(self):
         """Clone git addon repo."""
-        async with self._lock:
+        async with self.lock:
             try:
                 _LOGGER.info("Clone addon %s repository", self.url)
-                self.repo = await self.loop.run_in_executor(
+                self.repo = await self._loop.run_in_executor(
                     None, ft.partial(
                         git.Repo.clone_from, self.url, str(self.path),
                         recursive=True))
@@ -62,14 +62,14 @@ class GitRepo(object):
 
     async def pull(self):
         """Pull git addon repo."""
-        if self._lock.locked():
+        if self.lock.locked():
             _LOGGER.warning("It is already a task in progress.")
             return False
 
-        async with self._lock:
+        async with self.lock:
             try:
                 _LOGGER.info("Pull addon %s repository", self.url)
-                await self.loop.run_in_executor(
+                await self._loop.run_in_executor(
                     None, self.repo.remotes.origin.pull)
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
@@ -83,20 +83,22 @@ class GitRepo(object):
 class GitRepoHassIO(GitRepo):
     """HassIO addons repository."""
 
-    def __init__(self, config, loop):
+    def __init__(self, coresys):
         """Initialize git hassio addon repository."""
         super().__init__(
-            config, loop, config.path_addons_core, URL_HASSIO_ADDONS)
+            coresys, coresys.config.path_addons_core, URL_HASSIO_ADDONS)
 
 
 class GitRepoCustom(GitRepo):
     """Custom addons repository."""
 
-    def __init__(self, config, loop, url):
+    def __init__(self, coresys, url):
         """Initialize git hassio addon repository."""
-        path = Path(config.path_addons_git, get_hash_from_repository(url))
+        path = Path(
+            coresys.config.path_addons_git,
+            get_hash_from_repository(url))
 
-        super().__init__(config, loop, path, url)
+        super().__init__(coresys, path, url)
 
     def remove(self):
         """Remove a custom addon."""

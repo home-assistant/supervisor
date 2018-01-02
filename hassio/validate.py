@@ -8,12 +8,13 @@ from .const import (
     ATTR_TOTP, ATTR_SECURITY, ATTR_BETA_CHANNEL, ATTR_TIMEZONE,
     ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_HOMEASSISTANT, ATTR_HASSIO, ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL,
-    ATTR_PORT, ATTR_WATCHDOG)
+    ATTR_PORT, ATTR_WATCHDOG, ATTR_WAIT_BOOT)
 
 
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 HASS_DEVICES = [vol.Match(r"^[^/]*$")]
 ALSA_CHANNEL = vol.Match(r"\d+,\d+")
+WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 
 
 def validate_timezone(timezone):
@@ -90,4 +91,5 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
         vol.Schema({vol.Coerce(str): vol.Coerce(str)}),
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
+    vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,
 }, extra=vol.REMOVE_EXTRA)

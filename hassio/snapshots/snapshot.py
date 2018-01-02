@@ -10,23 +10,23 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
-from .util import remove_folder
+from .utils import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_DEVICES,
     ATTR_IMAGE, ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT)
-from ..tools import write_json_file
+from ..coresys import CoreSysAttributes
+from ..utils.json import write_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Snapshot(object):
+class Snapshot(CoreSysAttributes):
     """A signle hassio snapshot."""
 
-    def __init__(self, config, loop, tar_file):
+    def __init__(self, coresys, tar_file):
         """Initialize a snapshot."""
-        self.loop = loop
-        self.config = config
+        self.coresys = coresys
         self.tar_file = tar_file
         self._data = {}
         self._tmp = None
@@ -166,43 +166,8 @@ class Snapshot(object):
         self._data[ATTR_DATE] = date
         self._data[ATTR_TYPE] = sys_type
 
-        # init other constructs
-        self._data[ATTR_HOMEASSISTANT] = {}
-        self._data[ATTR_ADDONS] = []
-        self._data[ATTR_REPOSITORIES] = []
-        self._data[ATTR_FOLDERS] = []
-
-    def snapshot_homeassistant(self, homeassistant):
-        """Read all data from homeassistant object."""
-        self.homeassistant_version = homeassistant.version
-        self.homeassistant_devices = homeassistant.devices
-        self.homeassistant_watchdog = homeassistant.watchdog
-        self.homeassistant_boot = homeassistant.boot
-
-        # custom image
-        if homeassistant.is_custom_image:
-            self.homeassistant_image = homeassistant.image
-
-        # api
-        self.homeassistant_port = homeassistant.api_port
-        self.homeassistant_ssl = homeassistant.api_ssl
-        self.homeassistant_password = homeassistant.api_password
-
-    def restore_homeassistant(self, homeassistant):
-        """Write all data to homeassistant object."""
-        homeassistant.devices = self.homeassistant_devices
-        homeassistant.watchdog = self.homeassistant_watchdog
-        homeassistant.boot = self.homeassistant_boot
-
-        # custom image
-        if self.homeassistant_image:
-            homeassistant.set_custom(
-                self.homeassistant_image, self.homeassistant_version)
-
-        # api
-        homeassistant.api_port = self.homeassistant_port
-        homeassistant.api_ssl = self.homeassistant_ssl
-        homeassistant.api_password = self.homeassistant_password
+        # Add defaults
+        self._data = SCHEMA_SNAPSHOT(self._data)
 
     async def load(self):
         """Read snapshot.json from tar file."""
@@ -218,24 +183,24 @@ class Snapshot(object):
 
         # read snapshot.json
         try:
-            raw = await self.loop.run_in_executor(None, _load_file)
+            raw = await self._loop.run_in_executor(None, _load_file)
         except (tarfile.TarError, KeyError) as err:
             _LOGGER.error(
-                "Can't read snapshot tarfile %s -> %s", self.tar_file, err)
+                "Can't read snapshot tarfile %s: %s", self.tar_file, err)
             return False
 
         # parse data
         try:
             raw_dict = json.loads(raw)
         except json.JSONDecodeError as err:
-            _LOGGER.error("Can't read data for %s -> %s", self.tar_file, err)
+            _LOGGER.error("Can't read data for %s: %s", self.tar_file, err)
             return False
 
         # validate
         try:
             self._data = SCHEMA_SNAPSHOT(raw_dict)
         except vol.Invalid as err:
-            _LOGGER.error("Can't validate data for %s -> %s", self.tar_file,
+            _LOGGER.error("Can't validate data for %s: %s", self.tar_file,
                           humanize_error(raw_dict, err))
             return False
 
@@ -243,7 +208,7 @@ class Snapshot(object):
 
     async def __aenter__(self):
         """Async context to open a snapshot."""
-        self._tmp = TemporaryDirectory(dir=str(self.config.path_tmp))
+        self._tmp = TemporaryDirectory(dir=str(self._config.path_tmp))
 
         # create a snapshot
         if not self.tar_file.is_file():
@@ -255,7 +220,7 @@ class Snapshot(object):
             with tarfile.open(self.tar_file, "r:") as tar:
                 tar.extractall(path=self._tmp.name)
 
-        await self.loop.run_in_executor(None, _extract_snapshot)
+        await self._loop.run_in_executor(None, _extract_snapshot)
 
     async def __aexit__(self, exception_type, exception_value, traceback):
         """Async context to close a snapshot."""
@@ -268,7 +233,7 @@ class Snapshot(object):
         try:
             self._data = SCHEMA_SNAPSHOT(self._data)
         except vol.Invalid as err:
-            _LOGGER.error("Invalid data for %s -> %s", self.tar_file,
+            _LOGGER.error("Invalid data for %s: %s", self.tar_file,
                           humanize_error(self._data, err))
             raise ValueError("Invalid config") from None
 
@@ -279,7 +244,7 @@ class Snapshot(object):
                 tar.add(self._tmp.name, arcname=".")
 
         if write_json_file(Path(self._tmp.name, "snapshot.json"), self._data):
-            await self.loop.run_in_executor(None, _create_snapshot)
+            await self._loop.run_in_executor(None, _create_snapshot)
         else:
             _LOGGER.error("Can't write snapshot.json")
 
@@ -320,7 +285,7 @@ class Snapshot(object):
             """Intenal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
             snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
-            origin_dir = Path(self.config.path_hassio, name)
+            origin_dir = Path(self._config.path_hassio, name)
 
             try:
                 _LOGGER.info("Snapshot folder %s", name)
@@ -331,13 +296,13 @@ class Snapshot(object):
 
                 self._data[ATTR_FOLDERS].append(name)
             except tarfile.TarError as err:
-                _LOGGER.warning("Can't snapshot folder %s -> %s", name, err)
+                _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
 
         # run tasks
-        tasks = [self.loop.run_in_executor(None, _folder_save, folder)
+        tasks = [self._loop.run_in_executor(None, _folder_save, folder)
                  for folder in folder_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self.loop)
+            await asyncio.wait(tasks, loop=self._loop)
 
     async def restore_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
@@ -347,7 +312,7 @@ class Snapshot(object):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
             snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
-            origin_dir = Path(self.config.path_hassio, name)
+            origin_dir = Path(self._config.path_hassio, name)
 
             # clean old stuff
             if origin_dir.is_dir():
@@ -359,10 +324,53 @@ class Snapshot(object):
                     tar_file.extractall(path=origin_dir)
                     _LOGGER.info("Restore folder %s done", name)
             except tarfile.TarError as err:
-                _LOGGER.warning("Can't restore folder %s -> %s", name, err)
+                _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
         # run tasks
-        tasks = [self.loop.run_in_executor(None, _folder_restore, folder)
+        tasks = [self._loop.run_in_executor(None, _folder_restore, folder)
                  for folder in folder_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self.loop)
+            await asyncio.wait(tasks, loop=self._loop)
+
+    def store_homeassistant(self):
+        """Read all data from homeassistant object."""
+        self.homeassistant_version = self._homeassistant.version
+        self.homeassistant_devices = self._homeassistant.devices
+        self.homeassistant_watchdog = self._homeassistant.watchdog
+        self.homeassistant_boot = self._homeassistant.boot
+
+        # custom image
+        if self._homeassistant.is_custom_image:
+            self.homeassistant_image = self._homeassistant.image
+
+        # api
+        self.homeassistant_port = self._homeassistant.api_port
+        self.homeassistant_ssl = self._homeassistant.api_ssl
+        self.homeassistant_password = self._homeassistant.api_password
+
+    def restore_homeassistant(self):
+        """Write all data to homeassistant object."""
+        self._homeassistant.devices = self.homeassistant_devices
+        self._homeassistant.watchdog = self.homeassistant_watchdog
+        self._homeassistant.boot = self.homeassistant_boot
+
+        # custom image
+        if self.homeassistant_image:
+            self._homeassistant.set_custom(
+                self.homeassistant_image, self.homeassistant_version)
+
+        # api
+        self._homeassistant.api_port = self.homeassistant_port
+        self._homeassistant.api_ssl = self.homeassistant_ssl
+        self._homeassistant.api_password = self.homeassistant_password
+
+    def store_repositories(self):
+        """Store repository list into snapshot."""
+        self.repositories = self._config.addons_repositories
+
+    def restore_repositories(self):
+        """Restore repositories from snapshot.
+
+        Return a coroutine.
+        """
+        return self._addons.load_repositories(self.repositories)

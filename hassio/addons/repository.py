@@ -1,18 +1,19 @@
 """Represent a HassIO repository."""
 from .git import GitRepoHassIO, GitRepoCustom
-from .util import get_hash_from_repository
+from .utils import get_hash_from_repository
 from ..const import (
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_NAME, ATTR_URL, ATTR_MAINTAINER)
+from ..coresys import CoreSysAttributes
 
 UNKNOWN = 'unknown'
 
 
-class Repository(object):
+class Repository(CoreSysAttributes):
     """Repository in HassIO."""
 
-    def __init__(self, config, loop, data, repository):
+    def __init__(self, coresys, repository):
         """Initialize repository object."""
-        self.data = data
+        self.coresys = coresys
         self.source = None
         self.git = None
 
@@ -20,16 +21,16 @@ class Repository(object):
             self._id = repository
         elif repository == REPOSITORY_CORE:
             self._id = repository
-            self.git = GitRepoHassIO(config, loop)
+            self.git = GitRepoHassIO(coresys)
         else:
             self._id = get_hash_from_repository(repository)
-            self.git = GitRepoCustom(config, loop, repository)
+            self.git = GitRepoCustom(coresys, repository)
             self.source = repository
 
     @property
     def _mesh(self):
         """Return data struct repository."""
-        return self.data.repositories.get(self._id, {})
+        return self._addons.data.repositories.get(self._id, {})
 
     @property
     def slug(self):

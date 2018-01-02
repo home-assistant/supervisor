@@ -66,7 +66,7 @@ class DockerNetwork(object):
         try:
             self.network.connect(container, aliases=alias, ipv4_address=ipv4)
         except docker.errors.APIError as err:
-            _LOGGER.error("Can't link container to hassio-net -> %s", err)
+            _LOGGER.error("Can't link container to hassio-net: %s", err)
             return False
 
         self.network.reload()
@@ -86,4 +86,4 @@ class DockerNetwork(object):
 
         except docker.errors.APIError as err:
             _LOGGER.warning(
-                "Can't disconnect container from default -> %s", err)
+                "Can't disconnect container from default: %s", err)
