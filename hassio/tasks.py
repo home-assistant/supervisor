@@ -50,9 +50,9 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(self._scheduler.register_task(
             self._watchdog_homeassistant_docker,
             self.RUN_WATCHDOG_HOMEASSISTANT_DOCKER))
-        # self.jobs.add(self._scheduler.register_task(
-        #    self._watchdog_homeassistant_api,
-        #    self.RUN_WATCHDOG_HOMEASSISTANT_API))
+        self.jobs.add(self._scheduler.register_task(
+            self._watchdog_homeassistant_api,
+            self.RUN_WATCHDOG_HOMEASSISTANT_API))
 
     async def _cleanup_sessions(self):
         """Cleanup old api sessions."""
@@ -118,18 +118,18 @@ class Tasks(CoreSysAttributes):
         """
         retry_scan = self._data.get('HASS_WATCHDOG_API', 0)
 
-        # if Home-Assistant is active
+        # If Home-Assistant is active
         if not await self._homeassistant.is_initialize() or \
                 not self._homeassistant.watchdog:
             return
 
-        # if Home-Assistant API is up
+        # If Home-Assistant API is up
         if self._homeassistant.in_progress or \
                 await self._homeassistant.check_api_state():
             return
-        retry_scan += 1
 
-        # Retry active
+        # Look like we run into a problem
+        retry_scan += 1
         if retry_scan == 1:
             self._data['HASS_WATCHDOG_API'] = retry_scan
             _LOGGER.warning("Watchdog miss API response from Home-Assistant")

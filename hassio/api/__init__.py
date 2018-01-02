@@ -173,7 +173,7 @@ class RestAPI(CoreSysAttributes):
         """Register panel for homeassistant."""
         def create_panel_response(build_type):
             """Create a function to generate a response."""
-            path = Path(__file__).joinpath(
+            path = Path(__file__).parent.joinpath(
                 'panel/hassio-main-{}.html'.format(build_type))
 
             return lambda request: web.FileResponse(path)
