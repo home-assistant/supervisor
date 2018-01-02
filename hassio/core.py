@@ -38,6 +38,9 @@ class HassIO(CoreSysAttributes):
         # rest api views
         await self._api.load()
 
+        # load last available data
+        await self._updater.load()
+
         # start dns forwarding
         self._loop.create_task(self._dns.start())
 

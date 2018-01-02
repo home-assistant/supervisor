@@ -26,6 +26,13 @@ class Updater(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
         self.coresys = coresys
 
+    def load(self):
+        """Update internal data.
+
+        Return a coroutine.
+        """
+        return self.reload()
+
     @property
     def version_homeassistant(self):
         """Return last version of homeassistant."""
