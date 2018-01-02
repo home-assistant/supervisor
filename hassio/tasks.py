@@ -27,21 +27,26 @@ class Tasks(CoreSysAttributes):
     def __ini__(self, coresys):
         """Initialize Tasks."""
         self.coresys = coresys
-        self._tasks = set()
+        self.jobs = set()
         self._data = {}
 
-    async def prepare(self):
+    async def load(self):
         """Add Tasks to scheduler."""
 
-        self._tasks.add(self._scheduler.register_task(
+        self.jobs.add(self._scheduler.register_task(
             self._update_addons, self.RUN_UPDATE_ADDONS))
-        self._tasks.add(self._scheduler.register_task(
+        self.jobs.add(self._scheduler.register_task(
             self._update_supervisor, self.RUN_UPDATE_SUPERVISOR))
 
-        self._tasks.add(self._scheduler.register_task(
+        self.jobs.add(self._scheduler.register_task(
             self._addons.reload, self.RUN_RELOAD_ADDONS))
-        self._tasks.add(self._scheduler.register_task(
+        self.jobs.add(self._scheduler.register_task(
             self._updater.reload, self.RUN_RELOAD_UPDATER))
+        self.jobs.add(self._scheduler.register_task(
+            self._snapshots.reload, self.RUN_RELOAD_SNAPSHOTS))
+        self.jobs.add(self._scheduler.register_task(
+            self._host_control.load, self.RUN_RELOAD_HOST_CONTROL))
+
 
     async def _cleanup_sessions(self):
         """Cleanup old api sessions."""

@@ -24,19 +24,19 @@ class HassIO(CoreSysAttributes):
             self._config.timezone = await fetch_timezone(self._websession)
 
         # supervisor
-        await self._supervisor.prepare()
+        await self._supervisor.load()
 
         # hostcontrol
-        await self._host_control.prepare()
+        await self._host_control.load()
 
         # Load homeassistant
-        await self._homeassistant.prepare()
+        await self._homeassistant.load()
 
         # Load addons
-        await self._addons.prepare()
+        await self._addons.load()
 
         # rest api views
-        await self._api.prepare()
+        await self._api.load()
 
         # start dns forwarding
         self._loop.create_task(self._dns.start())
@@ -81,7 +81,7 @@ class HassIO(CoreSysAttributes):
 
         finally:
             # Add core tasks into scheduler
-            await self._tasks.prepare()
+            await self._tasks.load()
 
             # If landingpage / run upgrade in background
             if self._homeassistant.version == 'landingpage':

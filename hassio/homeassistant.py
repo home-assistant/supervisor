@@ -31,7 +31,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self.coresys = coresys
         self.instance = DockerHomeAssistant(coresys)
 
-    async def prepare(self):
+    async def load(self):
         """Prepare HomeAssistant object."""
         if not await self.instance.exists():
             _LOGGER.info("No HomeAssistant docker %s found.", self.image)

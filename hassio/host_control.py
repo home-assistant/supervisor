@@ -80,7 +80,7 @@ class HostControl(object):
         finally:
             writer.close()
 
-    async def prepare(self):
+    async def load(self):
         """Load Info from host.
 
         Return a coroutine.

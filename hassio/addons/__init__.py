@@ -37,7 +37,7 @@ class AddonManager(CoreSysAttributes):
         """Return a adddon from slug."""
         return self.addons_obj.get(addon_slug)
 
-    async def prepare(self):
+    async def load(self):
         """Startup addon management."""
         self.data.reload()
 

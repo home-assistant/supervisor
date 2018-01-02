@@ -19,7 +19,7 @@ class DockerInterface(CoreSysAttributes):
         """Initialize docker base wrapper."""
         self.coresys = coresys
         self._meta = None
-        self._lock = asyncio.Lock(loop=self._loop)
+        self. = asyncio.Lock(loop=self._loop)
 
     @property
     def timeout(self):
@@ -55,7 +55,7 @@ class DockerInterface(CoreSysAttributes):
     @property
     def in_progress(self):
         """Return True if a task is in progress."""
-        return self._lock.locked()
+        return self..locked()
 
     @docker_process
     def install(self, tag):

@@ -15,7 +15,7 @@ class Supervisor(CoreSysAttributes):
         self.coresys = coresys
         self.instance = DockerSupervisor(coresys)
 
-    async def prepare(self):
+    async def load(self):
         """Prepare HomeAssistant object."""
         if not await self.instance.attach():
             _LOGGER.fatal("Can't setup supervisor docker container!")
