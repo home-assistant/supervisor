@@ -26,6 +26,7 @@ class Snapshot(CoreSysAttributes):
 
     def __init__(self, coresys, tar_file):
         """Initialize a snapshot."""
+        self.coresys = coresys
         self.tar_file = tar_file
         self._data = {}
         self._tmp = None
