@@ -183,7 +183,7 @@ class Snapshot(CoreSysAttributes):
 
         # read snapshot.json
         try:
-            raw = await self.loop.run_in_executor(None, _load_file)
+            raw = await self._loop.run_in_executor(None, _load_file)
         except (tarfile.TarError, KeyError) as err:
             _LOGGER.error(
                 "Can't read snapshot tarfile %s: %s", self.tar_file, err)
@@ -208,7 +208,7 @@ class Snapshot(CoreSysAttributes):
 
     async def __aenter__(self):
         """Async context to open a snapshot."""
-        self._tmp = TemporaryDirectory(dir=str(self.config.path_tmp))
+        self._tmp = TemporaryDirectory(dir=str(self._config.path_tmp))
 
         # create a snapshot
         if not self.tar_file.is_file():
@@ -220,7 +220,7 @@ class Snapshot(CoreSysAttributes):
             with tarfile.open(self.tar_file, "r:") as tar:
                 tar.extractall(path=self._tmp.name)
 
-        await self.loop.run_in_executor(None, _extract_snapshot)
+        await self._loop.run_in_executor(None, _extract_snapshot)
 
     async def __aexit__(self, exception_type, exception_value, traceback):
         """Async context to close a snapshot."""
@@ -244,7 +244,7 @@ class Snapshot(CoreSysAttributes):
                 tar.add(self._tmp.name, arcname=".")
 
         if write_json_file(Path(self._tmp.name, "snapshot.json"), self._data):
-            await self.loop.run_in_executor(None, _create_snapshot)
+            await self._loop.run_in_executor(None, _create_snapshot)
         else:
             _LOGGER.error("Can't write snapshot.json")
 
@@ -285,7 +285,7 @@ class Snapshot(CoreSysAttributes):
             """Intenal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
             snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
-            origin_dir = Path(self.config.path_hassio, name)
+            origin_dir = Path(self._config.path_hassio, name)
 
             try:
                 _LOGGER.info("Snapshot folder %s", name)
@@ -299,10 +299,10 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
 
         # run tasks
-        tasks = [self.loop.run_in_executor(None, _folder_save, folder)
+        tasks = [self._loop.run_in_executor(None, _folder_save, folder)
                  for folder in folder_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self.loop)
+            await asyncio.wait(tasks, loop=self._loop)
 
     async def restore_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
@@ -312,7 +312,7 @@ class Snapshot(CoreSysAttributes):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
             snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
-            origin_dir = Path(self.config.path_hassio, name)
+            origin_dir = Path(self._config.path_hassio, name)
 
             # clean old stuff
             if origin_dir.is_dir():
@@ -327,10 +327,10 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
         # run tasks
-        tasks = [self.loop.run_in_executor(None, _folder_restore, folder)
+        tasks = [self._loop.run_in_executor(None, _folder_restore, folder)
                  for folder in folder_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self.loop)
+            await asyncio.wait(tasks, loop=self._loop)
 
     def store_homeassistant(self):
         """Read all data from homeassistant object."""
