@@ -698,6 +698,7 @@ class Addon(CoreSysAttributes):
                 return False
 
             # restore data / reload addon
+            _LOGGER.info("Restore config for addon %s", self._id)
             self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM])
 
             # check version / restore image
