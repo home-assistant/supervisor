@@ -49,6 +49,7 @@ class Supervisor(CoreSysAttributes):
             _LOGGER.info("Version %s is already installed", version)
             return
 
+        _LOGGER.info("Update supervisor to version %s", version)
         if await self.instance.install(version):
             self._loop.call_later(1, self._loop.stop)
         else:
