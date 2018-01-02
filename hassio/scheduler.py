@@ -53,7 +53,7 @@ class Scheduler(object):
 
     def _schedule_task(self, interval, task_id):
         """Schedule a task on loop."""
-        if isinstance(interval, int):
+        if isinstance(interval, (int, float)):
             job = self.loop.call_later(interval, self._run_task, task_id)
         if isinstance(interval, time):
             today = datetime.combine(date.today(), interval)
@@ -68,7 +68,8 @@ class Scheduler(object):
 
             job = self.loop.call_at(calc.timestamp(), self._run_task, task_id)
         else:
-            _LOGGER.fatal("Unknow interval {interval} for scheduler {task_id}")
+            _LOGGER.fatal("Unknow interval %s (type: %s) for scheduler %s",
+                          interval, type(interval), task_id)
 
         # Store job
         self._data[task_id][TASK] = job

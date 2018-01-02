@@ -99,7 +99,7 @@ class DockerHomeAssistant(DockerInterface):
 
     def is_initialize(self):
         """Return True if docker container exists."""
-        return self.loop.run_in_executor(None, self._is_initialize)
+        return self._loop.run_in_executor(None, self._is_initialize)
 
     def _is_initialize(self):
         """Return True if docker container exists.
