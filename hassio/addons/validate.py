@@ -57,7 +57,9 @@ STARTUP_ALL = [
 PRIVILEGED_ALL = [
     "NET_ADMIN",
     "SYS_ADMIN",
-    "SYS_RAWIO"
+    "SYS_RAWIO",
+    "SYS_TIME",
+    "SYS_NICE"
 ]
 
 BASE_IMAGE = {
