@@ -703,7 +703,7 @@ class Addon(CoreSysAttributes):
 
             # check version / restore image
             version = data[ATTR_VERSION]
-            if version != self.instance.version:
+            if not await self.instance.exists():
                 _LOGGER.info("Restore image for addon %s", self._id)
                 image_file = Path(temp, "image.tar")
                 if image_file.is_file():
