@@ -100,8 +100,8 @@ class DockerAddon(DockerInterface):
 
         # Auto mapping UART devices
         if self.addon.auto_uart:
-            for uart_dev in self._hardware.serial_devices:
-                devices.append("{0}:{0}:rwm".format(uart_dev))
+            for device in self._hardware.serial_devices:
+                devices.append(f"{device}:{device}:rwm")
 
         # Return None if no devices is present
         return devices or None
@@ -135,7 +135,7 @@ class DockerAddon(DockerInterface):
         """Return tmpfs for docker add-on."""
         options = self.addon.tmpfs
         if options:
-            return {"/tmpfs": "{}".format(options)}
+            return {"/tmpfs": f"{options}"}
         return None
 
     @property

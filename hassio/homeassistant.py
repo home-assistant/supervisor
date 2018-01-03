@@ -8,8 +8,8 @@ import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
 
 from .const import (
-    FILE_HASSIO_HOMEASSISTANT, ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION,
-    ATTR_VERSION, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
+    FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_VERSION,
+    ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
     HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
@@ -121,17 +121,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def is_custom_image(self):
         """Return True if a custom image is used."""
         return ATTR_IMAGE in self._data
-
-    @property
-    def devices(self):
-        """Return extend device mapping."""
-        return self._data[ATTR_DEVICES]
-
-    @devices.setter
-    def devices(self, value):
-        """Set extend device mapping."""
-        self._data[ATTR_DEVICES] = value
-        self.save()
 
     @property
     def boot(self):

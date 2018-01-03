@@ -4,15 +4,14 @@ import voluptuous as vol
 import pytz
 
 from .const import (
-    ATTR_DEVICES, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_SESSIONS, ATTR_PASSWORD,
-    ATTR_TOTP, ATTR_SECURITY, ATTR_BETA_CHANNEL, ATTR_TIMEZONE,
-    ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
-    ATTR_HOMEASSISTANT, ATTR_HASSIO, ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL,
-    ATTR_PORT, ATTR_WATCHDOG, ATTR_WAIT_BOOT)
+    ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_SESSIONS, ATTR_PASSWORD, ATTR_TOTP,
+    ATTR_SECURITY, ATTR_BETA_CHANNEL, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT, ATTR_HOMEASSISTANT, ATTR_HASSIO,
+    ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG,
+    ATTR_WAIT_BOOT)
 
 
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
-HASS_DEVICES = [vol.Match(r"^[^/]*$")]
 ALSA_CHANNEL = vol.Match(r"\d+,\d+")
 WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 
@@ -60,7 +59,6 @@ DOCKER_PORTS = vol.Schema({
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASS_CONFIG = vol.Schema({
-    vol.Optional(ATTR_DEVICES, default=[]): HASS_DEVICES,
     vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Coerce(str),
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),

@@ -13,8 +13,8 @@ from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
 from .utils import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_DEVICES,
-    ATTR_IMAGE, ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT)
+    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
+    ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
 
@@ -80,16 +80,6 @@ class Snapshot(CoreSysAttributes):
     def homeassistant_version(self, value):
         """Set snapshot homeassistant version."""
         self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
-
-    @property
-    def homeassistant_devices(self):
-        """Return snapshot homeassistant devices."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_DEVICES)
-
-    @homeassistant_devices.setter
-    def homeassistant_devices(self, value):
-        """Set snapshot homeassistant devices."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_DEVICES] = value
 
     @property
     def homeassistant_image(self):
@@ -335,7 +325,6 @@ class Snapshot(CoreSysAttributes):
     def store_homeassistant(self):
         """Read all data from homeassistant object."""
         self.homeassistant_version = self._homeassistant.version
-        self.homeassistant_devices = self._homeassistant.devices
         self.homeassistant_watchdog = self._homeassistant.watchdog
         self.homeassistant_boot = self._homeassistant.boot
 
@@ -350,7 +339,6 @@ class Snapshot(CoreSysAttributes):
 
     def restore_homeassistant(self):
         """Write all data to homeassistant object."""
-        self._homeassistant.devices = self.homeassistant_devices
         self._homeassistant.watchdog = self.homeassistant_watchdog
         self._homeassistant.boot = self.homeassistant_boot
 

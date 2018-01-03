@@ -9,7 +9,7 @@ from ..snapshots.validate import ALL_FOLDERS
 from ..const import (
     ATTR_NAME, ATTR_SLUG, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS, ATTR_TYPE,
-    ATTR_DEVICES, ATTR_SNAPSHOTS)
+    ATTR_SNAPSHOTS)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -82,10 +82,7 @@ class APISnapshots(CoreSysAttributes):
             ATTR_NAME: snapshot.name,
             ATTR_DATE: snapshot.date,
             ATTR_SIZE: snapshot.size,
-            ATTR_HOMEASSISTANT: {
-                ATTR_VERSION: snapshot.homeassistant_version,
-                ATTR_DEVICES: snapshot.homeassistant_devices,
-            },
+            ATTR_HOMEASSISTANT: snapshot.homeassistant_version,
             ATTR_ADDONS: data_addons,
             ATTR_REPOSITORIES: snapshot.repositories,
             ATTR_FOLDERS: snapshot.folders,
