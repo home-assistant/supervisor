@@ -324,7 +324,7 @@ class DockerAddon(DockerInterface):
         """
         try:
             with tar_file.open("rb") as read_tar:
-                self._docker.api.load_image(read_tar)
+                self._docker.api.load_image(read_tar, quiet=True)
 
             image = self._docker.images.get(self.image)
             image.tag(self.image, tag=tag)
