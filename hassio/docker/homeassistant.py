@@ -28,7 +28,7 @@ class DockerHomeAssistant(DockerInterface):
         """Create list of special device to map into docker."""
         devices = []
         for device in self._hardware.serial_devices:
-            devices.append(f"/dev/{device}:/dev/{device}:rwm")
+            devices.append(f"{device}:{device}:rwm")
         return devices or None
 
     def _run(self):
