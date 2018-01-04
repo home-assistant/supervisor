@@ -81,7 +81,9 @@ SCHEMA_UPDATER_CONFIG = vol.Schema({
 SCHEMA_HASSIO_CONFIG = vol.Schema({
     vol.Optional(ATTR_TIMEZONE, default='UTC'): validate_timezone,
     vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
-    vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[]): [vol.Url()],
+    vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[
+        "https://github.com/hassio-addons/repository",
+    ]): [vol.Url()],
     vol.Optional(ATTR_SECURITY, default=False): vol.Boolean(),
     vol.Optional(ATTR_TOTP): vol.Coerce(str),
     vol.Optional(ATTR_PASSWORD): vol.Coerce(str),
