@@ -33,7 +33,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def load(self):
         """Prepare HomeAssistant object."""
-        if not await self.instance.attach():
+        if await self.instance.attach():
             return
 
         _LOGGER.info("No HomeAssistant docker %s found.", self.image)
