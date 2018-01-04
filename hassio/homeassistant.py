@@ -67,7 +67,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def api_password(self, value):
         """Set password for home-assistant instance."""
         self._data[ATTR_PASSWORD] = value
-        self.save()
 
     @property
     def api_ssl(self):
@@ -78,7 +77,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def api_ssl(self, value):
         """Set SSL for home-assistant instance."""
         self._data[ATTR_SSL] = value
-        self.save()
 
     @property
     def api_url(self):
@@ -96,7 +94,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def watchdog(self, value):
         """Return True if the watchdog should protect Home-Assistant."""
         self._data[ATTR_WATCHDOG] = value
-        self.save()
 
     @property
     def version(self):
@@ -148,7 +145,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def boot(self, value):
         """Set home-assistant boot options."""
         self._data[ATTR_BOOT] = value
-        self.save()
 
     async def install_landingpage(self):
         """Install a landingpage."""
