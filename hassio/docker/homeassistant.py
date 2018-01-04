@@ -26,14 +26,10 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def devices(self):
         """Create list of special device to map into docker."""
-        if not self._homeassistant.devices:
-            return None
-
         devices = []
-        for device in self._homeassistant.devices:
-            devices.append("/dev/{0}:/dev/{0}:rwm".format(device))
-
-        return devices
+        for device in self._hardware.serial_devices:
+            devices.append(f"{device}:{device}:rwm")
+        return devices or None
 
     def _run(self):
         """Run docker image.

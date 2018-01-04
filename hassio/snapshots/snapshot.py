@@ -13,8 +13,9 @@ from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
 from .utils import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_DEVICES,
-    ATTR_IMAGE, ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT)
+    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
+    ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT,
+    ATTR_LAST_VERSION)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
 
@@ -82,14 +83,14 @@ class Snapshot(CoreSysAttributes):
         self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
 
     @property
-    def homeassistant_devices(self):
-        """Return snapshot homeassistant devices."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_DEVICES)
+    def homeassistant_last_version(self):
+        """Return snapshot homeassistant last version (custom)."""
+        return self._data[ATTR_HOMEASSISTANT].get(ATTR_LAST_VERSION)
 
-    @homeassistant_devices.setter
-    def homeassistant_devices(self, value):
-        """Set snapshot homeassistant devices."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_DEVICES] = value
+    @homeassistant_last_version.setter
+    def homeassistant_last_version(self, value):
+        """Set snapshot homeassistant last version (custom)."""
+        self._data[ATTR_HOMEASSISTANT][ATTR_LAST_VERSION] = value
 
     @property
     def homeassistant_image(self):
@@ -335,13 +336,13 @@ class Snapshot(CoreSysAttributes):
     def store_homeassistant(self):
         """Read all data from homeassistant object."""
         self.homeassistant_version = self._homeassistant.version
-        self.homeassistant_devices = self._homeassistant.devices
         self.homeassistant_watchdog = self._homeassistant.watchdog
         self.homeassistant_boot = self._homeassistant.boot
 
         # custom image
         if self._homeassistant.is_custom_image:
             self.homeassistant_image = self._homeassistant.image
+            self.homeassistant_last_version = self._homeassistant.last_version
 
         # api
         self.homeassistant_port = self._homeassistant.api_port
@@ -350,19 +351,21 @@ class Snapshot(CoreSysAttributes):
 
     def restore_homeassistant(self):
         """Write all data to homeassistant object."""
-        self._homeassistant.devices = self.homeassistant_devices
         self._homeassistant.watchdog = self.homeassistant_watchdog
         self._homeassistant.boot = self.homeassistant_boot
 
         # custom image
         if self.homeassistant_image:
-            self._homeassistant.set_custom(
-                self.homeassistant_image, self.homeassistant_version)
+            self._homeassistant.image = self.homeassistant_image
+            self._homeassistant.last_version = self.homeassistant_last_version
 
         # api
         self._homeassistant.api_port = self.homeassistant_port
         self._homeassistant.api_ssl = self.homeassistant_ssl
         self._homeassistant.api_password = self.homeassistant_password
+
+        # save
+        self._homeassistant.save()
 
     def store_repositories(self):
         """Store repository list into snapshot."""

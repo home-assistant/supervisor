@@ -6,20 +6,19 @@ import voluptuous as vol
 
 from .utils import api_process, api_process_raw, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_DEVICES, ATTR_IMAGE, ATTR_CUSTOM,
-    ATTR_BOOT, ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG,
-    CONTENT_TYPE_BINARY)
+    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_IMAGE, ATTR_CUSTOM, ATTR_BOOT,
+    ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
-from ..validate import HASS_DEVICES, NETWORK_PORT
+from ..validate import NETWORK_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_DEVICES): HASS_DEVICES,
     vol.Optional(ATTR_BOOT): vol.Boolean(),
-    vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Any(None, vol.Coerce(str)),
+    vol.Inclusive(ATTR_IMAGE, 'custom_hass'):
+        vol.Any(None, vol.Coerce(str)),
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'):
         vol.Any(None, vol.Coerce(str)),
     vol.Optional(ATTR_PORT): NETWORK_PORT,
@@ -43,7 +42,6 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_VERSION: self._homeassistant.version,
             ATTR_LAST_VERSION: self._homeassistant.last_version,
             ATTR_IMAGE: self._homeassistant.image,
-            ATTR_DEVICES: self._homeassistant.devices,
             ATTR_CUSTOM: self._homeassistant.is_custom_image,
             ATTR_BOOT: self._homeassistant.boot,
             ATTR_PORT: self._homeassistant.api_port,
@@ -56,12 +54,9 @@ class APIHomeAssistant(CoreSysAttributes):
         """Set homeassistant options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_DEVICES in body:
-            self._homeassistant.devices = body[ATTR_DEVICES]
-
-        if ATTR_IMAGE in body:
-            self._homeassistant.set_custom(
-                body[ATTR_IMAGE], body[ATTR_LAST_VERSION])
+        if ATTR_IMAGE in body and ATTR_LAST_VERSION in body:
+            self._homeassistant.image = body[ATTR_IMAGE]
+            self._homeassistant.last_version = body[ATTR_LAST_VERSION]
 
         if ATTR_BOOT in body:
             self._homeassistant.boot = body[ATTR_BOOT]
@@ -78,6 +73,7 @@ class APIHomeAssistant(CoreSysAttributes):
         if ATTR_WATCHDOG in body:
             self._homeassistant.watchdog = body[ATTR_WATCHDOG]
 
+        self._homeassistant.save()
         return True
 
     @api_process
