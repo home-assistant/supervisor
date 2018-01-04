@@ -183,7 +183,7 @@ SCHEMA_ADDON_SNAPSHOT = vol.Schema({
     vol.Required(ATTR_SYSTEM): SCHEMA_ADDON_SYSTEM,
     vol.Required(ATTR_STATE): vol.In([STATE_STARTED, STATE_STOPPED]),
     vol.Required(ATTR_VERSION): vol.Coerce(str),
-})
+}, extra=vol.REMOVE_EXTRA)
 
 
 def validate_options(raw_schema):

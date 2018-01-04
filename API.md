@@ -71,10 +71,10 @@ Optional:
 {
     "beta_channel": "true|false",
     "timezone": "TIMEZONE",
+    "wait_boot": "int",
     "addons_repositories": [
         "REPO_URL"
-    ],
-    "wait_boot": "int"
+    ]
 }
 ```
 
@@ -170,10 +170,7 @@ Return QR-Code
     "name": "custom snapshot name / description",
     "date": "ISO",
     "size": "SIZE_IN_MB",
-    "homeassistant": {
-      "version": "INSTALLED_HASS_VERSION",
-      "devices": []
-    },
+    "homeassistant": "version",
     "addons": [
         {
             "slug": "ADDON_SLUG",
@@ -286,7 +283,6 @@ Optional:
 {
     "version": "INSTALL_VERSION",
     "last_version": "LAST_VERSION",
-    "devices": [""],
     "image": "str",
     "custom": "bool -> if custom image",
     "boot": "bool",
@@ -319,7 +315,6 @@ Output is the raw Docker log.
 
 ```json
 {
-    "devices": [],
     "image": "Optional|null",
     "last_version": "Optional for custom image|null",
     "port": "port for access hass",
