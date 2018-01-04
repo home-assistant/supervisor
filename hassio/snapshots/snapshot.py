@@ -363,7 +363,7 @@ class Snapshot(CoreSysAttributes):
         self._homeassistant.api_port = self.homeassistant_port
         self._homeassistant.api_ssl = self.homeassistant_ssl
         self._homeassistant.api_password = self.homeassistant_password
-        
+
         # save
         self._homeassistant.save()
 
