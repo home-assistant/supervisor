@@ -54,7 +54,7 @@ class APIHomeAssistant(CoreSysAttributes):
         """Set homeassistant options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_IMAGE in body and ATTR_VERSION in body:
+        if ATTR_IMAGE in body and ATTR_LAST_VERSION in body:
             self._homeassistant.image = body[ATTR_IMAGE]
             self._homeassistant.last_version = body[ATTR_LAST_VERSION]
 
