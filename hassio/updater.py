@@ -59,7 +59,6 @@ class Updater(JsonConfig, CoreSysAttributes):
     def beta_channel(self, value):
         """Set beta upstream mode."""
         self._data[ATTR_BETA_CHANNEL] = bool(value)
-        self.save()
 
     @AsyncThrottle(timedelta(seconds=60))
     async def reload(self):
