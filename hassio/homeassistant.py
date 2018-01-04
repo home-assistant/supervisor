@@ -109,18 +109,37 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         if self.is_custom_image:
             return self._data.get(ATTR_LAST_VERSION)
         return self._updater.version_homeassistant
+    
+    @last_version.setter
+    def last_version(self, value):
+        """Set last available version of homeassistant."""
+        if value:
+            self._data[ATTR_LAST_VERSION] = value
+        else
+            self._data.pop(ATTR_LAST_VERSION, None)
+        self.save()
 
     @property
     def image(self):
         """Return image name of hass containter."""
-        if ATTR_IMAGE in self._data:
+        if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
         return os.environ['HOMEASSISTANT_REPOSITORY']
+    
+    @image.setter
+    def image(self, value):
+        """Set image name of hass containter."""
+        if value:
+            self._data[ATTR_IMAGE] = value
+        else
+            self._data.pop(ATTR_IMAGE, None)
+        self.save()
 
     @property
     def is_custom_image(self):
         """Return True if a custom image is used."""
-        return ATTR_IMAGE in self._data
+        return all(attr in self._data for attr in 
+                   (ATTR_IMAGE, ATTR_LAST_VERSION))
 
     @property
     def boot(self):
@@ -131,22 +150,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def boot(self, value):
         """Set home-assistant boot options."""
         self._data[ATTR_BOOT] = value
-        self.save()
-
-    def set_custom(self, image, version):
-        """Set a custom image for homeassistant."""
-        # reset
-        if image is None and version is None:
-            self._data.pop(ATTR_IMAGE, None)
-            self._data.pop(ATTR_VERSION, None)
-
-            self.instance.image = self.image
-        else:
-            if image:
-                self._data[ATTR_IMAGE] = image
-                self.instance.image = image
-            if version:
-                self._data[ATTR_VERSION] = version
         self.save()
 
     async def install_landingpage(self):
@@ -185,8 +188,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Update HomeAssistant version."""
         version = version or self.last_version
         running = await self.instance.is_running()
+        exists = await self.instance.exists()
 
-        if version == self.instance.version:
+        if exists and version == self.instance.version:
             _LOGGER.info("Version %s is already installed", version)
             return False
 
