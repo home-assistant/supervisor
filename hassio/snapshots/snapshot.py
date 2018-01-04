@@ -81,16 +81,16 @@ class Snapshot(CoreSysAttributes):
     def homeassistant_version(self, value):
         """Set snapshot homeassistant version."""
         self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
-    
+
     @property
-    def homeassistant_version_last(self):
+    def homeassistant_last_version(self):
         """Return snapshot homeassistant last version (custom)."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_VERSION)
+        return self._data[ATTR_HOMEASSISTANT].get(ATTR_LAST_VERSION)
 
     @homeassistant_last_version.setter
-    def homeassistant_version_last(self, value):
+    def homeassistant_last_version(self, value):
         """Set snapshot homeassistant last version (custom)."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
+        self._data[ATTR_HOMEASSISTANT][ATTR_LAST_VERSION] = value
 
     @property
     def homeassistant_image(self):
