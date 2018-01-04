@@ -33,14 +33,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def load(self):
         """Prepare HomeAssistant object."""
-        if not await self.instance.exists():
-            _LOGGER.info("No HomeAssistant docker %s found.", self.image)
-            if self.is_custom_image:
-                await self.install()
-            else:
-                await self.install_landingpage()
+        if await self.instance.attach():
+            return
+
+        _LOGGER.info("No HomeAssistant docker %s found.", self.image)
+        if self.is_custom_image:
+            await self.install()
         else:
-            await self.instance.attach()
+            await self.install_landingpage()
 
     @property
     def api_ip(self):
