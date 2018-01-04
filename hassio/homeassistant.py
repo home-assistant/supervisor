@@ -8,7 +8,7 @@ import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
 
 from .const import (
-    FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_VERSION,
+    FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION,
     ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
     HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .coresys import CoreSysAttributes
@@ -106,7 +106,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         if self.is_custom_image:
             return self._data.get(ATTR_LAST_VERSION)
         return self._updater.version_homeassistant
-    
+
     @last_version.setter
     def last_version(self, value):
         """Set last available version of homeassistant."""
@@ -121,7 +121,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
         return os.environ['HOMEASSISTANT_REPOSITORY']
-    
+
     @image.setter
     def image(self, value):
         """Set image name of hass containter."""
@@ -133,7 +133,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def is_custom_image(self):
         """Return True if a custom image is used."""
-        return all(attr in self._data for attr in 
+        return all(attr in self._data for attr in
                    (ATTR_IMAGE, ATTR_LAST_VERSION))
 
     @property
