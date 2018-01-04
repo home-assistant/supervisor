@@ -117,7 +117,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             self._data[ATTR_LAST_VERSION] = value
         else
             self._data.pop(ATTR_LAST_VERSION, None)
-        self.save()
 
     @property
     def image(self):
@@ -133,7 +132,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             self._data[ATTR_IMAGE] = value
         else
             self._data.pop(ATTR_IMAGE, None)
-        self.save()
 
     @property
     def is_custom_image(self):
