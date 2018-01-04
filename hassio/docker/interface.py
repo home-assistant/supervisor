@@ -69,7 +69,7 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             _LOGGER.info("Pull image %s tag %s.", self.image, tag)
-            image = self._docker.images.pull("{}:{}".format(self.image, tag))
+            image = self._docker.images.pull(f"{self.image}:{tag}")
 
             image.tag(self.image, tag='latest')
             self._meta = image.attrs
@@ -90,8 +90,9 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            self._docker.images.get(self.image)
-        except docker.errors.DockerException:
+            image = self._docker.images.get(self.image)
+            assert f"{self.image}:{self.version}" in image.tags
+        except (docker.errors.DockerException, AssertionError):
             return False
 
         return True
@@ -204,11 +205,11 @@ class DockerInterface(CoreSysAttributes):
         try:
             with suppress(docker.errors.ImageNotFound):
                 self._docker.images.remove(
-                    image="{}:latest".format(self.image), force=True)
+                    image=f"{self.image}:latest", force=True)
 
             with suppress(docker.errors.ImageNotFound):
                 self._docker.images.remove(
-                    image="{}:{}".format(self.image, self.version), force=True)
+                    image=f"{self.image}:{self.version}", force=True)
 
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't remove image %s: %s", self.image, err)
