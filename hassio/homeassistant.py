@@ -112,7 +112,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Set last available version of homeassistant."""
         if value:
             self._data[ATTR_LAST_VERSION] = value
-        else
+        else:
             self._data.pop(ATTR_LAST_VERSION, None)
 
     @property
@@ -127,7 +127,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Set image name of hass containter."""
         if value:
             self._data[ATTR_IMAGE] = value
-        else
+        else:
             self._data.pop(ATTR_IMAGE, None)
 
     @property
