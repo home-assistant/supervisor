@@ -17,7 +17,8 @@ _LOGGER = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_BOOT): vol.Boolean(),
-    vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Any(None, vol.Coerce(str)),
+    vol.Inclusive(ATTR_IMAGE, 'custom_hass'):
+        vol.Any(None, vol.Coerce(str)),
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'):
         vol.Any(None, vol.Coerce(str)),
     vol.Optional(ATTR_PORT): NETWORK_PORT,
@@ -53,9 +54,9 @@ class APIHomeAssistant(CoreSysAttributes):
         """Set homeassistant options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_IMAGE in body:
-            self._homeassistant.set_custom(
-                body[ATTR_IMAGE], body[ATTR_LAST_VERSION])
+        if ATTR_IMAGE in body and ATTR_VERSION in body:
+            self._homeassistant.image = body[ATTR_IMAGE]
+            self._homeassistant.last_version = body[ATTR_LAST_VERSION]
 
         if ATTR_BOOT in body:
             self._homeassistant.boot = body[ATTR_BOOT]
@@ -72,6 +73,7 @@ class APIHomeAssistant(CoreSysAttributes):
         if ATTR_WATCHDOG in body:
             self._homeassistant.watchdog = body[ATTR_WATCHDOG]
 
+        self._homeassistant.save()
         return True
 
     @api_process
