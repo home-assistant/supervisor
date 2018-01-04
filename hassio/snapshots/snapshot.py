@@ -14,7 +14,8 @@ from .utils import remove_folder
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
-    ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT)
+    ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT,
+    ATTR_LAST_VERSION)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
 
@@ -79,6 +80,16 @@ class Snapshot(CoreSysAttributes):
     @homeassistant_version.setter
     def homeassistant_version(self, value):
         """Set snapshot homeassistant version."""
+        self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
+    
+    @property
+    def homeassistant_version_last(self):
+        """Return snapshot homeassistant last version (custom)."""
+        return self._data[ATTR_HOMEASSISTANT].get(ATTR_VERSION)
+
+    @homeassistant_last_version.setter
+    def homeassistant_version_last(self, value):
+        """Set snapshot homeassistant last version (custom)."""
         self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
 
     @property
@@ -331,6 +342,7 @@ class Snapshot(CoreSysAttributes):
         # custom image
         if self._homeassistant.is_custom_image:
             self.homeassistant_image = self._homeassistant.image
+            self.homeassistant_last_version = self._homeassistant.last_version
 
         # api
         self.homeassistant_port = self._homeassistant.api_port
@@ -344,8 +356,8 @@ class Snapshot(CoreSysAttributes):
 
         # custom image
         if self.homeassistant_image:
-            self._homeassistant.set_custom(
-                self.homeassistant_image, self.homeassistant_version)
+            self._homeassistant.image = self.homeassistant_image
+            self._homeassistant.last_version = self.homeassistant_last_version
 
         # api
         self._homeassistant.api_port = self.homeassistant_port
