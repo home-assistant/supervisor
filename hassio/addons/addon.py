@@ -661,7 +661,7 @@ class Addon(CoreSysAttributes):
             try:
                 _LOGGER.info("Build snapshot for addon %s", self._id)
                 await self._loop.run_in_executor(None, _create_tar)
-            except tarfile.TarError as err:
+            except (tarfile.TarError, OSError) as err:
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
                 return False
 
