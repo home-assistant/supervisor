@@ -70,7 +70,7 @@ class Hardware(object):
                 devices = devices_file.read()
         except OSError as err:
             _LOGGER.error("Can't read asound data: %s", err)
-            return None
+            return {}
 
         audio_list = {}
 

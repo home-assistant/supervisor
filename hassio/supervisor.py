@@ -59,3 +59,10 @@ class Supervisor(CoreSysAttributes):
     def in_progress(self):
         """Return True if a task is in progress."""
         return self.instance.in_progress
+
+    def logs(self):
+        """Get Supervisor docker logs.
+
+        Return a coroutine.
+        """
+        return self.instance.logs()

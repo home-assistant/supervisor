@@ -296,7 +296,7 @@ class Snapshot(CoreSysAttributes):
                     _LOGGER.info("Snapshot folder %s done", name)
 
                 self._data[ATTR_FOLDERS].append(name)
-            except tarfile.TarError as err:
+            except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
 
         # run tasks
@@ -324,7 +324,7 @@ class Snapshot(CoreSysAttributes):
                 with tarfile.open(snapshot_tar, "r:gz") as tar_file:
                     tar_file.extractall(path=origin_dir)
                     _LOGGER.info("Restore folder %s done", name)
-            except tarfile.TarError as err:
+            except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
         # run tasks
