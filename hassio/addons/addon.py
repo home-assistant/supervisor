@@ -568,7 +568,7 @@ class Addon(CoreSysAttributes):
         last_state = await self.state()
 
         if self.last_version == self.version_installed:
-            _LOGGER.info("No update available for Addon %s", self._id)
+            _LOGGER.warning("No update available for Addon %s", self._id)
             return False
 
         if not await self.instance.update(self.last_version):
