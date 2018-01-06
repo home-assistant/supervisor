@@ -18,3 +18,19 @@ def docker_process(method):
             return await method(api, *args, **kwargs)
 
     return wrap_api
+
+
+def calc_cpu_percent(stats):
+    """Calculate CPU percent."""
+    percent = 0.0
+
+    cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
+        stats['precpu_stats']['cpu_usage']['total_usage']
+    system_delta = stats['cpu_stats']['system_cpu_usage'] - \
+        stats['precpu_stats']['system_cpu_usage']
+
+    if system_delta > 0.0 and cpu_delta > 0.0:
+        percent = (cpu_delta / system_delta) * \
+            len(stats['cpu_stats']['cpu_usage']['percpu_usage']) * 100.0
+
+    return percent
