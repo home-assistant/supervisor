@@ -7,7 +7,9 @@ import voluptuous as vol
 from .utils import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_IMAGE, ATTR_CUSTOM, ATTR_BOOT,
-    ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG, CONTENT_TYPE_BINARY)
+    ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG, ATTR_CPU_PERCENT,
+    ATTR_MEMORY_USAGE, ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX,
+    ATTR_BLK_READ, ATTR_BLK_WRITE, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
 from ..validate import NETWORK_PORT
 
@@ -75,6 +77,21 @@ class APIHomeAssistant(CoreSysAttributes):
 
         self._homeassistant.save()
         return True
+
+    @api_process
+    async def stats(self, request):
+        """Return resource information."""
+        stats = await self._homeassistant.stats()
+
+        return {
+            ATTR_CPU_PERCENT: stats.cpu_percent,
+            ATTR_MEMORY_USAGE: stats.memory_usage,
+            ATTR_MEMORY_LIMIT: stats.memory_limit,
+            ATTR_NETWORK_RX: stats.network_rx,
+            ATTR_NETWORK_TX: stats.network_tx,
+            ATTR_BLK_READ: stats.blk_read,
+            ATTR_BLK_WRITE: stats.blk_write,
+        }
 
     @api_process
     async def update(self, request):
