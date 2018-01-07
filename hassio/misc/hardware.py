@@ -6,7 +6,7 @@ import re
 
 import pyudev
 
-from .const import ATTR_NAME, ATTR_TYPE, ATTR_DEVICES
+from ..const import ATTR_NAME, ATTR_TYPE, ATTR_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
 
