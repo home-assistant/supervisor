@@ -6,6 +6,7 @@ import logging
 import docker
 
 from .utils import docker_process
+from .stats import DockerStats
 from ..const import LABEL_VERSION, LABEL_ARCH
 from ..coresys import CoreSysAttributes
 
@@ -325,3 +326,24 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         raise NotImplementedError()
+
+    def stats(self):
+        """Read and return stats from container."""
+        return self._loop.run_in_executor(None, self._stats)
+
+    def _stats(self):
+        """Create a temporary container and run command.
+
+        Need run inside executor.
+        """
+        try:
+            container = self._docker.containers.get(self.name)
+        except docker.errors.DockerException:
+            return None
+
+        try:
+            stats = container.stats(stream=False)
+            return DockerStats(stats)
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't read stats from %s: %s", self.name, err)
+            return None

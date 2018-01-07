@@ -69,6 +69,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
         self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
+        self.webapp.router.add_get('/supervisor/stats', api_supervisor.stats)
         self.webapp.router.add_post(
             '/supervisor/update', api_supervisor.update)
         self.webapp.router.add_post(
@@ -84,6 +85,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.router.add_get('/homeassistant/info', api_hass.info)
         self.webapp.router.add_get('/homeassistant/logs', api_hass.logs)
+        self.webapp.router.add_get('/homeassistant/stats', api_hass.stats)
         self.webapp.router.add_post('/homeassistant/options', api_hass.options)
         self.webapp.router.add_post('/homeassistant/update', api_hass.update)
         self.webapp.router.add_post('/homeassistant/restart', api_hass.restart)
@@ -114,7 +116,6 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.router.add_get('/addons', api_addons.list)
         self.webapp.router.add_post('/addons/reload', api_addons.reload)
-
         self.webapp.router.add_get('/addons/{addon}/info', api_addons.info)
         self.webapp.router.add_post(
             '/addons/{addon}/install', api_addons.install)
@@ -135,6 +136,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.router.add_get(
             '/addons/{addon}/changelog', api_addons.changelog)
         self.webapp.router.add_post('/addons/{addon}/stdin', api_addons.stdin)
+        self.webapp.router.add_get('/addons/{addon}/stats', api_addons.stats)
 
     def _register_security(self):
         """Register security function."""

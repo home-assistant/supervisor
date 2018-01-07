@@ -9,7 +9,9 @@ from ..const import (
     ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL, ATTR_ARCH,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_LOGO, ATTR_REPOSITORY,
     ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED, ATTR_TIMEZONE,
-    ATTR_STATE, ATTR_WAIT_BOOT, CONTENT_TYPE_BINARY)
+    ATTR_STATE, ATTR_WAIT_BOOT, ATTR_CPU_PERCENT, ATTR_MEMORY_USAGE,
+    ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX, ATTR_BLK_READ,
+    ATTR_BLK_WRITE, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
 from ..validate import validate_timezone, WAIT_BOOT
 
@@ -85,6 +87,23 @@ class APISupervisor(CoreSysAttributes):
         self._updater.save()
         self._config.save()
         return True
+
+    @api_process
+    async def stats(self, request):
+        """Return resource information."""
+        stats = await self._supervisor.stats()
+        if not stats:
+            raise RuntimeError("No stats available")
+
+        return {
+            ATTR_CPU_PERCENT: stats.cpu_percent,
+            ATTR_MEMORY_USAGE: stats.memory_usage,
+            ATTR_MEMORY_LIMIT: stats.memory_limit,
+            ATTR_NETWORK_RX: stats.network_rx,
+            ATTR_NETWORK_TX: stats.network_tx,
+            ATTR_BLK_READ: stats.blk_read,
+            ATTR_BLK_WRITE: stats.blk_write,
+        }
 
     @api_process
     async def update(self, request):
