@@ -5,7 +5,8 @@ import logging
 
 import docker
 
-from .utils import docker_process, calc_cpu_percent, calc_network
+from .utils import docker_process
+from .stats import DockerStats
 from ..const import LABEL_VERSION, LABEL_ARCH
 from ..coresys import CoreSysAttributes
 
@@ -338,21 +339,11 @@ class DockerInterface(CoreSysAttributes):
         try:
             container = self._docker.containers.get(self.name)
         except docker.errors.DockerException:
-            return {}
+            return None
 
         try:
             stats = container.stats(stream=False)
-            cpu = calc_cpu_percent(stats)
-            rx, tx = calc_network(stats['networks'])
-
-            return {
-                ATTR_CPU_PERCENT: cpu,
-                ATTR_MEMORY_USAGE: stats['memory_stats']['usage'],
-                ATTR_MEMORY_LIMIT: stats['memory_stats']['limit'],
-                ATTR_NETWORK_RX: rx,
-                ATTR_NETWORK_TX: tx,
-            }
-
-        except (docker.errors.DockerException, KeyError) as err:
+            return DockerStats(stats)
+        except docker.errors.DockerException as err:
             _LOGGER.error("Can't read stats from %s: %s", self.name, err)
-            return {}
+            return None
