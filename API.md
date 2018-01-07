@@ -86,6 +86,19 @@ Reload addons/version.
 
 Output is the raw docker log.
 
+- GET `/supervisor/stats`
+```json
+{
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
+}
+```
+
 ### Security
 
 - GET `/security/info`
@@ -334,6 +347,19 @@ Proxy to real home-assistant instance.
 
 Proxy to real websocket instance.
 
+- GET `/homeassistant/stats`
+```json
+{
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
+}
+```
+
 ### RESTful for API addons
 
 - GET `/addons`
@@ -451,6 +477,19 @@ Only supported for local build addons
 - POST `/addons/{addon}/stdin`
 
 Write data to add-on stdin
+
+- GET `/addons/{addon}/stats`
+```json
+{
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
+}
+```
 
 ## Host Control
 

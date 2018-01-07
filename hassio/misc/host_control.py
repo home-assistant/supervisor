@@ -5,7 +5,7 @@ import logging
 
 import async_timeout
 
-from .const import (
+from ..const import (
     SOCKET_HC, ATTR_LAST_VERSION, ATTR_VERSION, ATTR_TYPE, ATTR_FEATURES,
     ATTR_HOSTNAME, ATTR_OS)
 

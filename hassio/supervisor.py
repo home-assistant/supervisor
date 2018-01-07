@@ -46,14 +46,16 @@ class Supervisor(CoreSysAttributes):
         version = version or self.last_version
 
         if version == self._supervisor.version:
-            _LOGGER.info("Version %s is already installed", version)
+            _LOGGER.warning("Version %s is already installed", version)
             return
 
         _LOGGER.info("Update supervisor to version %s", version)
         if await self.instance.install(version):
             self._loop.call_later(1, self._loop.stop)
-        else:
-            _LOGGER.error("Update of hass.io fails!")
+            return True
+
+        _LOGGER.error("Update of hass.io fails!")
+        return False
 
     @property
     def in_progress(self):
@@ -66,3 +68,10 @@ class Supervisor(CoreSysAttributes):
         Return a coroutine.
         """
         return self.instance.logs()
+
+    def stats(self):
+        """Return stats of Supervisor.
+
+        Return a coroutine.
+        """
+        return self.instance.stats()

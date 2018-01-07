@@ -568,7 +568,7 @@ class Addon(CoreSysAttributes):
         last_state = await self.state()
 
         if self.last_version == self.version_installed:
-            _LOGGER.info("No update available for Addon %s", self._id)
+            _LOGGER.warning("No update available for Addon %s", self._id)
             return False
 
         if not await self.instance.update(self.last_version):
@@ -595,6 +595,14 @@ class Addon(CoreSysAttributes):
         Return a coroutine.
         """
         return self.instance.logs()
+
+    @check_installed
+    def stats(self):
+        """Return stats of container.
+
+        Return a coroutine.
+        """
+        return self.instance.stats()
 
     @check_installed
     async def rebuild(self):
