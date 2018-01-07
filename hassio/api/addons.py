@@ -166,6 +166,9 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon(request)
         stats = await addon.stats()
 
+        if not stats:
+            raise RuntimeError("No stats available")
+
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
             ATTR_MEMORY_USAGE: stats.memory_usage,

@@ -92,6 +92,8 @@ class APISupervisor(CoreSysAttributes):
     async def stats(self, request):
         """Return resource information."""
         stats = await self._supervisor.stats()
+        if not stats:
+            raise RuntimeError("No stats available")
 
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
