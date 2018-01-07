@@ -27,7 +27,7 @@ class DockerStats(object):
             self._calc_network(stats['networks'])
 
         with suppress(KeyError):
-            self._calc_block_io(stats['blkio stats'])
+            self._calc_block_io(stats['blkio_stats'])
 
     def _calc_cpu_percent(self, stats):
         """Calculate CPU percent."""
@@ -48,10 +48,10 @@ class DockerStats(object):
 
     def _calc_block_io(self, blkio):
         """Calculate block IO stats."""
-        for _, stats in blkio['io_service_bytes_recursive'].items():
-            if stats['op'].lower() == 'read':
+        for stats in blkio['io_service_bytes_recursive']:
+            if stats['op'] == 'Read':
                 self._blk_read += stats['value']
-            elif stats['op'].lower() == 'write':
+            elif stats['op'] == 'Write':
                 self._blk_write += stats['value']
 
     @property
