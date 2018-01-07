@@ -34,3 +34,14 @@ def calc_cpu_percent(stats):
             len(stats['cpu_stats']['cpu_usage']['percpu_usage']) * 100.0
 
     return percent
+
+
+def calc_network(networks):
+    """Calculate Network IO stats."""
+    rx = tx = 0
+
+    for _, stats in networks.items():
+        rx += stats['rx_bytes']
+        tx += stats['tx_bytes']
+
+    return (rx, tx)
