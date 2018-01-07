@@ -597,6 +597,14 @@ class Addon(CoreSysAttributes):
         return self.instance.logs()
 
     @check_installed
+    def stats(self):
+        """Return stats of container.
+
+        Return a coroutine.
+        """
+        return self.instance.stats()
+
+    @check_installed
     async def rebuild(self):
         """Performe a rebuild of local build addon."""
         last_state = await self.state()

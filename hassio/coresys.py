@@ -4,10 +4,10 @@ import aiohttp
 
 from .config import CoreConfig
 from .docker import DockerAPI
-from .dns import DNSForward
-from .hardware import Hardware
-from .host_control import HostControl
-from .scheduler import Scheduler
+from .misc.dns import DNSForward
+from .misc.hardware import Hardware
+from .misc.host_control import HostControl
+from .misc.scheduler import Scheduler
 
 
 class CoreSys(object):

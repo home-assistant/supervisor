@@ -68,3 +68,10 @@ class Supervisor(CoreSysAttributes):
         Return a coroutine.
         """
         return self.instance.logs()
+
+    def stats(self):
+        """Return stats of Supervisor.
+
+        Return a coroutine.
+        """
+        return self.instance.stats()

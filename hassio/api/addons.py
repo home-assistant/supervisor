@@ -15,6 +15,8 @@ from ..const import (
     ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, BOOT_AUTO, BOOT_MANUAL,
     ATTR_CHANGELOG, ATTR_HOST_IPC, ATTR_HOST_DBUS, ATTR_LONG_DESCRIPTION,
+    ATTR_CPU_PERCENT, ATTR_MEMORY_LIMIT, ATTR_MEMORY_USAGE, ATTR_NETWORK_TX,
+    ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS
@@ -157,6 +159,25 @@ class APIAddons(CoreSysAttributes):
             addon.audio_output = body[ATTR_AUDIO_OUTPUT]
 
         return True
+
+    @api_process
+    async def stats(self, request):
+        """Return resource information."""
+        addon = self._extract_addon(request)
+        stats = await addon.stats()
+
+        if not stats:
+            raise RuntimeError("No stats available")
+
+        return {
+            ATTR_CPU_PERCENT: stats.cpu_percent,
+            ATTR_MEMORY_USAGE: stats.memory_usage,
+            ATTR_MEMORY_LIMIT: stats.memory_limit,
+            ATTR_NETWORK_RX: stats.network_rx,
+            ATTR_NETWORK_TX: stats.network_tx,
+            ATTR_BLK_READ: stats.blk_read,
+            ATTR_BLK_WRITE: stats.blk_write,
+        }
 
     @api_process
     def install(self, request):

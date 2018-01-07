@@ -219,6 +219,13 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """
         return self.instance.logs()
 
+    def stats(self):
+        """Return stats of HomeAssistant.
+
+        Return a coroutine.
+        """
+        return self.instance.stats()
+
     def is_running(self):
         """Return True if docker container is running.
 

@@ -31,10 +31,11 @@ setup(
     platforms='any',
     packages=[
         'hassio',
-        'hassio.utils',
         'hassio.docker',
-        'hassio.api',
         'hassio.addons',
+        'hassio.api',
+        'hassio.misc',
+        'hassio.utils',
         'hassio.snapshots'
     ],
     include_package_data=True,
