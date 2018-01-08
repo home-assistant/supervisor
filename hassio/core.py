@@ -54,8 +54,9 @@ class HassIO(CoreSysAttributes):
         """Start HassIO orchestration."""
         # on release channel, try update itself
         # on beta channel, only read new versions
-        if not self._updater.beta_channel:
-            await self._supervisor.update()
+        if not self._updater.beta_channel and self._supervisor.need_update:
+            if await self._supervisor.update():
+                return
         else:
             _LOGGER.info("Ignore Hass.io auto updates on beta mode")
 
