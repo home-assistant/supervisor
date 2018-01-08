@@ -47,7 +47,7 @@ class DockerAPI(object):
         hostname = kwargs.get('hostname')
 
         # setup network
-        kwargs['dns_search'] = []
+        kwargs['dns_search'] = ["."]
         if network_mode:
             kwargs['dns'] = [str(self.network.supervisor)]
         else:
