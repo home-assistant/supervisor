@@ -50,6 +50,7 @@ class DockerAPI(object):
         kwargs['dns_search'] = ["."]
         if network_mode:
             kwargs['dns'] = [str(self.network.supervisor)]
+            kwargs['dns_opt'] = ["ndots:0"]
         else:
             kwargs['network'] = None
 
