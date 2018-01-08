@@ -22,6 +22,11 @@ class Supervisor(CoreSysAttributes):
         await self.instance.cleanup()
 
     @property
+    def need_update(self):
+        """Return True if a update is available."""
+        return self.version != self.last_version
+
+    @property
     def version(self):
         """Return version of running homeassistant."""
         return self.instance.version

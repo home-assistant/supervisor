@@ -32,7 +32,6 @@ class Tasks(CoreSysAttributes):
 
     async def load(self):
         """Add Tasks to scheduler."""
-
         self.jobs.add(self._scheduler.register_task(
             self._update_addons, self.RUN_UPDATE_ADDONS))
         self.jobs.add(self._scheduler.register_task(
@@ -53,6 +52,8 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(self._scheduler.register_task(
             self._watchdog_homeassistant_api,
             self.RUN_WATCHDOG_HOMEASSISTANT_API))
+
+        _LOGGER.info("All core tasks are scheduled")
 
     async def _cleanup_sessions(self):
         """Cleanup old api sessions."""
@@ -83,8 +84,7 @@ class Tasks(CoreSysAttributes):
 
     async def _update_supervisor(self):
         """Check and run update of supervisor hassio."""
-        await self._updater.reload()
-        if self._supervisor.last_version == self._supervisor.version:
+        if not self._supervisor.need_update:
             return
 
         # don't perform a update on beta/dev channel
