@@ -54,8 +54,9 @@ class HassIO(CoreSysAttributes):
         """Start HassIO orchestration."""
         # on release channel, try update itself
         # on beta channel, only read new versions
-        if not self._updater.beta_channel:
-            await self._supervisor.update()
+        if not self._updater.beta_channel and self._supervisor.need_update:
+            if await self._supervisor.update():
+                return
         else:
             _LOGGER.info("Ignore Hass.io auto updates on beta mode")
 
@@ -93,7 +94,7 @@ class HassIO(CoreSysAttributes):
             if self._homeassistant.version == 'landingpage':
                 self._loop.create_task(self._homeassistant.install())
 
-        _LOGGER.info("Hass.io is up and running")
+            _LOGGER.info("Hass.io is up and running")
 
     async def stop(self):
         """Stop a running orchestration."""
