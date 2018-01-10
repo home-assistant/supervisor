@@ -46,8 +46,6 @@ setup(
         'colorlog',
         'voluptuous',
         'gitpython',
-        'pyotp',
-        'pyqrcode',
         'pytz',
         'pyudev'
     ]

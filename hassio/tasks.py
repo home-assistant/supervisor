@@ -1,6 +1,5 @@
 """Multible tasks."""
 import asyncio
-from datetime import datetime
 import logging
 
 from .coresys import CoreSysAttributes
@@ -21,8 +20,6 @@ class Tasks(CoreSysAttributes):
 
     RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
     RUN_WATCHDOG_HOMEASSISTANT_API = 300
-
-    RUN_CLEANUP_API_SESSIONS = 900
 
     def __init__(self, coresys):
         """Initialize Tasks."""
@@ -54,13 +51,6 @@ class Tasks(CoreSysAttributes):
             self.RUN_WATCHDOG_HOMEASSISTANT_API))
 
         _LOGGER.info("All core tasks are scheduled")
-
-    async def _cleanup_sessions(self):
-        """Cleanup old api sessions."""
-        now = datetime.now()
-        for session, until_valid in self._config.security_sessions.items():
-            if now >= until_valid:
-                self._config.drop_security_session(session)
 
     async def _update_addons(self):
         """Check if a update is available of a addon and update it."""
