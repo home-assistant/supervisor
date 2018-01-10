@@ -5,8 +5,7 @@ import os
 from pathlib import Path, PurePath
 
 from .const import (
-    FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_SECURITY, ATTR_SESSIONS,
-    ATTR_PASSWORD, ATTR_TOTP, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
+    FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
     ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_LAST_BOOT, ATTR_WAIT_BOOT)
 from .utils.dt import parse_datetime
 from .utils.json import JsonConfig
@@ -179,59 +178,6 @@ class CoreConfig(JsonConfig):
             return
 
         self._data[ATTR_ADDONS_CUSTOM_LIST].remove(repo)
-        self.save()
-
-    @property
-    def security_initialize(self):
-        """Return is security was initialize."""
-        return self._data[ATTR_SECURITY]
-
-    @security_initialize.setter
-    def security_initialize(self, value):
-        """Set is security initialize."""
-        self._data[ATTR_SECURITY] = value
-        self.save()
-
-    @property
-    def security_totp(self):
-        """Return the TOTP key."""
-        return self._data.get(ATTR_TOTP)
-
-    @security_totp.setter
-    def security_totp(self, value):
-        """Set the TOTP key."""
-        self._data[ATTR_TOTP] = value
-        self.save()
-
-    @property
-    def security_password(self):
-        """Return the password key."""
-        return self._data.get(ATTR_PASSWORD)
-
-    @security_password.setter
-    def security_password(self, value):
-        """Set the password key."""
-        self._data[ATTR_PASSWORD] = value
-        self.save()
-
-    @property
-    def security_sessions(self):
-        """Return api sessions."""
-        return {
-            session: parse_datetime(until) for
-            session, until in self._data[ATTR_SESSIONS].items()
-        }
-
-    def add_security_session(self, session, valid):
-        """Set the a new session."""
-        self._data[ATTR_SESSIONS].update(
-            {session: valid.isoformat()}
-        )
-        self.save()
-
-    def drop_security_session(self, session):
-        """Delete the a session."""
-        self._data[ATTR_SESSIONS].pop(session, None)
         self.save()
 
     @property
