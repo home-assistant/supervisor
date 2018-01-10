@@ -160,7 +160,7 @@ class Addon(CoreSysAttributes):
         return self._mesh[ATTR_TIMEOUT]
 
     @property
-    def api_token(self):
+    def uuid(self):
         """Return a API token for this add-on."""
         if self.is_installed:
             return self._data.user[self._id][ATTR_UUID]
