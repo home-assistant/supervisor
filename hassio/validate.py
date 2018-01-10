@@ -5,11 +5,10 @@ import voluptuous as vol
 import pytz
 
 from .const import (
-    ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_SESSIONS, ATTR_PASSWORD, ATTR_TOTP,
-    ATTR_SECURITY, ATTR_BETA_CHANNEL, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT, ATTR_HOMEASSISTANT, ATTR_HASSIO,
-    ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG,
-    ATTR_WAIT_BOOT, ATTR_UUID)
+    ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL, ATTR_TIMEZONE,
+    ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
+    ATTR_PASSWORD, ATTR_HOMEASSISTANT, ATTR_HASSIO, ATTR_BOOT, ATTR_LAST_BOOT,
+    ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG, ATTR_WAIT_BOOT, ATTR_UUID)
 
 
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
@@ -87,11 +86,6 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
     vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[
         "https://github.com/hassio-addons/repository",
     ]): [vol.Url()],
-    vol.Optional(ATTR_SECURITY, default=False): vol.Boolean(),
-    vol.Optional(ATTR_TOTP): vol.Coerce(str),
-    vol.Optional(ATTR_PASSWORD): vol.Coerce(str),
-    vol.Optional(ATTR_SESSIONS, default={}):
-        vol.Schema({vol.Coerce(str): vol.Coerce(str)}),
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,

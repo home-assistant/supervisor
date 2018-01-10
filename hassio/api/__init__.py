@@ -10,7 +10,6 @@ from .host import APIHost
 from .network import APINetwork
 from .proxy import APIProxy
 from .supervisor import APISupervisor
-from .security import APISecurity
 from .snapshots import APISnapshots
 from ..coresys import CoreSysAttributes
 
@@ -38,7 +37,6 @@ class RestAPI(CoreSysAttributes):
         self._register_panel()
         self._register_addons()
         self._register_snapshots()
-        self._register_security()
         self._register_network()
 
     def _register_host(self):
@@ -137,16 +135,6 @@ class RestAPI(CoreSysAttributes):
             '/addons/{addon}/changelog', api_addons.changelog)
         self.webapp.router.add_post('/addons/{addon}/stdin', api_addons.stdin)
         self.webapp.router.add_get('/addons/{addon}/stats', api_addons.stats)
-
-    def _register_security(self):
-        """Register security function."""
-        api_security = APISecurity()
-        api_security.coresys = self.coresys
-
-        self.webapp.router.add_get('/security/info', api_security.info)
-        self.webapp.router.add_post('/security/options', api_security.options)
-        self.webapp.router.add_post('/security/totp', api_security.totp)
-        self.webapp.router.add_post('/security/session', api_security.session)
 
     def _register_snapshots(self):
         """Register snapshots function."""

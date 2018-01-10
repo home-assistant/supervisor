@@ -4,7 +4,7 @@
 
 Interface for Home Assistant to control things from supervisor.
 
-On error:
+On error / Code 400:
 
 ```json
 {
@@ -13,7 +13,7 @@ On error:
 }
 ```
 
-On success:
+On success / Code 200:
 
 ```json
 {
@@ -21,6 +21,8 @@ On success:
     "data": { }
 }
 ```
+
+For access to API you need set the `X-HASSIO-KEY` they will be available for Add-ons/HomeAssistant with envoriment `HASSIO_TOKEN`.
 
 ### Hass.io
 
@@ -99,44 +101,7 @@ Output is the raw docker log.
 }
 ```
 
-### Security
-
-- GET `/security/info`
-
-```json
-{
-    "initialize": "bool",
-    "totp": "bool"
-}
-```
-
-- POST `/security/options`
-
-```json
-{
-    "password": "xy"
-}
-```
-
-- POST `/security/totp`
-
-```json
-{
-    "password": "xy"
-}
-```
-
-Return QR-Code
-
-- POST `/security/session`
-```json
-{
-    "password": "xy",
-    "totp": "null|123456"
-}
-```
-
-### Backup/Snapshot
+### Snapshot
 
 - GET `/snapshots`
 
