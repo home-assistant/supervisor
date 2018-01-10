@@ -8,7 +8,7 @@ import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
 
 from .const import (
-    FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION,
+    FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
     ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
     HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .coresys import CoreSysAttributes
@@ -142,6 +142,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def boot(self, value):
         """Set home-assistant boot options."""
         self._data[ATTR_BOOT] = value
+
+    @property
+    def uuid(self):
+        """Return a UUID of this HomeAssistant."""
+        return self._data[ATTR_UUID]
 
     async def install_landingpage(self):
         """Install a landingpage."""
