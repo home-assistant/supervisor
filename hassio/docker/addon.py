@@ -82,7 +82,7 @@ class DockerAddon(DockerInterface):
 
         # Set api token if any API access is needed
         if self.addon.access_hassio_api or self.addon.access_homeassistant_api:
-            addon_env['API_TOKEN'] = self.addon.uuid
+            addon_env['HASSIO_TOKEN'] = self.addon.uuid
 
         return {
             **addon_env,
