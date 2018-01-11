@@ -9,7 +9,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DockerNetwork(object):
-    """Internal HassIO Network."""
+    """Internal HassIO Network.
+
+    This class is not AsyncIO safe!
+    """
 
     def __init__(self, dock):
         """Initialize internal hassio network."""
