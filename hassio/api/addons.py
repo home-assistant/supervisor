@@ -267,7 +267,7 @@ class APIAddons(CoreSysAttributes):
         """Write to stdin of addon."""
         addon = self._extract_addon(request)
         if not addon.with_stdin:
-            raise RuntimeError("STDIN not supported by addons")
+            raise RuntimeError("STDIN not supported by addon")
 
         data = await request.read()
         return await asyncio.shield(addon.write_stdin(data), loop=self._loop)
