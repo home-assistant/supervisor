@@ -25,6 +25,7 @@ class APIProxy(CoreSysAttributes):
             data = None
             headers = {}
             method = getattr(self._websession_ssl, request.method.lower())
+            params = request.query or None
 
             # read data
             with async_timeout.timeout(30, loop=self._loop):
@@ -42,7 +43,8 @@ class APIProxy(CoreSysAttributes):
                 headers = None
 
             client = await method(
-                url, data=data, headers=headers, timeout=timeout
+                url, data=data, headers=headers, timeout=timeout,
+                params=params
             )
 
             return client
@@ -55,48 +57,46 @@ class APIProxy(CoreSysAttributes):
 
         raise HTTPBadGateway()
 
+    async def stream(self, request):
+        """Proxy HomeAssistant EventStream Requests."""
+        _LOGGER.info("Home-Assistant EventStream start")
+        client = await self._api_client(request, 'stream', timeout=None)
+
+        response = web.StreamResponse()
+        response.content_type = request.headers.get(CONTENT_TYPE)
+        try:
+            await response.prepare(request)
+            while True:
+                data = await client.content.read(10)
+                if not data:
+                    await response.write_eof()
+                    break
+                response.write(data)
+
+        except aiohttp.ClientError:
+            await response.write_eof()
+
+        except asyncio.CancelledError:
+            pass
+
+        finally:
+            client.close()
+            _LOGGER.info("Home-Assistant EventStream close")
+
     async def api(self, request):
         """Proxy HomeAssistant API Requests."""
         path = request.match_info.get('path', '')
 
-        # API stream
-        if path.startswith("stream"):
-            _LOGGER.info("Home-Assistant Event-Stream start")
-            client = await self._api_client(request, path, timeout=None)
-
-            response = web.StreamResponse()
-            response.content_type = request.headers.get(CONTENT_TYPE)
-            try:
-                await response.prepare(request)
-                while True:
-                    data = await client.content.read(10)
-                    if not data:
-                        await response.write_eof()
-                        break
-                    response.write(data)
-
-            except aiohttp.ClientError:
-                await response.write_eof()
-
-            except asyncio.CancelledError:
-                pass
-
-            finally:
-                client.close()
-
-            _LOGGER.info("Home-Assistant Event-Stream close")
-
         # Normal request
-        else:
-            _LOGGER.info("Home-Assistant '/api/%s' request", path)
-            client = await self._api_client(request, path)
+        _LOGGER.info("Home-Assistant /api/%s request", path)
+        client = await self._api_client(request, path)
 
-            data = await client.read()
-            return web.Response(
-                body=data,
-                status=client.status,
-                content_type=client.content_type
-            )
+        data = await client.read()
+        return web.Response(
+            body=data,
+            status=client.status,
+            content_type=client.content_type
+        )
 
     async def _websocket_client(self):
         """Initialize a websocket api connection."""
