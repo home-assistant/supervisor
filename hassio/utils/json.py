@@ -35,6 +35,7 @@ class JsonConfig(object):
         self._schema = schema
         self._data = {}
 
+    def read(self):
         # init or load data
         if self._file.is_file():
             try:
@@ -60,6 +61,9 @@ class JsonConfig(object):
         except vol.Invalid as ex:
             _LOGGER.error("Can't parse data: %s",
                           humanize_error(self._data, ex))
+
+            # Load last valid data
+            self.read()
             return False
 
         # write
