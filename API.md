@@ -111,7 +111,8 @@ Output is the raw docker log.
         {
             "slug": "SLUG",
             "date": "ISO",
-            "name": "Custom name"
+            "name": "Custom name",
+            "type": "full|partial"
         }
     ]
 }

@@ -55,6 +55,7 @@ class APISnapshots(CoreSysAttributes):
                 ATTR_SLUG: snapshot.slug,
                 ATTR_NAME: snapshot.name,
                 ATTR_DATE: snapshot.date,
+                ATTR_TYPE: snapshot.sys_type,
             })
 
         return {
