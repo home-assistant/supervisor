@@ -10,14 +10,9 @@ _LOGGER = logging.getLogger(__name__)
 
 def write_json_file(jsonfile, data):
     """Write a json file."""
-    try:
-        json_str = json.dumps(data, indent=2)
-        with jsonfile.open('w') as conf_file:
-            conf_file.write(json_str)
-    except (OSError, json.JSONDecodeError):
-        return False
-
-    return True
+    json_str = json.dumps(data, indent=2)
+    with jsonfile.open('w') as conf_file:
+        conf_file.write(json_str)
 
 
 def read_json_file(jsonfile):
@@ -35,10 +30,10 @@ class JsonConfig(object):
         self._schema = schema
         self._data = {}
 
-        self._read_json()
+        self.read_data()
 
     def read_data(self):
-        # init or load data
+        """Read json file & validate."""
         if self._file.is_file():
             try:
                 self._data = read_json_file(self._file)
@@ -46,20 +41,20 @@ class JsonConfig(object):
                 _LOGGER.warning("Can't read %s", self._file)
                 self._data = {}
 
-        # validate
+        # Validate
         try:
             self._data = self._schema(self._data)
         except vol.Invalid as ex:
             _LOGGER.error("Can't parse %s: %s",
                           self._file, humanize_error(self._data, ex))
 
-            # reset data to default
+            # Reset data to default
             _LOGGER.warning("Reset %s to default", self._file)
             self._data = self._schema({})
 
     def save_data(self):
         """Store data to config file."""
-        # validate
+        # Validate
         try:
             self._data = self._schema(self._data)
         except vol.Invalid as ex:
@@ -72,5 +67,7 @@ class JsonConfig(object):
             return
 
         # write
-        if not write_json_file(self._file, self._data):
-            _LOGGER.error("Can't store config in %s", self._file)
+        try:
+            write_json_file(self._file, self._data)
+        except (OSError, json.JSONDecodeError) as err:
+            _LOGGER.error("Can't store config in %s: %s", self._file, err)

@@ -244,12 +244,13 @@ class Snapshot(CoreSysAttributes):
             with tarfile.open(self.tar_file, "w:") as tar:
                 tar.add(self._tmp.name, arcname=".")
 
-        if write_json_file(Path(self._tmp.name, "snapshot.json"), self._data):
+        try:
+            write_json_file(Path(self._tmp.name, "snapshot.json"), self._data)
             await self._loop.run_in_executor(None, _create_snapshot)
-        else:
-            _LOGGER.error("Can't write snapshot.json")
-
-        self._tmp.cleanup()
+        except (OSError, json.JSONDecodeError) as err:
+            _LOGGER.error("Can't write snapshot: %s", err)
+        finally:
+            self._tmp.cleanup()
 
     async def import_addon(self, addon):
         """Add a addon into snapshot."""

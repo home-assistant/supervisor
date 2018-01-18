@@ -448,10 +448,15 @@ class Addon(CoreSysAttributes):
 
         try:
             schema(options)
-            return write_json_file(self.path_options, options)
+            write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error("Addon %s have wrong options: %s", self._id,
                           humanize_error(options, ex))
+        except (OSError, json.JSONDecodeError) as err:
+            _LOGGER.error("Addon %s can't write options: %s", self._id, err)
+
+        else:
+            return True
 
         return False
 
@@ -647,8 +652,10 @@ class Addon(CoreSysAttributes):
             }
 
             # store local configs/state
-            if not write_json_file(Path(temp, "addon.json"), data):
-                _LOGGER.error("Can't write addon.json for %s", self._id)
+            try:
+                write_json_file(Path(temp, "addon.json"), data)
+            except (OSError, json.JSONDecodeError) as err:
+                _LOGGER.error("Can't save meta for %s: %s", self._id, err)
                 return False
 
             # write into tarfile
