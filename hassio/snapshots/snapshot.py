@@ -244,12 +244,13 @@ class Snapshot(CoreSysAttributes):
             with tarfile.open(self.tar_file, "w:") as tar:
                 tar.add(self._tmp.name, arcname=".")
 
-        if write_json_file(Path(self._tmp.name, "snapshot.json"), self._data):
+        try:
+            write_json_file(Path(self._tmp.name, "snapshot.json"), self._data)
             await self._loop.run_in_executor(None, _create_snapshot)
-        else:
-            _LOGGER.error("Can't write snapshot.json")
-
-        self._tmp.cleanup()
+        except (OSError, json.JSONDecodeError) as err:
+            _LOGGER.error("Can't write snapshot: %s", err)
+        finally:
+            self._tmp.cleanup()
 
     async def import_addon(self, addon):
         """Add a addon into snapshot."""
@@ -280,7 +281,7 @@ class Snapshot(CoreSysAttributes):
 
     async def store_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
-        folder_list = folder_list or ALL_FOLDERS
+        folder_list = set(folder_list or ALL_FOLDERS)
 
         def _folder_save(name):
             """Intenal function to snapshot a folder."""
@@ -293,8 +294,8 @@ class Snapshot(CoreSysAttributes):
                 with tarfile.open(snapshot_tar, "w:gz",
                                   compresslevel=1) as tar_file:
                     tar_file.add(origin_dir, arcname=".")
-                    _LOGGER.info("Snapshot folder %s done", name)
 
+                _LOGGER.info("Snapshot folder %s done", name)
                 self._data[ATTR_FOLDERS].append(name)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
@@ -307,7 +308,7 @@ class Snapshot(CoreSysAttributes):
 
     async def restore_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
-        folder_list = folder_list or ALL_FOLDERS
+        folder_list = set(folder_list or self.folders)
 
         def _folder_restore(name):
             """Intenal function to restore a folder."""
@@ -323,7 +324,7 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.info("Restore folder %s", name)
                 with tarfile.open(snapshot_tar, "r:gz") as tar_file:
                     tar_file.extractall(path=origin_dir)
-                    _LOGGER.info("Restore folder %s done", name)
+                _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
@@ -365,7 +366,7 @@ class Snapshot(CoreSysAttributes):
         self._homeassistant.api_password = self.homeassistant_password
 
         # save
-        self._homeassistant.save()
+        self._homeassistant.save_data()
 
     def store_repositories(self):
         """Store repository list into snapshot."""

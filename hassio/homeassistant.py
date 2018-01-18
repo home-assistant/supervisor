@@ -53,7 +53,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def api_port(self, value):
         """Set network port for home-assistant instance."""
         self._data[ATTR_PORT] = value
-        self.save()
 
     @property
     def api_password(self):

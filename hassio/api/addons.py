@@ -158,6 +158,7 @@ class APIAddons(CoreSysAttributes):
         if ATTR_AUDIO_OUTPUT in body:
             addon.audio_output = body[ATTR_AUDIO_OUTPUT]
 
+        addon.save_data()
         return True
 
     @api_process
