@@ -417,7 +417,7 @@ Get all available addons.
 }
 ```
 
-For reset custom network/audio settings, set it `null`.
+Reset custom network/audio/options, set it `null`.
 
 - POST `/addons/{addon}/start`
 
