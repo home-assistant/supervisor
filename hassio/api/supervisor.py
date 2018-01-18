@@ -84,8 +84,8 @@ class APISupervisor(CoreSysAttributes):
             new = set(body[ATTR_ADDONS_REPOSITORIES])
             await asyncio.shield(self._addons.load_repositories(new))
 
-        self._updater.save()
-        self._config.save()
+        self._updater.save_data()
+        self._config.save_data()
         return True
 
     @api_process

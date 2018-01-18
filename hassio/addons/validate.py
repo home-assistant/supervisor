@@ -101,7 +101,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_AUTO_UART, default=False): vol.Boolean(),
     vol.Optional(ATTR_TMPFS):
         vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
-    vol.Optional(ATTR_MAP, default=[]): [vol.Match(RE_VOLUME)],
+    vol.Optional(ATTR_MAP, default=list): [vol.Match(RE_VOLUME)],
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],
     vol.Optional(ATTR_AUDIO, default=False): vol.Boolean(),
@@ -141,7 +141,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema({
         vol.In(ARCH_ALL): vol.Match(r"(?:^[\w{}]+/)?[\-\w{}]+:[\.\-\w{}]+$"),
     }),
     vol.Optional(ATTR_SQUASH, default=False): vol.Boolean(),
-    vol.Optional(ATTR_ARGS, default={}): vol.Schema({
+    vol.Optional(ATTR_ARGS, default=dict): vol.Schema({
         vol.Coerce(str): vol.Coerce(str)
     }),
 }, extra=vol.REMOVE_EXTRA)
@@ -152,7 +152,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
         vol.Match(r"^[0-9a-f]{32}$"),
-    vol.Optional(ATTR_OPTIONS, default={}): dict,
+    vol.Optional(ATTR_OPTIONS, default=dict): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
@@ -169,10 +169,10 @@ SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_CONFIG.extend({
 
 
 SCHEMA_ADDON_FILE = vol.Schema({
-    vol.Optional(ATTR_USER, default={}): {
+    vol.Optional(ATTR_USER, default=dict): {
         vol.Coerce(str): SCHEMA_ADDON_USER,
     },
-    vol.Optional(ATTR_SYSTEM, default={}): {
+    vol.Optional(ATTR_SYSTEM, default=dict): {
         vol.Coerce(str): SCHEMA_ADDON_SYSTEM,
     }
 })

@@ -75,7 +75,7 @@ class APIHomeAssistant(CoreSysAttributes):
         if ATTR_WATCHDOG in body:
             self._homeassistant.watchdog = body[ATTR_WATCHDOG]
 
-        self._homeassistant.save()
+        self._homeassistant.save_data()
         return True
 
     @api_process

@@ -87,25 +87,25 @@ class Addon(CoreSysAttributes):
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
         }
-        self._data.save()
+        self._data.save_data()
 
     def _set_uninstall(self):
         """Set addon as uninstalled."""
         self._data.system.pop(self._id, None)
         self._data.user.pop(self._id, None)
-        self._data.save()
+        self._data.save_data()
 
     def _set_update(self, version):
         """Update version of addon."""
         self._data.system[self._id] = deepcopy(self._data.cache[self._id])
         self._data.user[self._id][ATTR_VERSION] = version
-        self._data.save()
+        self._data.save_data()
 
     def _restore_data(self, user, system):
         """Restore data to addon."""
         self._data.user[self._id] = deepcopy(user)
         self._data.system[self._id] = deepcopy(system)
-        self._data.save()
+        self._data.save_data()
 
     @property
     def options(self):
@@ -121,7 +121,6 @@ class Addon(CoreSysAttributes):
     def options(self, value):
         """Store user addon options."""
         self._data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
-        self._data.save()
 
     @property
     def boot(self):
@@ -134,7 +133,6 @@ class Addon(CoreSysAttributes):
     def boot(self, value):
         """Store user boot options."""
         self._data.user[self._id][ATTR_BOOT] = value
-        self._data.save()
 
     @property
     def auto_update(self):
@@ -147,7 +145,6 @@ class Addon(CoreSysAttributes):
     def auto_update(self, value):
         """Set auto update."""
         self._data.user[self._id][ATTR_AUTO_UPDATE] = value
-        self._data.save()
 
     @property
     def name(self):
@@ -224,8 +221,6 @@ class Addon(CoreSysAttributes):
                     new_ports[container_port] = host_port
 
             self._data.user[self._id][ATTR_NETWORK] = new_ports
-
-        self._data.save()
 
     @property
     def webui(self):
@@ -347,7 +342,6 @@ class Addon(CoreSysAttributes):
             self._data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
         else:
             self._data.user[self._id][ATTR_AUDIO_OUTPUT] = value
-        self._data.save()
 
     @property
     def audio_input(self):
@@ -367,7 +361,6 @@ class Addon(CoreSysAttributes):
             self._data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
         else:
             self._data.user[self._id][ATTR_AUDIO_INPUT] = value
-        self._data.save()
 
     @property
     def url(self):

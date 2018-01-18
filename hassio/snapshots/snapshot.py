@@ -365,7 +365,7 @@ class Snapshot(CoreSysAttributes):
         self._homeassistant.api_password = self.homeassistant_password
 
         # save
-        self._homeassistant.save()
+        self._homeassistant.save_data()
 
     def store_repositories(self):
         """Store repository list into snapshot."""

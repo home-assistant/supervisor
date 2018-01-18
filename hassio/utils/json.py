@@ -37,7 +37,7 @@ class JsonConfig(object):
 
         self._read_json()
 
-    def _read_json(self):
+    def read_data(self):
         # init or load data
         if self._file.is_file():
             try:
@@ -57,7 +57,7 @@ class JsonConfig(object):
             _LOGGER.warning("Reset %s to default", self._file)
             self._data = self._schema({})
 
-    def save(self):
+    def save_data(self):
         """Store data to config file."""
         # validate
         try:
@@ -68,7 +68,7 @@ class JsonConfig(object):
 
             # Load last valid data
             _LOGGER.warning("Reset %s to last version", self._file)
-            self._read_json()
+            self.save_data()
             return
 
         # write
