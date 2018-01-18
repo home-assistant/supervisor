@@ -280,7 +280,7 @@ class Snapshot(CoreSysAttributes):
 
     async def store_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
-        folder_list = folder_list or ALL_FOLDERS
+        folder_list = set(folder_list or ALL_FOLDERS)
 
         def _folder_save(name):
             """Intenal function to snapshot a folder."""
@@ -293,8 +293,8 @@ class Snapshot(CoreSysAttributes):
                 with tarfile.open(snapshot_tar, "w:gz",
                                   compresslevel=1) as tar_file:
                     tar_file.add(origin_dir, arcname=".")
-                    _LOGGER.info("Snapshot folder %s done", name)
 
+                _LOGGER.info("Snapshot folder %s done", name)
                 self._data[ATTR_FOLDERS].append(name)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
@@ -307,7 +307,7 @@ class Snapshot(CoreSysAttributes):
 
     async def restore_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
-        folder_list = folder_list or ALL_FOLDERS
+        folder_list = set(folder_list or ALL_FOLDERS)
 
         def _folder_restore(name):
             """Intenal function to restore a folder."""
@@ -323,7 +323,7 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.info("Restore folder %s", name)
                 with tarfile.open(snapshot_tar, "r:gz") as tar_file:
                     tar_file.extractall(path=origin_dir)
-                    _LOGGER.info("Restore folder %s done", name)
+                _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
