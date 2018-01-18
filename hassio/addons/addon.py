@@ -120,7 +120,10 @@ class Addon(CoreSysAttributes):
     @options.setter
     def options(self, value):
         """Store user addon options."""
-        self._data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
+        if value is None:
+            self._data.user[self._id][ATTR_OPTIONS] = {}
+        else:
+            self._data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
 
     @property
     def boot(self):
