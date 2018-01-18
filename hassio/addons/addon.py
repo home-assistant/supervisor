@@ -444,6 +444,10 @@ class Addon(CoreSysAttributes):
         """Return path to addon changelog."""
         return Path(self.path_location, 'CHANGELOG.md')
 
+    def save_data(self):
+        """Save data of addon."""
+        self._addons.data.save_data()
+
     def write_options(self):
         """Return True if addon options is written to data."""
         schema = self.schema
@@ -457,7 +461,6 @@ class Addon(CoreSysAttributes):
                           humanize_error(options, ex))
         except (OSError, json.JSONDecodeError) as err:
             _LOGGER.error("Addon %s can't write options: %s", self._id, err)
-
         else:
             return True
 
