@@ -13,6 +13,16 @@ from ..validate import NETWORK_PORT
 
 ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
+
+def unique_addons(addons_list):
+    """Validate that a add-on is unique."""
+    singe = set(addon[ATTR_SLUG] for addon in addons_list)
+
+    if len(single) != len(addons_list):
+        raise vol.Invalid()
+    return addons_list
+
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_SNAPSHOT = vol.Schema({
     vol.Required(ATTR_SLUG): vol.Coerce(str),
@@ -35,7 +45,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
         vol.Required(ATTR_SLUG): vol.Coerce(str),
         vol.Required(ATTR_NAME): vol.Coerce(str),
         vol.Required(ATTR_VERSION): vol.Coerce(str),
-    }, extra=vol.REMOVE_EXTRA), vol.Unique())],
+    }, extra=vol.REMOVE_EXTRA), unique_addons)],
     vol.Optional(ATTR_REPOSITORIES, default=[]):
         [vol.All(vol.Url(), vol.Unique())],
 }, extra=vol.ALLOW_EXTRA)
