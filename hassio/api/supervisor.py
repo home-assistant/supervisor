@@ -13,14 +13,14 @@ from ..const import (
     ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX, ATTR_BLK_READ,
     ATTR_BLK_WRITE, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
-from ..validate import validate_timezone, WAIT_BOOT
+from ..validate import validate_timezone, WAIT_BOOT, REPOSITORIES
 
 _LOGGER = logging.getLogger(__name__)
 
 SCHEMA_OPTIONS = vol.Schema({
     # pylint: disable=no-value-for-parameter
     vol.Optional(ATTR_BETA_CHANNEL): vol.Boolean(),
-    vol.Optional(ATTR_ADDONS_REPOSITORIES): [vol.Url()],
+    vol.Optional(ATTR_ADDONS_REPOSITORIES): REPOSITORIES,
     vol.Optional(ATTR_TIMEZONE): validate_timezone,
     vol.Optional(ATTR_WAIT_BOOT): WAIT_BOOT,
 })

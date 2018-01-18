@@ -15,6 +15,7 @@ NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 ALSA_CHANNEL = vol.Match(r"\d+,\d+")
 WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
+REPOSITORIES = vol.All([vol.Url()], vol.Unique())
 
 
 def validate_timezone(timezone):
@@ -86,7 +87,7 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
     vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
     vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[
         "https://github.com/hassio-addons/repository",
-    ]): [vol.All(vol.Url(), vol.Unique())],
+    ]): REPOSITORIES,
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,

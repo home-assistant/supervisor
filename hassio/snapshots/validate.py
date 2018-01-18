@@ -9,7 +9,7 @@ from ..const import (
     ATTR_LAST_VERSION,
     FOLDER_SHARE, FOLDER_HOMEASSISTANT, FOLDER_ADDONS, FOLDER_SSL,
     SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
-from ..validate import NETWORK_PORT
+from ..validate import NETWORK_PORT, REPOSITORIES
 
 ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
@@ -40,12 +40,11 @@ SCHEMA_SNAPSHOT = vol.Schema({
         vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
     }, extra=vol.REMOVE_EXTRA),
     vol.Optional(ATTR_FOLDERS, default=list):
-        [vol.All(vol.In(ALL_FOLDERS), vol.Unique())],
-    vol.Optional(ATTR_ADDONS, default=list): [vol.All(vol.Schema({
+        vol.All([vol.In(ALL_FOLDERS)], vol.Unique()),
+    vol.Optional(ATTR_ADDONS, default=list): vol.All([vol.Schema({
         vol.Required(ATTR_SLUG): vol.Coerce(str),
         vol.Required(ATTR_NAME): vol.Coerce(str),
         vol.Required(ATTR_VERSION): vol.Coerce(str),
-    }, extra=vol.REMOVE_EXTRA), unique_addons)],
-    vol.Optional(ATTR_REPOSITORIES, default=list):
-        [vol.All(vol.Url(), vol.Unique())],
+    }, extra=vol.REMOVE_EXTRA)], unique_addons),
+    vol.Optional(ATTR_REPOSITORIES, default=list): REPOSITORIES,
 }, extra=vol.ALLOW_EXTRA)
