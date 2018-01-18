@@ -85,7 +85,7 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
     vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
     vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[
         "https://github.com/hassio-addons/repository",
-    ]): [vol.Url()],
+    ]): [vol.Url(), vol.Unique()],
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,
