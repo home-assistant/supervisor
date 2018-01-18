@@ -26,7 +26,7 @@ class DockerAddon(DockerInterface):
 
     @property
     def addon(self):
-        """Return name of docker image."""
+        """Return addon of docker image."""
         return self._addons.get(self._id)
 
     @property
@@ -269,7 +269,7 @@ class DockerAddon(DockerInterface):
 
         Need run inside executor.
         """
-        build_env = AddonBuild(self.coresys, self.addon)
+        build_env = AddonBuild(self.coresys, self._id)
 
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:

@@ -14,6 +14,10 @@ from .const import (
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 ALSA_CHANNEL = vol.Match(r"\d+,\d+")
 WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
+DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
+
+# pylint: disable=no-value-for-parameter
+REPOSITORIES = vol.All([vol.Url()], vol.Unique())
 
 
 def validate_timezone(timezone):
@@ -62,7 +66,7 @@ SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
         vol.Match(r"^[0-9a-f]{32}$"),
     vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
-    vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Coerce(str),
+    vol.Inclusive(ATTR_IMAGE, 'custom_hass'): DOCKER_IMAGE,
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
     vol.Optional(ATTR_PORT, default=8123): NETWORK_PORT,
     vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
@@ -85,7 +89,7 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
     vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
     vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[
         "https://github.com/hassio-addons/repository",
-    ]): [vol.Url()],
+    ]): REPOSITORIES,
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
     vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,

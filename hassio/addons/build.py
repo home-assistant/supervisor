@@ -10,17 +10,22 @@ from ..utils.json import JsonConfig
 class AddonBuild(JsonConfig, CoreSysAttributes):
     """Handle build options for addons."""
 
-    def __init__(self, coresys, addon):
+    def __init__(self, coresys, slug):
         """Initialize addon builder."""
         self.coresys = coresys
-        self.addon = addon
+        self._id = slug
 
         super().__init__(
-            Path(addon.path_location, 'build.json'), SCHEMA_BUILD_CONFIG)
+            Path(self.addon.path_location, 'build.json'), SCHEMA_BUILD_CONFIG)
 
-    def save(self):
+    def save_data(self):
         """Ignore save function."""
         pass
+
+    @property
+    def addon(self):
+        """Return addon of build data."""
+        return self._addons.get(self._id)
 
     @property
     def base_image(self):
