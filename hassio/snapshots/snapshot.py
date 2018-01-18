@@ -306,7 +306,7 @@ class Snapshot(CoreSysAttributes):
         if tasks:
             await asyncio.wait(tasks, loop=self._loop)
 
-    async def restore_folders(self, folder_list):
+    async def restore_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
         folder_list = set(folder_list or self.folders)
 
