@@ -14,6 +14,7 @@ from .const import (
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 ALSA_CHANNEL = vol.Match(r"\d+,\d+")
 WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
+DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 
 
 def validate_timezone(timezone):
