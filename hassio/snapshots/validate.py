@@ -29,11 +29,12 @@ SCHEMA_SNAPSHOT = vol.Schema({
         vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
         vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
     }, extra=vol.REMOVE_EXTRA),
-    vol.Optional(ATTR_FOLDERS, default=[]): [vol.In(ALL_FOLDERS)],
+    vol.Optional(ATTR_FOLDERS, default=[]):
+        [vol.In(ALL_FOLDERS), vol.Unique()],
     vol.Optional(ATTR_ADDONS, default=[]): [vol.Schema({
         vol.Required(ATTR_SLUG): vol.Coerce(str),
         vol.Required(ATTR_NAME): vol.Coerce(str),
         vol.Required(ATTR_VERSION): vol.Coerce(str),
-    }, extra=vol.REMOVE_EXTRA)],
-    vol.Optional(ATTR_REPOSITORIES, default=[]): [vol.Url()],
+    }, extra=vol.REMOVE_EXTRA), vol.Unique()],
+    vol.Optional(ATTR_REPOSITORIES, default=[]): [vol.Url(), vol.Unique()],
 }, extra=vol.ALLOW_EXTRA)
