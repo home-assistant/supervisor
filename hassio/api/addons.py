@@ -140,7 +140,7 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon(request)
 
         addon_schema = SCHEMA_OPTIONS.extend({
-            vol.Optional(ATTR_OPTIONS): addon.schema,
+            vol.Optional(ATTR_OPTIONS): vol.Any(None, addon.schema),
         })
 
         body = await api_validate(addon_schema, request)
@@ -158,6 +158,7 @@ class APIAddons(CoreSysAttributes):
         if ATTR_AUDIO_OUTPUT in body:
             addon.audio_output = body[ATTR_AUDIO_OUTPUT]
 
+        addon.save_data()
         return True
 
     @api_process

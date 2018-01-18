@@ -45,7 +45,6 @@ class CoreConfig(JsonConfig):
     def timezone(self, value):
         """Set system timezone."""
         self._data[ATTR_TIMEZONE] = value
-        self.save()
 
     @property
     def wait_boot(self):
@@ -56,7 +55,6 @@ class CoreConfig(JsonConfig):
     def wait_boot(self, value):
         """Set wait boot time."""
         self._data[ATTR_WAIT_BOOT] = value
-        self.save()
 
     @property
     def last_boot(self):
@@ -72,7 +70,6 @@ class CoreConfig(JsonConfig):
     def last_boot(self, value):
         """Set last boot datetime."""
         self._data[ATTR_LAST_BOOT] = value.isoformat()
-        self.save()
 
     @property
     def path_hassio(self):
@@ -170,7 +167,6 @@ class CoreConfig(JsonConfig):
             return
 
         self._data[ATTR_ADDONS_CUSTOM_LIST].append(repo)
-        self.save()
 
     def drop_addon_repository(self, repo):
         """Remove a custom repository from list."""
@@ -178,7 +174,6 @@ class CoreConfig(JsonConfig):
             return
 
         self._data[ATTR_ADDONS_CUSTOM_LIST].remove(repo)
-        self.save()
 
     @property
     def audio_output(self):
@@ -189,7 +184,6 @@ class CoreConfig(JsonConfig):
     def audio_output(self, value):
         """Set ALSA audio output card,dev."""
         self._data[ATTR_AUDIO_OUTPUT] = value
-        self.save()
 
     @property
     def audio_input(self):
@@ -200,4 +194,3 @@ class CoreConfig(JsonConfig):
     def audio_input(self, value):
         """Set ALSA audio input card,dev."""
         self._data[ATTR_AUDIO_INPUT] = value
-        self.save()

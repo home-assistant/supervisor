@@ -89,4 +89,4 @@ class Updater(JsonConfig, CoreSysAttributes):
         # update versions
         self._data[ATTR_HOMEASSISTANT] = data.get('homeassistant')
         self._data[ATTR_HASSIO] = data.get('hassio')
-        self.save()
+        self.save_data()

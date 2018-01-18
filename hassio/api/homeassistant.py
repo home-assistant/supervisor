@@ -11,7 +11,7 @@ from ..const import (
     ATTR_MEMORY_USAGE, ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX,
     ATTR_BLK_READ, ATTR_BLK_WRITE, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
-from ..validate import NETWORK_PORT
+from ..validate import NETWORK_PORT, DOCKER_IMAGE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ SCHEMA_OPTIONS = vol.Schema({
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'):
         vol.Any(None, vol.Coerce(str)),
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'):
-        vol.Any(None, vol.Coerce(str)),
+        vol.Any(None, DOCKER_IMAGE),
     vol.Optional(ATTR_PORT): NETWORK_PORT,
     vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
     vol.Optional(ATTR_SSL): vol.Boolean(),
@@ -75,7 +75,7 @@ class APIHomeAssistant(CoreSysAttributes):
         if ATTR_WATCHDOG in body:
             self._homeassistant.watchdog = body[ATTR_WATCHDOG]
 
-        self._homeassistant.save()
+        self._homeassistant.save_data()
         return True
 
     @api_process

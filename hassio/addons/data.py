@@ -159,4 +159,4 @@ class Data(JsonConfig, CoreSysAttributes):
                     have_change = True
 
         if have_change:
-            self.save()
+            self.save_data()
