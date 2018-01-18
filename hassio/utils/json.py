@@ -68,7 +68,8 @@ class JsonConfig(object):
 
             # Load last valid data
             _LOGGER.warning("Reset %s to last version", self._file)
-            return self._read_json()
+            self._read_json()
+            return
 
         # write
         if not write_json_file(self._file, self._data):
