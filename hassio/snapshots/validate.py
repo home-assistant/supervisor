@@ -21,8 +21,8 @@ SCHEMA_SNAPSHOT = vol.Schema({
     vol.Required(ATTR_DATE): vol.Coerce(str),
     vol.Optional(ATTR_HOMEASSISTANT, default={}): vol.Schema({
         vol.Required(ATTR_VERSION): vol.Coerce(str),
-        vol.Optional(ATTR_IMAGE): vol.Coerce(str),
-        vol.Optional(ATTR_LAST_VERSION): vol.Coerce(str),
+        vol.Inclusive(ATTR_IMAGE, 'custom_hass'): vol.Coerce(str),
+        vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
         vol.Optional(ATTR_PORT, default=8123): NETWORK_PORT,
@@ -30,11 +30,12 @@ SCHEMA_SNAPSHOT = vol.Schema({
         vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
     }, extra=vol.REMOVE_EXTRA),
     vol.Optional(ATTR_FOLDERS, default=[]):
-        [vol.In(ALL_FOLDERS), vol.Unique()],
-    vol.Optional(ATTR_ADDONS, default=[]): [vol.Schema({
+        [vol.All(vol.In(ALL_FOLDERS), vol.Unique())],
+    vol.Optional(ATTR_ADDONS, default=[]): [vol.All(vol.Schema({
         vol.Required(ATTR_SLUG): vol.Coerce(str),
         vol.Required(ATTR_NAME): vol.Coerce(str),
         vol.Required(ATTR_VERSION): vol.Coerce(str),
-    }, extra=vol.REMOVE_EXTRA), vol.Unique()],
-    vol.Optional(ATTR_REPOSITORIES, default=[]): [vol.Url(), vol.Unique()],
+    }, extra=vol.REMOVE_EXTRA), vol.Unique())],
+    vol.Optional(ATTR_REPOSITORIES, default=[]):
+        [vol.All(vol.Url(), vol.Unique())],
 }, extra=vol.ALLOW_EXTRA)
