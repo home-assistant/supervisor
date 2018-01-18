@@ -111,7 +111,8 @@ Output is the raw docker log.
         {
             "slug": "SLUG",
             "date": "ISO",
-            "name": "Custom name"
+            "name": "Custom name",
+            "type": "full|partial"
         }
     ]
 }
@@ -417,7 +418,7 @@ Get all available addons.
 }
 ```
 
-For reset custom network/audio settings, set it `null`.
+Reset custom network/audio/options, set it `null`.
 
 - POST `/addons/{addon}/start`
 

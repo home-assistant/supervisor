@@ -87,25 +87,25 @@ class Addon(CoreSysAttributes):
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
         }
-        self._data.save()
+        self._data.save_data()
 
     def _set_uninstall(self):
         """Set addon as uninstalled."""
         self._data.system.pop(self._id, None)
         self._data.user.pop(self._id, None)
-        self._data.save()
+        self._data.save_data()
 
     def _set_update(self, version):
         """Update version of addon."""
         self._data.system[self._id] = deepcopy(self._data.cache[self._id])
         self._data.user[self._id][ATTR_VERSION] = version
-        self._data.save()
+        self._data.save_data()
 
     def _restore_data(self, user, system):
         """Restore data to addon."""
         self._data.user[self._id] = deepcopy(user)
         self._data.system[self._id] = deepcopy(system)
-        self._data.save()
+        self._data.save_data()
 
     @property
     def options(self):
@@ -120,8 +120,10 @@ class Addon(CoreSysAttributes):
     @options.setter
     def options(self, value):
         """Store user addon options."""
-        self._data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
-        self._data.save()
+        if value is None:
+            self._data.user[self._id][ATTR_OPTIONS] = {}
+        else:
+            self._data.user[self._id][ATTR_OPTIONS] = deepcopy(value)
 
     @property
     def boot(self):
@@ -134,7 +136,6 @@ class Addon(CoreSysAttributes):
     def boot(self, value):
         """Store user boot options."""
         self._data.user[self._id][ATTR_BOOT] = value
-        self._data.save()
 
     @property
     def auto_update(self):
@@ -147,7 +148,6 @@ class Addon(CoreSysAttributes):
     def auto_update(self, value):
         """Set auto update."""
         self._data.user[self._id][ATTR_AUTO_UPDATE] = value
-        self._data.save()
 
     @property
     def name(self):
@@ -224,8 +224,6 @@ class Addon(CoreSysAttributes):
                     new_ports[container_port] = host_port
 
             self._data.user[self._id][ATTR_NETWORK] = new_ports
-
-        self._data.save()
 
     @property
     def webui(self):
@@ -347,7 +345,6 @@ class Addon(CoreSysAttributes):
             self._data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
         else:
             self._data.user[self._id][ATTR_AUDIO_OUTPUT] = value
-        self._data.save()
 
     @property
     def audio_input(self):
@@ -367,7 +364,6 @@ class Addon(CoreSysAttributes):
             self._data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
         else:
             self._data.user[self._id][ATTR_AUDIO_INPUT] = value
-        self._data.save()
 
     @property
     def url(self):
@@ -448,6 +444,10 @@ class Addon(CoreSysAttributes):
         """Return path to addon changelog."""
         return Path(self.path_location, 'CHANGELOG.md')
 
+    def save_data(self):
+        """Save data of addon."""
+        self._addons.data.save_data()
+
     def write_options(self):
         """Return True if addon options is written to data."""
         schema = self.schema
@@ -455,10 +455,14 @@ class Addon(CoreSysAttributes):
 
         try:
             schema(options)
-            return write_json_file(self.path_options, options)
+            write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error("Addon %s have wrong options: %s", self._id,
                           humanize_error(options, ex))
+        except (OSError, json.JSONDecodeError) as err:
+            _LOGGER.error("Addon %s can't write options: %s", self._id, err)
+        else:
+            return True
 
         return False
 
@@ -654,8 +658,10 @@ class Addon(CoreSysAttributes):
             }
 
             # store local configs/state
-            if not write_json_file(Path(temp, "addon.json"), data):
-                _LOGGER.error("Can't write addon.json for %s", self._id)
+            try:
+                write_json_file(Path(temp, "addon.json"), data)
+            except (OSError, json.JSONDecodeError) as err:
+                _LOGGER.error("Can't save meta for %s: %s", self._id, err)
                 return False
 
             # write into tarfile

@@ -49,6 +49,7 @@ class APIHost(CoreSysAttributes):
         if ATTR_AUDIO_INPUT in body:
             self._config.audio_input = body[ATTR_AUDIO_INPUT]
 
+        self._config.save_data()
         return True
 
     @api_process_hostcontrol
