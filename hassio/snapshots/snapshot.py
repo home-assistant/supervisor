@@ -307,7 +307,7 @@ class Snapshot(CoreSysAttributes):
 
     async def restore_folders(self, folder_list):
         """Backup hassio data into snapshot."""
-        folder_list = set(folder_list or self._data[ATTR_FOLDERS])
+        folder_list = set(folder_list or self.folders)
 
         def _folder_restore(name):
             """Intenal function to restore a folder."""
