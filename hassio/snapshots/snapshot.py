@@ -305,9 +305,9 @@ class Snapshot(CoreSysAttributes):
         if tasks:
             await asyncio.wait(tasks, loop=self._loop)
 
-    async def restore_folders(self, folder_list=None):
+    async def restore_folders(self, folder_list):
         """Backup hassio data into snapshot."""
-        folder_list = set(folder_list or ALL_FOLDERS)
+        folder_list = set(folder_list or self._data[ATTR_FOLDERS])
 
         def _folder_restore(name):
             """Intenal function to restore a folder."""
