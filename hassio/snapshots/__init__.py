@@ -112,13 +112,14 @@ class SnapshotsManager(CoreSysAttributes):
                 _LOGGER.info("Full-Snapshot %s store folders", snapshot.slug)
                 await snapshot.store_folders()
 
-            _LOGGER.info("Full-Snapshot %s done", snapshot.slug)
-            self.snapshots_obj[snapshot.slug] = snapshot
-            return True
-
         except (OSError, ValueError, tarfile.TarError) as err:
             _LOGGER.info("Full-Snapshot %s error: %s", snapshot.slug, err)
             return False
+
+        else:
+            _LOGGER.info("Full-Snapshot %s done", snapshot.slug)
+            self.snapshots_obj[snapshot.slug] = snapshot
+            return True
 
         finally:
             self._scheduler.suspend = False
@@ -157,13 +158,14 @@ class SnapshotsManager(CoreSysAttributes):
                              snapshot.slug, folders)
                 await snapshot.store_folders(folders)
 
-            _LOGGER.info("Partial-Snapshot %s done", snapshot.slug)
-            self.snapshots_obj[snapshot.slug] = snapshot
-            return True
-
         except (OSError, ValueError, tarfile.TarError) as err:
             _LOGGER.info("Partial-Snapshot %s error: %s", snapshot.slug, err)
             return False
+
+        else:
+            _LOGGER.info("Partial-Snapshot %s done", snapshot.slug)
+            self.snapshots_obj[snapshot.slug] = snapshot
+            return True
 
         finally:
             self._scheduler.suspend = False
@@ -229,7 +231,7 @@ class SnapshotsManager(CoreSysAttributes):
                     if addon:
                         tasks.append(addon.uninstall())
                     else:
-                        _LOGGER.warning("Can't remove addon %s", slug)
+                        _LOGGER.warning("Can't remove addon %s", snapshot.slug)
 
                 for slug in restore_addons:
                     addon = self._addons.get(slug)
@@ -249,12 +251,13 @@ class SnapshotsManager(CoreSysAttributes):
                 await task_hass
                 await self._homeassistant.run()
 
+        except (OSError, ValueError, tarfile.TarError) as err:
+            _LOGGER.info("Full-Restore %s error: %s", snapshot.slug, err)
+            return False
+
+        else:
             _LOGGER.info("Full-Restore %s done", snapshot.slug)
             return True
-
-        except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Full-Restore %s error: %s", slug, err)
-            return False
 
         finally:
             self._scheduler.suspend = False
@@ -298,7 +301,8 @@ class SnapshotsManager(CoreSysAttributes):
                     if addon:
                         tasks.append(snapshot.export_addon(addon))
                     else:
-                        _LOGGER.warning("Can't restore addon %s", slug)
+                        _LOGGER.warning("Can't restore addon %s",
+                                        snapshot.slug)
 
                 if tasks:
                     _LOGGER.info("Partial-Restore %s run %d tasks",
@@ -308,12 +312,13 @@ class SnapshotsManager(CoreSysAttributes):
                 # make sure homeassistant run agen
                 await self._homeassistant.run()
 
+        except (OSError, ValueError, tarfile.TarError) as err:
+            _LOGGER.info("Partial-Restore %s error: %s", snapshot.slug, err)
+            return False
+
+        else:
             _LOGGER.info("Partial-Restore %s done", snapshot.slug)
             return True
-
-        except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Partial-Restore %s error: %s", slug, err)
-            return False
 
         finally:
             self._scheduler.suspend = False
