@@ -18,8 +18,8 @@ _LOGGER = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_RESTORE_PARTIAL = vol.Schema({
     vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
-    vol.Optional(ATTR_ADDONS): [vol.Coerce(str)],
-    vol.Optional(ATTR_FOLDERS): [vol.In(ALL_FOLDERS)],
+    vol.Optional(ATTR_ADDONS): [vol.Coerce(str), vol.Unique()],
+    vol.Optional(ATTR_FOLDERS): [vol.In(ALL_FOLDERS), vol.Unique()],
 })
 
 SCHEMA_SNAPSHOT_FULL = vol.Schema({
@@ -27,8 +27,8 @@ SCHEMA_SNAPSHOT_FULL = vol.Schema({
 })
 
 SCHEMA_SNAPSHOT_PARTIAL = SCHEMA_SNAPSHOT_FULL.extend({
-    vol.Optional(ATTR_ADDONS): [vol.Coerce(str)],
-    vol.Optional(ATTR_FOLDERS): [vol.In(ALL_FOLDERS)],
+    vol.Optional(ATTR_ADDONS): [vol.Coerce(str), vol.Unique()],
+    vol.Optional(ATTR_FOLDERS): [vol.In(ALL_FOLDERS), vol.Unique()],
 })
 
 
