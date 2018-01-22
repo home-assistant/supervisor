@@ -175,6 +175,9 @@ class RestAPI(CoreSysAttributes):
         self.webapp.router.add_get('/panel_es5', create_panel_response('es5'))
         self.webapp.router.add_get(
             '/panel_latest', create_panel_response('latest'))
+        
+        # This route is for HA > 0.61
+        self.webapp.router.add_get('/app-es5', create_panel_response('es5'))
 
     async def start(self):
         """Run rest api webserver."""
