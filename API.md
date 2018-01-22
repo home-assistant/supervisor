@@ -47,6 +47,7 @@ The addons from `addons` are only installed one.
             "repository": "12345678|null",
             "version": "LAST_VERSION",
             "installed": "INSTALL_VERSION",
+            "icon": "bool",
             "logo": "bool",
             "state": "started|stopped",
         }
@@ -346,6 +347,7 @@ Get all available addons.
             "detached": "bool",
             "build": "bool",
             "url": "null|url",
+            "icon": "bool",
             "logo": "bool"
         }
     ],
@@ -386,6 +388,7 @@ Get all available addons.
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "devices": ["/dev/xy"],
     "auto_uart": "bool",
+    "icon": "bool",
     "logo": "bool",
     "changelog": "bool",
     "hassio_api": "bool",
@@ -398,6 +401,8 @@ Get all available addons.
     "audio_output": "null|0,0"
 }
 ```
+
+- GET `/addons/{addon}/icon`
 
 - GET `/addons/{addon}/logo`
 

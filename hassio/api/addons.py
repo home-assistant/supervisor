@@ -16,7 +16,7 @@ from ..const import (
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, BOOT_AUTO, BOOT_MANUAL,
     ATTR_CHANGELOG, ATTR_HOST_IPC, ATTR_HOST_DBUS, ATTR_LONG_DESCRIPTION,
     ATTR_CPU_PERCENT, ATTR_MEMORY_LIMIT, ATTR_MEMORY_USAGE, ATTR_NETWORK_TX,
-    ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE,
+    ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS
@@ -73,6 +73,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
                 ATTR_URL: addon.url,
+                ATTR_ICON: addon.with_icon,
                 ATTR_LOGO: addon.with_logo,
             })
 
@@ -122,6 +123,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_HOST_DBUS: addon.host_dbus,
             ATTR_PRIVILEGED: addon.privileged,
             ATTR_DEVICES: self._pretty_devices(addon),
+            ATTR_ICON: addon.with_icon,
             ATTR_LOGO: addon.with_logo,
             ATTR_CHANGELOG: addon.with_changelog,
             ATTR_WEBUI: addon.webui,
@@ -242,6 +244,16 @@ class APIAddons(CoreSysAttributes):
         """Return logs from addon."""
         addon = self._extract_addon(request)
         return addon.logs()
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    async def icon(self, request):
+        """Return icon from addon."""
+        addon = self._extract_addon(request, check_installed=False)
+        if not addon.with_icon:
+            raise RuntimeError("No image found!")
+
+        with addon.path_icon.open('rb') as png:
+            return png.read()
 
     @api_process_raw(CONTENT_TYPE_PNG)
     async def logo(self, request):
