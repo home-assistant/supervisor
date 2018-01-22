@@ -179,9 +179,9 @@ class RestAPI(CoreSysAttributes):
         
         # This route is for HA > 0.61
         self.webapp.router.add_get(
-            '/app-es5', create_panel_response('index'))
+            '/app-es5/index.html', create_panel_response('index'))
         self.webapp.router.add_get(
-            '/app-es5', create_panel_response('hassio-app'))
+            '/app-es5/hassio-app.html', create_panel_response('hassio-app'))
 
     async def start(self):
         """Run rest api webserver."""
