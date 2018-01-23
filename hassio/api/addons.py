@@ -250,7 +250,7 @@ class APIAddons(CoreSysAttributes):
         """Return icon from addon."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_icon:
-            raise RuntimeError("No image found!")
+            raise RuntimeError("No icon found!")
 
         with addon.path_icon.open('rb') as png:
             return png.read()
@@ -260,7 +260,7 @@ class APIAddons(CoreSysAttributes):
         """Return logo from addon."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_logo:
-            raise RuntimeError("No image found!")
+            raise RuntimeError("No logo found!")
 
         with addon.path_logo.open('rb') as png:
             return png.read()
