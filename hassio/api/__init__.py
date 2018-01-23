@@ -166,15 +166,24 @@ class RestAPI(CoreSysAttributes):
         def create_panel_response(build_type):
             """Create a function to generate a response."""
             path = Path(__file__).parent.joinpath(
-                'panel/hassio-main-{}.html'.format(build_type))
-
+                f"panel/{build_type}.html")
             return lambda request: web.FileResponse(path)
 
         # This route is for backwards compatibility with HA < 0.58
-        self.webapp.router.add_get('/panel', create_panel_response('es5'))
-        self.webapp.router.add_get('/panel_es5', create_panel_response('es5'))
         self.webapp.router.add_get(
-            '/panel_latest', create_panel_response('latest'))
+            '/panel', create_panel_response('hassio-main-es5'))
+
+        # This route is for backwards compatibility with HA 0.58 - 0.61
+        self.webapp.router.add_get(
+            '/panel_es5', create_panel_response('hassio-main-es5'))
+        self.webapp.router.add_get(
+            '/panel_latest', create_panel_response('hassio-main-latest'))
+
+        # This route is for HA > 0.61
+        self.webapp.router.add_get(
+            '/app-es5/index.html', create_panel_response('index'))
+        self.webapp.router.add_get(
+            '/app-es5/hassio-app.html', create_panel_response('hassio-app'))
 
     async def start(self):
         """Run rest api webserver."""
