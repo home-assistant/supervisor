@@ -371,6 +371,11 @@ class Addon(CoreSysAttributes):
         return self._mesh.get(ATTR_URL)
 
     @property
+    def with_icon(self):
+        """Return True if a icon exists."""
+        return self.path_icon.exists()
+
+    @property
     def with_logo(self):
         """Return True if a logo exists."""
         return self.path_logo.exists()
@@ -433,6 +438,11 @@ class Addon(CoreSysAttributes):
     def path_location(self):
         """Return path to this addon."""
         return Path(self._mesh[ATTR_LOCATON])
+
+    @property
+    def path_icon(self):
+        """Return path to addon icon."""
+        return Path(self.path_location, 'icon.png')
 
     @property
     def path_logo(self):
