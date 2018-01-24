@@ -11,7 +11,7 @@ from ..const import (
     ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED, ATTR_TIMEZONE,
     ATTR_STATE, ATTR_WAIT_BOOT, ATTR_CPU_PERCENT, ATTR_MEMORY_USAGE,
     ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX, ATTR_BLK_READ,
-    ATTR_BLK_WRITE, CONTENT_TYPE_BINARY)
+    ATTR_BLK_WRITE, CONTENT_TYPE_BINARY, ATTR_ICON)
 from ..coresys import CoreSysAttributes
 from ..validate import validate_timezone, WAIT_BOOT, REPOSITORIES
 
@@ -52,6 +52,7 @@ class APISupervisor(CoreSysAttributes):
                     ATTR_VERSION: addon.last_version,
                     ATTR_INSTALLED: addon.version_installed,
                     ATTR_REPOSITORY: addon.repository,
+                    ATTR_ICON: addon.with_icon,
                     ATTR_LOGO: addon.with_logo,
                 })
 
