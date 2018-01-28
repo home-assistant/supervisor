@@ -133,9 +133,15 @@ class APIProxy(CoreSysAttributes):
         await server.prepare(request)
 
         # handle authentication
-        await server.send_json({'type': 'auth_required'})
+        await server.send_json({
+            'type': 'auth_required',
+            'ha_version': self._homeassistant.version,
+        })
         await server.receive_json()  # get internal token
-        await server.send_json({'type': 'auth_ok'})
+        await server.send_json({
+            'type': 'auth_ok',
+            'ha_version': self._homeassistant.version,
+        })
 
         # init connection to hass
         client = await self._websocket_client()
