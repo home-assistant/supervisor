@@ -100,7 +100,7 @@ class APIProxy(CoreSysAttributes):
 
     async def _websocket_client(self):
         """Initialize a websocket api connection."""
-        url = f"{self.homeassistant.api_url}/api/websocket"
+        url = f"{self._homeassistant.api_url}/api/websocket"
 
         try:
             client = await self._websession_ssl.ws_connect(
@@ -143,7 +143,7 @@ class APIProxy(CoreSysAttributes):
                 'type': 'auth_ok',
                 'ha_version': self._homeassistant.version,
             })
-        except RuntimeError as err:
+        except (RuntimeError, ValueError) as err:
             _LOGGER.error("Can't initialize handshake: %s", err)
             raise HTTPInternalServerError() from None
 
