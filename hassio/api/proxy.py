@@ -4,7 +4,7 @@ import logging
 
 import aiohttp
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPBadGateway
+from aiohttp.web_exceptions import HTTPBadGateway, HTTPInternalServerError
 from aiohttp.hdrs import CONTENT_TYPE
 import async_timeout
 
@@ -100,7 +100,7 @@ class APIProxy(CoreSysAttributes):
 
     async def _websocket_client(self):
         """Initialize a websocket api connection."""
-        url = f"{self.homeassistant.api_url}/api/websocket"
+        url = f"{self._homeassistant.api_url}/api/websocket"
 
         try:
             client = await self._websession_ssl.ws_connect(
@@ -133,9 +133,19 @@ class APIProxy(CoreSysAttributes):
         await server.prepare(request)
 
         # handle authentication
-        await server.send_json({'type': 'auth_required'})
-        await server.receive_json()  # get internal token
-        await server.send_json({'type': 'auth_ok'})
+        try:
+            await server.send_json({
+                'type': 'auth_required',
+                'ha_version': self._homeassistant.version,
+            })
+            await server.receive_json()  # get internal token
+            await server.send_json({
+                'type': 'auth_ok',
+                'ha_version': self._homeassistant.version,
+            })
+        except (RuntimeError, ValueError) as err:
+            _LOGGER.error("Can't initialize handshake: %s", err)
+            raise HTTPInternalServerError() from None
 
         # init connection to hass
         client = await self._websocket_client()
