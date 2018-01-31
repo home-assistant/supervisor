@@ -44,6 +44,9 @@ class HassIO(CoreSysAttributes):
         # load last available data
         await self._snapshots.load()
 
+        # load services
+        await self._services.load()
+
         # start dns forwarding
         self._loop.create_task(self._dns.start())
 
@@ -69,6 +72,9 @@ class HassIO(CoreSysAttributes):
             if self._hardware.last_boot == self._config.last_boot:
                 _LOGGER.info("Hass.io reboot detected")
                 return
+
+            # reset register services
+            self._services.reset_data()
 
             # start addon mark as system
             await self._addons.auto_boot(STARTUP_SYSTEM)
