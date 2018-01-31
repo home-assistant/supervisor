@@ -138,6 +138,7 @@ ATTR_MEMORY_USAGE = 'memory_usage'
 ATTR_BLK_READ = 'blk_read'
 ATTR_BLK_WRITE = 'blk_write'
 ATTR_MQTT = 'mqtt'
+ATTR_PROVIDER = 'provider'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'
