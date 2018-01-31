@@ -40,6 +40,7 @@ class CoreSys(object):
         self._updater = None
         self._snapshots = None
         self._tasks = None
+        self._services = None
 
     @property
     def arch(self):
@@ -155,19 +156,19 @@ class CoreSys(object):
 
     @property
     def snapshots(self):
-        """Return SnapshotsManager object."""
+        """Return SnapshotManager object."""
         return self._snapshots
 
     @snapshots.setter
     def snapshots(self, value):
-        """Set a SnapshotsManager object."""
+        """Set a SnapshotManager object."""
         if self._snapshots:
             raise RuntimeError("SnapshotsManager already set!")
         self._snapshots = value
 
     @property
     def tasks(self):
-        """Return SnapshotsManager object."""
+        """Return Tasks object."""
         return self._tasks
 
     @tasks.setter
@@ -176,6 +177,18 @@ class CoreSys(object):
         if self._tasks:
             raise RuntimeError("Tasks already set!")
         self._tasks = value
+
+    @property
+    def services(self):
+        """Return ServiceManager object."""
+        return self._services
+
+    @tasks.setter
+    def services(self, value):
+        """Set a ServiceManager object."""
+        if self._services:
+            raise RuntimeError("Services already set!")
+        self._services = value
 
 
 class CoreSysAttributes(object):

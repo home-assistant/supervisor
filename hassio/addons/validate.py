@@ -168,7 +168,7 @@ SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_CONFIG.extend({
 })
 
 
-SCHEMA_ADDON_FILE = vol.Schema({
+SCHEMA_ADDONS_FILE = vol.Schema({
     vol.Optional(ATTR_USER, default=dict): {
         vol.Coerce(str): SCHEMA_ADDON_USER,
     },

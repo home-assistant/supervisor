@@ -15,6 +15,7 @@ FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
 FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
 FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
+FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 SOCKET_HC = Path("/var/run/hassio-hc.sock")
@@ -136,6 +137,7 @@ ATTR_MEMORY_LIMIT = 'memory_limit'
 ATTR_MEMORY_USAGE = 'memory_usage'
 ATTR_BLK_READ = 'blk_read'
 ATTR_BLK_WRITE = 'blk_write'
+ATTR_MQTT = 'mqtt'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'
