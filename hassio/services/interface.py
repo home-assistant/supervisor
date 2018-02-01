@@ -1,7 +1,6 @@
 """Interface for single service."""
 
 from ..coresys import CoreSysAttributes
-from .core import ATTR_PROVIDER
 
 
 class ServiceInterface(CoreSysAttributes):
@@ -22,14 +21,9 @@ class ServiceInterface(CoreSysAttributes):
         return None
 
     @property
-    def provider(self):
+    def providers(self):
         """Return name of service provider."""
-        return self._data.get(ATTR_PROVIDER)
-
-    @provider.setter
-    def provider(self, value):
-        """Set name of service provider."""
-        return self._data[ATTR_PROVIDER]
+        return None
 
     @property
     def enabled(self):

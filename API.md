@@ -462,6 +462,45 @@ Write data to add-on stdin
 }
 ```
 
+### Service discovery
+
+- GET `/services`
+```json
+{
+    "services": {
+        "mqtt": {
+            "enabled": "bool",
+            "providers": ["name"]
+        }
+    }
+}
+```
+
+- GET `/services/mqtt`
+```json
+{
+    "provider": "name",
+    "host": "xy",
+    "port": "8883",
+    "ssl": "bool",
+    "username": "optional",
+    "password": "optional",
+    "protocol": "3.1.1"
+}
+```
+
+- POST `/services/mqtt`
+```json
+{
+    "host": "xy",
+    "port": "8883",
+    "ssl": "bool",
+    "username": "optional",
+    "password": "optional",
+    "protocol": "3.1.1"
+}
+```
+
 ## Host Control
 
 Communicate over UNIX socket with a host daemon.
