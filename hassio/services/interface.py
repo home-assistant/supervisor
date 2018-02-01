@@ -26,10 +26,19 @@ class ServiceInterface(CoreSysAttributes):
         """Return name of service provider."""
         return self._data.get(ATTR_PROVIDER)
 
+    @provider.setter
+    def provider(self, value):
+        """Set name of service provider."""
+        return self._data[ATTR_PROVIDER]
+
     @property
     def enabled(self):
         """Return True if the service is in use."""
         return bool(self._data)
+
+    def save(self):
+        """Save changes."""
+        self._services.data.save_data()
 
     async def get_service_data(self):
         """Return the requested service data."""
