@@ -494,7 +494,7 @@ Write data to add-on stdin
 {
     "host": "xy",
     "port": "8883",
-    "ssl": "bool",
+    "ssl": "bool|optional",
     "username": "optional",
     "password": "optional",
     "protocol": "3.1.1"
