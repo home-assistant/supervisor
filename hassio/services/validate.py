@@ -26,6 +26,5 @@ SCHEMA_CONFIG_MQTT = SCHEMA_SERVICE_MQTT.extend({
 
 
 SCHEMA_SERVICES_FILE = vol.Schema({
-    vol.Optional(ATTR_MQTT, default=dict): 
-        vol.Any({}, SCHEMA_CONFIG_MQTT),
+    vol.Optional(ATTR_MQTT, default=dict): vol.Any({}, SCHEMA_CONFIG_MQTT),
 }, extra=vol.REMOVE_EXTRA)
