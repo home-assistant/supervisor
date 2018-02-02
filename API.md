@@ -468,7 +468,7 @@ Write data to add-on stdin
 ```json
 {
     "services": {
-        "mqtt": {
+        "{service_slug}": {
             "enabled": "bool",
             "providers": ["name"]
         }
