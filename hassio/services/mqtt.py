@@ -1,7 +1,7 @@
 """Provide MQTT Service."""
 import logging
 
-from .core import ATTR_PROVIDER
+from .core import ATTR_PROVIDER, SERVICE_MQTT
 from .interface import ServiceInterface
 from .validate import SCHEMA_SERVICE_MQTT
 
@@ -10,6 +10,11 @@ _LOGGER = logging.getLogger(__name__)
 
 class MQTTService(ServiceInterface):
     """Provide mqtt services."""
+
+    @property
+    def slug(self):
+        """Return slug of this service."""
+        return SERVICE_MQTT
 
     @property
     def _data(self):

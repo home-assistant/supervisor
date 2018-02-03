@@ -2,11 +2,12 @@
 
 from .mqtt import MQTTService
 from .data import ServicesData
+from ..const import SERVICE_MQTT
 from ..coresys import CoreSysAttributes
 
 
 AVAILABLE_SERVICES = {
-    "mqtt": MQTTService
+    SERVICE_MQTT: MQTTService
 }
 
 

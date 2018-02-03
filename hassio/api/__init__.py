@@ -11,6 +11,7 @@ from .network import APINetwork
 from .proxy import APIProxy
 from .supervisor import APISupervisor
 from .snapshots import APISnapshots
+from .services import APIServices
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ class RestAPI(CoreSysAttributes):
         self._register_addons()
         self._register_snapshots()
         self._register_network()
+        self._register_services()
 
     def _register_host(self):
         """Register hostcontrol function."""
@@ -161,6 +163,17 @@ class RestAPI(CoreSysAttributes):
         self.webapp.router.add_post(
             '/snapshots/{snapshot}/restore/partial',
             api_snapshots.restore_partial)
+
+    def _register_services(self):
+        api_services = APIServices()
+        api_services.coresys = self.coresys
+
+        self.webapp.router.add_get('/services', api_services.list)
+
+        self.webapp.router.add_get(
+            '/services/{service}', api_services.get_service)
+        self.webapp.router.add_post(
+            '/services/{service}', api_services.set_service)
 
     def _register_panel(self):
         """Register panel for homeassistant."""

@@ -3,7 +3,7 @@
 import voluptuous as vol
 
 from ..const import (
-    ATTR_MQTT, ATTR_HOST, ATTR_PORT, ATTR_PASSWORD, ATTR_USERNAME, ATTR_SSL,
+    SERVICE_MQTT, ATTR_HOST, ATTR_PORT, ATTR_PASSWORD, ATTR_USERNAME, ATTR_SSL,
     ATTR_PROVIDER, ATTR_PROTOCOL)
 from ..validate import NETWORK_PORT
 
@@ -26,5 +26,5 @@ SCHEMA_CONFIG_MQTT = SCHEMA_SERVICE_MQTT.extend({
 
 
 SCHEMA_SERVICES_FILE = vol.Schema({
-    vol.Optional(ATTR_MQTT, default=dict): vol.Any({}, SCHEMA_CONFIG_MQTT),
+    vol.Optional(SERVICE_MQTT, default=dict): vol.Any({}, SCHEMA_CONFIG_MQTT),
 }, extra=vol.REMOVE_EXTRA)

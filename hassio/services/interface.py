@@ -11,6 +11,11 @@ class ServiceInterface(CoreSysAttributes):
         self.coresys = coresys
 
     @property
+    def slug(self):
+        """Return slug of this service."""
+        return None
+
+    @property
     def _data(self):
         """Return data of this service."""
         return None

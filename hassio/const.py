@@ -137,9 +137,10 @@ ATTR_MEMORY_LIMIT = 'memory_limit'
 ATTR_MEMORY_USAGE = 'memory_usage'
 ATTR_BLK_READ = 'blk_read'
 ATTR_BLK_WRITE = 'blk_write'
-ATTR_MQTT = 'mqtt'
 ATTR_PROVIDER = 'provider'
 ATTR_AVAILABLE = 'available'
+
+SERVICE_MQTT = 'mqtt'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'
