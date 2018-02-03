@@ -44,6 +44,7 @@ CONTENT_TYPE_PNG = 'image/png'
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_TEXT = 'text/plain'
 HEADER_HA_ACCESS = 'x-ha-access'
+HEADER_TOKEN = 'HASSIO_TOKEN'
 
 ATTR_WAIT_BOOT = 'wait_boot'
 ATTR_WATCHDOG = 'watchdog'

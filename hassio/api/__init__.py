@@ -12,6 +12,7 @@ from .proxy import APIProxy
 from .supervisor import APISupervisor
 from .snapshots import APISnapshots
 from .services import APIServices
+from .security import security_layer
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,11 +24,15 @@ class RestAPI(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize docker base wrapper."""
         self.coresys = coresys
-        self.webapp = web.Application(loop=self._loop)
+        self.webapp = web.Application(
+            middlewares=[security_layer], loop=self._loop)
 
         # service stuff
         self._handler = None
         self.server = None
+
+        # middleware
+        self.webapp['coresys'] = coresys
 
     async def load(self):
         """Register REST API Calls."""
