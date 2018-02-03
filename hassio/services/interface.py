@@ -21,7 +21,7 @@ class ServiceInterface(CoreSysAttributes):
         return None
 
     @property
-    def providers(self):
+    def provider(self):
         """Return name of service provider."""
         return None
 

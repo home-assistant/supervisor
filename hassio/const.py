@@ -139,6 +139,7 @@ ATTR_BLK_READ = 'blk_read'
 ATTR_BLK_WRITE = 'blk_write'
 ATTR_MQTT = 'mqtt'
 ATTR_PROVIDER = 'provider'
+ATTR_AVAILABLE = 'available'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'

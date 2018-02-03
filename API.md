@@ -469,8 +469,8 @@ Write data to add-on stdin
 {
     "services": {
         "{service_slug}": {
-            "enabled": "bool",
-            "providers": ["name"]
+            "available": "bool",
+            "provider": "null|name|list"
         }
     }
 }

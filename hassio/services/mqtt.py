@@ -22,7 +22,7 @@ class MQTTService(ServiceInterface):
         return SCHEMA_SERVICE_MQTT
 
     @property
-    def providers(self):
+    def provider(self):
         """Return name of service provider."""
         return self._data.get(ATTR_PROVIDER)
 
