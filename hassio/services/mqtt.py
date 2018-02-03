@@ -1,9 +1,9 @@
 """Provide MQTT Service."""
 import logging
 
-from .core import ATTR_PROVIDER, SERVICE_MQTT
 from .interface import ServiceInterface
 from .validate import SCHEMA_SERVICE_MQTT
+from ..const import ATTR_PROVIDER, SERVICE_MQTT
 
 _LOGGER = logging.getLogger(__name__)
 

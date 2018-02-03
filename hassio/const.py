@@ -139,6 +139,9 @@ ATTR_BLK_READ = 'blk_read'
 ATTR_BLK_WRITE = 'blk_write'
 ATTR_PROVIDER = 'provider'
 ATTR_AVAILABLE = 'available'
+ATTR_HOST = 'host'
+ATTR_USERNAME = 'username'
+ATTR_PROTOCOL = 'protocol'
 
 SERVICE_MQTT = 'mqtt'
 
