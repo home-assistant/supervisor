@@ -46,6 +46,8 @@ CONTENT_TYPE_TEXT = 'text/plain'
 HEADER_HA_ACCESS = 'x-ha-access'
 HEADER_TOKEN = 'HASSIO_TOKEN'
 
+REQUEST_FROM = 'HASSIO_FROM'
+
 ATTR_WAIT_BOOT = 'wait_boot'
 ATTR_WATCHDOG = 'watchdog'
 ATTR_CHANGELOG = 'changelog'

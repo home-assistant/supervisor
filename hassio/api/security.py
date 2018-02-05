@@ -3,7 +3,7 @@ import logging
 
 from aiohttp.web import middleware
 
-from ..const import HEADER_TOKEN
+from ..const import HEADER_TOKEN, REQUEST_FROM
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,10 +21,12 @@ async def security_layer(request, handler):
 
     # From HomeAssistant?
     if hassio_token == coresys.homeassistant.uuid:
-        request['from'] = 'homeassistant'
+        request[REQUEST_FROM] = 'homeassistant'
     else:
         for addon in coresys.addons.list_addons:
             if hassio_token != addon.uuid:
                 continue
-            request['from'] = addon.slug
+            request[REQUEST_FROM] = addon.slug
             break
+
+    return await handler(request)

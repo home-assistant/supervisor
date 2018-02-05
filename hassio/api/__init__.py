@@ -5,6 +5,7 @@ from pathlib import Path
 from aiohttp import web
 
 from .addons import APIAddons
+from .discovery import APIDiscovery
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .network import APINetwork
@@ -179,6 +180,17 @@ class RestAPI(CoreSysAttributes):
             '/services/{service}', api_services.get_service)
         self.webapp.router.add_post(
             '/services/{service}', api_services.set_service)
+
+    def _register_discovery(self):
+        api_discovery = APIDiscovery()
+        api_discovery.coresys = self.coresys
+
+        self.webapp.router.add_get(
+            '/discovery', api_discovery.list)
+        self.webapp.router.add_get(
+            '/discovery/{uuid}', api_discovery.get_discovery)
+        self.webapp.router.add_post(
+            '/discovery', api_discovery.set_discovery)
 
     def _register_panel(self):
         """Register panel for homeassistant."""

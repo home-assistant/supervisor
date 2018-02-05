@@ -462,6 +462,41 @@ Write data to add-on stdin
 }
 ```
 
+### Home-Assistant Discovery
+
+- GET `/discovery`
+```json
+[
+    {
+        "provider": "name",
+        "uuid": "uuid",
+        "component": "component",
+        "platform": "null|platform",
+        "config": {}
+    }
+]
+```
+
+- GET `/discovery/{UUID}`
+```json
+{
+    "provider": "name",
+    "uuid": "uuid",
+    "component": "component",
+    "platform": "null|platform",
+    "config": {}
+}
+```
+
+- POST `/discovery`
+```json
+{
+    "component": "component",
+    "platform": "null|platform",
+    "config": {}
+}
+```
+
 ### Service discovery
 
 - GET `/services`
@@ -476,42 +511,7 @@ Write data to add-on stdin
 }
 ```
 
-- GET `/services/discovery`
-```json
-[
-    {
-        "provider": "name",
-        "uuid": "uuid",
-        "component": "component",
-        "platform": "null|platform",
-        "config": {}
-    }
-]
-```
-
-- GET `/services/discovery/{UUID}`
-```json
-{
-    "provider": "name",
-    "uuid": "uuid",
-    "component": "component",
-    "platform": "null|platform",
-    "config": {}
-}
-```
-
-- POST `/services/discovery`
-```json
-{
-    "component": "component",
-    "platform": "null|platform",
-    "config": {}
-}
-```
-
-#### Services list
-
-##### MQTT
+#### MQTT
 
 This service perform a auto discovery to Home-Assistant.
 
