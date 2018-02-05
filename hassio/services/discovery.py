@@ -15,6 +15,23 @@ class Discovery(CoreSysAttributes):
         self.coresys = coresys
         self.message_obj = []
 
+    def load(self):
+        """Load exists discovery message into storage."""
+        messages = []
+        for message in self._data:
+            messages.append(Message(**message))
+
+        self.message_obj = messages
+
+    def save(self):
+        """Write discovery message into data file."""
+        messages = []
+        for message in self.message_obj:
+            messages.append(message.raw())
+
+        self._data = messages
+        self._services.data.save_data()
+
     @property
     def _data(self):
         """Return discovery data."""

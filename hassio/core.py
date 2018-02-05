@@ -73,8 +73,8 @@ class HassIO(CoreSysAttributes):
                 _LOGGER.info("Hass.io reboot detected")
                 return
 
-            # reset register services
-            self._services.reset_data()
+            # reset register services / discovery
+            self._services.reset()
 
             # start addon mark as system
             await self._addons.auto_boot(STARTUP_SYSTEM)

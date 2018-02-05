@@ -35,3 +35,11 @@ class ServiceManager(CoreSysAttributes):
         """Load available services."""
         for slug, service in AVAILABLE_SERVICES.items():
             self.services_obj[slug] = service(self.coresys)
+
+        # Read exists discovery messages
+        self.discovery.load()
+
+    def reset(self):
+        """Reset available data."""
+        self.data.reset_data()
+        self.discovery.load()
