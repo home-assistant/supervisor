@@ -58,5 +58,6 @@ class MQTTService(ServiceInterface):
         if ATTR_PASSWORD in data:
             hass_config['user']: data[ATTR_PASSWORD]
 
-        return await self._services.discovery.send(
+        await self._services.discovery.send(
             provider, SERVICE_MQTT, None, hass_config)
+        return True
