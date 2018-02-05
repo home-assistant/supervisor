@@ -1,8 +1,11 @@
 """Handle discover message for Home-Assistant."""
 import logging
+from uuid import uuid4
 
+from ..const import ATTR_UUID
 from ..coresys import CoreSysAttributes
 
+_LOGGER = logging.getLogger(__name__)
 
 EVENT_DISCOVERY = 'hassio_discovery'
 
@@ -13,24 +16,29 @@ class Discovery(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize discovery handler."""
         self.coresys = coresys
-        self.message_obj = []
+        self.message_obj = {}
 
     def load(self):
         """Load exists discovery message into storage."""
-        messages = []
+        messages = {}
         for message in self._data:
-            messages.append(Message(**message))
+            discovery = Message(**message)
+            messages[discovery.uuid] = discovery
 
         self.message_obj = messages
 
     def save(self):
         """Write discovery message into data file."""
         messages = []
-        for message in self.message_obj:
+        for message in self.message_obj.values():
             messages.append(message.raw())
 
         self._data = messages
         self._services.data.save_data()
+
+    def get(self, uuid):
+        """Return discovery message."""
+        return self.message_obj.get(uuid)
 
     @property
     def _data(self):
@@ -42,37 +50,37 @@ class Discovery(CoreSysAttributes):
         """Return list of available discovery messages."""
         return self.message_obj
 
-    async def send_discovery(self, provider, component,
-                             platform=None, config=None)
+    async def send(self, provider, component, platform=None, config=None)
         """Send a discovery message to Home-Assistant."""
         message = Message(provider, component, platform, config)
 
         # Allready exists?
         for exists_message in self.message_obj:
             if exists_message == message:
-                return True
-        self.message_obj.append(message)
+                _LOGGER.warning("Found douplicate discovery message from %s",
+                                provider)
+                return
+
+        _LOGGER.info("Send discovery to Home-Assistant %s/%s from %s",
+                     component, platform, provider)
+        self.message_obj[message.uuid] = message
+        self.save()
 
         # send event to Home-Assistant
-        sending = await self._homeassistant.send_event(EVENT_DISCOVERY, {
-            ATTR_COMPONENT: component,
-            ATTR_PLATFORM: platform,
-        })
-
-        if not sending:
-            return False
-        return True
+        self._loop.create_task(self._homeassistant.send_event(
+            EVENT_DISCOVERY, {ATTR_UUID: message.uuid}))
 
 
 class Message(obect):
     """Represent a single Discovery message."""
 
-    def __init__(self, provider, component, platform, config):
+    def __init__(self, provider, component, platform, config, uuid):
         """Initialize discovery message."""
         self.provider = provider
         self.component = component
         self.platform = platform
         self.config = config
+        self.uuid = uuid or uuid4().hex
 
     def raw(self):
         """Return raw discovery message."""
