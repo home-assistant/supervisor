@@ -4,13 +4,14 @@ import voluptuous as vol
 
 from ..const import (
     SERVICE_MQTT, ATTR_HOST, ATTR_PORT, ATTR_PASSWORD, ATTR_USERNAME, ATTR_SSL,
-    ATTR_PROVIDER, ATTR_PROTOCOL, ATTR_DISCOVERY, ATTR_COMPONENT,
+    ATTR_PROVIDER, ATTR_PROTOCOL, ATTR_DISCOVERY, ATTR_COMPONENT, ATTR_UUID,
     ATTR_PLATFORM, ATTR_CONFIG)
 from ..validate import NETWORK_PORT
 
 
 SCHEMA_DISCOVERY = vol.Schema([
     vol.Schema({
+        vol.Required(ATTR_UUID): vol.Match(r"^[0-9a-f]{32}$"),
         vol.Required(ATTR_PROVIDER): vol.Coerce(str),
         vol.Required(ATTR_COMPONENT): vol.Coerce(str),
         vol.Required(ATTR_PLATFORM): vol.Any(None, vol.Coerce(str)),

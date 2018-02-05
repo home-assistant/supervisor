@@ -74,7 +74,7 @@ class Discovery(CoreSysAttributes):
 class Message(obect):
     """Represent a single Discovery message."""
 
-    def __init__(self, provider, component, platform, config, uuid):
+    def __init__(self, provider, component, platform, config, uuid=None):
         """Initialize discovery message."""
         self.provider = provider
         self.component = component
