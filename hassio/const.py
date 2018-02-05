@@ -143,6 +143,10 @@ ATTR_AVAILABLE = 'available'
 ATTR_HOST = 'host'
 ATTR_USERNAME = 'username'
 ATTR_PROTOCOL = 'protocol'
+ATTR_DISCOVERY = 'discovery'
+ATTR_PLATFORM = 'platform'
+ATTR_COMPONENT = 'component'
+ATTR_CONFIG = 'config'
 
 SERVICE_MQTT = 'mqtt'
 

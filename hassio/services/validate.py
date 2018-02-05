@@ -4,8 +4,19 @@ import voluptuous as vol
 
 from ..const import (
     SERVICE_MQTT, ATTR_HOST, ATTR_PORT, ATTR_PASSWORD, ATTR_USERNAME, ATTR_SSL,
-    ATTR_PROVIDER, ATTR_PROTOCOL)
+    ATTR_PROVIDER, ATTR_PROTOCOL, ATTR_DISCOVERY, ATTR_COMPONENT,
+    ATTR_PLATFORM, ATTR_CONFIG)
 from ..validate import NETWORK_PORT
+
+
+SCHEMA_DISCOVERY = vol.Schema([
+    vol.Schema({
+        vol.Required(ATTR_PROVIDER): vol.Coerce(str),
+        vol.Required(ATTR_COMPONENT): vol.Any(None, vol.Coerce(str)),
+        vol.Required(ATTR_PLATFORM): vol.Any(None, vol.Coerce(str)),
+        vol.Required(ATTR_CONFIG): vol.Any(None, dict),
+    }, extra=vol.REMOVE_EXTRA)
+])
 
 
 # pylint: disable=no-value-for-parameter
@@ -27,4 +38,5 @@ SCHEMA_CONFIG_MQTT = SCHEMA_SERVICE_MQTT.extend({
 
 SCHEMA_SERVICES_FILE = vol.Schema({
     vol.Optional(SERVICE_MQTT, default=dict): vol.Any({}, SCHEMA_CONFIG_MQTT),
+    vol.Optional(ATTR_DISCOVERY, default=list): vol.Any([], SCHEMA_DISCOVERY),
 }, extra=vol.REMOVE_EXTRA)
