@@ -12,7 +12,7 @@ from ..validate import NETWORK_PORT
 SCHEMA_DISCOVERY = vol.Schema([
     vol.Schema({
         vol.Required(ATTR_PROVIDER): vol.Coerce(str),
-        vol.Required(ATTR_COMPONENT): vol.Any(None, vol.Coerce(str)),
+        vol.Required(ATTR_COMPONENT): vol.Coerce(str),
         vol.Required(ATTR_PLATFORM): vol.Any(None, vol.Coerce(str)),
         vol.Required(ATTR_CONFIG): vol.Any(None, dict),
     }, extra=vol.REMOVE_EXTRA)
