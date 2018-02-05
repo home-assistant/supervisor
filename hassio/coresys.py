@@ -183,7 +183,7 @@ class CoreSys(object):
         """Return ServiceManager object."""
         return self._services
 
-    @tasks.setter
+    @services.setter
     def services(self, value):
         """Set a ServiceManager object."""
         if self._services:

@@ -50,7 +50,7 @@ class APIDiscovery(CoreSysAttributes):
     @api_process
     async def get_discovery(self, request):
         """Read data into a discovery message."""
-        message  = self._services.discovery.get(request.match_info.get('uuid'))
+        message = self._services.discovery.get(request.match_info.get('uuid'))
 
         if not message:
             raise RuntimeError("Discovery message not found")

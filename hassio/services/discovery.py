@@ -50,7 +50,7 @@ class Discovery(CoreSysAttributes):
         """Return list of available discovery messages."""
         return self.message_obj
 
-    async def send(self, provider, component, platform=None, config=None)
+    async def send(self, provider, component, platform=None, config=None):
         """Send a discovery message to Home-Assistant."""
         message = Message(provider, component, platform, config)
 
@@ -71,7 +71,7 @@ class Discovery(CoreSysAttributes):
             EVENT_DISCOVERY, {ATTR_UUID: message.uuid}))
 
 
-class Message(obect):
+class Message(object):
     """Represent a single Discovery message."""
 
     def __init__(self, provider, component, platform, config, uuid=None):
@@ -88,7 +88,7 @@ class Message(obect):
 
     def __eq__(self, other):
         """Compare with other message."""
-        for attribute in (provider, component, platform, config):
+        for attribute in ('provider', 'component', 'platform', 'config'):
             if getattr(self, attribute) != getattr(other, attribute):
                 return False
         return True

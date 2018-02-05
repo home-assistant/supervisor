@@ -49,9 +49,9 @@ class MQTTService(ServiceInterface):
 
         # discover mqtt to homeassistant
         hass_config = {
-                'host': data[ATTR_HOST],
-                'port': data[ATTR_PORT],
-                'protocol': data[ATTR_PROTOCOL]
+            'host': data[ATTR_HOST],
+            'port': data[ATTR_PORT],
+            'protocol': data[ATTR_PROTOCOL]
         }
         if ATTR_USERNAME in data:
             hass_config['user']: data[ATTR_USERNAME]
