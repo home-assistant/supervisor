@@ -32,7 +32,7 @@ class MQTTService(ServiceInterface):
     def provider(self):
         """Return name of service provider."""
         return self._data.get(ATTR_PROVIDER)
-    
+
     @property
     def hass_config(self):
         """Return Home-Assistant mqtt config."""
@@ -45,9 +45,9 @@ class MQTTService(ServiceInterface):
             'protocol': self._data[ATTR_PROTOCOL]
         }
         if ATTR_USERNAME in self._data:
-            hass_config['user']: data[ATTR_USERNAME]
+            hass_config['user']: self._data[ATTR_USERNAME]
         if ATTR_PASSWORD in self._data:
-            hass_config['password']: data[ATTR_PASSWORD]
+            hass_config['password']: self._data[ATTR_PASSWORD]
 
         return hass_config
 
@@ -76,11 +76,12 @@ class MQTTService(ServiceInterface):
     def del_service_data(self, provider):
         """Remove the data from service object."""
         if provider != self.provider:
-            _LOGGGER.warning("%s request a service remove...", provider)
-        
+            _LOGGER.warning("%s request a service remove...", provider)
+
         discovery_id = self._data.get(ATTR_DISCOVERY_ID)
         if discovery_id:
-            message = self._services.discovery.get(discovery_id)
+            self._services.discovery.remove(
+                self._services.discovery.get(discovery_id))
 
         self._data = {}
         self.save()
