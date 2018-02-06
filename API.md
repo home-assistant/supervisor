@@ -504,6 +504,8 @@ return:
 }
 ```
 
+- DEL `/services/discovery/{UUID}`
+
 - GET `/services`
 ```json
 {
@@ -544,6 +546,8 @@ This service perform a auto discovery to Home-Assistant.
     "protocol": "3.1.1"
 }
 ```
+
+- DEL `/services/mqtt`
 
 ## Host Control
 
