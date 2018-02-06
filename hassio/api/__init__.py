@@ -45,6 +45,7 @@ class RestAPI(CoreSysAttributes):
         self._register_addons()
         self._register_snapshots()
         self._register_network()
+        self._register_discovery()
         self._register_services()
 
     def _register_host(self):
@@ -180,17 +181,21 @@ class RestAPI(CoreSysAttributes):
             '/services/{service}', api_services.get_service)
         self.webapp.router.add_post(
             '/services/{service}', api_services.set_service)
+        self.webapp.router.add_delete(
+            '/services/{service}', api_services.del_service)
 
     def _register_discovery(self):
         api_discovery = APIDiscovery()
         api_discovery.coresys = self.coresys
 
         self.webapp.router.add_get(
-            '/discovery', api_discovery.list)
+            '/services/discovery', api_discovery.list)
         self.webapp.router.add_get(
-            '/discovery/{uuid}', api_discovery.get_discovery)
+            '/services/discovery/{uuid}', api_discovery.get_discovery)
         self.webapp.router.add_post(
-            '/discovery', api_discovery.set_discovery)
+            '/services/discovery', api_discovery.set_discovery)
+        self.webapp.router.delete_post(
+            '/services/discovery', api_discovery.del_discovery)
 
     def _register_panel(self):
         """Register panel for homeassistant."""
