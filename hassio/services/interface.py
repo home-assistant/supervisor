@@ -39,16 +39,16 @@ class ServiceInterface(CoreSysAttributes):
         """Save changes."""
         self._services.data.save_data()
 
-    async def get_service_data(self):
+    def get_service_data(self):
         """Return the requested service data."""
         if self.enabled:
             return self._data
         return None
 
-    async def set_service_data(self, provider, data):
+    def set_service_data(self, provider, data):
         """Write the data into service object."""
         raise NotImplementedError()
 
-    async def del_service_data(self, provider):
+    def del_service_data(self, provider):
         """Remove the data from service object."""
         raise NotImplementedError()
