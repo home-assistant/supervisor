@@ -59,7 +59,7 @@ class Discovery(CoreSysAttributes):
             if exists_message == message:
                 _LOGGER.warning("Found douplicate discovery message from %s",
                                 provider)
-                return
+                return exists_message.uuid
 
         _LOGGER.info("Send discovery to Home-Assistant %s/%s from %s",
                      component, platform, provider)
@@ -69,6 +69,8 @@ class Discovery(CoreSysAttributes):
         # send event to Home-Assistant
         self._loop.create_task(self._homeassistant.send_event(
             EVENT_DISCOVERY, {ATTR_UUID: message.uuid}))
+
+        return message.uuid
 
 
 class Message(object):
