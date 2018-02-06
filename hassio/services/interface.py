@@ -48,3 +48,7 @@ class ServiceInterface(CoreSysAttributes):
     async def set_service_data(self, provider, data):
         """Write the data into service object."""
         raise NotImplementedError()
+
+    async def del_service_data(self, provider):
+        """Remove the data from service object."""
+        raise NotImplementedError()
