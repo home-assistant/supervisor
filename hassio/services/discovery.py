@@ -71,7 +71,7 @@ class Discovery(CoreSysAttributes):
             EVENT_DISCOVERY_ADD, {ATTR_UUID: message.uuid}))
 
         return message
-    
+
     def remove(self, message):
         """Remove a discovery message from Home-Assistant."""
         self.message_obj.pop(message.uuid, None)
