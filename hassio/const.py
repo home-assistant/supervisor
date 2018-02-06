@@ -149,6 +149,7 @@ ATTR_DISCOVERY = 'discovery'
 ATTR_PLATFORM = 'platform'
 ATTR_COMPONENT = 'component'
 ATTR_CONFIG = 'config'
+ATTR_DISCOVERY_ID = 'discovery_id'
 
 SERVICE_MQTT = 'mqtt'
 
