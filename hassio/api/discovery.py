@@ -21,6 +21,13 @@ SCHEMA_DISCOVERY = vol.Schema({
 
 class APIDiscovery(CoreSysAttributes):
     """Handle rest api for discovery functions."""
+    
+    def _extract_message(self, request):
+        """Extract discovery message from URL."""
+        message = self._services.discovery.get(request.match_info.get('uuid'))
+        if not message:
+            raise RuntimeError("Discovery message not found")
+        return message
 
     @api_process
     async def list(self, request):
@@ -41,19 +48,15 @@ class APIDiscovery(CoreSysAttributes):
     async def set_discovery(self, request):
         """Write data into a discovery pipeline."""
         body = await api_validate(SCHEMA_DISCOVERY, request)
+        message = self._servcies.discover.send(
+            provider=request[REQUEST_FROM], **body)
 
-        return await asyncio.shield(
-            self._servcies.discover.send(
-                provider=request[REQUEST_FROM], **body),
-            loop=self._loop)
+        return message.uuid
 
     @api_process
     async def get_discovery(self, request):
         """Read data into a discovery message."""
-        message = self._services.discovery.get(request.match_info.get('uuid'))
-
-        if not message:
-            raise RuntimeError("Discovery message not found")
+        message = self._extract_message(request)
 
         return {
             ATTR_PROVIDER: message.provider,
@@ -62,3 +65,11 @@ class APIDiscovery(CoreSysAttributes):
             ATTR_PLATFORM: message.platform,
             ATTR_CONFIG: message.config,
         }
+
+    @api_process
+    async def del_discovery(self, request):
+        """Delete data into a discovery message."""
+        message = self._extract_message(request)
+
+        self._services.discovery.remove(message)
+        return True
