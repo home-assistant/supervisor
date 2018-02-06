@@ -32,6 +32,24 @@ class MQTTService(ServiceInterface):
     def provider(self):
         """Return name of service provider."""
         return self._data.get(ATTR_PROVIDER)
+    
+    @property
+    def hass_config(self):
+        """Return Home-Assistant mqtt config."""
+        if not self.enabled:
+            return None
+
+        hass_config = {
+            'host': self._data[ATTR_HOST],
+            'port': self._data[ATTR_PORT],
+            'protocol': self._data[ATTR_PROTOCOL]
+        }
+        if ATTR_USERNAME in self._data:
+            hass_config['user']: data[ATTR_USERNAME]
+        if ATTR_PASSWORD in self._data:
+            hass_config['password']: data[ATTR_PASSWORD]
+
+        return hass_config
 
     def set_service_data(self, provider, data):
         """Write the data into service object."""
@@ -48,19 +66,9 @@ class MQTTService(ServiceInterface):
             return True
 
         # discover mqtt to homeassistant
-        hass_config = {
-            'host': data[ATTR_HOST],
-            'port': data[ATTR_PORT],
-            'protocol': data[ATTR_PROTOCOL]
-        }
-        if ATTR_USERNAME in data:
-            hass_config['user']: data[ATTR_USERNAME]
-        if ATTR_PASSWORD in data:
-            hass_config['password']: data[ATTR_PASSWORD]
-
         message = self._services.discovery.send(
-            provider, SERVICE_MQTT, None, hass_config)
-        
+            provider, SERVICE_MQTT, None, self.hass_config)
+
         self._data[ATTR_DISCOVERY_ID] = message.uuid
         self.save()
         return True
