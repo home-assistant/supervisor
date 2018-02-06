@@ -61,3 +61,7 @@ class MQTTService(ServiceInterface):
         await self._services.discovery.send(
             provider, SERVICE_MQTT, None, hass_config)
         return True
+
+    async def del_service_data(self, provider):
+        """Remove the data from service object."""
+        raise NotImplementedError()
