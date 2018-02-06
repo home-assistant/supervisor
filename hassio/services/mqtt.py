@@ -5,7 +5,7 @@ from .interface import ServiceInterface
 from .validate import SCHEMA_SERVICE_MQTT
 from ..const import (
     ATTR_PROVIDER, SERVICE_MQTT, ATTR_HOST, ATTR_PORT, ATTR_USERNAME,
-    ATTR_PASSWORD, ATTR_PROTOCOL)
+    ATTR_PASSWORD, ATTR_PROTOCOL, ATTR_DISCOVERY_ID)
 
 _LOGGER = logging.getLogger(__name__)
 
