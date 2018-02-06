@@ -1,5 +1,4 @@
 """Init file for HassIO network rest api."""
-import logging
 
 import voluptuous as vol
 
@@ -9,7 +8,6 @@ from ..const import (
     REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 
-_LOGGER = logging.getLogger(__name__)
 
 SCHEMA_DISCOVERY = vol.Schema({
     vol.Required(ATTR_COMPONENT): vol.Coerce(str),
