@@ -1,5 +1,4 @@
 """Init file for HassIO network rest api."""
-import asyncio
 import logging
 
 import voluptuous as vol
@@ -21,7 +20,7 @@ SCHEMA_DISCOVERY = vol.Schema({
 
 class APIDiscovery(CoreSysAttributes):
     """Handle rest api for discovery functions."""
-    
+
     def _extract_message(self, request):
         """Extract discovery message from URL."""
         message = self._services.discovery.get(request.match_info.get('uuid'))
