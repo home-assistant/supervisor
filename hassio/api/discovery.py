@@ -51,7 +51,7 @@ class APIDiscovery(CoreSysAttributes):
         message = self._servcies.discover.send(
             provider=request[REQUEST_FROM], **body)
 
-        return message.uuid
+        return {ATTR_UUID: message.uuid}
 
     @api_process
     async def get_discovery(self, request):
