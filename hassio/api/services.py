@@ -38,12 +38,16 @@ class APIServices(CoreSysAttributes):
         service = self._extract_service(request)
         body = await api_validate(service.schema, request)
 
-        return await asyncio.shield(
-            service.set_service_data(request[REQUEST_FROM], body),
-            loop=self._loop)
+        return service.set_service_data(request[REQUEST_FROM], body)
 
     @api_process
     def get_service(self, request):
         """Read data into a service."""
         service = self._extract_service(request)
         return service.get_service_data()
+    
+    @api_process
+    def del_service(self, request):
+        """Delete data into a service."""
+        service = self._extract_service(request)
+        return service.del_service_data(request[REQUEST_FROM])
