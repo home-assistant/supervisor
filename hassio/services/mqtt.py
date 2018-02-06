@@ -33,7 +33,7 @@ class MQTTService(ServiceInterface):
         """Return name of service provider."""
         return self._data.get(ATTR_PROVIDER)
 
-    async def set_service_data(self, provider, data):
+    def set_service_data(self, provider, data):
         """Write the data into service object."""
         if self.enabled:
             _LOGGER.error("It is already a mqtt in use from %s", self.provider)
@@ -58,13 +58,15 @@ class MQTTService(ServiceInterface):
         if ATTR_PASSWORD in data:
             hass_config['password']: data[ATTR_PASSWORD]
 
-        message = await self._services.discovery.send(
+        message = self._services.discovery.send(
             provider, SERVICE_MQTT, None, hass_config)
         
         self._data[ATTR_DISCOVERY_ID] = message.uuid
         self.save()
         return True
 
-    async def del_service_data(self, provider):
+    def del_service_data(self, provider):
         """Remove the data from service object."""
-        raise NotImplementedError()
+        discovery_id = self._data.get(ATTR_DISCOVERY_ID)
+        
+        message = self._services.discovery.get(self._data[]
