@@ -1,12 +1,8 @@
 """Init file for HassIO network rest api."""
-import asyncio
-import logging
 
 from .utils import api_process, api_validate
 from ..const import ATTR_AVAILABLE, ATTR_PROVIDER, REQUEST_FROM
 from ..coresys import CoreSysAttributes
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class APIServices(CoreSysAttributes):
@@ -45,7 +41,7 @@ class APIServices(CoreSysAttributes):
         """Read data into a service."""
         service = self._extract_service(request)
         return service.get_service_data()
-    
+
     @api_process
     def del_service(self, request):
         """Delete data into a service."""
