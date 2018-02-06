@@ -41,10 +41,10 @@ class MQTTService(ServiceInterface):
 
         self._data = data
         self._data[ATTR_PROVIDER] = provider
-        self.save()
 
         if provider == 'homeassistant':
             _LOGGER.info("Use mqtt settings from Home-Assistant")
+            self.save()
             return True
 
         # discover mqtt to homeassistant
@@ -58,8 +58,11 @@ class MQTTService(ServiceInterface):
         if ATTR_PASSWORD in data:
             hass_config['password']: data[ATTR_PASSWORD]
 
-        await self._services.discovery.send(
+        message = await self._services.discovery.send(
             provider, SERVICE_MQTT, None, hass_config)
+        
+        self._data[ATTR_DISCOVERY_ID] = message.uuid
+        self.save()
         return True
 
     async def del_service_data(self, provider):
