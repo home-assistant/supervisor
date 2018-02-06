@@ -462,9 +462,9 @@ Write data to add-on stdin
 }
 ```
 
-### Home-Assistant Discovery
+### Service discovery
 
-- GET `/discovery`
+- GET `/services/discovery`
 ```json
 [
     {
@@ -477,7 +477,7 @@ Write data to add-on stdin
 ]
 ```
 
-- GET `/discovery/{UUID}`
+- GET `/services/discovery/{UUID}`
 ```json
 {
     "provider": "name",
@@ -488,7 +488,7 @@ Write data to add-on stdin
 }
 ```
 
-- POST `/discovery`
+- POST `/services/discovery`
 ```json
 {
     "component": "component",
@@ -497,7 +497,12 @@ Write data to add-on stdin
 }
 ```
 
-### Service discovery
+return:
+```json
+{
+    "uuid": "uuid"
+}
+```
 
 - GET `/services`
 ```json
