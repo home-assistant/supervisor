@@ -7,8 +7,8 @@ from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
-EVENT_DISCOVERY = 'hassio_discovery'
-
+EVENT_DISCOVERY_ADD = 'hassio_discovery_add'
+EVENT_DISCOVERY_DEL = 'hassio_discovery_del'
 
 class Discovery(CoreSysAttributes):
     """Home-Assistant Discovery handler."""
@@ -50,7 +50,7 @@ class Discovery(CoreSysAttributes):
         """Return list of available discovery messages."""
         return self.message_obj
 
-    async def send(self, provider, component, platform=None, config=None):
+    def send(self, provider, component, platform=None, config=None):
         """Send a discovery message to Home-Assistant."""
         message = Message(provider, component, platform, config)
 
@@ -68,14 +68,18 @@ class Discovery(CoreSysAttributes):
 
         # send event to Home-Assistant
         self._loop.create_task(self._homeassistant.send_event(
-            EVENT_DISCOVERY, {ATTR_UUID: message.uuid}))
+            EVENT_DISCOVERY_ADD, {ATTR_UUID: message.uuid}))
 
         return message
     
-    async def remove(self, message):
+    def remove(self, message):
         """Remove a discovery message from Home-Assistant."""
         self.message_obj.pop(message.uuid, None)
         self.save()
+
+        # send event to Home-Assistant
+        self._loop.create_task(self._homeassistant.send_event(
+            EVENT_DISCOVERY_DEL, {ATTR_UUID: message.uuid}))
 
 
 class Message(object):
