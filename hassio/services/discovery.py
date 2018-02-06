@@ -10,6 +10,7 @@ _LOGGER = logging.getLogger(__name__)
 EVENT_DISCOVERY_ADD = 'hassio_discovery_add'
 EVENT_DISCOVERY_DEL = 'hassio_discovery_del'
 
+
 class Discovery(CoreSysAttributes):
     """Home-Assistant Discovery handler."""
 
