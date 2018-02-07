@@ -194,7 +194,7 @@ class RestAPI(CoreSysAttributes):
             '/services/discovery/{uuid}', api_discovery.get_discovery)
         self.webapp.router.add_post(
             '/services/discovery', api_discovery.set_discovery)
-        self.webapp.router.delete_post(
+        self.webapp.router.add_delete(
             '/services/discovery', api_discovery.del_discovery)
 
     def _register_panel(self):
