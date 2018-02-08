@@ -1,7 +1,8 @@
 """Init file for HassIO network rest api."""
 
 from .utils import api_process, api_validate
-from ..const import ATTR_AVAILABLE, ATTR_PROVIDER, REQUEST_FROM
+from ..const import (
+    ATTR_AVAILABLE, ATTR_PROVIDER, ATTR_SLUG, ATTR_SERVICES, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 
 
@@ -19,14 +20,15 @@ class APIServices(CoreSysAttributes):
     @api_process
     async def list(self, request):
         """Show register services."""
-        services = {}
+        services = []
         for service in self._services.list_services:
-            services[service.slug] = {
+            services.append({
+                ATTR_SLUG: service.slug,
                 ATTR_AVAILABLE: service.enabled,
                 ATTR_PROVIDER: service.provider,
-            }
+            })
 
-        return services
+        return {ATTR_SERVICES: services}
 
     @api_process
     async def set_service(self, request):
