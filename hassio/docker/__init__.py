@@ -19,7 +19,8 @@ class DockerAPI(object):
     def __init__(self):
         """Initialize docker base wrapper."""
         self.docker = docker.DockerClient(
-            base_url="unix:/{}".format(str(SOCKET_DOCKER)), version='auto')
+            base_url="unix:/{}".format(str(SOCKET_DOCKER)),
+            version='auto', timeout=300)
         self.network = DockerNetwork(self.docker)
 
     @property
