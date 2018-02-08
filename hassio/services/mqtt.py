@@ -75,8 +75,9 @@ class MQTTService(ServiceInterface):
 
     def del_service_data(self, provider):
         """Remove the data from service object."""
-        if provider != self.provider:
-            _LOGGER.warning("%s request a service remove...", provider)
+        if not self.enabled:
+            _LOGGER.warning("Can't remove not exists services.")
+            return False
 
         discovery_id = self._data.get(ATTR_DISCOVERY_ID)
         if discovery_id:
@@ -85,3 +86,4 @@ class MQTTService(ServiceInterface):
 
         self._data.clear()
         self.save()
+        return True
