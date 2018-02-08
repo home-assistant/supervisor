@@ -583,7 +583,7 @@ class Addon(CoreSysAttributes):
     @check_installed
     async def start(self):
         """Set options and start addon."""
-        if not self.addon.write_options():
+        if not self.write_options():
             return False
 
         return await self.instance.run()
