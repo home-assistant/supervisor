@@ -341,7 +341,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 pass
 
         while time.monotonic() - start_time < self.startup_time:
-            if await self._loop.run_in_executor(check_port):
+            if await self._loop.run_in_executor(None, check_port):
                 _LOGGER.info("Detect a running Home-Assistant instance")
                 return True
             await asyncio.sleep(10, loop=self._loop)
