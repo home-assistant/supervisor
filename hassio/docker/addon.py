@@ -225,10 +225,6 @@ class DockerAddon(DockerInterface):
         # cleanup
         self._stop()
 
-        # write config
-        if not self.addon.write_options():
-            return False
-
         ret = self._docker.run(
             self.image,
             name=self.name,
@@ -336,15 +332,6 @@ class DockerAddon(DockerInterface):
         self._meta = image.attrs
         self._cleanup()
         return True
-
-    def _restart(self):
-        """Restart docker container.
-
-        Addons prepare some thing on start and that is normaly not repeatable.
-        Need run inside executor.
-        """
-        self._stop()
-        return self._run()
 
     @docker_process
     def write_stdin(self, data):

@@ -3,6 +3,8 @@ import asyncio
 import logging
 import os
 import re
+import socket
+import time
 
 import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
@@ -10,7 +12,7 @@ from aiohttp.hdrs import CONTENT_TYPE
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
     ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
-    HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
+    ATTR_STARTUP_TIME, HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
 from .utils import convert_to_ascii
@@ -92,6 +94,16 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._data[ATTR_WATCHDOG] = value
 
     @property
+    def startup_time(self):
+        """Return time to wait for Home-Assistant startup."""
+        return self._data[ATTR_STARTUP_TIME]
+
+    @startup_time.setter
+    def startup_time(self, value):
+        """Set time to wait for Home-Assistant startup."""
+        self._data[ATTR_STARTUP_TIME] = value
+
+    @property
     def version(self):
         """Return version of running homeassistant."""
         return self.instance.version
@@ -156,8 +168,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             _LOGGER.warning("Fails install landingpage, retry after 60sec")
             await asyncio.sleep(60, loop=self._loop)
 
-        # run landingpage after installation
-        await self.instance.run()
+        # Run landingpage after installation
+        await self.start()
 
     async def install(self):
         """Install a landingpage."""
@@ -176,7 +188,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         # finishing
         _LOGGER.info("HomeAssistant docker now installed")
         if self.boot:
-            await self.instance.run()
+            await self.start()
         await self.instance.cleanup()
 
     async def update(self, version=None):
@@ -193,14 +205,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return await self.instance.update(version)
         finally:
             if running:
-                await self.instance.run()
+                await self.start()
 
-    def run(self):
-        """Run HomeAssistant docker.
+    async def start(self):
+        """Run HomeAssistant docker."""
+        if not await self.instance.run():
+            return False
 
-        Return a coroutine.
-        """
-        return self.instance.run()
+        return await self._block_till_run()
 
     def stop(self):
         """Stop HomeAssistant docker.
@@ -209,12 +221,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """
         return self.instance.stop()
 
-    def restart(self):
-        """Restart HomeAssistant docker.
+    async def restart(self):
+        """Restart HomeAssistant docker."""
+        if not await self.instance.restart():
+            return False
 
-        Return a coroutine.
-        """
-        return self.instance.restart()
+        return await self._block_till_run()
 
     def logs(self):
         """Get HomeAssistant docker logs.
@@ -310,3 +322,29 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             _LOGGER.warning("Home-Assistant event %s fails", event_type)
             return False
         return True
+
+    async def _block_till_run(self):
+        """Block until Home-Assistant is booting up or startup timeout."""
+        start_time = time.monotonic()
+
+        def check_port():
+            """Check if port is mapped."""
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                result = sock.connect_ex((self.api_ip, self.api_port))
+                sock.close()
+
+                if result == 0:
+                    return True
+                return False
+            except OSError:
+                pass
+
+        while time.monotonic() - start_time < self.startup_time:
+            if await self._loop.run_in_executor(check_port):
+                _LOGGER.info("Detect a running Home-Assistant instance")
+                return True
+            await asyncio.sleep(10, loop=self._loop)
+
+        _LOGGER.warning("Don't wait anymore of Home-Assistant startup!")
+        return False

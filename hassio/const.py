@@ -155,6 +155,7 @@ ATTR_CONFIG = 'config'
 ATTR_DISCOVERY_ID = 'discovery_id'
 ATTR_SERVICES = 'services'
 ATTR_DISCOVERY = 'discovery'
+ATTR_STARTUP_TIME = 'startup_time'
 
 SERVICE_MQTT = 'mqtt'
 
