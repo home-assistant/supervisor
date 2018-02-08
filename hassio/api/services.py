@@ -39,13 +39,13 @@ class APIServices(CoreSysAttributes):
         return service.set_service_data(request[REQUEST_FROM], body)
 
     @api_process
-    def get_service(self, request):
+    async def get_service(self, request):
         """Read data into a service."""
         service = self._extract_service(request)
         return service.get_service_data()
 
     @api_process
-    def del_service(self, request):
+    async def del_service(self, request):
         """Delete data into a service."""
         service = self._extract_service(request)
         return service.del_service_data(request[REQUEST_FROM])
