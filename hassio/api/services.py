@@ -22,7 +22,7 @@ class APIServices(CoreSysAttributes):
         services = {}
         for service in self._services.list_services:
             services[service.slug] = {
-                ATTR_AVAILABLE: service.enable,
+                ATTR_AVAILABLE: service.enabled,
                 ATTR_PROVIDER: service.provider,
             }
 
