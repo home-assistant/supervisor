@@ -398,7 +398,9 @@ Get all available addons.
     "gpio": "bool",
     "audio": "bool",
     "audio_input": "null|0,0",
-    "audio_output": "null|0,0"
+    "audio_output": "null|0,0",
+    "services": "null|['mqtt']",
+    "discovery": "null|['component/platform']"
 }
 ```
 
