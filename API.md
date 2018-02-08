@@ -398,7 +398,9 @@ Get all available addons.
     "gpio": "bool",
     "audio": "bool",
     "audio_input": "null|0,0",
-    "audio_output": "null|0,0"
+    "audio_output": "null|0,0",
+    "services": "null|['mqtt']",
+    "discovery": "null|['component/platform']"
 }
 ```
 
@@ -461,6 +463,104 @@ Write data to add-on stdin
     "blk_write": 0
 }
 ```
+
+### Service discovery
+
+- GET `/services/discovery`
+```json
+{
+    "discovery": [
+        {
+            "provider": "name",
+            "uuid": "uuid",
+            "component": "component",
+            "platform": "null|platform",
+            "config": {}
+        }
+    ]
+}
+```
+
+- GET `/services/discovery/{UUID}`
+```json
+{
+    "provider": "name",
+    "uuid": "uuid",
+    "component": "component",
+    "platform": "null|platform",
+    "config": {}
+}
+```
+
+- POST `/services/discovery`
+```json
+{
+    "component": "component",
+    "platform": "null|platform",
+    "config": {}
+}
+```
+
+return:
+```json
+{
+    "uuid": "uuid"
+}
+```
+
+- DEL `/services/discovery/{UUID}`
+
+- GET `/services`
+```json
+{
+    "services": [
+        {
+            "slug": "name",
+            "available": "bool",
+            "provider": "null|name|list"
+        }
+    ]
+}
+```
+
+- GET `/services/xy`
+```json
+{
+    "available": "bool",
+    "xy": {}
+}
+```
+
+#### MQTT
+
+This service perform a auto discovery to Home-Assistant.
+
+- GET `/services/mqtt`
+```json
+{
+    "provider": "name",
+    "host": "xy",
+    "port": "8883",
+    "ssl": "bool",
+    "username": "optional",
+    "password": "optional",
+    "protocol": "3.1.1"
+}
+```
+
+- POST `/services/mqtt`
+```json
+{
+    "host": "xy",
+    "port": "8883",
+    "ssl": "bool|optional",
+    "username": "optional",
+    "password": "optional",
+    "protocol": "3.1.1"
+}
+```
+
+- DEL `/services/mqtt`
 
 ## Host Control
 

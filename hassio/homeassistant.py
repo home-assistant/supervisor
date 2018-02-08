@@ -285,3 +285,28 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         if status not in (200, 201):
             _LOGGER.warning("Home-Assistant API config missmatch")
         return True
+
+    async def send_event(self, event_type, event_data=None):
+        """Send event to Home-Assistant."""
+        url = f"{self.api_url}/api/events/{event_type}"
+        header = {CONTENT_TYPE: CONTENT_TYPE_JSON}
+
+        if self.api_password:
+            header.update({HEADER_HA_ACCESS: self.api_password})
+
+        try:
+            # pylint: disable=bad-continuation
+            async with self._websession_ssl.post(
+                    url, headers=header, timeout=30,
+                    json=event_data) as request:
+                status = request.status
+
+        except (asyncio.TimeoutError, aiohttp.ClientError) as err:
+            _LOGGER.warning(
+                "Home-Assistant event %s fails: %s", event_type, err)
+            return False
+
+        if status not in (200, 201):
+            _LOGGER.warning("Home-Assistant event %s fails", event_type)
+            return False
+        return True
