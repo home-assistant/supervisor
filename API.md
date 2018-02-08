@@ -469,8 +469,7 @@ Write data to add-on stdin
 - GET `/services/discovery`
 ```json
 {
-    "discovery":
-    [
+    "discovery": [
         {
             "provider": "name",
             "uuid": "uuid",
@@ -514,12 +513,13 @@ return:
 - GET `/services`
 ```json
 {
-    "services": {
-        "{service_slug}": {
+    "services": [
+        {
+            "slug": "name",
             "available": "bool",
             "provider": "null|name|list"
         }
-    }
+    ]
 }
 ```
 
