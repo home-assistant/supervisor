@@ -331,7 +331,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             """Check if port is mapped."""
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
-                result = sock.connect_ex((self.api_ip, self.api_port))
+                result = sock.connect_ex((str(self.api_ip), self.api_port))
                 sock.close()
 
                 if result == 0:
