@@ -34,7 +34,8 @@ class Discovery(CoreSysAttributes):
         for message in self.message_obj.values():
             messages.append(message.raw())
 
-        self._data = messages
+        self._data.clear()
+        self._data.extend(messages)
         self._services.data.save_data()
 
     def get(self, uuid):
