@@ -13,7 +13,6 @@ async def security_layer(request, handler):
     """Check security access of this layer."""
     coresys = request.app['coresys']
     hassio_token = request.headers.get(HEADER_TOKEN)
-    _LOGGER.info("%s \n\n: %s*, request.headers, hassio_token)
 
     # Need to be removed later
     if not hassio_token:
