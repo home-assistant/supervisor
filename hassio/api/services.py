@@ -42,7 +42,11 @@ class APIServices(CoreSysAttributes):
     async def get_service(self, request):
         """Read data into a service."""
         service = self._extract_service(request)
-        return service.get_service_data()
+
+        return {
+            ATTR_AVAILABLE: service.enabled,
+            service.slug: service.get_service_data(),
+        }
 
     @api_process
     async def del_service(self, request):
