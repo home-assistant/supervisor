@@ -22,7 +22,7 @@ async def security_layer(request, handler):
     # From Home-Assistant
     elif hassio_token == coresys.homeassistant.uuid:
         request[REQUEST_FROM] = 'homeassistant'
-    
+
     # From Add-on
     else:
         for addon in coresys.addons.list_addons:
