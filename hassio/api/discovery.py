@@ -45,7 +45,7 @@ class APIDiscovery(CoreSysAttributes):
     async def set_discovery(self, request):
         """Write data into a discovery pipeline."""
         body = await api_validate(SCHEMA_DISCOVERY, request)
-        message = self._services.discover.send(
+        message = self._services.discovery.send(
             provider=request[REQUEST_FROM], **body)
 
         return {ATTR_UUID: message.uuid}
