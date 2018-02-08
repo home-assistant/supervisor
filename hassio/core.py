@@ -91,6 +91,7 @@ class HassIO(CoreSysAttributes):
 
             # store new last boot
             self._config.last_boot = self._hardware.last_boot
+            self._config.save_data()
 
         finally:
             # Add core tasks into scheduler
