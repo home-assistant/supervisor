@@ -75,19 +75,18 @@ class DockerAddon(DockerInterface):
     def environment(self):
         """Return environment for docker add-on."""
         addon_env = self.addon.environment or {}
+
+        # Need audio settings
         if self.addon.with_audio:
             addon_env.update({
                 'ALSA_OUTPUT': self.addon.audio_output,
                 'ALSA_INPUT': self.addon.audio_input,
             })
 
-        # Set api token if any API access is needed
-        if self.addon.access_hassio_api or self.addon.access_homeassistant_api:
-            addon_env[ENV_TOKEN] = self.addon.uuid
-
         return {
             **addon_env,
             ENV_TIME: self._config.timezone,
+            ENV_TOKEN: self.addon.uuid,
         }
 
     @property
