@@ -57,7 +57,7 @@ class MQTTService(ServiceInterface):
             _LOGGER.error("It is already a mqtt in use from %s", self.provider)
             return False
 
-        self._data = data
+        self._data.update(data)
         self._data[ATTR_PROVIDER] = provider
 
         if provider == 'homeassistant':
@@ -83,5 +83,5 @@ class MQTTService(ServiceInterface):
             self._services.discovery.remove(
                 self._services.discovery.get(discovery_id))
 
-        self._data = {}
+        self._data.clear()
         self.save()
