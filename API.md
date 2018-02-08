@@ -468,15 +468,18 @@ Write data to add-on stdin
 
 - GET `/services/discovery`
 ```json
-[
-    {
-        "provider": "name",
-        "uuid": "uuid",
-        "component": "component",
-        "platform": "null|platform",
-        "config": {}
-    }
-]
+{
+    "discovery":
+    [
+        {
+            "provider": "name",
+            "uuid": "uuid",
+            "component": "component",
+            "platform": "null|platform",
+            "config": {}
+        }
+    ]
+}
 ```
 
 - GET `/services/discovery/{UUID}`
