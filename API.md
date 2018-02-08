@@ -523,6 +523,14 @@ return:
 }
 ```
 
+- GET `/services/xy`
+```json
+{
+    "available": "bool",
+    "xy": {}
+}
+```
+
 #### MQTT
 
 This service perform a auto discovery to Home-Assistant.
