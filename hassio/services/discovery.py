@@ -50,7 +50,7 @@ class Discovery(CoreSysAttributes):
     @property
     def list_messages(self):
         """Return list of available discovery messages."""
-        return self.message_obj
+        return self.message_obj.values()
 
     def send(self, provider, component, platform=None, config=None):
         """Send a discovery message to Home-Assistant."""
