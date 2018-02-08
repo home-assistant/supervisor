@@ -154,7 +154,7 @@ ATTR_COMPONENT = 'component'
 ATTR_CONFIG = 'config'
 ATTR_DISCOVERY_ID = 'discovery_id'
 ATTR_SERVICES = 'services'
-ATTR_HOMEASSISTANT_DISCOVERY = 'homeassistant_discovery'
+ATTR_DISCOVERY = 'discovery'
 
 SERVICE_MQTT = 'mqtt'
 
