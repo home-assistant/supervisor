@@ -17,11 +17,13 @@ async def security_layer(request, handler):
     # Need to be removed later
     if not hassio_token:
         _LOGGER.warning("No valid hassio token for API access!")
-        hassio_token = coresys.homeassistant.uuid
+        request[REQUEST_FROM] = 'UNKNOWN'
 
-    # From HomeAssistant?
-    if hassio_token == coresys.homeassistant.uuid:
+    # From Home-Assistant
+    elif hassio_token == coresys.homeassistant.uuid:
         request[REQUEST_FROM] = 'homeassistant'
+    
+    # From Add-on
     else:
         for addon in coresys.addons.list_addons:
             if hassio_token != addon.uuid:
