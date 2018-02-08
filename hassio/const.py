@@ -15,6 +15,7 @@ FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
 FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
 FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
+FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 SOCKET_HC = Path("/var/run/hassio-hc.sock")
@@ -43,6 +44,12 @@ CONTENT_TYPE_PNG = 'image/png'
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_TEXT = 'text/plain'
 HEADER_HA_ACCESS = 'x-ha-access'
+HEADER_TOKEN = 'X-HASSIO-KEY'
+
+ENV_TOKEN = 'HASSIO_TOKEN'
+ENV_TIME = 'TZ'
+
+REQUEST_FROM = 'HASSIO_FROM'
 
 ATTR_WAIT_BOOT = 'wait_boot'
 ATTR_WATCHDOG = 'watchdog'
@@ -136,6 +143,20 @@ ATTR_MEMORY_LIMIT = 'memory_limit'
 ATTR_MEMORY_USAGE = 'memory_usage'
 ATTR_BLK_READ = 'blk_read'
 ATTR_BLK_WRITE = 'blk_write'
+ATTR_PROVIDER = 'provider'
+ATTR_AVAILABLE = 'available'
+ATTR_HOST = 'host'
+ATTR_USERNAME = 'username'
+ATTR_PROTOCOL = 'protocol'
+ATTR_DISCOVERY = 'discovery'
+ATTR_PLATFORM = 'platform'
+ATTR_COMPONENT = 'component'
+ATTR_CONFIG = 'config'
+ATTR_DISCOVERY_ID = 'discovery_id'
+ATTR_SERVICES = 'services'
+ATTR_DISCOVERY = 'discovery'
+
+SERVICE_MQTT = 'mqtt'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'

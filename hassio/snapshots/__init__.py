@@ -14,7 +14,7 @@ from ..coresys import CoreSysAttributes
 _LOGGER = logging.getLogger(__name__)
 
 
-class SnapshotsManager(CoreSysAttributes):
+class SnapshotManager(CoreSysAttributes):
     """Manage snapshots."""
 
     def __init__(self, coresys):

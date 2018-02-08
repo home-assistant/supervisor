@@ -4,7 +4,7 @@ import logging
 
 from .addon import Addon
 from .repository import Repository
-from .data import Data
+from .data import AddonsData
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO
 from ..coresys import CoreSysAttributes
 
@@ -19,7 +19,7 @@ class AddonManager(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize docker base wrapper."""
         self.coresys = coresys
-        self.data = Data(coresys)
+        self.data = AddonsData(coresys)
         self.addons_obj = {}
         self.repositories_obj = {}
 

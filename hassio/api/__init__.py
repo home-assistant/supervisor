@@ -5,12 +5,15 @@ from pathlib import Path
 from aiohttp import web
 
 from .addons import APIAddons
+from .discovery import APIDiscovery
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .network import APINetwork
 from .proxy import APIProxy
 from .supervisor import APISupervisor
 from .snapshots import APISnapshots
+from .services import APIServices
+from .security import security_layer
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,11 +25,15 @@ class RestAPI(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize docker base wrapper."""
         self.coresys = coresys
-        self.webapp = web.Application(loop=self._loop)
+        self.webapp = web.Application(
+            middlewares=[security_layer], loop=self._loop)
 
         # service stuff
         self._handler = None
         self.server = None
+
+        # middleware
+        self.webapp['coresys'] = coresys
 
     async def load(self):
         """Register REST API Calls."""
@@ -38,6 +45,8 @@ class RestAPI(CoreSysAttributes):
         self._register_addons()
         self._register_snapshots()
         self._register_network()
+        self._register_discovery()
+        self._register_services()
 
     def _register_host(self):
         """Register hostcontrol function."""
@@ -161,6 +170,32 @@ class RestAPI(CoreSysAttributes):
         self.webapp.router.add_post(
             '/snapshots/{snapshot}/restore/partial',
             api_snapshots.restore_partial)
+
+    def _register_services(self):
+        api_services = APIServices()
+        api_services.coresys = self.coresys
+
+        self.webapp.router.add_get('/services', api_services.list)
+
+        self.webapp.router.add_get(
+            '/services/{service}', api_services.get_service)
+        self.webapp.router.add_post(
+            '/services/{service}', api_services.set_service)
+        self.webapp.router.add_delete(
+            '/services/{service}', api_services.del_service)
+
+    def _register_discovery(self):
+        api_discovery = APIDiscovery()
+        api_discovery.coresys = self.coresys
+
+        self.webapp.router.add_get(
+            '/services/discovery', api_discovery.list)
+        self.webapp.router.add_get(
+            '/services/discovery/{uuid}', api_discovery.get_discovery)
+        self.webapp.router.add_delete(
+            '/services/discovery/{uuid}', api_discovery.del_discovery)
+        self.webapp.router.add_post(
+            '/services/discovery', api_discovery.set_discovery)
 
     def _register_panel(self):
         """Register panel for homeassistant."""
