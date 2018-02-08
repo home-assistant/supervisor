@@ -25,7 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$")
 RE_SERVICE = re.compile(r"^(?P<service>mqtt)(?::(?P<rights>rw|:ro))?$")
-RE_DISCOVERY = re.compile(r"^(?P<[\w]*>)(?:/(?P<[\w]*>))?$")
+RE_DISCOVERY = re.compile(r"^(?P<component>\w*)(?:/(?P<platform>\w*>))?$")
 
 V_STR = 'str'
 V_INT = 'int'
