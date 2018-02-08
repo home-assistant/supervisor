@@ -5,7 +5,7 @@ import voluptuous as vol
 from .utils import api_process, api_validate
 from ..const import (
     ATTR_PROVIDER, ATTR_UUID, ATTR_COMPONENT, ATTR_PLATFORM, ATTR_CONFIG,
-    REQUEST_FROM)
+    ATTR_DISCOVERY, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 
 
@@ -39,7 +39,7 @@ class APIDiscovery(CoreSysAttributes):
                 ATTR_CONFIG: message.config,
             })
 
-        return discovery
+        return {ATTR_DISCOVERY: discovery}
 
     @api_process
     async def set_discovery(self, request):
