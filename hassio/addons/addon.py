@@ -200,7 +200,7 @@ class Addon(CoreSysAttributes):
     def startup(self):
         """Return startup type of addon."""
         return self._mesh.get(ATTR_STARTUP)
-    
+
     @property
     def services(self):
         """Return dict of services with rights."""
