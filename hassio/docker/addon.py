@@ -9,7 +9,8 @@ from .interface import DockerInterface
 from .utils import docker_process
 from ..addons.build import AddonBuild
 from ..const import (
-    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE, ENV_TOKEN)
+    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE, ENV_TOKEN,
+    ENV_TIME)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class DockerAddon(DockerInterface):
 
         return {
             **addon_env,
-            'TZ': self._config.timezone,
+            ENV_TIME: self._config.timezone,
         }
 
     @property
