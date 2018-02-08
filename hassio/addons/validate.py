@@ -17,13 +17,15 @@ from ..const import (
     ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_HOST_IPC,
     ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
     ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY,
-    ATTR_HOST_DBUS, ATTR_AUTO_UART)
+    ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_SERVICES, ATTR_DISCOVERY)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
 
 _LOGGER = logging.getLogger(__name__)
 
 
 RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$")
+RE_SERVICE = re.compile(r"^(?P<service>mqtt)(?::(?P<rights>rw|:ro))?$")
+RE_DISCOVERY = re.compile(r"^(?P<[\w]*>)(?:/(?P<[\w]*>))?$")
 
 V_STR = 'str'
 V_INT = 'int'
@@ -110,6 +112,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_HOMEASSISTANT_API, default=False): vol.Boolean(),
     vol.Optional(ATTR_STDIN, default=False): vol.Boolean(),
     vol.Optional(ATTR_LEGACY, default=False): vol.Boolean(),
+    vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
+    vol.Optional(ATTR_DISCOVERY): [vol.Match(RE_DISCOVERY)],
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [
