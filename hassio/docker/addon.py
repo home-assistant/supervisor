@@ -9,7 +9,7 @@ from .interface import DockerInterface
 from .utils import docker_process
 from ..addons.build import AddonBuild
 from ..const import (
-    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE, HEADER_TOKEN)
+    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE, ENV_TOKEN)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class DockerAddon(DockerInterface):
 
         # Set api token if any API access is needed
         if self.addon.access_hassio_api or self.addon.access_homeassistant_api:
-            addon_env[HEADER_TOKEN] = self.addon.uuid
+            addon_env[ENV_TOKEN] = self.addon.uuid
 
         return {
             **addon_env,
