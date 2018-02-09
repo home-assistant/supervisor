@@ -273,8 +273,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # parse output
         log = convert_to_ascii(log)
+        _LOGGER.info("%d -1", exit_code)
         if exit_code != 0 or RE_YAML_ERROR.search(log):
+            _LOGGER.info("%d -2", exit_code)
             return (False, log)
+        _LOGGER.info("%d -3", exit_code)
         return (True, log)
 
     async def check_api_state(self):
