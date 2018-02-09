@@ -84,7 +84,7 @@ class HassIO(CoreSysAttributes):
 
             # run HomeAssistant
             if self._homeassistant.boot:
-                await self._homeassistant.run()
+                await self._homeassistant.start()
 
             # start addon mark as application
             await self._addons.auto_boot(STARTUP_APPLICATION)

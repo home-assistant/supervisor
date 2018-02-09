@@ -581,12 +581,12 @@ class Addon(CoreSysAttributes):
         return STATE_STOPPED
 
     @check_installed
-    def start(self):
-        """Set options and start addon.
+    async def start(self):
+        """Set options and start addon."""
+        if not self.write_options():
+            return False
 
-        Return a coroutine.
-        """
-        return self.instance.run()
+        return await self.instance.run()
 
     @check_installed
     def stop(self):
@@ -611,16 +611,14 @@ class Addon(CoreSysAttributes):
 
         # restore state
         if last_state == STATE_STARTED:
-            await self.instance.run()
+            await self.start()
         return True
 
     @check_installed
-    def restart(self):
-        """Restart addon.
-
-        Return a coroutine.
-        """
-        return self.instance.restart()
+    async def restart(self):
+        """Restart addon."""
+        await self.stop()
+        return await self.start()
 
     @check_installed
     def logs(self):
@@ -656,7 +654,7 @@ class Addon(CoreSysAttributes):
 
         # restore state
         if last_state == STATE_STARTED:
-            await self.instance.run()
+            await self.start()
         return True
 
     @check_installed

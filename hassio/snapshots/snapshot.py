@@ -15,7 +15,7 @@ from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
     ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT,
-    ATTR_LAST_VERSION)
+    ATTR_LAST_VERSION, ATTR_STARTUP_TIME)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
 
@@ -141,6 +141,16 @@ class Snapshot(CoreSysAttributes):
     def homeassistant_watchdog(self, value):
         """Set snapshot homeassistant watchdog options."""
         self._data[ATTR_HOMEASSISTANT][ATTR_WATCHDOG] = value
+
+    @property
+    def homeassistant_startup_time(self):
+        """Return snapshot homeassistant startup time options."""
+        return self._data[ATTR_HOMEASSISTANT].get(ATTR_STARTUP_TIME)
+
+    @homeassistant_startup_time.setter
+    def homeassistant_startup_time(self, value):
+        """Set snapshot homeassistant startup time options."""
+        self._data[ATTR_HOMEASSISTANT][ATTR_STARTUP_TIME] = value
 
     @property
     def homeassistant_boot(self):
@@ -339,6 +349,7 @@ class Snapshot(CoreSysAttributes):
         self.homeassistant_version = self._homeassistant.version
         self.homeassistant_watchdog = self._homeassistant.watchdog
         self.homeassistant_boot = self._homeassistant.boot
+        self.homeassistant_startup_time = self._homeassistant.startup_time
 
         # custom image
         if self._homeassistant.is_custom_image:
@@ -354,6 +365,7 @@ class Snapshot(CoreSysAttributes):
         """Write all data to homeassistant object."""
         self._homeassistant.watchdog = self.homeassistant_watchdog
         self._homeassistant.boot = self.homeassistant_boot
+        self._homeassistant.startup_time = self.homeassistant_startup_time
 
         # custom image
         if self.homeassistant_image:
