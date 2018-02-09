@@ -85,7 +85,7 @@ class DockerHomeAssistant(DockerInterface):
             stdout=True,
             stderr=True,
             environment={
-                'TZ': self._config.timezone,
+                ENV_TIME: self._config.timezone,
             },
             volumes={
                 str(self._config.path_extern_config):
