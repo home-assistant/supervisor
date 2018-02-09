@@ -1,5 +1,6 @@
 """HomeAssistant control object."""
 import asyncio
+from collections import namedtuple
 import logging
 import os
 import re
@@ -22,6 +23,8 @@ from .validate import SCHEMA_HASS_CONFIG
 _LOGGER = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
+
+ConfigResult = namedtuple('ConfigResult', ['valid', 'log'])
 
 
 class HomeAssistant(JsonConfig, CoreSysAttributes):
@@ -263,22 +266,19 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def check_config(self):
         """Run homeassistant config check."""
-        exit_code, log = await self.instance.execute_command(
+        result = await self.instance.execute_command(
             "python3 -m homeassistant -c /config --script check_config"
         )
 
         # if not valid
-        if exit_code is None:
-            return (False, "")
+        if result.exit_code is None:
+            return ConfigResult(False, "")
 
         # parse output
-        log = convert_to_ascii(log)
-        _LOGGER.info("%d -1", exit_code)
-        if exit_code != 0 or RE_YAML_ERROR.search(log):
-            _LOGGER.info("%d -2", exit_code)
-            return (False, log)
-        _LOGGER.info("%d -3", exit_code)
-        return (True, log)
+        log = convert_to_ascii(result.output)
+        if result.exit_code != 0 or RE_YAML_ERROR.search(log):
+            return ConfigResult(False, log)
+        return ConfigResult(True, log)
 
     async def check_api_state(self):
         """Check if Home-Assistant up and running."""
