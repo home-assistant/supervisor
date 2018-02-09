@@ -268,7 +268,8 @@ Optional:
     "boot": "bool",
     "port": 8123,
     "ssl": "bool",
-    "watchdog": "bool"
+    "watchdog": "bool",
+    "startup_time": 600
 }
 ```
 
@@ -300,7 +301,8 @@ Output is the raw Docker log.
     "port": "port for access hass",
     "ssl": "bool",
     "password": "",
-    "watchdog": "bool"
+    "watchdog": "bool",
+    "startup_time": 600
 }
 ```
 
