@@ -16,7 +16,8 @@ from ..const import (
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, BOOT_AUTO, BOOT_MANUAL,
     ATTR_CHANGELOG, ATTR_HOST_IPC, ATTR_HOST_DBUS, ATTR_LONG_DESCRIPTION,
     ATTR_CPU_PERCENT, ATTR_MEMORY_LIMIT, ATTR_MEMORY_USAGE, ATTR_NETWORK_TX,
-    ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON,
+    ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
+    ATTR_DISCOVERY,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS
@@ -134,6 +135,8 @@ class APIAddons(CoreSysAttributes):
             ATTR_AUDIO: addon.with_audio,
             ATTR_AUDIO_INPUT: addon.audio_input,
             ATTR_AUDIO_OUTPUT: addon.audio_output,
+            ATTR_SERVICES: addon.services,
+            ATTR_DISCOVERY: addon.discovery,
         }
 
     @api_process

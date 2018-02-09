@@ -4,6 +4,7 @@ import logging
 import docker
 
 from .interface import DockerInterface
+from ..const import ENV_TOKEN, ENV_TIME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,8 +54,8 @@ class DockerHomeAssistant(DockerInterface):
             network_mode='host',
             environment={
                 'HASSIO': self._docker.network.supervisor,
-                'TZ': self._config.timezone,
-                'HASSIO_TOKEN': self._homeassistant.uuid,
+                ENV_TIME: self._config.timezone,
+                ENV_TOKEN: self._homeassistant.uuid,
             },
             volumes={
                 str(self._config.path_extern_config):

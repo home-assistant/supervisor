@@ -12,7 +12,7 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import (
-    validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME)
+    validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME, RE_SERVICE)
 from .utils import check_installed
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
@@ -23,7 +23,7 @@ from ..const import (
     ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
-    ATTR_HOST_DBUS, ATTR_AUTO_UART)
+    ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
@@ -200,6 +200,26 @@ class Addon(CoreSysAttributes):
     def startup(self):
         """Return startup type of addon."""
         return self._mesh.get(ATTR_STARTUP)
+
+    @property
+    def services(self):
+        """Return dict of services with rights."""
+        raw_services = self._mesh.get(ATTR_SERVICES)
+        if not raw_services:
+            return None
+
+        formated_services = {}
+        for data in raw_services:
+            service = RE_SERVICE.match(data)
+            formated_services[service.group('service')] = \
+                service.group('rights') or 'ro'
+
+        return formated_services
+
+    @property
+    def discovery(self):
+        """Return list of discoverable components/platforms."""
+        return self._mesh.get(ATTR_DISCOVERY)
 
     @property
     def ports(self):
@@ -561,12 +581,12 @@ class Addon(CoreSysAttributes):
         return STATE_STOPPED
 
     @check_installed
-    def start(self):
-        """Set options and start addon.
+    async def start(self):
+        """Set options and start addon."""
+        if not self.write_options():
+            return False
 
-        Return a coroutine.
-        """
-        return self.instance.run()
+        return await self.instance.run()
 
     @check_installed
     def stop(self):
@@ -591,16 +611,14 @@ class Addon(CoreSysAttributes):
 
         # restore state
         if last_state == STATE_STARTED:
-            await self.instance.run()
+            await self.start()
         return True
 
     @check_installed
-    def restart(self):
-        """Restart addon.
-
-        Return a coroutine.
-        """
-        return self.instance.restart()
+    async def restart(self):
+        """Restart addon."""
+        await self.stop()
+        return await self.start()
 
     @check_installed
     def logs(self):
@@ -636,7 +654,7 @@ class Addon(CoreSysAttributes):
 
         # restore state
         if last_state == STATE_STARTED:
-            await self.instance.run()
+            await self.start()
         return True
 
     @check_installed
