@@ -14,7 +14,7 @@ from ..coresys import CoreSysAttributes
 _LOGGER = logging.getLogger(__name__)
 
 
-class SnapshotsManager(CoreSysAttributes):
+class SnapshotManager(CoreSysAttributes):
     """Manage snapshots."""
 
     def __init__(self, coresys):
@@ -249,7 +249,7 @@ class SnapshotsManager(CoreSysAttributes):
                 _LOGGER.info("Full-Restore %s wait until homeassistant ready",
                              snapshot.slug)
                 await task_hass
-                await self._homeassistant.run()
+                await self._homeassistant.start()
 
         except (OSError, ValueError, tarfile.TarError) as err:
             _LOGGER.info("Full-Restore %s error: %s", snapshot.slug, err)
@@ -310,7 +310,7 @@ class SnapshotsManager(CoreSysAttributes):
                     await asyncio.wait(tasks, loop=self._loop)
 
                 # make sure homeassistant run agen
-                await self._homeassistant.run()
+                await self._homeassistant.start()
 
         except (OSError, ValueError, tarfile.TarError) as err:
             _LOGGER.info("Partial-Restore %s error: %s", snapshot.slug, err)

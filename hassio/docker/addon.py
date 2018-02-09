@@ -9,7 +9,8 @@ from .interface import DockerInterface
 from .utils import docker_process
 from ..addons.build import AddonBuild
 from ..const import (
-    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE)
+    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE, ENV_TOKEN,
+    ENV_TIME)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,19 +75,18 @@ class DockerAddon(DockerInterface):
     def environment(self):
         """Return environment for docker add-on."""
         addon_env = self.addon.environment or {}
+
+        # Need audio settings
         if self.addon.with_audio:
             addon_env.update({
                 'ALSA_OUTPUT': self.addon.audio_output,
                 'ALSA_INPUT': self.addon.audio_input,
             })
 
-        # Set api token if any API access is needed
-        if self.addon.access_hassio_api or self.addon.access_homeassistant_api:
-            addon_env['HASSIO_TOKEN'] = self.addon.uuid
-
         return {
             **addon_env,
-            'TZ': self._config.timezone,
+            ENV_TIME: self._config.timezone,
+            ENV_TOKEN: self.addon.uuid,
         }
 
     @property
@@ -225,10 +225,6 @@ class DockerAddon(DockerInterface):
         # cleanup
         self._stop()
 
-        # write config
-        if not self.addon.write_options():
-            return False
-
         ret = self._docker.run(
             self.image,
             name=self.name,
@@ -336,15 +332,6 @@ class DockerAddon(DockerInterface):
         self._meta = image.attrs
         self._cleanup()
         return True
-
-    def _restart(self):
-        """Restart docker container.
-
-        Addons prepare some thing on start and that is normaly not repeatable.
-        Need run inside executor.
-        """
-        self._stop()
-        return self._run()
 
     @docker_process
     def write_stdin(self, data):

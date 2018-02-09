@@ -9,7 +9,7 @@ from voluptuous.humanize import humanize_error
 
 from .utils import extract_hash_from_path
 from .validate import (
-    SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_FILE, SCHEMA_REPOSITORY_CONFIG)
+    SCHEMA_ADDON_CONFIG, SCHEMA_ADDONS_FILE, SCHEMA_REPOSITORY_CONFIG)
 from ..const import (
     FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
@@ -19,12 +19,12 @@ from ..utils.json import JsonConfig, read_json_file
 _LOGGER = logging.getLogger(__name__)
 
 
-class Data(JsonConfig, CoreSysAttributes):
+class AddonsData(JsonConfig, CoreSysAttributes):
     """Hold data for addons inside HassIO."""
 
     def __init__(self, coresys):
         """Initialize data holder."""
-        super().__init__(FILE_HASSIO_ADDONS, SCHEMA_ADDON_FILE)
+        super().__init__(FILE_HASSIO_ADDONS, SCHEMA_ADDONS_FILE)
         self.coresys = coresys
         self._repositories = {}
         self._cache = {}

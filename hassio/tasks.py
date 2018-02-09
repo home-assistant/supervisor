@@ -98,7 +98,7 @@ class Tasks(CoreSysAttributes):
             return
 
         _LOGGER.warning("Watchdog found a problem with Home-Assistant docker!")
-        await self._homeassistant.run()
+        await self._homeassistant.start()
 
     async def _watchdog_homeassistant_api(self):
         """Create scheduler task for montoring running state of API.

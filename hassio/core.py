@@ -44,6 +44,9 @@ class HassIO(CoreSysAttributes):
         # load last available data
         await self._snapshots.load()
 
+        # load services
+        await self._services.load()
+
         # start dns forwarding
         self._loop.create_task(self._dns.start())
 
@@ -70,6 +73,9 @@ class HassIO(CoreSysAttributes):
                 _LOGGER.info("Hass.io reboot detected")
                 return
 
+            # reset register services / discovery
+            self._services.reset()
+
             # start addon mark as system
             await self._addons.auto_boot(STARTUP_SYSTEM)
 
@@ -78,13 +84,14 @@ class HassIO(CoreSysAttributes):
 
             # run HomeAssistant
             if self._homeassistant.boot:
-                await self._homeassistant.run()
+                await self._homeassistant.start()
 
             # start addon mark as application
             await self._addons.auto_boot(STARTUP_APPLICATION)
 
             # store new last boot
             self._config.last_boot = self._hardware.last_boot
+            self._config.save_data()
 
         finally:
             # Add core tasks into scheduler

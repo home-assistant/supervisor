@@ -13,9 +13,10 @@ from .const import SOCKET_DOCKER
 from .coresys import CoreSys
 from .supervisor import Supervisor
 from .homeassistant import HomeAssistant
-from .snapshots import SnapshotsManager
+from .snapshots import SnapshotManager
 from .tasks import Tasks
 from .updater import Updater
+from .services import ServiceManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,8 +31,9 @@ def initialize_coresys(loop):
     coresys.supervisor = Supervisor(coresys)
     coresys.homeassistant = HomeAssistant(coresys)
     coresys.addons = AddonManager(coresys)
-    coresys.snapshots = SnapshotsManager(coresys)
+    coresys.snapshots = SnapshotManager(coresys)
     coresys.tasks = Tasks(coresys)
+    coresys.services = ServiceManager(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)

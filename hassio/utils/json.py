@@ -32,6 +32,14 @@ class JsonConfig(object):
 
         self.read_data()
 
+    def reset_data(self):
+        """Reset json file to default."""
+        try:
+            self._data = self._schema({})
+        except vol.Invalid as ex:
+            _LOGGER.error("Can't reset %s: %s",
+                          self._file, humanize_error(self._data, ex))
+
     def read_data(self):
         """Read json file & validate."""
         if self._file.is_file():
@@ -63,7 +71,7 @@ class JsonConfig(object):
 
             # Load last valid data
             _LOGGER.warning("Reset %s to last version", self._file)
-            self.save_data()
+            self.read_data()
             return
 
         # write
