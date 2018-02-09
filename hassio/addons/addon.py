@@ -618,7 +618,7 @@ class Addon(CoreSysAttributes):
     async def restart(self):
         """Restart addon."""
         await self.stop()
-        return self.start()
+        return await self.start()
 
     @check_installed
     def logs(self):
