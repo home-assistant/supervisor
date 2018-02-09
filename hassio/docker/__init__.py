@@ -1,5 +1,6 @@
 """Init file for HassIO docker object."""
 from contextlib import suppress
+from collections import namedtuple
 import logging
 
 import docker
@@ -8,6 +9,8 @@ from .network import DockerNetwork
 from ..const import SOCKET_DOCKER
 
 _LOGGER = logging.getLogger(__name__)
+
+CommandReturn = namedtuple('CommandReturn', ['exit_code', 'output'])
 
 
 class DockerAPI(object):
@@ -97,15 +100,15 @@ class DockerAPI(object):
             )
 
             # wait until command is done
-            exit_code = container.wait()
+            result = container.wait()
             output = container.logs(stdout=stdout, stderr=stderr)
 
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't execute command: %s", err)
-            return (None, b"")
+            return CommandReturn(None, b"")
 
         # cleanup container
         with suppress(docker.errors.DockerException):
             container.remove(force=True)
 
-        return (exit_code, output)
+        return CommandReturn(result.get('StatusCode'), output)

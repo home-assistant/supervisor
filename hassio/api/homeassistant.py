@@ -136,8 +136,8 @@ class APIHomeAssistant(CoreSysAttributes):
     @api_process
     async def check(self, request):
         """Check config of homeassistant."""
-        code, message = await self._homeassistant.check_config()
-        if not code:
-            raise RuntimeError(message)
+        result = await self._homeassistant.check_config()
+        if not result.valid:
+            raise RuntimeError(result.log)
 
         return True
