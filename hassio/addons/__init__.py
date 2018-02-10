@@ -34,8 +34,16 @@ class AddonManager(CoreSysAttributes):
         return list(self.repositories_obj.values())
 
     def get(self, addon_slug):
-        """Return a adddon from slug."""
+        """Return a add-on from slug."""
         return self.addons_obj.get(addon_slug)
+
+    def from_uuid(self, uuid):
+        """Return a add-on from uuid."""
+        for addon in self.list_addons:
+            if uuid != addon.uuid:
+                continue
+            return addon
+        return None
 
     async def load(self):
         """Startup addon management."""

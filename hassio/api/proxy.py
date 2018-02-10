@@ -86,9 +86,15 @@ class APIProxy(CoreSysAttributes):
     async def api(self, request):
         """Proxy HomeAssistant API Requests."""
         path = request.match_info.get('path', '')
+        hassio_token = request.headers.get(HEADER_HA_ACCESS)
+        addon = self._addons.from_uuid(hassio_token)
+
+        if not addon:
+            _LOGGER.warning("Unknown Home-Assistant API access!")
+        else:
+            _LOGGER.info("Home-Assistant /api/%s from %s", path, addon.slug)
 
         # Normal request
-        _LOGGER.info("Home-Assistant /api/%s request", path)
         client = await self._api_client(request, path)
 
         data = await client.read()
