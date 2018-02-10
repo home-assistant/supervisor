@@ -159,7 +159,7 @@ class APIProxy(CoreSysAttributes):
             addon = self._addons.from_uuid(hassio_token)
 
             if not addon:
-                _LOGGER.waring("Unauthorized websocket access!")
+                _LOGGER.warning("Unauthorized websocket access!")
             else:
                 _LOGGER.info("Websocket access from %s", addon.slug)
 
