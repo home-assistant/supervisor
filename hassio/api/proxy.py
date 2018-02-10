@@ -69,6 +69,8 @@ class APIProxy(CoreSysAttributes):
 
     async def stream(self, request):
         """Proxy HomeAssistant EventStream Requests."""
+        self._check_access(request)
+
         _LOGGER.info("Home-Assistant EventStream start")
         client = await self._api_client(request, 'stream', timeout=None)
 
@@ -136,10 +138,9 @@ class APIProxy(CoreSysAttributes):
 
     async def websocket(self, request):
         """Initialize a websocket api connection."""
-        self._check_access(request)
+        _LOGGER.info("Home-Assistant Websocket API request initialze")
 
         # init server
-        _LOGGER.info("Home-Assistant Websocket API request initialze")
         server = web.WebSocketResponse(heartbeat=60)
         await server.prepare(request)
 
