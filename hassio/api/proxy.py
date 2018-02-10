@@ -150,7 +150,17 @@ class APIProxy(CoreSysAttributes):
                 'type': 'auth_required',
                 'ha_version': self._homeassistant.version,
             })
-            await server.receive_json()  # get internal token
+
+            # Check API access
+            response = await server.receive_json()
+            hassio_token = response.get('api_password')
+            addon = self._addons.from_uuid(hassio_token)
+
+            if not addon:
+                _LOGGER.waring("Unauthorized websocket access!")
+            else:
+                _LOGGER.info("Websocket access from %s", addon.slug)
+
             await server.send_json({
                 'type': 'auth_ok',
                 'ha_version': self._homeassistant.version,
