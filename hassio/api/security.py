@@ -24,7 +24,7 @@ async def security_layer(request, handler):
     # Ignore security check
     for rule in NO_SECURITY_CHECK:
         if rule.match(request.path):
-            _LOGGER.debug("Passtrougth %s", request.path)
+            _LOGGER.debug("Passthrough %s", request.path)
             return await handler(request)
 
     # Need to be removed later
@@ -35,14 +35,14 @@ async def security_layer(request, handler):
 
     # Home-Assistant
     if hassio_token == coresys.homeassistant.uuid:
-        _LOGGER.debug("Home-Assistant API access %s", request.path)
+        _LOGGER.debug("%s access from Home-Assistant", request.path)
         request[REQUEST_FROM] = 'homeassistant'
         return await handler(request)
 
     # Add-on
     addon = coresys.addons.from_uuid(hassio_token)
     if addon:
-        _LOGGER.info("%s API access: %s", addon.slug, request.path)
+        _LOGGER.info("%s access from %s", request.path, addon.slug)
         request[REQUEST_FROM] = addon.slug
         return await handler(request)
 

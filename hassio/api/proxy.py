@@ -25,7 +25,7 @@ class APIProxy(CoreSysAttributes):
         if not addon:
             _LOGGER.warning("Unknown Home-Assistant API access!")
         else:
-            _LOGGER.info("Access %s from %s", request.path, addon.slug)
+            _LOGGER.info("%s access from %s", request.path, addon.slug)
 
     async def _api_client(self, request, path, timeout=300):
         """Return a client request with proxy origin for Home-Assistant."""

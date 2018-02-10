@@ -40,7 +40,7 @@ class AddonManager(CoreSysAttributes):
     def from_uuid(self, uuid):
         """Return a add-on from uuid."""
         for addon in self.list_addons:
-            if uuid != addon.uuid:
+            if addon.is_installed and uuid != addon.uuid:
                 continue
             return addon
         return None
