@@ -95,6 +95,8 @@ class APIProxy(CoreSysAttributes):
             client.close()
             _LOGGER.info("Home-Assistant EventStream close")
 
+        return response
+
     async def api(self, request):
         """Proxy HomeAssistant API Requests."""
         self._check_access(request)
