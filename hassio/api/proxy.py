@@ -17,6 +17,16 @@ _LOGGER = logging.getLogger(__name__)
 class APIProxy(CoreSysAttributes):
     """API Proxy for Home-Assistant."""
 
+    def _check_access(self, request):
+        """Check the Hass.io token."""
+        hassio_token = request.headers.get(HEADER_HA_ACCESS)
+        addon = self._addons.from_uuid(hassio_token)
+
+        if not addon:
+            _LOGGER.warning("Unknown Home-Assistant API access!")
+        else:
+            _LOGGER.info("%s access from %s", request.path, addon.slug)
+
     async def _api_client(self, request, path, timeout=300):
         """Return a client request with proxy origin for Home-Assistant."""
         url = f"{self._homeassistant.api_url}/api/{path}"
@@ -59,6 +69,8 @@ class APIProxy(CoreSysAttributes):
 
     async def stream(self, request):
         """Proxy HomeAssistant EventStream Requests."""
+        self._check_access(request)
+
         _LOGGER.info("Home-Assistant EventStream start")
         client = await self._api_client(request, 'stream', timeout=None)
 
@@ -83,12 +95,14 @@ class APIProxy(CoreSysAttributes):
             client.close()
             _LOGGER.info("Home-Assistant EventStream close")
 
+        return response
+
     async def api(self, request):
         """Proxy HomeAssistant API Requests."""
-        path = request.match_info.get('path', '')
+        self._check_access(request)
 
         # Normal request
-        _LOGGER.info("Home-Assistant /api/%s request", path)
+        path = request.match_info.get('path', '')
         client = await self._api_client(request, path)
 
         data = await client.read()
@@ -138,7 +152,17 @@ class APIProxy(CoreSysAttributes):
                 'type': 'auth_required',
                 'ha_version': self._homeassistant.version,
             })
-            await server.receive_json()  # get internal token
+
+            # Check API access
+            response = await server.receive_json()
+            hassio_token = response.get('api_password')
+            addon = self._addons.from_uuid(hassio_token)
+
+            if not addon:
+                _LOGGER.warning("Unauthorized websocket access!")
+            else:
+                _LOGGER.info("Websocket access from %s", addon.slug)
+
             await server.send_json({
                 'type': 'auth_ok',
                 'ha_version': self._homeassistant.version,
