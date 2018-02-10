@@ -17,6 +17,16 @@ _LOGGER = logging.getLogger(__name__)
 class APIProxy(CoreSysAttributes):
     """API Proxy for Home-Assistant."""
 
+    def _check_access(self, request):
+        """Check the Hass.io token."""
+        hassio_token = request.headers.get(HEADER_HA_ACCESS)
+        addon = self._addons.from_uuid(hassio_token)
+
+        if not addon:
+            _LOGGER.warning("Unknown Home-Assistant API access!")
+        else:
+            _LOGGER.info("Access %s from %s", request.path, addon.slug)
+
     async def _api_client(self, request, path, timeout=300):
         """Return a client request with proxy origin for Home-Assistant."""
         url = f"{self._homeassistant.api_url}/api/{path}"
@@ -85,16 +95,10 @@ class APIProxy(CoreSysAttributes):
 
     async def api(self, request):
         """Proxy HomeAssistant API Requests."""
-        path = request.match_info.get('path', '')
-        hassio_token = request.headers.get(HEADER_HA_ACCESS)
-        addon = self._addons.from_uuid(hassio_token)
-
-        if not addon:
-            _LOGGER.warning("Unknown Home-Assistant API access!")
-        else:
-            _LOGGER.info("Home-Assistant /api/%s from %s", path, addon.slug)
+        self._check_access(request)
 
         # Normal request
+        path = request.match_info.get('path', '')
         client = await self._api_client(request, path)
 
         data = await client.read()
@@ -132,9 +136,10 @@ class APIProxy(CoreSysAttributes):
 
     async def websocket(self, request):
         """Initialize a websocket api connection."""
-        _LOGGER.info("Home-Assistant Websocket API request initialze")
+        self._check_access(request)
 
         # init server
+        _LOGGER.info("Home-Assistant Websocket API request initialze")
         server = web.WebSocketResponse(heartbeat=60)
         await server.prepare(request)
 
