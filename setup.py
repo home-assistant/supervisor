@@ -40,13 +40,13 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'async_timeout',
-        'aiohttp',
-        'docker',
-        'colorlog',
-        'voluptuous',
-        'gitpython',
-        'pytz',
-        'pyudev'
+        'async_timeout==2.0.0',
+        'aiohttp==2.3.10',
+        'docker==3.0.1',
+        'colorlog==3.1.2',
+        'voluptuous==0.10.5',
+        'gitpython==2.1.8',
+        'pytz==2018.3',
+        'pyudev==0.21.0'
     ]
 )

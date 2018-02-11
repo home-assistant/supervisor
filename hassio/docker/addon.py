@@ -269,9 +269,13 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:
-            image = self._docker.images.build(**build_env.get_docker_args(tag))
+            image, log = self._docker.images.build(
+                **build_env.get_docker_args(tag))
 
+            _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)
             image.tag(self.image, tag='latest')
+
+            # Update meta data
             self._meta = image.attrs
 
         except (docker.errors.DockerException) as err:
@@ -297,15 +301,16 @@ class DockerAddon(DockerInterface):
             _LOGGER.error("Can't fetch image %s: %s", self.image, err)
             return False
 
+        _LOGGER.info("Export image %s to %s", self.image, tar_file)
         try:
             with tar_file.open("wb") as write_tar:
-                for chunk in image.stream():
+                for chunk in image:
                     write_tar.write(chunk)
         except (OSError, requests.exceptions.ReadTimeout) as err:
             _LOGGER.error("Can't write tar file %s: %s", tar_file, err)
             return False
 
-        _LOGGER.info("Export image %s to %s", self.image, tar_file)
+        _LOGGER.info("Export image %s done", self.image)
         return True
 
     @docker_process
