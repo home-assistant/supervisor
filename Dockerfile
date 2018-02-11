@@ -17,6 +17,7 @@ RUN apk add --no-cache \
     && pip3 install --no-cache-dir \
         uvloop \
         cchardet \
+        pycryptodome=3.4.11 \
     && apk del .build-dependencies
 
 # Install HassIO
