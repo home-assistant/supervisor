@@ -301,6 +301,7 @@ class DockerAddon(DockerInterface):
             _LOGGER.error("Can't fetch image %s: %s", self.image, err)
             return False
 
+        _LOGGER.info("Export image %s to %s", self.image, tar_file)
         try:
             with tar_file.open("wb") as write_tar:
                 for chunk in image:
@@ -309,7 +310,7 @@ class DockerAddon(DockerInterface):
             _LOGGER.error("Can't write tar file %s: %s", tar_file, err)
             return False
 
-        _LOGGER.info("Export image %s to %s", self.image, tar_file)
+        _LOGGER.info("Export image %s done", self.image)
         return True
 
     @docker_process
