@@ -6,6 +6,7 @@ from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad
 
 BLOCK_SIZE = 16
+# compresslevel=1
 
 MOD_READ = 'r'
 MOD_WRITE = 'w'
