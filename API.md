@@ -113,7 +113,8 @@ Output is the raw docker log.
             "slug": "SLUG",
             "date": "ISO",
             "name": "Custom name",
-            "type": "full|partial"
+            "type": "full|partial",
+            "protected": "bool"
         }
     ]
 }
@@ -152,7 +153,7 @@ Output is the raw docker log.
     "name": "custom snapshot name / description",
     "date": "ISO",
     "size": "SIZE_IN_MB",
-    "protected": "bool";
+    "protected": "bool",
     "homeassistant": "version",
     "addons": [
         {
