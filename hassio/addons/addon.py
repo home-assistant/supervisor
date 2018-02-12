@@ -693,16 +693,15 @@ class Addon(CoreSysAttributes):
                 return False
 
             # write into tarfile
-            def _create_tar():
+            def _write_tarfile():
                 """Write tar inside loop."""
-                with tarfile.open(tar_file, "w:gz",
-                                  compresslevel=1) as snapshot:
+                with tar_file as snapshot:
                     snapshot.add(temp, arcname=".")
                     snapshot.add(self.path_data, arcname="data")
 
             try:
                 _LOGGER.info("Build snapshot for addon %s", self._id)
-                await self._loop.run_in_executor(None, _create_tar)
+                await self._loop.run_in_executor(None, _write_tarfile)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
                 return False
@@ -714,9 +713,9 @@ class Addon(CoreSysAttributes):
         """Restore a state of a addon."""
         with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp:
             # extract snapshot
-            def _extract_tar():
+            def _extract_tarfile():
                 """Extract tar snapshot."""
-                with tarfile.open(tar_file, "r:gz") as snapshot:
+                with tar_file as snapshot:
                     snapshot.extractall(path=Path(temp))
 
             try:
