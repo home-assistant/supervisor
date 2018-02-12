@@ -18,6 +18,7 @@ from ..const import (
     ATTR_LAST_VERSION, ATTR_STARTUP_TIME)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
+from ..utils.tar import SecureTarFile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,90 +78,10 @@ class Snapshot(CoreSysAttributes):
         """Return snapshot homeassistant version."""
         return self._data[ATTR_HOMEASSISTANT].get(ATTR_VERSION)
 
-    @homeassistant_version.setter
-    def homeassistant_version(self, value):
-        """Set snapshot homeassistant version."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
-
     @property
-    def homeassistant_last_version(self):
-        """Return snapshot homeassistant last version (custom)."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_LAST_VERSION)
-
-    @homeassistant_last_version.setter
-    def homeassistant_last_version(self, value):
-        """Set snapshot homeassistant last version (custom)."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_LAST_VERSION] = value
-
-    @property
-    def homeassistant_image(self):
-        """Return snapshot homeassistant custom image."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_IMAGE)
-
-    @homeassistant_image.setter
-    def homeassistant_image(self, value):
-        """Set snapshot homeassistant custom image."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_IMAGE] = value
-
-    @property
-    def homeassistant_ssl(self):
-        """Return snapshot homeassistant api ssl."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_SSL)
-
-    @homeassistant_ssl.setter
-    def homeassistant_ssl(self, value):
-        """Set snapshot homeassistant api ssl."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_SSL] = value
-
-    @property
-    def homeassistant_port(self):
-        """Return snapshot homeassistant api port."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_PORT)
-
-    @homeassistant_port.setter
-    def homeassistant_port(self, value):
-        """Set snapshot homeassistant api port."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_PORT] = value
-
-    @property
-    def homeassistant_password(self):
-        """Return snapshot homeassistant api password."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_PASSWORD)
-
-    @homeassistant_password.setter
-    def homeassistant_password(self, value):
-        """Set snapshot homeassistant api password."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_PASSWORD] = value
-
-    @property
-    def homeassistant_watchdog(self):
-        """Return snapshot homeassistant watchdog options."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_WATCHDOG)
-
-    @homeassistant_watchdog.setter
-    def homeassistant_watchdog(self, value):
-        """Set snapshot homeassistant watchdog options."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_WATCHDOG] = value
-
-    @property
-    def homeassistant_startup_time(self):
-        """Return snapshot homeassistant startup time options."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_STARTUP_TIME)
-
-    @homeassistant_startup_time.setter
-    def homeassistant_startup_time(self, value):
-        """Set snapshot homeassistant startup time options."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_STARTUP_TIME] = value
-
-    @property
-    def homeassistant_boot(self):
-        """Return snapshot homeassistant boot options."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_BOOT)
-
-    @homeassistant_boot.setter
-    def homeassistant_boot(self, value):
-        """Set snapshot homeassistant boot options."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_BOOT] = value
+    def homeassistant(self):
+        """Return snapshot homeassistant data."""
+        return self._data[ATTR_HOMEASSISTANT]
 
     @property
     def size(self):
@@ -264,7 +185,7 @@ class Snapshot(CoreSysAttributes):
 
     async def import_addon(self, addon):
         """Add a addon into snapshot."""
-        snapshot_file = Path(self._tmp.name, "{}.tar.gz".format(addon.slug))
+        snapshot_file = Path(self._tmp.name, f"{addon.slug}.tar.gz")
 
         if not await addon.snapshot(snapshot_file):
             _LOGGER.error("Can't make snapshot from %s", addon.slug)
@@ -281,7 +202,7 @@ class Snapshot(CoreSysAttributes):
 
     async def export_addon(self, addon):
         """Restore a addon from snapshot."""
-        snapshot_file = Path(self._tmp.name, "{}.tar.gz".format(addon.slug))
+        snapshot_file = Path(self._tmp.name, f"{addon.slug}.tar.gz")
 
         if not await addon.restore(snapshot_file):
             _LOGGER.error("Can't restore snapshot for %s", addon.slug)
@@ -346,36 +267,40 @@ class Snapshot(CoreSysAttributes):
 
     def store_homeassistant(self):
         """Read all data from homeassistant object."""
-        self.homeassistant_version = self._homeassistant.version
-        self.homeassistant_watchdog = self._homeassistant.watchdog
-        self.homeassistant_boot = self._homeassistant.boot
-        self.homeassistant_startup_time = self._homeassistant.startup_time
+        self.homeassistant[ATTR_VERSION] = self._homeassistant.version
+        self.homeassistant[ATTR_WATCHDOG] = self._homeassistant.watchdog
+        self.homeassistant[ATTR_BOOT] = self._homeassistant.boot
+        self.homeassistant[ATTR_STARTUP_TIME] = \
+            self._homeassistant.startup_time
 
         # custom image
         if self._homeassistant.is_custom_image:
-            self.homeassistant_image = self._homeassistant.image
-            self.homeassistant_last_version = self._homeassistant.last_version
+            self.homeassistant[ATTR_IMAGE] = self._homeassistant.image
+            self.homeassistant[ATTR_LAST_VERSION] = \
+                self._homeassistant.last_version
 
         # api
-        self.homeassistant_port = self._homeassistant.api_port
-        self.homeassistant_ssl = self._homeassistant.api_ssl
-        self.homeassistant_password = self._homeassistant.api_password
+        self.homeassistant[ATTR_PORT] = self._homeassistant.api_port
+        self.homeassistant[ATTR_SSL] = self._homeassistant.api_ssl
+        self.homeassistant[ATTR_PASSWORD] = self._homeassistant.api_password
 
     def restore_homeassistant(self):
         """Write all data to homeassistant object."""
-        self._homeassistant.watchdog = self.homeassistant_watchdog
-        self._homeassistant.boot = self.homeassistant_boot
-        self._homeassistant.startup_time = self.homeassistant_startup_time
+        self._homeassistant.watchdog = self.homeassistant[ATTR_WATCHDOG]
+        self._homeassistant.boot = self.homeassistant[ATTR_BOOT]
+        self._homeassistant.startup_time = \
+            self.homeassistant[ATTR_STARTUP_TIME]
 
         # custom image
-        if self.homeassistant_image:
-            self._homeassistant.image = self.homeassistant_image
-            self._homeassistant.last_version = self.homeassistant_last_version
+        if self.homeassistant[ATTR_IMAGE]:
+            self._homeassistant.image = self.homeassistant[ATTR_IMAGE]
+            self._homeassistant.last_version = \
+                self.homeassistant[ATTR_LAST_VERSION]
 
         # api
-        self._homeassistant.api_port = self.homeassistant_port
-        self._homeassistant.api_ssl = self.homeassistant_ssl
-        self._homeassistant.api_password = self.homeassistant_password
+        self._homeassistant.api_port = self.homeassistant[ATTR_PORT]
+        self._homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
+        self._homeassistant.api_password = self.homeassistant[ATTR_PASSWORD]
 
         # save
         self._homeassistant.save_data()

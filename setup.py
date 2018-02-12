@@ -48,6 +48,6 @@ setup(
         'gitpython==2.1.8',
         'pytz==2018.3',
         'pyudev==0.21.0',
-        'pycryptodome=3.4.11'
+        'pycryptodome==3.4.11'
     ]
 )

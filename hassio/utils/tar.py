@@ -6,7 +6,6 @@ from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad
 
 BLOCK_SIZE = 16
-# compresslevel=1
 
 MOD_READ = 'r'
 MOD_WRITE = 'w'
@@ -15,7 +14,7 @@ MOD_WRITE = 'w'
 class SecureTarFile(object):
     """Handle encrypted files for tarfile library."""
 
-    def __init__(self, name, mode, key=None, gzip=True):
+    def __init__(self, name, mode, key=None, gzip=True, compresslevel=1):
         """Initialize encryption handler."""
         self._file = None
         self._mode = mode
@@ -24,6 +23,7 @@ class SecureTarFile(object):
         # Tarfile options
         self._tar = None
         self._tar_mode = f"{mode}|gz" if gzip else f"{mode}|"
+        self._compress = compresslevel if gzip else None
 
         # Encryption/Decription
         self._aes = None
@@ -32,9 +32,11 @@ class SecureTarFile(object):
     def __enter__(self):
         """Start context manager tarfile."""
         if not self._key:
-            self._tar = tarfile.open(name, self._tar_mode)
+            self._tar = tarfile.open(
+                name=self._name, mode=self._tar_mode,
+                compresslevel=self._compress)
             return self._tar
-        
+
         # Encrypted/Decryped Tarfile
         self._file = self._name.open(self._mode)
 
@@ -46,7 +48,8 @@ class SecureTarFile(object):
             self._file.write(cbc_iv)
         self._aes = AES.new(self._key, AES.MODE_CBC, iv=cbc_iv)
 
-        self._tar = tarfile.open(fileobj=self, self._tar_mode)
+        self._tar = tarfile.open(
+            fileobj=self, mode=self._tar_mode, compresslevel=self._compress)
         return self._tar
 
     def __exit__(self, exc_type, exc_value, traceback):

@@ -719,7 +719,7 @@ class Addon(CoreSysAttributes):
                     snapshot.extractall(path=Path(temp))
 
             try:
-                await self._loop.run_in_executor(None, _extract_tar)
+                await self._loop.run_in_executor(None, _extract_tarfile)
             except tarfile.TarError as err:
                 _LOGGER.error("Can't read tarfile %s: %s", tar_file, err)
                 return False
