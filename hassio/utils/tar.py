@@ -10,13 +10,13 @@ MOD_READ = 'r'
 MOD_WRITE = 'w'
 
 
-class EncryptTarFile(object):
+class SecureTarFile(object):
     """Handle encrypted files for tarfile library."""
 
-    def __init__(self, name, mode, key):
+    def __init__(self, name, mode, key=None, gzip=True):
         """Initialize encryption handler."""
-        self._file = name.open(f"{mode}b")
-
+        tar_mode = f"{mode}|gz" if gzip else f"{mode}|"
+        
         # Extract IV for CBC
         if mode == MOD_READ:
             cbc_iv = self._file.read(16)
