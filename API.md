@@ -125,7 +125,8 @@ Output is the raw docker log.
 
 ```json
 {
-    "name": "Optional"
+    "name": "Optional",
+    "password": "Optional"
 }
 ```
 
@@ -135,7 +136,8 @@ Output is the raw docker log.
 {
     "name": "Optional",
     "addons": ["ADDON_SLUG"],
-    "folders": ["FOLDER_NAME"]
+    "folders": ["FOLDER_NAME"],
+    "password": "Optional"
 }
 ```
 
@@ -150,6 +152,7 @@ Output is the raw docker log.
     "name": "custom snapshot name / description",
     "date": "ISO",
     "size": "SIZE_IN_MB",
+    "protected": "bool";
     "homeassistant": "version",
     "addons": [
         {
@@ -164,14 +167,22 @@ Output is the raw docker log.
 ```
 
 - POST `/snapshots/{slug}/remove`
+
 - POST `/snapshots/{slug}/restore/full`
+
+```json
+{
+    "password": "Optional"
+}
+
 - POST `/snapshots/{slug}/restore/partial`
 
 ```json
 {
     "homeassistant": "bool",
     "addons": ["ADDON_SLUG"],
-    "folders": ["FOLDER_NAME"]
+    "folders": ["FOLDER_NAME"],
+    "password": "Optional"
 }
 ```
 
