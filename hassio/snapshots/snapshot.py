@@ -53,7 +53,7 @@ class Snapshot(CoreSysAttributes):
     def date(self):
         """Return snapshot date."""
         return self._data[ATTR_DATE]
-    
+
     @property
     def protected(self):
         """Return snapshot date."""
@@ -106,7 +106,7 @@ class Snapshot(CoreSysAttributes):
 
         # Add defaults
         self._data = SCHEMA_SNAPSHOT(self._data)
-        
+
         # Set password
         if password:
             self._key = password_to_key(password)
@@ -229,13 +229,12 @@ class Snapshot(CoreSysAttributes):
         def _folder_save(name):
             """Intenal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
-            snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
+            tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self._config.path_hassio, name)
 
             try:
                 _LOGGER.info("Snapshot folder %s", name)
-                with tarfile.open(snapshot_tar, "w:gz",
-                                  compresslevel=1) as tar_file:
+                with SecureTarFile(tar_name, 'w', key=self._key) as tar_file:
                     tar_file.add(origin_dir, arcname=".")
 
                 _LOGGER.info("Snapshot folder %s done", name)
@@ -256,7 +255,7 @@ class Snapshot(CoreSysAttributes):
         def _folder_restore(name):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
-            snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
+            tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self._config.path_hassio, name)
 
             # clean old stuff
@@ -265,7 +264,7 @@ class Snapshot(CoreSysAttributes):
 
             try:
                 _LOGGER.info("Restore folder %s", name)
-                with tarfile.open(snapshot_tar, "r:gz") as tar_file:
+                with SecureTarFile(tar_name, 'r', key=self._key) as tar_file:
                     tar_file.extractall(path=origin_dir)
                 _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
@@ -282,8 +281,7 @@ class Snapshot(CoreSysAttributes):
         self.homeassistant[ATTR_VERSION] = self._homeassistant.version
         self.homeassistant[ATTR_WATCHDOG] = self._homeassistant.watchdog
         self.homeassistant[ATTR_BOOT] = self._homeassistant.boot
-        self.homeassistant[ATTR_STARTUP_TIME] = \
-            self._homeassistant.startup_time
+        self.homeassistant[ATTR_WAIT_BOOT] = self._homeassistant.wait_boot
 
         # custom image
         if self._homeassistant.is_custom_image:
@@ -300,8 +298,7 @@ class Snapshot(CoreSysAttributes):
         """Write all data to homeassistant object."""
         self._homeassistant.watchdog = self.homeassistant[ATTR_WATCHDOG]
         self._homeassistant.boot = self.homeassistant[ATTR_BOOT]
-        self._homeassistant.startup_time = \
-            self.homeassistant[ATTR_STARTUP_TIME]
+        self._homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
 
         # custom image
         if self.homeassistant[ATTR_IMAGE]:
