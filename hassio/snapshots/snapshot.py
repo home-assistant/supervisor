@@ -109,7 +109,7 @@ class Snapshot(CoreSysAttributes):
         
         # Set password
         self._key = password_to_key(password)
-        self._data[ATTR_PROTECTED] = password_to_key(self._key)
+        self._data[ATTR_PROTECTED] = password_for_validating(password)
 
     async def load(self):
         """Read snapshot.json from tar file."""
