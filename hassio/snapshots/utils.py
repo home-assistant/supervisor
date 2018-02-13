@@ -10,11 +10,11 @@ def password_to_key(password):
     return password[:16]
 
 
-def key_for_validated(key):
-    """Generate a AES Key from password"""
+def password_for_validating(password):
+    """Generate a SHA256 hash from password"""
     for _ in range(100):
-        password = hashlib.sha256(key).hexdigest()
-    return key
+        password = hashlib.sha256(password).hexdigest()
+    return password
 
 
 def create_slug(name, date_str):
