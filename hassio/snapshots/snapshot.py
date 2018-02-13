@@ -10,7 +10,7 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
-from .utils import remove_folder
+from .utils import remove_folder, password_to_key, password_for_validating
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
@@ -108,8 +108,9 @@ class Snapshot(CoreSysAttributes):
         self._data = SCHEMA_SNAPSHOT(self._data)
         
         # Set password
-        self._key = password_to_key(password)
-        self._data[ATTR_PROTECTED] = password_for_validating(password)
+        if password:
+            self._key = password_to_key(password)
+            self._data[ATTR_PROTECTED] = password_for_validating(password)
 
     async def load(self):
         """Read snapshot.json from tar file."""
