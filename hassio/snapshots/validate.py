@@ -6,7 +6,7 @@ from ..const import (
     ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_NAME, ATTR_SLUG, ATTR_DATE,
     ATTR_VERSION, ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_TYPE, ATTR_IMAGE,
     ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG, ATTR_BOOT,
-    ATTR_LAST_VERSION, ATTR_WAIT_BOOT,
+    ATTR_LAST_VERSION, ATTR_WAIT_BOOT, ATTR_PROTECTED,
     FOLDER_SHARE, FOLDER_HOMEASSISTANT, FOLDER_ADDONS, FOLDER_SSL,
     SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 from ..validate import NETWORK_PORT, REPOSITORIES, DOCKER_IMAGE
@@ -29,6 +29,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
     vol.Required(ATTR_TYPE): vol.In([SNAPSHOT_FULL, SNAPSHOT_PARTIAL]),
     vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Required(ATTR_DATE): vol.Coerce(str),
+    vol.Optional(ATTR_PROTECTED): vol.Coerce(str),
     vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema({
         vol.Required(ATTR_VERSION): vol.Coerce(str),
         vol.Inclusive(ATTR_IMAGE, 'custom_hass'): DOCKER_IMAGE,
