@@ -15,7 +15,7 @@ from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
     ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT,
-    ATTR_LAST_VERSION, ATTR_STARTUP_TIME)
+    ATTR_LAST_VERSION, ATTR_PROTECTED, ATTR_WAIT_BOOT)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile
@@ -32,6 +32,7 @@ class Snapshot(CoreSysAttributes):
         self.tar_file = tar_file
         self._data = {}
         self._tmp = None
+        self._key = None
 
     @property
     def slug(self):
@@ -52,6 +53,11 @@ class Snapshot(CoreSysAttributes):
     def date(self):
         """Return snapshot date."""
         return self._data[ATTR_DATE]
+    
+    @property
+    def protected(self):
+        """Return snapshot date."""
+        return self._data.get(ATTR_PROTECTED) is not None
 
     @property
     def addons(self):
@@ -90,7 +96,7 @@ class Snapshot(CoreSysAttributes):
             return 0
         return self.tar_file.stat().st_size / 1048576  # calc mbyte
 
-    def create(self, slug, name, date, sys_type):
+    def create(self, slug, name, date, sys_type, password=None):
         """Initialize a new snapshot."""
         # init metadata
         self._data[ATTR_SLUG] = slug
@@ -100,6 +106,10 @@ class Snapshot(CoreSysAttributes):
 
         # Add defaults
         self._data = SCHEMA_SNAPSHOT(self._data)
+        
+        # Set password
+        self._key = password_to_key(password)
+        self._data[ATTR_PROTECTED] = password_to_key(self._key)
 
     async def load(self):
         """Read snapshot.json from tar file."""
