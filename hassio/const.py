@@ -156,6 +156,7 @@ ATTR_DISCOVERY_ID = 'discovery_id'
 ATTR_SERVICES = 'services'
 ATTR_DISCOVERY = 'discovery'
 ATTR_PROTECTED = 'protected'
+ATTR_CRYPTO = 'crypto'
 
 SERVICE_MQTT = 'mqtt'
 
@@ -193,3 +194,5 @@ FOLDER_SSL = 'ssl'
 
 SNAPSHOT_FULL = 'full'
 SNAPSHOT_PARTIAL = 'partial'
+
+CRYPTO_AES128 = 'aes128'
