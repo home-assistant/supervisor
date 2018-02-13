@@ -122,6 +122,8 @@ Output is the raw docker log.
 
 - POST `/snapshots/reload`
 
+- POST `/snapshots/upload`
+
 - POST `/snapshots/new/full`
 
 ```json
@@ -168,6 +170,8 @@ Output is the raw docker log.
 ```
 
 - POST `/snapshots/{slug}/remove`
+
+- GET `/snapshots/{slug}/download`
 
 - POST `/snapshots/{slug}/restore/full`
 
