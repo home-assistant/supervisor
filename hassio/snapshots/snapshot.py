@@ -14,8 +14,8 @@ from .utils import remove_folder, password_to_key, password_for_validating
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
-    ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT,
-    ATTR_LAST_VERSION, ATTR_PROTECTED, ATTR_WAIT_BOOT)
+    ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT, ATTR_CRYPTO,
+    ATTR_LAST_VERSION, ATTR_PROTECTED, ATTR_WAIT_BOOT, CRYPTO_AES128)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile
@@ -111,6 +111,7 @@ class Snapshot(CoreSysAttributes):
         if password:
             self._key = password_to_key(password)
             self._data[ATTR_PROTECTED] = password_for_validating(password)
+            self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
     async def load(self):
         """Read snapshot.json from tar file."""
