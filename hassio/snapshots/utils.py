@@ -3,6 +3,20 @@ import hashlib
 import shutil
 
 
+def password_to_key(password):
+    """Generate a AES Key from password"""
+    for _ in range(100):
+        password = hashlib.sha256(password).digest()
+    return password[:16]
+
+
+def key_for_validated(key):
+    """Generate a AES Key from password"""
+    for _ in range(100):
+        password = hashlib.sha256(key).hexdigest()
+    return key
+
+
 def create_slug(name, date_str):
     """Generate a hash from repository."""
     key = "{} - {}".format(date_str, name).lower().encode()
