@@ -5,7 +5,7 @@ import voluptuous as vol
 from ..const import (
     ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_NAME, ATTR_SLUG, ATTR_DATE,
     ATTR_VERSION, ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_TYPE, ATTR_IMAGE,
-    ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG, ATTR_BOOT,
+    ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG, ATTR_BOOT, ATTR_SIZE,
     ATTR_LAST_VERSION, ATTR_WAIT_BOOT, ATTR_PROTECTED, ATTR_CRYPTO,
     FOLDER_SHARE, FOLDER_HOMEASSISTANT, FOLDER_ADDONS, FOLDER_SSL,
     SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CRYPTO_AES128)
@@ -50,6 +50,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
         vol.Required(ATTR_SLUG): vol.Coerce(str),
         vol.Required(ATTR_NAME): vol.Coerce(str),
         vol.Required(ATTR_VERSION): vol.Coerce(str),
+        vol.Required(ATTR_SIZE): vol.Coerce(float),
     }, extra=vol.REMOVE_EXTRA)], unique_addons),
     vol.Optional(ATTR_REPOSITORIES, default=list): REPOSITORIES,
 }, extra=vol.ALLOW_EXTRA)

@@ -15,7 +15,8 @@ from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
     ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT, ATTR_CRYPTO,
-    ATTR_LAST_VERSION, ATTR_PROTECTED, ATTR_WAIT_BOOT, CRYPTO_AES128)
+    ATTR_LAST_VERSION, ATTR_PROTECTED, ATTR_WAIT_BOOT, ATTR_SIZE,
+    CRYPTO_AES128)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile
@@ -94,10 +95,10 @@ class Snapshot(CoreSysAttributes):
         """Return snapshot size."""
         if not self.tar_file.is_file():
             return 0
-        return self.tar_file.stat().st_size / 1048576  # calc mbyte
+        return round(self.tar_file.stat().st_size / 1048576)  # calc mbyte
 
     @property
-    def is_new(self)
+    def is_new(self):
         """Return True if there is new."""
         return not self._tar_file.exists()
 
@@ -200,32 +201,51 @@ class Snapshot(CoreSysAttributes):
         finally:
             self._tmp.cleanup()
 
-    async def import_addon(self, addon):
-        """Add a addon into snapshot."""
-        snapshot_file = Path(self._tmp.name, f"{addon.slug}.tar.gz")
+    async def store_addons(self, addon_list=None):
+        """Add a list of add-ons into snapshot."""
+        addon_list = addon_list or self._addons.list_installed
 
-        if not await addon.snapshot(snapshot_file):
-            _LOGGER.error("Can't make snapshot from %s", addon.slug)
-            return False
+        async def _addon_save(addon):
+            """Task to store a add-on into snapshot."""
+            addon_file = SecureTarFile(
+                Path(self._tmp.name, f"{addon.slug}.tar.gz"),
+                'w', key=self._key)
 
-        # store to config
-        self._data[ATTR_ADDONS].append({
-            ATTR_SLUG: addon.slug,
-            ATTR_NAME: addon.name,
-            ATTR_VERSION: addon.version_installed,
-        })
+            if not await addon.snapshot(addon_file):
+                _LOGGER.error("Can't make snapshot from %s", addon.slug)
+                return
 
-        return True
+            # store to config
+            self._data[ATTR_ADDONS].append({
+                ATTR_SLUG: addon.slug,
+                ATTR_NAME: addon.name,
+                ATTR_VERSION: addon.version_installed,
+                ATTR_SIZE: addon_file.size,
+            })
 
-    async def export_addon(self, addon):
-        """Restore a addon from snapshot."""
-        snapshot_file = Path(self._tmp.name, f"{addon.slug}.tar.gz")
+        # Run tasks
+        tasks = [_addon_save(addon) for addon in addon_list]
+        if tasks:
+            await asyncio.wait(tasks, loop=self._loop)
 
-        if not await addon.restore(snapshot_file):
-            _LOGGER.error("Can't restore snapshot for %s", addon.slug)
-            return False
+    async def restore_addons(self, addon_list=None):
+        """Restore a list add-on from snapshot."""
+        addon_list = addon_list or self._addons.list_installed
 
-        return True
+        async def _addon_restore(addon):
+            """Task to restore a add-on into snapshot."""
+            addon_file = SecureTarFile(
+                Path(self._tmp.name, f"{addon.slug}.tar.gz"),
+                'r', key=self._key)
+
+            if not await addon.restore(addon_file):
+                _LOGGER.error("Can't restore snapshot for %s", addon.slug)
+                return
+
+        # Run tasks
+        tasks = [_addon_restore(addon) for addon in addon_list]
+        if tasks:
+            await asyncio.wait(tasks, loop=self._loop)
 
     async def store_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""

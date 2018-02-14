@@ -161,7 +161,8 @@ Output is the raw docker log.
         {
             "slug": "ADDON_SLUG",
             "name": "NAME",
-            "version": "INSTALLED_VERSION"
+            "version": "INSTALLED_VERSION",
+            "size": "SIZE_IN_MB"
         }
     ],
     "repositories": ["URL"],

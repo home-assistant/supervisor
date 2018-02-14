@@ -79,6 +79,7 @@ class APISnapshots(CoreSysAttributes):
                 ATTR_SLUG: addon_data[ATTR_SLUG],
                 ATTR_NAME: addon_data[ATTR_NAME],
                 ATTR_VERSION: addon_data[ATTR_VERSION],
+                ATTR_SIZE: addon_data[ATTR_SIZE],
             })
 
         return {

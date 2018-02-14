@@ -68,3 +68,10 @@ class SecureTarFile(object):
     def read(self, size=0):
         """Read data."""
         return self._aes.decrypt(self._file.read(size))
+
+    @property
+    def size(self):
+        """Return snapshot size."""
+        if not self._name.is_file():
+            return 0
+        return round(self._name.stat().st_size / 1048576)  # calc mbyte
