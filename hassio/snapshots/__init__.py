@@ -3,8 +3,8 @@ import asyncio
 from datetime import datetime
 import logging
 from pathlib import Path
-import pytz
 import tarfile
+import pytz
 
 from .snapshot import Snapshot
 from .utils import create_slug
