@@ -96,6 +96,11 @@ class Snapshot(CoreSysAttributes):
             return 0
         return self.tar_file.stat().st_size / 1048576  # calc mbyte
 
+    @property
+    def is_new(self)
+        """Return True if there is new."""
+        return not self._tar_file.exists()
+
     def new(self, slug, name, date, sys_type, password=None):
         """Initialize a new snapshot."""
         # init metadata
