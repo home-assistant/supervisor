@@ -29,6 +29,12 @@ class AddonManager(CoreSysAttributes):
         return list(self.addons_obj.values())
 
     @property
+    def list_installed(self):
+        """Return a list of installed addons."""
+        return [addon.slug for addon in self.addons_obj.values()
+                if addon.is_installed]
+
+    @property
     def list_repositories(self):
         """Return list of addon repositories."""
         return list(self.repositories_obj.values())
