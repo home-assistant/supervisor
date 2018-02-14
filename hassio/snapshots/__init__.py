@@ -36,11 +36,11 @@ class SnapshotManager(CoreSysAttributes):
         """Initialize a new snapshot object from name."""
         date_str = datetime.utcnow().isoformat()
         slug = create_slug(name, date_str)
-        tar_file = Path(self._config.path_backup, "{}.tar".format(slug))
+        tar_file = Path(self._config.path_backup, f"{slug}.tar")
 
         # init object
         snapshot = Snapshot(self.coresys, tar_file)
-        snapshot.create(slug, name, date_str, sys_type)
+        snapshot.new(slug, name, date_str, sys_type)
 
         # set general data
         snapshot.store_homeassistant()
