@@ -77,6 +77,7 @@ def parse_datetime(dt_str):
     kws['tzinfo'] = tzinfo
     return datetime(**kws)
 
+
 def datetime_iso_now():
     """Returns current timestamp including timezone in ISO format."""
     return datetime.now(UTC).isoformat()
