@@ -1,18 +1,15 @@
 """Snapshot system control."""
 import asyncio
-from datetime import datetime
 import logging
 from pathlib import Path
 import tarfile
-import pytz
 
 from .snapshot import Snapshot
 from .utils import create_slug
 from ..const import (
     ATTR_SLUG, FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 from ..coresys import CoreSysAttributes
-
-UTC = pytz.utc
+from ..utils.dt import datetime_iso_now
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +34,7 @@ class SnapshotManager(CoreSysAttributes):
 
     def _create_snapshot(self, name, sys_type):
         """Initialize a new snapshot object from name."""
-        date_str = datetime.now(UTC).isoformat()
+        date_str = datetime_iso_now()
         slug = create_slug(name, date_str)
         tar_file = Path(self._config.path_backup, "{}.tar".format(slug))
 
