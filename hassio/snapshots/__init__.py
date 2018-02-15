@@ -83,7 +83,7 @@ class SnapshotManager(CoreSysAttributes):
 
         return True
 
-    async def do_snapshot_full(self, name=""):
+    async def do_snapshot_full(self, name="", password=None):
         """Create a full snapshot."""
         if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
@@ -96,24 +96,16 @@ class SnapshotManager(CoreSysAttributes):
             await self.lock.acquire()
 
             async with snapshot:
-                # snapshot addons
-                tasks = []
-                for addon in self._addons.list_addons:
-                    if not addon.is_installed:
-                        continue
-                    tasks.append(snapshot.import_addon(addon))
+                # Snapshot add-ons
+                _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
+                await snapshot.snapshots_addons()
 
-                if tasks:
-                    _LOGGER.info("Full-Snapshot %s run %d addons",
-                                 snapshot.slug, len(tasks))
-                    await asyncio.wait(tasks, loop=self._loop)
-
-                # snapshot folders
-                _LOGGER.info("Full-Snapshot %s store folders", snapshot.slug)
+                # Snapshot folders
+                _LOGGER.info("Snapshot %s store folders", snapshot.slug)
                 await snapshot.store_folders()
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Full-Snapshot %s error: %s", snapshot.slug, err)
+            _LOGGER.info("Snapshot %s error: %s", snapshot.slug, err)
             return False
 
         else:
@@ -141,25 +133,24 @@ class SnapshotManager(CoreSysAttributes):
             await self.lock.acquire()
 
             async with snapshot:
-                # snapshot addons
-                tasks = []
-                for slug in addons:
-                    addon = self._addons.get(slug)
-                    if addon.is_installed:
-                        tasks.append(snapshot.import_addon(addon))
+                # Snapshot add-ons
+                addon_list = []
+                for addon_slug in addons:
+                    addon = self._addons.get(addon_slug)
+                    if addon and addon.is_installed:
+                        addon_list.append(addon)
+                        continue
+                    _LOGGER.warning("Add-on %s not found", addon_slug)
 
-                if tasks:
-                    _LOGGER.info("Partial-Snapshot %s run %d addons",
-                                 snapshot.slug, len(tasks))
-                    await asyncio.wait(tasks, loop=self._loop)
+                _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
+                await snapshot.snapshots_addons(addon_list)
 
                 # snapshot folders
-                _LOGGER.info("Partial-Snapshot %s store folders %s",
-                             snapshot.slug, folders)
+                _LOGGER.info("Snapshot %s store folders", snapshot.slug)
                 await snapshot.store_folders(folders)
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Partial-Snapshot %s error: %s", snapshot.slug, err)
+            _LOGGER.info("Snapshot %s error: %s", snapshot.slug, err)
             return False
 
         else:
@@ -178,8 +169,8 @@ class SnapshotManager(CoreSysAttributes):
             return False
 
         if snapshot.sys_type != SNAPSHOT_FULL:
-            _LOGGER.error(
-                "Full-Restore %s is only a partial snapshot!", snapshot.slug)
+            _LOGGER.error("Restore %s is only a partial snapshot!",
+                          snapshot.slug)
             return False
 
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
@@ -188,71 +179,51 @@ class SnapshotManager(CoreSysAttributes):
             await self.lock.acquire()
 
             async with snapshot:
-                # stop system
                 tasks = []
-                tasks.append(self._homeassistant.stop())
 
+                # Stop Home-Assistant / Add-ons
+                tasks.append(self._homeassistant.stop())
                 for addon in self._addons.list_addons:
                     if addon.is_installed:
                         tasks.append(addon.stop())
 
+                _LOGGER.info("Restore %s stop running tasks", snapshot.slug)
                 await asyncio.wait(tasks, loop=self._loop)
 
-                # restore folders
-                _LOGGER.info("Full-Restore %s restore folders", snapshot.slug)
+                # Restore folders
+                _LOGGER.info("Restore %s run folders", snapshot.slug)
                 await snapshot.restore_folders()
 
-                # start homeassistant restore
-                _LOGGER.info("Full-Restore %s restore Home-Assistant",
-                             snapshot.slug)
+                # Start homeassistant restore
+                _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
                 task_hass = self._loop.create_task(
                     self._homeassistant.update(snapshot.homeassistant_version))
 
-                # restore repositories
-                _LOGGER.info("Full-Restore %s restore Repositories",
-                             snapshot.slug)
+                # Restore repositories
+                _LOGGER.info("Restore %s run Repositories", snapshot.slug)
                 await snapshot.restore_repositories()
 
-                # restore addons
-                tasks = []
-                actual_addons = \
-                    set(addon.slug for addon in self._addons.list_addons
-                        if addon.is_installed)
-                restore_addons = \
-                    set(data[ATTR_SLUG] for data in snapshot.addons)
-                remove_addons = actual_addons - restore_addons
-
-                _LOGGER.info("Full-Restore %s restore addons %s, remove %s",
-                             snapshot.slug, restore_addons, remove_addons)
-
-                for slug in remove_addons:
-                    addon = self._addons.get(slug)
-                    if addon:
+                # Delete delta add-ons
+                tasks.clear()
+                for addon in self._addons.list_installed:
+                    if addon.slug not in snapshot.addons:
                         tasks.append(addon.uninstall())
-                    else:
-                        _LOGGER.warning("Can't remove addon %s", snapshot.slug)
+                _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
+                await asyncio.wait(tasks, loop=self._loop)
 
-                for slug in restore_addons:
-                    addon = self._addons.get(slug)
-                    if addon:
-                        tasks.append(snapshot.export_addon(addon))
-                    else:
-                        _LOGGER.warning("Can't restore addon %s", slug)
-
-                if tasks:
-                    _LOGGER.info("Full-Restore %s restore addons tasks %d",
-                                 snapshot.slug, len(tasks))
-                    await asyncio.wait(tasks, loop=self._loop)
+                # Restore add-ons
+                _LOGGER.info("Restore %s old add-ons", snapshot.slug)
+                await snapshot.restore_addons()
 
                 # finish homeassistant task
-                _LOGGER.info("Full-Restore %s wait until homeassistant ready",
+                _LOGGER.info("Restore %s wait until homeassistant ready",
                              snapshot.slug)
                 await task_hass
                 await self._homeassistant.start()
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Full-Restore %s error: %s", snapshot.slug, err)
+            _LOGGER.info("Restore %s error: %s", snapshot.slug, err)
             return False
 
         else:
@@ -279,41 +250,42 @@ class SnapshotManager(CoreSysAttributes):
             await self.lock.acquire()
 
             async with snapshot:
-                tasks = []
-
                 if FOLDER_HOMEASSISTANT in folders:
                     await self._homeassistant.stop()
 
                 if folders:
-                    _LOGGER.info("Partial-Restore %s restore folders %s",
-                                 snapshot.slug, folders)
+                    _LOGGER.info("Restore %s run folders", snapshot.slug)
                     await snapshot.restore_folders(folders)
 
                 if homeassistant:
-                    _LOGGER.info("Partial-Restore %s restore Home-Assistant",
+                    _LOGGER.info("Restore %s run Home-Assistant",
                                  snapshot.slug)
                     snapshot.restore_homeassistant()
-                    tasks.append(self._homeassistant.update(
-                        snapshot.homeassistant_version))
+                    task_hass = self._loop.create_task(
+                        self._homeassistant.update(
+                            snapshot.homeassistant_version))
 
+                addon_list = []
                 for slug in addons:
                     addon = self._addons.get(slug)
                     if addon:
-                        tasks.append(snapshot.export_addon(addon))
-                    else:
-                        _LOGGER.warning("Can't restore addon %s",
-                                        snapshot.slug)
+                        addon_list.append(addon)
+                        continue
+                    _LOGGER.warning("Can't restore addon %s", snapshot.slug)
 
-                if tasks:
-                    _LOGGER.info("Partial-Restore %s run %d tasks",
-                                 snapshot.slug, len(tasks))
-                    await asyncio.wait(tasks, loop=self._loop)
+                if addon_list:
+                    _LOGGER.info("Restore %s old add-ons", snapshot.slug)
+                    await snapshot.restore_addons(addon_list)
 
                 # make sure homeassistant run agen
+                if task_hass:
+                    _LOGGER.info("Restore %s wait for Home-Assistant",
+                                 snapshot.slug)
+                    await task_hass
                 await self._homeassistant.start()
 
         except (OSError, ValueError, tarfile.TarError) as err:
-            _LOGGER.info("Partial-Restore %s error: %s", snapshot.slug, err)
+            _LOGGER.info("Restore %s error: %s", snapshot.slug, err)
             return False
 
         else:
