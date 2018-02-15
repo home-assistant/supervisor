@@ -101,7 +101,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Return time to wait for Home-Assistant startup."""
         return self._data[ATTR_WAIT_BOOT]
 
-    @swait_boot.setter
+    @wait_boot.setter
     def wait_boot(self, value):
         """Set time to wait for Home-Assistant startup."""
         self._data[ATTR_WAIT_BOOT] = value

@@ -8,7 +8,7 @@ import tarfile
 from .snapshot import Snapshot
 from .utils import create_slug
 from ..const import (
-    ATTR_SLUG, FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
+    FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
