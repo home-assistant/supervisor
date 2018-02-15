@@ -44,7 +44,7 @@ setup(
         'aiohttp==2.3.10',
         'docker==3.0.1',
         'colorlog==3.1.2',
-        'voluptuous==0.10.5',
+        'voluptuous==0.11.1',
         'gitpython==2.1.8',
         'pytz==2018.3',
         'pyudev==0.21.0',
