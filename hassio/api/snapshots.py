@@ -1,9 +1,10 @@
 """Init file for HassIO snapshot rest api."""
 import asyncio
 import logging
+from pathlib import Path
 
-import voluptuous as vol
 from aiohttp import web
+import voluptuous as vol
 
 from .utils import api_process, api_validate
 from ..snapshots.validate import ALL_FOLDERS
@@ -161,3 +162,28 @@ class APISnapshots(CoreSysAttributes):
             _LOGGER.error("Can't read the snapshot file: %s", err)
 
         return response
+
+    @api_process
+    async def upload(self, request):
+        """Upload a snapshot file."""
+        name = request.match_info.get('name')
+        tar_file = Path(self._config.path_backup, f"{name}.tar")
+
+        if tar_file.exists():
+            raise RuntimeError("Snapshot with that name exists already!")
+
+        try:
+            with tar_file.open('wb') as snapshot:
+                async for data in request.content.iter_any():
+                    snapshot.write(data)
+
+        except OSError as err:
+            _LOGGER.error("Can't write new snapshot file: %s", err)
+            return False
+
+        except asyncio.CancelledError:
+            tar_file.unlink()
+            return False
+
+        await asyncio.shield(self._snapshots.reload(), loop=self._loop)
+        return True

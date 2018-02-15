@@ -122,7 +122,7 @@ Output is the raw docker log.
 
 - POST `/snapshots/reload`
 
-- POST `/snapshots/upload`
+- POST `/snapshots/upload/{name}`
 
 - POST `/snapshots/new/full`
 

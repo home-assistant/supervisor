@@ -155,6 +155,8 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.router.add_get('/snapshots', api_snapshots.list)
         self.webapp.router.add_post('/snapshots/reload', api_snapshots.reload)
+        self.webapp.router.add_post(
+            '/snapshots/upload/{name}', api_snapshots.upload)
 
         self.webapp.router.add_post(
             '/snapshots/new/full', api_snapshots.snapshot_full)
