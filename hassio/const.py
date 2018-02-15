@@ -43,6 +43,7 @@ CONTENT_TYPE_BINARY = 'application/octet-stream'
 CONTENT_TYPE_PNG = 'image/png'
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_TEXT = 'text/plain'
+CONTENT_TYPE_TAR = 'application/tar'
 HEADER_HA_ACCESS = 'x-ha-access'
 HEADER_TOKEN = 'X-HASSIO-KEY'
 

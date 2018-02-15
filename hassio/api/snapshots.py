@@ -3,13 +3,14 @@ import asyncio
 import logging
 
 import voluptuous as vol
+from aiohttp import web
 
 from .utils import api_process, api_validate
 from ..snapshots.validate import ALL_FOLDERS
 from ..const import (
     ATTR_NAME, ATTR_SLUG, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS, ATTR_TYPE,
-    ATTR_SNAPSHOTS)
+    ATTR_SNAPSHOTS, ATTR_PASSWORD, CONTENT_TYPE_TAR)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_RESTORE_PARTIAL = vol.Schema({
+    vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
     vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     vol.Optional(ATTR_ADDONS):
         vol.All([vol.Coerce(str)], vol.Unique()),
@@ -26,6 +28,7 @@ SCHEMA_RESTORE_PARTIAL = vol.Schema({
 
 SCHEMA_SNAPSHOT_FULL = vol.Schema({
     vol.Optional(ATTR_NAME): vol.Coerce(str),
+    vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
 })
 
 SCHEMA_SNAPSHOT_PARTIAL = SCHEMA_SNAPSHOT_FULL.extend({
@@ -131,3 +134,30 @@ class APISnapshots(CoreSysAttributes):
         """Remove a snapshot."""
         snapshot = self._extract_snapshot(request)
         return self._snapshots.remove(snapshot)
+
+    async def download(self, request):
+        """Download a snapshot file."""
+        snapshot = self._extract_snapshot(request)
+
+        _LOGGER.info("Download snapshot %s", snapshot.slug)
+
+        response = web.StreamResponse()
+        response.content_type = CONTENT_TYPE_TAR
+        try:
+            await response.prepare(request)
+            with snapshot.path.open('wb') as tar_file:
+                while True:
+                    data = tar_file.read(10)
+                    if not data:
+                        await response.write_eof()
+                        break
+                response.write(data)
+                await response.drain()
+
+        except asyncio.CancelledError:
+            pass
+
+        except OSError as err:
+            _LOGGER.error("Can't read the snapshot file: %s", err)
+
+        return response

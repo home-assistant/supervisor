@@ -32,7 +32,7 @@ class SnapshotManager(CoreSysAttributes):
         """Return snapshot object."""
         return self.snapshots_obj.get(slug)
 
-    def _create_snapshot(self, name, sys_type):
+    def _create_snapshot(self, name, sys_type, password):
         """Initialize a new snapshot object from name."""
         date_str = datetime.utcnow().isoformat()
         slug = create_slug(name, date_str)
@@ -40,7 +40,7 @@ class SnapshotManager(CoreSysAttributes):
 
         # init object
         snapshot = Snapshot(self.coresys, tar_file)
-        snapshot.new(slug, name, date_str, sys_type)
+        snapshot.new(slug, name, date_str, sys_type, password)
 
         # set general data
         snapshot.store_homeassistant()
@@ -89,7 +89,7 @@ class SnapshotManager(CoreSysAttributes):
             _LOGGER.error("It is already a snapshot/restore process running")
             return False
 
-        snapshot = self._create_snapshot(name, SNAPSHOT_FULL)
+        snapshot = self._create_snapshot(name, SNAPSHOT_FULL, password)
         _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
         try:
             self._scheduler.suspend = True
@@ -117,7 +117,8 @@ class SnapshotManager(CoreSysAttributes):
             self._scheduler.suspend = False
             self.lock.release()
 
-    async def do_snapshot_partial(self, name="", addons=None, folders=None):
+    async def do_snapshot_partial(self, name="", addons=None, folders=None,
+                                  password=None):
         """Create a partial snapshot."""
         if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
@@ -125,7 +126,7 @@ class SnapshotManager(CoreSysAttributes):
 
         addons = addons or []
         folders = folders or []
-        snapshot = self._create_snapshot(name, SNAPSHOT_PARTIAL)
+        snapshot = self._create_snapshot(name, SNAPSHOT_PARTIAL, password)
 
         _LOGGER.info("Partial-Snapshot %s start", snapshot.slug)
         try:
@@ -162,7 +163,7 @@ class SnapshotManager(CoreSysAttributes):
             self._scheduler.suspend = False
             self.lock.release()
 
-    async def do_restore_full(self, snapshot):
+    async def do_restore_full(self, snapshot, password=None):
         """Restore a snapshot."""
         if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
@@ -171,6 +172,10 @@ class SnapshotManager(CoreSysAttributes):
         if snapshot.sys_type != SNAPSHOT_FULL:
             _LOGGER.error("Restore %s is only a partial snapshot!",
                           snapshot.slug)
+            return False
+
+        if snapshot.protected and not snapshot.set_password(password):
+            _LOGGER.error("Invalid password for snapshot %s", snapshot.slug)
             return False
 
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
@@ -235,10 +240,14 @@ class SnapshotManager(CoreSysAttributes):
             self.lock.release()
 
     async def do_restore_partial(self, snapshot, homeassistant=False,
-                                 addons=None, folders=None):
+                                 addons=None, folders=None, password=None):
         """Restore a snapshot."""
         if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
+            return False
+
+        if snapshot.protected and not snapshot.set_password(password):
+            _LOGGER.error("Invalid password for snapshot %s", snapshot.slug)
             return False
 
         addons = addons or []
