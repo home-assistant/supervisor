@@ -30,7 +30,7 @@ class Snapshot(CoreSysAttributes):
     def __init__(self, coresys, tar_file):
         """Initialize a snapshot."""
         self.coresys = coresys
-        self.tar_file = tar_file
+        self._tarfile = tar_file
         self._data = {}
         self._tmp = None
         self._key = None
@@ -93,14 +93,19 @@ class Snapshot(CoreSysAttributes):
     @property
     def size(self):
         """Return snapshot size."""
-        if not self.tar_file.is_file():
+        if not self.tarfile.is_file():
             return 0
-        return round(self.tar_file.stat().st_size / 1048576)  # calc mbyte
+        return round(self.tarfile.stat().st_size / 1048576)  # calc mbyte
 
     @property
     def is_new(self):
         """Return True if there is new."""
-        return not self._tar_file.exists()
+        return not self.tarfile.exists()
+
+    @property
+    def tarfile(self):
+        """Return path to Snapshot tarfile."""
+        return self._tarfile
 
     def new(self, slug, name, date, sys_type, password=None):
         """Initialize a new snapshot."""
@@ -119,15 +124,29 @@ class Snapshot(CoreSysAttributes):
             self._data[ATTR_PROTECTED] = password_for_validating(password)
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
+    def set_password(self, password):
+        """Set the password for a exists snapshot."""
+        if not self.protected:
+            _LOGGER.warning("Snapshot %s is not protected!", self.slug)
+            return True
+
+        validating = password_for_validating(password)
+        if validating != self._data[ATTR_PROTECTED]:
+            _LOGGER.warning("Wrong password for %s!", self.slug)
+            return False
+
+        self._key = password_to_key(password)
+        return True
+
     async def load(self):
         """Read snapshot.json from tar file."""
-        if not self.tar_file.is_file():
-            _LOGGER.error("No tarfile %s", self.tar_file)
+        if not self.tarfile.is_file():
+            _LOGGER.error("No tarfile %s", self.tarfile)
             return False
 
         def _load_file():
             """Read snapshot.json."""
-            with tarfile.open(self.tar_file, "r:") as snapshot:
+            with tarfile.open(self.tarfile, "r:") as snapshot:
                 json_file = snapshot.extractfile("./snapshot.json")
                 return json_file.read()
 
@@ -136,21 +155,21 @@ class Snapshot(CoreSysAttributes):
             raw = await self._loop.run_in_executor(None, _load_file)
         except (tarfile.TarError, KeyError) as err:
             _LOGGER.error(
-                "Can't read snapshot tarfile %s: %s", self.tar_file, err)
+                "Can't read snapshot tarfile %s: %s", self.tarfile, err)
             return False
 
         # parse data
         try:
             raw_dict = json.loads(raw)
         except json.JSONDecodeError as err:
-            _LOGGER.error("Can't read data for %s: %s", self.tar_file, err)
+            _LOGGER.error("Can't read data for %s: %s", self.tarfile, err)
             return False
 
         # validate
         try:
             self._data = SCHEMA_SNAPSHOT(raw_dict)
         except vol.Invalid as err:
-            _LOGGER.error("Can't validate data for %s: %s", self.tar_file,
+            _LOGGER.error("Can't validate data for %s: %s", self.tarfile,
                           humanize_error(raw_dict, err))
             return False
 
@@ -161,13 +180,13 @@ class Snapshot(CoreSysAttributes):
         self._tmp = TemporaryDirectory(dir=str(self._config.path_tmp))
 
         # create a snapshot
-        if not self.tar_file.is_file():
+        if not self.tarfile.is_file():
             return self
 
         # extract a exists snapshot
         def _extract_snapshot():
             """Extract a snapshot."""
-            with tarfile.open(self.tar_file, "r:") as tar:
+            with tarfile.open(self.tarfile, "r:") as tar:
                 tar.extractall(path=self._tmp.name)
 
         await self._loop.run_in_executor(None, _extract_snapshot)
@@ -175,7 +194,7 @@ class Snapshot(CoreSysAttributes):
     async def __aexit__(self, exception_type, exception_value, traceback):
         """Async context to close a snapshot."""
         # exists snapshot or exception on build
-        if self.tar_file.is_file() or exception_type is not None:
+        if self.tarfile.is_file() or exception_type is not None:
             self._tmp.cleanup()
             return
 
@@ -183,14 +202,14 @@ class Snapshot(CoreSysAttributes):
         try:
             self._data = SCHEMA_SNAPSHOT(self._data)
         except vol.Invalid as err:
-            _LOGGER.error("Invalid data for %s: %s", self.tar_file,
+            _LOGGER.error("Invalid data for %s: %s", self.tarfile,
                           humanize_error(self._data, err))
             raise ValueError("Invalid config") from None
 
         # new snapshot, build it
         def _create_snapshot():
             """Create a new snapshot."""
-            with tarfile.open(self.tar_file, "w:") as tar:
+            with tarfile.open(self.tarfile, "w:") as tar:
                 tar.add(self._tmp.name, arcname=".")
 
         try:
@@ -211,11 +230,12 @@ class Snapshot(CoreSysAttributes):
                 Path(self._tmp.name, f"{addon.slug}.tar.gz"),
                 'w', key=self._key)
 
+            # Take snapshot
             if not await addon.snapshot(addon_file):
                 _LOGGER.error("Can't make snapshot from %s", addon.slug)
                 return
 
-            # store to config
+            # Store to config
             self._data[ATTR_ADDONS].append({
                 ATTR_SLUG: addon.slug,
                 ATTR_NAME: addon.name,
@@ -230,7 +250,12 @@ class Snapshot(CoreSysAttributes):
 
     async def restore_addons(self, addon_list=None):
         """Restore a list add-on from snapshot."""
-        addon_list = addon_list or self._addons.list_installed
+        if not addon_list:
+            addon_list = []
+            for addon_slug in self.addons:
+                addon = self._addons.get(addon_slug)
+                if addon:
+                    addon_list.append(addon)
 
         async def _addon_restore(addon):
             """Task to restore a add-on into snapshot."""
@@ -238,6 +263,12 @@ class Snapshot(CoreSysAttributes):
                 Path(self._tmp.name, f"{addon.slug}.tar.gz"),
                 'r', key=self._key)
 
+            # If exists inside snapshot
+            if not addon_file.path.exists():
+                _LOGGER.error("Can't find snapshot for %s", addon.slug)
+                return
+
+            # Performe a restore
             if not await addon.restore(addon_file):
                 _LOGGER.error("Can't restore snapshot for %s", addon.slug)
                 return
@@ -257,6 +288,12 @@ class Snapshot(CoreSysAttributes):
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self._config.path_hassio, name)
 
+            # Check if exsits
+            if not origin_dir.is_dir():
+                _LOGGER.warning("Can't find snapshot folder %s", name)
+                return
+
+            # Take snapshot
             try:
                 _LOGGER.info("Snapshot folder %s", name)
                 with SecureTarFile(tar_name, 'w', key=self._key) as tar_file:
@@ -267,7 +304,7 @@ class Snapshot(CoreSysAttributes):
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
 
-        # run tasks
+        # Run tasks
         tasks = [self._loop.run_in_executor(None, _folder_save, folder)
                  for folder in folder_list]
         if tasks:
@@ -283,10 +320,16 @@ class Snapshot(CoreSysAttributes):
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self._config.path_hassio, name)
 
-            # clean old stuff
+            # Check if exists inside snapshot
+            if not tar_name.exists():
+                _LOGGER.warning("Can't find restore folder %s", name)
+                return
+
+            # Clean old stuff
             if origin_dir.is_dir():
                 remove_folder(origin_dir)
 
+            # Performe a restore
             try:
                 _LOGGER.info("Restore folder %s", name)
                 with SecureTarFile(tar_name, 'r', key=self._key) as tar_file:
@@ -295,7 +338,7 @@ class Snapshot(CoreSysAttributes):
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
-        # run tasks
+        # Run tasks
         tasks = [self._loop.run_in_executor(None, _folder_restore, folder)
                  for folder in folder_list]
         if tasks:
@@ -308,13 +351,13 @@ class Snapshot(CoreSysAttributes):
         self.homeassistant[ATTR_BOOT] = self._homeassistant.boot
         self.homeassistant[ATTR_WAIT_BOOT] = self._homeassistant.wait_boot
 
-        # custom image
+        # Custom image
         if self._homeassistant.is_custom_image:
             self.homeassistant[ATTR_IMAGE] = self._homeassistant.image
             self.homeassistant[ATTR_LAST_VERSION] = \
                 self._homeassistant.last_version
 
-        # api
+        # API/Proxy
         self.homeassistant[ATTR_PORT] = self._homeassistant.api_port
         self.homeassistant[ATTR_SSL] = self._homeassistant.api_ssl
         self.homeassistant[ATTR_PASSWORD] = self._homeassistant.api_password
@@ -325,13 +368,13 @@ class Snapshot(CoreSysAttributes):
         self._homeassistant.boot = self.homeassistant[ATTR_BOOT]
         self._homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
 
-        # custom image
+        # Custom image
         if self.homeassistant[ATTR_IMAGE]:
             self._homeassistant.image = self.homeassistant[ATTR_IMAGE]
             self._homeassistant.last_version = \
                 self.homeassistant[ATTR_LAST_VERSION]
 
-        # api
+        # API/Proxy
         self._homeassistant.api_port = self.homeassistant[ATTR_PORT]
         self._homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
         self._homeassistant.api_password = self.homeassistant[ATTR_PASSWORD]

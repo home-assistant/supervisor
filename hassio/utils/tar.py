@@ -70,6 +70,11 @@ class SecureTarFile(object):
         return self._aes.decrypt(self._file.read(size))
 
     @property
+    def path(self):
+        """Return path object of tarfile."""
+        return self._name
+
+    @property
     def size(self):
         """Return snapshot size."""
         if not self._name.is_file():
