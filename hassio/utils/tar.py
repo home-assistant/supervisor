@@ -33,7 +33,7 @@ class SecureTarFile(object):
         """Start context manager tarfile."""
         if not self._key:
             self._tar = tarfile.open(
-                name=self._name, mode=self._tar_mode,
+                name=str(self._name), mode=self._tar_mode,
                 compresslevel=self._compress)
             return self._tar
 
