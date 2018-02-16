@@ -95,7 +95,7 @@ class Snapshot(CoreSysAttributes):
         """Return snapshot size."""
         if not self.tarfile.is_file():
             return 0
-        return round(self.tarfile.stat().st_size / 1048576)  # calc mbyte
+        return round(self.tarfile.stat().st_size / 1048576, 2)  # calc mbyte
 
     @property
     def is_new(self):

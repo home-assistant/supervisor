@@ -5,6 +5,7 @@ import shutil
 
 def password_to_key(password):
     """Generate a AES Key from password"""
+    password = password.encode()
     for _ in range(100):
         password = hashlib.sha256(password).digest()
     return password[:16]
@@ -13,7 +14,7 @@ def password_to_key(password):
 def password_for_validating(password):
     """Generate a SHA256 hash from password"""
     for _ in range(100):
-        password = hashlib.sha256(password).hexdigest()
+        password = hashlib.sha256(password.encode()).hexdigest()
     return password
 
 

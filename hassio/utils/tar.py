@@ -75,4 +75,4 @@ class SecureTarFile(object):
         """Return snapshot size."""
         if not self._name.is_file():
             return 0
-        return round(self._name.stat().st_size / 1048576)  # calc mbyte
+        return round(self._name.stat().st_size / 1048576, 2)  # calc mbyte
