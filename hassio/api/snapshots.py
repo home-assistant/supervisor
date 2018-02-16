@@ -141,26 +141,8 @@ class APISnapshots(CoreSysAttributes):
         snapshot = self._extract_snapshot(request)
 
         _LOGGER.info("Download snapshot %s", snapshot.slug)
-
-        response = web.StreamResponse()
+        response = web.FileResponse(snapshot.path)
         response.content_type = CONTENT_TYPE_TAR
-        try:
-            await response.prepare(request)
-            with snapshot.path.open('wb') as tar_file:
-                while True:
-                    data = tar_file.read(10)
-                    if not data:
-                        await response.write_eof()
-                        break
-                response.write(data)
-                await response.drain()
-
-        except asyncio.CancelledError:
-            pass
-
-        except OSError as err:
-            _LOGGER.error("Can't read the snapshot file: %s", err)
-
         return response
 
     @api_process
