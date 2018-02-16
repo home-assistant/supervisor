@@ -50,7 +50,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
         vol.Required(ATTR_SLUG): vol.Coerce(str),
         vol.Required(ATTR_NAME): vol.Coerce(str),
         vol.Required(ATTR_VERSION): vol.Coerce(str),
-        vol.Required(ATTR_SIZE): vol.Coerce(float),
+        vol.Optional(ATTR_SIZE): vol.Coerce(float),
     }, extra=vol.REMOVE_EXTRA)], unique_addons),
     vol.Optional(ATTR_REPOSITORIES, default=list): REPOSITORIES,
 }, extra=vol.ALLOW_EXTRA)
