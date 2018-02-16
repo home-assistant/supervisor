@@ -95,7 +95,7 @@ class SnapshotManager(CoreSysAttributes):
 
         # Allready exists?
         if snapshot.slug in self.snapshots_obj:
-            _LOGGER.error("Snapshot allready exists!")
+            _LOGGER.error("Snapshot %s allready exists!", snapshot.slug)
             return False
 
         # Move snapshot to backup
@@ -125,7 +125,7 @@ class SnapshotManager(CoreSysAttributes):
             async with snapshot:
                 # Snapshot add-ons
                 _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
-                await snapshot.snapshots_addons()
+                await snapshot.store_addons()
 
                 # Snapshot folders
                 _LOGGER.info("Snapshot %s store folders", snapshot.slug)
@@ -171,7 +171,7 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.warning("Add-on %s not found", addon_slug)
 
                 _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
-                await snapshot.snapshots_addons(addon_list)
+                await snapshot.store_addons(addon_list)
 
                 # snapshot folders
                 _LOGGER.info("Snapshot %s store folders", snapshot.slug)
