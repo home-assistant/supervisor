@@ -14,7 +14,7 @@ MOD_WRITE = 'w'
 class SecureTarFile(object):
     """Handle encrypted files for tarfile library."""
 
-    def __init__(self, name, mode, key=None, gzip=True, compresslevel=1):
+    def __init__(self, name, mode, key=None, gzip=True):
         """Initialize encryption handler."""
         self._file = None
         self._mode = mode
@@ -23,7 +23,6 @@ class SecureTarFile(object):
         # Tarfile options
         self._tar = None
         self._tar_mode = f"{mode}|gz" if gzip else f"{mode}|"
-        self._compress = compresslevel if gzip else None
 
         # Encryption/Decription
         self._aes = None
@@ -32,9 +31,7 @@ class SecureTarFile(object):
     def __enter__(self):
         """Start context manager tarfile."""
         if not self._key:
-            self._tar = tarfile.open(
-                name=str(self._name), mode=self._tar_mode,
-                compresslevel=self._compress)
+            self._tar = tarfile.open(name=str(self._name), mode=self._tar_mode)
             return self._tar
 
         # Encrypted/Decryped Tarfile
@@ -48,8 +45,7 @@ class SecureTarFile(object):
             self._file.write(cbc_iv)
         self._aes = AES.new(self._key, AES.MODE_CBC, iv=cbc_iv)
 
-        self._tar = tarfile.open(
-            fileobj=self, mode=self._tar_mode, compresslevel=self._compress)
+        self._tar = tarfile.open(fileobj=self, mode=self._tar_mode)
         return self._tar
 
     def __exit__(self, exc_type, exc_value, traceback):
