@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from aiohttp import web
 import voluptuous as vol
@@ -148,24 +149,20 @@ class APISnapshots(CoreSysAttributes):
     @api_process
     async def upload(self, request):
         """Upload a snapshot file."""
-        name = request.match_info.get('name')
-        tar_file = Path(self._config.path_backup, f"{name}.tar")
+        with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp_dir:
+            tar_file = Path(temp_dir, f"snapshot.tar")
 
-        if tar_file.exists():
-            raise RuntimeError("Snapshot with that name exists already!")
+            try:
+                with tar_file.open('wb') as snapshot:
+                    async for data in request.content.iter_any():
+                        snapshot.write(data)
 
-        try:
-            with tar_file.open('wb') as snapshot:
-                async for data in request.content.iter_any():
-                    snapshot.write(data)
+            except OSError as err:
+                _LOGGER.error("Can't write new snapshot file: %s", err)
+                return False
 
-        except OSError as err:
-            _LOGGER.error("Can't write new snapshot file: %s", err)
-            return False
+            except asyncio.CancelledError:
+                return False
 
-        except asyncio.CancelledError:
-            tar_file.unlink()
-            return False
-
-        await asyncio.shield(self._snapshots.reload(), loop=self._loop)
-        return True
+            return await asyncio.shield(
+                self._snapshots.import_snapshot(tar_file), loop=self._loop)

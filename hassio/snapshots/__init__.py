@@ -75,12 +75,39 @@ class SnapshotManager(CoreSysAttributes):
     def remove(self, snapshot):
         """Remove a snapshot."""
         try:
-            snapshot.tar_file.unlink()
+            snapshot.tarfile.unlink()
             self.snapshots_obj.pop(snapshot.slug, None)
+            _LOGGER.info("Removed snapshot file %s", snapshot.slug)
+
         except OSError as err:
             _LOGGER.error("Can't remove snapshot %s: %s", snapshot.slug, err)
             return False
 
+        return True
+
+    async def import_snapshot(self, tar_file):
+        """Check snapshot tarfile and import it."""
+        snapshot = Snapshot(self.coresys, tar_file)
+
+        # Read meta data
+        if not await snapshot.load():
+            return False
+
+        # Allready exists?
+        if snapshot.slug in self.snapshots_obj:
+            _LOGGER.error("Snapshot allready exists!")
+            return False
+
+        # Move snapshot to backup
+        try:
+            snapshot.tarfile.rename(
+                Path(self._config.path_backup, f"{snapshot.slug}.tar"))
+
+        except OSError as err:
+            _LOGGER.error("Can't move snapshot file to storage: %s", err)
+            return False
+
+        await self.reload()
         return True
 
     async def do_snapshot_full(self, name="", password=None):
