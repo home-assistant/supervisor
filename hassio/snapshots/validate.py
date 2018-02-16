@@ -33,7 +33,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
         vol.All(vol.Coerce(str), vol.Length(64)),
     vol.Inclusive(ATTR_CRYPTO, 'encrypted'): CRYPTO_AES128,
     vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema({
-        vol.Required(ATTR_VERSION): vol.Coerce(str),
+        vol.Optional(ATTR_VERSION): vol.Coerce(str),
         vol.Inclusive(ATTR_IMAGE, 'custom_hass'): DOCKER_IMAGE,
         vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
