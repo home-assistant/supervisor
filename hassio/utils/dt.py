@@ -78,6 +78,6 @@ def parse_datetime(dt_str):
     return datetime(**kws)
 
 
-def datetime_iso_now():
-    """Returns current timestamp including timezone in ISO format."""
-    return datetime.now(UTC).isoformat()
+def utcnow():
+    """Returns current timestamp including timezone."""
+    return datetime.now(UTC)
