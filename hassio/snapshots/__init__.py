@@ -291,10 +291,13 @@ class SnapshotManager(CoreSysAttributes):
                 if FOLDER_HOMEASSISTANT in folders:
                     await self._homeassistant.stop()
 
+                # Process folders
                 if folders:
                     _LOGGER.info("Restore %s run folders", snapshot.slug)
                     await snapshot.restore_folders(folders)
 
+                # Process Home-Assistant
+                task_hass = None
                 if homeassistant:
                     _LOGGER.info("Restore %s run Home-Assistant",
                                  snapshot.slug)
@@ -303,6 +306,7 @@ class SnapshotManager(CoreSysAttributes):
                         self._homeassistant.update(
                             snapshot.homeassistant_version))
 
+                # Process Add-ons
                 addon_list = []
                 for slug in addons:
                     addon = self._addons.get(slug)

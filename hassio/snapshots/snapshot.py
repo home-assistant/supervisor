@@ -1,11 +1,14 @@
 """Represent a snapshot file."""
 import asyncio
+from base64 import b64decode, b64encode
 import json
 import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
 
+from Crypto.Cipher import AES
+from Crypto.Util import Padding
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -34,6 +37,7 @@ class Snapshot(CoreSysAttributes):
         self._data = {}
         self._tmp = None
         self._key = None
+        self._aes = None
 
     @property
     def slug(self):
@@ -126,6 +130,7 @@ class Snapshot(CoreSysAttributes):
         # Set password
         if password:
             self._key = password_to_key(password)
+            self._aes = AES.new(self._key, AES.MODE_ECB)
             self._data[ATTR_PROTECTED] = password_for_validating(password)
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
@@ -139,7 +144,22 @@ class Snapshot(CoreSysAttributes):
             return False
 
         self._key = password_to_key(password)
+        self._aes = AES.new(self._key, AES.MODE_ECB)
         return True
+
+    def _encrypt_data(self, data):
+        """Make data secure."""
+        if not self._key:
+            return data
+
+        return b64encode(self._aes.encrypt(Padding.pad(data.encode(), 16)))
+
+    def _decrypt_data(self, data):
+        """Make data readable."""
+        if not self._key:
+            return data
+
+        return Padding.unpad(self._aes.encrypt(b64decode(data)), 16).decode()
 
     async def load(self):
         """Read snapshot.json from tar file."""
@@ -363,7 +383,8 @@ class Snapshot(CoreSysAttributes):
         # API/Proxy
         self.homeassistant[ATTR_PORT] = self._homeassistant.api_port
         self.homeassistant[ATTR_SSL] = self._homeassistant.api_ssl
-        self.homeassistant[ATTR_PASSWORD] = self._homeassistant.api_password
+        self.homeassistant[ATTR_PASSWORD] = \
+            self._encrypt_data(self._homeassistant.api_password)
 
     def restore_homeassistant(self):
         """Write all data to homeassistant object."""
@@ -380,7 +401,8 @@ class Snapshot(CoreSysAttributes):
         # API/Proxy
         self._homeassistant.api_port = self.homeassistant[ATTR_PORT]
         self._homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
-        self._homeassistant.api_password = self.homeassistant[ATTR_PASSWORD]
+        self._homeassistant.api_password = \
+            self._decrypt_data(self.homeassistant[ATTR_PASSWORD])
 
         # save
         self._homeassistant.save_data()
