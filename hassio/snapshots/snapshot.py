@@ -126,6 +126,9 @@ class Snapshot(CoreSysAttributes):
 
     def set_password(self, password):
         """Set the password for a exists snapshot."""
+        if not password:
+            return False
+
         validating = password_for_validating(password)
         if validating != self._data[ATTR_PROTECTED]:
             return False
