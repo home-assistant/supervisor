@@ -120,12 +120,12 @@ class APISnapshots(CoreSysAttributes):
             self._snapshots.do_snapshot_partial(**body), loop=self._loop)
 
     @api_process
-    def restore_full(self, request):
+    async def restore_full(self, request):
         """Full-Restore a snapshot."""
         snapshot = self._extract_snapshot(request)
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
 
-        return asyncio.shield(
+        return await asyncio.shield(
             self._snapshots.do_restore_full(snapshot, **body),
             loop=self._loop
         )
