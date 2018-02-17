@@ -180,6 +180,7 @@ Output is the raw docker log.
 {
     "password": "Optional"
 }
+```
 
 - POST `/snapshots/{slug}/restore/partial`
 
