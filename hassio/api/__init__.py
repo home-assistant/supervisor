@@ -160,6 +160,8 @@ class RestAPI(CoreSysAttributes):
             '/snapshots/new/full', api_snapshots.snapshot_full)
         self.webapp.router.add_post(
             '/snapshots/new/partial', api_snapshots.snapshot_partial)
+        self.webapp.router.add_post(
+            '/snapshots/new/upload', api_snapshots.upload)
 
         self.webapp.router.add_get(
             '/snapshots/{snapshot}/info', api_snapshots.info)
@@ -170,6 +172,9 @@ class RestAPI(CoreSysAttributes):
         self.webapp.router.add_post(
             '/snapshots/{snapshot}/restore/partial',
             api_snapshots.restore_partial)
+        self.webapp.router.add_get(
+            '/snapshots/{snapshot}/download',
+            api_snapshots.download)
 
     def _register_services(self):
         api_services = APIServices()

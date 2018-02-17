@@ -9,7 +9,7 @@ from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_IMAGE, ATTR_CUSTOM, ATTR_BOOT,
     ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG, ATTR_CPU_PERCENT,
     ATTR_MEMORY_USAGE, ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX,
-    ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_STARTUP_TIME, CONTENT_TYPE_BINARY)
+    ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_WAIT_BOOT, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
 from ..validate import NETWORK_PORT, DOCKER_IMAGE
 
@@ -27,7 +27,7 @@ SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
     vol.Optional(ATTR_SSL): vol.Boolean(),
     vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
-    vol.Optional(ATTR_STARTUP_TIME):
+    vol.Optional(ATTR_WAIT_BOOT):
         vol.All(vol.Coerce(int), vol.Range(min=60)),
 })
 
@@ -51,7 +51,7 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_PORT: self._homeassistant.api_port,
             ATTR_SSL: self._homeassistant.api_ssl,
             ATTR_WATCHDOG: self._homeassistant.watchdog,
-            ATTR_STARTUP_TIME: self._homeassistant.startup_time,
+            ATTR_WAIT_BOOT: self._homeassistant.wait_boot,
         }
 
     @api_process
@@ -78,8 +78,8 @@ class APIHomeAssistant(CoreSysAttributes):
         if ATTR_WATCHDOG in body:
             self._homeassistant.watchdog = body[ATTR_WATCHDOG]
 
-        if ATTR_STARTUP_TIME in body:
-            self._homeassistant.startup_time = body[ATTR_STARTUP_TIME]
+        if ATTR_WAIT_BOOT in body:
+            self._homeassistant.wait_boot = body[ATTR_WAIT_BOOT]
 
         self._homeassistant.save_data()
         return True
