@@ -66,6 +66,11 @@ class Snapshot(CoreSysAttributes):
         return self._data[ATTR_ADDONS]
 
     @property
+    def addon_list(self):
+        """Return a list of addons slugs."""
+        return [addon_data[ATTR_SLUG] for addon_data in self.addons]
+
+    @property
     def folders(self):
         """Return list of saved folders."""
         return self._data[ATTR_FOLDERS]
@@ -250,8 +255,8 @@ class Snapshot(CoreSysAttributes):
         """Restore a list add-on from snapshot."""
         if not addon_list:
             addon_list = []
-            for addon_data in self.addons:
-                addon = self._addons.get(addon_data[ATTR_SLUG])
+            for addon_slug in self.addon_list:
+                addon = self._addons.get(addon_slug)
                 if addon:
                     addon_list.append(addon)
 

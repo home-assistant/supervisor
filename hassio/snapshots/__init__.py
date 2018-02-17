@@ -7,7 +7,7 @@ from pathlib import Path
 from .snapshot import Snapshot
 from .utils import create_slug
 from ..const import (
-    ATTR_SLUG, FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
+    FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -237,9 +237,8 @@ class SnapshotManager(CoreSysAttributes):
 
                 # Delete delta add-ons
                 tasks.clear()
-                addon_list = set(addon[ATTR_SLUG] for addon in snapshot.addons)
                 for addon in self._addons.list_installed:
-                    if addon.slug not in addon_list:
+                    if addon.slug not in snapshot.addon_list:
                         tasks.append(addon.uninstall())
                 _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
                 await asyncio.wait(tasks, loop=self._loop)
