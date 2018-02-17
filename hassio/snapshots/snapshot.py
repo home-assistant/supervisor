@@ -159,7 +159,7 @@ class Snapshot(CoreSysAttributes):
         if not self._key:
             return data
 
-        return Padding.unpad(self._aes.encrypt(b64decode(data)), 16).decode()
+        return Padding.unpad(self._aes.decrypt(b64decode(data)), 16).decode()
 
     async def load(self):
         """Read snapshot.json from tar file."""
