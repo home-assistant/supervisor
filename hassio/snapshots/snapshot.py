@@ -1,23 +1,28 @@
 """Represent a snapshot file."""
 import asyncio
+from base64 import b64decode, b64encode
 import json
 import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
 
+from Crypto.Cipher import AES
+from Crypto.Util import Padding
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
-from .utils import remove_folder
+from .utils import remove_folder, password_to_key, password_for_validating
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
-    ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT,
-    ATTR_LAST_VERSION, ATTR_STARTUP_TIME)
+    ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT, ATTR_CRYPTO,
+    ATTR_LAST_VERSION, ATTR_PROTECTED, ATTR_WAIT_BOOT, ATTR_SIZE,
+    CRYPTO_AES128)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
+from ..utils.tar import SecureTarFile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,9 +33,11 @@ class Snapshot(CoreSysAttributes):
     def __init__(self, coresys, tar_file):
         """Initialize a snapshot."""
         self.coresys = coresys
-        self.tar_file = tar_file
+        self._tarfile = tar_file
         self._data = {}
         self._tmp = None
+        self._key = None
+        self._aes = None
 
     @property
     def slug(self):
@@ -53,9 +60,19 @@ class Snapshot(CoreSysAttributes):
         return self._data[ATTR_DATE]
 
     @property
+    def protected(self):
+        """Return snapshot date."""
+        return self._data.get(ATTR_PROTECTED) is not None
+
+    @property
     def addons(self):
         """Return snapshot date."""
         return self._data[ATTR_ADDONS]
+
+    @property
+    def addon_list(self):
+        """Return a list of addons slugs."""
+        return [addon_data[ATTR_SLUG] for addon_data in self.addons]
 
     @property
     def folders(self):
@@ -77,99 +94,29 @@ class Snapshot(CoreSysAttributes):
         """Return snapshot homeassistant version."""
         return self._data[ATTR_HOMEASSISTANT].get(ATTR_VERSION)
 
-    @homeassistant_version.setter
-    def homeassistant_version(self, value):
-        """Set snapshot homeassistant version."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_VERSION] = value
-
     @property
-    def homeassistant_last_version(self):
-        """Return snapshot homeassistant last version (custom)."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_LAST_VERSION)
-
-    @homeassistant_last_version.setter
-    def homeassistant_last_version(self, value):
-        """Set snapshot homeassistant last version (custom)."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_LAST_VERSION] = value
-
-    @property
-    def homeassistant_image(self):
-        """Return snapshot homeassistant custom image."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_IMAGE)
-
-    @homeassistant_image.setter
-    def homeassistant_image(self, value):
-        """Set snapshot homeassistant custom image."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_IMAGE] = value
-
-    @property
-    def homeassistant_ssl(self):
-        """Return snapshot homeassistant api ssl."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_SSL)
-
-    @homeassistant_ssl.setter
-    def homeassistant_ssl(self, value):
-        """Set snapshot homeassistant api ssl."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_SSL] = value
-
-    @property
-    def homeassistant_port(self):
-        """Return snapshot homeassistant api port."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_PORT)
-
-    @homeassistant_port.setter
-    def homeassistant_port(self, value):
-        """Set snapshot homeassistant api port."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_PORT] = value
-
-    @property
-    def homeassistant_password(self):
-        """Return snapshot homeassistant api password."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_PASSWORD)
-
-    @homeassistant_password.setter
-    def homeassistant_password(self, value):
-        """Set snapshot homeassistant api password."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_PASSWORD] = value
-
-    @property
-    def homeassistant_watchdog(self):
-        """Return snapshot homeassistant watchdog options."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_WATCHDOG)
-
-    @homeassistant_watchdog.setter
-    def homeassistant_watchdog(self, value):
-        """Set snapshot homeassistant watchdog options."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_WATCHDOG] = value
-
-    @property
-    def homeassistant_startup_time(self):
-        """Return snapshot homeassistant startup time options."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_STARTUP_TIME)
-
-    @homeassistant_startup_time.setter
-    def homeassistant_startup_time(self, value):
-        """Set snapshot homeassistant startup time options."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_STARTUP_TIME] = value
-
-    @property
-    def homeassistant_boot(self):
-        """Return snapshot homeassistant boot options."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_BOOT)
-
-    @homeassistant_boot.setter
-    def homeassistant_boot(self, value):
-        """Set snapshot homeassistant boot options."""
-        self._data[ATTR_HOMEASSISTANT][ATTR_BOOT] = value
+    def homeassistant(self):
+        """Return snapshot homeassistant data."""
+        return self._data[ATTR_HOMEASSISTANT]
 
     @property
     def size(self):
         """Return snapshot size."""
-        if not self.tar_file.is_file():
+        if not self.tarfile.is_file():
             return 0
-        return self.tar_file.stat().st_size / 1048576  # calc mbyte
+        return round(self.tarfile.stat().st_size / 1048576, 2)  # calc mbyte
 
-    def create(self, slug, name, date, sys_type):
+    @property
+    def is_new(self):
+        """Return True if there is new."""
+        return not self.tarfile.exists()
+
+    @property
+    def tarfile(self):
+        """Return path to Snapshot tarfile."""
+        return self._tarfile
+
+    def new(self, slug, name, date, sys_type, password=None):
         """Initialize a new snapshot."""
         # init metadata
         self._data[ATTR_SLUG] = slug
@@ -180,15 +127,51 @@ class Snapshot(CoreSysAttributes):
         # Add defaults
         self._data = SCHEMA_SNAPSHOT(self._data)
 
+        # Set password
+        if password:
+            self._key = password_to_key(password)
+            self._aes = AES.new(self._key, AES.MODE_ECB)
+            self._data[ATTR_PROTECTED] = password_for_validating(password)
+            self._data[ATTR_CRYPTO] = CRYPTO_AES128
+
+    def set_password(self, password):
+        """Set the password for a exists snapshot."""
+        if not password:
+            return False
+
+        validating = password_for_validating(password)
+        if validating != self._data[ATTR_PROTECTED]:
+            return False
+
+        self._key = password_to_key(password)
+        self._aes = AES.new(self._key, AES.MODE_ECB)
+        return True
+
+    def _encrypt_data(self, data):
+        """Make data secure."""
+        if not self._key:
+            return data
+
+        return b64encode(
+            self._aes.encrypt(Padding.pad(data.encode(), 16))).decode()
+
+    def _decrypt_data(self, data):
+        """Make data readable."""
+        if not self._key:
+            return data
+
+        return Padding.unpad(
+            self._aes.decrypt(b64decode(data)), 16).decode()
+
     async def load(self):
         """Read snapshot.json from tar file."""
-        if not self.tar_file.is_file():
-            _LOGGER.error("No tarfile %s", self.tar_file)
+        if not self.tarfile.is_file():
+            _LOGGER.error("No tarfile %s", self.tarfile)
             return False
 
         def _load_file():
             """Read snapshot.json."""
-            with tarfile.open(self.tar_file, "r:") as snapshot:
+            with tarfile.open(self.tarfile, "r:") as snapshot:
                 json_file = snapshot.extractfile("./snapshot.json")
                 return json_file.read()
 
@@ -197,21 +180,21 @@ class Snapshot(CoreSysAttributes):
             raw = await self._loop.run_in_executor(None, _load_file)
         except (tarfile.TarError, KeyError) as err:
             _LOGGER.error(
-                "Can't read snapshot tarfile %s: %s", self.tar_file, err)
+                "Can't read snapshot tarfile %s: %s", self.tarfile, err)
             return False
 
         # parse data
         try:
             raw_dict = json.loads(raw)
         except json.JSONDecodeError as err:
-            _LOGGER.error("Can't read data for %s: %s", self.tar_file, err)
+            _LOGGER.error("Can't read data for %s: %s", self.tarfile, err)
             return False
 
         # validate
         try:
             self._data = SCHEMA_SNAPSHOT(raw_dict)
         except vol.Invalid as err:
-            _LOGGER.error("Can't validate data for %s: %s", self.tar_file,
+            _LOGGER.error("Can't validate data for %s: %s", self.tarfile,
                           humanize_error(raw_dict, err))
             return False
 
@@ -222,13 +205,13 @@ class Snapshot(CoreSysAttributes):
         self._tmp = TemporaryDirectory(dir=str(self._config.path_tmp))
 
         # create a snapshot
-        if not self.tar_file.is_file():
+        if not self.tarfile.is_file():
             return self
 
         # extract a exists snapshot
         def _extract_snapshot():
             """Extract a snapshot."""
-            with tarfile.open(self.tar_file, "r:") as tar:
+            with tarfile.open(self.tarfile, "r:") as tar:
                 tar.extractall(path=self._tmp.name)
 
         await self._loop.run_in_executor(None, _extract_snapshot)
@@ -236,7 +219,7 @@ class Snapshot(CoreSysAttributes):
     async def __aexit__(self, exception_type, exception_value, traceback):
         """Async context to close a snapshot."""
         # exists snapshot or exception on build
-        if self.tar_file.is_file() or exception_type is not None:
+        if self.tarfile.is_file() or exception_type is not None:
             self._tmp.cleanup()
             return
 
@@ -244,14 +227,14 @@ class Snapshot(CoreSysAttributes):
         try:
             self._data = SCHEMA_SNAPSHOT(self._data)
         except vol.Invalid as err:
-            _LOGGER.error("Invalid data for %s: %s", self.tar_file,
+            _LOGGER.error("Invalid data for %s: %s", self.tarfile,
                           humanize_error(self._data, err))
             raise ValueError("Invalid config") from None
 
         # new snapshot, build it
         def _create_snapshot():
             """Create a new snapshot."""
-            with tarfile.open(self.tar_file, "w:") as tar:
+            with tarfile.open(self.tarfile, "w:") as tar:
                 tar.add(self._tmp.name, arcname=".")
 
         try:
@@ -262,32 +245,63 @@ class Snapshot(CoreSysAttributes):
         finally:
             self._tmp.cleanup()
 
-    async def import_addon(self, addon):
-        """Add a addon into snapshot."""
-        snapshot_file = Path(self._tmp.name, "{}.tar.gz".format(addon.slug))
+    async def store_addons(self, addon_list=None):
+        """Add a list of add-ons into snapshot."""
+        addon_list = addon_list or self._addons.list_installed
 
-        if not await addon.snapshot(snapshot_file):
-            _LOGGER.error("Can't make snapshot from %s", addon.slug)
-            return False
+        async def _addon_save(addon):
+            """Task to store a add-on into snapshot."""
+            addon_file = SecureTarFile(
+                Path(self._tmp.name, f"{addon.slug}.tar.gz"),
+                'w', key=self._key)
 
-        # store to config
-        self._data[ATTR_ADDONS].append({
-            ATTR_SLUG: addon.slug,
-            ATTR_NAME: addon.name,
-            ATTR_VERSION: addon.version_installed,
-        })
+            # Take snapshot
+            if not await addon.snapshot(addon_file):
+                _LOGGER.error("Can't make snapshot from %s", addon.slug)
+                return
 
-        return True
+            # Store to config
+            self._data[ATTR_ADDONS].append({
+                ATTR_SLUG: addon.slug,
+                ATTR_NAME: addon.name,
+                ATTR_VERSION: addon.version_installed,
+                ATTR_SIZE: addon_file.size,
+            })
 
-    async def export_addon(self, addon):
-        """Restore a addon from snapshot."""
-        snapshot_file = Path(self._tmp.name, "{}.tar.gz".format(addon.slug))
+        # Run tasks
+        tasks = [_addon_save(addon) for addon in addon_list]
+        if tasks:
+            await asyncio.wait(tasks, loop=self._loop)
 
-        if not await addon.restore(snapshot_file):
-            _LOGGER.error("Can't restore snapshot for %s", addon.slug)
-            return False
+    async def restore_addons(self, addon_list=None):
+        """Restore a list add-on from snapshot."""
+        if not addon_list:
+            addon_list = []
+            for addon_slug in self.addon_list:
+                addon = self._addons.get(addon_slug)
+                if addon:
+                    addon_list.append(addon)
 
-        return True
+        async def _addon_restore(addon):
+            """Task to restore a add-on into snapshot."""
+            addon_file = SecureTarFile(
+                Path(self._tmp.name, f"{addon.slug}.tar.gz"),
+                'r', key=self._key)
+
+            # If exists inside snapshot
+            if not addon_file.path.exists():
+                _LOGGER.error("Can't find snapshot for %s", addon.slug)
+                return
+
+            # Performe a restore
+            if not await addon.restore(addon_file):
+                _LOGGER.error("Can't restore snapshot for %s", addon.slug)
+                return
+
+        # Run tasks
+        tasks = [_addon_restore(addon) for addon in addon_list]
+        if tasks:
+            await asyncio.wait(tasks, loop=self._loop)
 
     async def store_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
@@ -296,13 +310,18 @@ class Snapshot(CoreSysAttributes):
         def _folder_save(name):
             """Intenal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
-            snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
+            tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self._config.path_hassio, name)
 
+            # Check if exsits
+            if not origin_dir.is_dir():
+                _LOGGER.warning("Can't find snapshot folder %s", name)
+                return
+
+            # Take snapshot
             try:
                 _LOGGER.info("Snapshot folder %s", name)
-                with tarfile.open(snapshot_tar, "w:gz",
-                                  compresslevel=1) as tar_file:
+                with SecureTarFile(tar_name, 'w', key=self._key) as tar_file:
                     tar_file.add(origin_dir, arcname=".")
 
                 _LOGGER.info("Snapshot folder %s done", name)
@@ -310,7 +329,7 @@ class Snapshot(CoreSysAttributes):
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
 
-        # run tasks
+        # Run tasks
         tasks = [self._loop.run_in_executor(None, _folder_save, folder)
                  for folder in folder_list]
         if tasks:
@@ -323,22 +342,28 @@ class Snapshot(CoreSysAttributes):
         def _folder_restore(name):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
-            snapshot_tar = Path(self._tmp.name, "{}.tar.gz".format(slug_name))
+            tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self._config.path_hassio, name)
 
-            # clean old stuff
+            # Check if exists inside snapshot
+            if not tar_name.exists():
+                _LOGGER.warning("Can't find restore folder %s", name)
+                return
+
+            # Clean old stuff
             if origin_dir.is_dir():
                 remove_folder(origin_dir)
 
+            # Performe a restore
             try:
                 _LOGGER.info("Restore folder %s", name)
-                with tarfile.open(snapshot_tar, "r:gz") as tar_file:
+                with SecureTarFile(tar_name, 'r', key=self._key) as tar_file:
                     tar_file.extractall(path=origin_dir)
                 _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
-        # run tasks
+        # Run tasks
         tasks = [self._loop.run_in_executor(None, _folder_restore, folder)
                  for folder in folder_list]
         if tasks:
@@ -346,36 +371,40 @@ class Snapshot(CoreSysAttributes):
 
     def store_homeassistant(self):
         """Read all data from homeassistant object."""
-        self.homeassistant_version = self._homeassistant.version
-        self.homeassistant_watchdog = self._homeassistant.watchdog
-        self.homeassistant_boot = self._homeassistant.boot
-        self.homeassistant_startup_time = self._homeassistant.startup_time
+        self.homeassistant[ATTR_VERSION] = self._homeassistant.version
+        self.homeassistant[ATTR_WATCHDOG] = self._homeassistant.watchdog
+        self.homeassistant[ATTR_BOOT] = self._homeassistant.boot
+        self.homeassistant[ATTR_WAIT_BOOT] = self._homeassistant.wait_boot
 
-        # custom image
+        # Custom image
         if self._homeassistant.is_custom_image:
-            self.homeassistant_image = self._homeassistant.image
-            self.homeassistant_last_version = self._homeassistant.last_version
+            self.homeassistant[ATTR_IMAGE] = self._homeassistant.image
+            self.homeassistant[ATTR_LAST_VERSION] = \
+                self._homeassistant.last_version
 
-        # api
-        self.homeassistant_port = self._homeassistant.api_port
-        self.homeassistant_ssl = self._homeassistant.api_ssl
-        self.homeassistant_password = self._homeassistant.api_password
+        # API/Proxy
+        self.homeassistant[ATTR_PORT] = self._homeassistant.api_port
+        self.homeassistant[ATTR_SSL] = self._homeassistant.api_ssl
+        self.homeassistant[ATTR_PASSWORD] = \
+            self._encrypt_data(self._homeassistant.api_password)
 
     def restore_homeassistant(self):
         """Write all data to homeassistant object."""
-        self._homeassistant.watchdog = self.homeassistant_watchdog
-        self._homeassistant.boot = self.homeassistant_boot
-        self._homeassistant.startup_time = self.homeassistant_startup_time
+        self._homeassistant.watchdog = self.homeassistant[ATTR_WATCHDOG]
+        self._homeassistant.boot = self.homeassistant[ATTR_BOOT]
+        self._homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
 
-        # custom image
-        if self.homeassistant_image:
-            self._homeassistant.image = self.homeassistant_image
-            self._homeassistant.last_version = self.homeassistant_last_version
+        # Custom image
+        if self.homeassistant.get(ATTR_IMAGE):
+            self._homeassistant.image = self.homeassistant[ATTR_IMAGE]
+            self._homeassistant.last_version = \
+                self.homeassistant[ATTR_LAST_VERSION]
 
-        # api
-        self._homeassistant.api_port = self.homeassistant_port
-        self._homeassistant.api_ssl = self.homeassistant_ssl
-        self._homeassistant.api_password = self.homeassistant_password
+        # API/Proxy
+        self._homeassistant.api_port = self.homeassistant[ATTR_PORT]
+        self._homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
+        self._homeassistant.api_password = \
+            self._decrypt_data(self.homeassistant[ATTR_PASSWORD])
 
         # save
         self._homeassistant.save_data()

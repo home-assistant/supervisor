@@ -13,7 +13,7 @@ from aiohttp.hdrs import CONTENT_TYPE
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
     ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
-    ATTR_STARTUP_TIME, HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
+    ATTR_WAIT_BOOT, HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
 from .utils import convert_to_ascii
@@ -97,14 +97,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._data[ATTR_WATCHDOG] = value
 
     @property
-    def startup_time(self):
+    def wait_boot(self):
         """Return time to wait for Home-Assistant startup."""
-        return self._data[ATTR_STARTUP_TIME]
+        return self._data[ATTR_WAIT_BOOT]
 
-    @startup_time.setter
-    def startup_time(self, value):
+    @wait_boot.setter
+    def wait_boot(self, value):
         """Set time to wait for Home-Assistant startup."""
-        self._data[ATTR_STARTUP_TIME] = value
+        self._data[ATTR_WAIT_BOOT] = value
 
     @property
     def version(self):
@@ -343,7 +343,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             except OSError:
                 pass
 
-        while time.monotonic() - start_time < self.startup_time:
+        while time.monotonic() - start_time < self.wait_boot:
             if await self._loop.run_in_executor(None, check_port):
                 _LOGGER.info("Detect a running Home-Assistant instance")
                 return True
