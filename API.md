@@ -113,7 +113,8 @@ Output is the raw docker log.
             "slug": "SLUG",
             "date": "ISO",
             "name": "Custom name",
-            "type": "full|partial"
+            "type": "full|partial",
+            "protected": "bool"
         }
     ]
 }
@@ -121,11 +122,14 @@ Output is the raw docker log.
 
 - POST `/snapshots/reload`
 
+- POST `/snapshots/new/upload`
+
 - POST `/snapshots/new/full`
 
 ```json
 {
-    "name": "Optional"
+    "name": "Optional",
+    "password": "Optional"
 }
 ```
 
@@ -135,7 +139,8 @@ Output is the raw docker log.
 {
     "name": "Optional",
     "addons": ["ADDON_SLUG"],
-    "folders": ["FOLDER_NAME"]
+    "folders": ["FOLDER_NAME"],
+    "password": "Optional"
 }
 ```
 
@@ -150,12 +155,14 @@ Output is the raw docker log.
     "name": "custom snapshot name / description",
     "date": "ISO",
     "size": "SIZE_IN_MB",
+    "protected": "bool",
     "homeassistant": "version",
     "addons": [
         {
             "slug": "ADDON_SLUG",
             "name": "NAME",
-            "version": "INSTALLED_VERSION"
+            "version": "INSTALLED_VERSION",
+            "size": "SIZE_IN_MB"
         }
     ],
     "repositories": ["URL"],
@@ -164,14 +171,25 @@ Output is the raw docker log.
 ```
 
 - POST `/snapshots/{slug}/remove`
+
+- GET `/snapshots/{slug}/download`
+
 - POST `/snapshots/{slug}/restore/full`
+
+```json
+{
+    "password": "Optional"
+}
+```
+
 - POST `/snapshots/{slug}/restore/partial`
 
 ```json
 {
     "homeassistant": "bool",
     "addons": ["ADDON_SLUG"],
-    "folders": ["FOLDER_NAME"]
+    "folders": ["FOLDER_NAME"],
+    "password": "Optional"
 }
 ```
 

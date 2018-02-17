@@ -8,6 +8,8 @@ import aiohttp
 import async_timeout
 import pytz
 
+UTC = pytz.utc
+
 _LOGGER = logging.getLogger(__name__)
 
 FREEGEOIP_URL = "https://freegeoip.io/json/"
@@ -61,7 +63,7 @@ def parse_datetime(dt_str):
 
     tzinfo = None  # type: Optional[dt.tzinfo]
     if tzinfo_str == 'Z':
-        tzinfo = pytz.utc
+        tzinfo = UTC
     elif tzinfo_str is not None:
         offset_mins = int(tzinfo_str[-2:]) if len(tzinfo_str) > 3 else 0
         offset_hours = int(tzinfo_str[1:3])
@@ -74,3 +76,8 @@ def parse_datetime(dt_str):
     kws = {k: int(v) for k, v in kws.items() if v is not None}
     kws['tzinfo'] = tzinfo
     return datetime(**kws)
+
+
+def utcnow():
+    """Returns current timestamp including timezone."""
+    return datetime.now(UTC)
