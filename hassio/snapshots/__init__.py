@@ -9,7 +9,7 @@ from .utils import create_slug
 from ..const import (
     ATTR_SLUG, FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
 from ..coresys import CoreSysAttributes
-from ..utils.dt import datetime_iso_now
+from ..utils.dt import utcnow
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class SnapshotManager(CoreSysAttributes):
 
     def _create_snapshot(self, name, sys_type):
         """Initialize a new snapshot object from name."""
-        date_str = datetime_iso_now()
+        date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
         tar_file = Path(self._config.path_backup, "{}.tar".format(slug))
 
