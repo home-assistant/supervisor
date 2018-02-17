@@ -367,7 +367,7 @@ class Snapshot(CoreSysAttributes):
         self._homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
 
         # Custom image
-        if self.homeassistant[ATTR_IMAGE]:
+        if self.homeassistant.get(ATTR_IMAGE):
             self._homeassistant.image = self.homeassistant[ATTR_IMAGE]
             self._homeassistant.last_version = \
                 self.homeassistant[ATTR_LAST_VERSION]
