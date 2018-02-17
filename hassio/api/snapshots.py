@@ -12,7 +12,7 @@ from ..snapshots.validate import ALL_FOLDERS
 from ..const import (
     ATTR_NAME, ATTR_SLUG, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS, ATTR_TYPE,
-    ATTR_SNAPSHOTS, ATTR_PASSWORD, CONTENT_TYPE_TAR)
+    ATTR_SNAPSHOTS, ATTR_PASSWORD, ATTR_PROTECTED, CONTENT_TYPE_TAR)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,6 +26,10 @@ SCHEMA_RESTORE_PARTIAL = vol.Schema({
         vol.All([vol.Coerce(str)], vol.Unique()),
     vol.Optional(ATTR_FOLDERS):
         vol.All([vol.In(ALL_FOLDERS)], vol.Unique()),
+})
+
+SCHEMA_RESTORE_FULL = vol.Schema({
+    vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
 })
 
 SCHEMA_SNAPSHOT_FULL = vol.Schema({
@@ -61,6 +65,7 @@ class APISnapshots(CoreSysAttributes):
                 ATTR_NAME: snapshot.name,
                 ATTR_DATE: snapshot.date,
                 ATTR_TYPE: snapshot.sys_type,
+                ATTR_PROTECTED: snapshot.protected,
             })
 
         return {
@@ -93,6 +98,7 @@ class APISnapshots(CoreSysAttributes):
             ATTR_NAME: snapshot.name,
             ATTR_DATE: snapshot.date,
             ATTR_SIZE: snapshot.size,
+            ATTR_PROTECTED: snapshot.protected,
             ATTR_HOMEASSISTANT: snapshot.homeassistant_version,
             ATTR_ADDONS: data_addons,
             ATTR_REPOSITORIES: snapshot.repositories,
@@ -117,14 +123,18 @@ class APISnapshots(CoreSysAttributes):
     def restore_full(self, request):
         """Full-Restore a snapshot."""
         snapshot = self._extract_snapshot(request)
+        body = await api_validate(SCHEMA_RESTORE_FULL, request)
+
         return asyncio.shield(
-            self._snapshots.do_restore_full(snapshot), loop=self._loop)
+            self._snapshots.do_restore_full(snapshot, **body),
+            loop=self._loop
+        )
 
     @api_process
     async def restore_partial(self, request):
         """Partial-Restore a snapshot."""
         snapshot = self._extract_snapshot(request)
-        body = await api_validate(SCHEMA_SNAPSHOT_PARTIAL, request)
+        body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
 
         return await asyncio.shield(
             self._snapshots.do_restore_partial(snapshot, **body),
