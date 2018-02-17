@@ -250,8 +250,8 @@ class Snapshot(CoreSysAttributes):
         """Restore a list add-on from snapshot."""
         if not addon_list:
             addon_list = []
-            for addon_slug in self.addons:
-                addon = self._addons.get(addon_slug)
+            for addon_data in self.addons:
+                addon = self._addons.get(addon_data[ATTR_SLUG])
                 if addon:
                     addon_list.append(addon)
 
