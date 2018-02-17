@@ -131,7 +131,7 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Snapshot %s store folders", snapshot.slug)
                 await snapshot.store_folders()
 
-        except (OSError, ValueError, tarfile.TarError) as err:
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.info("Snapshot %s error: %s", snapshot.slug, err)
             return False
 
@@ -177,7 +177,7 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Snapshot %s store folders", snapshot.slug)
                 await snapshot.store_folders(folders)
 
-        except (OSError, ValueError, tarfile.TarError) as err:
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.info("Snapshot %s error: %s", snapshot.slug, err)
             return False
 
@@ -254,7 +254,7 @@ class SnapshotManager(CoreSysAttributes):
                 await task_hass
                 await self._homeassistant.start()
 
-        except (OSError, ValueError, tarfile.TarError) as err:
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.info("Restore %s error: %s", snapshot.slug, err)
             return False
 
@@ -320,7 +320,7 @@ class SnapshotManager(CoreSysAttributes):
                     await task_hass
                 await self._homeassistant.start()
 
-        except (OSError, ValueError, tarfile.TarError) as err:
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.info("Restore %s error: %s", snapshot.slug, err)
             return False
 
