@@ -218,8 +218,9 @@ class SnapshotManager(CoreSysAttributes):
                     if addon.is_installed:
                         tasks.append(addon.stop())
 
-                _LOGGER.info("Restore %s stop running tasks", snapshot.slug)
-                await asyncio.wait(tasks, loop=self._loop)
+                if tasks:
+                    _LOGGER.info("Restore %s stop tasks", snapshot.slug)
+                    await asyncio.wait(tasks, loop=self._loop)
 
                 # Restore folders
                 _LOGGER.info("Restore %s run folders", snapshot.slug)
@@ -240,8 +241,10 @@ class SnapshotManager(CoreSysAttributes):
                 for addon in self._addons.list_installed:
                     if addon.slug not in snapshot.addon_list:
                         tasks.append(addon.uninstall())
-                _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
-                await asyncio.wait(tasks, loop=self._loop)
+
+                if tasks:
+                    _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
+                    await asyncio.wait(tasks, loop=self._loop)
 
                 # Restore add-ons
                 _LOGGER.info("Restore %s old add-ons", snapshot.slug)
