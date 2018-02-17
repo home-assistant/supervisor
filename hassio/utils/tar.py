@@ -35,7 +35,7 @@ class SecureTarFile(object):
             return self._tar
 
         # Encrypted/Decryped Tarfile
-        self._file = self._name.open(self._mode)
+        self._file = self._name.open(f"{self._mode}b")
 
         # Extract IV for CBC
         if self._mode == MOD_READ:
