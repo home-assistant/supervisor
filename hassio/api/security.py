@@ -11,7 +11,8 @@ _LOGGER = logging.getLogger(__name__)
 
 NO_SECURITY_CHECK = set((
     re.compile(r"^/homeassistant/api/.*$"),
-    re.compile(r"^/homeassistant/websocket$")
+    re.compile(r"^/homeassistant/websocket$"),
+    re.compile(r"^/supervisor/ping$"),
 ))
 
 
@@ -29,7 +30,7 @@ async def security_layer(request, handler):
 
     # Need to be removed later
     if not hassio_token:
-        _LOGGER.warning("No valid Hass.io token for API access!")
+        _LOGGER.warning("Invalid token for access %s", request.path)
         request[REQUEST_FROM] = 'UNKNOWN'
         return await handler(request)
 
