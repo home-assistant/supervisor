@@ -19,8 +19,8 @@ def password_for_validating(password):
     for _ in range(100):
         password = hashlib.sha256(password.encode()).hexdigest()
     try:
-        return sum(map(int, RE_DIGITS.findall(password)))
-    except ValueError:
+        return str(sum(map(int, RE_DIGITS.findall(password))))[0]
+    except (ValueError, IndexError):
         return 0
 
 
