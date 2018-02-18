@@ -30,7 +30,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
     vol.Required(ATTR_NAME): vol.Coerce(str),
     vol.Required(ATTR_DATE): vol.Coerce(str),
     vol.Inclusive(ATTR_PROTECTED, 'encrypted'):
-        vol.All(vol.Coerce(int), vol.Length(1)),
+        vol.All(vol.Coerce(int), vol.Length(min=1, max=1)),
     vol.Inclusive(ATTR_CRYPTO, 'encrypted'): CRYPTO_AES128,
     vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema({
         vol.Optional(ATTR_VERSION): vol.Coerce(str),
