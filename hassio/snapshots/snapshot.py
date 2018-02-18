@@ -13,7 +13,8 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
-from .utils import remove_folder, password_to_key, password_for_validating
+from .utils import (
+    remove_folder, password_to_key, password_for_validating, key_to_iv)
 from ..const import (
     ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
@@ -130,7 +131,8 @@ class Snapshot(CoreSysAttributes):
         # Set password
         if password:
             self._key = password_to_key(password)
-            self._aes = AES.new(self._key, AES.MODE_ECB)
+            self._aes = AES.new(
+                self._key, AES.MODE_CBC, iv=key_to_iv(self._key))
             self._data[ATTR_PROTECTED] = password_for_validating(password)
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
@@ -144,7 +146,7 @@ class Snapshot(CoreSysAttributes):
             return False
 
         self._key = password_to_key(password)
-        self._aes = AES.new(self._key, AES.MODE_ECB)
+        self._aes = AES.new(self._key, AES.MODE_CBC, iv=key_to_iv(self._key))
         return True
 
     def _encrypt_data(self, data):
