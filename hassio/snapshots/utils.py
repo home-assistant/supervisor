@@ -1,6 +1,9 @@
 """Util addons functions."""
 import hashlib
 import shutil
+import re
+
+RE_DIGITS = re.compile(r"\d+")
 
 
 def password_to_key(password):
@@ -15,7 +18,10 @@ def password_for_validating(password):
     """Generate a SHA256 hash from password."""
     for _ in range(100):
         password = hashlib.sha256(password.encode()).hexdigest()
-    return password
+    try:
+        return sum(map(int, RE_DIGITS.findall(password)))
+    except ValueError:
+        return 0
 
 
 def key_to_iv(key):
