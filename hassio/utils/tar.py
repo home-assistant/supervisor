@@ -1,5 +1,6 @@
 """Tarfile fileobject handler for encrypted files."""
 import tarfile
+import hashlib
 
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
@@ -39,11 +40,12 @@ class SecureTarFile(object):
 
         # Extract IV for CBC
         if self._mode == MOD_READ:
-            cbc_iv = self._file.read(16)
+            cbc_rand = self._file.read(16)
         else:
-            cbc_iv = get_random_bytes(16)
-            self._file.write(cbc_iv)
-        self._aes = AES.new(self._key, AES.MODE_CBC, iv=cbc_iv)
+            cbc_rand = get_random_bytes(16)
+            self._file.write(cbc_rand)
+        self._aes = AES.new(
+            self._key, AES.MODE_CBC, iv=_generate_iv(self._key, cbc_rand))
 
         self._tar = tarfile.open(fileobj=self, mode=self._tar_mode)
         return self._tar
@@ -76,3 +78,11 @@ class SecureTarFile(object):
         if not self._name.is_file():
             return 0
         return round(self._name.stat().st_size / 1048576, 2)  # calc mbyte
+
+
+def _generate_iv(key, salt):
+    """Generate a iv from data."""
+    temp_iv = key + salt
+    for _ in range(100):
+        temp_iv = hashlib.sha256(temp_iv).digest()
+    return temp_iv[:16]

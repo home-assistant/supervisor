@@ -4,7 +4,7 @@ import shutil
 
 
 def password_to_key(password):
-    """Generate a AES Key from password"""
+    """Generate a AES Key from password."""
     password = password.encode()
     for _ in range(100):
         password = hashlib.sha256(password).digest()
@@ -12,10 +12,17 @@ def password_to_key(password):
 
 
 def password_for_validating(password):
-    """Generate a SHA256 hash from password"""
+    """Generate a SHA256 hash from password."""
     for _ in range(100):
         password = hashlib.sha256(password.encode()).hexdigest()
     return password
+
+
+def key_to_iv(key):
+    """Generate a iv from Key."""
+    for _ in range(100):
+        key = hashlib.sha256(key).digest()
+    return key[:16]
 
 
 def create_slug(name, date_str):
