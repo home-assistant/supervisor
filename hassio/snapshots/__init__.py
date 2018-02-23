@@ -90,30 +90,36 @@ class SnapshotManager(CoreSysAttributes):
 
         # Read meta data
         if not await snapshot.load():
-            return False
+            return None
 
         # Allready exists?
         if snapshot.slug in self.snapshots_obj:
             _LOGGER.error("Snapshot %s allready exists!", snapshot.slug)
-            return False
+            return None
 
         # Move snapshot to backup
+        tar_origin = Path(self._config.path_backup, f"{snapshot.slug}.tar")
         try:
-            snapshot.tarfile.rename(
-                Path(self._config.path_backup, f"{snapshot.slug}.tar"))
+            snapshot.tarfile.rename(tar_origin)
 
         except OSError as err:
             _LOGGER.error("Can't move snapshot file to storage: %s", err)
-            return False
+            return None
 
-        await self.reload()
-        return True
+        # Load new snapshot
+        snapshot = Snapshot(self.coresys, tar_origin)
+        if not await snapshot.load():
+            return None
+        _LOGGER.info("Success import %s", snapshot.slug)
+
+        self.snapshots_obj[snapshot.slug] = snapshot
+        return snapshot
 
     async def do_snapshot_full(self, name="", password=None):
         """Create a full snapshot."""
         if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
-            return False
+            return None
 
         snapshot = self._create_snapshot(name, SNAPSHOT_FULL, password)
         _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
@@ -132,12 +138,12 @@ class SnapshotManager(CoreSysAttributes):
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
-            return False
+            return None
 
         else:
             _LOGGER.info("Full-Snapshot %s done", snapshot.slug)
             self.snapshots_obj[snapshot.slug] = snapshot
-            return True
+            return snapshot
 
         finally:
             self._scheduler.suspend = False
@@ -148,7 +154,7 @@ class SnapshotManager(CoreSysAttributes):
         """Create a partial snapshot."""
         if self.lock.locked():
             _LOGGER.error("It is already a snapshot/restore process running")
-            return False
+            return None
 
         addons = addons or []
         folders = folders or []
@@ -178,12 +184,12 @@ class SnapshotManager(CoreSysAttributes):
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
-            return False
+            return None
 
         else:
             _LOGGER.info("Partial-Snapshot %s done", snapshot.slug)
             self.snapshots_obj[snapshot.slug] = snapshot
-            return True
+            return snapshot
 
         finally:
             self._scheduler.suspend = False

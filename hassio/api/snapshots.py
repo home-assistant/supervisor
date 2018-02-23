@@ -109,15 +109,23 @@ class APISnapshots(CoreSysAttributes):
     async def snapshot_full(self, request):
         """Full-Snapshot a snapshot."""
         body = await api_validate(SCHEMA_SNAPSHOT_FULL, request)
-        return await asyncio.shield(
+        snapshot = await asyncio.shield(
             self._snapshots.do_snapshot_full(**body), loop=self._loop)
+
+        if snapshot:
+            return {ATTR_SLUG: snapshot.slug}
+        return False
 
     @api_process
     async def snapshot_partial(self, request):
         """Partial-Snapshot a snapshot."""
         body = await api_validate(SCHEMA_SNAPSHOT_PARTIAL, request)
-        return await asyncio.shield(
+        snapshot = await asyncio.shield(
             self._snapshots.do_snapshot_partial(**body), loop=self._loop)
+
+        if snapshot:
+            return {ATTR_SLUG: snapshot.slug}
+        return False
 
     @api_process
     async def restore_full(self, request):
@@ -174,5 +182,9 @@ class APISnapshots(CoreSysAttributes):
             except asyncio.CancelledError:
                 return False
 
-            return await asyncio.shield(
+            snapshot = await asyncio.shield(
                 self._snapshots.import_snapshot(tar_file), loop=self._loop)
+
+            if snapshot:
+                return {ATTR_SLUG: snapshot.slug}
+            return False
