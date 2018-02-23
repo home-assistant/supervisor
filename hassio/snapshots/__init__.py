@@ -110,7 +110,7 @@ class SnapshotManager(CoreSysAttributes):
         snapshot = Snapshot(self.coresys, tar_origin)
         if not await snapshot.load():
             return None
-        _LOGGER.info("Success load %s", snapshot.slug)
+        _LOGGER.info("Success import %s", snapshot.slug)
 
         self.snapshots_obj[snapshot.slug] = snapshot
         return snapshot
