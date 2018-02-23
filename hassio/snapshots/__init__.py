@@ -294,7 +294,8 @@ class SnapshotManager(CoreSysAttributes):
             await self.lock.acquire()
 
             async with snapshot:
-                if FOLDER_HOMEASSISTANT in folders:
+                # Stop Home-Assistant if they will be restored later
+                if homeassistant and FOLDER_HOMEASSISTANT in folders:
                     await self._homeassistant.stop()
 
                 # Process folders
