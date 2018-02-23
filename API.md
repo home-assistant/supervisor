@@ -124,12 +124,26 @@ Output is the raw docker log.
 
 - POST `/snapshots/new/upload`
 
+return:
+```json
+{
+    "slug": ""
+}
+```
+
 - POST `/snapshots/new/full`
 
 ```json
 {
     "name": "Optional",
     "password": "Optional"
+}
+```
+
+return:
+```json
+{
+    "slug": ""
 }
 ```
 
@@ -141,6 +155,13 @@ Output is the raw docker log.
     "addons": ["ADDON_SLUG"],
     "folders": ["FOLDER_NAME"],
     "password": "Optional"
+}
+```
+
+return:
+```json
+{
+    "slug": ""
 }
 ```
 
