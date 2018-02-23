@@ -42,7 +42,7 @@ setup(
     install_requires=[
         'async_timeout==2.0.0',
         'aiohttp==2.3.10',
-        'docker==3.0.1',
+        'docker==3.1.0',
         'colorlog==3.1.2',
         'voluptuous==0.11.1',
         'gitpython==2.1.8',
