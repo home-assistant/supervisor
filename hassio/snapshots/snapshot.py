@@ -151,7 +151,7 @@ class Snapshot(CoreSysAttributes):
 
     def _encrypt_data(self, data):
         """Make data secure."""
-        if not self._key:
+        if not self._key or data is None:
             return data
 
         return b64encode(
@@ -159,7 +159,7 @@ class Snapshot(CoreSysAttributes):
 
     def _decrypt_data(self, data):
         """Make data readable."""
-        if not self._key:
+        if not self._key or data is None:
             return data
 
         return Padding.unpad(
