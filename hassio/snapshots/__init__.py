@@ -173,14 +173,16 @@ class SnapshotManager(CoreSysAttributes):
                     if addon and addon.is_installed:
                         addon_list.append(addon)
                         continue
-                    _LOGGER.warning("Add-on %s not found", addon_slug)
+                    _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
-                _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
-                await snapshot.store_addons(addon_list)
+                if addon_list:
+                    _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
+                    await snapshot.store_addons(addon_list)
 
-                # snapshot folders
-                _LOGGER.info("Snapshot %s store folders", snapshot.slug)
-                await snapshot.store_folders(folders)
+                # Snapshot folders
+                if folders:
+                    _LOGGER.info("Snapshot %s store folders", snapshot.slug)
+                    await snapshot.store_folders(folders)
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
