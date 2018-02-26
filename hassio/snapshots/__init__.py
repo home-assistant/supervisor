@@ -46,6 +46,17 @@ class SnapshotManager(CoreSysAttributes):
         snapshot.store_repositories()
 
         return snapshot
+    
+    def _create_addon_list(addons):
+        """Create add-on object list of slug list."""
+        addon_list = []
+        for addon_slug in addons:
+            addon = self._addons.get(addon_slug)
+            if addon and addon.is_installed:
+                addon_list.append(addon)
+                continue
+            _LOGGER.warning("Add-on %s not found", addon_slug)
+        return addon_list
 
     def load(self):
         """Load exists snapshots data.
@@ -167,20 +178,15 @@ class SnapshotManager(CoreSysAttributes):
 
             async with snapshot:
                 # Snapshot add-ons
-                addon_list = []
-                for addon_slug in addons:
-                    addon = self._addons.get(addon_slug)
-                    if addon and addon.is_installed:
-                        addon_list.append(addon)
-                        continue
-                    _LOGGER.warning("Add-on %s not found", addon_slug)
+                addon_list = self._create_addon_list(addons)
+                if addon_list:
+                    _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
+                    await snapshot.store_addons(addon_list)
 
-                _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
-                await snapshot.store_addons(addon_list)
-
-                # snapshot folders
-                _LOGGER.info("Snapshot %s store folders", snapshot.slug)
-                await snapshot.store_folders(folders)
+                # Snapshot folders
+                if folders:
+                    _LOGGER.info("Snapshot %s store folders", snapshot.slug)
+                    await snapshot.store_folders(folders)
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
@@ -314,14 +320,7 @@ class SnapshotManager(CoreSysAttributes):
                             snapshot.homeassistant_version))
 
                 # Process Add-ons
-                addon_list = []
-                for slug in addons:
-                    addon = self._addons.get(slug)
-                    if addon:
-                        addon_list.append(addon)
-                        continue
-                    _LOGGER.warning("Can't restore addon %s", snapshot.slug)
-
+                addon_list = self._create_addon_list(addons)
                 if addon_list:
                     _LOGGER.info("Restore %s old add-ons", snapshot.slug)
                     await snapshot.restore_addons(addon_list)
