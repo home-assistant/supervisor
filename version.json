@@ -1,6 +1,6 @@
 {
     "hassio": "0.95",
-    "homeassistant": "0.64.2",
+    "homeassistant": "0.64.3",
     "resinos": "1.1",
     "resinhup": "0.3",
     "generic": "0.3",
