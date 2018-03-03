@@ -58,12 +58,20 @@ class GitRepo(CoreSysAttributes):
     async def clone(self):
         """Clone git addon repo."""
         async with self.lock:
+            git_args = {
+                attribute: value
+                for attribute, value in (
+                    ('recursive', True),
+                    ('branch', self.branch)
+                ) if value is not None
+            }
+
             try:
                 _LOGGER.info("Clone addon %s repository", self.url)
-                self.repo = await self._loop.run_in_executor(
-                    None, ft.partial(
-                        git.Repo.clone_from, self.url, str(self.path),
-                        recursive=True, branch=self.branch))
+                self.repo = await self._loop.run_in_executor(None, ft.partial(
+                    git.Repo.clone_from, self.url, str(self.path),
+                    **git_args
+                ))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
