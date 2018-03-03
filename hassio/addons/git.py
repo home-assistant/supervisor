@@ -8,8 +8,9 @@ import shutil
 import git
 
 from .utils import get_hash_from_repository
-from ..const import URL_HASSIO_ADDONS
+from ..const import URL_HASSIO_ADDONS, ATTR_URL, ATTR_BRANCH
 from ..coresys import CoreSysAttributes
+from ..validate import RE_REPOSITORY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,8 +23,19 @@ class GitRepo(CoreSysAttributes):
         self.coresys = coresys
         self.repo = None
         self.path = path
-        self.url = url
         self.lock = asyncio.Lock(loop=coresys.loop)
+
+        self._data = RE_REPOSITORY.match(url).groupdict()
+
+    @property
+    def url(self):
+        """Return repository URL."""
+        return self._data[ATTR_URL]
+
+    @property
+    def branch(self):
+        """Return repository branch."""
+        return self._data[ATTR_BRANCH]
 
     async def load(self):
         """Init git addon repo."""
@@ -46,12 +58,20 @@ class GitRepo(CoreSysAttributes):
     async def clone(self):
         """Clone git addon repo."""
         async with self.lock:
+            git_args = {
+                attribute: value
+                for attribute, value in (
+                    ('recursive', True),
+                    ('branch', self.branch)
+                ) if value is not None
+            }
+
             try:
                 _LOGGER.info("Clone addon %s repository", self.url)
-                self.repo = await self._loop.run_in_executor(
-                    None, ft.partial(
-                        git.Repo.clone_from, self.url, str(self.path),
-                        recursive=True))
+                self.repo = await self._loop.run_in_executor(None, ft.partial(
+                    git.Repo.clone_from, self.url, str(self.path),
+                    **git_args
+                ))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
