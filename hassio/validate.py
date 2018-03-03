@@ -27,6 +27,7 @@ def validate_repository(repository):
         raise vol.Invalid("No valid repository format!")
 
     # Validate URL
+    # pylint: disable=no-value-for-parameter
     vol.Url()(data.group('url'))
 
     return repository
