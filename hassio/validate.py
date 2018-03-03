@@ -1,5 +1,6 @@
 """Validate functions."""
 import uuid
+import re
 
 import voluptuous as vol
 import pytz
@@ -11,13 +12,29 @@ from .const import (
     ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG, ATTR_WAIT_BOOT, ATTR_UUID)
 
 
+RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
+
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 ALSA_CHANNEL = vol.Match(r"\d+,\d+")
 WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 
+
+def validate_repository(repository):
+    """Validate a valide repository."""
+    data = RE_REPOSITORY.match(repository)
+    if not data:
+        raise vol.Invalid("No valid repository format!")
+
+    # Validate URL
+    # pylint: disable=no-value-for-parameter
+    vol.Url()(data.group('url'))
+
+    return repository
+
+
 # pylint: disable=no-value-for-parameter
-REPOSITORIES = vol.All([vol.Url()], vol.Unique())
+REPOSITORIES = vol.All([validate_repository], vol.Unique())
 
 
 def validate_timezone(timezone):
