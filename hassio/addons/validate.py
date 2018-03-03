@@ -60,6 +60,7 @@ PRIVILEGED_ALL = [
     "NET_ADMIN",
     "SYS_ADMIN",
     "SYS_RAWIO",
+    "IPC_LOCK",
     "SYS_TIME",
     "SYS_NICE"
 ]
