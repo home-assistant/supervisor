@@ -108,10 +108,10 @@ class HassIO(CoreSysAttributes):
         # don't process scheduler anymore
         self._scheduler.suspend = True
 
-        # process stop tasks
-        self._websession.close()
-        self._websession_ssl.close()
-
         # process async stop tasks
-        await asyncio.wait(
-            [self._api.stop(), self._dns.stop()], loop=self._loop)
+        await asyncio.wait([
+            self._api.stop(),
+            self._dns.stop(),
+            self._websession.close(),
+            self._websession_ssl.close()
+        ], loop=self._loop)

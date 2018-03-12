@@ -83,7 +83,7 @@ class APIProxy(CoreSysAttributes):
                 if not data:
                     await response.write_eof()
                     break
-                response.write(data)
+                await response.write(data)
 
         except aiohttp.ClientError:
             await response.write_eof()
