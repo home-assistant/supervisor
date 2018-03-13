@@ -16,7 +16,7 @@ from .const import (
     ATTR_WAIT_BOOT, HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
-from .utils import convert_to_ascii
+from .utils import convert_to_ascii, process_lock
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
@@ -35,6 +35,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_HOMEASSISTANT, SCHEMA_HASS_CONFIG)
         self.coresys = coresys
         self.instance = DockerHomeAssistant(coresys)
+        self.lock = asyncio.Lock(loop=coresys.loop)
 
     async def load(self):
         """Prepare HomeAssistant object."""
@@ -162,6 +163,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Return a UUID of this HomeAssistant."""
         return self._data[ATTR_UUID]
 
+    @process_lock
     async def install_landingpage(self):
         """Install a landingpage."""
         _LOGGER.info("Setup HomeAssistant landingpage")
@@ -172,8 +174,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await asyncio.sleep(60, loop=self._loop)
 
         # Run landingpage after installation
-        await self.start()
+        await self.instance.run()
+        await self._block_till_run()
 
+    @process_lock
     async def install(self):
         """Install a landingpage."""
         _LOGGER.info("Setup HomeAssistant")
@@ -191,9 +195,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         # finishing
         _LOGGER.info("HomeAssistant docker now installed")
         if self.boot:
-            await self.start()
+            await self.instance.run()
+            await self._block_till_run()
         await self.instance.cleanup()
 
+    @process_lock
     async def update(self, version=None):
         """Update HomeAssistant version."""
         version = version or self.last_version
@@ -208,8 +214,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return await self.instance.update(version)
         finally:
             if running:
-                await self.start()
+                await self.instance.run()
+                await self._block_till_run()
 
+    @process_lock
     async def start(self):
         """Run HomeAssistant docker."""
         if not await self.instance.run():
@@ -224,6 +232,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """
         return self.instance.stop()
 
+    @process_lock
     async def restart(self):
         """Restart HomeAssistant docker."""
         if not await self.instance.restart():
@@ -262,7 +271,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def in_progress(self):
         """Return True if a task is in progress."""
-        return self.instance.in_progress
+        return self.instance.in_progress or self.lock.locked()
 
     async def check_config(self):
         """Run homeassistant config check."""
