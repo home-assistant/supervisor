@@ -6,11 +6,11 @@ import docker
 import requests
 
 from .interface import DockerInterface
-from .utils import docker_process
 from ..addons.build import AddonBuild
 from ..const import (
     MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE, ENV_TOKEN,
     ENV_TIME)
+from ..utils import process_lock
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -285,7 +285,7 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Build %s:%s done", self.image, tag)
         return True
 
-    @docker_process
+    @process_lock
     def export_image(self, path):
         """Export current images into a tar file."""
         return self._loop.run_in_executor(None, self._export_image, path)
@@ -313,7 +313,7 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Export image %s done", self.image)
         return True
 
-    @docker_process
+    @process_lock
     def import_image(self, path, tag):
         """Import a tar file as image."""
         return self._loop.run_in_executor(None, self._import_image, path, tag)
@@ -338,7 +338,7 @@ class DockerAddon(DockerInterface):
         self._cleanup()
         return True
 
-    @docker_process
+    @process_lock
     def write_stdin(self, data):
         """Write to add-on stdin."""
         return self._loop.run_in_executor(None, self._write_stdin, data)
