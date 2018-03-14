@@ -5,10 +5,10 @@ import logging
 
 import docker
 
-from .utils import docker_process
 from .stats import DockerStats
 from ..const import LABEL_VERSION, LABEL_ARCH
 from ..coresys import CoreSysAttributes
+from ..utils import process_lock
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class DockerInterface(CoreSysAttributes):
         """Initialize docker base wrapper."""
         self.coresys = coresys
         self._meta = None
-        self.lock = asyncio.Lock(loop=self._loop)
+        self.lock = asyncio.Lock(loop=coresys.loop)
 
     @property
     def timeout(self):
@@ -58,7 +58,7 @@ class DockerInterface(CoreSysAttributes):
         """Return True if a task is in progress."""
         return self.lock.locked()
 
-    @docker_process
+    @process_lock
     def install(self, tag):
         """Pull docker image."""
         return self._loop.run_in_executor(None, self._install, tag)
@@ -126,7 +126,7 @@ class DockerInterface(CoreSysAttributes):
 
         return True
 
-    @docker_process
+    @process_lock
     def attach(self):
         """Attach to running docker container."""
         return self._loop.run_in_executor(None, self._attach)
@@ -149,7 +149,7 @@ class DockerInterface(CoreSysAttributes):
 
         return True
 
-    @docker_process
+    @process_lock
     def run(self):
         """Run docker image."""
         return self._loop.run_in_executor(None, self._run)
@@ -161,7 +161,7 @@ class DockerInterface(CoreSysAttributes):
         """
         raise NotImplementedError()
 
-    @docker_process
+    @process_lock
     def stop(self):
         """Stop/remove docker container."""
         return self._loop.run_in_executor(None, self._stop)
@@ -187,7 +187,7 @@ class DockerInterface(CoreSysAttributes):
 
         return True
 
-    @docker_process
+    @process_lock
     def remove(self):
         """Remove docker images."""
         return self._loop.run_in_executor(None, self._remove)
@@ -219,7 +219,7 @@ class DockerInterface(CoreSysAttributes):
         self._meta = None
         return True
 
-    @docker_process
+    @process_lock
     def update(self, tag):
         """Update a docker image."""
         return self._loop.run_in_executor(None, self._update, tag)
@@ -264,7 +264,7 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't grap logs from %s: %s", self.image, err)
 
-    @docker_process
+    @process_lock
     def restart(self):
         """Restart docker container."""
         return self._loop.run_in_executor(None, self._restart)
@@ -289,7 +289,7 @@ class DockerInterface(CoreSysAttributes):
 
         return True
 
-    @docker_process
+    @process_lock
     def cleanup(self):
         """Check if old version exists and cleanup."""
         return self._loop.run_in_executor(None, self._cleanup)
@@ -315,7 +315,7 @@ class DockerInterface(CoreSysAttributes):
 
         return True
 
-    @docker_process
+    @process_lock
     def execute_command(self, command):
         """Create a temporary container and run command."""
         return self._loop.run_in_executor(None, self._execute_command, command)
