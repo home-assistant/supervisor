@@ -174,8 +174,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await asyncio.sleep(60, loop=self._loop)
 
         # Run landingpage after installation
-        await self.instance.run()
-        await self._block_till_run()
+        await self._start()
 
     @process_lock
     async def install(self):
@@ -195,8 +194,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         # finishing
         _LOGGER.info("HomeAssistant docker now installed")
         if self.boot:
-            await self.instance.run()
-            await self._block_till_run()
+            await self._start()
         await self.instance.cleanup()
 
     @process_lock
@@ -214,8 +212,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return await self.instance.update(version)
         finally:
             if running:
-                await self.instance.run()
-                await self._block_till_run()
+                await self._start()
+
+    async def _start(self):
+        """Start HomeAssistant docker & wait."""
+        if await self.instance.run():
+            await self._block_till_run()
 
     @process_lock
     async def start(self):
