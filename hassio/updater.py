@@ -9,13 +9,19 @@ import async_timeout
 
 from .const import (
     URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
-    ATTR_BETA_CHANNEL)
+    ATTR_MODE, MODE_STABLE, MODE_BETA, MODE_DEV)
 from .coresys import CoreSysAttributes
 from .utils import AsyncThrottle
 from .utils.json import JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
+
+MODE_TO_BRANCH = {
+    MODE_STABLE: 'master',
+    MODE_BETA: 'rc',
+    MODE_DEV: 'dev',
+}
 
 
 class Updater(JsonConfig, CoreSysAttributes):
@@ -44,21 +50,14 @@ class Updater(JsonConfig, CoreSysAttributes):
         return self._data.get(ATTR_HASSIO)
 
     @property
-    def upstream(self):
-        """Return Upstream branch for version."""
-        if self.beta_channel:
-            return 'dev'
-        return 'master'
+    def mode(self):
+        """Return upstream mode of hassio instance."""
+        return self._data[ATTR_MODE]
 
-    @property
-    def beta_channel(self):
-        """Return True if we run in beta upstream."""
-        return self._data[ATTR_BETA_CHANNEL]
-
-    @beta_channel.setter
-    def beta_channel(self, value):
-        """Set beta upstream mode."""
-        self._data[ATTR_BETA_CHANNEL] = bool(value)
+    @mode.setter
+    def mode(self, value):
+        """Set upstream mode."""
+        self._data[ATTR_MODE] = value
 
     @AsyncThrottle(timedelta(seconds=60))
     async def reload(self):
@@ -66,7 +65,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         Is a coroutine.
         """
-        url = URL_HASSIO_VERSION.format(self.upstream)
+        url = URL_HASSIO_VERSION.format(MODE_TO_BRANCH[self.mode])
         try:
             _LOGGER.info("Fetch update data from %s", url)
             with async_timeout.timeout(10, loop=self._loop):

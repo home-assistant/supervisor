@@ -2,6 +2,7 @@
 
 import aiohttp
 
+from .const import MODE_DEV
 from .config import CoreConfig
 from .docker import DockerAPI
 from .misc.dns import DNSForward
@@ -48,6 +49,11 @@ class CoreSys(object):
         if self._supervisor:
             return self._supervisor.arch
         return None
+
+    @property
+    def dev(self):
+        """Return True if we run dev modus."""
+        return self._updater.mode == MODE_DEV
 
     @property
     def loop(self):

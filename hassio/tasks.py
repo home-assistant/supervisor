@@ -78,8 +78,8 @@ class Tasks(CoreSysAttributes):
             return
 
         # don't perform a update on beta/dev channel
-        if self._updater.beta_channel:
-            _LOGGER.warning("Ignore Hass.io update on beta upstream!")
+        if self._dev:
+            _LOGGER.warning("Ignore Hass.io update on dev mode!")
             return
 
         _LOGGER.info("Found new Hass.io version")
