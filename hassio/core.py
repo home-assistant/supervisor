@@ -56,12 +56,12 @@ class HassIO(CoreSysAttributes):
     async def start(self):
         """Start HassIO orchestration."""
         # on release channel, try update itself
-        # on beta channel, only read new versions
-        if not self._updater.beta_channel and self._supervisor.need_update:
+        # on dev mode, only read new versions
+        if not self._dev and self._supervisor.need_update:
             if await self._supervisor.update():
                 return
         else:
-            _LOGGER.info("Ignore Hass.io auto updates on beta mode")
+            _LOGGER.info("Ignore Hass.io auto updates on dev channel")
 
         # start api
         await self._api.start()
