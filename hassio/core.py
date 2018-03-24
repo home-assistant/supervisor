@@ -61,7 +61,7 @@ class HassIO(CoreSysAttributes):
             if await self._supervisor.update():
                 return
         else:
-            _LOGGER.info("Ignore Hass.io auto updates on dev mode")
+            _LOGGER.info("Ignore Hass.io auto updates on dev channel")
 
         # start api
         await self._api.start()

@@ -72,7 +72,7 @@ class APISupervisor(CoreSysAttributes):
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_CHANNEL in body:
-            self._updater.mode = body[ATTR_CHANNEL]
+            self._updater.channel = body[ATTR_CHANNEL]
 
         if ATTR_TIMEZONE in body:
             self._config.timezone = body[ATTR_TIMEZONE]
