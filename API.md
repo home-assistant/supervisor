@@ -36,7 +36,7 @@ The addons from `addons` are only installed one.
     "version": "INSTALL_VERSION",
     "last_version": "LAST_VERSION",
     "arch": "armhf|aarch64|i386|amd64",
-    "beta_channel": "true|false",
+    "channel": "stable|beta|dev",
     "timezone": "TIMEZONE",
     "wait_boot": "int",
     "addons": [
@@ -72,7 +72,7 @@ Optional:
 
 ```json
 {
-    "beta_channel": "true|false",
+    "channel": "stable|beta|dev",
     "timezone": "TIMEZONE",
     "wait_boot": "int",
     "addons_repositories": [
