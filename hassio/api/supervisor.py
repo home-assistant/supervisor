@@ -6,20 +6,19 @@ import voluptuous as vol
 
 from .utils import api_process, api_process_raw, api_validate
 from ..const import (
-    ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_BETA_CHANNEL, ATTR_ARCH,
+    ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_CHANNEL, ATTR_ARCH,
     HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_LOGO, ATTR_REPOSITORY,
     ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED, ATTR_TIMEZONE,
     ATTR_STATE, ATTR_WAIT_BOOT, ATTR_CPU_PERCENT, ATTR_MEMORY_USAGE,
     ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX, ATTR_BLK_READ,
     ATTR_BLK_WRITE, CONTENT_TYPE_BINARY, ATTR_ICON)
 from ..coresys import CoreSysAttributes
-from ..validate import validate_timezone, WAIT_BOOT, REPOSITORIES
+from ..validate import validate_timezone, WAIT_BOOT, REPOSITORIES, CHANNELS
 
 _LOGGER = logging.getLogger(__name__)
 
 SCHEMA_OPTIONS = vol.Schema({
-    # pylint: disable=no-value-for-parameter
-    vol.Optional(ATTR_BETA_CHANNEL): vol.Boolean(),
+    vol.Optional(ATTR_CHANNEL): CHANNELS,
     vol.Optional(ATTR_ADDONS_REPOSITORIES): REPOSITORIES,
     vol.Optional(ATTR_TIMEZONE): validate_timezone,
     vol.Optional(ATTR_WAIT_BOOT): WAIT_BOOT,
@@ -59,7 +58,7 @@ class APISupervisor(CoreSysAttributes):
         return {
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self._updater.version_hassio,
-            ATTR_BETA_CHANNEL: self._updater.beta_channel,
+            ATTR_CHANNEL: self._updater.channel,
             ATTR_ARCH: self._arch,
             ATTR_WAIT_BOOT: self._config.wait_boot,
             ATTR_TIMEZONE: self._config.timezone,
@@ -72,8 +71,8 @@ class APISupervisor(CoreSysAttributes):
         """Set supervisor options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_BETA_CHANNEL in body:
-            self._updater.beta_channel = body[ATTR_BETA_CHANNEL]
+        if ATTR_CHANNEL in body:
+            self._updater.channel = body[ATTR_CHANNEL]
 
         if ATTR_TIMEZONE in body:
             self._config.timezone = body[ATTR_TIMEZONE]
