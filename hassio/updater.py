@@ -65,7 +65,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         Is a coroutine.
         """
-        url = URL_HASSIO_VERSION.format(CHANNEL_TO_BRANCH[self.mode])
+        url = URL_HASSIO_VERSION.format(CHANNEL_TO_BRANCH[self.channel])
         try:
             _LOGGER.info("Fetch update data from %s", url)
             with async_timeout.timeout(10, loop=self._loop):
