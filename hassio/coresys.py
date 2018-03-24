@@ -2,7 +2,7 @@
 
 import aiohttp
 
-from .const import MODE_DEV
+from .const import CHANNEL_DEV
 from .config import CoreConfig
 from .docker import DockerAPI
 from .misc.dns import DNSForward
@@ -53,7 +53,7 @@ class CoreSys(object):
     @property
     def dev(self):
         """Return True if we run dev modus."""
-        return self._updater.mode == MODE_DEV
+        return self._updater.channel == CHANNEL_DEV
 
     @property
     def loop(self):

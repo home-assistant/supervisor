@@ -6,11 +6,11 @@ import voluptuous as vol
 import pytz
 
 from .const import (
-    ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_MODE, ATTR_TIMEZONE,
+    ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_CHANNEL, ATTR_TIMEZONE,
     ATTR_ADDONS_CUSTOM_LIST, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_PASSWORD, ATTR_HOMEASSISTANT, ATTR_HASSIO, ATTR_BOOT, ATTR_LAST_BOOT,
     ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG, ATTR_WAIT_BOOT, ATTR_UUID,
-    MODE_STABLE, MODE_BETA, MODE_DEV)
+    CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
 
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
@@ -19,7 +19,7 @@ NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 ALSA_CHANNEL = vol.Match(r"\d+,\d+")
 WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
-MODES = vol.In([MODE_STABLE, MODE_BETA, MODE_DEV])
+CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
 
 
 def validate_repository(repository):
@@ -97,7 +97,7 @@ SCHEMA_HASS_CONFIG = vol.Schema({
 
 
 SCHEMA_UPDATER_CONFIG = vol.Schema({
-    vol.Optional(ATTR_MODE, default=MODE_STABLE): MODES,
+    vol.Optional(ATTR_CHANNEL, default=CHANNEL_STABLE): CHANNELS,
     vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
     vol.Optional(ATTR_HASSIO): vol.Coerce(str),
 }, extra=vol.REMOVE_EXTRA)
