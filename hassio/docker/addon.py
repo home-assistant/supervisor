@@ -126,7 +126,7 @@ class DockerAddon(DockerInterface):
         # AppArmor
         if self.addon.apparmor == SECURITY_DISABLE:
             security.append("apparmor:unconfined")
-        elif self.addon.apparmor == SECURITY_DEFAULT:
+        elif self.addon.apparmor == SECURITY_CUSTOM:
             security.append(f"apparmor={self.addon.slug}")
 
         # Seccomp
