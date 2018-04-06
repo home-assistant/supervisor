@@ -427,6 +427,8 @@ Get all available addons.
     "host_ipc": "bool",
     "host_dbus": "bool",
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
+    "seccomp": "disable|default|custom",
+    "apparmor": "disable|default|custom",
     "devices": ["/dev/xy"],
     "auto_uart": "bool",
     "icon": "bool",
