@@ -9,7 +9,7 @@ from .interface import DockerInterface
 from ..addons.build import AddonBuild
 from ..const import (
     MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE, ENV_TOKEN,
-    ENV_TIME)
+    ENV_TIME, SECURITY_CUSTOM, SECURITY_DISABLE)
 from ..utils import process_lock
 
 _LOGGER = logging.getLogger(__name__)
@@ -121,14 +121,21 @@ class DockerAddon(DockerInterface):
     @property
     def security_opt(self):
         """Controlling security opt."""
-        privileged = self.addon.privileged or []
+        security = []
 
-        # Disable AppArmor sinse it make troubles wit SYS_ADMIN
-        if 'SYS_ADMIN' in privileged:
-            return [
-                "apparmor:unconfined",
-            ]
-        return None
+        # AppArmor
+        if self.addon.apparmor == SECURITY_DISABLE:
+            security.append("apparmor:unconfined")
+        elif self.addon.apparmor == SECURITY_DEFAULT:
+            security.append(f"apparmor={self.addon.slug}")
+
+        # Seccomp
+        if self.addon.seccomp == SECURITY_DISABLE:
+            security.append("seccomp=unconfined")
+        elif self.addon.seccomp == SECURITY_CUSTOM:
+            security.append(f"seccomp={self.addon.path_seccomp}")
+
+        return security or None
 
     @property
     def tmpfs(self):
