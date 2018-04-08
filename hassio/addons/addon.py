@@ -24,7 +24,7 @@ from ..const import (
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
-    ATTR_SECCOMP, ATTR_APPARMOR, SECURITY_CUSTOM, SECURITY_DISABLE,
+    ATTR_SECCOMP, ATTR_APPARMOR, SECURITY_PROFILE, SECURITY_DISABLE,
     SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
@@ -324,22 +324,17 @@ class Addon(CoreSysAttributes):
         if not self._mesh.get(ATTR_SECCOMP):
             return SECURITY_DISABLE
         elif self.path_seccomp.exists():
-            return SECURITY_CUSTOM
+            return SECURITY_PROFILE
         return SECURITY_DEFAULT
 
     @property
     def apparmor(self):
         """Return True if seccomp is enabled."""
-        if not self._mesh.get(ATTR_SECCOMP):
+        if not self._mesh.get(ATTR_APPARMOR):
             return SECURITY_DISABLE
         elif self.path_apparmor.exists():
-            return SECURITY_CUSTOM
+            return SECURITY_PROFILE
         return SECURITY_DEFAULT
-
-    @property
-    def seccomp_profile(self):
-        """Return True if it not use the default profile."""
-        return Path(self.path_location, f"{ATTR_SECCOMP}.json").exists()
 
     @property
     def legacy(self):

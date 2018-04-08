@@ -205,6 +205,6 @@ SNAPSHOT_PARTIAL = 'partial'
 
 CRYPTO_AES128 = 'aes128'
 
-SECURITY_CUSTOM = 'custom'
+SECURITY_PROFILE = 'profile'
 SECURITY_DEFAULT = 'default'
 SECURITY_DISABLE = 'disable'
