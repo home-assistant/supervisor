@@ -9,7 +9,7 @@ from .interface import DockerInterface
 from ..addons.build import AddonBuild
 from ..const import (
     MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE, ENV_TOKEN,
-    ENV_TIME, SECURITY_CUSTOM, SECURITY_DISABLE)
+    ENV_TIME, SECURITY_PROFILE, SECURITY_DISABLE)
 from ..utils import process_lock
 
 _LOGGER = logging.getLogger(__name__)
@@ -126,13 +126,13 @@ class DockerAddon(DockerInterface):
         # AppArmor
         if self.addon.apparmor == SECURITY_DISABLE:
             security.append("apparmor:unconfined")
-        elif self.addon.apparmor == SECURITY_CUSTOM:
+        elif self.addon.apparmor == SECURITY_PROFILE:
             security.append(f"apparmor={self.addon.slug}")
 
         # Seccomp
         if self.addon.seccomp == SECURITY_DISABLE:
             security.append("seccomp=unconfined")
-        elif self.addon.seccomp == SECURITY_CUSTOM:
+        elif self.addon.seccomp == SECURITY_PROFILE:
             security.append(f"seccomp={self.addon.path_seccomp}")
 
         return security or None
