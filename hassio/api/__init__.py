@@ -51,178 +51,163 @@ class RestAPI(CoreSysAttributes):
         api_host = APIHost()
         api_host.coresys = self.coresys
 
-        self.webapp.router.add_get('/host/info', api_host.info)
-        self.webapp.router.add_get('/host/hardware', api_host.hardware)
-        self.webapp.router.add_post('/host/reboot', api_host.reboot)
-        self.webapp.router.add_post('/host/shutdown', api_host.shutdown)
-        self.webapp.router.add_post('/host/update', api_host.update)
-        self.webapp.router.add_post('/host/options', api_host.options)
-        self.webapp.router.add_post('/host/reload', api_host.reload)
+        self.webapp.add_routes([
+            web.get('/host/info', api_host.info),
+            web.get('/host/hardware', api_host.hardware),
+            web.post('/host/reboot', api_host.reboot),
+            web.post('/host/shutdown', api_host.shutdown),
+            web.post('/host/update', api_host.update),
+            web.post('/host/options', api_host.options),
+            web.post('/host/reload', api_host.reload),
+        ])
 
     def _register_network(self):
         """Register network function."""
         api_net = APINetwork()
         api_net.coresys = self.coresys
 
-        self.webapp.router.add_get('/network/info', api_net.info)
-        self.webapp.router.add_post('/network/options', api_net.options)
+        self.webapp.add_routes([
+            web.get('/network/info', api_net.info),
+            web.post('/network/options', api_net.options),
+        ])
 
     def _register_supervisor(self):
         """Register supervisor function."""
         api_supervisor = APISupervisor()
         api_supervisor.coresys = self.coresys
 
-        self.webapp.router.add_get('/supervisor/ping', api_supervisor.ping)
-        self.webapp.router.add_get('/supervisor/info', api_supervisor.info)
-        self.webapp.router.add_get('/supervisor/stats', api_supervisor.stats)
-        self.webapp.router.add_post(
-            '/supervisor/update', api_supervisor.update)
-        self.webapp.router.add_post(
-            '/supervisor/reload', api_supervisor.reload)
-        self.webapp.router.add_post(
-            '/supervisor/options', api_supervisor.options)
-        self.webapp.router.add_get('/supervisor/logs', api_supervisor.logs)
+        self.webapp.add_routes([
+            web.get('/supervisor/ping', api_supervisor.ping),
+            web.get('/supervisor/info', api_supervisor.info),
+            web.get('/supervisor/stats', api_supervisor.stats),
+            web.get('/supervisor/logs', api_supervisor.logs),
+            web.post('/supervisor/update', api_supervisor.update),
+            web.post('/supervisor/reload', api_supervisor.reload),
+            web.post('/supervisor/options', api_supervisor.options),
+        ])
 
     def _register_homeassistant(self):
         """Register homeassistant function."""
         api_hass = APIHomeAssistant()
         api_hass.coresys = self.coresys
 
-        self.webapp.router.add_get('/homeassistant/info', api_hass.info)
-        self.webapp.router.add_get('/homeassistant/logs', api_hass.logs)
-        self.webapp.router.add_get('/homeassistant/stats', api_hass.stats)
-        self.webapp.router.add_post('/homeassistant/options', api_hass.options)
-        self.webapp.router.add_post('/homeassistant/update', api_hass.update)
-        self.webapp.router.add_post('/homeassistant/restart', api_hass.restart)
-        self.webapp.router.add_post('/homeassistant/stop', api_hass.stop)
-        self.webapp.router.add_post('/homeassistant/start', api_hass.start)
-        self.webapp.router.add_post('/homeassistant/check', api_hass.check)
+        self.webapp.add_routes([
+            web.get('/homeassistant/info', api_hass.info),
+            web.get('/homeassistant/logs', api_hass.logs),
+            web.get('/homeassistant/stats', api_hass.stats),
+            web.post('/homeassistant/options', api_hass.options),
+            web.post('/homeassistant/update', api_hass.update),
+            web.post('/homeassistant/restart', api_hass.restart),
+            web.post('/homeassistant/stop', api_hass.stop),
+            web.post('/homeassistant/start', api_hass.start),
+            web.post('/homeassistant/check', api_hass.check),
+        ])
 
     def _register_proxy(self):
         """Register HomeAssistant API Proxy."""
         api_proxy = APIProxy()
         api_proxy.coresys = self.coresys
 
-        self.webapp.router.add_get(
-            '/homeassistant/api/websocket', api_proxy.websocket)
-        self.webapp.router.add_get(
-            '/homeassistant/websocket', api_proxy.websocket)
-        self.webapp.router.add_get(
-            '/homeassistant/api/stream', api_proxy.stream)
-        self.webapp.router.add_post(
-            '/homeassistant/api/{path:.+}', api_proxy.api)
-        self.webapp.router.add_get(
-            '/homeassistant/api/{path:.+}', api_proxy.api)
-        self.webapp.router.add_get(
-            '/homeassistant/api/', api_proxy.api)
+        self.webapp.add_routes([
+            web.get('/homeassistant/api/websocket', api_proxy.websocket),
+            web.get('/homeassistant/websocket', api_proxy.websocket),
+            web.get('/homeassistant/api/stream', api_proxy.stream),
+            web.post('/homeassistant/api/{path:.+}', api_proxy.api),
+            web.get('/homeassistant/api/{path:.+}', api_proxy.api),
+            web.get('/homeassistant/api/', api_proxy.api),
+        ])
 
     def _register_addons(self):
         """Register homeassistant function."""
         api_addons = APIAddons()
         api_addons.coresys = self.coresys
 
-        self.webapp.router.add_get('/addons', api_addons.list)
-        self.webapp.router.add_post('/addons/reload', api_addons.reload)
-        self.webapp.router.add_get('/addons/{addon}/info', api_addons.info)
-        self.webapp.router.add_post(
-            '/addons/{addon}/install', api_addons.install)
-        self.webapp.router.add_post(
-            '/addons/{addon}/uninstall', api_addons.uninstall)
-        self.webapp.router.add_post('/addons/{addon}/start', api_addons.start)
-        self.webapp.router.add_post('/addons/{addon}/stop', api_addons.stop)
-        self.webapp.router.add_post(
-            '/addons/{addon}/restart', api_addons.restart)
-        self.webapp.router.add_post(
-            '/addons/{addon}/update', api_addons.update)
-        self.webapp.router.add_post(
-            '/addons/{addon}/options', api_addons.options)
-        self.webapp.router.add_post(
-            '/addons/{addon}/rebuild', api_addons.rebuild)
-        self.webapp.router.add_get('/addons/{addon}/logs', api_addons.logs)
-        self.webapp.router.add_get('/addons/{addon}/icon', api_addons.icon)
-        self.webapp.router.add_get('/addons/{addon}/logo', api_addons.logo)
-        self.webapp.router.add_get(
-            '/addons/{addon}/changelog', api_addons.changelog)
-        self.webapp.router.add_post('/addons/{addon}/stdin', api_addons.stdin)
-        self.webapp.router.add_get('/addons/{addon}/stats', api_addons.stats)
+        self.webapp.add_routes([
+            web.get('/addons', api_addons.list),
+            web.post('/addons/reload', api_addons.reload),
+            web.get('/addons/{addon}/info', api_addons.info),
+            web.post('/addons/{addon}/install', api_addons.install),
+            web.post('/addons/{addon}/uninstall', api_addons.uninstall),
+            web.post('/addons/{addon}/start', api_addons.start),
+            web.post('/addons/{addon}/stop', api_addons.stop),
+            web.post('/addons/{addon}/restart', api_addons.restart),
+            web.post('/addons/{addon}/update', api_addons.update),
+            web.post('/addons/{addon}/options', api_addons.options),
+            web.post('/addons/{addon}/rebuild', api_addons.rebuild),
+            web.get('/addons/{addon}/logs', api_addons.logs),
+            web.get('/addons/{addon}/icon', api_addons.icon),
+            web.get('/addons/{addon}/logo', api_addons.logo),
+            web.get('/addons/{addon}/changelog', api_addons.changelog),
+            web.post('/addons/{addon}/stdin', api_addons.stdin),
+            web.get('/addons/{addon}/stats', api_addons.stats),
+        ])
 
     def _register_snapshots(self):
         """Register snapshots function."""
         api_snapshots = APISnapshots()
         api_snapshots.coresys = self.coresys
 
-        self.webapp.router.add_get('/snapshots', api_snapshots.list)
-        self.webapp.router.add_post('/snapshots/reload', api_snapshots.reload)
-
-        self.webapp.router.add_post(
-            '/snapshots/new/full', api_snapshots.snapshot_full)
-        self.webapp.router.add_post(
-            '/snapshots/new/partial', api_snapshots.snapshot_partial)
-        self.webapp.router.add_post(
-            '/snapshots/new/upload', api_snapshots.upload)
-
-        self.webapp.router.add_get(
-            '/snapshots/{snapshot}/info', api_snapshots.info)
-        self.webapp.router.add_post(
-            '/snapshots/{snapshot}/remove', api_snapshots.remove)
-        self.webapp.router.add_post(
-            '/snapshots/{snapshot}/restore/full', api_snapshots.restore_full)
-        self.webapp.router.add_post(
-            '/snapshots/{snapshot}/restore/partial',
-            api_snapshots.restore_partial)
-        self.webapp.router.add_get(
-            '/snapshots/{snapshot}/download',
-            api_snapshots.download)
+        self.webapp.add_routes([
+            web.get('/snapshots', api_snapshots.list),
+            web.post('/snapshots/reload', api_snapshots.reload),
+            web.post('/snapshots/new/full', api_snapshots.snapshot_full),
+            web.post('/snapshots/new/partial', api_snapshots.snapshot_partial),
+            web.post('/snapshots/new/upload', api_snapshots.upload),
+            web.get('/snapshots/{snapshot}/info', api_snapshots.info),
+            web.post('/snapshots/{snapshot}/remove', api_snapshots.remove),
+            web.post('/snapshots/{snapshot}/restore/full',
+                     api_snapshots.restore_full),
+            web.post('/snapshots/{snapshot}/restore/partial',
+                     api_snapshots.restore_partial),
+            web.get('/snapshots/{snapshot}/download', api_snapshots.download),
+        ])
 
     def _register_services(self):
         api_services = APIServices()
         api_services.coresys = self.coresys
 
-        self.webapp.router.add_get('/services', api_services.list)
-
-        self.webapp.router.add_get(
-            '/services/{service}', api_services.get_service)
-        self.webapp.router.add_post(
-            '/services/{service}', api_services.set_service)
-        self.webapp.router.add_delete(
-            '/services/{service}', api_services.del_service)
+        self.webapp.add_routes([
+            web.get('/services', api_services.list),
+            web.get('/services/{service}', api_services.get_service),
+            web.post('/services/{service}', api_services.set_service),
+            web.delete('/services/{service}', api_services.del_service),
+        ])
 
     def _register_discovery(self):
         api_discovery = APIDiscovery()
         api_discovery.coresys = self.coresys
 
-        self.webapp.router.add_get(
-            '/services/discovery', api_discovery.list)
-        self.webapp.router.add_get(
-            '/services/discovery/{uuid}', api_discovery.get_discovery)
-        self.webapp.router.add_delete(
-            '/services/discovery/{uuid}', api_discovery.del_discovery)
-        self.webapp.router.add_post(
-            '/services/discovery', api_discovery.set_discovery)
+        self.webapp.add_routes([
+            web.get('/services/discovery', api_discovery.list),
+            web.get('/services/discovery/{uuid}', api_discovery.get_discovery),
+            web.delete('/services/discovery/{uuid}',
+                       api_discovery.del_discovery),
+            web.post('/services/discovery', api_discovery.set_discovery),
+        ])
 
     def _register_panel(self):
         """Register panel for homeassistant."""
-        def create_panel_response(build_type):
+        def create_response(build_type):
             """Create a function to generate a response."""
             path = Path(__file__).parent.joinpath(
                 f"panel/{build_type}.html")
             return lambda request: web.FileResponse(path)
 
         # This route is for backwards compatibility with HA < 0.58
-        self.webapp.router.add_get(
-            '/panel', create_panel_response('hassio-main-es5'))
+        self.webapp.add_routes([
+            web.get('/panel', create_response('hassio-main-es5'))])
 
         # This route is for backwards compatibility with HA 0.58 - 0.61
-        self.webapp.router.add_get(
-            '/panel_es5', create_panel_response('hassio-main-es5'))
-        self.webapp.router.add_get(
-            '/panel_latest', create_panel_response('hassio-main-latest'))
+        self.webapp.add_routes([
+            web.get('/panel_es5', create_response('hassio-main-es5')),
+            web.get('/panel_latest', create_response('hassio-main-latest')),
+        ])
 
         # This route is for HA > 0.61
-        self.webapp.router.add_get(
-            '/app-es5/index.html', create_panel_response('index'))
-        self.webapp.router.add_get(
-            '/app-es5/hassio-app.html', create_panel_response('hassio-app'))
+        self.webapp.add_routes([
+            web.get('/app-es5/index.html', create_response('index')),
+            web.get('/app-es5/hassio-app.html', create_response('hassio-app')),
+        ])
 
     async def start(self):
         """Run rest api webserver."""
