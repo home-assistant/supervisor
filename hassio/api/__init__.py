@@ -80,10 +80,10 @@ class RestAPI(CoreSysAttributes):
             web.get('/supervisor/ping', api_supervisor.ping),
             web.get('/supervisor/info', api_supervisor.info),
             web.get('/supervisor/stats', api_supervisor.stats),
+            web.get('/supervisor/logs', api_supervisor.logs),
             web.post('/supervisor/update', api_supervisor.update),
             web.post('/supervisor/reload', api_supervisor.reload),
             web.post('/supervisor/options', api_supervisor.options),
-
         ])
 
     def _register_homeassistant(self):
