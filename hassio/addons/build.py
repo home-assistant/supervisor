@@ -55,8 +55,8 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
                 'io.hass.version': version,
                 'io.hass.arch': self._arch,
                 'io.hass.type': META_ADDON,
-                'io.hass.name': self.addon.name,
-                'io.hass.description': self.addon.description,
+                'io.hass.name': self._fix_label('name'),
+                'io.hass.description': self._fix_label('description'),
             },
             'buildargs': {
                 'BUILD_FROM': self.base_image,
@@ -70,3 +70,8 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
             args['labels']['io.hass.url'] = self.addon.url
 
         return args
+
+    def _fix_label(self, label_name):
+        """Remove characters they are not supported."""
+        label = getattr(self.addon, label_name, "")
+        return label.replace("'", "")
