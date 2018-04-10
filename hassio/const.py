@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '0.99'
+HASSIO_VERSION = '0.100'
 
 URL_HASSIO_VERSION = ('https://raw.githubusercontent.com/home-assistant/'
                       'hassio/{}/version.json')
@@ -159,6 +159,8 @@ ATTR_DISCOVERY = 'discovery'
 ATTR_PROTECTED = 'protected'
 ATTR_CRYPTO = 'crypto'
 ATTR_BRANCH = 'branch'
+ATTR_SECCOMP = 'seccomp'
+ATTR_APPARMOR = 'apparmor'
 
 SERVICE_MQTT = 'mqtt'
 
@@ -202,3 +204,7 @@ SNAPSHOT_FULL = 'full'
 SNAPSHOT_PARTIAL = 'partial'
 
 CRYPTO_AES128 = 'aes128'
+
+SECURITY_PROFILE = 'profile'
+SECURITY_DEFAULT = 'default'
+SECURITY_DISABLE = 'disable'

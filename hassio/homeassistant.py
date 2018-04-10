@@ -216,17 +216,19 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def _start(self):
         """Start HomeAssistant docker & wait."""
-        if await self.instance.run():
-            await self._block_till_run()
-
-    @process_lock
-    async def start(self):
-        """Run HomeAssistant docker."""
         if not await self.instance.run():
             return False
-
         return await self._block_till_run()
 
+    @process_lock
+    def start(self):
+        """Run HomeAssistant docker.
+
+        Return a coroutine.
+        """
+        return self._start()
+
+    @process_lock
     def stop(self):
         """Stop HomeAssistant docker.
 
@@ -237,10 +239,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @process_lock
     async def restart(self):
         """Restart HomeAssistant docker."""
-        if not await self.instance.restart():
-            return False
-
-        return await self._block_till_run()
+        await self.instance.stop()
+        return await self._start()
 
     def logs(self):
         """Get HomeAssistant docker logs.

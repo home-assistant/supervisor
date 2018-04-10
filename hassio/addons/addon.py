@@ -23,7 +23,9 @@ from ..const import (
     ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
-    ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES)
+    ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
+    ATTR_SECCOMP, ATTR_APPARMOR, SECURITY_PROFILE, SECURITY_DISABLE,
+    SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
@@ -317,6 +319,24 @@ class Addon(CoreSysAttributes):
         return self._mesh.get(ATTR_PRIVILEGED)
 
     @property
+    def seccomp(self):
+        """Return True if seccomp is enabled."""
+        if not self._mesh.get(ATTR_SECCOMP):
+            return SECURITY_DISABLE
+        elif self.path_seccomp.exists():
+            return SECURITY_PROFILE
+        return SECURITY_DEFAULT
+
+    @property
+    def apparmor(self):
+        """Return True if seccomp is enabled."""
+        if not self._mesh.get(ATTR_APPARMOR):
+            return SECURITY_DISABLE
+        elif self.path_apparmor.exists():
+            return SECURITY_PROFILE
+        return SECURITY_DEFAULT
+
+    @property
     def legacy(self):
         """Return if the add-on don't support hass labels."""
         return self._mesh.get(ATTR_LEGACY)
@@ -473,6 +493,16 @@ class Addon(CoreSysAttributes):
     def path_changelog(self):
         """Return path to addon changelog."""
         return Path(self.path_location, 'CHANGELOG.md')
+
+    @property
+    def path_seccomp(self):
+        """Return path to custom seccomp profile."""
+        return Path(self.path_location, 'seccomp.json')
+
+    @property
+    def path_apparmor(self):
+        """Return path to custom AppArmor profile."""
+        return Path(self.path_location, 'apparmor')
 
     def save_data(self):
         """Save data of addon."""

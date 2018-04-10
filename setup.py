@@ -40,9 +40,9 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'async_timeout==2.0.0',
-        'aiohttp==3.0.9',
-        'docker==3.1.1',
+        'async_timeout==2.0.1',
+        'aiohttp==3.1.2',
+        'docker==3.2.0',
         'colorlog==3.1.2',
         'voluptuous==0.11.1',
         'gitpython==2.1.8',
