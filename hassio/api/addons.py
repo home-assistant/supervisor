@@ -106,6 +106,7 @@ class APIAddons(CoreSysAttributes):
 
         return {
             ATTR_NAME: addon.name,
+            ATTR_SLUG: addon.slug,
             ATTR_DESCRIPTON: addon.description,
             ATTR_LONG_DESCRIPTION: addon.long_description,
             ATTR_VERSION: addon.version_installed,
