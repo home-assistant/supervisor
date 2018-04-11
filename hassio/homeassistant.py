@@ -46,6 +46,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         await self.install_landingpage()
 
     @property
+    def machine(self):
+        """Return System Machines."""
+        return self._docker.machine
+
+    @property
     def api_ip(self):
         """Return IP of HomeAssistant instance."""
         return self._docker.network.gateway

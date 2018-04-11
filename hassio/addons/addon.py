@@ -1,4 +1,5 @@
 """Init file for HassIO addons."""
+from contextlib import suppress
 from copy import deepcopy
 import logging
 import json
@@ -372,15 +373,14 @@ class Addon(CoreSysAttributes):
         if not self.with_audio:
             return None
 
-        setting = self._config.audio_output
         if self.is_installed and \
                 ATTR_AUDIO_OUTPUT in self._data.user[self._id]:
-            setting = self._data.user[self._id][ATTR_AUDIO_OUTPUT]
-        return setting
+            return self._data.user[self._id][ATTR_AUDIO_OUTPUT]
+        return self._audio.default.output
 
     @audio_output.setter
     def audio_output(self, value):
-        """Set/remove custom audio output settings."""
+        """Set/reset audio output settings."""
         if value is None:
             self._data.user[self._id].pop(ATTR_AUDIO_OUTPUT, None)
         else:
@@ -392,14 +392,13 @@ class Addon(CoreSysAttributes):
         if not self.with_audio:
             return None
 
-        setting = self._config.audio_input
         if self.is_installed and ATTR_AUDIO_INPUT in self._data.user[self._id]:
-            setting = self._data.user[self._id][ATTR_AUDIO_INPUT]
-        return setting
+            return self._data.user[self._id][ATTR_AUDIO_INPUT]
+        return self._audio.default.input
 
     @audio_input.setter
     def audio_input(self, value):
-        """Set/remove custom audio input settings."""
+        """Set/reset audio input settings."""
         if value is None:
             self._data.user[self._id].pop(ATTR_AUDIO_INPUT, None)
         else:
@@ -504,6 +503,16 @@ class Addon(CoreSysAttributes):
         """Return path to custom AppArmor profile."""
         return Path(self.path_location, 'apparmor')
 
+    @property
+    def path_asound(self):
+        """Return path to asound config."""
+        return Path(self._config.path_tmp, f"{self.slug}_asound")
+
+    @property
+    def path_extern_asound(self):
+        """Return path to asound config for docker."""
+        return Path(self._config.path_extern_tmp, f"{self.slug}_asound")
+
     def save_data(self):
         """Save data of addon."""
         self._addons.data.save_data()
@@ -525,6 +534,20 @@ class Addon(CoreSysAttributes):
             return True
 
         return False
+
+    def write_asound(self):
+        """Write asound config to file and return True on success."""
+        asound_config = self._audio.asound(
+            alsa_input=self.audio_input, alsa_output=self.audio_output)
+
+        try:
+            with self.path_asound.open('w') as config_file:
+                config_file.write(asound_config)
+        except OSError as err:
+            _LOGGER.error("Addon %s can't write asound: %s", self._id, err)
+            return False
+
+        return True
 
     @property
     def schema(self):
@@ -613,18 +636,24 @@ class Addon(CoreSysAttributes):
     @check_installed
     async def start(self):
         """Set options and start addon."""
+        # Options
         if not self.write_options():
+            return False
+
+        # Sound
+        if self.with_audio and not self.write_asound():
             return False
 
         return await self.instance.run()
 
     @check_installed
-    def stop(self):
-        """Stop addon.
-
-        Return a coroutine.
-        """
-        return self.instance.stop()
+    async def stop(self):
+        """Stop addon."""
+        try:
+            return self.instance.stop()
+        finally:
+            with suppress(OSError):
+                self.path_asound.unlink()
 
     @check_installed
     async def update(self):

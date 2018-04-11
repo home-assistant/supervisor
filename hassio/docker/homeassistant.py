@@ -4,7 +4,7 @@ import logging
 import docker
 
 from .interface import DockerInterface
-from ..const import ENV_TOKEN, ENV_TIME
+from ..const import ENV_TOKEN, ENV_TIME, LABEL_MACHINE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,6 +13,13 @@ HASS_DOCKER_NAME = 'homeassistant'
 
 class DockerHomeAssistant(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
+
+    @property
+    def machine(self):
+        """Return machine of Home-Assistant docker image."""
+        if self._meta and LABEL_MACHINE in self._meta['Config']['Labels']:
+            return self._meta['Config']['Labels'][LABEL_MACHINE]
+        return None
 
     @property
     def image(self):

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from colorlog import ColoredFormatter
 
+from .audio import AlsaAudio
 from .addons import AddonManager
 from .api import RestAPI
 from .const import SOCKET_DOCKER
@@ -28,6 +29,7 @@ def initialize_coresys(loop):
     # Initialize core objects
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
+    coresys.audio = AlsaAudio(coresys)
     coresys.supervisor = Supervisor(coresys)
     coresys.homeassistant = HomeAssistant(coresys)
     coresys.addons = AddonManager(coresys)
