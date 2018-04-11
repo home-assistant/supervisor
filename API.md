@@ -410,6 +410,7 @@ Get all available addons.
 ```json
 {
     "name": "xy bla",
+    "slug": "xdssd_xybla",
     "description": "description",
     "long_description": "null|markdown",
     "auto_update": "bool",
