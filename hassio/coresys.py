@@ -42,12 +42,20 @@ class CoreSys(object):
         self._snapshots = None
         self._tasks = None
         self._services = None
+        self._audio = None
 
     @property
     def arch(self):
         """Return running arch of hass.io system."""
         if self._supervisor:
             return self._supervisor.arch
+        return None
+
+    @property
+    def machine(self):
+        """Return running machine type of hass.io system."""
+        if self._homeassistant:
+            return self._homeassistant.machine
         return None
 
     @property
@@ -195,6 +203,18 @@ class CoreSys(object):
         if self._services:
             raise RuntimeError("Services already set!")
         self._services = value
+
+    @property
+    def audio(self):
+        """Return ALSA Audio object."""
+        return self._audio
+
+    @audio.setter
+    def audio(self, value):
+        """Set a ALSA Audio object."""
+        if self._audio:
+            raise RuntimeError("Audio already set!")
+        self._audio = value
 
 
 class CoreSysAttributes(object):

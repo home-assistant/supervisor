@@ -1,0 +1,18 @@
+{
+    "raspberrypi3": {
+        "bcm2835 - bcm2835 ALSA": {
+            "0,0": "Jack",
+            "0,1": "HDMI"
+        },
+        "output": "0,0",
+        "input": "1,0"
+    },
+    "raspberrypi2": {
+        "output": "0,0",
+        "input": "1,0"
+    },
+    "raspberrypi": {
+        "output": "0,0",
+        "input": "1,0"
+    }
+}
