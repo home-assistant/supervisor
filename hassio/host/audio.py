@@ -84,14 +84,30 @@ class AlsaAudio(CoreSysAttributes):
     def default(self):
         """Generate ALSA default setting."""
         if ATTR_DEFAULT in self._data:
-            return self._data[ATTR_DEFAULT]
+            default = self._data[ATTR_DEFAULT]
+        else:
+            default = None
 
-        database = self._audio_database()
-        alsa_input = database.get(self._machine, {}).get(ATTR_INPUT, "0,0")
-        alsa_output = database.get(self._machine, {}).get(ATTR_OUTPUT, "0,0")
+        # Init defaults
+        if default is None:
+            database = self._audio_database()
+            alsa_input = database.get(self._machine, {}).get(ATTR_INPUT)
+            alsa_output = database.get(self._machine, {}).get(ATTR_OUTPUT)
 
-        self._data[ATTR_DEFAULT] = DefaultConfig(alsa_input, alsa_output)
-        return self._data[ATTR_DEFAULT]
+            default = self._data[ATTR_DEFAULT] = \
+                DefaultConfig(alsa_input, alsa_output)
+
+        # Search exists/new output
+        if default.output is None and self.output_devices:
+            default.output = next(iter(self.output_devices))
+            _LOGGER.info("Detect output device %s", default.output)
+
+        # Search exists/new input
+        if default.input is None and self.input_devices:
+            default.input = next(iter(self.input_devices))
+            _LOGGER.info("Detect input device %s", default.input)
+
+        return default
 
     def asound(self, alsa_input=None, alsa_output=None):
         """Generate a asound data."""

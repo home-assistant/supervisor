@@ -236,15 +236,6 @@ return:
 }
 ```
 
-- POST `/host/options`
-
-```json
-{
-    "audio_input": "0,0",
-    "audio_output": "0,0"
-}
-```
-
 - POST `/host/update`
 
 Optional:
