@@ -7,6 +7,7 @@ from aiohttp import web
 from .addons import APIAddons
 from .discovery import APIDiscovery
 from .homeassistant import APIHomeAssistant
+from .hardware import APIHardware
 from .host import APIHost
 from .network import APINetwork
 from .proxy import APIProxy
@@ -37,6 +38,7 @@ class RestAPI(CoreSysAttributes):
         """Register REST API Calls."""
         self._register_supervisor()
         self._register_host()
+        self._register_hardware()
         self._register_homeassistant()
         self._register_proxy()
         self._register_panel()
@@ -53,7 +55,6 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes([
             web.get('/host/info', api_host.info),
-            web.get('/host/hardware', api_host.hardware),
             web.post('/host/reboot', api_host.reboot),
             web.post('/host/shutdown', api_host.shutdown),
             web.post('/host/update', api_host.update),
@@ -69,6 +70,16 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes([
             web.get('/network/info', api_net.info),
             web.post('/network/options', api_net.options),
+        ])
+
+    def _register_hardware(self):
+        """Register hardware function."""
+        api_hardware = APIHardware()
+        api_hardware.coresys = self.coresys
+
+        self.webapp.add_routes([
+            web.get('/network/info', api_hardware.info),
+            web.get('/network/audio', api_hardware.audio),
         ])
 
     def _register_supervisor(self):
