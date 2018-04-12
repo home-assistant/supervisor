@@ -52,7 +52,7 @@ class AlsaAudio(CoreSysAttributes):
 
         # Process devices
         for dev_id, dev_data in self._hardware.audio_devices.items():
-            for chan_id, chan_type in dev_data[ATTR_DEVICES]:
+            for chan_id, chan_type in dev_data[ATTR_DEVICES].items():
                 alsa_id = f"{dev_id},{chan_id}"
                 if chan_type.endswith('playback'):
                     key = ATTR_OUTPUT
