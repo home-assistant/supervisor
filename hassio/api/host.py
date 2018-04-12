@@ -16,6 +16,7 @@ SCHEMA_VERSION = vol.Schema({
     vol.Optional(ATTR_VERSION): vol.Coerce(str),
 })
 
+
 class APIHost(CoreSysAttributes):
     """Handle rest api for host functions."""
 
