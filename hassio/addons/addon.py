@@ -621,6 +621,11 @@ class Addon(CoreSysAttributes):
                 "Remove Home-Assistant addon data folder %s", self.path_data)
             shutil.rmtree(str(self.path_data))
 
+        # Cleanup audio settings
+        if self.path_asound.exists():
+            with suppress(OSError):
+                self.path_asound.unlink()
+
         self._set_uninstall()
         return True
 
@@ -647,13 +652,12 @@ class Addon(CoreSysAttributes):
         return await self.instance.run()
 
     @check_installed
-    async def stop(self):
-        """Stop addon."""
-        try:
-            return self.instance.stop()
-        finally:
-            with suppress(OSError):
-                self.path_asound.unlink()
+    def stop(self):
+        """Stop addon.
+
+        Return a coroutine.
+        """
+        return self.instance.stop()
 
     @check_installed
     async def update(self):

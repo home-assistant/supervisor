@@ -7,7 +7,6 @@ from pathlib import Path
 
 from colorlog import ColoredFormatter
 
-from .audio import AlsaAudio
 from .addons import AddonManager
 from .api import RestAPI
 from .const import SOCKET_DOCKER
@@ -18,6 +17,7 @@ from .snapshots import SnapshotManager
 from .tasks import Tasks
 from .updater import Updater
 from .services import ServiceManager
+from .host.audio import AlsaAudio
 
 _LOGGER = logging.getLogger(__name__)
 

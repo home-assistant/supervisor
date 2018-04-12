@@ -20,7 +20,7 @@ from ..const import (
     ATTR_DISCOVERY, ATTR_SECCOMP, ATTR_APPARMOR,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
 from ..coresys import CoreSysAttributes
-from ..validate import DOCKER_PORTS
+from ..validate import DOCKER_PORTS, ALSA_DEVICE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +33,8 @@ SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_NETWORK): vol.Any(None, DOCKER_PORTS),
     vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
+    vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
+    vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
 })
 
 
