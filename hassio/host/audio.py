@@ -73,6 +73,7 @@ class AlsaAudio(CoreSysAttributes):
         json_file = Path(__file__).parent.joinpath('audiodb.json')
 
         try:
+            # pylint: disable=no-member
             with json_file.open('r') as database:
                 return json.loads(database.read())
         except (ValueError, OSError) as err:
@@ -117,6 +118,7 @@ class AlsaAudio(CoreSysAttributes):
         # Read Template
         asound_file = Path(__file__).parent.joinpath('asound.tmpl')
         try:
+            # pylint: disable=no-member
             with asound_file.open('r') as asound:
                 asound_data = asound.read()
         except OSError as err:
