@@ -58,7 +58,6 @@ class RestAPI(CoreSysAttributes):
             web.post('/host/reboot', api_host.reboot),
             web.post('/host/shutdown', api_host.shutdown),
             web.post('/host/update', api_host.update),
-            web.post('/host/options', api_host.options),
             web.post('/host/reload', api_host.reload),
         ])
 
