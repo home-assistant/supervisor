@@ -77,8 +77,8 @@ class RestAPI(CoreSysAttributes):
         api_hardware.coresys = self.coresys
 
         self.webapp.add_routes([
-            web.get('/network/info', api_hardware.info),
-            web.get('/network/audio', api_hardware.audio),
+            web.get('/hardware/info', api_hardware.info),
+            web.get('/hardware/audio', api_hardware.audio),
         ])
 
     def _register_supervisor(self):
