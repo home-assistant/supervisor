@@ -42,7 +42,7 @@ class CoreSys(object):
         self._snapshots = None
         self._tasks = None
         self._services = None
-        self._audio = None
+        self._alsa = None
 
     @property
     def arch(self):
@@ -205,16 +205,16 @@ class CoreSys(object):
         self._services = value
 
     @property
-    def audio(self):
+    def alsa(self):
         """Return ALSA Audio object."""
-        return self._audio
+        return self._alsa
 
-    @audio.setter
-    def audio(self, value):
+    @alsa.setter
+    def alsa(self, value):
         """Set a ALSA Audio object."""
-        if self._audio:
-            raise RuntimeError("Audio already set!")
-        self._audio = value
+        if self._alsa:
+            raise RuntimeError("ALSA already set!")
+        self._alsa = value
 
 
 class CoreSysAttributes(object):
