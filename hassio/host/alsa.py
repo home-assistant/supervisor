@@ -29,13 +29,13 @@ class AlsaAudio(CoreSysAttributes):
     @property
     def input_devices(self):
         """Return list of ALSA input devices."""
-        #self._update_device()
+        self._update_device()
         return self._data[ATTR_INPUT]
 
     @property
     def output_devices(self):
         """Return list of ALSA output devices."""
-        #self._update_device()
+        self._update_device()
         return self._data[ATTR_OUTPUT]
 
     def _update_device(self):
@@ -67,8 +67,7 @@ class AlsaAudio(CoreSysAttributes):
 
         self._cache = current_id
 
-    @staticmethod
-    def _audio_database():
+    def _audio_database(self):
         """Read local json audio data into dict."""
         json_file = Path(__file__).parent.joinpath('audiodb.json')
 
