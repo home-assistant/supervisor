@@ -56,6 +56,9 @@ class AlsaAudio(CoreSysAttributes):
         for dev_id, dev_data in self._hardware.audio_devices.items():
             for chan_id, chan_type in dev_data[ATTR_DEVICES].items():
                 alsa_id = f"{dev_id},{chan_id}"
+                dev_name = dev_data[ATTR_NAME]
+
+                # Lookup type
                 if chan_type.endswith('playback'):
                     key = ATTR_OUTPUT
                 elif chan_type.endswith('capture'):
@@ -64,8 +67,10 @@ class AlsaAudio(CoreSysAttributes):
                     _LOGGER.warning("Unknown channel type: %s", chan_type)
                     continue
 
-                self._data[key][alsa_id] = database.get(self._machine, {}).get(
-                    alsa_id, f"{dev_data[ATTR_NAME]}: {chan_id}")
+                # Use name from DB or a generic name
+                self._data[key][alsa_id] = database.get(
+                    self._machine, {}).get(
+                        dev_name, {}).get(alsa_id, f"{dev_name}: {chan_id}")
 
         self._cache = current_id
 
