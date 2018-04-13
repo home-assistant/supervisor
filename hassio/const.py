@@ -162,8 +162,6 @@ ATTR_CRYPTO = 'crypto'
 ATTR_BRANCH = 'branch'
 ATTR_SECCOMP = 'seccomp'
 ATTR_APPARMOR = 'apparmor'
-ATTR_CACHE = 'cache'
-ATTR_DEFAULT = 'default'
 
 SERVICE_MQTT = 'mqtt'
 

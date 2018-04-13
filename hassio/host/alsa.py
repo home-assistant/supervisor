@@ -5,8 +5,7 @@ import json
 from pathlib import Path
 from string import Template
 
-from ..const import (
-    ATTR_CACHE, ATTR_INPUT, ATTR_OUTPUT, ATTR_DEVICES, ATTR_NAME, ATTR_DEFAULT)
+from ..const import ATTR_INPUT, ATTR_OUTPUT, ATTR_DEVICES, ATTR_NAME
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,21 +20,22 @@ class AlsaAudio(CoreSysAttributes):
         """Initialize Alsa audio system."""
         self.coresys = coresys
         self._data = {
-            ATTR_CACHE: 0,
             ATTR_INPUT: {},
             ATTR_OUTPUT: {},
         }
+        self._cache = 0
+        self._default = None
 
     @property
     def input_devices(self):
         """Return list of ALSA input devices."""
-        self._update_device()
+        #self._update_device()
         return self._data[ATTR_INPUT]
 
     @property
     def output_devices(self):
         """Return list of ALSA output devices."""
-        self._update_device()
+        #self._update_device()
         return self._data[ATTR_OUTPUT]
 
     def _update_device(self):
@@ -43,7 +43,7 @@ class AlsaAudio(CoreSysAttributes):
         current_id = hash(frozenset(self._hardware.audio_devices))
 
         # Need rebuild?
-        if current_id == self._data[ATTR_CACHE]:
+        if current_id == self._cache:
             return
 
         # Init database
@@ -65,7 +65,7 @@ class AlsaAudio(CoreSysAttributes):
                 self._data[key][alsa_id] = database.get(self._machine, {}).get(
                     alsa_id, f"{dev_data[ATTR_NAME]}: {chan_id}")
 
-        self._data[ATTR_CACHE] = current_id
+        self._cache = current_id
 
     @staticmethod
     def _audio_database():
@@ -84,31 +84,25 @@ class AlsaAudio(CoreSysAttributes):
     @property
     def default(self):
         """Generate ALSA default setting."""
-        if ATTR_DEFAULT in self._data:
-            default = self._data[ATTR_DEFAULT]
-        else:
-            default = None
-
         # Init defaults
-        if default is None:
+        if self._default is None:
             database = self._audio_database()
             alsa_input = database.get(self._machine, {}).get(ATTR_INPUT)
             alsa_output = database.get(self._machine, {}).get(ATTR_OUTPUT)
 
-            default = self._data[ATTR_DEFAULT] = \
-                DefaultConfig(alsa_input, alsa_output)
+            self._default = DefaultConfig(alsa_input, alsa_output)
 
         # Search exists/new output
-        if default.output is None and self.output_devices:
-            default.output = next(iter(self.output_devices))
-            _LOGGER.info("Detect output device %s", default.output)
+        if self._default.output is None and self.output_devices:
+            self._default.output = next(iter(self.output_devices))
+            _LOGGER.info("Detect output device %s", self._default.output)
 
         # Search exists/new input
-        if default.input is None and self.input_devices:
-            default.input = next(iter(self.input_devices))
-            _LOGGER.info("Detect input device %s", default.input)
+        if self._default.input is None and self.input_devices:
+            self._default.input = next(iter(self.input_devices))
+            _LOGGER.info("Detect input device %s", self._default.input)
 
-        return default
+        return self._default
 
     def asound(self, alsa_input=None, alsa_output=None):
         """Generate a asound data."""
