@@ -62,8 +62,11 @@ class AlsaAudio(CoreSysAttributes):
                     _LOGGER.warning("Unknown channel type: %s", chan_type)
                     continue
 
-                #self._data[key][alsa_id] = database.get(self._machine, {}).get(
-                #    alsa_id, f"{dev_data[ATTR_NAME]}: {chan_id}")
+                try:
+                    self._data[key][alsa_id] = database.get(self._machine, {}).get(
+                        alsa_id, f"{dev_data[ATTR_NAME]}: {chan_id}")
+                except:
+                    _LOGGER.exception("hmm")
 
         self._cache = current_id
 
