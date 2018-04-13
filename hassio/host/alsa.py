@@ -48,6 +48,10 @@ class AlsaAudio(CoreSysAttributes):
         if current_id == self._cache:
             return
 
+        # Clean old stuff
+        self._data[ATTR_INPUT].clear()
+        self._data[ATTR_OUTPUT].clear()
+
         # Init database
         _LOGGER.info("Update ALSA device list")
         database = self._audio_database()
