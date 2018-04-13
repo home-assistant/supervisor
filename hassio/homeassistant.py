@@ -48,7 +48,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def machine(self):
         """Return System Machines."""
-        return self._docker.machine
+        return self.instance.machine
 
     @property
     def api_ip(self):
