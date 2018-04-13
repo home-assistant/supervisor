@@ -236,15 +236,6 @@ return:
 }
 ```
 
-- POST `/host/options`
-
-```json
-{
-    "audio_input": "0,0",
-    "audio_output": "0,0"
-}
-```
-
 - POST `/host/update`
 
 Optional:
@@ -255,7 +246,11 @@ Optional:
 }
 ```
 
-- GET `/host/hardware`
+- POST `/host/reload`
+
+### Hardware
+
+- GET `/hardware/info`
 ```json
 {
     "serial": ["/dev/xy"],
@@ -274,7 +269,20 @@ Optional:
 }
 ```
 
-- POST `/host/reload`
+- GET `/hardware/audio`
+```json
+{
+    "audio": {
+        "input": {
+            "0,0": "Mic"
+        },
+        "output": {
+            "1,0": "Jack",
+            "1,1": "HDMI"
+        }
+    }
+}
+```
 
 ### Network
 

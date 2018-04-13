@@ -19,7 +19,7 @@ from ..const import (
     ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_SERVICES, ATTR_DISCOVERY,
     ATTR_SECCOMP, ATTR_APPARMOR)
-from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_CHANNEL
+from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -165,8 +165,8 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Optional(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
-    vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_CHANNEL,
-    vol.Optional(ATTR_AUDIO_INPUT): ALSA_CHANNEL,
+    vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
+    vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
 }, extra=vol.REMOVE_EXTRA)
 
 

@@ -201,7 +201,7 @@ class DockerAddon(DockerInterface):
                     'bind': "/share", 'mode': addon_mapping[MAP_SHARE]
                 }})
 
-        # init other hardware mappings
+        # Init other hardware mappings
         if self.addon.with_gpio:
             volumes.update({
                 "/sys/class/gpio": {
@@ -212,11 +212,18 @@ class DockerAddon(DockerInterface):
                 },
             })
 
-        # host dbus system
+        # Host dbus system
         if self.addon.host_dbus:
             volumes.update({
                 "/var/run/dbus": {
                     'bind': "/var/run/dbus", 'mode': 'rw'
+                }})
+
+        # ALSA configuration
+        if self.addon.with_audio:
+            volumes.update({
+                str(self.addon.path_extern_asound): {
+                    'bind': "/etc/asound.conf", 'mode': 'ro'
                 }})
 
         return volumes
