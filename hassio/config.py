@@ -6,7 +6,7 @@ from pathlib import Path, PurePath
 
 from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_LAST_BOOT, ATTR_WAIT_BOOT)
+    ATTR_LAST_BOOT, ATTR_WAIT_BOOT)
 from .utils.dt import parse_datetime
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASSIO_CONFIG
@@ -137,6 +137,11 @@ class CoreConfig(JsonConfig):
         return Path(HASSIO_DATA, TMP_DATA)
 
     @property
+    def path_extern_tmp(self):
+        """Return hass.io temp folder for docker."""
+        return PurePath(self.path_extern_hassio, TMP_DATA)
+
+    @property
     def path_backup(self):
         """Return root backup data folder."""
         return Path(HASSIO_DATA, BACKUP_DATA)
@@ -174,23 +179,3 @@ class CoreConfig(JsonConfig):
             return
 
         self._data[ATTR_ADDONS_CUSTOM_LIST].remove(repo)
-
-    @property
-    def audio_output(self):
-        """Return ALSA audio output card,dev."""
-        return self._data.get(ATTR_AUDIO_OUTPUT)
-
-    @audio_output.setter
-    def audio_output(self, value):
-        """Set ALSA audio output card,dev."""
-        self._data[ATTR_AUDIO_OUTPUT] = value
-
-    @property
-    def audio_input(self):
-        """Return ALSA audio input card,dev."""
-        return self._data.get(ATTR_AUDIO_INPUT)
-
-    @audio_input.setter
-    def audio_input(self, value):
-        """Set ALSA audio input card,dev."""
-        self._data[ATTR_AUDIO_INPUT] = value
