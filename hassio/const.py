@@ -27,6 +27,7 @@ DOCKER_NETWORK_RANGE = ip_network('172.30.33.0/24')
 LABEL_VERSION = 'io.hass.version'
 LABEL_ARCH = 'io.hass.arch'
 LABEL_TYPE = 'io.hass.type'
+LABEL_MACHINE = 'io.hass.machine'
 
 META_ADDON = 'addon'
 META_SUPERVISOR = 'supervisor'

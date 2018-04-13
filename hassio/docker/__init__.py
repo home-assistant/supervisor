@@ -1,8 +1,8 @@
 """Init file for HassIO docker object."""
 from contextlib import suppress
-from collections import namedtuple
 import logging
 
+import attr
 import docker
 
 from .network import DockerNetwork
@@ -10,7 +10,8 @@ from ..const import SOCKET_DOCKER
 
 _LOGGER = logging.getLogger(__name__)
 
-CommandReturn = namedtuple('CommandReturn', ['exit_code', 'output'])
+# pylint: disable=invalid-name
+CommandReturn = attr.make_class('CommandReturn', ['exit_code', 'output'])
 
 
 class DockerAPI(object):

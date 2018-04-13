@@ -1,6 +1,5 @@
 """HomeAssistant control object."""
 import asyncio
-from collections import namedtuple
 import logging
 import os
 import re
@@ -9,6 +8,7 @@ import time
 
 import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
+import attr
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
@@ -24,7 +24,8 @@ _LOGGER = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
-ConfigResult = namedtuple('ConfigResult', ['valid', 'log'])
+# pylint: disable=invalid-name
+ConfigResult = attr.make_class('ConfigResult', ['valid', 'log'])
 
 
 class HomeAssistant(JsonConfig, CoreSysAttributes):
@@ -44,6 +45,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         _LOGGER.info("No HomeAssistant docker %s found.", self.image)
         await self.install_landingpage()
+
+    @property
+    def machine(self):
+        """Return System Machines."""
+        return self.instance.machine
 
     @property
     def api_ip(self):
