@@ -28,7 +28,7 @@ class APIHardware(CoreSysAttributes):
         """Show ALSA audio devices."""
         return {
             ATTR_AUDIO: {
-                ATTR_INPUT: self._audio.input_devices,
-                ATTR_OUTPUT: self._audio.output_devices,
+                ATTR_INPUT: self._alsa.input_devices,
+                ATTR_OUTPUT: self._alsa.output_devices,
             }
         }
