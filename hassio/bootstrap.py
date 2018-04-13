@@ -17,6 +17,7 @@ from .snapshots import SnapshotManager
 from .tasks import Tasks
 from .updater import Updater
 from .services import ServiceManager
+from .host import AlsaAudio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ def initialize_coresys(loop):
     # Initialize core objects
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
+    coresys.alsa = AlsaAudio(coresys)
     coresys.supervisor = Supervisor(coresys)
     coresys.homeassistant = HomeAssistant(coresys)
     coresys.addons = AddonManager(coresys)
