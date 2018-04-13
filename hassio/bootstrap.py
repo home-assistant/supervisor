@@ -29,7 +29,7 @@ def initialize_coresys(loop):
     # Initialize core objects
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
-    coresys.audio = AlsaAudio(coresys)
+    coresys.alsa = AlsaAudio(coresys)
     coresys.supervisor = Supervisor(coresys)
     coresys.homeassistant = HomeAssistant(coresys)
     coresys.addons = AddonManager(coresys)
