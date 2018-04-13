@@ -40,15 +40,15 @@ class AlsaAudio(CoreSysAttributes):
 
     def _update_device(self):
         """Update Internal device DB."""
-        #current_id = hash(frozenset(self._hardware.audio_devices))
+        current_id = hash(frozenset(self._hardware.audio_devices))
 
         # Need rebuild?
-        #if current_id == self._cache:
-        #    return
+        if current_id == self._cache:
+            return
 
         # Init database
         _LOGGER.info("Update ALSA device list")
-        database = self._audio_database()
+        #database = self._audio_database()
 
         # Process devices
         for dev_id, dev_data in self._hardware.audio_devices.items():
@@ -62,8 +62,8 @@ class AlsaAudio(CoreSysAttributes):
                     _LOGGER.warning("Unknown channel type: %s", chan_type)
                     continue
 
-                self._data[key][alsa_id] = database.get(self._machine, {}).get(
-                    alsa_id, f"{dev_data[ATTR_NAME]}: {chan_id}")
+                #self._data[key][alsa_id] = database.get(self._machine, {}).get(
+                #    alsa_id, f"{dev_data[ATTR_NAME]}: {chan_id}")
 
         self._cache = current_id
 
