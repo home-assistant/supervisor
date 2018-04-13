@@ -40,11 +40,11 @@ class AlsaAudio(CoreSysAttributes):
 
     def _update_device(self):
         """Update Internal device DB."""
-        current_id = hash(frozenset(self._hardware.audio_devices))
+        #current_id = hash(frozenset(self._hardware.audio_devices))
 
         # Need rebuild?
-        if current_id == self._cache:
-            return
+        #if current_id == self._cache:
+        #    return
 
         # Init database
         _LOGGER.info("Update ALSA device list")
@@ -67,7 +67,8 @@ class AlsaAudio(CoreSysAttributes):
 
         self._cache = current_id
 
-    def _audio_database(self):
+    @staticmethod
+    def _audio_database():
         """Read local json audio data into dict."""
         json_file = Path(__file__).parent.joinpath('audiodb.json')
 
