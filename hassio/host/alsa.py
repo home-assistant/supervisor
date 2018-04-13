@@ -85,22 +85,25 @@ class AlsaAudio(CoreSysAttributes):
     def default(self):
         """Generate ALSA default setting."""
         # Init defaults
-        if self._default is None:
-            database = self._audio_database()
-            alsa_input = database.get(self._machine, {}).get(ATTR_INPUT)
-            alsa_output = database.get(self._machine, {}).get(ATTR_OUTPUT)
+        try:
+            if self._default is None:
+                database = self._audio_database()
+                alsa_input = database.get(self._machine, {}).get(ATTR_INPUT)
+                alsa_output = database.get(self._machine, {}).get(ATTR_OUTPUT)
 
-            self._default = DefaultConfig(alsa_input, alsa_output)
+                self._default = DefaultConfig(alsa_input, alsa_output)
 
-        # Search exists/new output
-        if self._default.output is None and self.output_devices:
-            self._default.output = next(iter(self.output_devices))
-            _LOGGER.info("Detect output device %s", self._default.output)
+            # Search exists/new output
+            if self._default.output is None and self.output_devices:
+                self._default.output = next(iter(self.output_devices))
+                _LOGGER.info("Detect output device %s", self._default.output)
 
-        # Search exists/new input
-        if self._default.input is None and self.input_devices:
-            self._default.input = next(iter(self.input_devices))
-            _LOGGER.info("Detect input device %s", self._default.input)
+            # Search exists/new input
+            if self._default.input is None and self.input_devices:
+                self._default.input = next(iter(self.input_devices))
+                _LOGGER.info("Detect input device %s", self._default.input)
+        except:
+            _LOGGER.exception("hmm2")
 
         return self._default
 
