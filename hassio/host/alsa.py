@@ -48,7 +48,7 @@ class AlsaAudio(CoreSysAttributes):
 
         # Init database
         _LOGGER.info("Update ALSA device list")
-        #database = self._audio_database()
+        database = self._audio_database()
 
         # Process devices
         for dev_id, dev_data in self._hardware.audio_devices.items():
