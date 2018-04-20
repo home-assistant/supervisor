@@ -10,7 +10,7 @@ CALL = ("gdbus call --system --dest {bus} --object-path {obj} "
         "--method {obj}.{method} {args}")
 
 
-class DbusCallError(Exception):
+class DbusError(Exception):
     """Dbus call going wrong."""
     pass
 
@@ -23,6 +23,11 @@ class Dbus(object):
         self.loop = loop
         self.bus_name = bus_name
         self.object_path = object_path
+    
+    @staticmethod
+    def _gvariant(raw):
+        """Parse GVariant input to python."""
+        return raw
 
     async def _call_dbus(self, method, *args):
         """Call a dbus method."""
@@ -46,12 +51,12 @@ class Dbus(object):
             data, _ = await proc.communicate()
         except OSError as err:
             _LOGGER.error("Can't send dbus command %s: %s", method, err)
-            raise DbusCallError() from None
+            raise DbusError() from None
 
         # Success?
         if proc.returncode != 0:
             _LOGGER.info("Error %s.%s: %s", self.object_path, method, data)
-            raise DbusCallError()
+            raise DbusError()
 
         # Parse and return data
         return self._gvariant(data)
