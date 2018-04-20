@@ -30,7 +30,8 @@ class Dbus(object):
             bus=self.bus_name,
             obj=self.object_path,
             method=method,
-            args=" ".join(args)))
+            args=" ".join(map(str, args))
+        ))
 
         # Run command
         try:
