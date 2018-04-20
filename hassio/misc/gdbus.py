@@ -63,7 +63,9 @@ class Dbus(object):
         try:
             data = await self._send(command)
         except DBusError:
-            _LOGGER.w
+            _LOGGER.error(
+                "Dbus fails with %s on %s", method, self.object_path)
+            raise
 
         # Parse and return data
         return self._gvariant(data)
