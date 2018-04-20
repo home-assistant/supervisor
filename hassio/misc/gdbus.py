@@ -1,4 +1,4 @@
-"""Dbus implementation with glib."""
+"""DBus implementation with glib."""
 import asyncio
 import logging
 import shlex
@@ -12,57 +12,59 @@ CALL = ("gdbus call --system --dest {bus} --object-path {obj} "
         "--method {obj}.{method} {args}")
 
 
-class DbusError(Exception):
-    """Dbus generic error."""
-    pass
-
-class DbusFatalError(DbusError):
-    """Dbus call going wrong."""
-    pass
-
-class DbusReturnError(DbusError):
-    """Dbus return error."""
+class DBusError(Exception):
+    """DBus generic error."""
     pass
 
 
-class Dbus(object):
-    """Dbus handler."""
+class DBusFatalError(DBusError):
+    """DBus call going wrong."""
+    pass
+
+
+class DBusReturnError(DBusError):
+    """DBus return error."""
+    pass
+
+
+class DBus(object):
+    """DBus handler."""
 
     def __init__(self, bus_name, object_path):
         """Initialize dbus object."""
         self.bus_name = bus_name
         self.object_path = object_path
         self.methods = []
-    
+
     @staticmethod
     async def connect(bus_name, object_path):
         """Read object data."""
-        self = Dbus(bus_name, object_path)
-        self._init_proxy()
+        self = DBus(bus_name, object_path)
+        self._init_proxy()  # pylint: disable=protected-access
 
         _LOGGER.info("Connect to dbus: %s", bus_name)
         return self
-        
+
     async def _init_proxy(self):
         """Read object data."""
         command = shlex.split(INTROSPECT.format(
             bus=self.bus_name,
-            obj=self.object_path,
+            obj=self.object_path
         ))
-        
+
         # Ask data
         try:
             data = await self._send(command)
         except DBusError:
             _LOGGER.error(
-                "Dbus fails connect to %s", self.object_path)
+                "DBus fails connect to %s", self.object_path)
             raise
-        
+
         # Parse XML
         xml = ET.fromstring(data)
-        for method in root.findall(".//method"):
-            self.methods.append(method.get('name')
-        
+        for method in xml.findall(".//method"):
+            self.methods.append(method.get('name'))
+
     @staticmethod
     def _gvariant(raw):
         """Parse GVariant input to python."""
@@ -82,7 +84,7 @@ class Dbus(object):
             data = await self._send(command)
         except DBusError:
             _LOGGER.error(
-                "Dbus fails with %s on %s", method, self.object_path)
+                "DBus fails with %s on %s", method, self.object_path)
             raise
 
         # Parse and return data
@@ -101,11 +103,12 @@ class Dbus(object):
 
             data, _ = await proc.communicate()
         except OSError as err:
-            raise DbusFatalError() from None
+            _LOGGER.error("DBus fatal error: %s", err)
+            raise DBusFatalError() from None
 
         # Success?
         if proc.returncode != 0:
-            raise DbusReturnError()
+            raise DBusReturnError()
 
         # End
         return data.decode()
