@@ -18,11 +18,18 @@ class DbusError(Exception):
 class Dbus(object):
     """Dbus handler."""
 
-    def __init__(self, loop, bus_name, object_path):
+    def __init__(self, bus_name, object_path):
         """Initialize dbus object."""
-        self.loop = loop
         self.bus_name = bus_name
         self.object_path = object_path
+        self.methods = []
+    
+    @staticmethod
+    async def connect(bus_name, object_path):
+        """Read object data."""
+        
+    async def _init_proxy(self):
+        """Read object data."""
     
     @staticmethod
     def _gvariant(raw):
@@ -44,8 +51,7 @@ class Dbus(object):
                 *command,
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-                loop=self.loop
+                stderr=asyncio.subprocess.DEVNULL
             )
 
             data, _ = await proc.communicate()
@@ -63,6 +69,9 @@ class Dbus(object):
 
     def __getattr__(self, name):
         """Mapping to dbus method."""
+        if name not in self.methods:
+            raise AttributeError()
+
         def _method_wrapper(*args):
             """Wrap method.
 
