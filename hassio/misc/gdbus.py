@@ -27,6 +27,11 @@ class Dbus(object):
     @staticmethod
     async def connect(bus_name, object_path):
         """Read object data."""
+        self = Dbus(bus_name, object_path)
+        self._init_proxy()
+
+        _LOGGER.info("Connect to dbus: %s", bus_name)
+        return self
         
     async def _init_proxy(self):
         """Read object data."""
