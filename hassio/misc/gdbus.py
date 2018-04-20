@@ -6,7 +6,8 @@ import xml.etree.ElementTree as ET
 
 _LOGGER = logging.getLogger(__name__)
 
-INTROSPECT = "gdbus introspect --system --dest {bus} --object-path {obj}"
+INTROSPECT = ("gdbus introspect --system --dest {bus} "
+              "--object-path {obj} --xml")
 CALL = ("gdbus call --system --dest {bus} --object-path {obj} "
         "--method {obj}.{method} {args}")
 
@@ -44,7 +45,24 @@ class Dbus(object):
         
     async def _init_proxy(self):
         """Read object data."""
-    
+        command = shlex.split(INTROSPECT.format(
+            bus=self.bus_name,
+            obj=self.object_path,
+        ))
+        
+        # Ask data
+        try:
+            data = await self._send(command)
+        except DBusError:
+            _LOGGER.error(
+                "Dbus fails connect to %s", self.object_path)
+            raise
+        
+        # Parse XML
+        xml = ET.fromstring(data)
+        for method in root.findall(".//method"):
+            self.methods.append(method.get('name')
+        
     @staticmethod
     def _gvariant(raw):
         """Parse GVariant input to python."""
