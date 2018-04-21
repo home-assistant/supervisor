@@ -69,7 +69,7 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Found %d snapshot files", len(tasks))
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     def remove(self, snapshot):
         """Remove a snapshot."""
@@ -229,7 +229,7 @@ class SnapshotManager(CoreSysAttributes):
 
                 if tasks:
                     _LOGGER.info("Restore %s stop tasks", snapshot.slug)
-                    await asyncio.wait(tasks, loop=self._loop)
+                    await asyncio.wait(tasks)
 
                 # Restore folders
                 _LOGGER.info("Restore %s run folders", snapshot.slug)
@@ -253,7 +253,7 @@ class SnapshotManager(CoreSysAttributes):
 
                 if tasks:
                     _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
-                    await asyncio.wait(tasks, loop=self._loop)
+                    await asyncio.wait(tasks)
 
                 # Restore add-ons
                 _LOGGER.info("Restore %s old add-ons", snapshot.slug)

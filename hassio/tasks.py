@@ -70,7 +70,7 @@ class Tasks(CoreSysAttributes):
 
         if tasks:
             _LOGGER.info("Addon auto update process %d tasks", len(tasks))
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     async def _update_supervisor(self):
         """Check and run update of supervisor hassio."""
