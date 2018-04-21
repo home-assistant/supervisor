@@ -28,7 +28,7 @@ class RestAPI(CoreSysAttributes):
         self.coresys = coresys
         self.security = SecurityMiddleware(coresys)
         self.webapp = web.Application(
-            middlewares=[self.security.token_validation], loop=self._loop)
+            middlewares=[self.security.token_validation], loop=coresys.loop)
 
         # service stuff
         self._handler = None
@@ -221,7 +221,7 @@ class RestAPI(CoreSysAttributes):
 
     async def start(self):
         """Run rest api webserver."""
-        self._handler = self.webapp.make_handler(loop=self._loop)
+        self._handler = self.webapp.make_handler()
 
         try:
             self.server = await self._loop.create_server(

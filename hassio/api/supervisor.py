@@ -115,7 +115,7 @@ class APISupervisor(CoreSysAttributes):
             raise RuntimeError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
-            self._supervisor.update(version), loop=self._loop)
+            self._supervisor.update(version))
 
     @api_process
     async def reload(self, request):
@@ -124,7 +124,7 @@ class APISupervisor(CoreSysAttributes):
             self._updater.reload(),
         ]
         results, _ = await asyncio.shield(
-            asyncio.wait(tasks, loop=self._loop), loop=self._loop)
+            asyncio.wait(tasks))
 
         for result in results:
             if result.exception() is not None:

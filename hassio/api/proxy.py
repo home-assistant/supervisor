@@ -38,7 +38,7 @@ class APIProxy(CoreSysAttributes):
             params = request.query or None
 
             # read data
-            with async_timeout.timeout(30, loop=self._loop):
+            with async_timeout.timeout(30):
                 data = await request.read()
 
             if data:
@@ -181,15 +181,15 @@ class APIProxy(CoreSysAttributes):
             while not server.closed and not client.closed:
                 if not client_read:
                     client_read = asyncio.ensure_future(
-                        client.receive_str(), loop=self._loop)
+                        client.receive_str())
                 if not server_read:
                     server_read = asyncio.ensure_future(
-                        server.receive_str(), loop=self._loop)
+                        server.receive_str())
 
                 # wait until data need to be processed
                 await asyncio.wait(
                     [client_read, server_read],
-                    loop=self._loop, return_when=asyncio.FIRST_COMPLETED
+                    return_when=asyncio.FIRST_COMPLETED
                 )
 
                 # server

@@ -273,7 +273,7 @@ class Snapshot(CoreSysAttributes):
         # Run tasks
         tasks = [_addon_save(addon) for addon in addon_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     async def restore_addons(self, addon_list=None):
         """Restore a list add-on from snapshot."""
@@ -303,7 +303,7 @@ class Snapshot(CoreSysAttributes):
         # Run tasks
         tasks = [_addon_restore(addon) for addon in addon_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     async def store_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
@@ -335,7 +335,7 @@ class Snapshot(CoreSysAttributes):
         tasks = [self._loop.run_in_executor(None, _folder_save, folder)
                  for folder in folder_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     async def restore_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
@@ -369,7 +369,7 @@ class Snapshot(CoreSysAttributes):
         tasks = [self._loop.run_in_executor(None, _folder_restore, folder)
                  for folder in folder_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     def store_homeassistant(self):
         """Read all data from homeassistant object."""

@@ -58,4 +58,4 @@ class APIHost(CoreSysAttributes):
             raise RuntimeError(f"Version {version} is already in use")
 
         return await asyncio.shield(
-            self._host_control.update(version=version), loop=self._loop)
+            self._host_control.update(version=version))

@@ -114,4 +114,4 @@ class HassIO(CoreSysAttributes):
             self._dns.stop(),
             self._websession.close(),
             self._websession_ssl.close()
-        ], loop=self._loop)
+        ])

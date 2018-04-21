@@ -75,7 +75,7 @@ class APISnapshots(CoreSysAttributes):
     @api_process
     async def reload(self, request):
         """Reload snapshot list."""
-        await asyncio.shield(self._snapshots.reload(), loop=self._loop)
+        await asyncio.shield(self._snapshots.reload())
         return True
 
     @api_process
@@ -110,7 +110,7 @@ class APISnapshots(CoreSysAttributes):
         """Full-Snapshot a snapshot."""
         body = await api_validate(SCHEMA_SNAPSHOT_FULL, request)
         snapshot = await asyncio.shield(
-            self._snapshots.do_snapshot_full(**body), loop=self._loop)
+            self._snapshots.do_snapshot_full(**body))
 
         if snapshot:
             return {ATTR_SLUG: snapshot.slug}
@@ -121,7 +121,7 @@ class APISnapshots(CoreSysAttributes):
         """Partial-Snapshot a snapshot."""
         body = await api_validate(SCHEMA_SNAPSHOT_PARTIAL, request)
         snapshot = await asyncio.shield(
-            self._snapshots.do_snapshot_partial(**body), loop=self._loop)
+            self._snapshots.do_snapshot_partial(**body))
 
         if snapshot:
             return {ATTR_SLUG: snapshot.slug}
@@ -134,9 +134,7 @@ class APISnapshots(CoreSysAttributes):
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
 
         return await asyncio.shield(
-            self._snapshots.do_restore_full(snapshot, **body),
-            loop=self._loop
-        )
+            self._snapshots.do_restore_full(snapshot, **body))
 
     @api_process
     async def restore_partial(self, request):
@@ -145,9 +143,7 @@ class APISnapshots(CoreSysAttributes):
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
 
         return await asyncio.shield(
-            self._snapshots.do_restore_partial(snapshot, **body),
-            loop=self._loop
-        )
+            self._snapshots.do_restore_partial(snapshot, **body))
 
     @api_process
     async def remove(self, request):
@@ -183,7 +179,7 @@ class APISnapshots(CoreSysAttributes):
                 return False
 
             snapshot = await asyncio.shield(
-                self._snapshots.import_snapshot(tar_file), loop=self._loop)
+                self._snapshots.import_snapshot(tar_file))
 
             if snapshot:
                 return {ATTR_SLUG: snapshot.slug}

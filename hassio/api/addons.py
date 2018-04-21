@@ -98,7 +98,7 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def reload(self, request):
         """Reload all addons data."""
-        await asyncio.shield(self._addons.reload(), loop=self._loop)
+        await asyncio.shield(self._addons.reload())
         return True
 
     @api_process
@@ -194,13 +194,13 @@ class APIAddons(CoreSysAttributes):
     def install(self, request):
         """Install addon."""
         addon = self._extract_addon(request, check_installed=False)
-        return asyncio.shield(addon.install(), loop=self._loop)
+        return asyncio.shield(addon.install())
 
     @api_process
     def uninstall(self, request):
         """Uninstall addon."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.uninstall(), loop=self._loop)
+        return asyncio.shield(addon.uninstall())
 
     @api_process
     def start(self, request):
@@ -214,13 +214,13 @@ class APIAddons(CoreSysAttributes):
         except vol.Invalid as ex:
             raise RuntimeError(humanize_error(options, ex)) from None
 
-        return asyncio.shield(addon.start(), loop=self._loop)
+        return asyncio.shield(addon.start())
 
     @api_process
     def stop(self, request):
         """Stop addon."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.stop(), loop=self._loop)
+        return asyncio.shield(addon.stop())
 
     @api_process
     def update(self, request):
@@ -230,13 +230,13 @@ class APIAddons(CoreSysAttributes):
         if addon.last_version == addon.version_installed:
             raise RuntimeError("No update available!")
 
-        return asyncio.shield(addon.update(), loop=self._loop)
+        return asyncio.shield(addon.update())
 
     @api_process
     def restart(self, request):
         """Restart addon."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.restart(), loop=self._loop)
+        return asyncio.shield(addon.restart())
 
     @api_process
     def rebuild(self, request):
@@ -245,7 +245,7 @@ class APIAddons(CoreSysAttributes):
         if not addon.need_build:
             raise RuntimeError("Only local build addons are supported")
 
-        return asyncio.shield(addon.rebuild(), loop=self._loop)
+        return asyncio.shield(addon.rebuild())
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
@@ -291,4 +291,4 @@ class APIAddons(CoreSysAttributes):
             raise RuntimeError("STDIN not supported by addon")
 
         data = await request.read()
-        return await asyncio.shield(addon.write_stdin(data), loop=self._loop)
+        return await asyncio.shield(addon.write_stdin(data))

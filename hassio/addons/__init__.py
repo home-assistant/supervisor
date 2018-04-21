@@ -66,7 +66,7 @@ class AddonManager(CoreSysAttributes):
         tasks = [repository.update() for repository in
                  self.repositories_obj.values()]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
         # read data from repositories
         self.data.reload()
@@ -94,7 +94,7 @@ class AddonManager(CoreSysAttributes):
 
         tasks = [_add_repository(url) for url in new_rep - old_rep]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
         # del new repository
         for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
@@ -125,7 +125,7 @@ class AddonManager(CoreSysAttributes):
             self.addons_obj[addon_slug] = addon
 
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
         # remove
         for addon_slug in del_addons:
@@ -141,5 +141,5 @@ class AddonManager(CoreSysAttributes):
 
         _LOGGER.info("Startup %s run %d addons", stage, len(tasks))
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
-            await asyncio.sleep(self._config.wait_boot, loop=self._loop)
+            await asyncio.wait(tasks)
+            await asyncio.sleep(self._config.wait_boot)

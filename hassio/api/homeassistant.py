@@ -111,22 +111,22 @@ class APIHomeAssistant(CoreSysAttributes):
             raise RuntimeError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
-            self._homeassistant.update(version), loop=self._loop)
+            self._homeassistant.update(version))
 
     @api_process
     def stop(self, request):
         """Stop homeassistant."""
-        return asyncio.shield(self._homeassistant.stop(), loop=self._loop)
+        return asyncio.shield(self._homeassistant.stop())
 
     @api_process
     def start(self, request):
         """Start homeassistant."""
-        return asyncio.shield(self._homeassistant.start(), loop=self._loop)
+        return asyncio.shield(self._homeassistant.start())
 
     @api_process
     def restart(self, request):
         """Restart homeassistant."""
-        return asyncio.shield(self._homeassistant.restart(), loop=self._loop)
+        return asyncio.shield(self._homeassistant.restart())
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):

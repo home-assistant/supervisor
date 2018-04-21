@@ -177,7 +177,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             if await self.instance.install('landingpage'):
                 break
             _LOGGER.warning("Fails install landingpage, retry after 60sec")
-            await asyncio.sleep(60, loop=self._loop)
+            await asyncio.sleep(60)
 
         # Run landingpage after installation
         await self._start()
@@ -195,7 +195,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             if tag and await self.instance.install(tag):
                 break
             _LOGGER.warning("Error on install HomeAssistant. Retry in 60sec")
-            await asyncio.sleep(60, loop=self._loop)
+            await asyncio.sleep(60)
 
         # finishing
         _LOGGER.info("HomeAssistant docker now installed")
@@ -364,7 +364,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             if await self._loop.run_in_executor(None, check_port):
                 _LOGGER.info("Detect a running Home-Assistant instance")
                 return True
-            await asyncio.sleep(10, loop=self._loop)
+            await asyncio.sleep(10)
 
         _LOGGER.warning("Don't wait anymore of Home-Assistant startup!")
         return False
