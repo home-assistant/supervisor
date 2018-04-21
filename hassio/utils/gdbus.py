@@ -8,8 +8,8 @@ _LOGGER = logging.getLogger(__name__)
 
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
               "--object-path {obj} --xml")
-CALL = ("gdbus call --system --dest {bus} --object-path {obj} "
-        "--method {obj}.{method} {args}")
+CALL = ("gdbus call --system --dest {bus} --object-path {inf} "
+        "--method {inf}.{method} {args}")
 
 
 class DBusError(Exception):
@@ -39,7 +39,7 @@ class DBus(object):
         """Initialize dbus object."""
         self.bus_name = bus_name
         self.object_path = object_path
-        self.methods = []
+        self.data = {}
 
     @staticmethod
     async def connect(bus_name, object_path):
@@ -73,19 +73,22 @@ class DBus(object):
             raise DBusParseError() from None
 
         # Read available methods
-        for method in xml.findall(".//method"):
-            self.methods.append(method.get('name'))
+        for interface in xml.findall("/node/interface"):
+            methods = []
+            for method in interface.findall("/method"):
+                methods.append(method.get('name'))
+            self.data[interface.get('name')] = methods
 
     @staticmethod
     def _gvariant(raw):
         """Parse GVariant input to python."""
         return raw
 
-    async def _call_dbus(self, method, *args):
+    async def call_dbus(self, interface, method, *args):
         """Call a dbus method."""
         command = shlex.split(CALL.format(
             bus=self.bus_name,
-            obj=self.object_path,
+            inf=interface,
             method=method,
             args=" ".join(map(str, args))
         ))
@@ -124,9 +127,26 @@ class DBus(object):
         # End
         return data.decode()
 
+    def __getattr__(self, interface):
+        """Mapping to dbus method."""
+        interface = f"{self.object_path}.{interface}"
+        if interface not in self.data:
+            raise AttributeError()
+
+        return DBusCallWrapper(self, interface)
+
+
+class DBusCallWrapper(object):
+    """Wrapper a DBus interface for a call."""
+
+    def __init__(self, dbus, interface):
+        """Initialize wrapper."""
+        self.dbus = dbus
+        self.interface = interface
+
     def __getattr__(self, name):
         """Mapping to dbus method."""
-        if name not in self.methods:
+        if name not in self.dbus.data[self.interface]:
             raise AttributeError()
 
         def _method_wrapper(*args):
@@ -134,6 +154,6 @@ class DBus(object):
 
             Return a coroutine
             """
-            return self._call_dbus(name, *args)
+            return self.dbus.call_dbus(self.interface, self.name, *args)
 
         return _method_wrapper
