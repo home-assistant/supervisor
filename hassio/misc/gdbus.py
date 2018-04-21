@@ -27,6 +27,11 @@ class DBusReturnError(DBusError):
     pass
 
 
+class DBusParseError(DBusError):
+    """DBus parse error."""
+    pass
+
+
 class DBus(object):
     """DBus handler."""
 
@@ -61,7 +66,13 @@ class DBus(object):
             raise
 
         # Parse XML
-        xml = ET.fromstring(data)
+        try:
+            xml = ET.fromstring(data)
+        except ET.ParseError as err:
+            _LOGGER.error("Can't parse introspect data: %s", err)
+            raise DBusParseError() from None
+
+        # Read available methods
         for method in xml.findall(".//method"):
             self.methods.append(method.get('name'))
 
