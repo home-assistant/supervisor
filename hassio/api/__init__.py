@@ -224,7 +224,7 @@ class RestAPI(CoreSysAttributes):
         self._handler = self.webapp.make_handler()
 
         try:
-            self.server = await self._loop.create_server(
+            self.server = await self.sys_loop.create_server(
                 self._handler, "0.0.0.0", "80")
         except OSError as err:
             _LOGGER.fatal(

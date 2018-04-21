@@ -2,7 +2,6 @@
 
 from .mqtt import MQTTService
 from .data import ServicesData
-from .discovery import Discovery
 from ..const import SERVICE_MQTT
 from ..coresys import CoreSysAttributes
 
@@ -19,7 +18,6 @@ class ServiceManager(CoreSysAttributes):
         """Initialize Services handler."""
         self.coresys = coresys
         self.data = ServicesData()
-        self.discovery = Discovery(coresys)
         self.services_obj = {}
 
     @property
@@ -37,9 +35,9 @@ class ServiceManager(CoreSysAttributes):
             self.services_obj[slug] = service(self.coresys)
 
         # Read exists discovery messages
-        self.discovery.load()
+        self.sys_discovery.load()
 
     def reset(self):
         """Reset available data."""
         self.data.reset_data()
-        self.discovery.load()
+        self.sys_discovery.load()

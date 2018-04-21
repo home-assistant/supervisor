@@ -43,7 +43,7 @@ class APIAddons(CoreSysAttributes):
 
     def _extract_addon(self, request, check_installed=True):
         """Return addon and if not exists trow a exception."""
-        addon = self._addons.get(request.match_info.get('addon'))
+        addon = self.sys_addons.get(request.match_info.get('addon'))
         if not addon:
             raise RuntimeError("Addon not exists")
 
@@ -64,7 +64,7 @@ class APIAddons(CoreSysAttributes):
     async def list(self, request):
         """Return all addons / repositories ."""
         data_addons = []
-        for addon in self._addons.list_addons:
+        for addon in self.sys_addons.list_addons:
             data_addons.append({
                 ATTR_NAME: addon.name,
                 ATTR_SLUG: addon.slug,
@@ -81,7 +81,7 @@ class APIAddons(CoreSysAttributes):
             })
 
         data_repositories = []
-        for repository in self._addons.list_repositories:
+        for repository in self.sys_addons.list_repositories:
             data_repositories.append({
                 ATTR_SLUG: repository.slug,
                 ATTR_NAME: repository.name,
@@ -98,7 +98,7 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def reload(self, request):
         """Reload all addons data."""
-        await asyncio.shield(self._addons.reload())
+        await asyncio.shield(self.sys_addons.reload())
         return True
 
     @api_process

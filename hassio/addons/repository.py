@@ -30,7 +30,7 @@ class Repository(CoreSysAttributes):
     @property
     def _mesh(self):
         """Return data struct repository."""
-        return self._addons.data.repositories.get(self._id, {})
+        return self.sys_addons.data.repositories.get(self._id, {})
 
     @property
     def slug(self):

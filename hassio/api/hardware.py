@@ -16,11 +16,11 @@ class APIHardware(CoreSysAttributes):
     async def info(self, request):
         """Show hardware info."""
         return {
-            ATTR_SERIAL: list(self._hardware.serial_devices),
-            ATTR_INPUT: list(self._hardware.input_devices),
-            ATTR_DISK: list(self._hardware.disk_devices),
-            ATTR_GPIO: list(self._hardware.gpio_devices),
-            ATTR_AUDIO: self._hardware.audio_devices,
+            ATTR_SERIAL: list(self.sys_hardware.serial_devices),
+            ATTR_INPUT: list(self.sys_hardware.input_devices),
+            ATTR_DISK: list(self.sys_hardware.disk_devices),
+            ATTR_GPIO: list(self.sys_hardware.gpio_devices),
+            ATTR_AUDIO: self.sys_hardware.audio_devices,
         }
 
     @api_process
@@ -28,7 +28,7 @@ class APIHardware(CoreSysAttributes):
         """Show ALSA audio devices."""
         return {
             ATTR_AUDIO: {
-                ATTR_INPUT: self._alsa.input_devices,
-                ATTR_OUTPUT: self._alsa.output_devices,
+                ATTR_INPUT: self.sys_alsa.input_devices,
+                ATTR_OUTPUT: self.sys_alsa.output_devices,
             }
         }

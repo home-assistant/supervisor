@@ -17,6 +17,7 @@ from .snapshots import SnapshotManager
 from .tasks import Tasks
 from .updater import Updater
 from .services import ServiceManager
+from .services.discovery import Discovery
 from .host import AlsaAudio
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ def initialize_coresys(loop):
     coresys.snapshots = SnapshotManager(coresys)
     coresys.tasks = Tasks(coresys)
     coresys.services = ServiceManager(coresys)
+    coresys.discovery = Discovery(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)

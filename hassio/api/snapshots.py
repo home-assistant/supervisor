@@ -50,7 +50,7 @@ class APISnapshots(CoreSysAttributes):
 
     def _extract_snapshot(self, request):
         """Return addon and if not exists trow a exception."""
-        snapshot = self._snapshots.get(request.match_info.get('snapshot'))
+        snapshot = self.sys_snapshots.get(request.match_info.get('snapshot'))
         if not snapshot:
             raise RuntimeError("Snapshot not exists")
         return snapshot
@@ -59,7 +59,7 @@ class APISnapshots(CoreSysAttributes):
     async def list(self, request):
         """Return snapshot list."""
         data_snapshots = []
-        for snapshot in self._snapshots.list_snapshots:
+        for snapshot in self.sys_snapshots.list_snapshots:
             data_snapshots.append({
                 ATTR_SLUG: snapshot.slug,
                 ATTR_NAME: snapshot.name,
@@ -75,7 +75,7 @@ class APISnapshots(CoreSysAttributes):
     @api_process
     async def reload(self, request):
         """Reload snapshot list."""
-        await asyncio.shield(self._snapshots.reload())
+        await asyncio.shield(self.sys_snapshots.reload())
         return True
 
     @api_process
@@ -110,7 +110,7 @@ class APISnapshots(CoreSysAttributes):
         """Full-Snapshot a snapshot."""
         body = await api_validate(SCHEMA_SNAPSHOT_FULL, request)
         snapshot = await asyncio.shield(
-            self._snapshots.do_snapshot_full(**body))
+            self.sys_snapshots.do_snapshot_full(**body))
 
         if snapshot:
             return {ATTR_SLUG: snapshot.slug}
@@ -121,7 +121,7 @@ class APISnapshots(CoreSysAttributes):
         """Partial-Snapshot a snapshot."""
         body = await api_validate(SCHEMA_SNAPSHOT_PARTIAL, request)
         snapshot = await asyncio.shield(
-            self._snapshots.do_snapshot_partial(**body))
+            self.sys_snapshots.do_snapshot_partial(**body))
 
         if snapshot:
             return {ATTR_SLUG: snapshot.slug}
@@ -134,7 +134,7 @@ class APISnapshots(CoreSysAttributes):
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
 
         return await asyncio.shield(
-            self._snapshots.do_restore_full(snapshot, **body))
+            self.sys_snapshots.do_restore_full(snapshot, **body))
 
     @api_process
     async def restore_partial(self, request):
@@ -143,13 +143,13 @@ class APISnapshots(CoreSysAttributes):
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
 
         return await asyncio.shield(
-            self._snapshots.do_restore_partial(snapshot, **body))
+            self.sys_snapshots.do_restore_partial(snapshot, **body))
 
     @api_process
     async def remove(self, request):
         """Remove a snapshot."""
         snapshot = self._extract_snapshot(request)
-        return self._snapshots.remove(snapshot)
+        return self.sys_snapshots.remove(snapshot)
 
     async def download(self, request):
         """Download a snapshot file."""
@@ -163,7 +163,7 @@ class APISnapshots(CoreSysAttributes):
     @api_process
     async def upload(self, request):
         """Upload a snapshot file."""
-        with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp_dir:
+        with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp_dir:
             tar_file = Path(temp_dir, f"snapshot.tar")
 
             try:
@@ -179,7 +179,7 @@ class APISnapshots(CoreSysAttributes):
                 return False
 
             snapshot = await asyncio.shield(
-                self._snapshots.import_snapshot(tar_file))
+                self.sys_snapshots.import_snapshot(tar_file))
 
             if snapshot:
                 return {ATTR_SLUG: snapshot.slug}
