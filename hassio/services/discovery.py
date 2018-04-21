@@ -36,7 +36,7 @@ class Discovery(CoreSysAttributes):
 
         self._data.clear()
         self._data.extend(messages)
-        self._services.data.save_data()
+        self.sys_services.data.save_data()
 
     def get(self, uuid):
         """Return discovery message."""
@@ -45,7 +45,7 @@ class Discovery(CoreSysAttributes):
     @property
     def _data(self):
         """Return discovery data."""
-        return self._services.data.discovery
+        return self.sys_services.data.discovery
 
     @property
     def list_messages(self):
@@ -69,7 +69,7 @@ class Discovery(CoreSysAttributes):
         self.save()
 
         # send event to Home-Assistant
-        self._loop.create_task(self._homeassistant.send_event(
+        self.sys_create_task(self.sys_homeassistant.send_event(
             EVENT_DISCOVERY_ADD, {ATTR_UUID: message.uuid}))
 
         return message
@@ -80,7 +80,7 @@ class Discovery(CoreSysAttributes):
         self.save()
 
         # send event to Home-Assistant
-        self._loop.create_task(self._homeassistant.send_event(
+        self.sys_create_task(self.sys_homeassistant.send_event(
             EVENT_DISCOVERY_DEL, {ATTR_UUID: message.uuid}))
 
 

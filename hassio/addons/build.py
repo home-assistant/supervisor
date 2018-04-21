@@ -25,13 +25,13 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
     @property
     def addon(self):
         """Return addon of build data."""
-        return self._addons.get(self._id)
+        return self.sys_addons.get(self._id)
 
     @property
     def base_image(self):
         """Base images for this addon."""
         return self._data[ATTR_BUILD_FROM].get(
-            self._arch, BASE_IMAGE[self._arch])
+            self.sys_arch, BASE_IMAGE[self.sys_arch])
 
     @property
     def squash(self):
@@ -53,7 +53,7 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
             'squash': self.squash,
             'labels': {
                 'io.hass.version': version,
-                'io.hass.arch': self._arch,
+                'io.hass.arch': self.sys_arch,
                 'io.hass.type': META_ADDON,
                 'io.hass.name': self._fix_label('name'),
                 'io.hass.description': self._fix_label('description'),
@@ -61,7 +61,7 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
             'buildargs': {
                 'BUILD_FROM': self.base_image,
                 'BUILD_VERSION': version,
-                'BUILD_ARCH': self._arch,
+                'BUILD_ARCH': self.sys_arch,
                 **self.additional_args,
             }
         }

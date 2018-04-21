@@ -29,24 +29,24 @@ class Tasks(CoreSysAttributes):
 
     async def load(self):
         """Add Tasks to scheduler."""
-        self.jobs.add(self._scheduler.register_task(
+        self.jobs.add(self.sys_scheduler.register_task(
             self._update_addons, self.RUN_UPDATE_ADDONS))
-        self.jobs.add(self._scheduler.register_task(
+        self.jobs.add(self.sys_scheduler.register_task(
             self._update_supervisor, self.RUN_UPDATE_SUPERVISOR))
 
-        self.jobs.add(self._scheduler.register_task(
-            self._addons.reload, self.RUN_RELOAD_ADDONS))
-        self.jobs.add(self._scheduler.register_task(
-            self._updater.reload, self.RUN_RELOAD_UPDATER))
-        self.jobs.add(self._scheduler.register_task(
-            self._snapshots.reload, self.RUN_RELOAD_SNAPSHOTS))
-        self.jobs.add(self._scheduler.register_task(
+        self.jobs.add(self.sys_scheduler.register_task(
+            self.sys_addons.reload, self.RUN_RELOAD_ADDONS))
+        self.jobs.add(self.sys_scheduler.register_task(
+            self.sys_updater.reload, self.RUN_RELOAD_UPDATER))
+        self.jobs.add(self.sys_scheduler.register_task(
+            self.sys_snapshots.reload, self.RUN_RELOAD_SNAPSHOTS))
+        self.jobs.add(self.sys_scheduler.register_task(
             self._host_control.load, self.RUN_RELOAD_HOST_CONTROL))
 
-        self.jobs.add(self._scheduler.register_task(
+        self.jobs.add(self.sys_scheduler.register_task(
             self._watchdog_homeassistant_docker,
             self.RUN_WATCHDOG_HOMEASSISTANT_DOCKER))
-        self.jobs.add(self._scheduler.register_task(
+        self.jobs.add(self.sys_scheduler.register_task(
             self._watchdog_homeassistant_api,
             self.RUN_WATCHDOG_HOMEASSISTANT_API))
 
@@ -55,7 +55,7 @@ class Tasks(CoreSysAttributes):
     async def _update_addons(self):
         """Check if a update is available of a addon and update it."""
         tasks = []
-        for addon in self._addons.list_addons:
+        for addon in self.sys_addons.list_addons:
             if not addon.is_installed or not addon.auto_update:
                 continue
 
@@ -74,31 +74,31 @@ class Tasks(CoreSysAttributes):
 
     async def _update_supervisor(self):
         """Check and run update of supervisor hassio."""
-        if not self._supervisor.need_update:
+        if not self.sys_supervisor.need_update:
             return
 
         # don't perform a update on beta/dev channel
-        if self._dev:
+        if self.sys_dev:
             _LOGGER.warning("Ignore Hass.io update on dev channel!")
             return
 
         _LOGGER.info("Found new Hass.io version")
-        await self._supervisor.update()
+        await self.sys_supervisor.update()
 
     async def _watchdog_homeassistant_docker(self):
         """Check running state of docker and start if they is close."""
         # if Home-Assistant is active
-        if not await self._homeassistant.is_initialize() or \
-                not self._homeassistant.watchdog:
+        if not await self.sys_homeassistant.is_initialize() or \
+                not self.sys_homeassistant.watchdog:
             return
 
         # if Home-Assistant is running
-        if self._homeassistant.in_progress or \
-                await self._homeassistant.is_running():
+        if self.sys_homeassistant.in_progress or \
+                await self.sys_homeassistant.is_running():
             return
 
         _LOGGER.warning("Watchdog found a problem with Home-Assistant docker!")
-        await self._homeassistant.start()
+        await self.sys_homeassistant.start()
 
     async def _watchdog_homeassistant_api(self):
         """Create scheduler task for montoring running state of API.
@@ -109,13 +109,13 @@ class Tasks(CoreSysAttributes):
         retry_scan = self._data.get('HASS_WATCHDOG_API', 0)
 
         # If Home-Assistant is active
-        if not await self._homeassistant.is_initialize() or \
-                not self._homeassistant.watchdog:
+        if not await self.sys_homeassistant.is_initialize() or \
+                not self.sys_homeassistant.watchdog:
             return
 
         # If Home-Assistant API is up
-        if self._homeassistant.in_progress or \
-                await self._homeassistant.check_api_state():
+        if self.sys_homeassistant.in_progress or \
+                await self.sys_homeassistant.check_api_state():
             return
 
         # Look like we run into a problem
@@ -126,5 +126,5 @@ class Tasks(CoreSysAttributes):
             return
 
         _LOGGER.error("Watchdog found a problem with Home-Assistant API!")
-        await self._homeassistant.restart()
+        await self.sys_homeassistant.restart()
         self._data['HASS_WATCHDOG_API'] = 0

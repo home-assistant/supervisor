@@ -56,17 +56,17 @@ class AddonsData(JsonConfig, CoreSysAttributes):
 
         # read core repository
         self._read_addons_folder(
-            self._config.path_addons_core, REPOSITORY_CORE)
+            self.sys_config.path_addons_core, REPOSITORY_CORE)
 
         # read local repository
         self._read_addons_folder(
-            self._config.path_addons_local, REPOSITORY_LOCAL)
+            self.sys_config.path_addons_local, REPOSITORY_LOCAL)
 
         # add built-in repositories information
         self._set_builtin_repositories()
 
         # read custom git repositories
-        for repository_element in self._config.path_addons_git.iterdir():
+        for repository_element in self.sys_config.path_addons_git.iterdir():
             if repository_element.is_dir():
                 self._read_git_repository(repository_element)
 

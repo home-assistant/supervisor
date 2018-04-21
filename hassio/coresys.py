@@ -7,8 +7,8 @@ from .config import CoreConfig
 from .docker import DockerAPI
 from .misc.dns import DNSForward
 from .misc.hardware import Hardware
-from .misc.host_control import HostControl
 from .misc.scheduler import Scheduler
+from .misc.systemd import Systemd
 
 
 class CoreSys(object):
@@ -29,9 +29,9 @@ class CoreSys(object):
         self._config = CoreConfig()
         self._hardware = Hardware()
         self._docker = DockerAPI()
+        self._systemd = Systemd()
         self._scheduler = Scheduler(loop=loop)
         self._dns = DNSForward(loop=loop)
-        self._host_control = HostControl(loop=loop)
 
         # Internal objects pointers
         self._homeassistant = None
@@ -42,6 +42,7 @@ class CoreSys(object):
         self._snapshots = None
         self._tasks = None
         self._services = None
+        self._discovery = None
         self._alsa = None
 
     @property
@@ -104,9 +105,9 @@ class CoreSys(object):
         return self._dns
 
     @property
-    def host_control(self):
-        """Return HostControl object."""
-        return self._host_control
+    def systemd(self):
+        """Return systemd object."""
+        return self._systemd
 
     @property
     def homeassistant(self):
@@ -205,6 +206,18 @@ class CoreSys(object):
         self._services = value
 
     @property
+    def discovery(self):
+        """Return ServiceManager object."""
+        return self._discovery
+
+    @discovery.setter
+    def discovery(self, value):
+        """Set a Discovery object."""
+        if self._discovery:
+            raise RuntimeError("Discovery already set!")
+        self._discovery = value
+
+    @property
     def alsa(self):
         """Return ALSA Audio object."""
         return self._alsa
@@ -216,6 +229,14 @@ class CoreSys(object):
             raise RuntimeError("ALSA already set!")
         self._alsa = value
 
+    async def run_in_executor(self, funct, *args):
+        """Wrapper for executor pool."""
+        return self._loop.run_in_executor(None, funct, *args)
+
+    async def create_task(self, coroutine):
+        """Wrapper for async task."""
+        return self._loop.create_task(coroutine)
+
 
 class CoreSysAttributes(object):
     """Inheret basic CoreSysAttributes."""
@@ -224,6 +245,6 @@ class CoreSysAttributes(object):
 
     def __getattr__(self, name):
         """Mapping to coresys."""
-        if hasattr(self.coresys, name[1:]):
-            return getattr(self.coresys, name[1:])
-        raise AttributeError(f"Can't find {name} on {self.__class__}")
+        if name.startswith("_sys_") and hasattr(self.coresys, name[5:]):
+            return getattr(self.coresys, name[5:])
+        raise AttributeError()

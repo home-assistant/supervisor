@@ -37,7 +37,7 @@ class ServiceInterface(CoreSysAttributes):
 
     def save(self):
         """Save changes."""
-        self._services.data.save_data()
+        self.sys_services.data.save_data()
 
     def get_service_data(self):
         """Return the requested service data."""

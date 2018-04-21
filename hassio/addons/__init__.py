@@ -56,7 +56,7 @@ class AddonManager(CoreSysAttributes):
 
         # init hassio built-in repositories
         repositories = \
-            set(self._config.addons_repositories) | BUILTIN_REPOSITORIES
+            set(self.sys_config.addons_repositories) | BUILTIN_REPOSITORIES
 
         # init custom repositories & load addons
         await self.load_repositories(repositories)
@@ -90,7 +90,7 @@ class AddonManager(CoreSysAttributes):
 
             # don't add built-in repository to config
             if url not in BUILTIN_REPOSITORIES:
-                self._config.add_addon_repository(url)
+                self.sys_config.add_addon_repository(url)
 
         tasks = [_add_repository(url) for url in new_rep - old_rep]
         if tasks:
@@ -99,7 +99,7 @@ class AddonManager(CoreSysAttributes):
         # del new repository
         for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
             self.repositories_obj.pop(url).remove()
-            self._config.drop_addon_repository(url)
+            self.sys_config.drop_addon_repository(url)
 
         # update data
         self.data.reload()
@@ -142,4 +142,4 @@ class AddonManager(CoreSysAttributes):
         _LOGGER.info("Startup %s run %d addons", stage, len(tasks))
         if tasks:
             await asyncio.wait(tasks)
-            await asyncio.sleep(self._config.wait_boot)
+            await asyncio.sleep(self.sys_config.wait_boot)

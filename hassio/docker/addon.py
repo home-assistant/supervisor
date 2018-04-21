@@ -28,7 +28,7 @@ class DockerAddon(DockerInterface):
     @property
     def addon(self):
         """Return addon of docker image."""
-        return self._addons.get(self._id)
+        return self.sys_addons.get(self._id)
 
     @property
     def image(self):
@@ -52,7 +52,7 @@ class DockerAddon(DockerInterface):
         """Return arch of docker image."""
         if not self.addon.legacy:
             return super().arch
-        return self._arch
+        return self.sys_arch
 
     @property
     def name(self):
@@ -85,7 +85,7 @@ class DockerAddon(DockerInterface):
 
         return {
             **addon_env,
-            ENV_TIME: self._config.timezone,
+            ENV_TIME: self.sys_config.timezone,
             ENV_TOKEN: self.addon.uuid,
         }
 
@@ -100,7 +100,7 @@ class DockerAddon(DockerInterface):
 
         # Auto mapping UART devices
         if self.addon.auto_uart:
-            for device in self._hardware.serial_devices:
+            for device in self.sys_hardware.serial_devices:
                 devices.append(f"{device}:{device}:rwm")
 
         # Return None if no devices is present
@@ -149,8 +149,8 @@ class DockerAddon(DockerInterface):
     def network_mapping(self):
         """Return hosts mapping."""
         return {
-            'homeassistant': self._docker.network.gateway,
-            'hassio': self._docker.network.supervisor,
+            'homeassistant': self.sys_docker.network.gateway,
+            'hassio': self.sys_docker.network.supervisor,
         }
 
     @property
@@ -173,31 +173,31 @@ class DockerAddon(DockerInterface):
         # setup config mappings
         if MAP_CONFIG in addon_mapping:
             volumes.update({
-                str(self._config.path_extern_config): {
+                str(self.sys_config.path_extern_config): {
                     'bind': "/config", 'mode': addon_mapping[MAP_CONFIG]
                 }})
 
         if MAP_SSL in addon_mapping:
             volumes.update({
-                str(self._config.path_extern_ssl): {
+                str(self.sys_config.path_extern_ssl): {
                     'bind': "/ssl", 'mode': addon_mapping[MAP_SSL]
                 }})
 
         if MAP_ADDONS in addon_mapping:
             volumes.update({
-                str(self._config.path_extern_addons_local): {
+                str(self.sys_config.path_extern_addons_local): {
                     'bind': "/addons", 'mode': addon_mapping[MAP_ADDONS]
                 }})
 
         if MAP_BACKUP in addon_mapping:
             volumes.update({
-                str(self._config.path_extern_backup): {
+                str(self.sys_config.path_extern_backup): {
                     'bind': "/backup", 'mode': addon_mapping[MAP_BACKUP]
                 }})
 
         if MAP_SHARE in addon_mapping:
             volumes.update({
-                str(self._config.path_extern_share): {
+                str(self.sys_config.path_extern_share): {
                     'bind': "/share", 'mode': addon_mapping[MAP_SHARE]
                 }})
 
@@ -239,7 +239,7 @@ class DockerAddon(DockerInterface):
         # cleanup
         self._stop()
 
-        ret = self._docker.run(
+        ret = self.sys_docker.run(
             self.image,
             name=self.name,
             hostname=self.hostname,
@@ -283,7 +283,7 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:
-            image, log = self._docker.images.build(
+            image, log = self.sys_docker.images.build(
                 **build_env.get_docker_args(tag))
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)
@@ -302,7 +302,7 @@ class DockerAddon(DockerInterface):
     @process_lock
     def export_image(self, path):
         """Export current images into a tar file."""
-        return self._loop.run_in_executor(None, self._export_image, path)
+        return self.sys_run_in_executor(self._export_image, path)
 
     def _export_image(self, tar_file):
         """Export current images into a tar file.
@@ -310,7 +310,7 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         try:
-            image = self._docker.api.get_image(self.image)
+            image = self.sys_docker.api.get_image(self.image)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't fetch image %s: %s", self.image, err)
             return False
@@ -330,7 +330,7 @@ class DockerAddon(DockerInterface):
     @process_lock
     def import_image(self, path, tag):
         """Import a tar file as image."""
-        return self._loop.run_in_executor(None, self._import_image, path, tag)
+        return self.sys_run_in_executor(self._import_image, path, tag)
 
     def _import_image(self, tar_file, tag):
         """Import a tar file as image.
@@ -339,9 +339,9 @@ class DockerAddon(DockerInterface):
         """
         try:
             with tar_file.open("rb") as read_tar:
-                self._docker.api.load_image(read_tar, quiet=True)
+                self.sys_docker.api.load_image(read_tar, quiet=True)
 
-            image = self._docker.images.get(self.image)
+            image = self.sys_docker.images.get(self.image)
             image.tag(self.image, tag=tag)
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s: %s", self.image, err)
@@ -355,7 +355,7 @@ class DockerAddon(DockerInterface):
     @process_lock
     def write_stdin(self, data):
         """Write to add-on stdin."""
-        return self._loop.run_in_executor(None, self._write_stdin, data)
+        return self.sys_run_in_executor(self._write_stdin, data)
 
     def _write_stdin(self, data):
         """Write to add-on stdin.
@@ -367,7 +367,7 @@ class DockerAddon(DockerInterface):
 
         try:
             # load needed docker objects
-            container = self._docker.containers.get(self.name)
+            container = self.sys_docker.containers.get(self.name)
             socket = container.attach_socket(params={'stdin': 1, 'stream': 1})
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't attach to %s stdin: %s", self.name, err)

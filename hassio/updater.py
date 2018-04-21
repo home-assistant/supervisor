@@ -69,7 +69,7 @@ class Updater(JsonConfig, CoreSysAttributes):
         try:
             _LOGGER.info("Fetch update data from %s", url)
             with async_timeout.timeout(10):
-                async with self._websession.get(url) as request:
+                async with self.sys_websession.get(url) as request:
                     data = await request.json(content_type=None)
 
         except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:
