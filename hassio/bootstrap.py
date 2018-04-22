@@ -17,7 +17,7 @@ from .snapshots import SnapshotManager
 from .tasks import Tasks
 from .updater import Updater
 from .services import ServiceManager
-from .services.discovery import Discovery
+from .services import Discovery
 from .host import AlsaAudio
 
 _LOGGER = logging.getLogger(__name__)

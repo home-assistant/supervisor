@@ -23,7 +23,7 @@ GPIO_DEVICES = Path("/sys/class/gpio")
 RE_TTY = re.compile(r"tty[A-Z]+")
 
 
-class Hardware(object):
+class Hardware:
     """Represent a interface to procfs, sysfs and udev."""
 
     def __init__(self):
