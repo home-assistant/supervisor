@@ -4,32 +4,14 @@ import logging
 import shlex
 import xml.etree.ElementTree as ET
 
+from ..exceptions import DBusFatalError, DBusReturnError, DBusParseError
+
 _LOGGER = logging.getLogger(__name__)
 
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
               "--object-path {obj} --xml")
 CALL = ("gdbus call --system --dest {bus} --object-path {inf} "
         "--method {inf}.{method} {args}")
-
-
-class DBusError(Exception):
-    """DBus generic error."""
-    pass
-
-
-class DBusFatalError(DBusError):
-    """DBus call going wrong."""
-    pass
-
-
-class DBusReturnError(DBusError):
-    """DBus return error."""
-    pass
-
-
-class DBusParseError(DBusError):
-    """DBus parse error."""
-    pass
 
 
 class DBus(object):
@@ -58,19 +40,15 @@ class DBus(object):
         ))
 
         # Ask data
-        try:
-            data = await self._send(command)
-        except DBusError:
-            _LOGGER.error(
-                "DBus fails connect to %s", self.object_path)
-            raise
+        _LOGGER.info("Introspect %s no %s", self.bus_name, self.object_path)
+        data = await self._send(command)
 
         # Parse XML
         try:
             xml = ET.fromstring(data)
         except ET.ParseError as err:
-            _LOGGER.error("Can't parse introspect data: %s", err)
-            raise DBusParseError() from None
+            raise DBusParseError(
+                f"Can't parse introspect data: {err!s}") from None
 
         # Read available methods
         for interface in xml.findall("/node/interface"):
@@ -94,12 +72,8 @@ class DBus(object):
         ))
 
         # Run command
-        try:
-            data = await self._send(command)
-        except DBusError:
-            _LOGGER.error(
-                "DBus fails with %s on %s", method, self.object_path)
-            raise
+        _LOGGER.info("Call %s no %s", method, interface)
+        data = await self._send(command)
 
         # Parse and return data
         return self._gvariant(data)
@@ -117,12 +91,11 @@ class DBus(object):
 
             data, _ = await proc.communicate()
         except OSError as err:
-            _LOGGER.error("DBus fatal error: %s", err)
-            raise DBusFatalError() from None
+            raise DBusFatalError(f"DBus fatal error: {err!s}") from None
 
         # Success?
         if proc.returncode != 0:
-            raise DBusReturnError()
+            raise DBusReturnError(f"DBus return error: {data!s}")
 
         # End
         return data.decode()
