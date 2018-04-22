@@ -14,7 +14,7 @@ CALL = ("gdbus call --system --dest {bus} --object-path {inf} "
         "--method {inf}.{method} {args}")
 
 
-class DBus(object):
+class DBus:
     """DBus handler."""
 
     def __init__(self, bus_name, object_path):
@@ -109,7 +109,7 @@ class DBus(object):
         return DBusCallWrapper(self, interface)
 
 
-class DBusCallWrapper(object):
+class DBusCallWrapper:
     """Wrapper a DBus interface for a call."""
 
     def __init__(self, dbus, interface):

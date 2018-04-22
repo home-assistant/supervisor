@@ -11,7 +11,7 @@ from .misc.scheduler import Scheduler
 from .misc.systemd import Systemd
 
 
-class CoreSys(object):
+class CoreSys:
     """Class that handle all shared data."""
 
     def __init__(self, loop):
@@ -238,7 +238,7 @@ class CoreSys(object):
         return self._loop.create_task(coroutine)
 
 
-class CoreSysAttributes(object):
+class CoreSysAttributes:
     """Inheret basic CoreSysAttributes."""
 
     coresys = None

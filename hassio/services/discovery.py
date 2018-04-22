@@ -84,7 +84,7 @@ class Discovery(CoreSysAttributes):
             EVENT_DISCOVERY_DEL, {ATTR_UUID: message.uuid}))
 
 
-class Message(object):
+class Message:
     """Represent a single Discovery message."""
 
     def __init__(self, provider, component, platform, config, uuid=None):

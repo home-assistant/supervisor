@@ -2,7 +2,7 @@
 from contextlib import suppress
 
 
-class DockerStats(object):
+class DockerStats:
     """Hold stats data from container inside."""
 
     def __init__(self, stats):

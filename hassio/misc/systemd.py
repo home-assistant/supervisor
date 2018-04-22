@@ -10,7 +10,7 @@ DBUS_NAME = 'org.freedesktop.systemd1'
 DBUS_OBJECT = '/org/freedesktop/systemd1'
 
 
-class Systemd(object):
+class Systemd:
     """Systemd function handler."""
 
     def __init__(self):

@@ -1,5 +1,6 @@
 """Handle internal services discovery."""
 
+from .discovery import Discovery  # noqa
 from .mqtt import MQTTService
 from .data import ServicesData
 from ..const import SERVICE_MQTT
