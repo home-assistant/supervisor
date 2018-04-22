@@ -19,6 +19,7 @@ from .updater import Updater
 from .services import ServiceManager
 from .services import Discovery
 from .host import AlsaAudio
+from .host import HostManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ def initialize_coresys(loop):
     coresys.homeassistant = HomeAssistant(coresys)
     coresys.addons = AddonManager(coresys)
     coresys.snapshots = SnapshotManager(coresys)
+    coresys.host = HostManager(coresys)
     coresys.tasks = Tasks(coresys)
     coresys.services = ServiceManager(coresys)
     coresys.discovery = Discovery(coresys)

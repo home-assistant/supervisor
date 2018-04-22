@@ -41,6 +41,7 @@ class CoreSys:
         self._updater = None
         self._snapshots = None
         self._tasks = None
+        self._host = None
         self._services = None
         self._discovery = None
         self._alsa = None
@@ -228,6 +229,18 @@ class CoreSys:
         if self._alsa:
             raise RuntimeError("ALSA already set!")
         self._alsa = value
+
+    @property
+    def host(self):
+        """Return HostManager object."""
+        return self._host
+
+    @host.setter
+    def host(self, value):
+        """Set a HostManager object."""
+        if self._host:
+            raise RuntimeError("HostManager already set!")
+        self._host = value
 
     async def run_in_executor(self, funct, *args):
         """Wrapper for executor pool."""
