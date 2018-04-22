@@ -4,7 +4,6 @@ import hashlib
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPServiceUnavailable
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -41,9 +40,9 @@ def api_process(method):
             return api_return_ok(data=answer)
         if isinstance(answer, web.Response):
             return answer
-        elif answer:
-            return api_return_ok()
-        return api_return_error()
+        elif isinstance(answer, bool) and not answer:
+            return api_return_error()
+        return api_return_ok()
 
     return wrap_api
 
