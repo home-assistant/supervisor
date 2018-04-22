@@ -74,9 +74,9 @@ class DBus(object):
 
         # Read available methods
         for interface in xml.findall("/node/interface"):
-            methods = []
+            methods = set()
             for method in interface.findall("/method"):
-                methods.append(method.get('name'))
+                methods.add(method.get('name'))
             self.data[interface.get('name')] = methods
 
     @staticmethod
