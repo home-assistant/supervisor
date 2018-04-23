@@ -16,6 +16,18 @@ class HassioNotSupportedError(HassioError):
     pass
 
 
+# Host
+
+class HostError(HassioError):
+    """Internal Host error."""
+    pass
+
+
+class HostNotSupportedError(HassioNotSupportedError):
+    """Host function is not supprted."""
+    pass
+
+
 # utils/gdbus
 
 class DBusError(HassioError):
@@ -23,13 +35,12 @@ class DBusError(HassioError):
     pass
 
 
+class DBusNotConnectedError(HassioNotSupportedError):
+    """DBus is not connected and call a method."""
+
+
 class DBusFatalError(DBusError):
     """DBus call going wrong."""
-    pass
-
-
-class DBusReturnError(DBusError):
-    """DBus return error."""
     pass
 
 

@@ -4,7 +4,7 @@ import logging
 import shlex
 import xml.etree.ElementTree as ET
 
-from ..exceptions import DBusFatalError, DBusReturnError, DBusParseError
+from ..exceptions import DBusFatalError, DBusFatalError, DBusParseError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,8 +47,8 @@ class DBus:
         try:
             xml = ET.fromstring(data)
         except ET.ParseError as err:
-            raise DBusParseError(
-                f"Can't parse introspect data: {err!s}") from None
+            _LOGGER.error("Can't parse introspect data: %s", err)
+            raise DBusParseError() from None
 
         # Read available methods
         for interface in xml.findall("/node/interface"):
@@ -91,11 +91,13 @@ class DBus:
 
             data, _ = await proc.communicate()
         except OSError as err:
-            raise DBusFatalError(f"DBus fatal error: {err!s}") from None
+            _LOGGER.error("DBus fatal error: %s", err)
+            raise DBusFatalError() from None
 
         # Success?
         if proc.returncode != 0:
-            raise DBusReturnError(f"DBus return error: {data!s}")
+            _LOGGER.error("DBus return error: %s", data)
+            raise DBusFatalError()
 
         # End
         return data.decode()
