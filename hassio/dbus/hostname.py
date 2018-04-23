@@ -1,0 +1,1 @@
+"""DBus interface for hostname."""

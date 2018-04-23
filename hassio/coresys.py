@@ -32,6 +32,7 @@ class CoreSys:
         self._dns = DNSForward(loop=loop)
 
         # Internal objects pointers
+        self._core = None
         self._homeassistant = None
         self._supervisor = None
         self._addons = None
@@ -40,9 +41,9 @@ class CoreSys:
         self._snapshots = None
         self._tasks = None
         self._host = None
+        self._dbus = None
         self._services = None
         self._discovery = None
-        self._alsa = None
 
     @property
     def arch(self):
@@ -104,9 +105,16 @@ class CoreSys:
         return self._dns
 
     @property
-    def systemd(self):
-        """Return systemd object."""
-        return self._systemd
+    def core(self):
+        """Return HassIO object."""
+        return self._core
+
+    @core.setter
+    def core(self, value):
+        """Set a HassIO object."""
+        if self._core:
+            raise RuntimeError("HassIO already set!")
+        self._core = value
 
     @property
     def homeassistant(self):
@@ -217,16 +225,16 @@ class CoreSys:
         self._discovery = value
 
     @property
-    def alsa(self):
-        """Return ALSA Audio object."""
-        return self._alsa
+    def dbus(self):
+        """Return DBusManager object."""
+        return self._dbus
 
-    @alsa.setter
-    def alsa(self, value):
-        """Set a ALSA Audio object."""
-        if self._alsa:
-            raise RuntimeError("ALSA already set!")
-        self._alsa = value
+    @dbus.setter
+    def dbus(self, value):
+        """Set a DBusManager object."""
+        if self._dbus:
+            raise RuntimeError("DBusManager already set!")
+        self._dbus = value
 
     @property
     def host(self):

@@ -5,7 +5,6 @@ import logging
 import sys
 
 import hassio.bootstrap as bootstrap
-import hassio.core as core
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,14 +33,13 @@ if __name__ == "__main__":
 
     _LOGGER.info("Initialize Hassio setup")
     coresys = bootstrap.initialize_coresys(loop)
-    hassio = core.HassIO(coresys)
 
     bootstrap.migrate_system_env(coresys)
 
     _LOGGER.info("Setup HassIO")
-    loop.run_until_complete(hassio.setup())
+    loop.run_until_complete(coresys.core.setup())
 
-    loop.call_soon_threadsafe(loop.create_task, hassio.start())
+    loop.call_soon_threadsafe(loop.create_task, coresys.core.start())
     loop.call_soon_threadsafe(bootstrap.reg_signal, loop)
 
     try:
@@ -49,7 +47,7 @@ if __name__ == "__main__":
         loop.run_forever()
     finally:
         _LOGGER.info("Stopping HassIO")
-        loop.run_until_complete(hassio.stop())
+        loop.run_until_complete(coresys.core.stop())
         executor.shutdown(wait=False)
         loop.close()
 

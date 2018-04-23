@@ -18,7 +18,6 @@ FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
 FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
-SOCKET_HC = Path("/var/run/hassio-hc.sock")
 
 DOCKER_NETWORK = 'hassio'
 DOCKER_NETWORK_MASK = ip_network('172.30.32.0/23')
