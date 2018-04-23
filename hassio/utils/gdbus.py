@@ -4,7 +4,7 @@ import logging
 import shlex
 import xml.etree.ElementTree as ET
 
-from ..exceptions import DBusFatalError, DBusFatalError, DBusParseError
+from ..exceptions import DBusFatalError, DBusParseError
 
 _LOGGER = logging.getLogger(__name__)
 
