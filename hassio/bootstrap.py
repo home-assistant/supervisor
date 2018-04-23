@@ -20,6 +20,7 @@ from .services import ServiceManager
 from .services import Discovery
 from .host import AlsaAudio
 from .host import HostManager
+from .dbus import DBusManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ def initialize_coresys(loop):
     coresys.tasks = Tasks(coresys)
     coresys.services = ServiceManager(coresys)
     coresys.discovery = Discovery(coresys)
+    coresys.dbus = DBusManager(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
