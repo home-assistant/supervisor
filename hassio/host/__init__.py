@@ -41,3 +41,7 @@ class HostManager(CoreSysAttributes):
     async def load(self):
         """Load host functions."""
         pass
+
+    async def reload(self):
+        """Reload host information."""
+        pass

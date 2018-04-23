@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 
-from .utils import api_process_hostcontrol, api_process, api_validate
+from .utils import api_process, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES,
     ATTR_OS)
@@ -24,31 +24,30 @@ class APIHost(CoreSysAttributes):
     async def info(self, request):
         """Return host information."""
         return {
-            ATTR_TYPE: self._host_control.type,
-            ATTR_VERSION: self._host_control.version,
-            ATTR_LAST_VERSION: self._host_control.last_version,
-            ATTR_FEATURES: self._host_control.features,
-            ATTR_HOSTNAME: self._host_control.hostname,
-            ATTR_OS: self._host_control.os_info,
+            ATTR_TYPE: ,
+            ATTR_VERSION: ,
+            ATTR_LAST_VERSION: ,
+            ATTR_FEATURES: self.sys_host.features,
+            ATTR_HOSTNAME: ,
+            ATTR_OS: ,
         }
 
-    @api_process_hostcontrol
+    @api_process
     def reboot(self, request):
         """Reboot host."""
-        return self._host_control.reboot()
+        return self.sys_host.power.reboot()
 
-    @api_process_hostcontrol
+    @api_process
     def shutdown(self, request):
         """Poweroff host."""
-        return self._host_control.shutdown()
+        return self.sys_host.power.shutdown()
 
-    @api_process_hostcontrol
-    async def reload(self, request):
+    @api_process
+    def reload(self, request):
         """Reload host data."""
-        await self._host_control.load()
-        return True
+        return self._host_control.load()
 
-    @api_process_hostcontrol
+    @api_process
     async def update(self, request):
         """Update host OS."""
         body = await api_validate(SCHEMA_VERSION, request)

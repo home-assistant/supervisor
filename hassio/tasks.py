@@ -15,7 +15,7 @@ class Tasks(CoreSysAttributes):
 
     RUN_RELOAD_ADDONS = 21600
     RUN_RELOAD_SNAPSHOTS = 72000
-    RUN_RELOAD_HOST_CONTROL = 72000
+    RUN_RELOAD_HOST = 72000
     RUN_RELOAD_UPDATER = 21600
 
     RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
@@ -41,7 +41,7 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(self.sys_scheduler.register_task(
             self.sys_snapshots.reload, self.RUN_RELOAD_SNAPSHOTS))
         self.jobs.add(self.sys_scheduler.register_task(
-            self._host_control.load, self.RUN_RELOAD_HOST_CONTROL))
+            self.sys_host.load, self.RUN_RELOAD_HOST))
 
         self.jobs.add(self.sys_scheduler.register_task(
             self._watchdog_homeassistant_docker,
