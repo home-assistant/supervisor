@@ -1,10 +1,12 @@
 """Main file for HassIO."""
+from contextlib import suppress
 import asyncio
 import logging
 
 from .coresys import CoreSysAttributes
 from .const import (
     STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION, STARTUP_INITIALIZE)
+from .exceptions import HassioError
 from .utils.dt import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
@@ -68,7 +70,7 @@ class HassIO(CoreSysAttributes):
         _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
 
         # start addon mark as initialize
-        await self.sys_addons.auto_boot(STARTUP_INITIALIZE)
+        await self.sys_addons.boot(STARTUP_INITIALIZE)
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
@@ -80,17 +82,17 @@ class HassIO(CoreSysAttributes):
             self.sys_services.reset()
 
             # start addon mark as system
-            await self.sys_addons.auto_boot(STARTUP_SYSTEM)
+            await self.sys_addons.boot(STARTUP_SYSTEM)
 
             # start addon mark as services
-            await self.sys_addons.auto_boot(STARTUP_SERVICES)
+            await self.sys_addons.boot(STARTUP_SERVICES)
 
             # run HomeAssistant
             if self.sys_homeassistant.boot:
                 await self.sys_homeassistant.start()
 
             # start addon mark as application
-            await self.sys_addons.auto_boot(STARTUP_APPLICATION)
+            await self.sys_addons.boot(STARTUP_APPLICATION)
 
             # store new last boot
             self.sys_config.last_boot = self.sys_hardware.last_boot
@@ -118,3 +120,15 @@ class HassIO(CoreSysAttributes):
             self.sys_websession.close(),
             self.sys_websession_ssl.close()
         ])
+
+    async def shutdown(self):
+        """Shutdown all running containers in correct order."""
+        await self.sys_addons.shutdown(STARTUP_APPLICATION)
+
+        # Close Home Assistant
+        with suppress(HassioError):
+            await self.sys_homeassistant.stop()
+
+        await self.sys_addons.shutdown(STARTUP_SERVICES)
+        await self.sys_addons.shutdown(STARTUP_SYSTEM)
+        await self.sys_addons.shutdown(STARTUP_INITIALIZE)

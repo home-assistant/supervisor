@@ -222,14 +222,7 @@ class SnapshotManager(CoreSysAttributes):
                 tasks = []
 
                 # Stop Home-Assistant / Add-ons
-                tasks.append(self.sys_homeassistant.stop())
-                for addon in self.sys_addons.list_addons:
-                    if addon.is_installed:
-                        tasks.append(addon.stop())
-
-                if tasks:
-                    _LOGGER.info("Restore %s stop tasks", snapshot.slug)
-                    await asyncio.wait(tasks)
+                await self.sys_core.shutdown()
 
                 # Restore folders
                 _LOGGER.info("Restore %s run folders", snapshot.slug)
