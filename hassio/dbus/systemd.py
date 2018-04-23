@@ -39,8 +39,8 @@ class Systemd:
         return self.dbus.Manager.Reboot()
 
     @dbus_connected
-    def shutdown(self):
-        """Shutdown host computer.
+    def power_off(self):
+        """Power off host computer.
 
         Return a coroutine.
         """
