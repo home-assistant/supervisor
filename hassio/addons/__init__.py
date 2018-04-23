@@ -5,7 +5,7 @@ import logging
 from .addon import Addon
 from .repository import Repository
 from .data import AddonsData
-from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO
+from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO, STATE_STARTED
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -131,7 +131,7 @@ class AddonManager(CoreSysAttributes):
         for addon_slug in del_addons:
             self.addons_obj.pop(addon_slug)
 
-    async def auto_boot(self, stage):
+    async def boot(self, stage):
         """Boot addons with mode auto."""
         tasks = []
         for addon in self.addons_obj.values():
@@ -143,3 +143,16 @@ class AddonManager(CoreSysAttributes):
         if tasks:
             await asyncio.wait(tasks)
             await asyncio.sleep(self.sys_config.wait_boot)
+
+    async def shutdown(self, stage):
+        """Shutdown addons."""
+        tasks = []
+        for addon in self.addons_obj.values():
+            if addon.is_installed and \
+                    await addon.state() == STATE_STARTED and \
+                    addon.startup == stage:
+                tasks.append(addon.stop())
+
+        _LOGGER.info("Shutdown %s stop %d addons", stage, len(tasks))
+        if tasks:
+            await asyncio.wait(tasks)
