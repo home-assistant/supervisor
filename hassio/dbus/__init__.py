@@ -7,8 +7,9 @@ from ..coresys import CoreSysAttributes
 class DBusManager(CoreSysAttributes):
     """DBus Interface handler."""
 
-    def __init__(self):
+    def __init__(self, coresys):
         """Initialize DBus  Interface."""
+        self.coresys = coresys
         self._systemd = Systemd()
 
     @property

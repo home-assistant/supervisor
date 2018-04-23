@@ -23,16 +23,19 @@ class HassIO(CoreSysAttributes):
         if self.sys_config.timezone == 'UTC':
             self.sys_config.timezone = await fetch_timezone(self._websession)
 
-        # supervisor
+        # Load DBus
+        await self.sys_dbus.load()
+
+        # Load Host
+        await self.sys_host.load()
+
+        # Load Supervisor
         await self.sys_supervisor.load()
 
-        # hostcontrol
-        await self._host_control.load()
-
-        # Load homeassistant
+        # Load Home Assistant
         await self.sys_homeassistant.load()
 
-        # Load addons
+        # Load Add-ons
         await self.sys_addons.load()
 
         # rest api views
@@ -50,9 +53,6 @@ class HassIO(CoreSysAttributes):
         # start dns forwarding
         self.sys_create_task(self.sys_dns.start())
 
-        # start addon mark as initialize
-        await self.sys_addons.auto_boot(STARTUP_INITIALIZE)
-
     async def start(self):
         """Start HassIO orchestration."""
         # on release channel, try update itself
@@ -66,6 +66,9 @@ class HassIO(CoreSysAttributes):
         # start api
         await self.sys_api.start()
         _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
+
+        # start addon mark as initialize
+        await self.sys_addons.auto_boot(STARTUP_INITIALIZE)
 
         try:
             # HomeAssistant is already running / supervisor have only reboot

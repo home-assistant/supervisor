@@ -1,8 +1,9 @@
 """Interface to Systemd over dbus."""
 import logging
 
-from ..exceptions import HassioInternalError
-from ..utils.gdbus import DBus, DBusError
+from .utils import dbus_connected
+from ..exceptions import DBusError
+from ..utils.gdbus import DBus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,18 +30,18 @@ class Systemd:
         except DBusError:
             _LOGGER.warning("Can't connect to systemd")
 
-    async def reboot(self):
-        """Reboot host computer."""
-        try:
-            await self.dbus.Manager.Reboot()
-        except DBusError:
-            _LOGGER.error("Can't reboot host")
-            raise HassioInternalError() from None
+    @dbus_connected
+    def reboot(self):
+        """Reboot host computer.
 
-    async def shutdown(self):
-        """Shutdown host computer."""
-        try:
-            await self.dbus.Manager.PowerOff()
-        except DBusError:
-            _LOGGER.error("Can't PowerOff host")
-            raise HassioInternalError() from None
+        Return a coroutine.
+        """
+        return self.dbus.Manager.Reboot()
+
+    @dbus_connected
+    def shutdown(self):
+        """Shutdown host computer.
+
+        Return a coroutine.
+        """
+        return self.dbus.Manager.PowerOff()

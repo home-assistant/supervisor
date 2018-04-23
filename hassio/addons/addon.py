@@ -376,7 +376,7 @@ class Addon(CoreSysAttributes):
         if self.is_installed and \
                 ATTR_AUDIO_OUTPUT in self._data.user[self._id]:
             return self._data.user[self._id][ATTR_AUDIO_OUTPUT]
-        return self.sys_alsa.default.output
+        return self.sys_host.alsa.default.output
 
     @audio_output.setter
     def audio_output(self, value):
@@ -394,7 +394,7 @@ class Addon(CoreSysAttributes):
 
         if self.is_installed and ATTR_AUDIO_INPUT in self._data.user[self._id]:
             return self._data.user[self._id][ATTR_AUDIO_INPUT]
-        return self.sys_alsa.default.input
+        return self.sys_host.alsa.default.input
 
     @audio_input.setter
     def audio_input(self, value):
@@ -537,7 +537,7 @@ class Addon(CoreSysAttributes):
 
     def write_asound(self):
         """Write asound config to file and return True on success."""
-        asound_config = self.sys_alsa.asound(
+        asound_config = self.sys_host.alsa.asound(
             alsa_input=self.audio_input, alsa_output=self.audio_output)
 
         try:
