@@ -8,7 +8,6 @@ from .docker import DockerAPI
 from .misc.dns import DNSForward
 from .misc.hardware import Hardware
 from .misc.scheduler import Scheduler
-from .misc.systemd import Systemd
 
 
 class CoreSys:
@@ -29,7 +28,6 @@ class CoreSys:
         self._config = CoreConfig()
         self._hardware = Hardware()
         self._docker = DockerAPI()
-        self._systemd = Systemd()
         self._scheduler = Scheduler(loop=loop)
         self._dns = DNSForward(loop=loop)
 
