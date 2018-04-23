@@ -1,6 +1,7 @@
 """DBus interface objects."""
 
 from .systemd import Systemd
+from ..coresys import CoreSysAttributes
 
 
 class DBusManager(CoreSysAttributes):
