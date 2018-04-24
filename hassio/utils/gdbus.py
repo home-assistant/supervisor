@@ -10,15 +10,22 @@ from ..exceptions import DBusFatalError, DBusParseError
 
 _LOGGER = logging.getLogger(__name__)
 
+# Use to convert GVariant into json
+RE_GVARIANT_TYPE = re.compile(
+    r"(?:boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
+    r"string|objectpath|signature) ")
 RE_GVARIANT_TULPE = re.compile(r"^\((.*),\)$")
 RE_GVARIANT_VARIANT = re.compile(
     r"(?<=(?: |{|\[))<((?:'|\").*?(?:'|\")|\d+(?:\.\d+)?)>(?=(?:|]|}|,))")
 RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[))'(.*?)'(?=(?:|]|}|,))")
 
+# Commands for dbus
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
-              "--object-path {obj} --xml")
-CALL = ("gdbus call --system --dest {bus} --object-path {inf} "
-        "--method {inf}.{method} {args}")
+              "--object-path {object} --xml")
+CALL = ("gdbus call --system --dest {bus} --object-path {object} "
+        "--method {method} {args}")
+
+DBUS_METHOD_GETALL = 'org.freedesktop.DBus.Properties.GetAll'
 
 
 class DBus:
@@ -28,7 +35,7 @@ class DBus:
         """Initialize dbus object."""
         self.bus_name = bus_name
         self.object_path = object_path
-        self.data = {}
+        self.methods = set()
 
     @staticmethod
     async def connect(bus_name, object_path):
@@ -36,14 +43,14 @@ class DBus:
         self = DBus(bus_name, object_path)
         self._init_proxy()  # pylint: disable=protected-access
 
-        _LOGGER.info("Connect to dbus: %s", bus_name)
+        _LOGGER.info("Connect to dbus: %s - %s", bus_name, object_path)
         return self
 
     async def _init_proxy(self):
-        """Read object data."""
+        """Read interface data."""
         command = shlex.split(INTROSPECT.format(
             bus=self.bus_name,
-            obj=self.object_path
+            object=self.object_path
         ))
 
         # Ask data
@@ -59,14 +66,15 @@ class DBus:
 
         # Read available methods
         for interface in xml.findall("/node/interface"):
-            methods = set()
+            interface_name = interface.get('name')
             for method in interface.findall("/method"):
-                methods.add(method.get('name'))
-            self.data[interface.get('name')] = methods
+                method_name = method.get('name')
+                self.methods.add(f"{interface_name}.{method_name}")
 
     @staticmethod
     def _gvariant(raw):
         """Parse GVariant input to python."""
+        raw = RE_GVARIANT_TYPE.sub("", raw)
         raw = RE_GVARIANT_TULPE.sub(r"[\1]", raw)
         raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
         raw = RE_GVARIANT_STRING.sub(r"\"\1\"", raw)
@@ -74,24 +82,31 @@ class DBus:
         try:
             return json.loads(raw)
         except json.JSONDecodeError as err:
-             _LOGGER.error("Can't parse '%s': %s", raw, err)
+            _LOGGER.error("Can't parse '%s': %s", raw, err)
             raise DBusParseError() from None
 
-    async def call_dbus(self, interface, method, *args):
+    async def call_dbus(self, method, *args):
         """Call a dbus method."""
         command = shlex.split(CALL.format(
             bus=self.bus_name,
-            inf=interface,
+            object=self.object_path,
             method=method,
             args=" ".join(map(str, args))
         ))
 
         # Run command
-        _LOGGER.info("Call %s no %s", method, interface)
+        _LOGGER.info("Call %s on %s", method, self.object_path)
         data = await self._send(command)
 
         # Parse and return data
         return self._gvariant(data)
+
+    def get_properties(self, interface):
+        """Read all properties from interface.
+
+        Return a coroutine.
+        """
+        return self.call_dbus(DBUS_METHOD_GETALL, interface)
 
     async def _send(self, command):
         """Send command over dbus."""
@@ -117,13 +132,9 @@ class DBus:
         # End
         return data.decode()
 
-    def __getattr__(self, interface):
+    def __getattr__(self, name):
         """Mapping to dbus method."""
-        interface = f"{self.object_path}.{interface}"
-        if interface not in self.data:
-            raise AttributeError()
-
-        return DBusCallWrapper(self, interface)
+        return getattr(DBusCallWrapper(self, self.object_path), name)
 
 
 class DBusCallWrapper:
@@ -134,16 +145,23 @@ class DBusCallWrapper:
         self.dbus = dbus
         self.interface = interface
 
+    def __call__(self):
+        """Should never be called."""
+        _LOGGER.error("DBus method %s not exists!", self.interface)
+        raise DBusFatalError()
+
     def __getattr__(self, name):
         """Mapping to dbus method."""
-        if name not in self.dbus.data[self.interface]:
-            raise AttributeError()
+        interface = f"{self.interface}.{name}"
+
+        if interface not in self.dbus.methods:
+            return DBusCallWrapper(self.dbus, interface)
 
         def _method_wrapper(*args):
             """Wrap method.
 
             Return a coroutine
             """
-            return self.dbus.call_dbus(self.interface, self.name, *args)
+            return self.dbus.call_dbus(self.interface, *args)
 
         return _method_wrapper

@@ -14,7 +14,7 @@ class PowerControl(CoreSysAttributes):
         """Initialize host power handling."""
         self.coresys = coresys
 
-    def _check_systemd(self):
+    def _check_dbus(self):
         """Check if systemd is connect or raise error."""
         if not self.sys_dbus.systemd.is_connected:
             _LOGGER.error("No systemd dbus connection available")
@@ -22,7 +22,7 @@ class PowerControl(CoreSysAttributes):
 
     async def reboot(self):
         """Reboot host system."""
-        self._check_systemd()
+        self._check_dbus()
 
         _LOGGER.info("Initialize host reboot over systemd")
         try:
@@ -32,7 +32,7 @@ class PowerControl(CoreSysAttributes):
 
     async def shutdown(self):
         """Shutdown host system."""
-        self._check_systemd()
+        self._check_dbus()
 
         _LOGGER.info("Initialize host power off over systemd")
         try:
