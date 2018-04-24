@@ -1,6 +1,7 @@
 """DBus implementation with glib."""
 import asyncio
 import logging
+import json
 import shlex
 import re
 import xml.etree.ElementTree as ET
@@ -67,7 +68,14 @@ class DBus:
     def _gvariant(raw):
         """Parse GVariant input to python."""
         raw = RE_GVARIANT_TULPE.sub(r"[\1]", raw)
-        return raw
+        raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
+        raw = RE_GVARIANT_STRING.sub(r"\"\1\"", raw)
+
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as err:
+             _LOGGER.error("Can't parse '%s': %s", raw, err)
+            raise DBusParseError() from None
 
     async def call_dbus(self, interface, method, *args):
         """Call a dbus method."""
