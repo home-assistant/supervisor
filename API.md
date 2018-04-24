@@ -217,8 +217,11 @@ return:
 ### Host
 
 - POST `/host/reload`
+
 - POST `/host/shutdown`
+
 - POST `/host/reboot`
+
 - GET `/host/info`
 
 ```json
@@ -228,13 +231,20 @@ return:
     "last_version": "",
     "features": ["shutdown", "reboot", "update", "hostname", "network_info", "network_control"],
     "hostname": "",
-    "os": "",
-    "audio": {
-        "input": "0,0",
-        "output": "0,0"
-    }
+    "operating_system": "",
+    "kernel": "",
+    "chassis": ""
 }
 ```
+
+- POST `/host/options`
+
+```json
+{
+    "hostname": "",
+}
+```
+
 
 - POST `/host/update`
 
@@ -281,24 +291,6 @@ Optional:
             "1,1": "HDMI"
         }
     }
-}
-```
-
-### Network
-
-- GET `/network/info`
-
-```json
-{
-    "hostname": ""
-}
-```
-
-- POST `/network/options`
-
-```json
-{
-    "hostname": "",
 }
 ```
 
