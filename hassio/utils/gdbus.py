@@ -2,11 +2,17 @@
 import asyncio
 import logging
 import shlex
+import re
 import xml.etree.ElementTree as ET
 
 from ..exceptions import DBusFatalError, DBusParseError
 
 _LOGGER = logging.getLogger(__name__)
+
+RE_GVARIANT_TULPE = re.compile(r"^\((.*),\)$")
+RE_GVARIANT_VARIANT = re.compile(
+    r"(?<=(?: |{|\[))<((?:'|\").*?(?:'|\")|\d+(?:\.\d+)?)>(?=(?:|]|}|,))")
+RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[))'(.*?)'(?=(?:|]|}|,))")
 
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
               "--object-path {obj} --xml")
@@ -60,6 +66,7 @@ class DBus:
     @staticmethod
     def _gvariant(raw):
         """Parse GVariant input to python."""
+        raw = RE_GVARIANT_TULPE.sub(r"[\1]", raw)
         return raw
 
     async def call_dbus(self, interface, method, *args):
