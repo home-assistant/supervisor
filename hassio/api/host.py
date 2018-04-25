@@ -32,7 +32,7 @@ class APIHost(CoreSysAttributes):
             ATTR_CHASSIS: self.sys_host.local.chassis,
             ATTR_VERSION: None,
             ATTR_LAST_VERSION: None,
-            ATTR_FEATURES: self.sys_host.features,
+            ATTR_FEATURES: self.sys_host.supperted_features,
             ATTR_HOSTNAME: self.sys_host.local.hostname,
             ATTR_OPERATING_SYSTEM: self.sys_host.local.operating_system,
             ATTR_KERNEL: self.sys_host.local.kernel,
