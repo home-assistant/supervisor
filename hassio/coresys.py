@@ -264,6 +264,6 @@ class CoreSysAttributes:
 
     def __getattr__(self, name):
         """Mapping to coresys."""
-        if name.startswith("_sys_") and hasattr(self.coresys, name[5:]):
+        if name.startswith("sys_") and hasattr(self.coresys, name[5:]):
             return getattr(self.coresys, name[5:])
         raise AttributeError()
