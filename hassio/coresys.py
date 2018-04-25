@@ -248,11 +248,11 @@ class CoreSys:
             raise RuntimeError("HostManager already set!")
         self._host = value
 
-    async def run_in_executor(self, funct, *args):
+    def run_in_executor(self, funct, *args):
         """Wrapper for executor pool."""
         return self._loop.run_in_executor(None, funct, *args)
 
-    async def create_task(self, coroutine):
+    def create_task(self, coroutine):
         """Wrapper for async task."""
         return self._loop.create_task(coroutine)
 
