@@ -77,7 +77,7 @@ class DBus:
         raw = RE_GVARIANT_TYPE.sub("", raw)
         raw = RE_GVARIANT_TULPE.sub(r"[\1]", raw)
         raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
-        raw = RE_GVARIANT_STRING.sub(r"\"\1\"", raw)
+        raw = RE_GVARIANT_STRING.sub(r'"\1"', raw)
 
         try:
             return json.loads(raw)
