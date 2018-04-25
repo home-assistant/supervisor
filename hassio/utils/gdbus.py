@@ -101,12 +101,13 @@ class DBus:
         # Parse and return data
         return self._gvariant(data)
 
-    def get_properties(self, interface):
-        """Read all properties from interface.
-
-        Return a coroutine.
-        """
-        return self.call_dbus(DBUS_METHOD_GETALL, interface)
+    async def get_properties(self, interface):
+        """Read all properties from interface."""
+        try:
+            return await self.call_dbus(DBUS_METHOD_GETALL, interface)[0]
+        except IndexError:
+            _LOGGER.error("No attributes returned for %s", interface)
+            raise DBusFatalError from None
 
     async def _send(self, command):
         """Send command over dbus."""
