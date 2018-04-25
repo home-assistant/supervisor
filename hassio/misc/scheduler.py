@@ -10,7 +10,7 @@ CALL = 'callback'
 TASK = 'task'
 
 
-class Scheduler(object):
+class Scheduler:
     """Schedule task inside HassIO."""
 
     def __init__(self, loop):

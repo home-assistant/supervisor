@@ -34,7 +34,7 @@ class Supervisor(CoreSysAttributes):
     @property
     def last_version(self):
         """Return last available version of homeassistant."""
-        return self._updater.version_hassio
+        return self.sys_updater.version_hassio
 
     @property
     def image(self):
@@ -50,13 +50,13 @@ class Supervisor(CoreSysAttributes):
         """Update HomeAssistant version."""
         version = version or self.last_version
 
-        if version == self._supervisor.version:
+        if version == self.sys_supervisor.version:
             _LOGGER.warning("Version %s is already installed", version)
             return
 
         _LOGGER.info("Update supervisor to version %s", version)
         if await self.instance.install(version):
-            self._loop.call_later(1, self._loop.stop)
+            self.sys_loop.call_later(1, self.sys_loop.stop)
             return True
 
         _LOGGER.error("Update of hass.io fails!")

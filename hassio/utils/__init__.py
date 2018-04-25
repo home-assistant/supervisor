@@ -27,7 +27,7 @@ def process_lock(method):
     return wrap_api
 
 
-class AsyncThrottle(object):
+class AsyncThrottle:
     """
     Decorator that prevents a function from being called more than once every
     time period.
