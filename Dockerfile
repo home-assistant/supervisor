@@ -9,6 +9,7 @@ RUN apk add --no-cache \
         python3 \
         git \
         socat \
+        glib \
         libstdc++ \
     && apk add --no-cache --virtual .build-dependencies \
         make \

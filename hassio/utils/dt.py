@@ -29,7 +29,7 @@ async def fetch_timezone(websession):
     """Read timezone from freegeoip."""
     data = {}
     try:
-        with async_timeout.timeout(10, loop=websession.loop):
+        with async_timeout.timeout(10):
             async with websession.get(FREEGEOIP_URL) as request:
                 data = await request.json()
 

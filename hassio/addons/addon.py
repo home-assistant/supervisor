@@ -66,7 +66,7 @@ class Addon(CoreSysAttributes):
     @property
     def _data(self):
         """Return addons data storage."""
-        return self._addons.data
+        return self.sys_addons.data
 
     @property
     def is_installed(self):
@@ -376,7 +376,7 @@ class Addon(CoreSysAttributes):
         if self.is_installed and \
                 ATTR_AUDIO_OUTPUT in self._data.user[self._id]:
             return self._data.user[self._id][ATTR_AUDIO_OUTPUT]
-        return self._alsa.default.output
+        return self.sys_host.alsa.default.output
 
     @audio_output.setter
     def audio_output(self, value):
@@ -394,7 +394,7 @@ class Addon(CoreSysAttributes):
 
         if self.is_installed and ATTR_AUDIO_INPUT in self._data.user[self._id]:
             return self._data.user[self._id][ATTR_AUDIO_INPUT]
-        return self._alsa.default.input
+        return self.sys_host.alsa.default.input
 
     @audio_input.setter
     def audio_input(self, value):
@@ -436,11 +436,11 @@ class Addon(CoreSysAttributes):
 
         # Repository with dockerhub images
         if ATTR_IMAGE in addon_data:
-            return addon_data[ATTR_IMAGE].format(arch=self._arch)
+            return addon_data[ATTR_IMAGE].format(arch=self.sys_arch)
 
         # local build
         return "{}/{}-addon-{}".format(
-            addon_data[ATTR_REPOSITORY], self._arch,
+            addon_data[ATTR_REPOSITORY], self.sys_arch,
             addon_data[ATTR_SLUG])
 
     @property
@@ -461,12 +461,12 @@ class Addon(CoreSysAttributes):
     @property
     def path_data(self):
         """Return addon data path inside supervisor."""
-        return Path(self._config.path_addons_data, self._id)
+        return Path(self.sys_config.path_addons_data, self._id)
 
     @property
     def path_extern_data(self):
         """Return addon data path external for docker."""
-        return PurePath(self._config.path_extern_addons_data, self._id)
+        return PurePath(self.sys_config.path_extern_addons_data, self._id)
 
     @property
     def path_options(self):
@@ -506,16 +506,16 @@ class Addon(CoreSysAttributes):
     @property
     def path_asound(self):
         """Return path to asound config."""
-        return Path(self._config.path_tmp, f"{self.slug}_asound")
+        return Path(self.sys_config.path_tmp, f"{self.slug}_asound")
 
     @property
     def path_extern_asound(self):
         """Return path to asound config for docker."""
-        return Path(self._config.path_extern_tmp, f"{self.slug}_asound")
+        return Path(self.sys_config.path_extern_tmp, f"{self.slug}_asound")
 
     def save_data(self):
         """Save data of addon."""
-        self._addons.data.save_data()
+        self.sys_addons.data.save_data()
 
     def write_options(self):
         """Return True if addon options is written to data."""
@@ -537,7 +537,7 @@ class Addon(CoreSysAttributes):
 
     def write_asound(self):
         """Write asound config to file and return True on success."""
-        asound_config = self._alsa.asound(
+        asound_config = self.sys_host.alsa.asound(
             alsa_input=self.audio_input, alsa_output=self.audio_output)
 
         try:
@@ -590,9 +590,9 @@ class Addon(CoreSysAttributes):
 
     async def install(self):
         """Install a addon."""
-        if self._arch not in self.supported_arch:
+        if self.sys_arch not in self.supported_arch:
             _LOGGER.error(
-                "Addon %s not supported on %s", self._id, self._arch)
+                "Addon %s not supported on %s", self._id, self.sys_arch)
             return False
 
         if self.is_installed:
@@ -735,7 +735,7 @@ class Addon(CoreSysAttributes):
     @check_installed
     async def snapshot(self, tar_file):
         """Snapshot a state of a addon."""
-        with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
             # store local image
             if self.need_build and not await \
                     self.instance.export_image(Path(temp, "image.tar")):
@@ -764,7 +764,7 @@ class Addon(CoreSysAttributes):
 
             try:
                 _LOGGER.info("Build snapshot for addon %s", self._id)
-                await self._loop.run_in_executor(None, _write_tarfile)
+                await self.sys_run_in_executor(_write_tarfile)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
                 return False
@@ -774,7 +774,7 @@ class Addon(CoreSysAttributes):
 
     async def restore(self, tar_file):
         """Restore a state of a addon."""
-        with TemporaryDirectory(dir=str(self._config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
             # extract snapshot
             def _extract_tarfile():
                 """Extract tar snapshot."""
@@ -782,7 +782,7 @@ class Addon(CoreSysAttributes):
                     snapshot.extractall(path=Path(temp))
 
             try:
-                await self._loop.run_in_executor(None, _extract_tarfile)
+                await self.sys_run_in_executor(_extract_tarfile)
             except tarfile.TarError as err:
                 _LOGGER.error("Can't read tarfile %s: %s", tar_file, err)
                 return False
@@ -828,7 +828,7 @@ class Addon(CoreSysAttributes):
 
             try:
                 _LOGGER.info("Restore data for addon %s", self._id)
-                await self._loop.run_in_executor(None, _restore_data)
+                await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data: %s", err)
                 return False

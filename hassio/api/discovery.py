@@ -21,7 +21,7 @@ class APIDiscovery(CoreSysAttributes):
 
     def _extract_message(self, request):
         """Extract discovery message from URL."""
-        message = self._services.discovery.get(request.match_info.get('uuid'))
+        message = self.sys_discovery.get(request.match_info.get('uuid'))
         if not message:
             raise RuntimeError("Discovery message not found")
         return message
@@ -30,7 +30,7 @@ class APIDiscovery(CoreSysAttributes):
     async def list(self, request):
         """Show register services."""
         discovery = []
-        for message in self._services.discovery.list_messages:
+        for message in self.sys_discovery.list_messages:
             discovery.append({
                 ATTR_PROVIDER: message.provider,
                 ATTR_UUID: message.uuid,
@@ -45,7 +45,7 @@ class APIDiscovery(CoreSysAttributes):
     async def set_discovery(self, request):
         """Write data into a discovery pipeline."""
         body = await api_validate(SCHEMA_DISCOVERY, request)
-        message = self._services.discovery.send(
+        message = self.sys_discovery.send(
             provider=request[REQUEST_FROM], **body)
 
         return {ATTR_UUID: message.uuid}
@@ -68,5 +68,5 @@ class APIDiscovery(CoreSysAttributes):
         """Delete data into a discovery message."""
         message = self._extract_message(request)
 
-        self._services.discovery.remove(message)
+        self.sys_discovery.remove(message)
         return True

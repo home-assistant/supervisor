@@ -8,7 +8,7 @@ from ..const import DOCKER_NETWORK_MASK, DOCKER_NETWORK, DOCKER_NETWORK_RANGE
 _LOGGER = logging.getLogger(__name__)
 
 
-class DockerNetwork(object):
+class DockerNetwork:
     """Internal HassIO Network.
 
     This class is not AsyncIO safe!

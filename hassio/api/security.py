@@ -42,13 +42,13 @@ class SecurityMiddleware(CoreSysAttributes):
             return await handler(request)
 
         # Home-Assistant
-        if hassio_token == self._homeassistant.uuid:
+        if hassio_token == self.sys_homeassistant.uuid:
             _LOGGER.debug("%s access from Home-Assistant", request.path)
             request[REQUEST_FROM] = 'homeassistant'
             return await handler(request)
 
         # Add-on
-        addon = self._addons.from_uuid(hassio_token)
+        addon = self.sys_addons.from_uuid(hassio_token)
         if addon:
             _LOGGER.info("%s access from %s", request.path, addon.slug)
             request[REQUEST_FROM] = addon.slug

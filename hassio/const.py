@@ -18,7 +18,6 @@ FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
 FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
-SOCKET_HC = Path("/var/run/hassio-hc.sock")
 
 DOCKER_NETWORK = 'hassio'
 DOCKER_NETWORK_MASK = ip_network('172.30.32.0/23')
@@ -62,7 +61,8 @@ ATTR_LONG_DESCRIPTION = 'long_description'
 ATTR_HOSTNAME = 'hostname'
 ATTR_TIMEZONE = 'timezone'
 ATTR_ARGS = 'args'
-ATTR_OS = 'os'
+ATTR_OPERATING_SYSTEM = 'operating_system'
+ATTR_CHASSIS = 'chassis'
 ATTR_TYPE = 'type'
 ATTR_SOURCE = 'source'
 ATTR_FEATURES = 'features'
@@ -160,6 +160,7 @@ ATTR_DISCOVERY = 'discovery'
 ATTR_PROTECTED = 'protected'
 ATTR_CRYPTO = 'crypto'
 ATTR_BRANCH = 'branch'
+ATTR_KERNEL = 'kernel'
 ATTR_SECCOMP = 'seccomp'
 ATTR_APPARMOR = 'apparmor'
 
@@ -209,3 +210,8 @@ CRYPTO_AES128 = 'aes128'
 SECURITY_PROFILE = 'profile'
 SECURITY_DEFAULT = 'default'
 SECURITY_DISABLE = 'disable'
+
+FEATURES_SHUTDOWN = 'shutdown'
+FEATURES_REBOOT = 'reboot'
+FEATURES_UPDATE = 'update'
+FEATURES_HOSTNAME = 'hostname'

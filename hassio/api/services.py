@@ -11,7 +11,7 @@ class APIServices(CoreSysAttributes):
 
     def _extract_service(self, request):
         """Return service and if not exists trow a exception."""
-        service = self._services.get(request.match_info.get('service'))
+        service = self.sys_services.get(request.match_info.get('service'))
         if not service:
             raise RuntimeError("Service not exists")
 
@@ -21,7 +21,7 @@ class APIServices(CoreSysAttributes):
     async def list(self, request):
         """Show register services."""
         services = []
-        for service in self._services.list_services:
+        for service in self.sys_services.list_services:
             services.append({
                 ATTR_SLUG: service.slug,
                 ATTR_AVAILABLE: service.enabled,

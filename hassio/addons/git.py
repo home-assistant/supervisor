@@ -45,7 +45,7 @@ class GitRepo(CoreSysAttributes):
         async with self.lock:
             try:
                 _LOGGER.info("Load addon %s repository", self.path)
-                self.repo = await self._loop.run_in_executor(
+                self.repo = await self.sys_loop.run_in_executor(
                     None, git.Repo, str(self.path))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
@@ -68,7 +68,7 @@ class GitRepo(CoreSysAttributes):
 
             try:
                 _LOGGER.info("Clone addon %s repository", self.url)
-                self.repo = await self._loop.run_in_executor(None, ft.partial(
+                self.repo = await self.sys_run_in_executor(ft.partial(
                     git.Repo.clone_from, self.url, str(self.path),
                     **git_args
                 ))
@@ -89,7 +89,7 @@ class GitRepo(CoreSysAttributes):
         async with self.lock:
             try:
                 _LOGGER.info("Pull addon %s repository", self.url)
-                await self._loop.run_in_executor(
+                await self.sys_loop.run_in_executor(
                     None, self.repo.remotes.origin.pull)
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
