@@ -6,8 +6,8 @@ import voluptuous as vol
 
 from .utils import api_process, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES,
-    ATTR_OPERATING_SYSTEM, ATTR_KERNEL, ATTR_CHASSIS)
+    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_HOSTNAME, ATTR_FEATURES, ATTR_KERNEL,
+    ATTR_TYPE, ATTR_OPERATING_SYSTEM, ATTR_CHASSIS, ATTR_DEPLOYMENT)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,13 +28,14 @@ class APIHost(CoreSysAttributes):
     async def info(self, request):
         """Return host information."""
         return {
-            ATTR_TYPE: None,
             ATTR_CHASSIS: self.sys_host.info.chassis,
             ATTR_VERSION: None,
             ATTR_LAST_VERSION: None,
+            ATTR_TYPE: None,
             ATTR_FEATURES: self.sys_host.supperted_features,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
+            ATTR_DEPLOYMENT: self.sys_host.info.deployment,
             ATTR_KERNEL: self.sys_host.info.kernel,
         }
 
