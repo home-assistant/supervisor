@@ -231,7 +231,7 @@ return:
     "operating_system": "",
     "kernel": "",
     "chassis": "",
-    "machine": "",
+    "type": "",
     "deployment": "",
     "version": "",
     "last_version": "",
