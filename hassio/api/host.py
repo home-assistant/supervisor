@@ -1,13 +1,12 @@
 """Init file for HassIO host rest api."""
-import asyncio
 import logging
 
 import voluptuous as vol
 
 from .utils import api_process, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_TYPE, ATTR_HOSTNAME, ATTR_FEATURES,
-    ATTR_OPERATING_SYSTEM, ATTR_KERNEL, ATTR_CHASSIS)
+    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_HOSTNAME, ATTR_FEATURES, ATTR_KERNEL,
+    ATTR_TYPE, ATTR_OPERATING_SYSTEM, ATTR_CHASSIS, ATTR_DEPLOYMENT)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,14 +27,15 @@ class APIHost(CoreSysAttributes):
     async def info(self, request):
         """Return host information."""
         return {
-            ATTR_TYPE: None,
-            ATTR_CHASSIS: self.sys_host.local.chassis,
+            ATTR_CHASSIS: self.sys_host.info.chassis,
             ATTR_VERSION: None,
             ATTR_LAST_VERSION: None,
+            ATTR_TYPE: None,
             ATTR_FEATURES: self.sys_host.supperted_features,
-            ATTR_HOSTNAME: self.sys_host.local.hostname,
-            ATTR_OPERATING_SYSTEM: self.sys_host.local.operating_system,
-            ATTR_KERNEL: self.sys_host.local.kernel,
+            ATTR_HOSTNAME: self.sys_host.info.hostname,
+            ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
+            ATTR_DEPLOYMENT: self.sys_host.info.deployment,
+            ATTR_KERNEL: self.sys_host.info.kernel,
         }
 
     @api_process
@@ -45,31 +45,26 @@ class APIHost(CoreSysAttributes):
 
         # hostname
         if ATTR_HOSTNAME in body:
-            await self.sys_host.local.set_hostname(body[ATTR_HOSTNAME])
+            await self.sys_host.control.set_hostname(body[ATTR_HOSTNAME])
 
     @api_process
     def reboot(self, request):
         """Reboot host."""
-        return self.sys_host.power.reboot()
+        return self.sys_host.control.reboot()
 
     @api_process
     def shutdown(self, request):
         """Poweroff host."""
-        return self.sys_host.power.shutdown()
+        return self.sys_host.control.shutdown()
 
     @api_process
     def reload(self, request):
         """Reload host data."""
-        return self._host_control.load()
+        return self.sys_host.reload()
 
     @api_process
     async def update(self, request):
         """Update host OS."""
-        body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self._host_control.last_version)
-
-        if version == self._host_control.version:
-            raise RuntimeError(f"Version {version} is already in use")
-
-        return await asyncio.shield(
-            self._host_control.update(version=version))
+        pass
+        # body = await api_validate(SCHEMA_VERSION, request)
+        # version = body.get(ATTR_VERSION, self.sys_host.last_version)
