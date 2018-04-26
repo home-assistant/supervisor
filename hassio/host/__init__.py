@@ -24,12 +24,12 @@ class HostManager(CoreSysAttributes):
 
     @property
     def control(self):
-        """Return host power handler."""
+        """Return host control handler."""
         return self._control
 
     @property
     def info(self):
-        """Return host local handler."""
+        """Return host info handler."""
         return self._info
 
     @property
