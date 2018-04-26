@@ -6,8 +6,6 @@ from ..exceptions import HassioError, HostNotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
 
-UNKNOWN = 'Unknown'
-
 
 class InfoCenter(CoreSysAttributes):
     """Handle local system information controls."""
@@ -20,27 +18,32 @@ class InfoCenter(CoreSysAttributes):
     @property
     def hostname(self):
         """Return local hostname."""
-        return self._data.get('Hostname', UNKNOWN)
+        return self._data.get('Hostname') or None
 
     @property
     def chassis(self):
         """Return local chassis type."""
-        return self._data.get('Chassis', UNKNOWN)
+        return self._data.get('Chassis') or None
+
+    @property
+    def deployment(self):
+        """Return local deployment type."""
+        return self._data.get('Deployment') or None
 
     @property
     def kernel(self):
         """Return local kernel version."""
-        return self._data.get('KernelRelease', UNKNOWN)
+        return self._data.get('KernelRelease') or None
 
     @property
     def operating_system(self):
         """Return local operating system."""
-        return self._data.get('OperatingSystemPrettyName', UNKNOWN)
+        return self._data.get('OperatingSystemPrettyName') or None
 
     @property
     def cpe(self):
         """Return local CPE."""
-        return self._data.get('OperatingSystemCPEName', UNKNOWN)
+        return self._data.get('OperatingSystemCPEName') or None
 
     async def update(self):
         """Update properties over dbus."""

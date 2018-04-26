@@ -226,14 +226,15 @@ return:
 
 ```json
 {
-    "type": "",
-    "version": "",
-    "last_version": "",
-    "features": ["shutdown", "reboot", "update", "hostname", "network_info", "network_control"],
     "hostname": "",
+    "features": ["shutdown", "reboot", "update", "hostname"],
     "operating_system": "",
     "kernel": "",
-    "chassis": ""
+    "chassis": "",
+    "machine": "",
+    "deployment": "",
+    "version": "",
+    "last_version": "",
 }
 ```
 
@@ -302,6 +303,7 @@ Optional:
 {
     "version": "INSTALL_VERSION",
     "last_version": "LAST_VERSION",
+    "machine": "Image machine type",
     "image": "str",
     "custom": "bool -> if custom image",
     "boot": "bool",
