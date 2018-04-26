@@ -7,7 +7,7 @@ from ..exceptions import HostNotSupportedError
 _LOGGER = logging.getLogger(__name__)
 
 
-class PowerControl(CoreSysAttributes):
+class SystemControl(CoreSysAttributes):
     """Handle host power controls."""
 
     def __init__(self, coresys):
@@ -39,3 +39,9 @@ class PowerControl(CoreSysAttributes):
             await self.sys_core.shutdown()
         finally:
             await self.sys_dbus.systemd.power_off()
+        
+    async def set_hostname(self, hostname):
+        """Set local a new Hostname."""
+        _LOGGER.info("Set Hostname %s", hostname)
+        await self.sys_dbus.hostname.set_hostname(hostname)
+        await self.sys_host.info.update()
