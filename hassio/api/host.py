@@ -1,5 +1,4 @@
 """Init file for HassIO host rest api."""
-import asyncio
 import logging
 
 import voluptuous as vol
@@ -61,11 +60,11 @@ class APIHost(CoreSysAttributes):
     @api_process
     def reload(self, request):
         """Reload host data."""
-        return self.sys_host.load()
+        return self.sys_host.reload()
 
     @api_process
     async def update(self, request):
         """Update host OS."""
         pass
-        #body = await api_validate(SCHEMA_VERSION, request)
-        #version = body.get(ATTR_VERSION, self.sys_host.last_version)
+        # body = await api_validate(SCHEMA_VERSION, request)
+        # version = body.get(ATTR_VERSION, self.sys_host.last_version)
