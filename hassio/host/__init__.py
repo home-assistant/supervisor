@@ -1,8 +1,8 @@
 """Host function like audio/dbus/systemd."""
 
 from .alsa import AlsaAudio
-from .power import PowerControl
-from .local import LocalCenter
+from .control import SystemControl
+from .info import InfoCenter
 from ..const import FEATURES_REBOOT, FEATURES_SHUTDOWN, FEATURES_HOSTNAME
 from ..coresys import CoreSysAttributes
 
@@ -14,8 +14,8 @@ class HostManager(CoreSysAttributes):
         """Initialize Host manager."""
         self.coresys = coresys
         self._alsa = AlsaAudio(coresys)
-        self._power = PowerControl(coresys)
-        self._local = LocalCenter(coresys)
+        self._control = SystemControl(coresys)
+        self._info = InfoCenter(coresys)
 
     @property
     def alsa(self):
@@ -23,14 +23,14 @@ class HostManager(CoreSysAttributes):
         return self._alsa
 
     @property
-    def power(self):
+    def control(self):
         """Return host power handler."""
-        return self._power
+        return self._control
 
     @property
-    def local(self):
+    def info(self):
         """Return host local handler."""
-        return self._local
+        return self._info
 
     @property
     def supperted_features(self):
@@ -51,7 +51,7 @@ class HostManager(CoreSysAttributes):
     async def load(self):
         """Load host functions."""
         if self.sys_dbus.hostname.is_connected:
-            await self.local.update()
+            await self.info.update()
 
     def reload(self):
         """Reload host information."""
