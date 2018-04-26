@@ -42,16 +42,8 @@ class InfoCenter(CoreSysAttributes):
         """Return local CPE."""
         return self._data.get('OperatingSystemCPEName', UNKNOWN)
 
-    def _check_dbus_hostname(self):
-        """Check if systemd is connect or raise error."""
-        if not self.sys_dbus.hostname.is_connected:
-            _LOGGER.error("No hostname dbus connection available")
-            raise HostNotSupportedError()
-
     async def update(self):
         """Update properties over dbus."""
-        self._check_dbus_hostname()
-
         _LOGGER.info("Update local host information")
         try:
             self._data = await self.sys_dbus.hostname.get_properties()
