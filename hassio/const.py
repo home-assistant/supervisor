@@ -52,6 +52,7 @@ ENV_TIME = 'TZ'
 
 REQUEST_FROM = 'HASSIO_FROM'
 
+ATTR_MACHINE = 'machine'
 ATTR_WAIT_BOOT = 'wait_boot'
 ATTR_WATCHDOG = 'watchdog'
 ATTR_CHANGELOG = 'changelog'
