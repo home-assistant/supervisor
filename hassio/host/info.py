@@ -6,10 +6,8 @@ from ..exceptions import HassioError, HostNotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
 
-UNKNOWN = 'Unknown'
 
-
-class LocalCenter(CoreSysAttributes):
+class InfoCenter(CoreSysAttributes):
     """Handle local system information controls."""
 
     def __init__(self, coresys):
@@ -20,48 +18,41 @@ class LocalCenter(CoreSysAttributes):
     @property
     def hostname(self):
         """Return local hostname."""
-        return self._data.get('Hostname', UNKNOWN)
+        return self._data.get('Hostname') or None
 
     @property
     def chassis(self):
         """Return local chassis type."""
-        return self._data.get('Chassis', UNKNOWN)
+        return self._data.get('Chassis') or None
+
+    @property
+    def deployment(self):
+        """Return local deployment type."""
+        return self._data.get('Deployment') or None
 
     @property
     def kernel(self):
         """Return local kernel version."""
-        return self._data.get('KernelRelease', UNKNOWN)
+        return self._data.get('KernelRelease') or None
 
     @property
     def operating_system(self):
         """Return local operating system."""
-        return self._data.get('OperatingSystemPrettyName', UNKNOWN)
+        return self._data.get('OperatingSystemPrettyName') or None
 
     @property
     def cpe(self):
         """Return local CPE."""
-        return self._data.get('OperatingSystemCPEName', UNKNOWN)
-
-    def _check_dbus(self):
-        """Check if systemd is connect or raise error."""
-        if not self.sys_dbus.hostname.is_connected:
-            _LOGGER.error("No hostname dbus connection available")
-            raise HostNotSupportedError()
+        return self._data.get('OperatingSystemCPEName') or None
 
     async def update(self):
         """Update properties over dbus."""
-        self._check_dbus()
+        if not self.sys_dbus.systemd.is_connected:
+            _LOGGER.error("No hostname dbus connection available")
+            raise HostNotSupportedError()
 
         _LOGGER.info("Update local host information")
         try:
             self._data = await self.sys_dbus.hostname.get_properties()
         except HassioError:
             _LOGGER.warning("Can't update host system information!")
-
-    async def set_hostname(self, hostname):
-        """Set local a new Hostname."""
-        self._check_dbus()
-
-        _LOGGER.info("Set Hostname %s", hostname)
-        await self.sys_dbus.hostname.set_hostname(hostname)
-        await self.update()

@@ -226,14 +226,15 @@ return:
 
 ```json
 {
-    "type": "",
-    "version": "",
-    "last_version": "",
-    "features": ["shutdown", "reboot", "update", "hostname", "network_info", "network_control"],
-    "hostname": "",
-    "operating_system": "",
-    "kernel": "",
-    "chassis": ""
+    "hostname": "hostname|null",
+    "features": ["shutdown", "reboot", "update", "hostname"],
+    "operating_system": "Hass.io-OS XY|Ubuntu 16.4|null",
+    "kernel": "4.15.7|null",
+    "chassis": "specific|null",
+    "type": "Hass.io-OS Type|null",
+    "deployment": "stable|beta|dev|null",
+    "version": "xy|null",
+    "last_version": "xy|null",
 }
 ```
 
@@ -302,6 +303,7 @@ Optional:
 {
     "version": "INSTALL_VERSION",
     "last_version": "LAST_VERSION",
+    "machine": "Image machine type",
     "image": "str",
     "custom": "bool -> if custom image",
     "boot": "bool",

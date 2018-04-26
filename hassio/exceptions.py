@@ -35,7 +35,7 @@ class DBusError(HassioError):
     pass
 
 
-class DBusNotConnectedError(HassioNotSupportedError):
+class DBusNotConnectedError(HostNotSupportedError):
     """DBus is not connected and call a method."""
 
 
