@@ -9,7 +9,7 @@ _LOGGER = logging.getLogger(__name__)
 UNKNOWN = 'Unknown'
 
 
-class LocalCenter(CoreSysAttributes):
+class InfoCenter(CoreSysAttributes):
     """Handle local system information controls."""
 
     def __init__(self, coresys):
@@ -42,7 +42,7 @@ class LocalCenter(CoreSysAttributes):
         """Return local CPE."""
         return self._data.get('OperatingSystemCPEName', UNKNOWN)
 
-    def _check_dbus(self):
+    def _check_dbus_hostname(self):
         """Check if systemd is connect or raise error."""
         if not self.sys_dbus.hostname.is_connected:
             _LOGGER.error("No hostname dbus connection available")
@@ -50,18 +50,10 @@ class LocalCenter(CoreSysAttributes):
 
     async def update(self):
         """Update properties over dbus."""
-        self._check_dbus()
+        self._check_dbus_hostname()
 
         _LOGGER.info("Update local host information")
         try:
             self._data = await self.sys_dbus.hostname.get_properties()
         except HassioError:
             _LOGGER.warning("Can't update host system information!")
-
-    async def set_hostname(self, hostname):
-        """Set local a new Hostname."""
-        self._check_dbus()
-
-        _LOGGER.info("Set Hostname %s", hostname)
-        await self.sys_dbus.hostname.set_hostname(hostname)
-        await self.update()
