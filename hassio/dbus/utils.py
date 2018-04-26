@@ -8,7 +8,7 @@ def dbus_connected(method):
     def wrap_dbus(api, *args, **kwargs):
         """Check if dbus is connected before call a method."""
         if api.dbus is None:
-            raise DBusNotConnectedError(f"{api!s} not connected to dbus!")
+            raise DBusNotConnectedError()
         return method(api, *args, **kwargs)
 
     return wrap_dbus
