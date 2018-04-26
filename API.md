@@ -226,15 +226,15 @@ return:
 
 ```json
 {
-    "hostname": "",
+    "hostname": "hostname|null",
     "features": ["shutdown", "reboot", "update", "hostname"],
-    "operating_system": "",
-    "kernel": "",
-    "chassis": "",
-    "type": "",
-    "deployment": "",
-    "version": "",
-    "last_version": "",
+    "operating_system": "Hass.io-OS XY|Ubuntu 16.4|null",
+    "kernel": "4.15.7|null",
+    "chassis": "specific|null",
+    "type": "Hass.io-OS Type|null",
+    "deployment": "stable|beta|dev|null",
+    "version": "xy|null",
+    "last_version": "xy|null",
 }
 ```
 
