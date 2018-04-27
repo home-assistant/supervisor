@@ -23,12 +23,12 @@ class Hostname(DBusInterface):
             _LOGGER.warning("Can't connect to hostname")
 
     @dbus_connected
-    def set_hostname(self, hostname):
+    def set_static_hostname(self, hostname):
         """Change local hostname.
 
         Return a coroutine.
         """
-        return self.dbus.SetHostname(hostname)
+        return self.dbus.SetStaticHostname(hostname)
 
     @dbus_connected
     def get_properties(self):
