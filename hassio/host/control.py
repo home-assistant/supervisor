@@ -47,5 +47,5 @@ class SystemControl(CoreSysAttributes):
             raise HostNotSupportedError()
 
         _LOGGER.info("Set Hostname %s", hostname)
-        await self.sys_dbus.hostname.set_hostname(hostname)
+        await self.sys_dbus.hostname.set_static_hostname(hostname)
         await self.sys_host.info.update()
