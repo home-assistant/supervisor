@@ -18,7 +18,7 @@ class InfoCenter(CoreSysAttributes):
     @property
     def hostname(self):
         """Return local hostname."""
-        return self._data.get('Hostname') or None
+        return self._data.get('StaticHostname') or None
 
     @property
     def chassis(self):
