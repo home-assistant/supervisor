@@ -6,12 +6,12 @@ pcm.!default {
 pcm.mic {
   type plug
   slave {
-    pcm "hw:{$input}"
+    pcm "hw:$input"
   }
 }
 pcm.speaker {
   type plug
   slave {
-    pcm "hw:{$output}"
+    pcm "hw:$output"
   }
 }
