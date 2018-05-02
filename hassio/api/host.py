@@ -1,4 +1,5 @@
 """Init file for HassIO host rest api."""
+import asyncio
 import logging
 
 import voluptuous as vol
@@ -45,22 +46,23 @@ class APIHost(CoreSysAttributes):
 
         # hostname
         if ATTR_HOSTNAME in body:
-            await self.sys_host.control.set_hostname(body[ATTR_HOSTNAME])
+            await asyncio.shield(
+                self.sys_host.control.set_hostname(body[ATTR_HOSTNAME]))
 
     @api_process
     def reboot(self, request):
         """Reboot host."""
-        return self.sys_host.control.reboot()
+        return asyncio.shield(self.sys_host.control.reboot())
 
     @api_process
     def shutdown(self, request):
         """Poweroff host."""
-        return self.sys_host.control.shutdown()
+        return asyncio.shield(self.sys_host.control.shutdown())
 
     @api_process
     def reload(self, request):
         """Reload host data."""
-        return self.sys_host.reload()
+        return asyncio.shield(self.sys_host.reload())
 
     @api_process
     async def update(self, request):
