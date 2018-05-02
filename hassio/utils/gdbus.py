@@ -41,7 +41,7 @@ class DBus:
     async def connect(bus_name, object_path):
         """Read object data."""
         self = DBus(bus_name, object_path)
-        self._init_proxy()  # pylint: disable=protected-access
+        await self._init_proxy()  # pylint: disable=protected-access
 
         _LOGGER.info("Connect to dbus: %s - %s", bus_name, object_path)
         return self
