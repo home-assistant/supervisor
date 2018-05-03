@@ -115,6 +115,7 @@ class DBus:
     async def _send(self, command):
         """Send command over dbus."""
         # Run command
+        _LOGGER.info("Send dbus command: %s", command)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *command,
