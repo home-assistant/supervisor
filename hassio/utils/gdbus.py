@@ -66,7 +66,7 @@ class DBus:
 
         # Read available methods
         _LOGGER.info("data: %s", data)
-        for interface in xml.findall("./node/interface"):
+        for interface in xml.findall("./interface"):
             interface_name = interface.get('name')
             _LOGGER.info("Read Interface %s", interface)
             for method in interface.findall("/method"):
