@@ -54,7 +54,7 @@ class DBus:
         ))
 
         # Ask data
-        _LOGGER.info("Introspect %s no %s", self.bus_name, self.object_path)
+        _LOGGER.info("Introspect %s on %s", self.bus_name, self.object_path)
         data = await self._send(command)
 
         # Parse XML
@@ -65,9 +65,10 @@ class DBus:
             raise DBusParseError() from None
 
         # Read available methods
-        for interface in xml.findall("/node/interface"):
+        _LOGGER.debug("data: %s", data)
+        for interface in xml.findall("./interface"):
             interface_name = interface.get('name')
-            for method in interface.findall("/method"):
+            for method in interface.findall("./method"):
                 method_name = method.get('name')
                 self.methods.add(f"{interface_name}.{method_name}")
 
@@ -78,6 +79,10 @@ class DBus:
         raw = RE_GVARIANT_TULPE.sub(r"[\1]", raw)
         raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
         raw = RE_GVARIANT_STRING.sub(r'"\1"', raw)
+
+        # No data
+        if raw.startswith("()"):
+            return {}
 
         try:
             return json.loads(raw)
@@ -112,6 +117,7 @@ class DBus:
     async def _send(self, command):
         """Send command over dbus."""
         # Run command
+        _LOGGER.debug("Send dbus command: %s", command)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *command,
@@ -135,7 +141,7 @@ class DBus:
 
     def __getattr__(self, name):
         """Mapping to dbus method."""
-        return getattr(DBusCallWrapper(self, self.object_path), name)
+        return getattr(DBusCallWrapper(self, self.bus_name), name)
 
 
 class DBusCallWrapper:
@@ -163,6 +169,6 @@ class DBusCallWrapper:
 
             Return a coroutine
             """
-            return self.dbus.call_dbus(self.interface, *args)
+            return self.dbus.call_dbus(interface, *args)
 
         return _method_wrapper
