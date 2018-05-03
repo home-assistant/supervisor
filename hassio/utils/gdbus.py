@@ -68,8 +68,8 @@ class DBus:
         _LOGGER.info("data: %s", data)
         for interface in xml.findall("./interface"):
             interface_name = interface.get('name')
-            _LOGGER.info("Read Interface %s", interface)
-            for method in interface.findall("/method"):
+            _LOGGER.info("Read Interface %s", interface_name)
+            for method in interface.findall("./method"):
                 method_name = method.get('name')
                 _LOGGER.info("Read method %s", method_name)
                 self.methods.add(f"{interface_name}.{method_name}")
