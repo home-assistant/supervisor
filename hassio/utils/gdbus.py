@@ -54,7 +54,7 @@ class DBus:
         ))
 
         # Ask data
-        _LOGGER.info("Introspect %s no %s", self.bus_name, self.object_path)
+        _LOGGER.info("Introspect %s on %s", self.bus_name, self.object_path)
         data = await self._send(command)
 
         # Parse XML
