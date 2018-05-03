@@ -65,7 +65,7 @@ class DBus:
             raise DBusParseError() from None
 
         # Read available methods
-        for interface in xml.findall("/node/interface"):
+        for interface in xml.findall("./node/interface"):
             interface_name = interface.get('name')
             for method in interface.findall("/method"):
                 method_name = method.get('name')
