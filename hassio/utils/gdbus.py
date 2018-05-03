@@ -67,8 +67,10 @@ class DBus:
         # Read available methods
         for interface in xml.findall("./node/interface"):
             interface_name = interface.get('name')
+            _LOGGER.info("Read Interface %s", interface)
             for method in interface.findall("/method"):
                 method_name = method.get('name')
+                _LOGGER.info("Read method %s", method_name)
                 self.methods.add(f"{interface_name}.{method_name}")
 
     @staticmethod
