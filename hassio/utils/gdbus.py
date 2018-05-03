@@ -80,6 +80,10 @@ class DBus:
         raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
         raw = RE_GVARIANT_STRING.sub(r'"\1"', raw)
 
+        # No data
+        if raw.startswith("()"):
+            return {}
+
         try:
             return json.loads(raw)
         except json.JSONDecodeError as err:
