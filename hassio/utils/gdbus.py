@@ -138,7 +138,7 @@ class DBus:
 
     def __getattr__(self, name):
         """Mapping to dbus method."""
-        return getattr(DBusCallWrapper(self, self.object_path), name)
+        return getattr(DBusCallWrapper(self, self.bus_name), name)
 
 
 class DBusCallWrapper:
