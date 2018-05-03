@@ -65,13 +65,11 @@ class DBus:
             raise DBusParseError() from None
 
         # Read available methods
-        _LOGGER.info("data: %s", data)
+        _LOGGER.debug("data: %s", data)
         for interface in xml.findall("./interface"):
             interface_name = interface.get('name')
-            _LOGGER.info("Read Interface %s", interface_name)
             for method in interface.findall("./method"):
                 method_name = method.get('name')
-                _LOGGER.info("Read method %s", method_name)
                 self.methods.add(f"{interface_name}.{method_name}")
 
     @staticmethod
@@ -115,7 +113,7 @@ class DBus:
     async def _send(self, command):
         """Send command over dbus."""
         # Run command
-        _LOGGER.info("Send dbus command: %s", command)
+        _LOGGER.debug("Send dbus command: %s", command)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *command,
@@ -167,6 +165,6 @@ class DBusCallWrapper:
 
             Return a coroutine
             """
-            return self.dbus.call_dbus(self.interface, *args)
+            return self.dbus.call_dbus(interface, *args)
 
         return _method_wrapper
