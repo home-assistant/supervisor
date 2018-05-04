@@ -23,7 +23,8 @@ class HassIO(CoreSysAttributes):
         """Setup HassIO orchestration."""
         # update timezone
         if self.sys_config.timezone == 'UTC':
-            self.sys_config.timezone = await fetch_timezone(self.sys_websession)
+            self.sys_config.timezone = \
+                await fetch_timezone(self.sys_websession)
 
         # Load DBus
         await self.sys_dbus.load()
