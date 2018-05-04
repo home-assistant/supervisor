@@ -12,7 +12,7 @@ MOD_READ = 'r'
 MOD_WRITE = 'w'
 
 
-class SecureTarFile(object):
+class SecureTarFile:
     """Handle encrypted files for tarfile library."""
 
     def __init__(self, name, mode, key=None, gzip=True):

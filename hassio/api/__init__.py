@@ -9,7 +9,6 @@ from .discovery import APIDiscovery
 from .homeassistant import APIHomeAssistant
 from .hardware import APIHardware
 from .host import APIHost
-from .network import APINetwork
 from .proxy import APIProxy
 from .supervisor import APISupervisor
 from .snapshots import APISnapshots
@@ -28,7 +27,7 @@ class RestAPI(CoreSysAttributes):
         self.coresys = coresys
         self.security = SecurityMiddleware(coresys)
         self.webapp = web.Application(
-            middlewares=[self.security.token_validation], loop=self._loop)
+            middlewares=[self.security.token_validation], loop=coresys.loop)
 
         # service stuff
         self._handler = None
@@ -44,7 +43,6 @@ class RestAPI(CoreSysAttributes):
         self._register_panel()
         self._register_addons()
         self._register_snapshots()
-        self._register_network()
         self._register_discovery()
         self._register_services()
 
@@ -59,16 +57,6 @@ class RestAPI(CoreSysAttributes):
             web.post('/host/shutdown', api_host.shutdown),
             web.post('/host/update', api_host.update),
             web.post('/host/reload', api_host.reload),
-        ])
-
-    def _register_network(self):
-        """Register network function."""
-        api_net = APINetwork()
-        api_net.coresys = self.coresys
-
-        self.webapp.add_routes([
-            web.get('/network/info', api_net.info),
-            web.post('/network/options', api_net.options),
         ])
 
     def _register_hardware(self):
@@ -221,10 +209,10 @@ class RestAPI(CoreSysAttributes):
 
     async def start(self):
         """Run rest api webserver."""
-        self._handler = self.webapp.make_handler(loop=self._loop)
+        self._handler = self.webapp.make_handler()
 
         try:
-            self.server = await self._loop.create_server(
+            self.server = await self.sys_loop.create_server(
                 self._handler, "0.0.0.0", "80")
         except OSError as err:
             _LOGGER.fatal(

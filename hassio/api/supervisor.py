@@ -41,7 +41,7 @@ class APISupervisor(CoreSysAttributes):
     async def info(self, request):
         """Return host information."""
         list_addons = []
-        for addon in self._addons.list_addons:
+        for addon in self.sys_addons.list_addons:
             if addon.is_installed:
                 list_addons.append({
                     ATTR_NAME: addon.name,
@@ -57,13 +57,13 @@ class APISupervisor(CoreSysAttributes):
 
         return {
             ATTR_VERSION: HASSIO_VERSION,
-            ATTR_LAST_VERSION: self._updater.version_hassio,
-            ATTR_CHANNEL: self._updater.channel,
-            ATTR_ARCH: self._arch,
-            ATTR_WAIT_BOOT: self._config.wait_boot,
-            ATTR_TIMEZONE: self._config.timezone,
+            ATTR_LAST_VERSION: self.sys_updater.version_hassio,
+            ATTR_CHANNEL: self.sys_updater.channel,
+            ATTR_ARCH: self.sys_arch,
+            ATTR_WAIT_BOOT: self.sys_config.wait_boot,
+            ATTR_TIMEZONE: self.sys_config.timezone,
             ATTR_ADDONS: list_addons,
-            ATTR_ADDONS_REPOSITORIES: self._config.addons_repositories,
+            ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
         }
 
     @api_process
@@ -72,26 +72,26 @@ class APISupervisor(CoreSysAttributes):
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_CHANNEL in body:
-            self._updater.channel = body[ATTR_CHANNEL]
+            self.sys_updater.channel = body[ATTR_CHANNEL]
 
         if ATTR_TIMEZONE in body:
-            self._config.timezone = body[ATTR_TIMEZONE]
+            self.sys_config.timezone = body[ATTR_TIMEZONE]
 
         if ATTR_WAIT_BOOT in body:
-            self._config.wait_boot = body[ATTR_WAIT_BOOT]
+            self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
-            await asyncio.shield(self._addons.load_repositories(new))
+            await asyncio.shield(self.sys_addons.load_repositories(new))
 
-        self._updater.save_data()
-        self._config.save_data()
+        self.sys_updater.save_data()
+        self.sys_config.save_data()
         return True
 
     @api_process
     async def stats(self, request):
         """Return resource information."""
-        stats = await self._supervisor.stats()
+        stats = await self.sys_supervisor.stats()
         if not stats:
             raise RuntimeError("No stats available")
 
@@ -109,22 +109,22 @@ class APISupervisor(CoreSysAttributes):
     async def update(self, request):
         """Update supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self._updater.version_hassio)
+        version = body.get(ATTR_VERSION, self.sys_updater.version_hassio)
 
-        if version == self._supervisor.version:
+        if version == self.sys_supervisor.version:
             raise RuntimeError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
-            self._supervisor.update(version), loop=self._loop)
+            self.sys_supervisor.update(version))
 
     @api_process
     async def reload(self, request):
         """Reload addons, config ect."""
         tasks = [
-            self._updater.reload(),
+            self.sys_updater.reload(),
         ]
         results, _ = await asyncio.shield(
-            asyncio.wait(tasks, loop=self._loop), loop=self._loop)
+            asyncio.wait(tasks))
 
         for result in results:
             if result.exception() is not None:
@@ -135,4 +135,4 @@ class APISupervisor(CoreSysAttributes):
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
         """Return supervisor docker logs."""
-        return self._supervisor.logs()
+        return self.sys_supervisor.logs()

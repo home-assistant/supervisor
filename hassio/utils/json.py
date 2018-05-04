@@ -21,7 +21,7 @@ def read_json_file(jsonfile):
         return json.loads(cfile.read())
 
 
-class JsonConfig(object):
+class JsonConfig:
     """Hass core object for handle it."""
 
     def __init__(self, json_file, schema):

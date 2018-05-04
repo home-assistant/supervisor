@@ -35,7 +35,7 @@ class SnapshotManager(CoreSysAttributes):
         """Initialize a new snapshot object from name."""
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
-        tar_file = Path(self._config.path_backup, f"{slug}.tar")
+        tar_file = Path(self.sys_config.path_backup, f"{slug}.tar")
 
         # init object
         snapshot = Snapshot(self.coresys, tar_file)
@@ -65,11 +65,11 @@ class SnapshotManager(CoreSysAttributes):
                 self.snapshots_obj[snapshot.slug] = snapshot
 
         tasks = [_load_snapshot(tar_file) for tar_file in
-                 self._config.path_backup.glob("*.tar")]
+                 self.sys_config.path_backup.glob("*.tar")]
 
         _LOGGER.info("Found %d snapshot files", len(tasks))
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     def remove(self, snapshot):
         """Remove a snapshot."""
@@ -98,7 +98,7 @@ class SnapshotManager(CoreSysAttributes):
             return None
 
         # Move snapshot to backup
-        tar_origin = Path(self._config.path_backup, f"{snapshot.slug}.tar")
+        tar_origin = Path(self.sys_config.path_backup, f"{snapshot.slug}.tar")
         try:
             snapshot.tarfile.rename(tar_origin)
 
@@ -124,7 +124,7 @@ class SnapshotManager(CoreSysAttributes):
         snapshot = self._create_snapshot(name, SNAPSHOT_FULL, password)
         _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
         try:
-            self._scheduler.suspend = True
+            self.sys_scheduler.suspend = True
             await self.lock.acquire()
 
             async with snapshot:
@@ -146,7 +146,7 @@ class SnapshotManager(CoreSysAttributes):
             return snapshot
 
         finally:
-            self._scheduler.suspend = False
+            self.sys_scheduler.suspend = False
             self.lock.release()
 
     async def do_snapshot_partial(self, name="", addons=None, folders=None,
@@ -162,14 +162,14 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Partial-Snapshot %s start", snapshot.slug)
         try:
-            self._scheduler.suspend = True
+            self.sys_scheduler.suspend = True
             await self.lock.acquire()
 
             async with snapshot:
                 # Snapshot add-ons
                 addon_list = []
                 for addon_slug in addons:
-                    addon = self._addons.get(addon_slug)
+                    addon = self.sys_addons.get(addon_slug)
                     if addon and addon.is_installed:
                         addon_list.append(addon)
                         continue
@@ -195,7 +195,7 @@ class SnapshotManager(CoreSysAttributes):
             return snapshot
 
         finally:
-            self._scheduler.suspend = False
+            self.sys_scheduler.suspend = False
             self.lock.release()
 
     async def do_restore_full(self, snapshot, password=None):
@@ -215,21 +215,14 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
         try:
-            self._scheduler.suspend = True
+            self.sys_scheduler.suspend = True
             await self.lock.acquire()
 
             async with snapshot:
                 tasks = []
 
                 # Stop Home-Assistant / Add-ons
-                tasks.append(self._homeassistant.stop())
-                for addon in self._addons.list_addons:
-                    if addon.is_installed:
-                        tasks.append(addon.stop())
-
-                if tasks:
-                    _LOGGER.info("Restore %s stop tasks", snapshot.slug)
-                    await asyncio.wait(tasks, loop=self._loop)
+                await self.sys_core.shutdown()
 
                 # Restore folders
                 _LOGGER.info("Restore %s run folders", snapshot.slug)
@@ -238,8 +231,8 @@ class SnapshotManager(CoreSysAttributes):
                 # Start homeassistant restore
                 _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
-                task_hass = self._loop.create_task(
-                    self._homeassistant.update(snapshot.homeassistant_version))
+                task_hass = self.sys_create_task(self.sys_homeassistant.update(
+                    snapshot.homeassistant_version))
 
                 # Restore repositories
                 _LOGGER.info("Restore %s run Repositories", snapshot.slug)
@@ -247,13 +240,13 @@ class SnapshotManager(CoreSysAttributes):
 
                 # Delete delta add-ons
                 tasks.clear()
-                for addon in self._addons.list_installed:
+                for addon in self.sys_addons.list_installed:
                     if addon.slug not in snapshot.addon_list:
                         tasks.append(addon.uninstall())
 
                 if tasks:
                     _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
-                    await asyncio.wait(tasks, loop=self._loop)
+                    await asyncio.wait(tasks)
 
                 # Restore add-ons
                 _LOGGER.info("Restore %s old add-ons", snapshot.slug)
@@ -263,7 +256,7 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Restore %s wait until homeassistant ready",
                              snapshot.slug)
                 await task_hass
-                await self._homeassistant.start()
+                await self.sys_homeassistant.start()
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
@@ -274,7 +267,7 @@ class SnapshotManager(CoreSysAttributes):
             return True
 
         finally:
-            self._scheduler.suspend = False
+            self.sys_scheduler.suspend = False
             self.lock.release()
 
     async def do_restore_partial(self, snapshot, homeassistant=False,
@@ -293,13 +286,13 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Partial-Restore %s start", snapshot.slug)
         try:
-            self._scheduler.suspend = True
+            self.sys_scheduler.suspend = True
             await self.lock.acquire()
 
             async with snapshot:
                 # Stop Home-Assistant if they will be restored later
                 if homeassistant and FOLDER_HOMEASSISTANT in folders:
-                    await self._homeassistant.stop()
+                    await self.sys_homeassistant.stop()
 
                 # Process folders
                 if folders:
@@ -312,14 +305,14 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.info("Restore %s run Home-Assistant",
                                  snapshot.slug)
                     snapshot.restore_homeassistant()
-                    task_hass = self._loop.create_task(
-                        self._homeassistant.update(
+                    task_hass = self.sys_create_task(
+                        self.sys_homeassistant.update(
                             snapshot.homeassistant_version))
 
                 # Process Add-ons
                 addon_list = []
                 for slug in addons:
-                    addon = self._addons.get(slug)
+                    addon = self.sys_addons.get(slug)
                     if addon:
                         addon_list.append(addon)
                         continue
@@ -334,7 +327,7 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.info("Restore %s wait for Home-Assistant",
                                  snapshot.slug)
                     await task_hass
-                await self._homeassistant.start()
+                await self.sys_homeassistant.start()
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
@@ -345,5 +338,5 @@ class SnapshotManager(CoreSysAttributes):
             return True
 
         finally:
-            self._scheduler.suspend = False
+            self.sys_scheduler.suspend = False
             self.lock.release()

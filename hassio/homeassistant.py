@@ -54,7 +54,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def api_ip(self):
         """Return IP of HomeAssistant instance."""
-        return self._docker.network.gateway
+        return self.sys_docker.network.gateway
 
     @property
     def api_port(self):
@@ -123,7 +123,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Return last available version of homeassistant."""
         if self.is_custom_image:
             return self._data.get(ATTR_LAST_VERSION)
-        return self._updater.version_homeassistant
+        return self.sys_updater.version_homeassistant
 
     @last_version.setter
     def last_version(self, value):
@@ -177,7 +177,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             if await self.instance.install('landingpage'):
                 break
             _LOGGER.warning("Fails install landingpage, retry after 60sec")
-            await asyncio.sleep(60, loop=self._loop)
+            await asyncio.sleep(60)
 
         # Run landingpage after installation
         await self._start()
@@ -189,13 +189,13 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         while True:
             # read homeassistant tag and install it
             if not self.last_version:
-                await self._updater.reload()
+                await self.sys_updater.reload()
 
             tag = self.last_version
             if tag and await self.instance.install(tag):
                 break
             _LOGGER.warning("Error on install HomeAssistant. Retry in 60sec")
-            await asyncio.sleep(60, loop=self._loop)
+            await asyncio.sleep(60)
 
         # finishing
         _LOGGER.info("HomeAssistant docker now installed")
@@ -307,7 +307,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         try:
             # pylint: disable=bad-continuation
-            async with self._websession_ssl.get(
+            async with self.sys_websession_ssl.get(
                     url, headers=header, timeout=30) as request:
                 status = request.status
 
@@ -328,7 +328,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         try:
             # pylint: disable=bad-continuation
-            async with self._websession_ssl.post(
+            async with self.sys_websession_ssl.post(
                     url, headers=header, timeout=30,
                     json=event_data) as request:
                 status = request.status
@@ -361,10 +361,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 pass
 
         while time.monotonic() - start_time < self.wait_boot:
-            if await self._loop.run_in_executor(None, check_port):
+            if await self.sys_run_in_executor(check_port):
                 _LOGGER.info("Detect a running Home-Assistant instance")
                 return True
-            await asyncio.sleep(10, loop=self._loop)
+            await asyncio.sleep(10)
 
         _LOGGER.warning("Don't wait anymore of Home-Assistant startup!")
         return False
