@@ -42,7 +42,7 @@ class AlsaAudio(CoreSysAttributes):
 
     def _update_device(self):
         """Update Internal device DB."""
-        current_id = hash(frozenset(self._hardware.audio_devices))
+        current_id = hash(frozenset(self.sys_hardware.audio_devices))
 
         # Need rebuild?
         if current_id == self._cache:
@@ -57,7 +57,7 @@ class AlsaAudio(CoreSysAttributes):
         database = self._audio_database()
 
         # Process devices
-        for dev_id, dev_data in self._hardware.audio_devices.items():
+        for dev_id, dev_data in self.sys_hardware.audio_devices.items():
             for chan_id, chan_type in dev_data[ATTR_DEVICES].items():
                 alsa_id = f"{dev_id},{chan_id}"
                 dev_name = dev_data[ATTR_NAME]
@@ -73,7 +73,7 @@ class AlsaAudio(CoreSysAttributes):
 
                 # Use name from DB or a generic name
                 self._data[key][alsa_id] = database.get(
-                    self._machine, {}).get(
+                    self.sys_machine, {}).get(
                         dev_name, {}).get(alsa_id, f"{dev_name}: {chan_id}")
 
         self._cache = current_id
@@ -98,8 +98,8 @@ class AlsaAudio(CoreSysAttributes):
         # Init defaults
         if self._default is None:
             database = self._audio_database()
-            alsa_input = database.get(self._machine, {}).get(ATTR_INPUT)
-            alsa_output = database.get(self._machine, {}).get(ATTR_OUTPUT)
+            alsa_input = database.get(self.sys_machine, {}).get(ATTR_INPUT)
+            alsa_output = database.get(self.sys_machine, {}).get(ATTR_OUTPUT)
 
             self._default = DefaultConfig(alsa_input, alsa_output)
 

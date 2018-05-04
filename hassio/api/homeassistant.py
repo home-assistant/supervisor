@@ -9,7 +9,8 @@ from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_IMAGE, ATTR_CUSTOM, ATTR_BOOT,
     ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG, ATTR_CPU_PERCENT,
     ATTR_MEMORY_USAGE, ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX,
-    ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_WAIT_BOOT, CONTENT_TYPE_BINARY)
+    ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_WAIT_BOOT, ATTR_MACHINE,
+    CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
 from ..validate import NETWORK_PORT, DOCKER_IMAGE
 
@@ -43,15 +44,16 @@ class APIHomeAssistant(CoreSysAttributes):
     async def info(self, request):
         """Return host information."""
         return {
-            ATTR_VERSION: self._homeassistant.version,
-            ATTR_LAST_VERSION: self._homeassistant.last_version,
-            ATTR_IMAGE: self._homeassistant.image,
-            ATTR_CUSTOM: self._homeassistant.is_custom_image,
-            ATTR_BOOT: self._homeassistant.boot,
-            ATTR_PORT: self._homeassistant.api_port,
-            ATTR_SSL: self._homeassistant.api_ssl,
-            ATTR_WATCHDOG: self._homeassistant.watchdog,
-            ATTR_WAIT_BOOT: self._homeassistant.wait_boot,
+            ATTR_VERSION: self.sys_homeassistant.version,
+            ATTR_LAST_VERSION: self.sys_homeassistant.last_version,
+            ATTR_MACHINE: self.sys_homeassistant.machine,
+            ATTR_IMAGE: self.sys_homeassistant.image,
+            ATTR_CUSTOM: self.sys_homeassistant.is_custom_image,
+            ATTR_BOOT: self.sys_homeassistant.boot,
+            ATTR_PORT: self.sys_homeassistant.api_port,
+            ATTR_SSL: self.sys_homeassistant.api_ssl,
+            ATTR_WATCHDOG: self.sys_homeassistant.watchdog,
+            ATTR_WAIT_BOOT: self.sys_homeassistant.wait_boot,
         }
 
     @api_process
@@ -60,34 +62,34 @@ class APIHomeAssistant(CoreSysAttributes):
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_IMAGE in body and ATTR_LAST_VERSION in body:
-            self._homeassistant.image = body[ATTR_IMAGE]
-            self._homeassistant.last_version = body[ATTR_LAST_VERSION]
+            self.sys_homeassistant.image = body[ATTR_IMAGE]
+            self.sys_homeassistant.last_version = body[ATTR_LAST_VERSION]
 
         if ATTR_BOOT in body:
-            self._homeassistant.boot = body[ATTR_BOOT]
+            self.sys_homeassistant.boot = body[ATTR_BOOT]
 
         if ATTR_PORT in body:
-            self._homeassistant.api_port = body[ATTR_PORT]
+            self.sys_homeassistant.api_port = body[ATTR_PORT]
 
         if ATTR_PASSWORD in body:
-            self._homeassistant.api_password = body[ATTR_PASSWORD]
+            self.sys_homeassistant.api_password = body[ATTR_PASSWORD]
 
         if ATTR_SSL in body:
-            self._homeassistant.api_ssl = body[ATTR_SSL]
+            self.sys_homeassistant.api_ssl = body[ATTR_SSL]
 
         if ATTR_WATCHDOG in body:
-            self._homeassistant.watchdog = body[ATTR_WATCHDOG]
+            self.sys_homeassistant.watchdog = body[ATTR_WATCHDOG]
 
         if ATTR_WAIT_BOOT in body:
-            self._homeassistant.wait_boot = body[ATTR_WAIT_BOOT]
+            self.sys_homeassistant.wait_boot = body[ATTR_WAIT_BOOT]
 
-        self._homeassistant.save_data()
+        self.sys_homeassistant.save_data()
         return True
 
     @api_process
     async def stats(self, request):
         """Return resource information."""
-        stats = await self._homeassistant.stats()
+        stats = await self.sys_homeassistant.stats()
         if not stats:
             raise RuntimeError("No stats available")
 
@@ -105,38 +107,38 @@ class APIHomeAssistant(CoreSysAttributes):
     async def update(self, request):
         """Update homeassistant."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self._homeassistant.last_version)
+        version = body.get(ATTR_VERSION, self.sys_homeassistant.last_version)
 
-        if version == self._homeassistant.version:
+        if version == self.sys_homeassistant.version:
             raise RuntimeError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
-            self._homeassistant.update(version), loop=self._loop)
+            self.sys_homeassistant.update(version))
 
     @api_process
     def stop(self, request):
         """Stop homeassistant."""
-        return asyncio.shield(self._homeassistant.stop(), loop=self._loop)
+        return asyncio.shield(self.sys_homeassistant.stop())
 
     @api_process
     def start(self, request):
         """Start homeassistant."""
-        return asyncio.shield(self._homeassistant.start(), loop=self._loop)
+        return asyncio.shield(self.sys_homeassistant.start())
 
     @api_process
     def restart(self, request):
         """Restart homeassistant."""
-        return asyncio.shield(self._homeassistant.restart(), loop=self._loop)
+        return asyncio.shield(self.sys_homeassistant.restart())
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
         """Return homeassistant docker logs."""
-        return self._homeassistant.logs()
+        return self.sys_homeassistant.logs()
 
     @api_process
     async def check(self, request):
         """Check config of homeassistant."""
-        result = await self._homeassistant.check_config()
+        result = await self.sys_homeassistant.check_config()
         if not result.valid:
             raise RuntimeError(result.log)
 

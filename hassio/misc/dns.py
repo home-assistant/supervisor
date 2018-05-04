@@ -8,7 +8,7 @@ _LOGGER = logging.getLogger(__name__)
 COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:127.0.0.11:53"
 
 
-class DNSForward(object):
+class DNSForward:
     """Manage DNS forwarding to internal DNS."""
 
     def __init__(self, loop):

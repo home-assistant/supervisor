@@ -179,7 +179,7 @@ class Snapshot(CoreSysAttributes):
 
         # read snapshot.json
         try:
-            raw = await self._loop.run_in_executor(None, _load_file)
+            raw = await self.sys_run_in_executor(_load_file)
         except (tarfile.TarError, KeyError) as err:
             _LOGGER.error(
                 "Can't read snapshot tarfile %s: %s", self.tarfile, err)
@@ -204,7 +204,7 @@ class Snapshot(CoreSysAttributes):
 
     async def __aenter__(self):
         """Async context to open a snapshot."""
-        self._tmp = TemporaryDirectory(dir=str(self._config.path_tmp))
+        self._tmp = TemporaryDirectory(dir=str(self.sys_config.path_tmp))
 
         # create a snapshot
         if not self.tarfile.is_file():
@@ -216,7 +216,7 @@ class Snapshot(CoreSysAttributes):
             with tarfile.open(self.tarfile, "r:") as tar:
                 tar.extractall(path=self._tmp.name)
 
-        await self._loop.run_in_executor(None, _extract_snapshot)
+        await self.sys_run_in_executor(_extract_snapshot)
 
     async def __aexit__(self, exception_type, exception_value, traceback):
         """Async context to close a snapshot."""
@@ -241,7 +241,7 @@ class Snapshot(CoreSysAttributes):
 
         try:
             write_json_file(Path(self._tmp.name, "snapshot.json"), self._data)
-            await self._loop.run_in_executor(None, _create_snapshot)
+            await self.sys_run_in_executor(_create_snapshot)
         except (OSError, json.JSONDecodeError) as err:
             _LOGGER.error("Can't write snapshot: %s", err)
         finally:
@@ -249,7 +249,7 @@ class Snapshot(CoreSysAttributes):
 
     async def store_addons(self, addon_list=None):
         """Add a list of add-ons into snapshot."""
-        addon_list = addon_list or self._addons.list_installed
+        addon_list = addon_list or self.sys_addons.list_installed
 
         async def _addon_save(addon):
             """Task to store a add-on into snapshot."""
@@ -273,14 +273,14 @@ class Snapshot(CoreSysAttributes):
         # Run tasks
         tasks = [_addon_save(addon) for addon in addon_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     async def restore_addons(self, addon_list=None):
         """Restore a list add-on from snapshot."""
         if not addon_list:
             addon_list = []
             for addon_slug in self.addon_list:
-                addon = self._addons.get(addon_slug)
+                addon = self.sys_addons.get(addon_slug)
                 if addon:
                     addon_list.append(addon)
 
@@ -303,7 +303,7 @@ class Snapshot(CoreSysAttributes):
         # Run tasks
         tasks = [_addon_restore(addon) for addon in addon_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     async def store_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
@@ -313,7 +313,7 @@ class Snapshot(CoreSysAttributes):
             """Intenal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
-            origin_dir = Path(self._config.path_hassio, name)
+            origin_dir = Path(self.sys_config.path_hassio, name)
 
             # Check if exsits
             if not origin_dir.is_dir():
@@ -332,10 +332,10 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
 
         # Run tasks
-        tasks = [self._loop.run_in_executor(None, _folder_save, folder)
+        tasks = [self.sys_run_in_executor(_folder_save, folder)
                  for folder in folder_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     async def restore_folders(self, folder_list=None):
         """Backup hassio data into snapshot."""
@@ -345,7 +345,7 @@ class Snapshot(CoreSysAttributes):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
-            origin_dir = Path(self._config.path_hassio, name)
+            origin_dir = Path(self.sys_config.path_hassio, name)
 
             # Check if exists inside snapshot
             if not tar_name.exists():
@@ -366,58 +366,58 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
         # Run tasks
-        tasks = [self._loop.run_in_executor(None, _folder_restore, folder)
+        tasks = [self.sys_run_in_executor(_folder_restore, folder)
                  for folder in folder_list]
         if tasks:
-            await asyncio.wait(tasks, loop=self._loop)
+            await asyncio.wait(tasks)
 
     def store_homeassistant(self):
         """Read all data from homeassistant object."""
-        self.homeassistant[ATTR_VERSION] = self._homeassistant.version
-        self.homeassistant[ATTR_WATCHDOG] = self._homeassistant.watchdog
-        self.homeassistant[ATTR_BOOT] = self._homeassistant.boot
-        self.homeassistant[ATTR_WAIT_BOOT] = self._homeassistant.wait_boot
+        self.homeassistant[ATTR_VERSION] = self.sys_homeassistant.version
+        self.homeassistant[ATTR_WATCHDOG] = self.sys_homeassistant.watchdog
+        self.homeassistant[ATTR_BOOT] = self.sys_homeassistant.boot
+        self.homeassistant[ATTR_WAIT_BOOT] = self.sys_homeassistant.wait_boot
 
         # Custom image
-        if self._homeassistant.is_custom_image:
-            self.homeassistant[ATTR_IMAGE] = self._homeassistant.image
+        if self.sys_homeassistant.is_custom_image:
+            self.homeassistant[ATTR_IMAGE] = self.sys_homeassistant.image
             self.homeassistant[ATTR_LAST_VERSION] = \
-                self._homeassistant.last_version
+                self.sys_homeassistant.last_version
 
         # API/Proxy
-        self.homeassistant[ATTR_PORT] = self._homeassistant.api_port
-        self.homeassistant[ATTR_SSL] = self._homeassistant.api_ssl
+        self.homeassistant[ATTR_PORT] = self.sys_homeassistant.api_port
+        self.homeassistant[ATTR_SSL] = self.sys_homeassistant.api_ssl
         self.homeassistant[ATTR_PASSWORD] = \
-            self._encrypt_data(self._homeassistant.api_password)
+            self._encrypt_data(self.sys_homeassistant.api_password)
 
     def restore_homeassistant(self):
         """Write all data to homeassistant object."""
-        self._homeassistant.watchdog = self.homeassistant[ATTR_WATCHDOG]
-        self._homeassistant.boot = self.homeassistant[ATTR_BOOT]
-        self._homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
+        self.sys_homeassistant.watchdog = self.homeassistant[ATTR_WATCHDOG]
+        self.sys_homeassistant.boot = self.homeassistant[ATTR_BOOT]
+        self.sys_homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
 
         # Custom image
         if self.homeassistant.get(ATTR_IMAGE):
-            self._homeassistant.image = self.homeassistant[ATTR_IMAGE]
-            self._homeassistant.last_version = \
+            self.sys_homeassistant.image = self.homeassistant[ATTR_IMAGE]
+            self.sys_homeassistant.last_version = \
                 self.homeassistant[ATTR_LAST_VERSION]
 
         # API/Proxy
-        self._homeassistant.api_port = self.homeassistant[ATTR_PORT]
-        self._homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
-        self._homeassistant.api_password = \
+        self.sys_homeassistant.api_port = self.homeassistant[ATTR_PORT]
+        self.sys_homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
+        self.sys_homeassistant.api_password = \
             self._decrypt_data(self.homeassistant[ATTR_PASSWORD])
 
         # save
-        self._homeassistant.save_data()
+        self.sys_homeassistant.save_data()
 
     def store_repositories(self):
         """Store repository list into snapshot."""
-        self.repositories = self._config.addons_repositories
+        self.repositories = self.sys_config.addons_repositories
 
     def restore_repositories(self):
         """Restore repositories from snapshot.
 
         Return a coroutine.
         """
-        return self._addons.load_repositories(self.repositories)
+        return self.sys_addons.load_repositories(self.repositories)
