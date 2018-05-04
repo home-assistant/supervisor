@@ -123,17 +123,17 @@ class DBus:
                 *command,
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL
+                stderr=asyncio.subprocess.PIPE
             )
 
-            data, _ = await proc.communicate()
+            data, error = await proc.communicate()
         except OSError as err:
             _LOGGER.error("DBus fatal error: %s", err)
             raise DBusFatalError() from None
 
         # Success?
         if proc.returncode != 0:
-            _LOGGER.error("DBus return error: %s", data)
+            _LOGGER.error("DBus return error: %s", error)
             raise DBusFatalError()
 
         # End
