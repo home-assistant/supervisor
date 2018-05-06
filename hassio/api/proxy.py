@@ -34,7 +34,7 @@ class APIProxy(CoreSysAttributes):
         try:
             data = None
             headers = {}
-            method = getattr(self._websession_ssl, request.method.lower())
+            method = getattr(self.sys_websession_ssl, request.method.lower())
             params = request.query or None
 
             # read data
