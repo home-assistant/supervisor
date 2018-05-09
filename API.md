@@ -217,24 +217,35 @@ return:
 ### Host
 
 - POST `/host/reload`
+
 - POST `/host/shutdown`
+
 - POST `/host/reboot`
+
 - GET `/host/info`
 
 ```json
 {
-    "type": "",
-    "version": "",
-    "last_version": "",
-    "features": ["shutdown", "reboot", "update", "hostname", "network_info", "network_control"],
-    "hostname": "",
-    "os": "",
-    "audio": {
-        "input": "0,0",
-        "output": "0,0"
-    }
+    "hostname": "hostname|null",
+    "features": ["shutdown", "reboot", "update", "hostname"],
+    "operating_system": "Hass.io-OS XY|Ubuntu 16.4|null",
+    "kernel": "4.15.7|null",
+    "chassis": "specific|null",
+    "type": "Hass.io-OS Type|null",
+    "deployment": "stable|beta|dev|null",
+    "version": "xy|null",
+    "last_version": "xy|null",
 }
 ```
+
+- POST `/host/options`
+
+```json
+{
+    "hostname": "",
+}
+```
+
 
 - POST `/host/update`
 
@@ -284,24 +295,6 @@ Optional:
 }
 ```
 
-### Network
-
-- GET `/network/info`
-
-```json
-{
-    "hostname": ""
-}
-```
-
-- POST `/network/options`
-
-```json
-{
-    "hostname": "",
-}
-```
-
 ### Home Assistant
 
 - GET `/homeassistant/info`
@@ -310,6 +303,7 @@ Optional:
 {
     "version": "INSTALL_VERSION",
     "last_version": "LAST_VERSION",
+    "machine": "Image machine type",
     "image": "str",
     "custom": "bool -> if custom image",
     "boot": "bool",
@@ -613,46 +607,3 @@ This service perform a auto discovery to Home-Assistant.
 ```
 
 - DEL `/services/mqtt`
-
-## Host Control
-
-Communicate over UNIX socket with a host daemon.
-
-- commands
-
-```
-# info
--> {'type', 'version', 'last_version', 'features', 'hostname'}
-# reboot
-# shutdown
-# host-update [v]
-
-# hostname xy
-
-# network info
--> {}
-# network wlan ssd xy
-# network wlan password xy
-# network int ip xy
-# network int netmask xy
-# network int route xy
-```
-
-Features:
-
-- shutdown
-- reboot
-- update
-- hostname
-- network_info
-- network_control
-
-Answer:
-```
-{}|OK|ERROR|WRONG
-```
-
-- {}: json
-- OK: call was successfully
-- ERROR: error on call
-- WRONG: not supported

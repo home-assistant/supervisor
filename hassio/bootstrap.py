@@ -7,6 +7,7 @@ from pathlib import Path
 
 from colorlog import ColoredFormatter
 
+from .core import HassIO
 from .addons import AddonManager
 from .api import RestAPI
 from .const import SOCKET_DOCKER
@@ -17,7 +18,9 @@ from .snapshots import SnapshotManager
 from .tasks import Tasks
 from .updater import Updater
 from .services import ServiceManager
-from .host import AlsaAudio
+from .services import Discovery
+from .host import HostManager
+from .dbus import DBusManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,15 +30,18 @@ def initialize_coresys(loop):
     coresys = CoreSys(loop)
 
     # Initialize core objects
+    coresys.core = HassIO(coresys)
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
-    coresys.alsa = AlsaAudio(coresys)
     coresys.supervisor = Supervisor(coresys)
     coresys.homeassistant = HomeAssistant(coresys)
     coresys.addons = AddonManager(coresys)
     coresys.snapshots = SnapshotManager(coresys)
+    coresys.host = HostManager(coresys)
     coresys.tasks = Tasks(coresys)
     coresys.services = ServiceManager(coresys)
+    coresys.discovery = Discovery(coresys)
+    coresys.dbus = DBusManager(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
@@ -148,7 +154,12 @@ def check_environment():
 
     # check socat exec
     if not shutil.which('socat'):
-        _LOGGER.fatal("Can0t find socat program!")
+        _LOGGER.fatal("Can't find socat program!")
+        return False
+
+    # check socat exec
+    if not shutil.which('gdbus'):
+        _LOGGER.fatal("Can't find gdbus program!")
         return False
 
     return True

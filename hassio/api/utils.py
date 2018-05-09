@@ -4,13 +4,13 @@ import hashlib
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPServiceUnavailable
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
     JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
     CONTENT_TYPE_BINARY)
+from ..exceptions import HassioError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,40 +33,19 @@ def api_process(method):
             answer = await method(api, *args, **kwargs)
         except RuntimeError as err:
             return api_return_error(message=str(err))
+        except HassioError:
+            _LOGGER.exception("Hassio error")
+            return api_return_error()
 
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
         if isinstance(answer, web.Response):
             return answer
-        elif answer:
-            return api_return_ok()
-        return api_return_error()
+        elif isinstance(answer, bool) and not answer:
+            return api_return_error()
+        return api_return_ok()
 
     return wrap_api
-
-
-def api_process_hostcontrol(method):
-    """Wrap HostControl calls to rest api."""
-    async def wrap_hostcontrol(api, *args, **kwargs):
-        """Return host information."""
-        # pylint: disable=protected-access
-        if not api._host_control.active:
-            raise HTTPServiceUnavailable()
-
-        try:
-            answer = await method(api, *args, **kwargs)
-        except RuntimeError as err:
-            return api_return_error(message=str(err))
-
-        if isinstance(answer, dict):
-            return api_return_ok(data=answer)
-        elif answer is None:
-            return api_return_error("Function is not supported")
-        elif answer:
-            return api_return_ok()
-        return api_return_error()
-
-    return wrap_hostcontrol
 
 
 def api_process_raw(content):
@@ -80,6 +59,9 @@ def api_process_raw(content):
                 msg_type = content
             except RuntimeError as err:
                 msg_data = str(err).encode()
+                msg_type = CONTENT_TYPE_BINARY
+            except HassioError:
+                msg_data = b''
                 msg_type = CONTENT_TYPE_BINARY
 
             return web.Response(body=msg_data, content_type=msg_type)

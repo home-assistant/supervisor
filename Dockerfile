@@ -9,7 +9,9 @@ RUN apk add --no-cache \
         python3 \
         git \
         socat \
+        glib \
         libstdc++ \
+        eudev-libs \
     && apk add --no-cache --virtual .build-dependencies \
         make \
         python3-dev \

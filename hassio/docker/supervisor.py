@@ -24,7 +24,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            container = self._docker.containers.get(self.name)
+            container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
             return False
 
@@ -33,9 +33,10 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
                      self.image, self.version)
 
         # if already attach
-        if container in self._docker.network.containers:
+        if container in self.sys_docker.network.containers:
             return True
 
         # attach to network
-        return self._docker.network.attach_container(
-            container, alias=['hassio'], ipv4=self._docker.network.supervisor)
+        return self.sys_docker.network.attach_container(
+            container, alias=['hassio'],
+            ipv4=self.sys_docker.network.supervisor)

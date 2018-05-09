@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 CommandReturn = attr.make_class('CommandReturn', ['exit_code', 'output'])
 
 
-class DockerAPI(object):
+class DockerAPI:
     """Docker hassio wrapper.
 
     This class is not AsyncIO safe!
