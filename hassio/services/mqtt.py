@@ -21,7 +21,7 @@ class MQTTService(ServiceInterface):
     @property
     def _data(self):
         """Return data of this service."""
-        return self._services.data.mqtt
+        return self.sys_services.data.mqtt
 
     @property
     def schema(self):
@@ -66,7 +66,7 @@ class MQTTService(ServiceInterface):
             return True
 
         # discover mqtt to homeassistant
-        message = self._services.discovery.send(
+        message = self.sys_discovery.send(
             provider, SERVICE_MQTT, None, self.hass_config)
 
         self._data[ATTR_DISCOVERY_ID] = message.uuid
@@ -81,8 +81,8 @@ class MQTTService(ServiceInterface):
 
         discovery_id = self._data.get(ATTR_DISCOVERY_ID)
         if discovery_id:
-            self._services.discovery.remove(
-                self._services.discovery.get(discovery_id))
+            self.sys_discovery.remove(
+                self.sys_discovery.get(discovery_id))
 
         self._data.clear()
         self.save()

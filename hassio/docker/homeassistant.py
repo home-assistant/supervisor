@@ -24,7 +24,7 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def image(self):
         """Return name of docker image."""
-        return self._homeassistant.image
+        return self.sys_homeassistant.image
 
     @property
     def name(self):
@@ -35,7 +35,7 @@ class DockerHomeAssistant(DockerInterface):
     def devices(self):
         """Create list of special device to map into docker."""
         devices = []
-        for device in self._hardware.serial_devices:
+        for device in self.sys_hardware.serial_devices:
             devices.append(f"{device}:{device}:rwm")
         return devices or None
 
@@ -50,7 +50,7 @@ class DockerHomeAssistant(DockerInterface):
         # cleanup
         self._stop()
 
-        ret = self._docker.run(
+        ret = self.sys_docker.run(
             self.image,
             name=self.name,
             hostname=self.name,
@@ -60,16 +60,16 @@ class DockerHomeAssistant(DockerInterface):
             devices=self.devices,
             network_mode='host',
             environment={
-                'HASSIO': self._docker.network.supervisor,
-                ENV_TIME: self._config.timezone,
-                ENV_TOKEN: self._homeassistant.uuid,
+                'HASSIO': self.sys_docker.network.supervisor,
+                ENV_TIME: self.sys_config.timezone,
+                ENV_TOKEN: self.sys_homeassistant.uuid,
             },
             volumes={
-                str(self._config.path_extern_config):
+                str(self.sys_config.path_extern_config):
                     {'bind': '/config', 'mode': 'rw'},
-                str(self._config.path_extern_ssl):
+                str(self.sys_config.path_extern_ssl):
                     {'bind': '/ssl', 'mode': 'ro'},
-                str(self._config.path_extern_share):
+                str(self.sys_config.path_extern_share):
                     {'bind': '/share', 'mode': 'rw'},
             }
         )
@@ -85,26 +85,26 @@ class DockerHomeAssistant(DockerInterface):
 
         Need run inside executor.
         """
-        return self._docker.run_command(
+        return self.sys_docker.run_command(
             self.image,
             command,
             detach=True,
             stdout=True,
             stderr=True,
             environment={
-                ENV_TIME: self._config.timezone,
+                ENV_TIME: self.sys_config.timezone,
             },
             volumes={
-                str(self._config.path_extern_config):
+                str(self.sys_config.path_extern_config):
                     {'bind': '/config', 'mode': 'ro'},
-                str(self._config.path_extern_ssl):
+                str(self.sys_config.path_extern_ssl):
                     {'bind': '/ssl', 'mode': 'ro'},
             }
         )
 
     def is_initialize(self):
         """Return True if docker container exists."""
-        return self._loop.run_in_executor(None, self._is_initialize)
+        return self.sys_run_in_executor(self._is_initialize)
 
     def _is_initialize(self):
         """Return True if docker container exists.
@@ -112,7 +112,7 @@ class DockerHomeAssistant(DockerInterface):
         Need run inside executor.
         """
         try:
-            self._docker.containers.get(self.name)
+            self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
             return False
 
