@@ -40,7 +40,7 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'attr==18.1.0',
+        'attr==0.3.1',
         'async_timeout==3.0.0',
         'aiohttp==3.3.0',
         'docker==3.2.0',
