@@ -185,27 +185,29 @@ class RestAPI(CoreSysAttributes):
 
     def _register_panel(self):
         """Register panel for homeassistant."""
-        def create_response(build_type):
+        panel_dir = Path(__file__).parent.joinpath("panel")
+
+        def create_response(panel_file):
             """Create a function to generate a response."""
-            path = Path(__file__).parent.joinpath(
-                f"panel/{build_type}.html")
+            path = panel_dir.joinpath(panel_file)
             return lambda request: web.FileResponse(path)
 
         # This route is for backwards compatibility with HA < 0.58
         self.webapp.add_routes([
-            web.get('/panel', create_response('hassio-main-es5'))])
+            web.get('/panel', create_response('hassio-main-es5.html'))])
 
         # This route is for backwards compatibility with HA 0.58 - 0.61
         self.webapp.add_routes([
-            web.get('/panel_es5', create_response('hassio-main-es5')),
-            web.get('/panel_latest', create_response('hassio-main-latest')),
+            web.get('/panel_es5', create_response('hassio-main-es5.html')),
+            web.get('/panel_latest', create_response('hassio-main-latest.html')),
         ])
 
         # This route is for HA > 0.61
-        self.webapp.add_routes([
-            web.get('/app-es5/index.html', create_response('index')),
-            web.get('/app-es5/hassio-app.html', create_response('hassio-app')),
-        ])
+        for html in panel_dir.glob("*.html"):
+            self.webapp.add_routes([
+                web.get(f"/app-es5/{html!s}", create_response(html)),
+                web.get(f"/app-es5/{html!s}", create_response(html)),
+            ])
 
     async def start(self):
         """Run rest api webserver."""
