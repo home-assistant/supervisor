@@ -63,6 +63,10 @@ class Hardware:
     @property
     def audio_devices(self):
         """Return all available audio interfaces."""
+        if not ASOUND_CARDS.exists():
+            _LOGGER.info("No audio devices found")
+            return {}
+
         try:
             with ASOUND_CARDS.open('r') as cards_file:
                 cards = cards_file.read()
