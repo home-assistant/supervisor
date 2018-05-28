@@ -203,11 +203,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
         # This route is for HA > 0.61
-        for html in panel_dir.glob("*.html"):
-            self.webapp.add_routes([
-                web.get(f"/app-es5/{html!s}", create_response(html)),
-                web.get(f"/app-es5/{html!s}", create_response(html)),
-            ])
+        self.webapp.add_routes([web.static('/app-es5', panel_dir)])
 
     async def start(self):
         """Run rest api webserver."""
