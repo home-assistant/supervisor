@@ -35,11 +35,10 @@ class SecurityMiddleware(CoreSysAttributes):
                 _LOGGER.debug("Passthrough %s", request.path)
                 return await handler(request)
 
-        # Need to be removed later
+        # Unknown API access
         if not hassio_token:
             _LOGGER.warning("Invalid token for access %s", request.path)
-            request[REQUEST_FROM] = 'UNKNOWN'
-            return await handler(request)
+            raise HTTPUnauthorized()
 
         # Home-Assistant
         if hassio_token == self.sys_homeassistant.uuid:
