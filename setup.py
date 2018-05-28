@@ -40,13 +40,14 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'async_timeout==2.0.1',
-        'aiohttp==3.1.2',
-        'docker==3.2.0',
+        'attr==0.3.1',
+        'async_timeout==3.0.0',
+        'aiohttp==3.2.1',
+        'docker==3.3.0',
         'colorlog==3.1.2',
         'voluptuous==0.11.1',
-        'gitpython==2.1.8',
-        'pytz==2018.3',
+        'gitpython==2.1.10',
+        'pytz==2018.4',
         'pyudev==0.21.0',
         'pycryptodome==3.4.11'
     ]
