@@ -9,7 +9,7 @@ import aiohttp
 import async_timeout
 
 from .const import (
-    FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
+    URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
     ATTR_CHANNEL, CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
 from .coresys import CoreSysAttributes
 from .utils import AsyncThrottle
@@ -17,8 +17,6 @@ from .utils.json import JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
-
-VERSION_URL = "https://s3.amazonaws.com/hassio-version/{channel}.json"
 
 
 class Updater(JsonConfig, CoreSysAttributes):
@@ -62,7 +60,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         Is a coroutine.
         """
-        url = VERSION_URL.format(channel=self.channel)
+        url = URL_HASSIO_VERSION.format(channel=self.channel)
         try:
             _LOGGER.info("Fetch update data from %s", url)
             async with self.sys_websession.get(url, timeout=10) as request:
