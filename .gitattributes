@@ -1,2 +1,0 @@
-# Ignore version on merge
-version.json merge=ours
