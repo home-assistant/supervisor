@@ -9,7 +9,7 @@ import aiohttp
 
 from .const import (
     URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
-    ATTR_CHANNEL, CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
+    ATTR_CHANNEL)
 from .coresys import CoreSysAttributes
 from .utils import AsyncThrottle
 from .utils.json import JsonConfig
@@ -74,7 +74,7 @@ class Updater(JsonConfig, CoreSysAttributes):
             return
 
         # data valid?
-        if not data:
+        if not data or data.get(ATTR_CHANNEL) != self.channel:
             _LOGGER.warning("Invalid data from %s", url)
             return
 
