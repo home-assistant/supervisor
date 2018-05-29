@@ -81,9 +81,9 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         # update versions
         with suppress(KeyError):
-            self._data[ATTR_HASSIO] = data[ATTR_HASSIO]
+            self._data[ATTR_HASSIO] = data['supervisor']
         with suppress(KeyError):
             self._data[ATTR_HOMEASSISTANT] = \
-                data[ATTR_HOMEASSISTANT][self.sys_machine]
+                data['homeassistant'][self.sys_machine]
 
         self.save_data()
