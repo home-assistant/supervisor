@@ -79,11 +79,14 @@ class Updater(JsonConfig, CoreSysAttributes):
             _LOGGER.warning("Invalid data from %s", url)
             return
 
-        # update versions
+        # update supervisor versions
         with suppress(KeyError):
             self._data[ATTR_HASSIO] = data['supervisor']
+
+        # update Home Assistant version
+        machine = self.sys_machine if self.sys_machine else 'default'
         with suppress(KeyError):
             self._data[ATTR_HOMEASSISTANT] = \
-                data['homeassistant'][self.sys_machine]
+                data['homeassistant'][machine]
 
         self.save_data()
