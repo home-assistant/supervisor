@@ -83,7 +83,7 @@ class Updater(JsonConfig, CoreSysAttributes):
             self._data[ATTR_HASSIO] = data['supervisor']
 
         # update Home Assistant version
-        machine = self.sys_machine if self.sys_machine else 'default'
+        machine = self.sys_machine or 'default'
         with suppress(KeyError):
             self._data[ATTR_HOMEASSISTANT] = \
                 data['homeassistant'][machine]
