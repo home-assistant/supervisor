@@ -202,8 +202,14 @@ class RestAPI(CoreSysAttributes):
             web.get('/panel_latest', create_response('hassio-main-latest')),
         ])
 
-        # This route is for HA > 0.61
-        self.webapp.add_routes([web.static('/app-es5', panel_dir)])
+        # This route is for backwards compatibility with HA 0.62 - 0.70
+        self.webapp.add_routes([
+            web.get('/app-es5/index.html', create_response('index')),	
+            web.get('/app-es5/hassio-app.html', create_response('hassio-app')),	
+        ])
+
+        # This route is for HA > 0.70
+        self.webapp.add_routes([web.static('/app', panel_dir)])
 
     async def start(self):
         """Run rest api webserver."""
