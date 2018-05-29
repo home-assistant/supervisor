@@ -204,8 +204,8 @@ class RestAPI(CoreSysAttributes):
 
         # This route is for backwards compatibility with HA 0.62 - 0.70
         self.webapp.add_routes([
-            web.get('/app-es5/index.html', create_response('index')),	
-            web.get('/app-es5/hassio-app.html', create_response('hassio-app')),	
+            web.get('/app-es5/index.html', create_response('index')),
+            web.get('/app-es5/hassio-app.html', create_response('hassio-app')),
         ])
 
         # This route is for HA > 0.70
