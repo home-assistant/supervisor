@@ -1,27 +1,21 @@
 """Fetch last versions from webserver."""
 import asyncio
+from contextlib import suppress
 from datetime import timedelta
 import json
 import logging
 
 import aiohttp
-import async_timeout
 
 from .const import (
     URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
-    ATTR_CHANNEL, CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
+    ATTR_CHANNEL)
 from .coresys import CoreSysAttributes
 from .utils import AsyncThrottle
 from .utils.json import JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
-
-CHANNEL_TO_BRANCH = {
-    CHANNEL_STABLE: 'master',
-    CHANNEL_BETA: 'rc',
-    CHANNEL_DEV: 'dev',
-}
 
 
 class Updater(JsonConfig, CoreSysAttributes):
@@ -65,12 +59,11 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         Is a coroutine.
         """
-        url = URL_HASSIO_VERSION.format(CHANNEL_TO_BRANCH[self.channel])
+        url = URL_HASSIO_VERSION.format(channel=self.channel)
         try:
             _LOGGER.info("Fetch update data from %s", url)
-            with async_timeout.timeout(10):
-                async with self.sys_websession.get(url) as request:
-                    data = await request.json(content_type=None)
+            async with self.sys_websession.get(url, timeout=10) as request:
+                data = await request.json(content_type=None)
 
         except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
@@ -81,11 +74,18 @@ class Updater(JsonConfig, CoreSysAttributes):
             return
 
         # data valid?
-        if not data:
+        if not data or data.get(ATTR_CHANNEL) != self.channel:
             _LOGGER.warning("Invalid data from %s", url)
             return
 
-        # update versions
-        self._data[ATTR_HOMEASSISTANT] = data.get('homeassistant')
-        self._data[ATTR_HASSIO] = data.get('hassio')
+        # update supervisor versions
+        with suppress(KeyError):
+            self._data[ATTR_HASSIO] = data['supervisor']
+
+        # update Home Assistant version
+        machine = self.sys_machine or 'default'
+        with suppress(KeyError):
+            self._data[ATTR_HOMEASSISTANT] = \
+                data['homeassistant'][machine]
+
         self.save_data()
