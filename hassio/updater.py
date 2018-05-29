@@ -6,7 +6,6 @@ import json
 import logging
 
 import aiohttp
-import async_timeout
 
 from .const import (
     URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
