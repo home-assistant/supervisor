@@ -1,5 +1,6 @@
 """Fetch last versions from webserver."""
 import asyncio
+from contextlib import suppress
 from datetime import timedelta
 import json
 import logging
@@ -8,7 +9,7 @@ import aiohttp
 import async_timeout
 
 from .const import (
-    URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
+    FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
     ATTR_CHANNEL, CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
 from .coresys import CoreSysAttributes
 from .utils import AsyncThrottle
@@ -17,11 +18,7 @@ from .validate import SCHEMA_UPDATER_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
-CHANNEL_TO_BRANCH = {
-    CHANNEL_STABLE: 'master',
-    CHANNEL_BETA: 'rc',
-    CHANNEL_DEV: 'dev',
-}
+VERSION_URL = "https://s3.amazonaws.com/hassio-version/{channel}.json"
 
 
 class Updater(JsonConfig, CoreSysAttributes):
@@ -65,12 +62,11 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         Is a coroutine.
         """
-        url = URL_HASSIO_VERSION.format(CHANNEL_TO_BRANCH[self.channel])
+        url = VERSION_URL.format(channel=self.channel)
         try:
             _LOGGER.info("Fetch update data from %s", url)
-            with async_timeout.timeout(10):
-                async with self.sys_websession.get(url) as request:
-                    data = await request.json(content_type=None)
+            async with self.sys_websession.get(url, timeout=10) as request:
+                data = await request.json(content_type=None)
 
         except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
@@ -86,6 +82,10 @@ class Updater(JsonConfig, CoreSysAttributes):
             return
 
         # update versions
-        self._data[ATTR_HOMEASSISTANT] = data.get('homeassistant')
-        self._data[ATTR_HASSIO] = data.get('hassio')
+        with suppress(KeyError):
+            self._data[ATTR_HASSIO] = data[ATTR_HASSIO]
+        with suppress(KeyError):
+            self._data[ATTR_HOMEASSISTANT] = \
+                data[ATTR_HOMEASSISTANT][self.sys_machine]
+
         self.save_data()
