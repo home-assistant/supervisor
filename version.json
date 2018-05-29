@@ -1,8 +1,4 @@
 {
-    "hassio": "104",
-    "homeassistant": "0.70.0",
-    "resinos": "1.3",
-    "resinhup": "0.3",
-    "generic": "0.3",
-    "cluster": "0.1"
+    "hassio": "105",
+    "homeassistant": "0.70.0"
 }
