@@ -56,7 +56,7 @@ class Discovery(CoreSysAttributes):
         """Send a discovery message to Home-Assistant."""
         message = Message(provider, component, platform, config)
 
-        # Allready exists?
+        # Already exists?
         for exists_message in self.message_obj:
             if exists_message == message:
                 _LOGGER.warning("Found douplicate discovery message from %s",

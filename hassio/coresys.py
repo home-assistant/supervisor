@@ -147,7 +147,7 @@ class CoreSys:
 
     @api.setter
     def api(self, value):
-        """Set a API object."""
+        """Set an API object."""
         if self._api:
             raise RuntimeError("API already set!")
         self._api = value

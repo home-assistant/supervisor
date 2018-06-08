@@ -49,10 +49,10 @@ class APISnapshots(CoreSysAttributes):
     """Handle rest api for snapshot functions."""
 
     def _extract_snapshot(self, request):
-        """Return addon and if not exists trow a exception."""
+        """Return snapshot, throw an exception if it doesn't exist."""
         snapshot = self.sys_snapshots.get(request.match_info.get('snapshot'))
         if not snapshot:
-            raise RuntimeError("Snapshot not exists")
+            raise RuntimeError("Snapshot does not exist")
         return snapshot
 
     @api_process

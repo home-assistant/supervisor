@@ -23,7 +23,7 @@ class Supervisor(CoreSysAttributes):
 
     @property
     def need_update(self):
-        """Return True if a update is available."""
+        """Return True if an update is available."""
         return self.version != self.last_version
 
     @property

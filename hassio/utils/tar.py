@@ -81,7 +81,7 @@ class SecureTarFile:
 
 
 def _generate_iv(key, salt):
-    """Generate a iv from data."""
+    """Generate an iv from data."""
     temp_iv = key + salt
     for _ in range(100):
         temp_iv = hashlib.sha256(temp_iv).digest()

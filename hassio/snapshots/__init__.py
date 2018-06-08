@@ -92,9 +92,9 @@ class SnapshotManager(CoreSysAttributes):
         if not await snapshot.load():
             return None
 
-        # Allready exists?
+        # Already exists?
         if snapshot.slug in self.snapshots_obj:
-            _LOGGER.error("Snapshot %s allready exists!", snapshot.slug)
+            _LOGGER.error("Snapshot %s already exists!", snapshot.slug)
             return None
 
         # Move snapshot to backup

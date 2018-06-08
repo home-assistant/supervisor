@@ -116,7 +116,7 @@ class AlsaAudio(CoreSysAttributes):
         return self._default
 
     def asound(self, alsa_input=None, alsa_output=None):
-        """Generate a asound data."""
+        """Generate an asound data."""
         alsa_input = alsa_input or self.default.input
         alsa_output = alsa_output or self.default.output
 
