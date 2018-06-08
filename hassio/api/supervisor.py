@@ -119,7 +119,7 @@ class APISupervisor(CoreSysAttributes):
 
     @api_process
     async def reload(self, request):
-        """Reload addons, config ect."""
+        """Reload addons, config etc."""
         tasks = [
             self.sys_updater.reload(),
         ]

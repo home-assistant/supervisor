@@ -70,7 +70,7 @@ class Addon(CoreSysAttributes):
 
     @property
     def is_installed(self):
-        """Return True if a addon is installed."""
+        """Return True if an addon is installed."""
         return self._id in self._data.system
 
     @property
@@ -164,7 +164,7 @@ class Addon(CoreSysAttributes):
 
     @property
     def uuid(self):
-        """Return a API token for this add-on."""
+        """Return an API token for this add-on."""
         if self.is_installed:
             return self._data.user[self._id][ATTR_UUID]
         return None
@@ -411,7 +411,7 @@ class Addon(CoreSysAttributes):
 
     @property
     def with_icon(self):
-        """Return True if a icon exists."""
+        """Return True if an icon exists."""
         return self.path_icon.exists()
 
     @property
@@ -589,7 +589,7 @@ class Addon(CoreSysAttributes):
         return True
 
     async def install(self):
-        """Install a addon."""
+        """Install an addon."""
         if self.sys_arch not in self.supported_arch:
             _LOGGER.error(
                 "Addon %s not supported on %s", self._id, self.sys_arch)
@@ -612,7 +612,7 @@ class Addon(CoreSysAttributes):
 
     @check_installed
     async def uninstall(self):
-        """Remove a addon."""
+        """Remove an addon."""
         if not await self.instance.remove():
             return False
 
@@ -734,7 +734,7 @@ class Addon(CoreSysAttributes):
 
     @check_installed
     async def snapshot(self, tar_file):
-        """Snapshot a state of a addon."""
+        """Snapshot state of an addon."""
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
             # store local image
             if self.need_build and not await \
@@ -773,7 +773,7 @@ class Addon(CoreSysAttributes):
         return True
 
     async def restore(self, tar_file):
-        """Restore a state of a addon."""
+        """Restore state of an addon."""
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
             # extract snapshot
             def _extract_tarfile():
