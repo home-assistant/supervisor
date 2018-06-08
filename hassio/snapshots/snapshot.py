@@ -137,7 +137,7 @@ class Snapshot(CoreSysAttributes):
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
     def set_password(self, password):
-        """Set the password for a exists snapshot."""
+        """Set the password for an existing snapshot."""
         if not password:
             return False
 
@@ -210,7 +210,7 @@ class Snapshot(CoreSysAttributes):
         if not self.tarfile.is_file():
             return self
 
-        # extract a exists snapshot
+        # extract an existing snapshot
         def _extract_snapshot():
             """Extract a snapshot."""
             with tarfile.open(self.tarfile, "r:") as tar:
@@ -252,7 +252,7 @@ class Snapshot(CoreSysAttributes):
         addon_list = addon_list or self.sys_addons.list_installed
 
         async def _addon_save(addon):
-            """Task to store a add-on into snapshot."""
+            """Task to store an add-on into snapshot."""
             addon_file = SecureTarFile(
                 Path(self._tmp.name, f"{addon.slug}.tar.gz"),
                 'w', key=self._key)
@@ -285,7 +285,7 @@ class Snapshot(CoreSysAttributes):
                     addon_list.append(addon)
 
         async def _addon_restore(addon):
-            """Task to restore a add-on into snapshot."""
+            """Task to restore an add-on into snapshot."""
             addon_file = SecureTarFile(
                 Path(self._tmp.name, f"{addon.slug}.tar.gz"),
                 'r', key=self._key)

@@ -24,7 +24,7 @@ RE_TTY = re.compile(r"tty[A-Z]+")
 
 
 class Hardware:
-    """Represent a interface to procfs, sysfs and udev."""
+    """Represent an interface to procfs, sysfs and udev."""
 
     def __init__(self):
         """Init hardware object."""

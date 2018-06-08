@@ -42,10 +42,10 @@ class APIAddons(CoreSysAttributes):
     """Handle rest api for addons functions."""
 
     def _extract_addon(self, request, check_installed=True):
-        """Return addon and if not exists trow a exception."""
+        """Return addon, throw an exception it it doesn't exist."""
         addon = self.sys_addons.get(request.match_info.get('addon'))
         if not addon:
-            raise RuntimeError("Addon not exists")
+            raise RuntimeError("Addon does not exist")
 
         if check_installed and not addon.is_installed:
             raise RuntimeError("Addon is not installed")

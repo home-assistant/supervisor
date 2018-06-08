@@ -71,7 +71,7 @@ def api_process_raw(content):
 
 
 def api_return_error(message=None):
-    """Return a API error message."""
+    """Return an API error message."""
     return web.json_response({
         JSON_RESULT: RESULT_ERROR,
         JSON_MESSAGE: message,
@@ -79,7 +79,7 @@ def api_return_error(message=None):
 
 
 def api_return_ok(data=None):
-    """Return a API ok answer."""
+    """Return an API ok answer."""
     return web.json_response({
         JSON_RESULT: RESULT_OK,
         JSON_DATA: data or {},

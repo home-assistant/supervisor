@@ -25,7 +25,7 @@ def password_for_validating(password):
 
 
 def key_to_iv(key):
-    """Generate a iv from Key."""
+    """Generate an iv from Key."""
     for _ in range(100):
         key = hashlib.sha256(key).digest()
     return key[:16]

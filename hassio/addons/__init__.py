@@ -40,11 +40,11 @@ class AddonManager(CoreSysAttributes):
         return list(self.repositories_obj.values())
 
     def get(self, addon_slug):
-        """Return a add-on from slug."""
+        """Return an add-on from slug."""
         return self.addons_obj.get(addon_slug)
 
     def from_uuid(self, uuid):
-        """Return a add-on from uuid."""
+        """Return an add-on from uuid."""
         for addon in self.list_addons:
             if addon.is_installed and uuid == addon.uuid:
                 return addon
