@@ -53,7 +53,7 @@ class Tasks(CoreSysAttributes):
         _LOGGER.info("All core tasks are scheduled")
 
     async def _update_addons(self):
-        """Check if a update is available of a addon and update it."""
+        """Check if an update is available for an addon and update it."""
         tasks = []
         for addon in self.sys_addons.list_addons:
             if not addon.is_installed or not addon.auto_update:
@@ -77,7 +77,7 @@ class Tasks(CoreSysAttributes):
         if not self.sys_supervisor.need_update:
             return
 
-        # don't perform a update on beta/dev channel
+        # don't perform an update on beta/dev channel
         if self.sys_dev:
             _LOGGER.warning("Ignore Hass.io update on dev channel!")
             return

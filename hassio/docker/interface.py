@@ -120,7 +120,7 @@ class DockerInterface(CoreSysAttributes):
         if container.status != 'running':
             return False
 
-        # we run on a old image, stop and start it
+        # we run on an old image, stop and start it
         if container.image.id != image.id:
             return False
 

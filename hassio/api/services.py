@@ -10,10 +10,10 @@ class APIServices(CoreSysAttributes):
     """Handle rest api for services functions."""
 
     def _extract_service(self, request):
-        """Return service and if not exists trow a exception."""
+        """Return service, throw an exception if it doesn't exist."""
         service = self.sys_services.get(request.match_info.get('service'))
         if not service:
-            raise RuntimeError("Service not exists")
+            raise RuntimeError("Service does not exist")
 
         return service
 

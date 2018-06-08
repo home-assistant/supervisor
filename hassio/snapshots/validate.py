@@ -15,7 +15,7 @@ ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
 
 def unique_addons(addons_list):
-    """Validate that a add-on is unique."""
+    """Validate that an add-on is unique."""
     single = set([addon[ATTR_SLUG] for addon in addons_list])
 
     if len(single) != len(addons_list):
