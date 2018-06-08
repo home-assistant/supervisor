@@ -579,7 +579,7 @@ return:
 
 #### MQTT
 
-This service perform a auto discovery to Home-Assistant.
+This service performs an auto discovery to Home-Assistant.
 
 - GET `/services/mqtt`
 ```json
