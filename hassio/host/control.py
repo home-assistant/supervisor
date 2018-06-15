@@ -23,7 +23,7 @@ class SystemControl(CoreSysAttributes):
             return
         if flag == HOSTNAME and self.sys_dbus.hostname.is_connected:
             return
-            
+
         _LOGGER.error("No %s dbus connection available", flag)
         raise HostNotSupportedError()
 

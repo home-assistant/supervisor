@@ -227,7 +227,7 @@ return:
 ```json
 {
     "hostname": "hostname|null",
-    "features": ["shutdown", "reboot", "update", "hostname"],
+    "features": ["shutdown", "reboot", "update", "hostname", "services"],
     "operating_system": "Hass.io-OS XY|Ubuntu 16.4|null",
     "kernel": "4.15.7|null",
     "chassis": "specific|null",
@@ -566,14 +566,6 @@ return:
             "provider": "null|name|list"
         }
     ]
-}
-```
-
-- GET `/services/xy`
-```json
-{
-    "available": "bool",
-    "xy": {}
 }
 ```
 

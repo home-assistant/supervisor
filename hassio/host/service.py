@@ -22,7 +22,7 @@ class ServiceManager(CoreSysAttributes):
 
         _LOGGER.error("No systemd dbus connection available")
         raise HostNotSupportedError()
-    
+
     @property
     def services(self):
         """Return a list of local services."""
@@ -35,5 +35,6 @@ class ServiceManager(CoreSysAttributes):
         _LOGGER.info("Update service information")
         try:
             self._data = await self.sys_dbus.systemd.list_units()
+            _LOGGER.info("Output: %s", self._data)
         except HassioError:
             _LOGGER.warning("Can't update host service information!")

@@ -1,4 +1,4 @@
-"""Power control for host."""
+"""Info control for host."""
 import logging
 
 from ..coresys import CoreSysAttributes
