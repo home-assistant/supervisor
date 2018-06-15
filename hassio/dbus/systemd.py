@@ -37,3 +37,35 @@ class Systemd(DBusInterface):
         Return a coroutine.
         """
         return self.dbus.Manager.PowerOff()
+
+    @dbus_connected
+    def start_unit(self, unit):
+        """Start a systemd service unit.
+
+        Return a coroutine.
+        """
+        return self.dbus.Manager.StartUnit(unit)
+
+    @dbus_connected
+    def stop_unit(self, unit):
+        """Stop a systemd service unit.
+
+        Return a coroutine.
+        """
+        return self.dbus.Manager.StopUnit(unit)
+
+    @dbus_connected
+    def reload_unit(self, unit):
+        """Reload a systemd service unit.
+
+        Return a coroutine.
+        """
+        return self.dbus.Manager.ReloadOrRestartUnit(unit)
+
+    @dbus_connected
+    def list_units(self, unit):
+        """Return a list of available systemd services.
+
+        Return a coroutine.
+        """
+        return self.dbus.Manager.ListUnits(unit)
