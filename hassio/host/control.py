@@ -19,13 +19,13 @@ class SystemControl(CoreSysAttributes):
 
     def _check_dbus(self, flag):
         """Check if systemd is connect or raise error."""
-        if flag == MANAGER and not self.sys_dbus.systemd.is_connected:
-            _LOGGER.error("No systemd dbus connection available")
-            raise HostNotSupportedError()
-
-        if flag == HOSTNAME and not self.sys_dbus.hostname.is_connected:
-            _LOGGER.error("No hostname dbus connection available")
-            raise HostNotSupportedError()
+        if flag == MANAGER and self.sys_dbus.systemd.is_connected:
+            return
+        if flag == HOSTNAME and self.sys_dbus.hostname.is_connected:
+            return
+            
+        _LOGGER.error("No %s dbus connection available", flag)
+        raise HostNotSupportedError()
 
     async def reboot(self):
         """Reboot host system."""
