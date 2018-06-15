@@ -38,7 +38,7 @@ class HostManager(CoreSysAttributes):
     @property
     def service(self):
         """Return host service handler."""
-        return self._info
+        return self._service
 
     @property
     def supperted_features(self):
