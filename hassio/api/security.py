@@ -49,7 +49,7 @@ class SecurityMiddleware(CoreSysAttributes):
         if hassio_token == self.sys_machine_id:
             _LOGGER.debug("%s access from Host", request.path)
             request[REQUEST_FROM] = 'host'
-        
+
         # Add-on
         addon = self.sys_addons.from_uuid(hassio_token)
         if addon:
