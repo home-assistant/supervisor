@@ -46,6 +46,9 @@ def initialize_coresys(loop):
     # bootstrap config
     initialize_system_data(coresys)
 
+    # Set Machine/Host ID
+    coresys.machine_id = os.environ.get('MACHINE_ID')
+
     return coresys
 
 
