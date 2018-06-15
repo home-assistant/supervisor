@@ -6,6 +6,9 @@ from ..exceptions import HostNotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
 
+MANAGER = 'manager'
+HOSTNAME = 'hostname'
+
 
 class SystemControl(CoreSysAttributes):
     """Handle host power controls."""
@@ -14,15 +17,19 @@ class SystemControl(CoreSysAttributes):
         """Initialize host power handling."""
         self.coresys = coresys
 
-    def _check_systemd(self):
+    def _check_dbus(self, flag):
         """Check if systemd is connect or raise error."""
-        if not self.sys_dbus.systemd.is_connected:
+        if flag = MANAGER and not self.sys_dbus.systemd.is_connected:
             _LOGGER.error("No systemd dbus connection available")
+            raise HostNotSupportedError()
+
+        if flag = HOSTNAME and not self.sys_dbus.hostname.is_connected:
+            _LOGGER.error("No hostname dbus connection available")
             raise HostNotSupportedError()
 
     async def reboot(self):
         """Reboot host system."""
-        self._check_systemd()
+        self._check_dbus(MANAGER)
 
         _LOGGER.info("Initialize host reboot over systemd")
         try:
@@ -32,7 +39,7 @@ class SystemControl(CoreSysAttributes):
 
     async def shutdown(self):
         """Shutdown host system."""
-        self._check_systemd()
+        self._check_dbus(MANAGER)
 
         _LOGGER.info("Initialize host power off over systemd")
         try:
@@ -42,9 +49,7 @@ class SystemControl(CoreSysAttributes):
 
     async def set_hostname(self, hostname):
         """Set local a new Hostname."""
-        if not self.sys_dbus.systemd.is_connected:
-            _LOGGER.error("No hostname dbus connection available")
-            raise HostNotSupportedError()
+        self._check_dbus(HOSTNAME)
 
         _LOGGER.info("Set Hostname %s", hostname)
         await self.sys_dbus.hostname.set_static_hostname(hostname)
