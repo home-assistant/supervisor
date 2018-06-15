@@ -24,6 +24,11 @@ from .dbus import DBusManager
 
 _LOGGER = logging.getLogger(__name__)
 
+ENV_SHARE = 'SUPERVISOR_SHARE'
+ENV_NAME = 'SUPERVISOR_NAME'
+ENV_REPO = 'HOMEASSISTANT_REPOSITORY'
+ENV_MACHINE = 'MACHINE_ID'
+
 
 def initialize_coresys(loop):
     """Initialize HassIO coresys/objects."""
@@ -45,6 +50,9 @@ def initialize_coresys(loop):
 
     # bootstrap config
     initialize_system_data(coresys)
+
+    # Set Machine/Host ID
+    coresys.machine_id = os.environ.get(ENV_MACHINE)
 
     return coresys
 
@@ -139,8 +147,7 @@ def initialize_logging():
 def check_environment():
     """Check if all environment are exists."""
     # check environment variables
-    for key in ('SUPERVISOR_SHARE', 'SUPERVISOR_NAME',
-                'HOMEASSISTANT_REPOSITORY'):
+    for key in (ENV_SHARE, ENV_NAME, ENV_REPO):
         try:
             os.environ[key]
         except KeyError:
