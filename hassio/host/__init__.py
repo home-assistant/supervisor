@@ -63,7 +63,7 @@ class HostManager(CoreSysAttributes):
             await self.info.update()
 
         if self.sys_dbus.systemd.is_connected:
-            await self.service.update()
+            await self.services.update()
 
     def reload(self):
         """Reload host information."""
