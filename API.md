@@ -259,6 +259,27 @@ Optional:
 
 - POST `/host/reload`
 
+#### Services
+
+- GET `/host/services`
+```json
+{
+    "services": [
+        {
+            "name": "xy.service",
+            "description": "XY ...",
+            "state": "active|"
+        }
+    ]
+}
+```
+
+- POST `/host/service/{unit}/stop`
+
+- POST `/host/service/{unit}/start`
+
+- POST `/host/service/{unit}/reload`
+
 ### Hardware
 
 - GET `/hardware/info`

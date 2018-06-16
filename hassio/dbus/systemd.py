@@ -63,6 +63,14 @@ class Systemd(DBusInterface):
         return self.dbus.Manager.ReloadOrRestartUnit(unit)
 
     @dbus_connected
+    def restart_unit(self, unit):
+        """Restart a systemd service unit.
+
+        Return a coroutine.
+        """
+        return self.dbus.Manager.RestartUnit(unit)
+
+    @dbus_connected
     def list_units(self):
         """Return a list of available systemd services.
 

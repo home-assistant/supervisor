@@ -4,7 +4,7 @@ import logging
 import attr
 
 from ..coresys import CoreSysAttributes
-from ..exceptions import HassioError, HostNotSupportedError
+from ..exceptions import HassioError, HostNotSupportedError, HostServiceError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,30 +15,69 @@ class ServiceManager(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize system center handling."""
         self.coresys = coresys
-        self._data = set()
+        self._services = set()
 
-    def _check_dbus(self):
+    def __iter__(self):
+        """Iterator trought services."""
+        return iter(self._services)
+
+    def _check_dbus(self, unit=None):
         """Check available dbus connection."""
-        if self.sys_dbus.systemd.is_connected:
-            return
+        if not self.sys_dbus.systemd.is_connected:
+            _LOGGER.error("No systemd dbus connection available")
+            raise HostNotSupportedError()
 
-        _LOGGER.error("No systemd dbus connection available")
-        raise HostNotSupportedError()
+        if unit and not self.exists(unit):
+            _LOGGER.error("Unit '%s' not found", unit)
+            raise HostServiceError()
 
-    @property
-    def services(self):
-        """Return a list of local services."""
-        return self._data
+    def start(self, unit):
+        """Start a service on host."""
+        self._check_dbus(unit)
+
+        _LOGGER.info("Start local service %s", unit)
+        return self.sys_dbus.systemd.start_unit(unit)
+
+    def stop(self, unit):
+        """Stop a service on host."""
+        self._check_dbus(unit)
+
+        _LOGGER.info("Stop local service %s", unit)
+        return self.sys_dbus.systemd.stop_unit(unit)
+
+    def reload(self, unit):
+        """Reload a service on host."""
+        self._check_dbus(unit)
+
+        _LOGGER.info("Reload local service %s", unit)
+        return self.sys_dbus.systemd.reload_unit(unit)
+
+    def restart(self, unit):
+        """Restart a service on host."""
+        self._check_dbus(unit)
+
+        _LOGGER.info("Restart local service %s", unit)
+        return self.sys_dbus.systemd.restart_unit(unit)
+
+    def exists(self, unit):
+        """Check if a unit exists and return True."""
+        for service in self._services:
+            if unit == service.name:
+                return True
+        return False
 
     async def update(self):
         """Update properties over dbus."""
         self._check_dbus()
 
         _LOGGER.info("Update service information")
+        self._services.clear()
         try:
             systemd_units = await self.sys_dbus.systemd.list_units()
             for service_data in systemd_units[0]:
-                self._data.add(ServiceInfo.read_from(service_data))
+                if not service_data[0].endswith(".service"):
+                    continue
+                self._services.add(ServiceInfo.read_from(service_data))
         except (HassioError, IndexError):
             _LOGGER.warning("Can't update host service information!")
 
@@ -50,14 +89,8 @@ class ServiceInfo:
     name = attr.ib(type=str)
     description = attr.ib(type=str)
     state = attr.ib(type=str)
-    object = attr.ib(type=str)
 
     @staticmethod
     def read_from(unit):
         """Parse data from dbus into this object."""
-        return ServiceInfo(
-            unit[0],
-            unit[1],
-            unit[3],
-            unit[6]
-        )
+        return ServiceInfo(unit[0], unit[1], unit[3])

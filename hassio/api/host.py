@@ -7,7 +7,8 @@ import voluptuous as vol
 from .utils import api_process, api_validate
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_HOSTNAME, ATTR_FEATURES, ATTR_KERNEL,
-    ATTR_TYPE, ATTR_OPERATING_SYSTEM, ATTR_CHASSIS, ATTR_DEPLOYMENT)
+    ATTR_TYPE, ATTR_OPERATING_SYSTEM, ATTR_CHASSIS, ATTR_DEPLOYMENT,
+    ATTR_STATE, ATTR_NAME, ATTR_DESCRIPTON, ATTR_SERVICES)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -70,3 +71,42 @@ class APIHost(CoreSysAttributes):
         pass
         # body = await api_validate(SCHEMA_VERSION, request)
         # version = body.get(ATTR_VERSION, self.sys_host.last_version)
+
+    @api_process
+    async def services(self, request):
+        """Return list of available services."""
+        services = []
+        for unit in self.sys_host.services:
+            services.append({
+                ATTR_NAME: unit.name,
+                ATTR_DESCRIPTON: unit.description,
+                ATTR_STATE: unit.state,
+            })
+
+        return {
+            ATTR_SERVICES: services
+        }
+
+    @api_process
+    def service_start(self, request):
+        """Start a service."""
+        unit = request.match_info('service')
+        return asyncio.shield(self.sys_host.services.start(unit))
+
+    @api_process
+    def service_stop(self, request):
+        """Stop a service."""
+        unit = request.match_info('service')
+        return asyncio.shield(self.sys_host.services.stop(unit))
+
+    @api_process
+    def service_reload(self, request):
+        """Reload a service."""
+        unit = request.match_info('service')
+        return asyncio.shield(self.sys_host.services.reload(unit))
+
+    @api_process
+    def service_restart(self, request):
+        """Restart a service."""
+        unit = request.match_info('service')
+        return asyncio.shield(self.sys_host.services.restart(unit))

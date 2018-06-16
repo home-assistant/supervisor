@@ -18,7 +18,7 @@ class HostManager(CoreSysAttributes):
         self._alsa = AlsaAudio(coresys)
         self._control = SystemControl(coresys)
         self._info = InfoCenter(coresys)
-        self._service = ServiceManager(coresys)
+        self._services = ServiceManager(coresys)
 
     @property
     def alsa(self):
@@ -36,9 +36,9 @@ class HostManager(CoreSysAttributes):
         return self._info
 
     @property
-    def service(self):
-        """Return host service handler."""
-        return self._service
+    def services(self):
+        """Return host services handler."""
+        return self._services
 
     @property
     def supperted_features(self):
