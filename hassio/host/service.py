@@ -36,7 +36,8 @@ class ServiceManager(CoreSysAttributes):
 
         _LOGGER.info("Update service information")
         try:
-            for service_data in await self.sys_dbus.systemd.list_units()[0]:
+            systemd_units = await self.sys_dbus.systemd.list_units()
+            for service_data in systemd_units[0]:
                 self._data.add(ServiceInfo.read_from(service_data))
         except (HassioError, IndexError):
             _LOGGER.warning("Can't update host service information!")
