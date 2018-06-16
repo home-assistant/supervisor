@@ -14,10 +14,11 @@ _LOGGER = logging.getLogger(__name__)
 RE_GVARIANT_TYPE = re.compile(
     r"(?:boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
     r"string|objectpath|signature) ")
-RE_GVARIANT_TULPE = re.compile(r"\((.*?),\)")
+RE_GVARIANT_TULPE = re.compile(r"\((.*?)\),")
 RE_GVARIANT_VARIANT = re.compile(
     r"(?<=(?: |{|\[))<((?:'|\").*?(?:'|\")|\d+(?:\.\d+)?)>(?=(?:|]|}|,))")
 RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[))'(.*?)'(?=(?:|]|}|,))")
+RE_GVARIANT_FIX_ARRAY = re.compile(r"], ]")
 
 # Commands for dbus
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
@@ -76,9 +77,10 @@ class DBus:
     def _gvariant(raw):
         """Parse GVariant input to python."""
         raw = RE_GVARIANT_TYPE.sub("", raw)
-        raw = RE_GVARIANT_TULPE.sub(r"[\1]", raw)
+        raw = RE_GVARIANT_TULPE.sub(r"[\1],", raw)
         raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
         raw = RE_GVARIANT_STRING.sub(r'"\1"', raw)
+        raw = RE_GVARIANT_FIX_ARRAY.sub(r"", raw)
 
         # No data
         if raw.startswith("()"):

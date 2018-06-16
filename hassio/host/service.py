@@ -53,11 +53,11 @@ class ServiceInfo:
     object = attr.ib(type=str)
 
     @staticmethod
-    def read_from(raw):
+    def read_from(unit):
         """Parse data from dbus into this object."""
         return ServiceInfo(
-            raw[0],
-            raw[1],
-            raw[3],
-            raw[6]
+            unit[0],
+            unit[1],
+            unit[3],
+            unit[6]
         )
