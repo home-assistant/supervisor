@@ -1,6 +1,8 @@
 """Service control for host."""
 import logging
 
+import attr
+
 from ..coresys import CoreSysAttributes
 from ..exceptions import HassioError, HostNotSupportedError
 
@@ -13,7 +15,7 @@ class ServiceManager(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize system center handling."""
         self.coresys = coresys
-        self._data = []
+        self._data = set()
 
     def _check_dbus(self):
         """Check available dbus connection."""
@@ -34,7 +36,27 @@ class ServiceManager(CoreSysAttributes):
 
         _LOGGER.info("Update service information")
         try:
-            self._data = await self.sys_dbus.systemd.list_units()
-            _LOGGER.info("Output: %s", self._data)
-        except HassioError:
+            for service_data in await self.sys_dbus.systemd.list_units()[0]:
+                self._data.add(ServiceInfo.read_from(service_data))
+        except (HassioError, IndexError):
             _LOGGER.warning("Can't update host service information!")
+
+
+@attr.s(frozen=True)
+class ServiceInfo:
+    """Represent a single Service."""
+
+    name = attr.ib(type=str)
+    description = attr.ib(type=str)
+    state = attr.ib(type=str)
+    object = attr.ib(type=str)
+
+    @staticmethod
+    def read_from(raw):
+        """Parse data from dbus into this object."""
+        return ServiceInfo(
+            raw[0],
+            raw[1],
+            raw[3],
+            raw[6]
+        )
