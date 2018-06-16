@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 RE_GVARIANT_TYPE = re.compile(
     r"(?:boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
     r"string|objectpath|signature) ")
-RE_GVARIANT_TULPE = re.compile(r"^\((.*),\)$")
+RE_GVARIANT_TULPE = re.compile(r"\((.*),\)")
 RE_GVARIANT_VARIANT = re.compile(
     r"(?<=(?: |{|\[))<((?:'|\").*?(?:'|\")|\d+(?:\.\d+)?)>(?=(?:|]|}|,))")
 RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[))'(.*?)'(?=(?:|]|}|,))")
