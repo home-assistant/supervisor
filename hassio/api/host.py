@@ -13,6 +13,8 @@ from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
+SERVICE = 'service'
+
 SCHEMA_VERSION = vol.Schema({
     vol.Optional(ATTR_VERSION): vol.Coerce(str),
 })
@@ -90,23 +92,23 @@ class APIHost(CoreSysAttributes):
     @api_process
     def service_start(self, request):
         """Start a service."""
-        unit = request.match_info('service')
+        unit = request.match_info.get(SERVICE)
         return asyncio.shield(self.sys_host.services.start(unit))
 
     @api_process
     def service_stop(self, request):
         """Stop a service."""
-        unit = request.match_info('service')
+        unit = request.match_info.get(SERVICE)
         return asyncio.shield(self.sys_host.services.stop(unit))
 
     @api_process
     def service_reload(self, request):
         """Reload a service."""
-        unit = request.match_info('service')
+        unit = request.match_info.get(SERVICE)
         return asyncio.shield(self.sys_host.services.reload(unit))
 
     @api_process
     def service_restart(self, request):
         """Restart a service."""
-        unit = request.match_info('service')
+        unit = request.match_info.get(SERVICE)
         return asyncio.shield(self.sys_host.services.restart(unit))
