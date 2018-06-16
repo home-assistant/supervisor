@@ -85,8 +85,8 @@ class DBus:
             lambda x: x.group(0) if not x.group(1) else"]", raw)
 
         # No data
-        if raw.startswith("()"):
-            return {}
+        if raw.startswith("[]"):
+            return []
 
         try:
             return json.loads(raw)
