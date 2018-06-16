@@ -17,8 +17,8 @@ RE_GVARIANT_TYPE = re.compile(
 RE_GVARIANT_VARIANT = re.compile(
     r"(?<=(?: |{|\[))<((?:'|\").*?(?:'|\")|\d+(?:\.\d+)?)>(?=(?:|]|}|,))")
 RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[|\())'(.*?)'(?=(?:|]|}|,|\)))")
-RE_GVARIANT_TUPLE_O = re.compile(r"(?!\B\"[^\"]*?)\((?![^\"]*?\"\B)")
-RE_GVARIANT_TUPLE_C = re.compile(r"(?!\B\"[^\"]*?),?\)(?![^\"]*?\"\B)")
+RE_GVARIANT_TUPLE_O = re.compile(r"\"[^\"]*?\"|(,?\))")
+RE_GVARIANT_TUPLE_C = re.compile(r"\"[^\"]*?\"|(\()")
 
 # Commands for dbus
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
@@ -79,8 +79,10 @@ class DBus:
         raw = RE_GVARIANT_TYPE.sub("", raw)
         raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
         raw = RE_GVARIANT_STRING.sub(r'"\1"', raw)
-        raw = RE_GVARIANT_TUPLE_O.sub("[", raw)
-        raw = RE_GVARIANT_TUPLE_C.sub("]", raw)
+        raw = RE_GVARIANT_TUPLE_O.sub(
+            lambda x: x.group(0) if not x.group(1) else"[", raw)
+        raw = RE_GVARIANT_TUPLE_C.sub(
+            lambda x: x.group(0) if not x.group(1) else"]", raw)
 
         # No data
         if raw.startswith("()"):
