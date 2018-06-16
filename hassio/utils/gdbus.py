@@ -16,9 +16,9 @@ RE_GVARIANT_TYPE = re.compile(
     r"string|objectpath|signature) ")
 RE_GVARIANT_VARIANT = re.compile(
     r"(?<=(?: |{|\[))<((?:'|\").*?(?:'|\")|\d+(?:\.\d+)?)>(?=(?:|]|}|,))")
-RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[))'(.*?)'(?=(?:|]|}|,))")
-RE_GVARIANT_TUPLE_O = re.compile(r"(?!\B\"[^\"]*)\((?![^\"]*\"\B)")
-RE_GVARIANT_TUPLE_C = re.compile(r"(?!\B\"[^\"]*),?\)(?![^\"]*\"\B)")
+RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[|\())'(.*?)'(?=(?:|]|}|,|\)))")
+RE_GVARIANT_TUPLE_O = re.compile(r"(?!\B\"[^\"]*?)\((?![^\"]*?\"\B)")
+RE_GVARIANT_TUPLE_C = re.compile(r"(?!\B\"[^\"]*?),?\)(?![^\"]*?\"\B)")
 
 # Commands for dbus
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
