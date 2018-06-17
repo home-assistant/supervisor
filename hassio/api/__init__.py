@@ -57,6 +57,13 @@ class RestAPI(CoreSysAttributes):
             web.post('/host/shutdown', api_host.shutdown),
             web.post('/host/update', api_host.update),
             web.post('/host/reload', api_host.reload),
+            web.get('/host/services', api_host.services),
+            web.post('/host/services/{service}/stop', api_host.service_stop),
+            web.post('/host/services/{service}/start', api_host.service_start),
+            web.post(
+                '/host/services/{service}/restart', api_host.service_restart),
+            web.post(
+                '/host/services/{service}/reload', api_host.service_reload),
         ])
 
     def _register_hardware(self):
