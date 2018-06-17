@@ -28,6 +28,11 @@ class HostNotSupportedError(HassioNotSupportedError):
     pass
 
 
+class HostServiceError(HostError):
+    """Host service functions fails."""
+    pass
+
+
 # utils/gdbus
 
 class DBusError(HassioError):
