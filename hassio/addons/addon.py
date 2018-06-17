@@ -320,17 +320,8 @@ class Addon(CoreSysAttributes):
         return self._mesh.get(ATTR_PRIVILEGED)
 
     @property
-    def seccomp(self):
-        """Return True if seccomp is enabled."""
-        if not self._mesh.get(ATTR_SECCOMP):
-            return SECURITY_DISABLE
-        elif self.path_seccomp.exists():
-            return SECURITY_PROFILE
-        return SECURITY_DEFAULT
-
-    @property
     def apparmor(self):
-        """Return True if seccomp is enabled."""
+        """Return True if apparmor is enabled."""
         if not self._mesh.get(ATTR_APPARMOR):
             return SECURITY_DISABLE
         elif self.path_apparmor.exists():
@@ -492,11 +483,6 @@ class Addon(CoreSysAttributes):
     def path_changelog(self):
         """Return path to addon changelog."""
         return Path(self.path_location, 'CHANGELOG.md')
-
-    @property
-    def path_seccomp(self):
-        """Return path to custom seccomp profile."""
-        return Path(self.path_location, 'seccomp.json')
 
     @property
     def path_apparmor(self):

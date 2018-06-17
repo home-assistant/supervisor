@@ -162,7 +162,6 @@ ATTR_PROTECTED = 'protected'
 ATTR_CRYPTO = 'crypto'
 ATTR_BRANCH = 'branch'
 ATTR_KERNEL = 'kernel'
-ATTR_SECCOMP = 'seccomp'
 ATTR_APPARMOR = 'apparmor'
 
 SERVICE_MQTT = 'mqtt'
