@@ -8,6 +8,8 @@ from ..exceptions import HassioError, HostNotSupportedError, HostServiceError
 
 _LOGGER = logging.getLogger(__name__)
 
+MOD_REPLACE = 'replace'
+
 
 class ServiceManager(CoreSysAttributes):
     """Handle local service information controls."""
@@ -36,28 +38,28 @@ class ServiceManager(CoreSysAttributes):
         self._check_dbus(unit)
 
         _LOGGER.info("Start local service %s", unit)
-        return self.sys_dbus.systemd.start_unit(unit)
+        return self.sys_dbus.systemd.start_unit(unit, MOD_REPLACE)
 
     def stop(self, unit):
         """Stop a service on host."""
         self._check_dbus(unit)
 
         _LOGGER.info("Stop local service %s", unit)
-        return self.sys_dbus.systemd.stop_unit(unit)
+        return self.sys_dbus.systemd.stop_unit(unit, MOD_REPLACE)
 
     def reload(self, unit):
         """Reload a service on host."""
         self._check_dbus(unit)
 
         _LOGGER.info("Reload local service %s", unit)
-        return self.sys_dbus.systemd.reload_unit(unit)
+        return self.sys_dbus.systemd.reload_unit(unit, MOD_REPLACE)
 
     def restart(self, unit):
         """Restart a service on host."""
         self._check_dbus(unit)
 
         _LOGGER.info("Restart local service %s", unit)
-        return self.sys_dbus.systemd.restart_unit(unit)
+        return self.sys_dbus.systemd.restart_unit(unit, MOD_REPLACE)
 
     def exists(self, unit):
         """Check if a unit exists and return True."""

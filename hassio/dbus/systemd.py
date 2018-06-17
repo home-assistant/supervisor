@@ -39,36 +39,36 @@ class Systemd(DBusInterface):
         return self.dbus.Manager.PowerOff()
 
     @dbus_connected
-    def start_unit(self, unit):
+    def start_unit(self, unit, mode):
         """Start a systemd service unit.
 
         Return a coroutine.
         """
-        return self.dbus.Manager.StartUnit(unit)
+        return self.dbus.Manager.StartUnit(unit, mode)
 
     @dbus_connected
-    def stop_unit(self, unit):
+    def stop_unit(self, unit, mode):
         """Stop a systemd service unit.
 
         Return a coroutine.
         """
-        return self.dbus.Manager.StopUnit(unit)
+        return self.dbus.Manager.StopUnit(unit, mode)
 
     @dbus_connected
-    def reload_unit(self, unit):
+    def reload_unit(self, unit, mode):
         """Reload a systemd service unit.
 
         Return a coroutine.
         """
-        return self.dbus.Manager.ReloadOrRestartUnit(unit)
+        return self.dbus.Manager.ReloadOrRestartUnit(unit, mode)
 
     @dbus_connected
-    def restart_unit(self, unit):
+    def restart_unit(self, unit, mode):
         """Restart a systemd service unit.
 
         Return a coroutine.
         """
-        return self.dbus.Manager.RestartUnit(unit)
+        return self.dbus.Manager.RestartUnit(unit, mode)
 
     @dbus_connected
     def list_units(self):
