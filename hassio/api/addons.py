@@ -17,7 +17,7 @@ from ..const import (
     ATTR_CHANGELOG, ATTR_HOST_IPC, ATTR_HOST_DBUS, ATTR_LONG_DESCRIPTION,
     ATTR_CPU_PERCENT, ATTR_MEMORY_LIMIT, ATTR_MEMORY_USAGE, ATTR_NETWORK_TX,
     ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
-    ATTR_DISCOVERY, ATTR_SECCOMP, ATTR_APPARMOR,
+    ATTR_DISCOVERY, ATTR_APPARMOR,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
@@ -126,7 +126,6 @@ class APIAddons(CoreSysAttributes):
             ATTR_HOST_IPC: addon.host_ipc,
             ATTR_HOST_DBUS: addon.host_dbus,
             ATTR_PRIVILEGED: addon.privileged,
-            ATTR_SECCOMP: addon.seccomp,
             ATTR_APPARMOR: addon.apparmor,
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_ICON: addon.with_icon,
