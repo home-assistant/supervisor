@@ -33,6 +33,10 @@ class HostServiceError(HostError):
     pass
 
 
+class HostAppArmorError(HostError):
+    """Host apparmor functions fails."""
+
+
 # utils/gdbus
 
 class DBusError(HassioError):
@@ -56,11 +60,16 @@ class DBusParseError(DBusError):
 
 # util/apparmor
 
-class AppArmorFileError(HassioError):
+class AppArmorError(HassioError):
+    """General AppArmor error."""
+    pass
+
+
+class AppArmorFileError(AppArmorError):
     """AppArmor profile file error."""
     pass
 
 
-class AppArmorInvalidError(HassioError):
+class AppArmorInvalidError(AppArmorError):
     """AppArmor profile validate error."""
     pass
