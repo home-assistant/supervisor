@@ -1,7 +1,10 @@
 """Some functions around apparmor profiles."""
+import logging
 import re
 
 from ..exceptions import AppArmorFileError, AppArmorInvalidError
+
+_LOGGER = logging.getLogger(__name__)
 
 RE_PROFILE = re.compile(r"^profile ([^ ]+).*$")
 
