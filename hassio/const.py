@@ -16,6 +16,8 @@ FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
 FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
 FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
 
+DIR_HASSIO_APPARMOR = Path(HASSIO_DATA, "apparmor")
+
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 
 DOCKER_NETWORK = 'hassio'
