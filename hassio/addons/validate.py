@@ -108,8 +108,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_MAP, default=list): [vol.Match(RE_VOLUME)],
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],
-    vol.Optional(ATTR_APPARMOR, default=True):
-        vol.Any(vol.Boolean(), vol.Coerce(str)),
+    vol.Optional(ATTR_APPARMOR, default=True): vol.Boolean(),
     vol.Optional(ATTR_AUDIO, default=False): vol.Boolean(),
     vol.Optional(ATTR_GPIO, default=False): vol.Boolean(),
     vol.Optional(ATTR_HASSIO_API, default=False): vol.Boolean(),
