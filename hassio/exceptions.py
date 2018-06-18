@@ -52,3 +52,15 @@ class DBusFatalError(DBusError):
 class DBusParseError(DBusError):
     """DBus parse error."""
     pass
+
+
+# util/apparmor
+
+class AppArmorFileError(HassioError):
+    """AppArmor profile file error."""
+    pass
+
+
+class AppArmorInvalidError(HassioError):
+    """AppArmor profile validate error."""
+    pass
