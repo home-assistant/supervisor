@@ -13,8 +13,15 @@ class AppArmorControl(CoreSysAttributes):
         """Initialize host power handling."""
         self.coresys = coresys
         self._available = False
+        self._profiles = set()
 
     @property
     def available(self):
         """Return True if AppArmor is availabe on host."""
         return self.available
+
+    async def load_profile(self, profile_name, profile_file):
+        """Load a new profile into AppArmor."""
+    
+    async def remove_profile(self, profile_name):
+        """Remove a AppArmor profile."""
