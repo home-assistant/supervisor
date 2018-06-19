@@ -451,7 +451,6 @@ Get all available addons.
     "host_ipc": "bool",
     "host_dbus": "bool",
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
-    "seccomp": "disable|default|profile",
     "apparmor": "disable|default|profile",
     "devices": ["/dev/xy"],
     "auto_uart": "bool",

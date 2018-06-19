@@ -6,11 +6,6 @@ class HassioError(Exception):
     pass
 
 
-class HassioInternalError(HassioError):
-    """Internal Hass.io error they can't handle."""
-    pass
-
-
 class HassioNotSupportedError(HassioError):
     """Function is not supported."""
     pass
@@ -60,7 +55,7 @@ class DBusParseError(DBusError):
 
 # util/apparmor
 
-class AppArmorError(HassioError):
+class AppArmorError(HostAppArmorError):
     """General AppArmor error."""
     pass
 
