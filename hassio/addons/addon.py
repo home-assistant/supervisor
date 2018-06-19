@@ -324,7 +324,7 @@ class Addon(CoreSysAttributes):
         """Return True if apparmor is enabled."""
         if not self._mesh.get(ATTR_APPARMOR):
             return SECURITY_DISABLE
-        elif self.path_apparmor.exists():
+        elif self.sys_host.apparmor.exists(self.slug):
             return SECURITY_PROFILE
         return SECURITY_DEFAULT
 
