@@ -8,6 +8,7 @@ _LOGGER = logging.getLogger(__name__)
 
 RE_PROFILE = re.compile(r"^profile ([^ ]+).*$")
 
+
 def get_profile_name(profile_file):
     """Read the profile name from file."""
     profiles = set()
@@ -27,7 +28,7 @@ def get_profile_name(profile_file):
         _LOGGER.error("To many profiles inside file: %s", profiles)
         raise AppArmorInvalidError()
 
-    return profiles[0]
+    return profiles.pop()
 
 
 def validate_profile(profile_file, profile_name):
@@ -41,7 +42,7 @@ def adjust_profile(profile_file, profile_name, profile_new):
     """Fix the profile name."""
     org_profile = get_profile_name(profile_file)
     profile_data = []
-    
+
     # Process old data
     try:
         with profile_file.open('r') as profile:
