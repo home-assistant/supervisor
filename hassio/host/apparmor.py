@@ -33,7 +33,7 @@ class AppArmorControl(CoreSysAttributes):
     async def _reload_service(self):
         """Reload internal service."""
         try:
-            self.sys_host.services.reload(self._services)
+            await self.sys_host.services.reload(self._service)
         except DBusError as err:
             _LOGGER.error("Can't reload %s: %s", self._service, err)
 

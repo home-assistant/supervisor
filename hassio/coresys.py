@@ -267,4 +267,4 @@ class CoreSysAttributes:
         """Mapping to coresys."""
         if name.startswith("sys_") and hasattr(self.coresys, name[4:]):
             return getattr(self.coresys, name[4:])
-        raise AttributeError()
+        raise AttributeError(f"Can't resolve {name} on {self}")
