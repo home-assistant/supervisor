@@ -30,6 +30,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
+from ..exceptions import HostAppArmorError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -487,7 +488,7 @@ class Addon(CoreSysAttributes):
     @property
     def path_apparmor(self):
         """Return path to custom AppArmor profile."""
-        return Path(self.path_location, 'apparmor')
+        return Path(self.path_location, 'apparmor.txt')
 
     @property
     def path_asound(self):
@@ -611,6 +612,11 @@ class Addon(CoreSysAttributes):
         if self.path_asound.exists():
             with suppress(OSError):
                 self.path_asound.unlink()
+         
+        # Cleanup apparmor profile
+        if self.sys_host.apparmor.exists(self.slug):
+            with suppress(HostAppArmorError):
+                await self.sys_host.apparmor.remove_profile(self.slug)
 
         self._set_uninstall()
         return True
