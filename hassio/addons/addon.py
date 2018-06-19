@@ -30,6 +30,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
+from ..utils.apparmor import adjust_profile
 from ..exceptions import HostAppArmorError, AppArmorError
 
 _LOGGER = logging.getLogger(__name__)
