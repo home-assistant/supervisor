@@ -51,7 +51,7 @@ class AppArmorControl(CoreSysAttributes):
             await self._reload_service()
 
     async def load_profile(self, profile_name, profile_file):
-        """Load a new profile into AppArmor."""
+        """Load/Update a new/exists profile into AppArmor."""
         if not validate_profile(profile_file, profile_name):
             _LOGGER.error("profile is not valid with name %s", profile_name)
             raise HostAppArmorError()
@@ -65,6 +65,7 @@ class AppArmorControl(CoreSysAttributes):
             raise HostAppArmorError() from None
 
         # Load profiles
+        self._profiles.add(profile_name)
         if self.available:
             await self._reload_service()
 
