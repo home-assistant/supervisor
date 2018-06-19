@@ -49,8 +49,9 @@ def adjust_profile(profile_file, profile_name, profile_new):
                 match = RE_PROFILE.match(line)
                 if not match:
                     profile_data.append(line)
-                    continue
-                profile_data.append(line.replace(org_profile, profile_name))
+                else:
+                    profile_data.append(
+                        line.replace(org_profile, profile_name))
     except OSError as err:
         _LOGGER.error("Can't adjust origin profile: %s", err)
         raise AppArmorFileError()
