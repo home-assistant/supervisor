@@ -8,9 +8,8 @@ _LOGGER = logging.getLogger(__name__)
 
 RE_PROFILE = re.compile(r"^profile ([^ ]+).*$")
 
-
-def validate_profile(profile_file, profile_name):
-    """Check if profile from file is valid with profile name."""
+def get_profile_name(profile_file):
+    """Read the profile name from file."""
     profiles = set()
 
     try:
@@ -28,6 +27,29 @@ def validate_profile(profile_file, profile_name):
         _LOGGER.error("To many profiles inside file: %s", profiles)
         raise AppArmorInvalidError()
 
-    if profile_name in profiles:
+    return profiles[0]
+
+
+def validate_profile(profile_file, profile_name):
+    """Check if profile from file is valid with profile name."""
+    if profile_name == get_profile_name(profile_file):
         return True
     return False
+
+
+def adjust_profile(profile_file, profile_name, profile_new):
+    """Fix the profile name."""
+    org_profile = get_profile_name(profile_file)
+    profile_data = []
+    
+    try:
+        with profile_file.open('r') as profile:
+            for line in profile:
+                match = RE_PROFILE.match(line)
+                if not match:
+                    profile_data.append(line)
+                    continue
+                
+    except OSError as err:
+        _LOGGER.error("Can't adjust origin profile: %s", err)
+        raise AppArmorFileError()
