@@ -30,7 +30,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
-from ..exceptions import HostAppArmorError
+from ..exceptions import HostAppArmorError, AppArmorError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -535,6 +535,27 @@ class Addon(CoreSysAttributes):
             return False
 
         return True
+    
+    await def _install_apparmor(self):
+        """Install or Update AppArmor profile for Add-on."""
+        exists_local = self.sys_host.apparmor.exists(self.slug)
+        exists_addon = self.path_apparmor.exists()
+
+        # Nothing to do
+        if not exists_local and not exists_addon:
+            return
+        
+        # Need removed
+        if exists_local and not exists_addon:
+            await self.sys_host.apparmor.remove_profile(self.slug)
+            return
+            
+        # Need install/update
+        with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_folder:
+            profile_file = Path(tmp_folder, 'apparmor.txt')
+
+            adjust_profile(self.slug, self.path_apparmor, self.profile_file)
+            await self.sys_host.apparmor.install_profile(self.slug, profile_file)
 
     @property
     def schema(self):
@@ -591,6 +612,9 @@ class Addon(CoreSysAttributes):
                 "Create Home-Assistant addon data folder %s", self.path_data)
             self.path_data.mkdir()
 
+        # Setup/Fix AppArmor profile
+        await self._install_apparmor()
+
         if not await self.instance.install(self.last_version):
             return False
 
@@ -615,7 +639,7 @@ class Addon(CoreSysAttributes):
          
         # Cleanup apparmor profile
         if self.sys_host.apparmor.exists(self.slug):
-            with suppress(HostAppArmorError):
+            with suppress(HostAppArmorError, AppArmorError):
                 await self.sys_host.apparmor.remove_profile(self.slug)
 
         self._set_uninstall()
@@ -663,6 +687,9 @@ class Addon(CoreSysAttributes):
         if not await self.instance.update(self.last_version):
             return False
         self._set_update(self.last_version)
+
+        # Setup/Fix AppArmor profile
+        await self._install_apparmor()
 
         # restore state
         if last_state == STATE_STARTED:
