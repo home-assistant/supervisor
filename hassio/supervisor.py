@@ -1,5 +1,6 @@
 """HomeAssistant control object."""
 import logging
+from tempfile import TemporaryDirectory
 
 import aiohttp
 
