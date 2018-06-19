@@ -25,6 +25,10 @@ class AppArmorControl(CoreSysAttributes):
     def available(self):
         """Return True if AppArmor is availabe on host."""
         return self._service is not None
+    
+    def exists(self, profile):
+        """Return True if a profile exists."""
+        return profile in self._profiles
 
     async def _reload_service(self):
         """Reload internal service."""
