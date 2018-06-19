@@ -62,7 +62,7 @@ class Supervisor(CoreSysAttributes):
             _LOGGER.warning("Can't fetch AppArmor profile: %s", err)
             return
         
-        with TemporaryDirectory(dir=self.sys_config.path_temp) as tmp_dir:
+        with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
             profile_file = Path(tmp_dir, 'apparmor.txt')
             try:
                 profile_file.write_text(data)
