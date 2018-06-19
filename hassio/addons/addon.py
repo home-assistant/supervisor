@@ -30,7 +30,7 @@ from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
 from ..utils.apparmor import adjust_profile
-from ..exceptions import HostAppArmorError, AppArmorError
+from ..exceptions import HostAppArmorError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -639,7 +639,7 @@ class Addon(CoreSysAttributes):
 
         # Cleanup apparmor profile
         if self.sys_host.apparmor.exists(self.slug):
-            with suppress(HostAppArmorError, AppArmorError):
+            with suppress(HostAppArmorError):
                 await self.sys_host.apparmor.remove_profile(self.slug)
 
         self._set_uninstall()
