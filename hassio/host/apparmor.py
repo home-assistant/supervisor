@@ -73,3 +73,23 @@ class AppArmorControl(CoreSysAttributes):
         if profile_name not in self._profiles:
             _LOGGER.error("Can't find %s for removing", profile_name)
             raise HostAppArmorError()
+        profile_file = Path(self.sys_config.path_apparmor, profile_name)
+
+        # Only remove file
+        if not self.available:
+            try:
+                profile_file.unlink()
+            except OSError as err:
+                _LOGGER.error("Can't remove profile: %s", err)
+                raise HostAppArmorError()
+            return
+
+        # Marks als remove and start host process
+        remove_profile = Path(self.sys_config.path_apparmor, 'remove', profile_name)
+        try:
+            profile_file.rename(remove_profile)
+        except OSError as err:
+            _LOGGER.error("Can't mark profile as remove: %s", err)
+            raise HostAppArmorError()
+
+        await self._reload_service()
