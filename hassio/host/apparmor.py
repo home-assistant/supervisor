@@ -52,6 +52,7 @@ class AppArmorControl(CoreSysAttributes):
             self._profiles.add(content.name)
 
         # Is connected with systemd?
+        _LOGGER.info("Load AppArmor Profiles: %s", self._profiles)
         for service in SYSTEMD_SERVICES:
             if not self.sys_host.services.exists(service):
                 continue
@@ -60,6 +61,8 @@ class AppArmorControl(CoreSysAttributes):
         # Load profiles
         if self.available:
             await self._reload_service()
+        else:
+            _LOGGER.info("AppArmor is not enabled on Host")
 
     async def load_profile(self, profile_name, profile_file):
         """Load/Update a new/exists profile into AppArmor."""
@@ -76,6 +79,7 @@ class AppArmorControl(CoreSysAttributes):
             raise HostAppArmorError() from None
 
         # Load profiles
+        _LOGGER.info("Add or Update AppArmor profile: %s", profile_name)
         self._profiles.add(profile_name)
         if self.available:
             await self._reload_service()
@@ -102,6 +106,8 @@ class AppArmorControl(CoreSysAttributes):
             _LOGGER.error("Can't mark profile as remove: %s", err)
             raise HostAppArmorError()
 
+        _LOGGER.info("Remove AppArmor profile: %s", profile_name)
+        self._profiles.remove(profile_name)
         await self._reload_service()
 
     def backup_profile(self, profile_name, backup_file):
