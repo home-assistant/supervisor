@@ -7,6 +7,8 @@ HASSIO_VERSION = '108'
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
   "https://s3.amazonaws.com/hassio-version/{channel}.json"
+URL_HASSIO_APPARMOR = \
+  "https://s3.amazonaws.com/hassio-version/apparmor.txt"
 
 HASSIO_DATA = Path("/data")
 
