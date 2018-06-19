@@ -25,6 +25,7 @@ ADDONS_DATA = PurePath("addons/data")
 BACKUP_DATA = PurePath("backup")
 SHARE_DATA = PurePath("share")
 TMP_DATA = PurePath("tmp")
+APPARMOR_DATA = PurePath("apparmor")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
@@ -155,6 +156,11 @@ class CoreConfig(JsonConfig):
     def path_share(self):
         """Return root share data folder."""
         return Path(HASSIO_DATA, SHARE_DATA)
+
+    @property
+    def path_apparmor(self):
+        """Return root apparmor profile folder."""
+        return Path(HASSIO_DATA, APPARMOR_DATA)
 
     @property
     def path_extern_share(self):

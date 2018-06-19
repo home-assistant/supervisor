@@ -103,6 +103,11 @@ def initialize_system_data(coresys):
         _LOGGER.info("Create hassio share folder %s", config.path_share)
         config.path_share.mkdir()
 
+    # apparmor folder
+    if not config.path_apparmor.is_dir():
+        _LOGGER.info("Create hassio apparmor folder %s", config.path_apparmor)
+        config.path_apparmor.mkdir()
+
     return config
 
 
