@@ -25,7 +25,7 @@ class AppArmorControl(CoreSysAttributes):
     def available(self):
         """Return True if AppArmor is availabe on host."""
         return self._service is not None
-    
+
     def exists(self, profile):
         """Return True if a profile exists."""
         return profile in self._profiles
@@ -36,6 +36,13 @@ class AppArmorControl(CoreSysAttributes):
             self.sys_host.services.reload(self._services)
         except DBusError as err:
             _LOGGER.error("Can't reload %s: %s", self._service, err)
+
+    def _get_profile(self, profile_name):
+        """Get a profile from AppArmor store."""
+        if profile_name not in self._profiles:
+            _LOGGER.error("Can't find %s for removing", profile_name)
+            raise HostAppArmorError()
+        return Path(self.sys_config.path_apparmor, profile_name)
 
     async def load(self):
         """Load available profiles."""
@@ -75,10 +82,7 @@ class AppArmorControl(CoreSysAttributes):
 
     async def remove_profile(self, profile_name):
         """Remove a AppArmor profile."""
-        if profile_name not in self._profiles:
-            _LOGGER.error("Can't find %s for removing", profile_name)
-            raise HostAppArmorError()
-        profile_file = Path(self.sys_config.path_apparmor, profile_name)
+        profile_file = self._get_profile(profile_name)
 
         # Only remove file
         if not self.available:
@@ -90,7 +94,8 @@ class AppArmorControl(CoreSysAttributes):
             return
 
         # Marks als remove and start host process
-        remove_profile = Path(self.sys_config.path_apparmor, 'remove', profile_name)
+        remove_profile = Path(
+            self.sys_config.path_apparmor, 'remove', profile_name)
         try:
             profile_file.rename(remove_profile)
         except OSError as err:
@@ -98,3 +103,13 @@ class AppArmorControl(CoreSysAttributes):
             raise HostAppArmorError()
 
         await self._reload_service()
+
+    def backup_profile(self, profile_name, backup_file):
+        """Backup A profile into a new file."""
+        profile_file = self._get_profile(profile_name)
+
+        try:
+            shutil.copy(profile_file, backup_file)
+        except OSError as err:
+            _LOGGER.error("Can't backup profile %s: %s", profile_name, err)
+            raise HostAppArmorError()

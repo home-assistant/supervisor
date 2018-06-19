@@ -25,8 +25,7 @@ from ..const import (
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
-    ATTR_SECCOMP, ATTR_APPARMOR, SECURITY_PROFILE, SECURITY_DISABLE,
-    SECURITY_DEFAULT)
+    ATTR_APPARMOR, SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
@@ -536,8 +535,8 @@ class Addon(CoreSysAttributes):
             return False
 
         return True
-    
-    await def _install_apparmor(self):
+
+    async def _install_apparmor(self):
         """Install or Update AppArmor profile for Add-on."""
         exists_local = self.sys_host.apparmor.exists(self.slug)
         exists_addon = self.path_apparmor.exists()
@@ -545,18 +544,18 @@ class Addon(CoreSysAttributes):
         # Nothing to do
         if not exists_local and not exists_addon:
             return
-        
+
         # Need removed
         if exists_local and not exists_addon:
             await self.sys_host.apparmor.remove_profile(self.slug)
             return
-            
+
         # Need install/update
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_folder:
             profile_file = Path(tmp_folder, 'apparmor.txt')
 
             adjust_profile(self.slug, self.path_apparmor, self.profile_file)
-            await self.sys_host.apparmor.install_profile(self.slug, profile_file)
+            await self.sys_host.apparmor.load_profile(self.slug, profile_file)
 
     @property
     def schema(self):
@@ -637,7 +636,7 @@ class Addon(CoreSysAttributes):
         if self.path_asound.exists():
             with suppress(OSError):
                 self.path_asound.unlink()
-         
+
         # Cleanup apparmor profile
         if self.sys_host.apparmor.exists(self.slug):
             with suppress(HostAppArmorError, AppArmorError):
@@ -758,7 +757,7 @@ class Addon(CoreSysAttributes):
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
             # store local image
             if self.need_build and not await \
-                    self.instance.export_image(Path(temp, "image.tar")):
+                    self.instance.export_image(Path(temp, 'image.tar')):
                 return False
 
             data = {
@@ -770,10 +769,19 @@ class Addon(CoreSysAttributes):
 
             # store local configs/state
             try:
-                write_json_file(Path(temp, "addon.json"), data)
+                write_json_file(Path(temp, 'addon.json'), data)
             except (OSError, json.JSONDecodeError) as err:
                 _LOGGER.error("Can't save meta for %s: %s", self._id, err)
                 return False
+
+            # Store AppArmor Profile
+            if self.sys_host.apparmor.exists(self.slug):
+                profile = Path(temp, 'apparmor.txt')
+                try:
+                    self.sys_host.apparmor.backup_profile(self.slug, profile)
+                except HostAppArmorError:
+                    _LOGGER.error("Can't backup AppArmor profile")
+                    return False
 
             # write into tarfile
             def _write_tarfile():
@@ -809,7 +817,7 @@ class Addon(CoreSysAttributes):
 
             # read snapshot data
             try:
-                data = read_json_file(Path(temp, "addon.json"))
+                data = read_json_file(Path(temp, 'addon.json'))
             except (OSError, json.JSONDecodeError) as err:
                 _LOGGER.error("Can't read addon.json: %s", err)
 
@@ -830,7 +838,7 @@ class Addon(CoreSysAttributes):
             if not await self.instance.exists():
                 _LOGGER.info("Restore image for addon %s", self._id)
 
-                image_file = Path(temp, "image.tar")
+                image_file = Path(temp, 'image.tar')
                 if image_file.is_file():
                     await self.instance.import_image(image_file, version)
                 else:
@@ -852,6 +860,16 @@ class Addon(CoreSysAttributes):
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data: %s", err)
                 return False
+
+            # Restore AppArmor
+            profile_file = Path(temp, 'apparmor.txt')
+            if profile_file.exists():
+                try:
+                    await self.sys_host.apparmor.load_profile(
+                        self.slug, profile_file)
+                except HostAppArmorError:
+                    _LOGGER.error("Can't restore AppArmor profile")
+                    return False
 
             # run addon
             if data[ATTR_STATE] == STATE_STARTED:
