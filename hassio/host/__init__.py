@@ -1,12 +1,18 @@
 """Host function like audio/dbus/systemd."""
+from contextlib import suppress
+import logging
 
 from .alsa import AlsaAudio
+from .apparmor import AppArmorControl
 from .control import SystemControl
 from .info import InfoCenter
-from .service import ServiceManager
+from .services import ServiceManager
 from ..const import (
     FEATURES_REBOOT, FEATURES_SHUTDOWN, FEATURES_HOSTNAME, FEATURES_SERVICES)
 from ..coresys import CoreSysAttributes
+from ..exceptions import HassioError
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class HostManager(CoreSysAttributes):
@@ -16,6 +22,7 @@ class HostManager(CoreSysAttributes):
         """Initialize Host manager."""
         self.coresys = coresys
         self._alsa = AlsaAudio(coresys)
+        self._apparmor = AppArmorControl(coresys)
         self._control = SystemControl(coresys)
         self._info = InfoCenter(coresys)
         self._services = ServiceManager(coresys)
@@ -24,6 +31,11 @@ class HostManager(CoreSysAttributes):
     def alsa(self):
         """Return host ALSA handler."""
         return self._alsa
+
+    @property
+    def apparmor(self):
+        """Return host apparmor handler."""
+        return self._apparmor
 
     @property
     def control(self):
@@ -57,14 +69,21 @@ class HostManager(CoreSysAttributes):
 
         return features
 
-    async def load(self):
-        """Load host functions."""
+    async def reload(self):
+        """Reload host functions."""
         if self.sys_dbus.hostname.is_connected:
             await self.info.update()
 
         if self.sys_dbus.systemd.is_connected:
             await self.services.update()
 
-    def reload(self):
-        """Reload host information."""
-        return self.load()
+    async def load(self):
+        """Load host information."""
+        with suppress(HassioError):
+            await self.reload()
+
+        # Load profile data
+        try:
+            await self.apparmor.load()
+        except HassioError as err:
+            _LOGGER.waring("Load host AppArmor on start fails: %s", err)

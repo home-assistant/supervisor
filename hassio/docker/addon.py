@@ -124,18 +124,17 @@ class DockerAddon(DockerInterface):
         security = []
 
         # AppArmor
-        if self.addon.apparmor == SECURITY_DISABLE:
+        apparmor = self.sys_host.apparmor.available
+        if not apparmor or self.addon.apparmor == SECURITY_DISABLE:
             security.append("apparmor:unconfined")
         elif self.addon.apparmor == SECURITY_PROFILE:
             security.append(f"apparmor={self.addon.slug}")
 
-        # Seccomp
-        if self.addon.seccomp == SECURITY_DISABLE:
-            security.append("seccomp=unconfined")
-        elif self.addon.seccomp == SECURITY_PROFILE:
-            security.append(f"seccomp={self.addon.path_seccomp}")
+        # Disable Seccomp / We don't support it official and it
+        # make troubles on some kind of host systems.
+        security.append("seccomp=unconfined")
 
-        return security or None
+        return security
 
     @property
     def tmpfs(self):

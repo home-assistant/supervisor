@@ -41,7 +41,7 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(self.sys_scheduler.register_task(
             self.sys_snapshots.reload, self.RUN_RELOAD_SNAPSHOTS))
         self.jobs.add(self.sys_scheduler.register_task(
-            self.sys_host.load, self.RUN_RELOAD_HOST))
+            self.sys_host.reload, self.RUN_RELOAD_HOST))
 
         self.jobs.add(self.sys_scheduler.register_task(
             self._watchdog_homeassistant_docker,
