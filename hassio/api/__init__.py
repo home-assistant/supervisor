@@ -31,7 +31,7 @@ class RestAPI(CoreSysAttributes):
 
         # service stuff
         self._runner = web.AppRunner(self.webapp)
-        self._site = web.TCPSite(self._runner, "0.0.0.0", 80)
+        self._site = None
 
     async def load(self):
         """Register REST API Calls."""
@@ -221,6 +221,7 @@ class RestAPI(CoreSysAttributes):
     async def start(self):
         """Run rest api webserver."""
         await self._runner.setup()
+        self._site = web.TCPSite(self._runner, "0.0.0.0", 80)
 
         try:
             await self._site.start()
