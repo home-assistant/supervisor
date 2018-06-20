@@ -38,7 +38,7 @@ def validate_profile(profile_name, profile_file):
     return False
 
 
-def adjust_profile(profile_name, profile_new, profile_file):
+def adjust_profile(profile_name, profile_file, profile_new):
     """Fix the profile name."""
     org_profile = get_profile_name(profile_file)
     profile_data = []
