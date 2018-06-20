@@ -30,8 +30,8 @@ class RestAPI(CoreSysAttributes):
             middlewares=[self.security.token_validation], loop=coresys.loop)
 
         # service stuff
-        self._handler = None
-        self.server = None
+        self._runner = web.AppRunner(self.webapp)
+        self._site = web.TCPSite(self._runner, "0.0.0.0", 80)
 
     async def load(self):
         """Register REST API Calls."""
@@ -220,22 +220,15 @@ class RestAPI(CoreSysAttributes):
 
     async def start(self):
         """Run rest api webserver."""
-        self._handler = self.webapp.make_handler()
+        await self._runner.setup()
 
         try:
-            self.server = await self.sys_loop.create_server(
-                self._handler, "0.0.0.0", "80")
+            await self._site.start()
         except OSError as err:
             _LOGGER.fatal(
                 "Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
 
     async def stop(self):
         """Stop rest api webserver."""
-        if self.server:
-            self.server.close()
-            await self.server.wait_closed()
-        await self.webapp.shutdown()
-
-        if self._handler:
-            await self._handler.shutdown(60)
-        await self.webapp.cleanup()
+        await self._site.stop()
+        await self._runner.cleanup()
