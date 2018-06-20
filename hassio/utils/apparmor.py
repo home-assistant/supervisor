@@ -31,14 +31,14 @@ def get_profile_name(profile_file):
     return profiles.pop()
 
 
-def validate_profile(profile_file, profile_name):
+def validate_profile(profile_name, profile_file):
     """Check if profile from file is valid with profile name."""
     if profile_name == get_profile_name(profile_file):
         return True
     return False
 
 
-def adjust_profile(profile_file, profile_name, profile_new):
+def adjust_profile(profile_name, profile_new, profile_file):
     """Fix the profile name."""
     org_profile = get_profile_name(profile_file)
     profile_data = []
