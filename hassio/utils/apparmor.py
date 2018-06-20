@@ -14,8 +14,8 @@ def get_profile_name(profile_file):
     profiles = set()
 
     try:
-        with profile_file.open('r') as profile:
-            for line in profile:
+        with profile_file.open('r') as profile_data:
+            for line in profile_data:
                 match = RE_PROFILE.match(line)
                 if not match:
                     continue
