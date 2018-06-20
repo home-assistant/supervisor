@@ -66,7 +66,7 @@ class AppArmorControl(CoreSysAttributes):
 
     async def load_profile(self, profile_name, profile_file):
         """Load/Update a new/exists profile into AppArmor."""
-        if not validate_profile(profile_file, profile_name):
+        if not validate_profile(profile_name, profile_file):
             _LOGGER.error("profile is not valid with name %s", profile_name)
             raise HostAppArmorError()
 

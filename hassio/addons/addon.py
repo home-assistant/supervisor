@@ -554,7 +554,7 @@ class Addon(CoreSysAttributes):
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_folder:
             profile_file = Path(tmp_folder, 'apparmor.txt')
 
-            adjust_profile(self.slug, self.path_apparmor, self.profile_file)
+            adjust_profile(self.slug, self.path_apparmor, profile_file)
             await self.sys_host.apparmor.load_profile(self.slug, profile_file)
 
     @property
