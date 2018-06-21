@@ -88,6 +88,9 @@ class DockerHomeAssistant(DockerInterface):
         return self.sys_docker.run_command(
             self.image,
             command,
+            privileged=True,
+            init=True,
+            devices=self.devices,
             detach=True,
             stdout=True,
             stderr=True,
