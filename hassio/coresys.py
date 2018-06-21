@@ -17,6 +17,7 @@ class CoreSys:
         """Initialize coresys."""
         # Static attributes
         self.exit_code = 0
+        self.machine_id = None
 
         # External objects
         self._loop = loop
@@ -266,4 +267,4 @@ class CoreSysAttributes:
         """Mapping to coresys."""
         if name.startswith("sys_") and hasattr(self.coresys, name[4:]):
             return getattr(self.coresys, name[4:])
-        raise AttributeError()
+        raise AttributeError(f"Can't resolve {name} on {self}")

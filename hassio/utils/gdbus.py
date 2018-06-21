@@ -14,10 +14,11 @@ _LOGGER = logging.getLogger(__name__)
 RE_GVARIANT_TYPE = re.compile(
     r"(?:boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
     r"string|objectpath|signature) ")
-RE_GVARIANT_TULPE = re.compile(r"^\((.*),\)$")
 RE_GVARIANT_VARIANT = re.compile(
     r"(?<=(?: |{|\[))<((?:'|\").*?(?:'|\")|\d+(?:\.\d+)?)>(?=(?:|]|}|,))")
-RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[))'(.*?)'(?=(?:|]|}|,))")
+RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[|\())'(.*?)'(?=(?:|]|}|,|\)))")
+RE_GVARIANT_TUPLE_O = re.compile(r"\"[^\"]*?\"|(\()")
+RE_GVARIANT_TUPLE_C = re.compile(r"\"[^\"]*?\"|(,?\))")
 
 # Commands for dbus
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
@@ -76,13 +77,16 @@ class DBus:
     def _gvariant(raw):
         """Parse GVariant input to python."""
         raw = RE_GVARIANT_TYPE.sub("", raw)
-        raw = RE_GVARIANT_TULPE.sub(r"[\1]", raw)
         raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
         raw = RE_GVARIANT_STRING.sub(r'"\1"', raw)
+        raw = RE_GVARIANT_TUPLE_O.sub(
+            lambda x: x.group(0) if not x.group(1) else"[", raw)
+        raw = RE_GVARIANT_TUPLE_C.sub(
+            lambda x: x.group(0) if not x.group(1) else"]", raw)
 
         # No data
-        if raw.startswith("()"):
-            return {}
+        if raw.startswith("[]"):
+            return []
 
         try:
             return json.loads(raw)

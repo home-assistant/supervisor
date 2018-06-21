@@ -2,11 +2,13 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '107'
+HASSIO_VERSION = '108'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
   "https://s3.amazonaws.com/hassio-version/{channel}.json"
+URL_HASSIO_APPARMOR = \
+  "https://s3.amazonaws.com/hassio-version/apparmor.txt"
 
 HASSIO_DATA = Path("/data")
 
@@ -162,7 +164,6 @@ ATTR_PROTECTED = 'protected'
 ATTR_CRYPTO = 'crypto'
 ATTR_BRANCH = 'branch'
 ATTR_KERNEL = 'kernel'
-ATTR_SECCOMP = 'seccomp'
 ATTR_APPARMOR = 'apparmor'
 
 SERVICE_MQTT = 'mqtt'
@@ -216,3 +217,4 @@ FEATURES_SHUTDOWN = 'shutdown'
 FEATURES_REBOOT = 'reboot'
 FEATURES_UPDATE = 'update'
 FEATURES_HOSTNAME = 'hostname'
+FEATURES_SERVICES = 'services'
