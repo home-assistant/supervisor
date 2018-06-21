@@ -99,7 +99,7 @@ class DockerHomeAssistant(DockerInterface):
             },
             volumes={
                 str(self.sys_config.path_extern_config):
-                    {'bind': '/config', 'mode': 'ro'},
+                    {'bind': '/config', 'mode': 'rw'},
                 str(self.sys_config.path_extern_ssl):
                     {'bind': '/ssl', 'mode': 'ro'},
             }
