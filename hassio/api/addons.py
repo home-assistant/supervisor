@@ -17,7 +17,7 @@ from ..const import (
     ATTR_CHANGELOG, ATTR_HOST_IPC, ATTR_HOST_DBUS, ATTR_LONG_DESCRIPTION,
     ATTR_CPU_PERCENT, ATTR_MEMORY_LIMIT, ATTR_MEMORY_USAGE, ATTR_NETWORK_TX,
     ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
-    ATTR_DISCOVERY, ATTR_APPARMOR,
+    ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
@@ -136,6 +136,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_HASSIO_API: addon.access_hassio_api,
             ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
             ATTR_GPIO: addon.with_gpio,
+            ATTR_DEVICETREE: addon.with_devicetree,
             ATTR_AUDIO: addon.with_audio,
             ATTR_AUDIO_INPUT: addon.audio_input,
             ATTR_AUDIO_OUTPUT: addon.audio_output,

@@ -462,6 +462,7 @@ Get all available addons.
     "stdin": "bool",
     "webui": "null|http(s)://[HOST]:port/xy/zx",
     "gpio": "bool",
+    "devicetree": "bool",
     "audio": "bool",
     "audio_input": "null|0,0",
     "audio_output": "null|0,0",

@@ -165,6 +165,7 @@ ATTR_CRYPTO = 'crypto'
 ATTR_BRANCH = 'branch'
 ATTR_KERNEL = 'kernel'
 ATTR_APPARMOR = 'apparmor'
+ATTR_DEVICETREE = 'devicetree'
 
 SERVICE_MQTT = 'mqtt'
 
