@@ -43,6 +43,7 @@ class CoreSys:
         self._tasks = None
         self._host = None
         self._dbus = None
+        self._hassos = None
         self._services = None
         self._discovery = None
 
@@ -248,6 +249,18 @@ class CoreSys:
         if self._host:
             raise RuntimeError("HostManager already set!")
         self._host = value
+
+    @property
+    def hassos(self):
+        """Return HassOS object."""
+        return self._hassos
+
+    @hassos.setter
+    def hassos(self, value):
+        """Set a HassOS object."""
+        if self._hassos:
+            raise RuntimeError("HassOS already set!")
+        self._hassos = value
 
     def run_in_executor(self, funct, *args):
         """Wrapper for executor pool."""
