@@ -88,6 +88,9 @@ class DockerHomeAssistant(DockerInterface):
         return self.sys_docker.run_command(
             self.image,
             command,
+            privileged=True,
+            init=True,
+            devices=self.devices,
             detach=True,
             stdout=True,
             stderr=True,
@@ -96,7 +99,7 @@ class DockerHomeAssistant(DockerInterface):
             },
             volumes={
                 str(self.sys_config.path_extern_config):
-                    {'bind': '/config', 'mode': 'ro'},
+                    {'bind': '/config', 'mode': 'rw'},
                 str(self.sys_config.path_extern_ssl):
                     {'bind': '/ssl', 'mode': 'ro'},
             }
