@@ -1,8 +1,14 @@
 """HomeAssistant control object."""
 import logging
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+import aiohttp
 
 from .coresys import CoreSysAttributes
 from .docker.supervisor import DockerSupervisor
+from .const import URL_HASSIO_APPARMOR
+from .exceptions import HostAppArmorError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +52,31 @@ class Supervisor(CoreSysAttributes):
         """Return arch of hass.io containter."""
         return self.instance.arch
 
+    async def update_apparmor(self):
+        """Fetch last version and update profile."""
+        url = URL_HASSIO_APPARMOR
+        try:
+            _LOGGER.info("Fetch AppArmor profile %s", url)
+            async with self.sys_websession.get(url, timeout=10) as request:
+                data = await request.text()
+
+        except aiohttp.ClientError as err:
+            _LOGGER.warning("Can't fetch AppArmor profile: %s", err)
+            return
+
+        with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
+            profile_file = Path(tmp_dir, 'apparmor.txt')
+            try:
+                profile_file.write_text(data)
+            except OSError as err:
+                _LOGGER.error("Can't write temporary profile: %s", err)
+                return
+            try:
+                await self.sys_host.apparmor.load_profile(
+                    "hassio-supervisor", profile_file)
+            except HostAppArmorError:
+                _LOGGER.error("Can't update AppArmor profile!")
+
     async def update(self, version=None):
         """Update HomeAssistant version."""
         version = version or self.last_version
@@ -56,6 +87,7 @@ class Supervisor(CoreSysAttributes):
 
         _LOGGER.info("Update supervisor to version %s", version)
         if await self.instance.install(version):
+            await self.update_apparmor()
             self.sys_loop.call_later(1, self.sys_loop.stop)
             return True
 

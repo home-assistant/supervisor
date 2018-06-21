@@ -30,8 +30,8 @@ class RestAPI(CoreSysAttributes):
             middlewares=[self.security.token_validation], loop=coresys.loop)
 
         # service stuff
-        self._handler = None
-        self.server = None
+        self._runner = web.AppRunner(self.webapp)
+        self._site = None
 
     async def load(self):
         """Register REST API Calls."""
@@ -57,6 +57,13 @@ class RestAPI(CoreSysAttributes):
             web.post('/host/shutdown', api_host.shutdown),
             web.post('/host/update', api_host.update),
             web.post('/host/reload', api_host.reload),
+            web.get('/host/services', api_host.services),
+            web.post('/host/services/{service}/stop', api_host.service_stop),
+            web.post('/host/services/{service}/start', api_host.service_start),
+            web.post(
+                '/host/services/{service}/restart', api_host.service_restart),
+            web.post(
+                '/host/services/{service}/reload', api_host.service_reload),
         ])
 
     def _register_hardware(self):
@@ -213,22 +220,16 @@ class RestAPI(CoreSysAttributes):
 
     async def start(self):
         """Run rest api webserver."""
-        self._handler = self.webapp.make_handler()
+        await self._runner.setup()
+        self._site = web.TCPSite(self._runner, "0.0.0.0", 80)
 
         try:
-            self.server = await self.sys_loop.create_server(
-                self._handler, "0.0.0.0", "80")
+            await self._site.start()
         except OSError as err:
             _LOGGER.fatal(
                 "Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
 
     async def stop(self):
         """Stop rest api webserver."""
-        if self.server:
-            self.server.close()
-            await self.server.wait_closed()
-        await self.webapp.shutdown()
-
-        if self._handler:
-            await self._handler.shutdown(60)
-        await self.webapp.cleanup()
+        await self._site.stop()
+        await self._runner.cleanup()

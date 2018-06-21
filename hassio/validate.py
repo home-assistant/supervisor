@@ -17,7 +17,7 @@ RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
-ALSA_DEVICE = vol.Any(None, vol.Match(r"\d+,\d+"))
+ALSA_DEVICE = vol.Maybe(vol.Match(r"\d+,\d+"))
 CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
 
 
@@ -87,7 +87,7 @@ SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): DOCKER_IMAGE,
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
     vol.Optional(ATTR_PORT, default=8123): NETWORK_PORT,
-    vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
+    vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
     vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
     vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
     vol.Optional(ATTR_WAIT_BOOT, default=600):

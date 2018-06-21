@@ -6,11 +6,6 @@ class HassioError(Exception):
     pass
 
 
-class HassioInternalError(HassioError):
-    """Internal Hass.io error they can't handle."""
-    pass
-
-
 class HassioNotSupportedError(HassioError):
     """Function is not supported."""
     pass
@@ -26,6 +21,15 @@ class HostError(HassioError):
 class HostNotSupportedError(HassioNotSupportedError):
     """Host function is not supprted."""
     pass
+
+
+class HostServiceError(HostError):
+    """Host service functions fails."""
+    pass
+
+
+class HostAppArmorError(HostError):
+    """Host apparmor functions fails."""
 
 
 # utils/gdbus
@@ -46,4 +50,21 @@ class DBusFatalError(DBusError):
 
 class DBusParseError(DBusError):
     """DBus parse error."""
+    pass
+
+
+# util/apparmor
+
+class AppArmorError(HostAppArmorError):
+    """General AppArmor error."""
+    pass
+
+
+class AppArmorFileError(AppArmorError):
+    """AppArmor profile file error."""
+    pass
+
+
+class AppArmorInvalidError(AppArmorError):
+    """AppArmor profile validate error."""
     pass
