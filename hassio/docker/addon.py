@@ -201,6 +201,8 @@ class DockerAddon(DockerInterface):
                 }})
 
         # Init other hardware mappings
+
+        # GPIO support
         if self.addon.with_gpio:
             volumes.update({
                 "/sys/class/gpio": {
@@ -208,6 +210,14 @@ class DockerAddon(DockerInterface):
                 },
                 "/sys/devices/platform/soc": {
                     'bind': "/sys/devices/platform/soc", 'mode': 'rw'
+                },
+            })
+
+        # DeviceTree support
+        if self.addon.with_devicetree:
+            volumes.update({
+                "/sys/firmware/devicetree": {
+                    'bind': "/sys/firmware/devicetree", 'mode': 'r'
                 },
             })
 

@@ -32,6 +32,9 @@ class HassIO(CoreSysAttributes):
         # Load Host
         await self.sys_host.load()
 
+        # Load HassOS
+        await self.sys_hassos.load()
+
         # Load Supervisor
         await self.sys_supervisor.load()
 
