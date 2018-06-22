@@ -50,6 +50,8 @@ class HassOS(CoreSysAttributes):
             _LOGGER.info("Can't detect HassOS")
             return
 
+        _LOGGER.info("Detect HassOS %s on host system", self.version)
+
     def config_sync(self):
         """Trigger a host config reload from usb."""
         self._check_host()
