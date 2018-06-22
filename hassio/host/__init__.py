@@ -8,7 +8,8 @@ from .control import SystemControl
 from .info import InfoCenter
 from .services import ServiceManager
 from ..const import (
-    FEATURES_REBOOT, FEATURES_SHUTDOWN, FEATURES_HOSTNAME, FEATURES_SERVICES)
+    FEATURES_REBOOT, FEATURES_SHUTDOWN, FEATURES_HOSTNAME, FEATURES_SERVICES,
+    FEATURES_HASSOS)
 from ..coresys import CoreSysAttributes
 from ..exceptions import HassioError
 
@@ -66,6 +67,9 @@ class HostManager(CoreSysAttributes):
 
         if self.sys_dbus.hostname.is_connected:
             features.append(FEATURES_HOSTNAME)
+
+        if self.sys_hassos.available:
+            features.append(FEATURES_HASSOS)
 
         return features
 

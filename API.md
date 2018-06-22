@@ -227,14 +227,12 @@ return:
 ```json
 {
     "hostname": "hostname|null",
-    "features": ["shutdown", "reboot", "update", "hostname", "services"],
-    "operating_system": "Hass.io-OS XY|Ubuntu 16.4|null",
+    "features": ["shutdown", "reboot", "hostname", "services", "hassos"],
+    "operating_system": "HassOS XY|Ubuntu 16.4|null",
     "kernel": "4.15.7|null",
     "chassis": "specific|null",
-    "type": "Hass.io-OS Type|null",
     "deployment": "stable|beta|dev|null",
-    "version": "xy|null",
-    "last_version": "xy|null",
+    "cpe": "xy|null",
 }
 ```
 
@@ -243,17 +241,6 @@ return:
 ```json
 {
     "hostname": "",
-}
-```
-
-
-- POST `/host/update`
-
-Optional:
-
-```json
-{
-    "version": "VERSION"
 }
 ```
 
@@ -279,6 +266,28 @@ Optional:
 - POST `/host/service/{unit}/start`
 
 - POST `/host/service/{unit}/reload`
+
+### HassOS
+
+- GET `/hassos/info`
+```json
+{
+    "version": "2.3",
+    "version_latest": "2.4",
+    "board": "ova|rpi"
+}
+```
+
+- POST `/hassos/update`
+```json
+{
+    "version": "optional"
+}
+```
+
+- POST `/hassos/config/sync`
+
+Load host configs from a USB stick.
 
 ### Hardware
 
