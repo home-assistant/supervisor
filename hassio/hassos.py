@@ -17,7 +17,7 @@ class HassOS(CoreSysAttributes):
         self._cpe = None
 
     @property
-    def availabe(self):
+    def available(self):
         """Return True, if HassOS on host."""
         return self._cpe is not None
 
@@ -37,7 +37,7 @@ class HassOS(CoreSysAttributes):
 
     def _check_host(self):
         """Check if HassOS is availabe."""
-        if not self.availabe:
+        if not self.available:
             _LOGGER.error("No HassOS availabe")
             raise HassioNotSupportedError()
 
