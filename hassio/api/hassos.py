@@ -5,10 +5,7 @@ import logging
 import voluptuous as vol
 
 from .utils import api_process, api_validate
-from ..const import (
-    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_HOSTNAME, ATTR_FEATURES, ATTR_KERNEL,
-    ATTR_TYPE, ATTR_OPERATING_SYSTEM, ATTR_CHASSIS, ATTR_DEPLOYMENT,
-    ATTR_STATE, ATTR_NAME, ATTR_DESCRIPTON, ATTR_SERVICES)
+from ..const import ATTR_VERSION, ATTR_BOARD
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,18 +22,11 @@ class APIHassOS(CoreSysAttributes):
     async def info(self, request):
         """Return hassos information."""
         return {
-            ATTR_CHASSIS: self.sys_host.info.chassis,
-            ATTR_VERSION: None,
-            ATTR_LAST_VERSION: None,
-            ATTR_TYPE: None,
-            ATTR_FEATURES: self.sys_host.supperted_features,
-            ATTR_HOSTNAME: self.sys_host.info.hostname,
-            ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
-            ATTR_DEPLOYMENT: self.sys_host.info.deployment,
-            ATTR_KERNEL: self.sys_host.info.kernel,
+            ATTR_VERSION: self.sys_hassos.version,
+            ATTR_BOARD: self.sys_hassos.board,
         }
 
     @api_process
-    def config(self, request):
+    def config_sync(self, request):
         """Trigger config reload on HassOS."""
-        return asyncio.shield(self.sys_hassos.config_reload())
+        return asyncio.shield(self.sys_hassos.config_sync())
