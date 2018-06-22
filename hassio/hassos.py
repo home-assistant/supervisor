@@ -4,7 +4,7 @@ import logging
 from cpe import CPE
 
 from .coresys import CoreSysAttributes
-from .exceptions import HassioNotSupportedError, HostServiceError
+from .exceptions import HassioNotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,6 +55,6 @@ class HassOS(CoreSysAttributes):
     def config_sync(self):
         """Trigger a host config reload from usb."""
         self._check_host()
-        
+
         _LOGGER.info("Sync config from USB on HassOS.")
         return self.sys_host.services.restart('hassos-config.service')
