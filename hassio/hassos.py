@@ -4,7 +4,7 @@ import logging
 from cpe import CPE
 
 from .coresys import CoreSysAttributes
-from .exceptions import HassioNotSupportedError
+from .exceptions import HassioNotSupportedError, HostServiceError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,3 +49,8 @@ class HassOS(CoreSysAttributes):
         except (NotImplementedError, AttributeError, AssertionError):
             _LOGGER.info("Can't detect HassOS")
             return
+
+    def load_config(self):
+        """Trigger a host config reload."""
+        self._check_host()
+        return self.sys_host.services.restart('hassos-config.service')
