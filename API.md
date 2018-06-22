@@ -279,7 +279,7 @@ return:
 
 - POST `/hassos/update`
 
-- POST `/hassos/config`
+- POST `/hassos/config/sync`
 
 Load host configs from a USB stick.
 
