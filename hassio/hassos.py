@@ -14,6 +14,7 @@ class HassOS(CoreSysAttributes):
 
     def __init__(self, coresys):
         """Initialize HassOS handler."""
+        self.coresys = coresys
         self._cpe = None
 
     @property
@@ -33,7 +34,7 @@ class HassOS(CoreSysAttributes):
         """Return board name."""
         if not self._cpe:
             return None
-        return self._cpe.get_other()[0]
+        return self._cpe.get_target_hardware()[0]
 
     def _check_host(self):
         """Check if HassOS is availabe."""
