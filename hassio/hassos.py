@@ -43,17 +43,18 @@ class HassOS(CoreSysAttributes):
     async def load(self):
         """Load HassOS data."""
         try:
+            assert self.sys_host.info.cpe is not None
             cpe = CPE(self.sys_host.info.cpe)
-            self._available = cpe.get_product()[0] == 'hassos'
-        except (NotImplementedError, IndexError, AttributeError):
-            pass
-
-        if not self.available:
+            assert cpe.get_product()[0] == 'hassos'
+        except (NotImplementedError, IndexError, AssertionError):
             _LOGGER.info("Can't detect HassOS")
             return
 
+        # Store meta data
+        self._available = True
         self._version = cpe.get_version()[0]
         self._board = cpe.get_target_hardware()[0]
+
         _LOGGER.info("Detect HassOS %s on host system", self.version)
 
     def config_sync(self):
