@@ -273,11 +273,17 @@ return:
 ```json
 {
     "version": "2.3",
+    "version_latest": "2.4",
     "board": "ova|rpi"
 }
 ```
 
 - POST `/hassos/update`
+```json
+{
+    "version": "optional"
+}
+```
 
 - POST `/hassos/config/sync`
 
