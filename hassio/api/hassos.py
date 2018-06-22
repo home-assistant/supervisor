@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 
-from .utils import api_process, api_validate
+from .utils import api_process
 from ..const import ATTR_VERSION, ATTR_BOARD, ATTR_VERSION_LATEST
 from ..coresys import CoreSysAttributes
 
