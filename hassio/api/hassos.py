@@ -35,3 +35,8 @@ class APIHassOS(CoreSysAttributes):
             ATTR_DEPLOYMENT: self.sys_host.info.deployment,
             ATTR_KERNEL: self.sys_host.info.kernel,
         }
+
+    @api_process
+    def config(self, request):
+        """Trigger config reload on HassOS."""
+        return asyncio.shield(self.sys_hassos.config_reload())
