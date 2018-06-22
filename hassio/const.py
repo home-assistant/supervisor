@@ -167,6 +167,7 @@ ATTR_KERNEL = 'kernel'
 ATTR_APPARMOR = 'apparmor'
 ATTR_DEVICETREE = 'devicetree'
 ATTR_CPE = 'cpe'
+ATTR_BOARD = 'board'
 
 SERVICE_MQTT = 'mqtt'
 
