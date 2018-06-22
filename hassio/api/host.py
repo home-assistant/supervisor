@@ -6,18 +6,14 @@ import voluptuous as vol
 
 from .utils import api_process, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_HOSTNAME, ATTR_FEATURES, ATTR_KERNEL,
-    ATTR_TYPE, ATTR_OPERATING_SYSTEM, ATTR_CHASSIS, ATTR_DEPLOYMENT,
-    ATTR_STATE, ATTR_NAME, ATTR_DESCRIPTON, ATTR_SERVICES)
+    ATTR_HOSTNAME, ATTR_FEATURES, ATTR_KERNEL, ATTR_OPERATING_SYSTEM,
+    ATTR_CHASSIS, ATTR_DEPLOYMENT, ATTR_STATE, ATTR_NAME, ATTR_DESCRIPTON,
+    ATTR_SERVICES, ATTR_CPE)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
 SERVICE = 'service'
-
-SCHEMA_VERSION = vol.Schema({
-    vol.Optional(ATTR_VERSION): vol.Coerce(str),
-})
 
 SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_HOSTNAME): vol.Coerce(str),
@@ -32,9 +28,7 @@ class APIHost(CoreSysAttributes):
         """Return host information."""
         return {
             ATTR_CHASSIS: self.sys_host.info.chassis,
-            ATTR_VERSION: None,
-            ATTR_LAST_VERSION: None,
-            ATTR_TYPE: None,
+            ATTR_CPE: self.sys_host.info.cpe,
             ATTR_FEATURES: self.sys_host.supperted_features,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
@@ -66,13 +60,6 @@ class APIHost(CoreSysAttributes):
     def reload(self, request):
         """Reload host data."""
         return asyncio.shield(self.sys_host.reload())
-
-    @api_process
-    async def update(self, request):
-        """Update host OS."""
-        pass
-        # body = await api_validate(SCHEMA_VERSION, request)
-        # version = body.get(ATTR_VERSION, self.sys_host.last_version)
 
     @api_process
     async def services(self, request):
