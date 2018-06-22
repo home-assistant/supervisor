@@ -15,10 +15,6 @@ _LOGGER = logging.getLogger(__name__)
 
 SERVICE = 'service'
 
-SCHEMA_VERSION = vol.Schema({
-    vol.Optional(ATTR_VERSION): vol.Coerce(str),
-})
-
 SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_HOSTNAME): vol.Coerce(str),
 })
@@ -66,13 +62,6 @@ class APIHost(CoreSysAttributes):
     def reload(self, request):
         """Reload host data."""
         return asyncio.shield(self.sys_host.reload())
-
-    @api_process
-    async def update(self, request):
-        """Update host OS."""
-        pass
-        # body = await api_validate(SCHEMA_VERSION, request)
-        # version = body.get(ATTR_VERSION, self.sys_host.last_version)
 
     @api_process
     async def services(self, request):
