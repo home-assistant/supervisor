@@ -9,6 +9,7 @@ from .discovery import APIDiscovery
 from .homeassistant import APIHomeAssistant
 from .hardware import APIHardware
 from .host import APIHost
+from .hassos import APIHassOS
 from .proxy import APIProxy
 from .supervisor import APISupervisor
 from .snapshots import APISnapshots
@@ -37,6 +38,7 @@ class RestAPI(CoreSysAttributes):
         """Register REST API Calls."""
         self._register_supervisor()
         self._register_host()
+        self._register_hassos()
         self._register_hardware()
         self._register_homeassistant()
         self._register_proxy()
@@ -64,6 +66,16 @@ class RestAPI(CoreSysAttributes):
                 '/host/services/{service}/restart', api_host.service_restart),
             web.post(
                 '/host/services/{service}/reload', api_host.service_reload),
+        ])
+
+    def _register_hassos(self):
+        """Register hassos function."""
+        api_hassos = APIHassOS()
+        api_hassos.coresys = self.coresys
+
+        self.webapp.add_routes([
+            web.get('/hassos/info', api_hassos.info),
+            web.post('/hassos/config/sync', api_hassos.config_sync),
         ])
 
     def _register_hardware(self):
