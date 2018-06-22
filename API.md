@@ -231,7 +231,6 @@ return:
     "operating_system": "HassOS XY|Ubuntu 16.4|null",
     "kernel": "4.15.7|null",
     "chassis": "specific|null",
-    "type": "Hass.io-OS Type|null",
     "deployment": "stable|beta|dev|null",
     "cpe": "xy|null",
 }
