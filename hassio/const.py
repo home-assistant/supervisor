@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '108'
+HASSIO_VERSION = '109'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
@@ -71,6 +71,7 @@ ATTR_SOURCE = 'source'
 ATTR_FEATURES = 'features'
 ATTR_ADDONS = 'addons'
 ATTR_VERSION = 'version'
+ATTR_VERSION_LATEST = 'version_latest'
 ATTR_AUTO_UART = 'auto_uart'
 ATTR_LAST_BOOT = 'last_boot'
 ATTR_LAST_VERSION = 'last_version'
@@ -165,6 +166,9 @@ ATTR_CRYPTO = 'crypto'
 ATTR_BRANCH = 'branch'
 ATTR_KERNEL = 'kernel'
 ATTR_APPARMOR = 'apparmor'
+ATTR_DEVICETREE = 'devicetree'
+ATTR_CPE = 'cpe'
+ATTR_BOARD = 'board'
 
 SERVICE_MQTT = 'mqtt'
 
@@ -215,6 +219,6 @@ SECURITY_DISABLE = 'disable'
 
 FEATURES_SHUTDOWN = 'shutdown'
 FEATURES_REBOOT = 'reboot'
-FEATURES_UPDATE = 'update'
+FEATURES_HASSOS = 'hassos'
 FEATURES_HOSTNAME = 'hostname'
 FEATURES_SERVICES = 'services'

@@ -25,7 +25,8 @@ from ..const import (
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
-    ATTR_APPARMOR, SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
+    ATTR_APPARMOR, ATTR_DEVICETREE, SECURITY_PROFILE, SECURITY_DISABLE,
+    SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
@@ -353,6 +354,11 @@ class Addon(CoreSysAttributes):
     def with_gpio(self):
         """Return True if the add-on access to gpio interface."""
         return self._mesh[ATTR_GPIO]
+
+    @property
+    def with_devicetree(self):
+        """Return True if the add-on read access to devicetree."""
+        return self._mesh[ATTR_DEVICETREE]
 
     @property
     def with_audio(self):
