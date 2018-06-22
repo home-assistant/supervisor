@@ -217,6 +217,6 @@ SECURITY_DISABLE = 'disable'
 
 FEATURES_SHUTDOWN = 'shutdown'
 FEATURES_REBOOT = 'reboot'
-FEATURES_UPDATE = 'update'
+FEATURES_HASSOS = 'hassos'
 FEATURES_HOSTNAME = 'hostname'
 FEATURES_SERVICES = 'services'
