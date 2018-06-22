@@ -5,7 +5,7 @@ import logging
 import voluptuous as vol
 
 from .utils import api_process, api_validate
-from ..const import ATTR_VERSION, ATTR_BOARD
+from ..const import ATTR_VERSION, ATTR_BOARD, ATTR_VERSION_LATEST
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ class APIHassOS(CoreSysAttributes):
         """Return hassos information."""
         return {
             ATTR_VERSION: self.sys_hassos.version,
+            ATTR_VERSION_LATEST: self.sys_hassos.version,
             ATTR_BOARD: self.sys_hassos.board,
         }
 
