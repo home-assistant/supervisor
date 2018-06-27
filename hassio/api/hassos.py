@@ -23,7 +23,7 @@ class APIHassOS(CoreSysAttributes):
         """Return hassos information."""
         return {
             ATTR_VERSION: self.sys_hassos.version,
-            ATTR_VERSION_LATEST: self.sys_hassos.version,
+            ATTR_VERSION_LATEST: self.sys_hassos.version_latest,
             ATTR_BOARD: self.sys_hassos.board,
         }
 

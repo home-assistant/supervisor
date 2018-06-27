@@ -10,6 +10,9 @@ URL_HASSIO_VERSION = \
 URL_HASSIO_APPARMOR = \
   "https://s3.amazonaws.com/hassio-version/apparmor.txt"
 
+URL_HASSOS_VERSION = \
+  "https://s3.amazonaws.com/hassos-version/{channel}.json"
+
 HASSIO_DATA = Path("/data")
 
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
@@ -169,6 +172,7 @@ ATTR_APPARMOR = 'apparmor'
 ATTR_DEVICETREE = 'devicetree'
 ATTR_CPE = 'cpe'
 ATTR_BOARD = 'board'
+ATTR_HASSOS = 'hassos'
 
 SERVICE_MQTT = 'mqtt'
 
