@@ -32,6 +32,12 @@ class HostAppArmorError(HostError):
     """Host apparmor functions fails."""
 
 
+# Updater
+
+class UpdaterError(HassioError):
+    """Updater error."""
+
+
 # utils/gdbus
 
 class DBusError(HassioError):

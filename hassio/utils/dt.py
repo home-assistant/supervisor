@@ -33,7 +33,7 @@ async def fetch_timezone(websession):
             async with websession.get(FREEGEOIP_URL) as request:
                 data = await request.json()
 
-    except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as err:
+    except (aiohttp.ClientError, KeyError) as err:
         _LOGGER.warning("Can't fetch freegeoip data: %s", err)
 
     except ValueError as err:
