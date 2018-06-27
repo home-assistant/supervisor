@@ -30,6 +30,11 @@ class HassOS(CoreSysAttributes):
         return self._version
 
     @property
+    def version_latest(self):
+        """Return version of HassOS."""
+        return self.sys_updater.version_hassos
+
+    @property
     def board(self):
         """Return board name."""
         return self._board

@@ -169,6 +169,7 @@ ATTR_APPARMOR = 'apparmor'
 ATTR_DEVICETREE = 'devicetree'
 ATTR_CPE = 'cpe'
 ATTR_BOARD = 'board'
+ATTR_HASSOS = 'hassos'
 
 SERVICE_MQTT = 'mqtt'
 
