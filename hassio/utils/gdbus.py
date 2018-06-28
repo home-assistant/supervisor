@@ -4,6 +4,7 @@ import logging
 import json
 import shlex
 import re
+from signal import SIGINT
 import xml.etree.ElementTree as ET
 
 from ..exceptions import DBusFatalError, DBusParseError
@@ -20,11 +21,14 @@ RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[|\())'(.*?)'(?=(?:|]|}|,|\)))")
 RE_GVARIANT_TUPLE_O = re.compile(r"\"[^\"]*?\"|(\()")
 RE_GVARIANT_TUPLE_C = re.compile(r"\"[^\"]*?\"|(,?\))")
 
+RE_MONITOR_OUTPUT = re.compile(r".+?: (?P<signal>[^ ].+?) (?P<data>.*)")
+
 # Commands for dbus
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
               "--object-path {object} --xml")
 CALL = ("gdbus call --system --dest {bus} --object-path {object} "
         "--method {method} {args}")
+MONITOR = ("gdbus monitor --system --dest {bus}")
 
 DBUS_METHOD_GETALL = 'org.freedesktop.DBus.Properties.GetAll'
 
@@ -37,6 +41,7 @@ class DBus:
         self.bus_name = bus_name
         self.object_path = object_path
         self.methods = set()
+        self.signals = set()
 
     @staticmethod
     async def connect(bus_name, object_path):
@@ -69,9 +74,16 @@ class DBus:
         _LOGGER.debug("data: %s", data)
         for interface in xml.findall("./interface"):
             interface_name = interface.get('name')
+
+            # Methods
             for method in interface.findall("./method"):
                 method_name = method.get('name')
                 self.methods.add(f"{interface_name}.{method_name}")
+
+            # Signals
+            for signal in interface.findall("./signal"):
+                signal_name = signal.get('name')
+                self.signals.add(f"{interface_name}.{signal_name}")
 
     @staticmethod
     def _gvariant(raw):
@@ -176,3 +188,55 @@ class DBusCallWrapper:
             return self.dbus.call_dbus(interface, *args)
 
         return _method_wrapper
+
+
+class DBusSignalWrapper:
+    """Process Signals."""
+
+    def __init__(self, dbus, signals=None):
+        """Initialize dbus signal wrapper."""
+        self.dbus = dbus
+        self._signals = signals
+        self._proc = None
+
+    async def __aenter__(self):
+        """Start monitor events."""
+        _LOGGER.info("Start dbus monitor on %s", self.dbus.bus_name)
+        return self
+
+    async def __aexit__(self, exception_type, exception_value, traceback):
+        """Stop monitor events."""
+        _LOGGER.info("Stop dbus monitor on %s", self.dbus.bus_name)
+        self._proc.send_event(SIGINT)
+        await self._proc.communicate()
+
+    async def __aiter__(self):
+        """Start Iteratation."""
+        return self
+
+    async def __anext__(self):
+        """Get next data."""
+        while True:
+            try:
+                data = await self._proc.stdin.readline()
+            except asyncio.TimeoutError:
+                raise StopAsyncIteration() from None
+
+            # Program close
+            if not data:
+                raise StopAsyncIteration()
+
+            # Exgract metadata
+            match = RE_MONITOR_OUTPUT.fullmatch(data.decode())
+            if not match:
+                continue
+            signal = match.group('signal')
+            data = match.group('data')
+
+            # filter signals?
+            if self._signals and signal not in self._signals:
+                _LOGGER.dbug("Skip event %s - %s", signal, data)
+                continue
+
+            # pylint: disable=protected-access
+            return self.dbus._gvariant(data)
