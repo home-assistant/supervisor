@@ -43,7 +43,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
     r"|float(?:\((?P<f_min>[\d\.]+)?,(?P<f_max>[\d\.]+)?\))?"
     r"|match\((?P<match>.+)\)"
-    r"|pwd\((?P<pwd_size\d*)\)"
+    r"|pwd(?:\((?P<p_min>\d+)?)?"
     r")\??$"
 )
 
