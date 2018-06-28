@@ -1,5 +1,4 @@
 """Init file for HassIO addons."""
-import copy
 import logging
 import json
 from pathlib import Path
@@ -11,7 +10,7 @@ from .utils import extract_hash_from_path
 from .validate import (
     SCHEMA_ADDON_CONFIG, SCHEMA_ADDONS_FILE, SCHEMA_REPOSITORY_CONFIG)
 from ..const import (
-    FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
+    FILE_HASSIO_ADDONS, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
 from ..coresys import CoreSysAttributes
 from ..utils.json import JsonConfig, read_json_file
