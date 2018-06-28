@@ -42,7 +42,8 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|str|bool|email|url|port"
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
     r"|float(?:\((?P<f_min>[\d\.]+)?,(?P<f_max>[\d\.]+)?\))?"
-    r"|match\((?P<match>.*)\)"
+    r"|match\((?P<match>.+)\)"
+    r"|pwd\((?P<pwd_size\d*)\)"
     r")\??$"
 )
 
