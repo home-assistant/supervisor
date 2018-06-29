@@ -1,5 +1,6 @@
 """DBus implementation with glib."""
 import asyncio
+from contextlib import suppress
 import logging
 import json
 import shlex
@@ -86,7 +87,7 @@ class DBus:
                 self.signals.add(f"{interface_name}.{signal_name}")
 
     @staticmethod
-    def _gvariant(raw):
+    def parse_gvariant(raw):
         """Parse GVariant input to python."""
         raw = RE_GVARIANT_TYPE.sub("", raw)
         raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
@@ -120,7 +121,7 @@ class DBus:
         data = await self._send(command)
 
         # Parse and return data
-        return self._gvariant(data)
+        return self.parse_gvariant(data)
 
     async def get_properties(self, interface):
         """Read all properties from interface."""
@@ -154,6 +155,11 @@ class DBus:
 
         # End
         return data.decode()
+    
+    def signals(self, filter=None):
+        """Generate a signals wrapper."""
+        signals = set(filter) if filter else None
+        return DBusSignalWrapper(self, signals)
 
     def __getattr__(self, name):
         """Mapping to dbus method."""
@@ -202,6 +208,16 @@ class DBusSignalWrapper:
     async def __aenter__(self):
         """Start monitor events."""
         _LOGGER.info("Start dbus monitor on %s", self.dbus.bus_name)
+        command = shlex.split(MONITOR.format(
+            bus=self.dbus.bus_name
+        ))
+        self._proc = await asyncio.create_subprocess_exec(
+            *command,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
         return self
 
     async def __aexit__(self, exception_type, exception_value, traceback):
@@ -216,9 +232,13 @@ class DBusSignalWrapper:
 
     async def __anext__(self):
         """Get next data."""
+        if not self._proc:
+            raise StopAsyncIteration()
+
+        # Read signals
         while True:
             try:
-                data = await self._proc.stdin.readline()
+                data = await self._proc.stdout.readline()
             except asyncio.TimeoutError:
                 raise StopAsyncIteration() from None
 
@@ -226,17 +246,17 @@ class DBusSignalWrapper:
             if not data:
                 raise StopAsyncIteration()
 
-            # Exgract metadata
+            # Extract metadata
             match = RE_MONITOR_OUTPUT.fullmatch(data.decode())
             if not match:
                 continue
             signal = match.group('signal')
             data = match.group('data')
 
-            # filter signals?
+            # Filter signals?
             if self._signals and signal not in self._signals:
                 _LOGGER.dbug("Skip event %s - %s", signal, data)
                 continue
 
-            # pylint: disable=protected-access
-            return self.dbus._gvariant(data)
+            with suppress(DBusParseError):
+                return self.dbus.parse_gvariant(data)
