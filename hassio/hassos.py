@@ -1,9 +1,11 @@
 """HassOS support on supervisor."""
 import logging
 
+import aiohttp
 from cpe import CPE
 
 from .coresys import CoreSysAttributes
+from .const import URL_HASSOS_OTA
 from .exceptions import HassioNotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +49,11 @@ class HassOS(CoreSysAttributes):
 
     async def _download_ota(self, version):
         """Download rauc bundle from github."""
-        url = 
+        url = URL_HASSOS_OTA(version=version, board=self.board)
+        
+        try:
+            
+        except 
             
     async def load(self):
         """Load HassOS data."""
