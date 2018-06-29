@@ -6,7 +6,7 @@ from cpe import CPE
 
 from .coresys import CoreSysAttributes
 from .const import URL_HASSOS_OTA
-from .exceptions import HassioNotSupportedError
+from .exceptions import HHassOSNotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class HassOS(CoreSysAttributes):
         """Check if HassOS is availabe."""
         if not self.available:
             _LOGGER.error("No HassOS availabe")
-            raise HassioNotSupportedError()
+            raise HassOSNotSupportedError()
 
     async def _download_ota(self, version):
         """Download rauc bundle from github."""
