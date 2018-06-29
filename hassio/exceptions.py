@@ -34,6 +34,7 @@ class HassioUpdaterError(HassioError):
     """Error on Updater."""
     pass
 
+
 # Host
 
 class HostError(HassioError):
