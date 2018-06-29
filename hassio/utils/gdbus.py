@@ -1,6 +1,5 @@
 """DBus implementation with glib."""
 import asyncio
-from contextlib import suppress
 import logging
 import json
 import shlex
