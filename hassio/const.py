@@ -10,6 +10,10 @@ URL_HASSIO_VERSION = \
 URL_HASSIO_APPARMOR = \
   "https://s3.amazonaws.com/hassio-version/apparmor.txt"
 
+URL_HASSOS_OTA = (
+  "https://github.com/home-assistant/hassos/releases/download/"
+  "{version}/hassos_{board}-{version}.raucb")
+  
 HASSIO_DATA = Path("/data")
 
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
