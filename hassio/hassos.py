@@ -45,14 +45,23 @@ class HassOS(CoreSysAttributes):
             _LOGGER.error("No HassOS availabe")
             raise HassioNotSupportedError()
 
+    async def _download_ota(self, version):
+        """Download rauc bundle from github."""
+        url = 
+            
     async def load(self):
         """Load HassOS data."""
         try:
+            # Check needed host functions
+            assert self.sys_dbus.rauc.is_connected
+            assert self.sys_dbus.systemd.is_connected
+            assert self.sys_dbus.hostname.is_connected
+            
             assert self.sys_host.info.cpe is not None
             cpe = CPE(self.sys_host.info.cpe)
             assert cpe.get_product()[0] == 'hassos'
-        except (NotImplementedError, IndexError, AssertionError):
-            _LOGGER.info("Can't detect HassOS")
+        except (AssertionError, NotImplementedError):
+            _LOGGER.debug("Ignore HassOS")
             return
 
         # Store meta data
