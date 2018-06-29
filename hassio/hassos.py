@@ -140,6 +140,9 @@ class HassOS(CoreSysAttributes):
         if rauc_result == 0:
             _LOGGER.info("Install HassOS %s success", version)
             return
-        
+
+        # Update fails
         rauc_status = await self.sys_dbus.get_properties()
-        _LOGGER.error("HassOS update fails with: %s", rauc_status.get()
+        _LOGGER.error(
+            "HassOS update fails with: %s", rauc_status.get('LastError'))
+        raise HassOSUpdateError()
