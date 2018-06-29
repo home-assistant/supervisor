@@ -29,12 +29,12 @@ class Updater(JsonConfig, CoreSysAttributes):
     async def load(self):
         """Update internal data."""
         with suppress(HassioUpdaterError):
-            return self.reload()
+            await self.fetch_data()
 
     async def reload(self):
         """Update internal data."""
         with suppress(HassioUpdaterError):
-            return self.reload()
+            await self.fetch_data()
 
     @property
     def version_homeassistant(self):
