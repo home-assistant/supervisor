@@ -122,12 +122,7 @@ class HassOS(CoreSysAttributes):
 
         try:
             await self.sys_dbus.rauc.install(ext_ota)
-
-            # Wait until rauc is done
-            completed = self.sys_dbus.rauc.get_signal_completed()
-            async with completed as signals:
-                async for signal in signals:
-                    rauc_result = signal[0]
+            completed = await self.sys_dbus.rauc.signal_completed()
 
         except DBusError:
             _LOGGER.error("Rauc communication error")
@@ -137,7 +132,7 @@ class HassOS(CoreSysAttributes):
             int_ota.unlink()
 
         # Update success
-        if rauc_result == 0:
+        if 0 in completed:
             _LOGGER.info("Install HassOS %s success", version)
             self.sys_create_task(self.sys_host.control.reboot())
             return

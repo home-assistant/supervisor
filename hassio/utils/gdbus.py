@@ -22,7 +22,7 @@ RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[|\())'(.*?)'(?=(?:|]|}|,|\)))")
 RE_GVARIANT_TUPLE_O = re.compile(r"\"[^\"]*?\"|(\()")
 RE_GVARIANT_TUPLE_C = re.compile(r"\"[^\"]*?\"|(,?\))")
 
-RE_MONITOR_OUTPUT = re.compile(r".+?: (?P<signal>[^ ].+?) (?P<data>.*)")
+RE_MONITOR_OUTPUT = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
 
 # Commands for dbus
 INTROSPECT = ("gdbus introspect --system --dest {bus} "
@@ -158,8 +158,14 @@ class DBus:
 
     def attach_signals(self, filters=None):
         """Generate a signals wrapper."""
-        signals = set(filters) if filters else None
-        return DBusSignalWrapper(self, signals)
+        return DBusSignalWrapper(self, filters)
+
+    async def wait_signal(self, signal):
+        """Wait for single event."""
+        monitor = DBusSignalWrapper(self, [signal])
+        async with monitor as signals:
+            async for signal in signals:
+                return signal
 
     def __getattr__(self, name):
         """Mapping to dbus method."""
@@ -247,7 +253,6 @@ class DBusSignalWrapper:
                 raise StopAsyncIteration()
 
             # Extract metadata
-            _LOGGER.info("signal: %s", data.decode())
             match = RE_MONITOR_OUTPUT.match(data.decode())
             if not match:
                 continue
@@ -256,7 +261,7 @@ class DBusSignalWrapper:
 
             # Filter signals?
             if self._signals and signal not in self._signals:
-                _LOGGER.info("Skip event %s - %s", signal, data)
+                _LOGGER.debug("Skip event %s - %s", signal, data)
                 continue
 
             try:
