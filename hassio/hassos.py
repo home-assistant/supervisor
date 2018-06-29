@@ -48,8 +48,8 @@ class HassOS(CoreSysAttributes):
             _LOGGER.error("No HassOS availabe")
             raise HassOSNotSupportedError()
 
-    async def _download_ota(self, version):
-        """Download rauc bundle from github."""
+    async def _download_raucb(self, version):
+        """Download rauc bundle (OTA) from github."""
         url = URL_HASSOS_OTA(version=version, board=self.board)
         raucb = Path(self.sys_config.path_tmp, f"hassos-{version}.raucb")
         
