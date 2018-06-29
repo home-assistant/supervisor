@@ -247,6 +247,7 @@ class DBusSignalWrapper:
                 raise StopAsyncIteration()
 
             # Extract metadata
+            _LOGGER.info("signal: %s", data.decode())
             match = RE_MONITOR_OUTPUT.fullmatch(data.decode())
             if not match:
                 continue
@@ -255,7 +256,7 @@ class DBusSignalWrapper:
 
             # Filter signals?
             if self._signals and signal not in self._signals:
-                _LOGGER.dbug("Skip event %s - %s", signal, data)
+                _LOGGER.debug("Skip event %s - %s", signal, data)
                 continue
 
             with suppress(DBusParseError):
