@@ -229,7 +229,7 @@ class DBusSignalWrapper:
     async def __aexit__(self, exception_type, exception_value, traceback):
         """Stop monitor events."""
         _LOGGER.info("Stop dbus monitor on %s", self.dbus.bus_name)
-        self._proc.send_event(SIGINT)
+        self._proc.send_signal(SIGINT)
         await self._proc.communicate()
 
     async def __aiter__(self):
