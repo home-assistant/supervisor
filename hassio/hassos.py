@@ -139,6 +139,7 @@ class HassOS(CoreSysAttributes):
         # Update success
         if rauc_result == 0:
             _LOGGER.info("Install HassOS %s success", version)
+            self.sys_create_task(self.sys_host.control.reboot())
             return
 
         # Update fails
