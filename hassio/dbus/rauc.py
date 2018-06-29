@@ -45,3 +45,10 @@ class Rauc(DBusInterface):
         Return a coroutine.
         """
         return self.dbus.get_properties(f"{DBUS_NAME}.Installer")
+
+    @dbus_connected
+    def get_signal_completed(self):
+        """Return a signal wrapper for completed signal."""
+        return self.dbus.signals(filter=[
+            f"{DBUS_NAME}.Installer.Completed"  
+        ])
