@@ -97,7 +97,7 @@ class Updater(JsonConfig, CoreSysAttributes):
             self._data[ATTR_HOMEASSISTANT] = data['homeassistant'][machine]
 
             # update hassos version
-            if self.sys_hassos.availabe and board:
+            if self.sys_hassos.available and board:
                 self._data[ATTR_HASSOS] = data['hassos'][board]
 
         except KeyError as err:
