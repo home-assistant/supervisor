@@ -74,6 +74,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes([
             web.get('/hassos/info', api_hassos.info),
+            web.post('/hassos/update', api_hassos.update),
             web.post('/hassos/config/sync', api_hassos.config_sync),
         ])
 

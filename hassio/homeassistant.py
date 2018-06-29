@@ -211,7 +211,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         exists = await self.instance.exists()
 
         if exists and version == self.instance.version:
-            _LOGGER.info("Version %s is already installed", version)
+            _LOGGER.warning("Version %s is already installed", version)
             return False
 
         try:
