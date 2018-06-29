@@ -37,3 +37,11 @@ class Rauc(DBusInterface):
         Return a coroutine.
         """
         return self.dbus.Installer.GetSlotStatus()
+
+    @dbus_connected
+    def get_properties(self):
+        """Return rauc informations.
+
+        Return a coroutine.
+        """
+        return self.dbus.get_properties(f"{DBUS_NAME}.Installer")
