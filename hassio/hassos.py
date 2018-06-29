@@ -1,5 +1,6 @@
 """HassOS support on supervisor."""
 import logging
+from pathlib import Path
 
 import aiohttp
 from cpe import CPE
