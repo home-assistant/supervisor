@@ -6,7 +6,7 @@ from cpe import CPE
 
 from .coresys import CoreSysAttributes
 from .const import URL_HASSOS_OTA
-from .exceptions import HHassOSNotSupportedError
+from .exceptions import HassOSNotSupportedError, HassOSUpdateError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,10 +50,28 @@ class HassOS(CoreSysAttributes):
     async def _download_ota(self, version):
         """Download rauc bundle from github."""
         url = URL_HASSOS_OTA(version=version, board=self.board)
+        raucb = Path(self.sys_config.path_tmp, f"hassos-{version}.raucb")
         
         try:
+            _LOGGER.info("Fetch OTA update from %s", url)
+            async with self.sys_websession.get(url) as request:
+                with raucb('wb') ota_file:
+                    while True:
+                        chunk = await request.content.read(1048576)
+                        if not chunk:
+                            break
+                        ota_file.write(chunk)
+                        
+            _LOGGER.info("OTA update is downloaded on %s", raucb)
+            return raucb
+
+        except aiohttp.ClientError as err:
+            _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
             
-        except 
+        except OSError as err:
+            _LOGGER.error("Can't write ota file: %s", err)
+            
+        raise HassOSUpdateError
             
     async def load(self):
         """Load HassOS data."""
