@@ -124,7 +124,7 @@ class HassOS(CoreSysAttributes):
             await self.sys_dbus.rauc.install(ext_ota)
 
             # Wait until rauc is done
-            completed = self.sys_dbus.get_signal_completed()
+            completed = self.sys_dbus.rauc.get_signal_completed()
             async with completed as signals:
                 async for signal in signals:
                     rauc_result = signal[0]
