@@ -28,12 +28,12 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     async def load(self):
         """Update internal data."""
-        with supress(HassioUpdaterError):
+        with suppress(HassioUpdaterError):
             return self.reload()
 
     async def reload(self):
         """Update internal data."""
-        with supress(HassioUpdaterError):
+        with suppress(HassioUpdaterError):
             return self.reload()
 
     @property

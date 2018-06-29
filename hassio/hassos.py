@@ -7,7 +7,7 @@ from cpe import CPE
 
 from .coresys import CoreSysAttributes
 from .const import URL_HASSOS_OTA
-from .exceptions import HassOSNotSupportedError, HassOSUpdateError
+from .exceptions import HassOSNotSupportedError, HassOSUpdateError, DBusError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,9 +50,9 @@ class HassOS(CoreSysAttributes):
 
     async def _download_raucb(self, version):
         """Download rauc bundle (OTA) from github."""
-        url = URL_HASSOS_OTA(version=version, board=self.board)
+        url = URL_HASSOS_OTA.format(version=version, board=self.board)
         raucb = Path(self.sys_config.path_tmp, f"hassos-{version}.raucb")
-        
+
         try:
             _LOGGER.info("Fetch OTA update from %s", url)
             async with self.sys_websession.get(url) as request:
@@ -62,18 +62,18 @@ class HassOS(CoreSysAttributes):
                         if not chunk:
                             break
                         ota_file.write(chunk)
-                        
+
             _LOGGER.info("OTA update is downloaded on %s", raucb)
             return raucb
 
         except aiohttp.ClientError as err:
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
-            
+
         except OSError as err:
             _LOGGER.error("Can't write ota file: %s", err)
-            
+
         raise HassOSUpdateError()
-            
+
     async def load(self):
         """Load HassOS data."""
         try:
@@ -81,7 +81,7 @@ class HassOS(CoreSysAttributes):
             assert self.sys_dbus.rauc.is_connected
             assert self.sys_dbus.systemd.is_connected
             assert self.sys_dbus.hostname.is_connected
-            
+
             assert self.sys_host.info.cpe is not None
             cpe = CPE(self.sys_host.info.cpe)
             assert cpe.get_product()[0] == 'hassos'
@@ -127,13 +127,13 @@ class HassOS(CoreSysAttributes):
             completed = self.sys_dbus.get_signal_completed()
             async with completed as signals:
                 async for signal in signals:
-                   rauc_result = signal[0]
+                    rauc_result = signal[0]
 
         except DBusError:
             _LOGGER.error("Rauc communication error")
             raise HassOSUpdateError() from None
 
-        finaly:
+        finally:
             int_ota.unlink()
 
         # Update success

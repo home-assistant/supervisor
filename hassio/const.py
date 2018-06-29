@@ -6,14 +6,14 @@ HASSIO_VERSION = '110'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
-  "https://s3.amazonaws.com/hassio-version/{channel}.json"
+    "https://s3.amazonaws.com/hassio-version/{channel}.json"
 URL_HASSIO_APPARMOR = \
-  "https://s3.amazonaws.com/hassio-version/apparmor.txt"
+    "https://s3.amazonaws.com/hassio-version/apparmor.txt"
 
 URL_HASSOS_OTA = (
-  "https://github.com/home-assistant/hassos/releases/download/"
-  "{version}/hassos_{board}-{version}.raucb")
-  
+    "https://github.com/home-assistant/hassos/releases/download/"
+    "{version}/hassos_{board}-{version}.raucb")
+
 HASSIO_DATA = Path("/data")
 
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")

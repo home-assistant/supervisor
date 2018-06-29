@@ -155,10 +155,10 @@ class DBus:
 
         # End
         return data.decode()
-    
-    def signals(self, filter=None):
+
+    def attach_signals(self, filters=None):
         """Generate a signals wrapper."""
-        signals = set(filter) if filter else None
+        signals = set(filters) if filters else None
         return DBusSignalWrapper(self, signals)
 
     def __getattr__(self, name):

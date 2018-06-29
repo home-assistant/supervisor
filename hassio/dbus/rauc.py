@@ -49,6 +49,6 @@ class Rauc(DBusInterface):
     @dbus_connected
     def get_signal_completed(self):
         """Return a signal wrapper for completed signal."""
-        return self.dbus.signals(filter=[
-            f"{DBUS_NAME}.Installer.Completed"  
+        return self.dbus.attach_signals(filters=[
+            f"{DBUS_NAME}.Installer.Completed"
         ])

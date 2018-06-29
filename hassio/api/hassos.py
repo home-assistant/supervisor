@@ -26,7 +26,7 @@ class APIHassOS(CoreSysAttributes):
             ATTR_VERSION_LATEST: self.sys_hassos.version_latest,
             ATTR_BOARD: self.sys_hassos.board,
         }
-    
+
     @api_process
     async def update(self, request):
         """Update HassOS."""
