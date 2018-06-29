@@ -72,7 +72,7 @@ class HassOS(CoreSysAttributes):
         except OSError as err:
             _LOGGER.error("Can't write ota file: %s", err)
             
-        raise HassOSUpdateError
+        raise HassOSUpdateError()
             
     async def load(self):
         """Load HassOS data."""
@@ -110,4 +110,31 @@ class HassOS(CoreSysAttributes):
         """Update HassOS system."""
         version = version or self.version_latest
 
+        # Check installed version
         self._check_host()
+        if version == self.version:
+            _LOGGER.info("Version %s is already installed", version)
+            raise HassOSUpdateError()
+
+        # Fetch files from internet
+        int_ota = await self._download_raucb(version)
+        ext_ota = Path(self.sys_config.path_extern_tmp, int_ota.file)
+
+        try:
+            self.sys_dbus.rauc.install(ext_ota)
+
+            # Wait until rauc is done
+            completed = self.sys_dbus.get_signal_completed()
+            async with completed as signals:
+                async for signal in signals:
+                   rauc_result = signal[0]
+
+        except DBusError:
+            _LOGGER.error("Rauc communication error")
+            raise HassOSUpdateError() from None
+
+        finaly:
+            int_ota.unlink()
+
+        if rauc_result != 0:
+            raise HassOSUpdateError()
