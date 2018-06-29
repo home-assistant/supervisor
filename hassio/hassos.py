@@ -121,7 +121,7 @@ class HassOS(CoreSysAttributes):
         ext_ota = Path(self.sys_config.path_extern_tmp, int_ota.file)
 
         try:
-            self.sys_dbus.rauc.install(ext_ota)
+            await self.sys_dbus.rauc.install(ext_ota)
 
             # Wait until rauc is done
             completed = self.sys_dbus.get_signal_completed()
@@ -136,5 +136,10 @@ class HassOS(CoreSysAttributes):
         finaly:
             int_ota.unlink()
 
-        if rauc_result != 0:
-            raise HassOSUpdateError()
+        # Update success
+        if rauc_result == 0:
+            _LOGGER.info("Install HassOS %s success", version)
+            return
+        
+        rauc_status = await self.sys_dbus.get_properties()
+        _LOGGER.error("HassOS update fails with: %s", rauc_status.get()
