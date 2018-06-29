@@ -118,7 +118,7 @@ class HassOS(CoreSysAttributes):
 
         # Fetch files from internet
         int_ota = await self._download_raucb(version)
-        ext_ota = Path(self.sys_config.path_extern_tmp, int_ota.file)
+        ext_ota = Path(self.sys_config.path_extern_tmp, int_ota.name)
 
         try:
             await self.sys_dbus.rauc.install(ext_ota)
