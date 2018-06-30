@@ -243,5 +243,9 @@ class RestAPI(CoreSysAttributes):
 
     async def stop(self):
         """Stop rest api webserver."""
+        if not self._site:
+            return
+
+        # Shutdown running API
         await self._site.stop()
         await self._runner.cleanup()
