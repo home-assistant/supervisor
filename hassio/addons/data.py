@@ -1,5 +1,4 @@
 """Init file for HassIO addons."""
-import copy
 import logging
 import json
 from pathlib import Path
@@ -11,7 +10,7 @@ from .utils import extract_hash_from_path
 from .validate import (
     SCHEMA_ADDON_CONFIG, SCHEMA_ADDONS_FILE, SCHEMA_REPOSITORY_CONFIG)
 from ..const import (
-    FILE_HASSIO_ADDONS, ATTR_VERSION, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
+    FILE_HASSIO_ADDONS, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
 from ..coresys import CoreSysAttributes
 from ..utils.json import JsonConfig, read_json_file
@@ -69,9 +68,6 @@ class AddonsData(JsonConfig, CoreSysAttributes):
         for repository_element in self.sys_config.path_addons_git.iterdir():
             if repository_element.is_dir():
                 self._read_git_repository(repository_element)
-
-        # update local data
-        self._merge_config()
 
     def _read_git_repository(self, path):
         """Process a custom repository folder."""
@@ -138,25 +134,3 @@ class AddonsData(JsonConfig, CoreSysAttributes):
         # local repository
         self._repositories[REPOSITORY_LOCAL] = \
             builtin_data[REPOSITORY_LOCAL]
-
-    def _merge_config(self):
-        """Update local config if they have update.
-
-        It need to be the same version as the local version is for merge.
-        """
-        have_change = False
-
-        for addon in set(self.system):
-            # detached
-            if addon not in self._cache:
-                continue
-
-            cache = self._cache[addon]
-            data = self.system[addon]
-            if data[ATTR_VERSION] == cache[ATTR_VERSION]:
-                if data != cache:
-                    self.system[addon] = copy.deepcopy(cache)
-                    have_change = True
-
-        if have_change:
-            self.save_data()

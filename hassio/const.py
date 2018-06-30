@@ -2,13 +2,17 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '109'
+HASSIO_VERSION = '110'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
-  "https://s3.amazonaws.com/hassio-version/{channel}.json"
+    "https://s3.amazonaws.com/hassio-version/{channel}.json"
 URL_HASSIO_APPARMOR = \
-  "https://s3.amazonaws.com/hassio-version/apparmor.txt"
+    "https://s3.amazonaws.com/hassio-version/apparmor.txt"
+
+URL_HASSOS_OTA = (
+    "https://github.com/home-assistant/hassos/releases/download/"
+    "{version}/hassos_{board}-{version}.raucb")
 
 HASSIO_DATA = Path("/data")
 
@@ -169,6 +173,7 @@ ATTR_APPARMOR = 'apparmor'
 ATTR_DEVICETREE = 'devicetree'
 ATTR_CPE = 'cpe'
 ATTR_BOARD = 'board'
+ATTR_HASSOS = 'hassos'
 
 SERVICE_MQTT = 'mqtt'
 
