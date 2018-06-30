@@ -11,6 +11,30 @@ class HassioNotSupportedError(HassioError):
     pass
 
 
+# HassOS
+
+class HassOSError(HassioError):
+    """HassOS exception."""
+    pass
+
+
+class HassOSUpdateError(HassOSError):
+    """Error on update of a HassOS."""
+    pass
+
+
+class HassOSNotSupportedError(HassioNotSupportedError):
+    """Function not supported by HassOS."""
+    pass
+
+
+# Updater
+
+class HassioUpdaterError(HassioError):
+    """Error on Updater."""
+    pass
+
+
 # Host
 
 class HostError(HassioError):

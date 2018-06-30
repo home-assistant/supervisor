@@ -34,7 +34,6 @@ def api_process(method):
         except RuntimeError as err:
             return api_return_error(message=str(err))
         except HassioError:
-            _LOGGER.exception("Hassio error")
             return api_return_error()
 
         if isinstance(answer, dict):
