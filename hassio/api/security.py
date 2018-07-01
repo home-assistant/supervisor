@@ -46,7 +46,8 @@ class SecurityMiddleware(CoreSysAttributes):
             request[REQUEST_FROM] = 'host'
 
         # Add-on
-        addon = self.sys_addons.from_uuid(hassio_token) if hassio_token else None
+        addon = self.sys_addons.from_uuid(hassio_token) \
+            if hassio_token else None
         if addon:
             _LOGGER.info("%s access from %s", request.path, addon.slug)
             request[REQUEST_FROM] = addon.slug
