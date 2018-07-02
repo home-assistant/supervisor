@@ -35,11 +35,6 @@ class SecurityMiddleware(CoreSysAttributes):
                 _LOGGER.debug("Passthrough %s", request.path)
                 return await handler(request)
 
-        # Unknown API access
-        if not hassio_token:
-            _LOGGER.warning("Invalid token for access %s", request.path)
-            raise HTTPUnauthorized()
-
         # Home-Assistant
         if hassio_token == self.sys_homeassistant.uuid:
             _LOGGER.debug("%s access from Home-Assistant", request.path)
@@ -51,11 +46,14 @@ class SecurityMiddleware(CoreSysAttributes):
             request[REQUEST_FROM] = 'host'
 
         # Add-on
-        addon = self.sys_addons.from_uuid(hassio_token)
+        addon = self.sys_addons.from_uuid(hassio_token) \
+            if hassio_token else None
         if addon:
             _LOGGER.info("%s access from %s", request.path, addon.slug)
             request[REQUEST_FROM] = addon.slug
 
-        if not request.get(REQUEST_FROM):
-            raise HTTPUnauthorized()
-        return await handler(request)
+        if request.get(REQUEST_FROM):
+            return await handler(request)
+
+        _LOGGER.warning("Invalid token for access %s", request.path)
+        raise HTTPUnauthorized()
