@@ -28,7 +28,8 @@ _LOGGER = logging.getLogger(__name__)
 ENV_SHARE = 'SUPERVISOR_SHARE'
 ENV_NAME = 'SUPERVISOR_NAME'
 ENV_REPO = 'HOMEASSISTANT_REPOSITORY'
-ENV_MACHINE = 'MACHINE_ID'
+
+MACHINE_ID = Path('/etc/machine-id')
 
 
 def initialize_coresys(loop):
@@ -54,7 +55,8 @@ def initialize_coresys(loop):
     initialize_system_data(coresys)
 
     # Set Machine/Host ID
-    coresys.machine_id = os.environ.get(ENV_MACHINE)
+    if MACHINE_ID.exists():
+        coresys.machine_id = MACHINE_ID.read_text().strip()
 
     return coresys
 
