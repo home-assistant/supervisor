@@ -6,49 +6,51 @@ from .coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
+HASS_WATCHDOG_API = 'HASS_WATCHDOG_API'
+
+RUN_UPDATE_SUPERVISOR = 29100
+RUN_UPDATE_ADDONS = 57600
+
+RUN_RELOAD_ADDONS = 21600
+RUN_RELOAD_SNAPSHOTS = 72000
+RUN_RELOAD_HOST = 72000
+RUN_RELOAD_UPDATER = 21600
+
+RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
+RUN_WATCHDOG_HOMEASSISTANT_API = 300
+
 
 class Tasks(CoreSysAttributes):
     """Handle Tasks inside HassIO."""
-
-    RUN_UPDATE_SUPERVISOR = 29100
-    RUN_UPDATE_ADDONS = 57600
-
-    RUN_RELOAD_ADDONS = 21600
-    RUN_RELOAD_SNAPSHOTS = 72000
-    RUN_RELOAD_HOST = 72000
-    RUN_RELOAD_UPDATER = 21600
-
-    RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
-    RUN_WATCHDOG_HOMEASSISTANT_API = 300
 
     def __init__(self, coresys):
         """Initialize Tasks."""
         self.coresys = coresys
         self.jobs = set()
-        self._data = {}
+        self._cache = {}
 
     async def load(self):
         """Add Tasks to scheduler."""
         self.jobs.add(self.sys_scheduler.register_task(
-            self._update_addons, self.RUN_UPDATE_ADDONS))
+            self._update_addons, RUN_UPDATE_ADDONS))
         self.jobs.add(self.sys_scheduler.register_task(
-            self._update_supervisor, self.RUN_UPDATE_SUPERVISOR))
+            self._update_supervisor, RUN_UPDATE_SUPERVISOR))
 
         self.jobs.add(self.sys_scheduler.register_task(
-            self.sys_addons.reload, self.RUN_RELOAD_ADDONS))
+            self.sys_addons.reload, RUN_RELOAD_ADDONS))
         self.jobs.add(self.sys_scheduler.register_task(
-            self.sys_updater.reload, self.RUN_RELOAD_UPDATER))
+            self.sys_updater.reload, RUN_RELOAD_UPDATER))
         self.jobs.add(self.sys_scheduler.register_task(
-            self.sys_snapshots.reload, self.RUN_RELOAD_SNAPSHOTS))
+            self.sys_snapshots.reload, RUN_RELOAD_SNAPSHOTS))
         self.jobs.add(self.sys_scheduler.register_task(
-            self.sys_host.reload, self.RUN_RELOAD_HOST))
+            self.sys_host.reload, RUN_RELOAD_HOST))
 
         self.jobs.add(self.sys_scheduler.register_task(
             self._watchdog_homeassistant_docker,
-            self.RUN_WATCHDOG_HOMEASSISTANT_DOCKER))
+            RUN_WATCHDOG_HOMEASSISTANT_DOCKER))
         self.jobs.add(self.sys_scheduler.register_task(
             self._watchdog_homeassistant_api,
-            self.RUN_WATCHDOG_HOMEASSISTANT_API))
+            RUN_WATCHDOG_HOMEASSISTANT_API))
 
         _LOGGER.info("All core tasks are scheduled")
 
@@ -89,7 +91,8 @@ class Tasks(CoreSysAttributes):
         """Check running state of docker and start if they is close."""
         # if Home-Assistant is active
         if not await self.sys_homeassistant.is_initialize() or \
-                not self.sys_homeassistant.watchdog:
+                not self.sys_homeassistant.watchdog or \
+                self.sys_homeassistant.error_state:
             return
 
         # if Home-Assistant is running
@@ -106,12 +109,14 @@ class Tasks(CoreSysAttributes):
         Try 2 times to call API before we restart Home-Assistant. Maybe we had
         a delay in our system.
         """
-        retry_scan = self._data.get('HASS_WATCHDOG_API', 0)
-
         # If Home-Assistant is active
         if not await self.sys_homeassistant.is_initialize() or \
-                not self.sys_homeassistant.watchdog:
+                not self.sys_homeassistant.watchdog or \
+                self.sys_homeassistant.error_state:
             return
+
+        # Init cache data
+        retry_scan = self._cache.get(HASS_WATCHDOG_API, 0)
 
         # If Home-Assistant API is up
         if self.sys_homeassistant.in_progress or \
@@ -121,10 +126,10 @@ class Tasks(CoreSysAttributes):
         # Look like we run into a problem
         retry_scan += 1
         if retry_scan == 1:
-            self._data['HASS_WATCHDOG_API'] = retry_scan
+            self._cache[HASS_WATCHDOG_API] = retry_scan
             _LOGGER.warning("Watchdog miss API response from Home-Assistant")
             return
 
         _LOGGER.error("Watchdog found a problem with Home-Assistant API!")
         await self.sys_homeassistant.restart()
-        self._data['HASS_WATCHDOG_API'] = 0
+        self._cache[HASS_WATCHDOG_API] = 0
