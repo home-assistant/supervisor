@@ -381,10 +381,18 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 pass
 
         while time.monotonic() - start_time < self.wait_boot:
+            # Check if API response
             if await self.sys_run_in_executor(check_port):
                 _LOGGER.info("Detect a running Home-Assistant instance")
                 self._error_state = False
                 return True
+
+            # Check if Container is is_running
+            if not await self.instance.is_running():
+                _LOGGER.error("Home Assistant is crashed!")
+                break
+
+            # wait and don't hit the system
             await asyncio.sleep(10)
 
         _LOGGER.warning("Don't wait anymore of Home-Assistant startup!")
