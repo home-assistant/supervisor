@@ -217,7 +217,7 @@ class DockerAddon(DockerInterface):
         if self.addon.with_devicetree:
             volumes.update({
                 "/sys/firmware/devicetree/base": {
-                    'bind': "/proc/device-tree", 'mode': 'ro'
+                    'bind': "/device-tree", 'mode': 'ro'
                 },
             })
 
