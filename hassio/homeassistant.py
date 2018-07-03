@@ -37,6 +37,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self.coresys = coresys
         self.instance = DockerHomeAssistant(coresys)
         self.lock = asyncio.Lock(loop=coresys.loop)
+        self._error_state = False
 
     async def load(self):
         """Prepare HomeAssistant object."""
@@ -50,6 +51,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def machine(self):
         """Return System Machines."""
         return self.instance.machine
+
+    @property
+    def error_state(self):
+        """Return True if system is in error."""
+        return self._error_state
 
     @property
     def api_ip(self):
@@ -207,6 +213,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def update(self, version=None):
         """Update HomeAssistant version."""
         version = version or self.last_version
+        rollback = self.version
         running = await self.instance.is_running()
         exists = await self.instance.exists()
 
@@ -214,11 +221,24 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             _LOGGER.warning("Version %s is already installed", version)
             return False
 
-        try:
-            return await self.instance.update(version)
-        finally:
-            if running:
-                await self._start()
+        # process a update
+        async def _update(to_version):
+            """Run Home Assistant update."""
+            try:
+                return await self.instance.update(to_version)
+            finally:
+                if running:
+                    await self._start()
+
+        # Update Home Assistant
+        ret = await _update(version)
+
+        # Update going wrong, revert it
+        if self.error_state and rollback:
+            _LOGGER.fatal("Home Assistant update fails -> rollback!")
+            ret = await _update(rollback)
+
+        return ret
 
     async def _start(self):
         """Start HomeAssistant docker & wait."""
@@ -361,10 +381,20 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 pass
 
         while time.monotonic() - start_time < self.wait_boot:
+            # Check if API response
             if await self.sys_run_in_executor(check_port):
                 _LOGGER.info("Detect a running Home-Assistant instance")
+                self._error_state = False
                 return True
+
+            # Check if Container is is_running
+            if not await self.instance.is_running():
+                _LOGGER.error("Home Assistant is crashed!")
+                break
+
+            # wait and don't hit the system
             await asyncio.sleep(10)
 
         _LOGGER.warning("Don't wait anymore of Home-Assistant startup!")
+        self._error_state = True
         return False
