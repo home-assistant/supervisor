@@ -62,7 +62,9 @@ class GitRepo(CoreSysAttributes):
                 attribute: value
                 for attribute, value in (
                     ('recursive', True),
-                    ('branch', self.branch)
+                    ('branch', self.branch),
+                    ('depth', 1),
+                    ('shallow-submodules', True)
                 ) if value is not None
             }
 
