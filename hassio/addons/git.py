@@ -91,17 +91,17 @@ class GitRepo(CoreSysAttributes):
             return False
 
         async with self.lock:
-            _LOGGER.info("Pull addon %s repository", self.url)
+            _LOGGER.info("Update addon %s repository", self.url)
+            branch = self.repo.active_branch.name
 
-            git_args = {
-                'update-shallow': True,
-                'depth': 1,
-            }
             try:
                 await self.sys_run_in_executor(ft.partial(
-                    self.repo.remotes.origin.fetch, **git_args))
+                    self.repo.remotes.origin.fetch, **{
+                        'update-shallow': True,
+                        'depth': 1,
+                    }))
                 await self.sys_run_in_executor(ft.partial(
-                    self.repo.git.reset, hard=True))
+                    self.repo.git.reset, f"origin/{branch}", hard=True))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
