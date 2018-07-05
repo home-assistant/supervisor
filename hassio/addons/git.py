@@ -51,6 +51,7 @@ class GitRepo(CoreSysAttributes):
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
                 _LOGGER.error("Can't load %s repo: %s.", self.path, err)
+                self._remove()
                 return False
 
             return True
@@ -78,6 +79,7 @@ class GitRepo(CoreSysAttributes):
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
                 _LOGGER.error("Can't clone %s repo: %s.", self.url, err)
+                self._remove()
                 return False
 
             return True
@@ -91,8 +93,8 @@ class GitRepo(CoreSysAttributes):
         async with self.lock:
             try:
                 _LOGGER.info("Pull addon %s repository", self.url)
-                await self.sys_loop.run_in_executor(
-                    None, self.repo.remotes.origin.pull)
+                await self.sys_run_in_executor(ft.partial(
+                    self.repo.remotes.origin.pull, depth=True))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
@@ -100,6 +102,17 @@ class GitRepo(CoreSysAttributes):
                 return False
 
             return True
+
+    def _remove(self):
+        """Remove a repository addon."""
+        if not self.path.is_dir():
+            return
+
+        def log_err(funct, path, _):
+            """Log error."""
+            _LOGGER.warning("Can't remove %s", path)
+
+        shutil.rmtree(str(self.path), onerror=log_err)
 
 
 class GitRepoHassIO(GitRepo):
@@ -122,13 +135,9 @@ class GitRepoCustom(GitRepo):
 
         super().__init__(coresys, path, url)
 
-    def remove(self):
-        """Remove a custom addon."""
-        if self.path.is_dir():
-            _LOGGER.info("Remove custom addon repository %s", self.url)
-
-            def log_err(funct, path, _):
-                """Log error."""
-                _LOGGER.warning("Can't remove %s", path)
-
-            shutil.rmtree(str(self.path), onerror=log_err)
+    def _remove(self):
+        """Remove a repository addon."""
+        if not self.path.is_dir():
+            return
+        _LOGGER.info("Remove custom addon repository %s", self.url)
+        self._remove()
