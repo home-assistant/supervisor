@@ -91,10 +91,15 @@ class GitRepo(CoreSysAttributes):
             return False
 
         async with self.lock:
+            git_args = {
+                'depth': 1,
+                'update-shallow': True,
+            }
+
             try:
                 _LOGGER.info("Pull addon %s repository", self.url)
                 await self.sys_run_in_executor(ft.partial(
-                    self.repo.remotes.origin.pull, depth=1))
+                    self.repo.remotes.origin.pull, **git_args))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
