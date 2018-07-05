@@ -135,7 +135,7 @@ class GitRepoCustom(GitRepo):
 
         super().__init__(coresys, path, url)
 
-    def _remove(self):
+    def remove(self):
         """Remove a custom repository."""
         _LOGGER.info("Remove custom addon repository %s", self.url)
         self._remove()
