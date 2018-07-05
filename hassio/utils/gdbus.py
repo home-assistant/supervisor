@@ -117,9 +117,9 @@ class DBus:
                 gvariant += f" {arg}"
             elif isinstance(arg, str):
                 gvariant += f" \"{arg}\""
-            gvariant += " {}".format(str(arg))
+            else:
+                gvariant += " {}".format(str(arg))
 
-        _LOGGER.info(gvariant.lstrip())
         return gvariant.lstrip()
 
     async def call_dbus(self, method, *args):
