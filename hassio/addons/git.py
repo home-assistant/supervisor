@@ -101,7 +101,7 @@ class GitRepo(CoreSysAttributes):
                 await self.sys_run_in_executor(ft.partial(
                     self.repo.remotes.origin.fetch, **git_args))
                 await self.sys_run_in_executor(ft.partial(
-                    self.repo.reset, hard=True))
+                    self.repo.git.reset, hard=True))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
