@@ -109,12 +109,18 @@ class DBus:
     @staticmethod
     def gvariant_args(*args):
         """Convert args into gvariant."""
-        def _convert(arg):
-            """Convert single arg."""
+        gvariant = ""
+
+        for arg in args:
             if isinstance(arg, bool):
-                return str(arg).lower()
-            return str(arg)
-        return " ".join(map(_convert, args))
+                gvariant += " {}".format(str(arg).lower())
+            elif isinstance(arg, (int, float)):
+                gvariant += f" {arg}"
+            elif isinstance(arg, str):
+                gvariant += f" \"{arg}\""
+            gvariant += " {}".format(str(arg))
+
+        return gvariant.lstrip()
 
     async def call_dbus(self, method, *args):
         """Call a dbus method."""
