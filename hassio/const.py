@@ -174,6 +174,7 @@ ATTR_DEVICETREE = 'devicetree'
 ATTR_CPE = 'cpe'
 ATTR_BOARD = 'board'
 ATTR_HASSOS = 'hassos'
+ATTR_HASSOS_CLI = 'hassos_cli'
 ATTR_REFRESH_TOKEN = 'refresh_token'
 
 SERVICE_MQTT = 'mqtt'
