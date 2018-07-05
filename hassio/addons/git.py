@@ -95,13 +95,20 @@ class GitRepo(CoreSysAttributes):
             branch = self.repo.active_branch.name
 
             try:
+                # Download data
                 await self.sys_run_in_executor(ft.partial(
                     self.repo.remotes.origin.fetch, **{
                         'update-shallow': True,
                         'depth': 1,
                     }))
+
+                # Jump on top of that
                 await self.sys_run_in_executor(ft.partial(
                     self.repo.git.reset, f"origin/{branch}", hard=True))
+
+                # Cleanup old data
+                await self.sys_run_in_executor(ft.partial(
+                    self.repo.git.clean, "-xdf"))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
