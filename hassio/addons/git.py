@@ -94,7 +94,7 @@ class GitRepo(CoreSysAttributes):
             _LOGGER.info("Pull addon %s repository", self.url)
             try:
                 await self.sys_run_in_executor(ft.partial(
-                    self.repo.remotes().fetch, update-shallow=True,
+                    self.repo.remotes.origin.fetch, update-shallow=True,
                     depth=1))
                 await self.sys_run_in_executor(ft.partial(
                     self.repo.reset, hard=True))
