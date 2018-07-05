@@ -92,7 +92,6 @@ class GitRepo(CoreSysAttributes):
 
         async with self.lock:
             git_args = {
-                'depth': 1,
                 'update-shallow': True,
             }
 
