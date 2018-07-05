@@ -28,7 +28,7 @@ class Hostname(DBusInterface):
 
         Return a coroutine.
         """
-        return self.dbus.SetStaticHostname(hostname)
+        return self.dbus.SetStaticHostname(hostname, False)
 
     @dbus_connected
     def get_properties(self):
