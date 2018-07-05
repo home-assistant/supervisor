@@ -94,7 +94,7 @@ class GitRepo(CoreSysAttributes):
             try:
                 _LOGGER.info("Pull addon %s repository", self.url)
                 await self.sys_run_in_executor(ft.partial(
-                    self.repo.remotes.origin.pull, depth=True))
+                    self.repo.remotes.origin.pull, depth=1))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
