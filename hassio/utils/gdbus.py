@@ -107,10 +107,9 @@ class DBus:
             raise DBusParseError() from None
 
     @staticmethod
-    def gvariant_args(*args):
+    def gvariant_args(args):
         """Convert args into gvariant."""
         gvariant = ""
-
         for arg in args:
             if isinstance(arg, bool):
                 gvariant += " {}".format(str(arg).lower())
@@ -129,7 +128,7 @@ class DBus:
             bus=self.bus_name,
             object=self.object_path,
             method=method,
-            args=self.gvariant_args(*args)
+            args=self.gvariant_args(args)
         ))
 
         # Run command
