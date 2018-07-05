@@ -106,13 +106,23 @@ class DBus:
             _LOGGER.error("Can't parse '%s': %s", raw, err)
             raise DBusParseError() from None
 
+    @staticmethod
+    def gvariant_args(*args):
+        """Convert args into gvariant."""
+        def _convert(arg):
+            """Convert single arg."""
+            if isinstance(arg, bool):
+                return str(arg).lower()
+            return str(arg)
+        return " ".join(map(_convert, args))
+
     async def call_dbus(self, method, *args):
         """Call a dbus method."""
         command = shlex.split(CALL.format(
             bus=self.bus_name,
             object=self.object_path,
             method=method,
-            args=" ".join(map(str, args))
+            args=self.gvariant_args(args)
         ))
 
         # Run command
