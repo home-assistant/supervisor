@@ -120,7 +120,6 @@ class DBus:
                 gvariant += f" \"{arg}\""
             gvariant += " {}".format(str(arg))
 
-        _LOGGER.info(gvariant)
         return gvariant.lstrip()
 
     async def call_dbus(self, method, *args):
@@ -129,7 +128,7 @@ class DBus:
             bus=self.bus_name,
             object=self.object_path,
             method=method,
-            args=self.gvariant_args(args)
+            args=self.gvariant_args(*args)
         ))
 
         # Run command
