@@ -137,7 +137,5 @@ class GitRepoCustom(GitRepo):
 
     def _remove(self):
         """Remove a repository addon."""
-        if not self.path.is_dir():
-            return
         _LOGGER.info("Remove custom addon repository %s", self.url)
         self._remove()
