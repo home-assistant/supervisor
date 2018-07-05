@@ -104,7 +104,7 @@ class GitRepo(CoreSysAttributes):
             return True
 
     def _remove(self):
-        """Remove a repository addon."""
+        """Remove a repository."""
         if not self.path.is_dir():
             return
 
@@ -136,6 +136,6 @@ class GitRepoCustom(GitRepo):
         super().__init__(coresys, path, url)
 
     def _remove(self):
-        """Remove a repository addon."""
+        """Remove a custom repository."""
         _LOGGER.info("Remove custom addon repository %s", self.url)
         self._remove()
