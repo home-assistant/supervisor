@@ -92,10 +92,14 @@ class GitRepo(CoreSysAttributes):
 
         async with self.lock:
             _LOGGER.info("Pull addon %s repository", self.url)
+
+            git_args = {
+                'update-shallow': True,
+                'depth': 1,
+            }
             try:
                 await self.sys_run_in_executor(ft.partial(
-                    self.repo.remotes.origin.fetch, update-shallow=True,
-                    depth=1))
+                    self.repo.remotes.origin.fetch, **git_args))
                 await self.sys_run_in_executor(ft.partial(
                     self.repo.reset, hard=True))
 
