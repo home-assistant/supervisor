@@ -45,8 +45,8 @@ class GitRepo(CoreSysAttributes):
         async with self.lock:
             try:
                 _LOGGER.info("Load addon %s repository", self.path)
-                self.repo = await self.sys_loop.run_in_executor(
-                    None, git.Repo, str(self.path))
+                self.repo = await self.sys_run_in_executor(
+                    git.Repo, str(self.path))
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
