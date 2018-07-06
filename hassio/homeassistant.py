@@ -213,7 +213,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def update(self, version=None):
         """Update HomeAssistant version."""
         version = version or self.last_version
-        rollback = self.version
+        rollback = self.version if not self.error_state else None
         running = await self.instance.is_running()
         exists = await self.instance.exists()
 
