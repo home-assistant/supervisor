@@ -46,6 +46,6 @@ def remove_data(folder):
             os.chmod(path, stat.S_IWRITE)
             func(path)
         except OSError as err:
-            _LOGGER.error("Can't remove add-on data: %s", err)
+            _LOGGER.warning("Can't remove path %s: %s", path, err)
 
     shutil.rmtree(folder, onerror=remove_readonly)
