@@ -1,7 +1,10 @@
 """Util addons functions."""
 import hashlib
 import logging
+import os
 import re
+import shutil
+import stat
 
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 
@@ -33,3 +36,16 @@ def check_installed(method):
         return await method(addon, *args, **kwargs)
 
     return wrap_check
+
+
+def remove_data(folder):
+    """Remove folder and reset privileged."""
+    def remove_readonly(func, path, _):
+        "Clear the readonly bit and reattempt the removal"
+        try:
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+        except OSError as err:
+            _LOGGER.error("Can't remove add-on data: %s", err)
+
+    shutil.rmtree(folder, onerror=remove_readonly)
