@@ -6,7 +6,6 @@ ENV LANG C.UTF-8
 
 # Setup base
 RUN apk add --no-cache \
-        python3 \
         git \
         socat \
         glib \
@@ -14,12 +13,11 @@ RUN apk add --no-cache \
         eudev-libs \
     && apk add --no-cache --virtual .build-dependencies \
         make \
-        python3-dev \
         g++ \
     && pip3 install --no-cache-dir \
         uvloop==0.10.2 \
         cchardet==2.1.1 \
-        pycryptodome==3.4.11 \
+        pycryptodome==3.6.4 \
     && apk del .build-dependencies
 
 # Install HassIO
