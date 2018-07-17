@@ -18,6 +18,10 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
         """Return name of HassOS cli image."""
         return f"homeassistant/{self.sys_arch}-hassio-cli"
 
+    def _stop(self):
+        """Don't need stop."""
+        return True
+    
     def _attach(self):
         """Attach to running docker container.
         Need run inside executor.
