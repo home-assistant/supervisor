@@ -175,6 +175,8 @@ ATTR_CPE = 'cpe'
 ATTR_BOARD = 'board'
 ATTR_HASSOS = 'hassos'
 ATTR_HASSOS_CLI = 'hassos_cli'
+ATTR_VERSION_CLI = 'version_cli'
+ATTR_VERSION_CLI_LATEST = 'version_cli_latest'
 ATTR_REFRESH_TOKEN = 'refresh_token'
 
 SERVICE_MQTT = 'mqtt'
