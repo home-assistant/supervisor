@@ -5,7 +5,9 @@ import logging
 import voluptuous as vol
 
 from .utils import api_process, api_validate
-from ..const import ATTR_VERSION, ATTR_BOARD, ATTR_VERSION_LATEST
+from ..const import (
+    ATTR_VERSION, ATTR_BOARD, ATTR_VERSION_LATEST, ATTR_VERSION_CLI,
+    ATTR_VERSION_CLI_LATEST)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,7 +25,9 @@ class APIHassOS(CoreSysAttributes):
         """Return hassos information."""
         return {
             ATTR_VERSION: self.sys_hassos.version,
+            ATTR_VERSION_CLI: self.sys_hassos.version_cli,
             ATTR_VERSION_LATEST: self.sys_hassos.version_latest,
+            ATTR_VERSION_CLI_LATEST: self.sys_hassos.version_cli_latest,
             ATTR_BOARD: self.sys_hassos.board,
         }
 
@@ -34,6 +38,14 @@ class APIHassOS(CoreSysAttributes):
         version = body.get(ATTR_VERSION, self.sys_hassos.version_latest)
 
         await asyncio.shield(self.sys_hassos.update(version))
+
+    @api_process
+    async def update_cli(self, request):
+        """Update HassOS CLI."""
+        body = await api_validate(SCHEMA_VERSION, request)
+        version = body.get(ATTR_VERSION, self.sys_hassos.version_cli_latest)
+
+        await asyncio.shield(self.sys_hassos.update_cli(version))
 
     @api_process
     def config_sync(self, request):
