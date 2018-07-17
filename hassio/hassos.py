@@ -18,6 +18,7 @@ class HassOS(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize HassOS handler."""
         self.coresys = coresys
+        self.instance = DockerHassOSCli(coresys)
         self._available = False
         self._version = None
         self._board = None
@@ -31,11 +32,21 @@ class HassOS(CoreSysAttributes):
     def version(self):
         """Return version of HassOS."""
         return self._version
+    
+    @property
+    def version_cli(self):
+        """Return version of HassOS cli."""
+        return self.instance.version
 
     @property
     def version_latest(self):
         """Return version of HassOS."""
         return self.sys_updater.version_hassos
+
+    @property
+    def version_cli_latest(self):
+        """Return version of HassOS."""
+        return self.sys_updater.version_hassos_cli
 
     @property
     def board(self):
@@ -86,7 +97,7 @@ class HassOS(CoreSysAttributes):
             cpe = CPE(self.sys_host.info.cpe)
             assert cpe.get_product()[0] == 'hassos'
         except (AssertionError, NotImplementedError):
-            _LOGGER.debug("Ignore HassOS")
+            _LOGGER.debug("Found no HassOS")
             return
 
         # Store meta data
@@ -95,6 +106,7 @@ class HassOS(CoreSysAttributes):
         self._board = cpe.get_target_hardware()[0]
 
         _LOGGER.info("Detect HassOS %s on host system", self.version)
+        await self.instance.attach()
 
     def config_sync(self):
         """Trigger a host config reload from usb.
@@ -141,4 +153,18 @@ class HassOS(CoreSysAttributes):
         rauc_status = await self.sys_dbus.get_properties()
         _LOGGER.error(
             "HassOS update fails with: %s", rauc_status.get('LastError'))
+        raise HassOSUpdateError()
+
+    async def update_cli(self, version=None):
+        """Update local HassOS cli."""
+        version = version or self.version_cli_latest
+
+        if version == self.version_cli:
+            _LOGGER.warning("Version %s is already installed for CLI", version)
+            raise HassOSUpdateError()
+
+        if await self.instance.update(version):
+            return
+
+        _LOGGER.error("HassOS CLI update fails.")
         raise HassOSUpdateError()
