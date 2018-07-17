@@ -285,6 +285,13 @@ return:
 }
 ```
 
+- POST `/hassos/update/cli`
+```json
+{
+    "version": "optional"
+}
+```
+
 - POST `/hassos/config/sync`
 
 Load host configs from a USB stick.
