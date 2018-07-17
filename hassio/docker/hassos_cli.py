@@ -23,11 +23,11 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            container = self.sys_docker.containers.get(self.name)
+            image = self.sys_docker.images.get(self.image)
         except docker.errors.DockerException:
             return False
 
-        self._meta = container.attrs
+        self._meta = image.attrs
         _LOGGER.info("Attach to HassOS cli %s with version %s",
                      self.image, self.version)
 
