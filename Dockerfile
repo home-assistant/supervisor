@@ -9,10 +9,11 @@ RUN apk add --no-cache \
         git \
         socat \
         glib \
+        libstdc++ \
         eudev-libs \
     && apk add --no-cache --virtual .build-dependencies \
         make \
-        gcc \
+        g++ \
     && pip3 install --no-cache-dir \
         uvloop==0.10.2 \
         cchardet==2.1.1 \
