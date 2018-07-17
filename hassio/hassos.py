@@ -49,6 +49,16 @@ class HassOS(CoreSysAttributes):
         return self.sys_updater.version_hassos_cli
 
     @property
+    def need_update(self):
+        """Return true if a HassOS update is available."""
+        return self.version != self.version_latest
+
+    @property
+    def need_cli_update(self):
+        """Return true if a HassOS cli update is available."""
+        return self.version_cli != self.version_cli_latest
+
+    @property
     def board(self):
         """Return board name."""
         return self._board
