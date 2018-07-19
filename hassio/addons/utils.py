@@ -39,15 +39,15 @@ def check_installed(method):
 async def remove_data(folder):
     """Remove folder and reset privileged."""
     try:
-        proc = await asyncio.create_subprocess_shell(
-            ["rm", "-rf", str(folder)], stdout=asyncio.DEVNULL
+        proc = await asyncio.create_subprocess_exec(
+            "rm", "-rf", str(folder),
+            stdout=asyncio.subprocess.DEVNULL
         )
 
-        response = await proc.communicate()
-        wrong = response[1].decode()
+        _, error_msg = await proc.communicate()
     except OSError as err:
-        wrong = str(err)
+        error_msg = str(err)
 
     if proc.returncode == 0:
         return
-    _LOGGER.error("Can't remove Add-on Data: %s", wrong)
+    _LOGGER.error("Can't remove Add-on Data: %s", error_msg)
