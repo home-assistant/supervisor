@@ -856,12 +856,12 @@ class Addon(CoreSysAttributes):
             # restore data
             def _restore_data():
                 """Restore data."""
-                if self.path_data.is_dir():
-                    await remove_data(self.path_data)
                 shutil.copytree(str(Path(temp, "data")), str(self.path_data))
 
+            _LOGGER.info("Restore data for addon %s", self._id)
+            if self.path_data.is_dir():
+                await remove_data(self.path_data)
             try:
-                _LOGGER.info("Restore data for addon %s", self._id)
                 await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data: %s", err)
