@@ -1,4 +1,5 @@
 """Util addons functions."""
+import asyncio
 import hashlib
 import logging
 import re
@@ -33,3 +34,20 @@ def check_installed(method):
         return await method(addon, *args, **kwargs)
 
     return wrap_check
+
+
+async def remove_data(folder):
+    """Remove folder and reset privileged."""
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            ["rm", "-rf", str(folder)], stdout=asyncio.DEVNULL
+        )
+
+        response = await proc.communicate()
+        wrong = response[1].decode()
+    except OSError as err:
+        wrong = str(err)
+
+    if proc.returncode == 0:
+        return
+    _LOGGER.error("Can't remove Add-on Data: %s", wrong)

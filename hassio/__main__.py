@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 import sys
 
-import hassio.bootstrap as bootstrap
+from hassio import bootstrap
 
 _LOGGER = logging.getLogger(__name__)
 
