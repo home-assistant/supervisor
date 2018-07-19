@@ -40,7 +40,7 @@ async def remove_data(folder):
     """Remove folder and reset privileged."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            ["rm", "-rf", str(folder)],
+            "rm", "-rf", str(folder),
             stdout=asyncio.subprocess.DEVNULL
         )
 
