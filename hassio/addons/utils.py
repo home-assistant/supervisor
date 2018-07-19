@@ -44,7 +44,7 @@ async def remove_data(folder):
             stdout=asyncio.subprocess.DEVNULL
         )
 
-        error_msg, _ = await proc.communicate()
+        _, error_msg = await proc.communicate()
     except OSError as err:
         error_msg = str(err)
 
