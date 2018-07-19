@@ -11,6 +11,28 @@ class HassioNotSupportedError(HassioError):
     pass
 
 
+# HomeAssistant
+
+class HomeAssistantError(HassioError):
+    """Home Assistant exception."""
+    pass
+
+
+class HomeAssistantUpdateError(HomeAssistantError):
+    """Error on update of a Home Assistant."""
+    pass
+
+
+class HomeAssistantAPIError(HomeAssistantError):
+    """Home Assistant API exception."""
+    pass
+
+
+class HomeAssistantAuthError(HomeAssistantAPIError):
+    """Home Assistant Auth API exception."""
+    pass
+
+
 # HassOS
 
 class HassOSError(HassioError):
