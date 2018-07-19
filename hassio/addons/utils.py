@@ -38,14 +38,12 @@ def check_installed(method):
     return wrap_check
 
 
-def remove_data(folder):
+async def remove_data(folder):
     """Remove folder and reset privileged."""
-    def remove_readonly(func, path, _):
-        "Clear the readonly bit and reattempt the removal"
-        try:
-            os.chmod(path, stat.S_IWRITE)
-            func(path)
-        except OSError as err:
-            _LOGGER.warning("Can't remove path %s: %s", path, err)
+    proc = await asyncio.create_subprocess_shell(
+        ["rm", "-rf", str(folder)], stdout=asyncio.DEVNULL  
+    )
 
-    shutil.rmtree(folder, onerror=remove_readonly)
+    response = await proc.communicate()
+    if proc.returncode != 0:
+        _LOGGER.error("Can't remove Add-on Data: %s", response[1].decode())
