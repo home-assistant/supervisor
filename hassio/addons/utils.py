@@ -1,4 +1,5 @@
 """Util addons functions."""
+import asyncio
 import hashlib
 import logging
 import re
