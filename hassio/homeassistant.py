@@ -373,7 +373,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 headers[hdrs.AUTHORIZATION] = f'Bearer {self.access_token}'
             
             async with getattr(self.sys_websession_ssl, method)(
-                    url, timeout=timeout, json=json) as resp:
+                    url, timeout=timeout, json=json
+            ) as resp:
                 # Access token expired
                 if resp.status == 401 and self.refresh_token:
                     self.access_token = None
@@ -387,8 +388,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             async with self.make_request('get', 'api/') as resp:
                 if resp.status in (200, 201):
                     return True
-
                 err = resp.status
+
         except (asyncio.TimeoutError, aiohttp.ClientError) as err:
             pass
 
@@ -404,8 +405,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             ) as resp:
                 if resp.status in (200, 201):
                     return True
-
                 err = resp.status
+
         except (asyncio.TimeoutError, aiohttp.ClientError) as err:
             pass
 
