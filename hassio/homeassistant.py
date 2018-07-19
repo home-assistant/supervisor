@@ -9,7 +9,6 @@ import time
 
 import aiohttp
 from aiohttp import hdrs
-from aiohttp.web_exceptions import HTTPUnauthorized
 import attr
 
 from .const import (
