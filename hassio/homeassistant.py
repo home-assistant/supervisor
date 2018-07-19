@@ -1,5 +1,6 @@
 """HomeAssistant control object."""
 import asyncio
+from contextlib import asynccontextmanager
 import logging
 import os
 import re
@@ -7,13 +8,15 @@ import socket
 import time
 
 import aiohttp
-from aiohttp.hdrs import CONTENT_TYPE
+from aiohttp import hdrs
+from aiohttp.web_exceptions import HTTPUnauthorized
 import attr
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
     ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
-    ATTR_WAIT_BOOT, HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
+    ATTR_WAIT_BOOT, ATTR_REFRESH_TOKEN,
+    HEADER_HA_ACCESS)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
 from .utils import convert_to_ascii, process_lock
@@ -38,6 +41,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self.instance = DockerHomeAssistant(coresys)
         self.lock = asyncio.Lock(loop=coresys.loop)
         self._error_state = False
+        # We don't persist access tokens. Instead we fetch new ones when needed
+        self.access_token = None
 
     async def load(self):
         """Prepare HomeAssistant object."""
@@ -174,6 +179,16 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def uuid(self):
         """Return a UUID of this HomeAssistant."""
         return self._data[ATTR_UUID]
+
+    @property
+    def refresh_token(self):
+        """Return the refresh token to authenticate with Home Assistant."""
+        return self._data.get(ATTR_REFRESH_TOKEN)
+
+    @refresh_token.setter
+    def refresh_token(self, value):
+        """Set Home Assistant refresh_token."""
+        self._data[ATTR_REFRESH_TOKEN] = value
 
     @process_lock
     async def install_landingpage(self):
@@ -317,51 +332,90 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return ConfigResult(False, log)
         return ConfigResult(True, log)
 
+    # PyLint doesn't understand async gen
+    # pylint: disable=E1701
+
+    async def ensure_access_token(self):
+        """Ensures there is an access token."""
+        if self.access_token is not None:
+            return
+
+        async with self.sys_websession_ssl.get(
+                f"{self.api_url}/auth/token",
+                timeout=30,
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": self.refresh_token
+                }
+        ) as resp:
+            if resp.status != 200:
+                raise HTTPUnauthorized()
+            tokens = await resp.json()
+            self.access_token = tokens['access_token']
+
+    @asynccontextmanager
+    async def make_request(self, method, path, json=None, content_type=None,
+                           data=None, timeout=30):
+        """Async context manager to make a request with right auth."""
+        url = f"{self.api_url}/{path}"
+        headers = {}
+
+        if content_type is not None:
+            headers[hdrs.CONTENT_TYPE] = content_type
+
+        if self.refresh_token:
+            await self.ensure_access_token()
+            headers[hdrs.AUTHORIZATION] = f'Bearer {self.access_token}'
+
+        elif self.api_password:
+            headers[HEADER_HA_ACCESS] = self.api_password
+
+        async with getattr(self.sys_websession_ssl, method)(
+                url,
+                timeout=timeout,
+                json=json,
+        ) as resp:
+            if resp.status != 401 or not self.refresh_token:
+                yield resp
+                return
+
+            # Access token expired
+            self.access_token = None
+            async with self.make_request(
+                    method, path, json, content_type, data, timeout,
+            ) as resp:
+                yield resp
+
     async def check_api_state(self):
         """Check if Home-Assistant up and running."""
-        url = f"{self.api_url}/api/"
-        header = {CONTENT_TYPE: CONTENT_TYPE_JSON}
-
-        if self.api_password:
-            header.update({HEADER_HA_ACCESS: self.api_password})
-
         try:
-            # pylint: disable=bad-continuation
-            async with self.sys_websession_ssl.get(
-                    url, headers=header, timeout=30) as request:
-                status = request.status
+            async with self.make_request('get', 'api/') as resp:
+                if resp.status in (200, 201):
+                    return True
 
-        except (asyncio.TimeoutError, aiohttp.ClientError):
-            return False
+                err = resp.status
+        except (asyncio.TimeoutError, aiohttp.ClientError) as err:
+            pass
 
-        if status not in (200, 201):
-            _LOGGER.warning("Home-Assistant API config missmatch")
-        return True
+        _LOGGER.warning("Home-Assistant API config missmatch: %d", err)
+        return False
 
     async def send_event(self, event_type, event_data=None):
         """Send event to Home-Assistant."""
-        url = f"{self.api_url}/api/events/{event_type}"
-        header = {CONTENT_TYPE: CONTENT_TYPE_JSON}
-
-        if self.api_password:
-            header.update({HEADER_HA_ACCESS: self.api_password})
-
         try:
-            # pylint: disable=bad-continuation
-            async with self.sys_websession_ssl.post(
-                    url, headers=header, timeout=30,
-                    json=event_data) as request:
-                status = request.status
+            # pylint: disable=E1701
+            async with self.make_request(
+                    'get', f'api/events/{event_type}'
+            ) as resp:
+                if resp.status in (200, 201):
+                    return True
 
+                err = resp.status
         except (asyncio.TimeoutError, aiohttp.ClientError) as err:
-            _LOGGER.warning(
-                "Home-Assistant event %s fails: %s", event_type, err)
-            return False
+            pass
 
-        if status not in (200, 201):
-            _LOGGER.warning("Home-Assistant event %s fails", event_type)
-            return False
-        return True
+        _LOGGER.warning("Home-Assistant event %s fails: %s", event_type, err)
+        return False
 
     async def _block_till_run(self):
         """Block until Home-Assistant is booting up or startup timeout."""

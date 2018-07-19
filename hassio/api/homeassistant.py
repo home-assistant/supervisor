@@ -10,7 +10,7 @@ from ..const import (
     ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG, ATTR_CPU_PERCENT,
     ATTR_MEMORY_USAGE, ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX,
     ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_WAIT_BOOT, ATTR_MACHINE,
-    CONTENT_TYPE_BINARY)
+    ATTR_REFRESH_TOKEN, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
 from ..validate import NETWORK_PORT, DOCKER_IMAGE
 
@@ -30,6 +30,8 @@ SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
     vol.Optional(ATTR_WAIT_BOOT):
         vol.All(vol.Coerce(int), vol.Range(min=60)),
+    # Required once we enforce user system
+    vol.Optional(ATTR_REFRESH_TOKEN): str,
 })
 
 SCHEMA_VERSION = vol.Schema({
@@ -82,6 +84,9 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_WAIT_BOOT in body:
             self.sys_homeassistant.wait_boot = body[ATTR_WAIT_BOOT]
+
+        if ATTR_REFRESH_TOKEN in body:
+            self.sys_homeassistant.refresh_token = body[ATTR_REFRESH_TOKEN]
 
         self.sys_homeassistant.save_data()
         return True
