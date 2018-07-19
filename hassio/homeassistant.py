@@ -297,7 +297,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def restart(self):
         """Restart HomeAssistant docker."""
         await self.instance.stop()
-        return await self._start()
+        await self._start()
 
     def logs(self):
         """Get HomeAssistant docker logs.
@@ -402,15 +402,15 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 return
 
     async def check_api_state(self):
-        """Check if Home-Assistant up and running."""
+        """Return True if Home-Assistant up and running."""
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
             async with self.make_request('get', 'api/') as resp:
                 if resp.status in (200, 201):
-                    return
+                    return True
                 err = resp.status
 
         _LOGGER.warning("Home-Assistant API config missmatch: %d", err)
-        raise HomeAssistantAPIError()
+        return False
 
     async def send_event(self, event_type, event_data=None):
         """Send event to Home-Assistant."""
@@ -436,6 +436,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 result = sock.connect_ex((str(self.api_ip), self.api_port))
                 sock.close()
 
+                # Check if the port is available
                 if result == 0:
                     return
             except OSError:

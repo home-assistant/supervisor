@@ -89,7 +89,6 @@ class APIHomeAssistant(CoreSysAttributes):
             self.sys_homeassistant.refresh_token = body[ATTR_REFRESH_TOKEN]
 
         self.sys_homeassistant.save_data()
-        return True
 
     @api_process
     async def stats(self, request):
@@ -114,11 +113,7 @@ class APIHomeAssistant(CoreSysAttributes):
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_homeassistant.last_version)
 
-        if version == self.sys_homeassistant.version:
-            raise RuntimeError("Version {} is already in use".format(version))
-
-        return await asyncio.shield(
-            self.sys_homeassistant.update(version))
+        await asyncio.shield(self.sys_homeassistant.update(version))
 
     @api_process
     def stop(self, request):
@@ -128,7 +123,7 @@ class APIHomeAssistant(CoreSysAttributes):
     @api_process
     def start(self, request):
         """Start homeassistant."""
-        return asyncio.shield(self.sys_homeassistant.start())
+        asyncio.shield(self.sys_homeassistant.start())
 
     @api_process
     def restart(self, request):
