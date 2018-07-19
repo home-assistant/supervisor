@@ -1,10 +1,7 @@
 """Util addons functions."""
 import hashlib
 import logging
-import os
 import re
-import shutil
-import stat
 
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 
@@ -44,6 +41,12 @@ async def remove_data(folder):
         ["rm", "-rf", str(folder)], stdout=asyncio.DEVNULL  
     )
 
-    response = await proc.communicate()
-    if proc.returncode != 0:
-        _LOGGER.error("Can't remove Add-on Data: %s", response[1].decode())
+    try:
+        response = await proc.communicate()
+        wrong = response[1].decode()
+    except OSError as err:
+        wrong = str(err)
+        
+    if proc.returncode == 0:
+        return
+    _LOGGER.error("Can't remove Add-on Data: %s", wrong)
