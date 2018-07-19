@@ -24,14 +24,12 @@ class APIProxy(CoreSysAttributes):
         hassio_token = request.headers.get(HEADER_HA_ACCESS)
         addon = self.sys_addons.from_uuid(hassio_token)
 
-        if not addon:
+        if not addon or addon.access_homeassistant_api:
             _LOGGER.warning("Unknown Home-Assistant API access!")
             raise HTTPUnauthorized()
 
-        _LOGGER.info("%s access from %s", request.path, addon.slug)
 
-    # PyLint doesn't understand async gen
-    # pylint: disable=E1701
+        _LOGGER.info("%s access from %s", request.path, addon.slug)
 
     @asynccontextmanager
     async def _api_client(self, request, path, timeout=300):
@@ -176,7 +174,7 @@ class APIProxy(CoreSysAttributes):
                             response.get('access_token'))
             addon = self.sys_addons.from_uuid(hassio_token)
 
-            if not addon:
+            if not addon or addon.access_homeassistant_api:
                 _LOGGER.warning("Unauthorized websocket access!")
                 await server.send_json({
                     'type': 'auth_invalid',
