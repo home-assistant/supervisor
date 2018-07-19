@@ -363,28 +363,23 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         if content_type is not None:
             headers[hdrs.CONTENT_TYPE] = content_type
 
-        if self.refresh_token:
-            await self.ensure_access_token()
-            headers[hdrs.AUTHORIZATION] = f'Bearer {self.access_token}'
-
         elif self.api_password:
             headers[HEADER_HA_ACCESS] = self.api_password
 
-        async with getattr(self.sys_websession_ssl, method)(
-                url,
-                timeout=timeout,
-                json=json,
-        ) as resp:
-            if resp.status != 401 or not self.refresh_token:
+        for _ in range(1..3):
+            # Prepare Access token
+            if self.refresh_token:
+                await self.ensure_access_token()
+                headers[hdrs.AUTHORIZATION] = f'Bearer {self.access_token}'
+            
+            async with getattr(self.sys_websession_ssl, method)(
+                    url, timeout=timeout, json=json) as resp:
+                # Access token expired
+                if resp.status == 401 and self.refresh_token:
+                    self.access_token = None
+                    continue
                 yield resp
                 return
-
-            # Access token expired
-            self.access_token = None
-            async with self.make_request(
-                    method, path, json, content_type, data, timeout,
-            ) as resp:
-                yield resp
 
     async def check_api_state(self):
         """Check if Home-Assistant up and running."""
