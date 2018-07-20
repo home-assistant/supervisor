@@ -1,3 +1,5 @@
+sudo: false
+distro: xenial
 install: pip install -U tox
 language: python
 python:
