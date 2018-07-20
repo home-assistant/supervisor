@@ -25,7 +25,7 @@ class APIProxy(CoreSysAttributes):
         hassio_token = request.headers.get(HEADER_HA_ACCESS)
         addon = self.sys_addons.from_uuid(hassio_token)
 
-        if not addon or addon.access_homeassistant_api:
+        if not addon:
             _LOGGER.warning("Unknown HomeAssistant API access!")
         elif not addon.access_homeassistant_api:
             _LOGGER.warning("Not permitted API access: %s", addon.slug)
