@@ -1,4 +1,5 @@
 """Fetch last versions from webserver."""
+import asyncio
 from contextlib import suppress
 from datetime import timedelta
 import json
