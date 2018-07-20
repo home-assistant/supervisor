@@ -184,7 +184,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     @property
     def refresh_token(self):
-        """Return the refresh token to authenticate with Home Assistant."""
+        """Return the refresh token to authenticate with HomeAssistant."""
         return self._data.get(ATTR_REFRESH_TOKEN)
 
     @refresh_token.setter
@@ -266,7 +266,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # Update going wrong, revert it
         if self.error_state and rollback:
-            _LOGGER.fatal("Home Assistant update fails -> rollback!")
+            _LOGGER.fatal("HomeAssistant update fails -> rollback!")
             await _update(rollback)
         else:
             raise HomeAssistantUpdateError()
@@ -363,7 +363,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 }
             ) as resp:
                 if resp.status != 200:
-                    _LOGGER.error("Authenticate problem with Home-Assistant!")
+                    _LOGGER.error("Authenticate problem with HomeAssistant!")
                     raise HomeAssistantAuthError()
                 tokens = await resp.json()
                 self.access_token = tokens['access_token']
@@ -422,7 +422,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                     return
                 err = resp.status
 
-        _LOGGER.warning("Home-Assistant event %s fails: %s", event_type, err)
+        _LOGGER.warning("HomeAssistant event %s fails: %s", event_type, err)
         return HomeAssistantError()
 
     async def _block_till_run(self):
@@ -446,7 +446,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         while time.monotonic() - start_time < self.wait_boot:
             # Check if API response
             if await self.sys_run_in_executor(check_port):
-                _LOGGER.info("Detect a running Home-Assistant instance")
+                _LOGGER.info("Detect a running HomeAssistant instance")
                 self._error_state = False
                 return
 
@@ -458,6 +458,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 _LOGGER.error("Home Assistant is crashed!")
                 break
 
-        _LOGGER.warning("Don't wait anymore of Home-Assistant startup!")
+        _LOGGER.warning("Don't wait anymore of HomeAssistant startup!")
         self._error_state = True
         raise HomeAssistantError()
