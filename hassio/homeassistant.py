@@ -340,7 +340,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # if not valid
         if result.exit_code is None:
-            return ConfigResult(False, "")
+            raise HomeAssistantError()
 
         # parse output
         log = convert_to_ascii(result.output)
@@ -403,7 +403,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def check_api_state(self):
         """Return True if Home-Assistant up and running."""
-        with suppress(asyncio.TimeoutError, aiohttp.ClientError):
+        with suppress(HomeAssistantAPIError):
             async with self.make_request('get', 'api/') as resp:
                 if resp.status in (200, 201):
                     return True
@@ -414,7 +414,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def send_event(self, event_type, event_data=None):
         """Send event to Home-Assistant."""
-        with suppress(asyncio.TimeoutError, aiohttp.ClientError):
+        with suppress(HomeAssistantAPIError):
             async with self.make_request(
                 'get', f'api/events/{event_type}'
             ) as resp:
@@ -423,7 +423,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 err = resp.status
 
         _LOGGER.warning("Home-Assistant event %s fails: %s", event_type, err)
-        return HomeAssistantAPIError()
+        return HomeAssistantError()
 
     async def _block_till_run(self):
         """Block until Home-Assistant is booting up or startup timeout."""
@@ -438,16 +438,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
                 # Check if the port is available
                 if result == 0:
-                    return
+                    return True
             except OSError:
                 pass
-            raise HomeAssistantError()
+            return False
 
         while time.monotonic() - start_time < self.wait_boot:
             # Check if API response
-            with suppress(HomeAssistantError):
-                await self.sys_run_in_executor(check_port)
-
+            if await self.sys_run_in_executor(check_port):
                 _LOGGER.info("Detect a running Home-Assistant instance")
                 self._error_state = False
                 return
