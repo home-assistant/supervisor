@@ -12,7 +12,7 @@ import async_timeout
 
 from ..const import HEADER_HA_ACCESS
 from ..coresys import CoreSysAttributes
-from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
+from ..exceptions import HomeAssistantAuthError
 
 _LOGGER = logging.getLogger(__name__)
 
