@@ -43,7 +43,7 @@ setup(
         'attr==0.3.1',
         'async_timeout==3.0.0',
         'aiohttp==3.3.2',
-        'docker==3.3.0',
+        'docker==3.4.0',
         'colorlog==3.1.2',
         'voluptuous==0.11.1',
         'gitpython==2.1.10',
