@@ -55,6 +55,7 @@ class APIProxy(CoreSysAttributes):
                     timeout=timeout,
             ) as resp:
                 yield resp
+                return
 
         except HomeAssistantAuthError:
             _LOGGER.error("Authenticate error on API for request %s", path)

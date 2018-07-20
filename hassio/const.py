@@ -50,7 +50,7 @@ CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_TEXT = 'text/plain'
 CONTENT_TYPE_TAR = 'application/tar'
 HEADER_HA_ACCESS = 'x-ha-access'
-HEADER_TOKEN = 'X-HASSIO-KEY'
+HEADER_TOKEN = 'x-hassio-key'
 
 ENV_TOKEN = 'HASSIO_TOKEN'
 ENV_TIME = 'TZ'
