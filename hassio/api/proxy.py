@@ -12,7 +12,7 @@ import async_timeout
 
 from ..const import HEADER_HA_ACCESS
 from ..coresys import CoreSysAttributes
-from ..exceptions import HomeAssistantAuthError
+from ..exceptions import HomeAssistantAuthError, HomeAssistantAPIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,6 +146,7 @@ class APIProxy(CoreSysAttributes):
             if data.get('type') == 'auth_ok':
                 return client
 
+            # Renew the Token is invalid
             if (data.get('type') == 'invalid_auth' and
                     self.sys_homeassistant.refresh_token):
                 self.sys_homeassistant.access_token = None
@@ -154,7 +155,7 @@ class APIProxy(CoreSysAttributes):
             _LOGGER.error(
                 "Failed authentication to Home-Assistant websocket: %s", data)
 
-        except (aiohttp.ClientError, RuntimeError) as err:
+        except (RuntimeError, HomeAssistantAPIError) as err:
             _LOGGER.error("Client error on websocket API %s.", err)
 
         raise HTTPBadGateway()

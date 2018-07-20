@@ -402,6 +402,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 yield resp
                 return
 
+        raise HomeAssistantAPIError()
+
     async def check_api_state(self):
         """Return True if Home-Assistant up and running."""
         with suppress(HomeAssistantAPIError):
