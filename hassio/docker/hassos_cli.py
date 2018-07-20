@@ -1,6 +1,5 @@
 """HassOS Cli docker object."""
 import logging
-import os
 
 import docker
 
@@ -21,7 +20,7 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
     def _stop(self):
         """Don't need stop."""
         return True
-    
+
     def _attach(self):
         """Attach to running docker container.
         Need run inside executor.
@@ -32,7 +31,7 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
             return False
 
         self._meta = image.attrs
-        _LOGGER.info("Attach to HassOS cli %s with version %s",
+        _LOGGER.info("Found HassOS cli %s with version %s",
                      self.image, self.version)
 
         return True
