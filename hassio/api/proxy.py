@@ -83,7 +83,7 @@ class APIProxy(CoreSysAttributes):
                         break
                     await response.write(data)
 
-            except asyncio.ConnectionResetError:
+            except aiohttp.ConnectionResetError:
                 pass
 
             except aiohttp.ClientError:
