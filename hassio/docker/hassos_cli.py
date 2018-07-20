@@ -27,11 +27,11 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
         """
         try:
             image = self.sys_docker.images.get(self.image)
+
         except docker.errors.DockerException:
-            return False
+            _LOGGER.warning("Can't find a HassOS cli %s", self.image)
 
-        self._meta = image.attrs
-        _LOGGER.info("Found HassOS cli %s with version %s",
-                     self.image, self.version)
-
-        return True
+        else:
+            self._meta = image.attrs
+            _LOGGER.info("Found HassOS cli %s with version %s",
+                         self.image, self.version)
