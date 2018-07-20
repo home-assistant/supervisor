@@ -1,12 +1,5 @@
-sudo: false
-matrix:
-  fast_finish: true
-  include:
-    - python: "3.7"
-
-cache:
-  directories:
-    - $HOME/.cache/pip
 install: pip install -U tox
 language: python
+python:
+  - "3.7"
 script: tox
