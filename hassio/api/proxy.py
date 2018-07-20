@@ -45,10 +45,10 @@ class APIProxy(CoreSysAttributes):
                 content_type = None
 
             async with self.sys_homeassistant.make_request(
-                request.method.lower(), f'api/{path}',
-                content_type=content_type,
-                data=data,
-                timeout=timeout,
+                    request.method.lower(), f'api/{path}',
+                    content_type=content_type,
+                    data=data,
+                    timeout=timeout,
             ) as resp:
                 yield resp
 

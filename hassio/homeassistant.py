@@ -355,12 +355,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
             async with self.sys_websession_ssl.get(
-                f"{self.api_url}/auth/token",
-                timeout=30,
-                data={
-                    "grant_type": "refresh_token",
-                    "refresh_token": self.refresh_token
-                }
+                    f"{self.api_url}/auth/token",
+                    timeout=30,
+                    data={
+                        "grant_type": "refresh_token",
+                        "refresh_token": self.refresh_token
+                    }
             ) as resp:
                 if resp.status != 200:
                     _LOGGER.error("Authenticate problem with HomeAssistant!")
@@ -392,7 +392,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 headers[hdrs.AUTHORIZATION] = f'Bearer {self.access_token}'
 
             async with getattr(self.sys_websession_ssl, method)(
-                url, timeout=timeout, json=json
+                    url, timeout=timeout, json=json
             ) as resp:
                 # Access token expired
                 if resp.status == 401 and self.refresh_token:
@@ -416,7 +416,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Send event to Home-Assistant."""
         with suppress(HomeAssistantAPIError):
             async with self.make_request(
-                'get', f'api/events/{event_type}'
+                    'get', f'api/events/{event_type}'
             ) as resp:
                 if resp.status in (200, 201):
                     return

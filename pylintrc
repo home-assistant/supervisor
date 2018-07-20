@@ -33,7 +33,8 @@ disable=
   too-few-public-methods,
   abstract-method,
   no-else-return,
-  useless-return
+  useless-return,
+  not-async-context-manager
 
 [EXCEPTIONS]
 overgeneral-exceptions=Exception,HomeAssistantError
