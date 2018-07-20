@@ -7,6 +7,7 @@ from cpe import CPE
 
 from .coresys import CoreSysAttributes
 from .const import URL_HASSOS_OTA
+from .docker.hassos_cli import DockerHassOSCli
 from .exceptions import HassOSNotSupportedError, HassOSUpdateError, DBusError
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ class HassOS(CoreSysAttributes):
     def version(self):
         """Return version of HassOS."""
         return self._version
-    
+
     @property
     def version_cli(self):
         """Return version of HassOS cli."""
