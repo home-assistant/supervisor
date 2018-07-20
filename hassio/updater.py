@@ -81,7 +81,7 @@ class Updater(JsonConfig, CoreSysAttributes):
             async with self.sys_websession.get(url, timeout=10) as request:
                 data = await request.json(content_type=None)
 
-        except aiohttp.ClientError as err:
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
             raise HassioUpdaterError() from None
 
