@@ -131,5 +131,7 @@ class Tasks(CoreSysAttributes):
             return
 
         _LOGGER.error("Watchdog found a problem with Home-Assistant API!")
-        await self.sys_homeassistant.restart()
-        self._cache[HASS_WATCHDOG_API] = 0
+        try:
+            await self.sys_homeassistant.restart()
+        finally:
+            self._cache[HASS_WATCHDOG_API] = 0
