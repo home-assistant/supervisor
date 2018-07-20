@@ -8,7 +8,7 @@ import aiohttp
 
 from .const import (
     URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
-    ATTR_CHANNEL, ATTR_HASSOS)
+    ATTR_CHANNEL, ATTR_HASSOS, ATTR_HASSOS_CLI)
 from .coresys import CoreSysAttributes
 from .utils import AsyncThrottle
 from .utils.json import JsonConfig
@@ -50,6 +50,11 @@ class Updater(JsonConfig, CoreSysAttributes):
     def version_hassos(self):
         """Return last version of hassos."""
         return self._data.get(ATTR_HASSOS)
+
+    @property
+    def version_hassos_cli(self):
+        """Return last version of hassos cli."""
+        return self._data.get(ATTR_HASSOS_CLI)
 
     @property
     def channel(self):
@@ -99,6 +104,7 @@ class Updater(JsonConfig, CoreSysAttributes):
             # update hassos version
             if self.sys_hassos.available and board:
                 self._data[ATTR_HASSOS] = data['hassos'][board]
+                self._data[ATTR_HASSOS_CLI] = data['hassos-cli']
 
         except KeyError as err:
             _LOGGER.warning("Can't process version data: %s", err)
