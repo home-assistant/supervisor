@@ -1,4 +1,7 @@
 """Core Exceptions."""
+import asyncio
+
+import aiohttp
 
 
 class HassioError(Exception):
@@ -8,6 +11,29 @@ class HassioError(Exception):
 
 class HassioNotSupportedError(HassioError):
     """Function is not supported."""
+    pass
+
+
+# HomeAssistant
+
+class HomeAssistantError(HassioError):
+    """Home Assistant exception."""
+    pass
+
+
+class HomeAssistantUpdateError(HomeAssistantError):
+    """Error on update of a Home Assistant."""
+    pass
+
+
+class HomeAssistantAuthError(HomeAssistantError):
+    """Home Assistant Auth API exception."""
+    pass
+
+
+class HomeAssistantAPIError(
+        HomeAssistantAuthError, asyncio.TimeoutError, aiohttp.ClientError):
+    """Home Assistant API exception."""
     pass
 
 

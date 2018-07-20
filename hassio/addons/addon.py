@@ -14,7 +14,7 @@ from voluptuous.humanize import humanize_error
 
 from .validate import (
     validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME, RE_SERVICE)
-from .utils import check_installed
+from .utils import check_installed, remove_data
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
@@ -636,7 +636,7 @@ class Addon(CoreSysAttributes):
         if self.path_data.is_dir():
             _LOGGER.info(
                 "Remove Home-Assistant addon data folder %s", self.path_data)
-            shutil.rmtree(str(self.path_data))
+            await remove_data(self.path_data)
 
         # Cleanup audio settings
         if self.path_asound.exists():
@@ -856,12 +856,12 @@ class Addon(CoreSysAttributes):
             # restore data
             def _restore_data():
                 """Restore data."""
-                if self.path_data.is_dir():
-                    shutil.rmtree(str(self.path_data), ignore_errors=True)
                 shutil.copytree(str(Path(temp, "data")), str(self.path_data))
 
+            _LOGGER.info("Restore data for addon %s", self._id)
+            if self.path_data.is_dir():
+                await remove_data(self.path_data)
             try:
-                _LOGGER.info("Restore data for addon %s", self._id)
                 await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data: %s", err)

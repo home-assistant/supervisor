@@ -1,15 +1,18 @@
 """Utils for HomeAssistant Proxy."""
 import asyncio
+from contextlib import asynccontextmanager
 import logging
 
 import aiohttp
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPBadGateway, HTTPInternalServerError
+from aiohttp.web_exceptions import (
+    HTTPBadGateway, HTTPInternalServerError, HTTPUnauthorized)
 from aiohttp.hdrs import CONTENT_TYPE
 import async_timeout
 
 from ..const import HEADER_HA_ACCESS
 from ..coresys import CoreSysAttributes
+from ..exceptions import HomeAssistantAuthError, HomeAssistantAPIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,49 +26,43 @@ class APIProxy(CoreSysAttributes):
         addon = self.sys_addons.from_uuid(hassio_token)
 
         if not addon:
-            _LOGGER.warning("Unknown Home-Assistant API access!")
+            _LOGGER.warning("Unknown HomeAssistant API access!")
+        elif not addon.access_homeassistant_api:
+            _LOGGER.warning("Not permitted API access: %s", addon.slug)
         else:
             _LOGGER.info("%s access from %s", request.path, addon.slug)
+            return
 
+        raise HTTPUnauthorized()
+
+    @asynccontextmanager
     async def _api_client(self, request, path, timeout=300):
         """Return a client request with proxy origin for Home-Assistant."""
-        url = f"{self.sys_homeassistant.api_url}/api/{path}"
-
         try:
-            data = None
-            headers = {}
-            method = getattr(self.sys_websession_ssl, request.method.lower())
-            params = request.query or None
-
             # read data
             with async_timeout.timeout(30):
                 data = await request.read()
 
             if data:
-                headers.update({CONTENT_TYPE: request.content_type})
+                content_type = request.content_type
+            else:
+                content_type = None
 
-            # need api password?
-            if self.sys_homeassistant.api_password:
-                headers = {
-                    HEADER_HA_ACCESS: self.sys_homeassistant.api_password,
-                }
+            async with self.sys_homeassistant.make_request(
+                    request.method.lower(), f'api/{path}',
+                    content_type=content_type,
+                    data=data,
+                    timeout=timeout,
+            ) as resp:
+                yield resp
+                return
 
-            # reset headers
-            if not headers:
-                headers = None
-
-            client = await method(
-                url, data=data, headers=headers, timeout=timeout,
-                params=params
-            )
-
-            return client
-
+        except HomeAssistantAuthError:
+            _LOGGER.error("Authenticate error on API for request %s", path)
         except aiohttp.ClientError as err:
-            _LOGGER.error("Client error on API %s request %s.", path, err)
-
+            _LOGGER.error("Client error on API %s request %s", path, err)
         except asyncio.TimeoutError:
-            _LOGGER.error("Client timeout error on API request %s.", path)
+            _LOGGER.error("Client timeout error on API request %s", path)
 
         raise HTTPBadGateway()
 
@@ -74,30 +71,25 @@ class APIProxy(CoreSysAttributes):
         self._check_access(request)
 
         _LOGGER.info("Home-Assistant EventStream start")
-        client = await self._api_client(request, 'stream', timeout=None)
+        async with self._api_client(request, 'stream', timeout=None) as client:
+            response = web.StreamResponse()
+            response.content_type = request.headers.get(CONTENT_TYPE)
+            try:
+                await response.prepare(request)
+                while True:
+                    data = await client.content.read(10)
+                    if not data:
+                        break
+                    await response.write(data)
 
-        response = web.StreamResponse()
-        response.content_type = request.headers.get(CONTENT_TYPE)
-        try:
-            await response.prepare(request)
-            while True:
-                data = await client.content.read(10)
-                if not data:
-                    await response.write_eof()
-                    break
-                await response.write(data)
+            except aiohttp.ClientError:
+                pass
 
-        except aiohttp.ClientError:
-            await response.write_eof()
+            finally:
+                client.close()
+                _LOGGER.info("Home-Assistant EventStream close")
 
-        except asyncio.CancelledError:
-            pass
-
-        finally:
-            client.close()
-            _LOGGER.info("Home-Assistant EventStream close")
-
-        return response
+            return response
 
     async def api(self, request):
         """Proxy HomeAssistant API Requests."""
@@ -105,14 +97,13 @@ class APIProxy(CoreSysAttributes):
 
         # Normal request
         path = request.match_info.get('path', '')
-        client = await self._api_client(request, path)
-
-        data = await client.read()
-        return web.Response(
-            body=data,
-            status=client.status,
-            content_type=client.content_type
-        )
+        async with self._api_client(request, path) as client:
+            data = await client.read()
+            return web.Response(
+                body=data,
+                status=client.status,
+                content_type=client.content_type
+            )
 
     async def _websocket_client(self):
         """Initialize a websocket api connection."""
@@ -123,19 +114,44 @@ class APIProxy(CoreSysAttributes):
                 url, heartbeat=60, verify_ssl=False)
 
             # handle authentication
-            for _ in range(2):
-                data = await client.receive_json()
-                if data.get('type') == 'auth_ok':
-                    return client
-                elif data.get('type') == 'auth_required':
-                    await client.send_json({
-                        'type': 'auth',
-                        'api_password': self.sys_homeassistant.api_password,
-                    })
+            data = await client.receive_json()
 
-            _LOGGER.error("Authentication to Home-Assistant websocket")
+            if data.get('type') == 'auth_ok':
+                return client
 
-        except (aiohttp.ClientError, RuntimeError) as err:
+            if data.get('type') != 'auth_required':
+                # Invalid protocol
+                _LOGGER.error(
+                    'Got unexpected response from HA websocket: %s', data)
+                raise HTTPBadGateway()
+
+            if self.sys_homeassistant.refresh_token:
+                await self.sys_homeassistant.ensure_access_token()
+                await client.send_json({
+                    'type': 'auth',
+                    'access_token': self.sys_homeassistant.access_token,
+                })
+            else:
+                await client.send_json({
+                    'type': 'auth',
+                    'api_password': self.sys_homeassistant.api_password,
+                })
+
+            data = await client.receive_json()
+
+            if data.get('type') == 'auth_ok':
+                return client
+
+            # Renew the Token is invalid
+            if (data.get('type') == 'invalid_auth' and
+                    self.sys_homeassistant.refresh_token):
+                self.sys_homeassistant.access_token = None
+                return await self._websocket_client()
+
+            _LOGGER.error(
+                "Failed authentication to Home-Assistant websocket: %s", data)
+
+        except (RuntimeError, HomeAssistantAPIError) as err:
             _LOGGER.error("Client error on websocket API %s.", err)
 
         raise HTTPBadGateway()
@@ -157,13 +173,19 @@ class APIProxy(CoreSysAttributes):
 
             # Check API access
             response = await server.receive_json()
-            hassio_token = response.get('api_password')
+            hassio_token = (response.get('api_password') or
+                            response.get('access_token'))
             addon = self.sys_addons.from_uuid(hassio_token)
 
-            if not addon:
+            if not addon or not addon.access_homeassistant_api:
                 _LOGGER.warning("Unauthorized websocket access!")
-            else:
-                _LOGGER.info("Websocket access from %s", addon.slug)
+                await server.send_json({
+                    'type': 'auth_invalid',
+                    'message': 'Invalid access',
+                })
+                return server
+
+            _LOGGER.info("Websocket access from %s", addon.slug)
 
             await server.send_json({
                 'type': 'auth_ok',

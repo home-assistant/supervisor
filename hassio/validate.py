@@ -9,7 +9,8 @@ from .const import (
     ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_CHANNEL, ATTR_TIMEZONE, ATTR_HASSOS,
     ATTR_ADDONS_CUSTOM_LIST, ATTR_PASSWORD, ATTR_HOMEASSISTANT, ATTR_HASSIO,
     ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG,
-    ATTR_WAIT_BOOT, ATTR_UUID, CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
+    ATTR_WAIT_BOOT, ATTR_UUID, ATTR_REFRESH_TOKEN, ATTR_HASSOS_CLI,
+    CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
 
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
@@ -88,6 +89,7 @@ SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
     vol.Optional(ATTR_PORT, default=8123): NETWORK_PORT,
     vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
+    vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
     vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
     vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
     vol.Optional(ATTR_WAIT_BOOT, default=600):
@@ -100,6 +102,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema({
     vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
     vol.Optional(ATTR_HASSIO): vol.Coerce(str),
     vol.Optional(ATTR_HASSOS): vol.Coerce(str),
+    vol.Optional(ATTR_HASSOS_CLI): vol.Coerce(str),
 }, extra=vol.REMOVE_EXTRA)
 
 

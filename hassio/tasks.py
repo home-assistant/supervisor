@@ -10,6 +10,7 @@ HASS_WATCHDOG_API = 'HASS_WATCHDOG_API'
 
 RUN_UPDATE_SUPERVISOR = 29100
 RUN_UPDATE_ADDONS = 57600
+RUN_UPDATE_HASSOSCLI = 29100
 
 RUN_RELOAD_ADDONS = 21600
 RUN_RELOAD_SNAPSHOTS = 72000
@@ -35,6 +36,8 @@ class Tasks(CoreSysAttributes):
             self._update_addons, RUN_UPDATE_ADDONS))
         self.jobs.add(self.sys_scheduler.register_task(
             self._update_supervisor, RUN_UPDATE_SUPERVISOR))
+        self.jobs.add(self.sys_scheduler.register_task(
+            self._update_hassos_cli, RUN_UPDATE_HASSOSCLI))
 
         self.jobs.add(self.sys_scheduler.register_task(
             self.sys_addons.reload, RUN_RELOAD_ADDONS))
@@ -79,7 +82,7 @@ class Tasks(CoreSysAttributes):
         if not self.sys_supervisor.need_update:
             return
 
-        # don't perform an update on beta/dev channel
+        # don't perform an update on dev channel
         if self.sys_dev:
             _LOGGER.warning("Ignore Hass.io update on dev channel!")
             return
@@ -131,5 +134,20 @@ class Tasks(CoreSysAttributes):
             return
 
         _LOGGER.error("Watchdog found a problem with Home-Assistant API!")
-        await self.sys_homeassistant.restart()
-        self._cache[HASS_WATCHDOG_API] = 0
+        try:
+            await self.sys_homeassistant.restart()
+        finally:
+            self._cache[HASS_WATCHDOG_API] = 0
+
+    async def _update_hassos_cli(self):
+        """Check and run update of HassOS CLI."""
+        if not self.sys_hassos.need_cli_update:
+            return
+
+        # don't perform an update on dev channel
+        if self.sys_dev:
+            _LOGGER.warning("Ignore HassOS CLI update on dev channel!")
+            return
+
+        _LOGGER.info("Found new HassOS CLI version")
+        await self.sys_hassos.update_cli()
