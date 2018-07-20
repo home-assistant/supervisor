@@ -79,7 +79,6 @@ class APIProxy(CoreSysAttributes):
                 while True:
                     data = await client.content.read(10)
                     if not data:
-                        await response.write_eof()
                         break
                     await response.write(data)
 
