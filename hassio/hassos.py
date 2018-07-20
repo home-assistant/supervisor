@@ -78,6 +78,10 @@ class HassOS(CoreSysAttributes):
         try:
             _LOGGER.info("Fetch OTA update from %s", url)
             async with self.sys_websession.get(url) as request:
+                if request.status != 200:
+                    raise HassOSUpdateError()
+
+                # Download RAUCB file
                 with raucb.open('wb') as ota_file:
                     while True:
                         chunk = await request.content.read(1048576)
