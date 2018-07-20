@@ -1,4 +1,5 @@
 """Tools file for HassIO."""
+import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
 import re
