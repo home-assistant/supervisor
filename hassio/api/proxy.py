@@ -27,9 +27,13 @@ class APIProxy(CoreSysAttributes):
 
         if not addon or addon.access_homeassistant_api:
             _LOGGER.warning("Unknown HomeAssistant API access!")
-            raise HTTPUnauthorized()
+        elif not addon.access_homeassistant_api:
+            _LOGGER.warning("Not permitted API access: %s", addon.slug)
+        else:
+            _LOGGER.info("%s access from %s", request.path, addon.slug)
+            return
 
-        _LOGGER.info("%s access from %s", request.path, addon.slug)
+        raise HTTPUnauthorized()
 
     @asynccontextmanager
     async def _api_client(self, request, path, timeout=300):
