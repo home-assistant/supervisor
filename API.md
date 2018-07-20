@@ -273,12 +273,21 @@ return:
 ```json
 {
     "version": "2.3",
+    "version_cli": "7",
     "version_latest": "2.4",
+    "version_cli_latest": "8",
     "board": "ova|rpi"
 }
 ```
 
 - POST `/hassos/update`
+```json
+{
+    "version": "optional"
+}
+```
+
+- POST `/hassos/update/cli`
 ```json
 {
     "version": "optional"

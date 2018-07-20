@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DockerSupervisor(DockerInterface, CoreSysAttributes):
-    """Docker hassio wrapper for HomeAssistant."""
+    """Docker hassio wrapper for Supervisor."""
 
     @property
     def name(self):
