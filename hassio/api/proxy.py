@@ -179,7 +179,7 @@ class APIProxy(CoreSysAttributes):
                             response.get('access_token'))
             addon = self.sys_addons.from_uuid(hassio_token)
 
-            if not addon or addon.access_homeassistant_api:
+            if not addon or not addon.access_homeassistant_api:
                 _LOGGER.warning("Unauthorized websocket access!")
                 await server.send_json({
                     'type': 'auth_invalid',
