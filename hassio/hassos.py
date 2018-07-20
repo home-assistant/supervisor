@@ -1,4 +1,5 @@
 """HassOS support on supervisor."""
+import asyncio
 import logging
 from pathlib import Path
 
