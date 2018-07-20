@@ -252,12 +252,13 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         async def _update(to_version):
             """Run Home Assistant update."""
             try:
-                _LOGGER.info("Update HomeAssistant to version %s", version)
+                _LOGGER.info("Update HomeAssistant to version %s", to_version)
                 if not await self.instance.update(to_version):
                     raise HomeAssistantUpdateError()
             finally:
                 if running:
                     await self._start()
+                _LOGGER.info("Successfull run HomeAssistant %s", to_version)
 
         # Update Home Assistant
         with suppress(HomeAssistantError):
