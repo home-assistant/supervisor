@@ -1,5 +1,6 @@
 """HomeAssistant control object."""
 import asyncio
+from contextlib import asynccontextmanager, suppress
 import logging
 import os
 import re
@@ -7,15 +8,19 @@ import socket
 import time
 
 import aiohttp
-from aiohttp.hdrs import CONTENT_TYPE
+from aiohttp import hdrs
 import attr
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
     ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
-    ATTR_WAIT_BOOT, HEADER_HA_ACCESS, CONTENT_TYPE_JSON)
+    ATTR_WAIT_BOOT, ATTR_REFRESH_TOKEN,
+    HEADER_HA_ACCESS)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
+from .exceptions import (
+    HomeAssistantUpdateError, HomeAssistantError, HomeAssistantAPIError,
+    HomeAssistantAuthError)
 from .utils import convert_to_ascii, process_lock
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
@@ -25,7 +30,7 @@ _LOGGER = logging.getLogger(__name__)
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
 # pylint: disable=invalid-name
-ConfigResult = attr.make_class('ConfigResult', ['valid', 'log'])
+ConfigResult = attr.make_class('ConfigResult', ['valid', 'log'], frozen=True)
 
 
 class HomeAssistant(JsonConfig, CoreSysAttributes):
@@ -38,6 +43,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self.instance = DockerHomeAssistant(coresys)
         self.lock = asyncio.Lock(loop=coresys.loop)
         self._error_state = False
+        # We don't persist access tokens. Instead we fetch new ones when needed
+        self.access_token = None
 
     async def load(self):
         """Prepare HomeAssistant object."""
@@ -175,6 +182,16 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Return a UUID of this HomeAssistant."""
         return self._data[ATTR_UUID]
 
+    @property
+    def refresh_token(self):
+        """Return the refresh token to authenticate with HomeAssistant."""
+        return self._data.get(ATTR_REFRESH_TOKEN)
+
+    @refresh_token.setter
+    def refresh_token(self, value):
+        """Set Home Assistant refresh_token."""
+        self._data[ATTR_REFRESH_TOKEN] = value
+
     @process_lock
     async def install_landingpage(self):
         """Install a landingpage."""
@@ -186,7 +203,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await asyncio.sleep(60)
 
         # Run landingpage after installation
-        await self._start()
+        _LOGGER.info("Start landingpage")
+        try:
+            await self._start()
+        except HomeAssistantError:
+            _LOGGER.warning("Can't start landingpage")
 
     @process_lock
     async def install(self):
@@ -205,9 +226,15 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # finishing
         _LOGGER.info("HomeAssistant docker now installed")
-        if self.boot:
+        try:
+            if not self.boot:
+                return
+            _LOGGER.info("Start HomeAssistant")
             await self._start()
-        await self.instance.cleanup()
+        except HomeAssistantError:
+            _LOGGER.error("Can't start HomeAssistant!")
+        finally:
+            await self.instance.cleanup()
 
     @process_lock
     async def update(self, version=None):
@@ -219,32 +246,37 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         if exists and version == self.instance.version:
             _LOGGER.warning("Version %s is already installed", version)
-            return False
+            return HomeAssistantUpdateError()
 
         # process a update
         async def _update(to_version):
             """Run Home Assistant update."""
             try:
-                return await self.instance.update(to_version)
+                _LOGGER.info("Update HomeAssistant to version %s", to_version)
+                if not await self.instance.update(to_version):
+                    raise HomeAssistantUpdateError()
             finally:
                 if running:
                     await self._start()
+                _LOGGER.info("Successfull run HomeAssistant %s", to_version)
 
         # Update Home Assistant
-        ret = await _update(version)
+        with suppress(HomeAssistantError):
+            await _update(version)
+            return
 
         # Update going wrong, revert it
         if self.error_state and rollback:
-            _LOGGER.fatal("Home Assistant update fails -> rollback!")
-            ret = await _update(rollback)
-
-        return ret
+            _LOGGER.fatal("HomeAssistant update fails -> rollback!")
+            await _update(rollback)
+        else:
+            raise HomeAssistantUpdateError()
 
     async def _start(self):
         """Start HomeAssistant docker & wait."""
         if not await self.instance.run():
-            return False
-        return await self._block_till_run()
+            raise HomeAssistantError()
+        await self._block_till_run()
 
     @process_lock
     def start(self):
@@ -266,7 +298,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def restart(self):
         """Restart HomeAssistant docker."""
         await self.instance.stop()
-        return await self._start()
+        await self._start()
 
     def logs(self):
         """Get HomeAssistant docker logs.
@@ -309,7 +341,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # if not valid
         if result.exit_code is None:
-            return ConfigResult(False, "")
+            raise HomeAssistantError()
 
         # parse output
         log = convert_to_ascii(result.output)
@@ -317,51 +349,84 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return ConfigResult(False, log)
         return ConfigResult(True, log)
 
-    async def check_api_state(self):
-        """Check if Home-Assistant up and running."""
-        url = f"{self.api_url}/api/"
-        header = {CONTENT_TYPE: CONTENT_TYPE_JSON}
+    async def ensure_access_token(self):
+        """Ensures there is an access token."""
+        if self.access_token is not None:
+            return
 
-        if self.api_password:
-            header.update({HEADER_HA_ACCESS: self.api_password})
-
-        try:
-            # pylint: disable=bad-continuation
+        with suppress(asyncio.TimeoutError, aiohttp.ClientError):
             async with self.sys_websession_ssl.get(
-                    url, headers=header, timeout=30) as request:
-                status = request.status
+                    f"{self.api_url}/auth/token",
+                    timeout=30,
+                    data={
+                        "grant_type": "refresh_token",
+                        "refresh_token": self.refresh_token
+                    }
+            ) as resp:
+                if resp.status != 200:
+                    _LOGGER.error("Authenticate problem with HomeAssistant!")
+                    raise HomeAssistantAuthError()
+                tokens = await resp.json()
+                self.access_token = tokens['access_token']
+                return
 
-        except (asyncio.TimeoutError, aiohttp.ClientError):
-            return False
+        _LOGGER.error("Can't update HomeAssistant access token!")
+        raise HomeAssistantAPIError()
 
-        if status not in (200, 201):
-            _LOGGER.warning("Home-Assistant API config missmatch")
-        return True
+    @asynccontextmanager
+    async def make_request(self, method, path, json=None, content_type=None,
+                           data=None, timeout=30):
+        """Async context manager to make a request with right auth."""
+        url = f"{self.api_url}/{path}"
+        headers = {}
+
+        if content_type is not None:
+            headers[hdrs.CONTENT_TYPE] = content_type
+
+        elif self.api_password:
+            headers[HEADER_HA_ACCESS] = self.api_password
+
+        for _ in (1, 2):
+            # Prepare Access token
+            if self.refresh_token:
+                await self.ensure_access_token()
+                headers[hdrs.AUTHORIZATION] = f'Bearer {self.access_token}'
+
+            async with getattr(self.sys_websession_ssl, method)(
+                    url, timeout=timeout, json=json
+            ) as resp:
+                # Access token expired
+                if resp.status == 401 and self.refresh_token:
+                    self.access_token = None
+                    continue
+                yield resp
+                return
+
+        raise HomeAssistantAPIError()
+
+    async def check_api_state(self):
+        """Return True if Home-Assistant up and running."""
+        with suppress(HomeAssistantAPIError):
+            async with self.make_request('get', 'api/') as resp:
+                if resp.status in (200, 201):
+                    return True
+                err = resp.status
+
+        _LOGGER.warning("Home-Assistant API config missmatch: %d", err)
+        return False
 
     async def send_event(self, event_type, event_data=None):
         """Send event to Home-Assistant."""
-        url = f"{self.api_url}/api/events/{event_type}"
-        header = {CONTENT_TYPE: CONTENT_TYPE_JSON}
+        with suppress(HomeAssistantAPIError):
+            async with self.make_request(
+                    'get', f'api/events/{event_type}'
+            ) as resp:
+                if resp.status in (200, 201):
+                    return
+                err = resp.status
 
-        if self.api_password:
-            header.update({HEADER_HA_ACCESS: self.api_password})
-
-        try:
-            # pylint: disable=bad-continuation
-            async with self.sys_websession_ssl.post(
-                    url, headers=header, timeout=30,
-                    json=event_data) as request:
-                status = request.status
-
-        except (asyncio.TimeoutError, aiohttp.ClientError) as err:
-            _LOGGER.warning(
-                "Home-Assistant event %s fails: %s", event_type, err)
-            return False
-
-        if status not in (200, 201):
-            _LOGGER.warning("Home-Assistant event %s fails", event_type)
-            return False
-        return True
+        _LOGGER.warning("HomeAssistant event %s fails: %s", event_type, err)
+        return HomeAssistantError()
 
     async def _block_till_run(self):
         """Block until Home-Assistant is booting up or startup timeout."""
@@ -374,27 +439,28 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 result = sock.connect_ex((str(self.api_ip), self.api_port))
                 sock.close()
 
+                # Check if the port is available
                 if result == 0:
                     return True
-                return False
             except OSError:
                 pass
+            return False
 
         while time.monotonic() - start_time < self.wait_boot:
             # Check if API response
             if await self.sys_run_in_executor(check_port):
-                _LOGGER.info("Detect a running Home-Assistant instance")
+                _LOGGER.info("Detect a running HomeAssistant instance")
                 self._error_state = False
-                return True
+                return
+
+            # wait and don't hit the system
+            await asyncio.sleep(10)
 
             # Check if Container is is_running
             if not await self.instance.is_running():
                 _LOGGER.error("Home Assistant is crashed!")
                 break
 
-            # wait and don't hit the system
-            await asyncio.sleep(10)
-
-        _LOGGER.warning("Don't wait anymore of Home-Assistant startup!")
+        _LOGGER.warning("Don't wait anymore of HomeAssistant startup!")
         self._error_state = True
-        return False
+        raise HomeAssistantError()

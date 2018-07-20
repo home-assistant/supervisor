@@ -26,6 +26,9 @@ class HassIO(CoreSysAttributes):
             self.sys_config.timezone = \
                 await fetch_timezone(self.sys_websession)
 
+        # Load Supervisor
+        await self.sys_supervisor.load()
+
         # Load DBus
         await self.sys_dbus.load()
 
@@ -34,9 +37,6 @@ class HassIO(CoreSysAttributes):
 
         # Load HassOS
         await self.sys_hassos.load()
-
-        # Load Supervisor
-        await self.sys_supervisor.load()
 
         # Load Home Assistant
         await self.sys_homeassistant.load()

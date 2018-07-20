@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '115'
+HASSIO_VERSION = '116'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
@@ -50,7 +50,7 @@ CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_TEXT = 'text/plain'
 CONTENT_TYPE_TAR = 'application/tar'
 HEADER_HA_ACCESS = 'x-ha-access'
-HEADER_TOKEN = 'X-HASSIO-KEY'
+HEADER_TOKEN = 'x-hassio-key'
 
 ENV_TOKEN = 'HASSIO_TOKEN'
 ENV_TIME = 'TZ'
@@ -174,6 +174,10 @@ ATTR_DEVICETREE = 'devicetree'
 ATTR_CPE = 'cpe'
 ATTR_BOARD = 'board'
 ATTR_HASSOS = 'hassos'
+ATTR_HASSOS_CLI = 'hassos_cli'
+ATTR_VERSION_CLI = 'version_cli'
+ATTR_VERSION_CLI_LATEST = 'version_cli_latest'
+ATTR_REFRESH_TOKEN = 'refresh_token'
 
 SERVICE_MQTT = 'mqtt'
 

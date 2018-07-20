@@ -247,7 +247,7 @@ class DBusSignalWrapper:
         self._proc.send_signal(SIGINT)
         await self._proc.communicate()
 
-    async def __aiter__(self):
+    def __aiter__(self):
         """Start Iteratation."""
         return self
 
