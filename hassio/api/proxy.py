@@ -12,6 +12,7 @@ import async_timeout
 
 from ..const import HEADER_HA_ACCESS
 from ..coresys import CoreSysAttributes
+from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,9 +26,8 @@ class APIProxy(CoreSysAttributes):
         addon = self.sys_addons.from_uuid(hassio_token)
 
         if not addon or addon.access_homeassistant_api:
-            _LOGGER.warning("Unknown Home-Assistant API access!")
+            _LOGGER.warning("Unknown HomeAssistant API access!")
             raise HTTPUnauthorized()
-
 
         _LOGGER.info("%s access from %s", request.path, addon.slug)
 
@@ -45,18 +45,19 @@ class APIProxy(CoreSysAttributes):
                 content_type = None
 
             async with self.sys_homeassistant.make_request(
-                    request.method.lower(), f'api/{path}',
-                    content_type=content_type,
-                    data=data,
-                    timeout=timeout,
+                request.method.lower(), f'api/{path}',
+                content_type=content_type,
+                data=data,
+                timeout=timeout,
             ) as resp:
                 yield resp
 
+        except HomeAssistantAuthError:
+            _LOGGER.error("Authenticate error on API for request %s", path)
         except aiohttp.ClientError as err:
-            _LOGGER.error("Client error on API %s request %s.", path, err)
-
+            _LOGGER.error("Client error on API %s request %s", path, err)
         except asyncio.TimeoutError:
-            _LOGGER.error("Client timeout error on API request %s.", path)
+            _LOGGER.error("Client timeout error on API request %s", path)
 
         raise HTTPBadGateway()
 
