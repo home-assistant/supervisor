@@ -1,4 +1,5 @@
 """HomeAssistant control object."""
+import asyncio
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -60,7 +61,7 @@ class Supervisor(CoreSysAttributes):
             async with self.sys_websession.get(url, timeout=10) as request:
                 data = await request.text()
 
-        except aiohttp.ClientError as err:
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch AppArmor profile: %s", err)
             return
 
