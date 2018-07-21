@@ -7,7 +7,6 @@ from .coresys import CoreSysAttributes
 from .const import (
     STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION, STARTUP_INITIALIZE)
 from .exceptions import HassioError
-from .utils.dt import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,12 +20,6 @@ class HassIO(CoreSysAttributes):
 
     async def setup(self):
         """Setup HassIO orchestration."""
-        # update timezone
-        if self.sys_config.timezone == 'UTC':
-            self.sys_config.timezone = \
-                await fetch_timezone(self.sys_websession)
-            self.sys_loop.call_soon(self.sys_config.save_data)
-
         # Load Supervisor
         await self.sys_supervisor.load()
 
