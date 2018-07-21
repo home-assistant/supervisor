@@ -7,7 +7,6 @@ from .coresys import CoreSysAttributes
 from .const import (
     STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION, STARTUP_INITIALIZE)
 from .exceptions import HassioError
-from .utils.dt import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
