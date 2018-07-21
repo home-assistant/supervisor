@@ -1,4 +1,5 @@
 """HassOS support on supervisor."""
+import asyncio
 import logging
 from pathlib import Path
 
@@ -92,7 +93,7 @@ class HassOS(CoreSysAttributes):
             _LOGGER.info("OTA update is downloaded on %s", raucb)
             return raucb
 
-        except aiohttp.ClientError as err:
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
 
         except OSError as err:
