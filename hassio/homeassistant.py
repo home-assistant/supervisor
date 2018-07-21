@@ -393,7 +393,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 headers[hdrs.AUTHORIZATION] = f'Bearer {self.access_token}'
 
             async with getattr(self.sys_websession_ssl, method)(
-                    url, timeout=timeout, json=json
+                    url, timeout=timeout, json=json, headers=headers
             ) as resp:
                 # Access token expired
                 if resp.status == 401 and self.refresh_token:
