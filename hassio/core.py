@@ -21,12 +21,6 @@ class HassIO(CoreSysAttributes):
 
     async def setup(self):
         """Setup HassIO orchestration."""
-        # update timezone
-        if self.sys_config.timezone == 'UTC':
-            self.sys_config.timezone = \
-                await fetch_timezone(self.sys_websession)
-            self.sys_loop.call_soon(self.sys_config.save_data)
-
         # Load Supervisor
         await self.sys_supervisor.load()
 
