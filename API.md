@@ -381,6 +381,7 @@ Output is the raw Docker log.
     "port": "port for access hass",
     "ssl": "bool",
     "password": "",
+    "refresh_token": "",
     "watchdog": "bool",
     "startup_time": 600
 }
