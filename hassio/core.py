@@ -6,7 +6,7 @@ import logging
 from .coresys import CoreSysAttributes
 from .const import (
     STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION, STARTUP_INITIALIZE)
-from .exceptions import HassioError
+from .exceptions import HassioError, HomeAssistantError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +87,8 @@ class HassIO(CoreSysAttributes):
 
             # run HomeAssistant
             if self.sys_homeassistant.boot:
-                await self.sys_homeassistant.start()
+                with suppress(HomeAssistantError):
+                    await self.sys_homeassistant.start()
 
             # start addon mark as application
             await self.sys_addons.boot(STARTUP_APPLICATION)
