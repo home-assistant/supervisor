@@ -123,7 +123,7 @@ class APIHomeAssistant(CoreSysAttributes):
     @api_process
     def start(self, request):
         """Start homeassistant."""
-        asyncio.shield(self.sys_homeassistant.start())
+        return asyncio.shield(self.sys_homeassistant.start())
 
     @api_process
     def restart(self, request):
