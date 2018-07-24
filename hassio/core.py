@@ -3,6 +3,8 @@ from contextlib import suppress
 import asyncio
 import logging
 
+import async_timeout
+
 from .coresys import CoreSysAttributes
 from .const import (
     STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION, STARTUP_INITIALIZE)
@@ -65,7 +67,6 @@ class HassIO(CoreSysAttributes):
 
         # start api
         await self.sys_api.start()
-        _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
 
         # start addon mark as initialize
         await self.sys_addons.boot(STARTUP_INITIALIZE)
@@ -113,12 +114,18 @@ class HassIO(CoreSysAttributes):
         self.sys_scheduler.suspend = True
 
         # process async stop tasks
-        await asyncio.wait([
-            self.sys_api.stop(),
-            self.sys_dns.stop(),
-            self.sys_websession.close(),
-            self.sys_websession_ssl.close()
-        ])
+        try:
+            with async_timeout.timeout(10):
+                await asyncio.wait([
+                    self.sys_api.stop(),
+                    self.sys_dns.stop(),
+                    self.sys_websession.close(),
+                    self.sys_websession_ssl.close()
+                ])
+        except asyncio.TimeoutError:
+            _LOGGER.warning("Force Shutdown!")
+
+        _LOGGER.info("Hass.io is down")
 
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
