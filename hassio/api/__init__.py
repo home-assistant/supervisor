@@ -236,7 +236,7 @@ class RestAPI(CoreSysAttributes):
         """Run rest api webserver."""
         await self._runner.setup()
         self._site = web.TCPSite(
-            self._runner, host="0.0.0.0", port=80, shutdown_timeout=10)
+            self._runner, host="0.0.0.0", port=80, shutdown_timeout=5)
 
         try:
             await self._site.start()

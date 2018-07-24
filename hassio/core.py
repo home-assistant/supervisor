@@ -115,7 +115,7 @@ class HassIO(CoreSysAttributes):
 
         # process async stop tasks
         try:
-            with async_timeout.timeout(15):
+            with async_timeout.timeout(10):
                 await asyncio.wait([
                     self.sys_api.stop(),
                     self.sys_dns.stop(),
