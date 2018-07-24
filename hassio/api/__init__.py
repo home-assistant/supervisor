@@ -235,13 +235,16 @@ class RestAPI(CoreSysAttributes):
     async def start(self):
         """Run rest api webserver."""
         await self._runner.setup()
-        self._site = web.TCPSite(self._runner, "0.0.0.0", 80)
+        self._site = web.TCPSite(
+            self._runner, host="0.0.0.0", port=80, shutdown_timeout=5)
 
         try:
             await self._site.start()
         except OSError as err:
             _LOGGER.fatal(
                 "Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
+        else:
+            _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
 
     async def stop(self):
         """Stop rest api webserver."""
@@ -251,3 +254,5 @@ class RestAPI(CoreSysAttributes):
         # Shutdown running API
         await self._site.stop()
         await self._runner.cleanup()
+
+        _LOGGER.info("Stop API on %s", self.sys_docker.network.supervisor)
