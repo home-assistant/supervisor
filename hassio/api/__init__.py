@@ -242,6 +242,8 @@ class RestAPI(CoreSysAttributes):
         except OSError as err:
             _LOGGER.fatal(
                 "Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
+        else:
+            _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
 
     async def stop(self):
         """Stop rest api webserver."""
@@ -251,3 +253,5 @@ class RestAPI(CoreSysAttributes):
         # Shutdown running API
         await self._site.stop()
         await self._runner.cleanup()
+
+        _LOGGER.info("Stop API on %s", self.sys_docker.network.supervisor)
