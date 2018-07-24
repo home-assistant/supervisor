@@ -15,7 +15,7 @@ RUN apk add --no-cache \
         make \
         g++ \
     && pip3 install --no-cache-dir \
-        uvloop==0.10.2 \
+        uvloop==0.11.0 \
         cchardet==2.1.1 \
         pycryptodome==3.6.4 \
     && apk del .build-dependencies
