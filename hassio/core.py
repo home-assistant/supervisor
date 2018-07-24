@@ -123,7 +123,7 @@ class HassIO(CoreSysAttributes):
                     self.sys_websession_ssl.close()
                 ])
         except asyncio.TimeoutError:
-            _LOGGER.warning("Force Shutdown")
+            _LOGGER.warning("Force Shutdown!")
 
         _LOGGER.info("Hass.io is down")
 
