@@ -3,6 +3,8 @@ import asyncio
 import logging
 import shlex
 
+import async_timeout
+
 _LOGGER = logging.getLogger(__name__)
 
 COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:127.0.0.11:53"
@@ -38,5 +40,10 @@ class DNSForward:
             return
 
         self.proc.kill()
-        await self.proc.wait()
+        try:
+            with async_timeout.timeout(5):
+                await self.proc.wait()
+        except asyncio.TimeoutError:
+            _LOGGER.warning("Stop waiting for DNS shutdown")
+
         _LOGGER.info("Stop DNS forwarding")
