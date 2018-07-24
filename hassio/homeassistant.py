@@ -380,10 +380,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         url = f"{self.api_url}/{path}"
         headers = {}
 
+        # Passthrough content type
         if content_type is not None:
             headers[hdrs.CONTENT_TYPE] = content_type
 
-        elif self.api_password:
+        # Set old API Password
+        if self.api_password:
             headers[HEADER_HA_ACCESS] = self.api_password
 
         for _ in (1, 2):
