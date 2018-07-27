@@ -19,7 +19,7 @@ RUN apk add --no-cache \
         uvloop==0.11.0 \
         cchardet==2.1.1 \
     && pip3 install -r /usr/src/requirements.txt \
-    && apk del .build-dependencies
+    && apk del .build-dependencies \
     && rm -f /usr/src/requirements.txt
 
 # Install HassIO
