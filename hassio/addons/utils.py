@@ -29,7 +29,8 @@ def check_installed(method):
     async def wrap_check(addon, *args, **kwargs):
         """Return False if not installed or the function."""
         if not addon.is_installed:
-            _LOGGER.error("Addon %s is not installed", addon.slug)
+            _LOGGER.error("Addon %s is not installed or was never stared",
+                          addon.slug)
             return False
         return await method(addon, *args, **kwargs)
 
