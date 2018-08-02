@@ -45,7 +45,7 @@ class JsonConfig:
         if self._file.is_file():
             try:
                 self._data = read_json_file(self._file)
-            except (OSError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 _LOGGER.warning("Can't read %s", self._file)
                 self._data = {}
 
