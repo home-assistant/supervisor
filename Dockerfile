@@ -5,6 +5,7 @@ FROM $BUILD_FROM
 ENV LANG C.UTF-8
 
 # Setup base
+COPY requirements.txt /usr/src/
 RUN apk add --no-cache \
         git \
         socat \
@@ -14,11 +15,9 @@ RUN apk add --no-cache \
     && apk add --no-cache --virtual .build-dependencies \
         make \
         g++ \
-    && pip3 install --no-cache-dir \
-        uvloop==0.11.0 \
-        cchardet==2.1.1 \
-        pycryptodome==3.6.4 \
-    && apk del .build-dependencies
+    && pip3 install -r /usr/src/requirements.txt \
+    && apk del .build-dependencies \
+    && rm -f /usr/src/requirements.txt
 
 # Install HassIO
 COPY . /usr/src/hassio
