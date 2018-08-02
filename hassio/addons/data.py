@@ -80,7 +80,7 @@ class AddonsData(JsonConfig, CoreSysAttributes):
                 read_json_file(repository_file)
             )
 
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             _LOGGER.warning("Can't read repository information from %s",
                             repository_file)
             return
