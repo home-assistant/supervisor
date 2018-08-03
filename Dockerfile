@@ -1,9 +1,6 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Add env
-ENV LANG C.UTF-8
-
 # Setup base
 COPY requirements.txt /usr/src/
 RUN apk add --no-cache \
@@ -15,7 +12,7 @@ RUN apk add --no-cache \
     && apk add --no-cache --virtual .build-dependencies \
         make \
         g++ \
-    && pip3 install -r /usr/src/requirements.txt \
+    && pip3 install --no-cache-dir -r /usr/src/requirements.txt \
     && apk del .build-dependencies \
     && rm -f /usr/src/requirements.txt
 
