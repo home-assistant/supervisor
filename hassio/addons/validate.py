@@ -63,7 +63,8 @@ PRIVILEGED_ALL = [
     "SYS_RAWIO",
     "IPC_LOCK",
     "SYS_TIME",
-    "SYS_NICE"
+    "SYS_NICE",
+    "SYS_RESOURCE"
 ]
 
 BASE_IMAGE = {
