@@ -26,14 +26,13 @@ class HomeAssistantUpdateError(HomeAssistantError):
     pass
 
 
-class HomeAssistantAuthError(HomeAssistantError):
-    """Home Assistant Auth API exception."""
+class HomeAssistantAPIError(asyncio.TimeoutError, aiohttp.ClientError):
+    """Home Assistant API exception."""
     pass
 
 
-class HomeAssistantAPIError(
-        HomeAssistantAuthError, asyncio.TimeoutError, aiohttp.ClientError):
-    """Home Assistant API exception."""
+class HomeAssistantAuthError(HomeAssistantAPIError):
+    """Home Assistant Auth API exception."""
     pass
 
 
