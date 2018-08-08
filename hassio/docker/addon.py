@@ -222,6 +222,14 @@ class DockerAddon(DockerInterface):
                 },
             })
 
+        # Docker API support
+        if self.addon.with_docker_api:
+            volumes.update({
+                "/var/run/docker.sock": {
+                    'bind': "/var/run/docker.sock", 'mode': 'ro'
+                },
+            })
+
         # Host dbus system
         if self.addon.host_dbus:
             volumes.update({
