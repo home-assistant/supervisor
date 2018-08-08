@@ -363,15 +363,15 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                         "refresh_token": self.refresh_token
                     }
             ) as resp:
-                if resp.status != 200:
-                    _LOGGER.error("Can't update HomeAssistant access token!")
-                    raise HomeAssistantAuthError()
-                tokens = await resp.json()
-                self.access_token = tokens['access_token']
+                if resp.status == 200:
+                    _LOGGER.info("Updated HomeAssistant API token")
+                    tokens = await resp.json()
+                    self.access_token = tokens['access_token']
+                    return
 
-                _LOGGER.info("Updated HomeAssistant API token")
-                return
-
+        _LOGGER.error("Can't update HomeAssistant access token!")
+        raise HomeAssistantAuthError()
+            
     @asynccontextmanager
     async def make_request(self, method, path, json=None, content_type=None,
                            data=None, timeout=30):
