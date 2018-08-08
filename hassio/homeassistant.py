@@ -395,7 +395,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             try:
                 async with getattr(self.sys_websession_ssl, method)(
-                        url, data=data, timeout=timeout, json=json, headers=headers
+                        url, data=data, timeout=timeout, json=json,
+                        headers=headers
                 ) as resp:
                     # Access token expired
                     if resp.status == 401 and self.refresh_token:

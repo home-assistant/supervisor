@@ -1,5 +1,6 @@
 """Core Exceptions."""
 
+
 class HassioError(Exception):
     """Root exception."""
     pass
