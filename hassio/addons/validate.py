@@ -18,7 +18,7 @@ from ..const import (
     ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
     ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_SERVICES, ATTR_DISCOVERY,
-    ATTR_APPARMOR, ATTR_DEVICETREE)
+    ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE
 
 _LOGGER = logging.getLogger(__name__)
@@ -117,6 +117,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_HOMEASSISTANT_API, default=False): vol.Boolean(),
     vol.Optional(ATTR_STDIN, default=False): vol.Boolean(),
     vol.Optional(ATTR_LEGACY, default=False): vol.Boolean(),
+    vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),
     vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
     vol.Optional(ATTR_DISCOVERY): [vol.Match(RE_DISCOVERY)],
     vol.Required(ATTR_OPTIONS): dict,
