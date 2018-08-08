@@ -355,7 +355,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
-            async with self.sys_websession_ssl.get(
+            async with self.sys_websession_ssl.post(
                     f"{self.api_url}/auth/token",
                     timeout=30,
                     data={
