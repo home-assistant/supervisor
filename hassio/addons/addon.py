@@ -25,8 +25,8 @@ from ..const import (
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
-    ATTR_APPARMOR, ATTR_DEVICETREE, SECURITY_PROFILE, SECURITY_DISABLE,
-    SECURITY_DEFAULT)
+    ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, SECURITY_PROFILE,
+    SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
@@ -334,6 +334,11 @@ class Addon(CoreSysAttributes):
     def legacy(self):
         """Return if the add-on don't support hass labels."""
         return self._mesh.get(ATTR_LEGACY)
+
+    @property
+    def with_docker_api(self):
+        """Return if the add-on need read-only docker API access."""
+        return self._mesh.get(ATTR_DOCKER_API)
 
     @property
     def access_hassio_api(self):

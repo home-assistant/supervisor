@@ -482,6 +482,7 @@ Get all available addons.
     "webui": "null|http(s)://[HOST]:port/xy/zx",
     "gpio": "bool",
     "devicetree": "bool",
+    "docker_api": "bool",
     "audio": "bool",
     "audio_input": "null|0,0",
     "audio_output": "null|0,0",
