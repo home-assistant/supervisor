@@ -59,6 +59,8 @@ class APIProxy(CoreSysAttributes):
 
         except HomeAssistantAuthError:
             _LOGGER.error("Authenticate error on API for request %s", path)
+        except HomeAssistantAPIError:
+            _LOGGER.error("Error on API for request %s", path)
         except aiohttp.ClientError as err:
             _LOGGER.error("Client error on API %s request %s", path, err)
         except asyncio.TimeoutError:
@@ -148,11 +150,12 @@ class APIProxy(CoreSysAttributes):
                 self.sys_homeassistant.access_token = None
                 return await self._websocket_client()
 
-            _LOGGER.error(
-                "Failed authentication to Home-Assistant websocket: %s", data)
+            raise HomeAssistantAuthError()
 
-        except (RuntimeError, HomeAssistantAPIError) as err:
+        except (RuntimeError, ValueError) as err:
             _LOGGER.error("Client error on websocket API %s.", err)
+        except HomeAssistantAuthError as err:
+            _LOGGER.error("Failed authentication to HomeAssistant websocket")
 
         raise HTTPBadGateway()
 

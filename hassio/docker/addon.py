@@ -1,6 +1,7 @@
 """Init file for HassIO addon docker object."""
 import logging
 import os
+from pathlib import Path
 
 import docker
 import requests
@@ -204,20 +205,28 @@ class DockerAddon(DockerInterface):
 
         # GPIO support
         if self.addon.with_gpio:
-            volumes.update({
-                "/sys/class/gpio": {
-                    'bind': "/sys/class/gpio", 'mode': 'rw'
-                },
-                "/sys/devices/platform/soc": {
-                    'bind': "/sys/devices/platform/soc", 'mode': 'rw'
-                },
-            })
+            for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
+                if not Path(gpio_path).exists():
+                    continue
+                volumes.update({
+                    gpio_path: {
+                        'bind': gpio_path, 'mode': 'rw'
+                    },
+                })
 
         # DeviceTree support
         if self.addon.with_devicetree:
             volumes.update({
                 "/sys/firmware/devicetree/base": {
                     'bind': "/device-tree", 'mode': 'ro'
+                },
+            })
+
+        # Docker API support
+        if self.addon.with_docker_api:
+            volumes.update({
+                "/var/run/docker.sock": {
+                    'bind': "/var/run/docker.sock", 'mode': 'ro'
                 },
             })
 

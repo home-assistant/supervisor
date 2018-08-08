@@ -355,7 +355,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
-            async with self.sys_websession_ssl.get(
+            async with self.sys_websession_ssl.post(
                     f"{self.api_url}/auth/token",
                     timeout=30,
                     data={
@@ -363,15 +363,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                         "refresh_token": self.refresh_token
                     }
             ) as resp:
-                if resp.status != 200:
-                    _LOGGER.error("Authenticate problem with HomeAssistant!")
-                    raise HomeAssistantAuthError()
-                tokens = await resp.json()
-                self.access_token = tokens['access_token']
-                return
+                if resp.status == 200:
+                    _LOGGER.info("Updated HomeAssistant API token")
+                    tokens = await resp.json()
+                    self.access_token = tokens['access_token']
+                    return
 
         _LOGGER.error("Can't update HomeAssistant access token!")
-        raise HomeAssistantAPIError()
+        raise HomeAssistantAuthError()
 
     @asynccontextmanager
     async def make_request(self, method, path, json=None, content_type=None,
@@ -394,15 +393,20 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 await self.ensure_access_token()
                 headers[hdrs.AUTHORIZATION] = f'Bearer {self.access_token}'
 
-            async with getattr(self.sys_websession_ssl, method)(
-                    url, data=data, timeout=timeout, json=json, headers=headers
-            ) as resp:
-                # Access token expired
-                if resp.status == 401 and self.refresh_token:
-                    self.access_token = None
-                    continue
-                yield resp
-                return
+            try:
+                async with getattr(self.sys_websession_ssl, method)(
+                        url, data=data, timeout=timeout, json=json,
+                        headers=headers
+                ) as resp:
+                    # Access token expired
+                    if resp.status == 401 and self.refresh_token:
+                        self.access_token = None
+                        continue
+                    yield resp
+                    return
+            except (asyncio.TimeoutError, aiohttp.ClientError) as err:
+                _LOGGER.error("Error on call %s: %s", url, err)
+                break
 
         raise HomeAssistantAPIError()
 
