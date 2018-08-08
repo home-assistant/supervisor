@@ -1,7 +1,4 @@
 """Core Exceptions."""
-import asyncio
-
-import aiohttp
 
 
 class HassioError(Exception):
@@ -26,14 +23,13 @@ class HomeAssistantUpdateError(HomeAssistantError):
     pass
 
 
-class HomeAssistantAuthError(HomeAssistantError):
-    """Home Assistant Auth API exception."""
+class HomeAssistantAPIError(HomeAssistantError):
+    """Home Assistant API exception."""
     pass
 
 
-class HomeAssistantAPIError(
-        HomeAssistantAuthError, asyncio.TimeoutError, aiohttp.ClientError):
-    """Home Assistant API exception."""
+class HomeAssistantAuthError(HomeAssistantAPIError):
+    """Home Assistant Auth API exception."""
     pass
 
 

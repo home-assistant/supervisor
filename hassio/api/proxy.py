@@ -57,7 +57,7 @@ class APIProxy(CoreSysAttributes):
                 yield resp
                 return
 
-        except HomeAssistantAuthError:
+        except HomeAssistantAPIError:
             _LOGGER.error("Authenticate error on API for request %s", path)
         except aiohttp.ClientError as err:
             _LOGGER.error("Client error on API %s request %s", path, err)
@@ -151,7 +151,7 @@ class APIProxy(CoreSysAttributes):
             _LOGGER.error(
                 "Failed authentication to Home-Assistant websocket: %s", data)
 
-        except (RuntimeError, HomeAssistantAPIError) as err:
+        except (RuntimeError, HomeAssistantAuthError, ValueError) as err:
             _LOGGER.error("Client error on websocket API %s.", err)
 
         raise HTTPBadGateway()
