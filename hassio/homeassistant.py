@@ -371,7 +371,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         _LOGGER.error("Can't update HomeAssistant access token!")
         raise HomeAssistantAuthError()
-            
+
     @asynccontextmanager
     async def make_request(self, method, path, json=None, content_type=None,
                            data=None, timeout=30):
