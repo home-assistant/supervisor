@@ -178,6 +178,7 @@ ATTR_HASSOS_CLI = 'hassos_cli'
 ATTR_VERSION_CLI = 'version_cli'
 ATTR_VERSION_CLI_LATEST = 'version_cli_latest'
 ATTR_REFRESH_TOKEN = 'refresh_token'
+ATTR_DOCKER_API = 'docker_api'
 
 SERVICE_MQTT = 'mqtt'
 
