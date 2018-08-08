@@ -155,8 +155,7 @@ class APIProxy(CoreSysAttributes):
         except (RuntimeError, ValueError) as err:
             _LOGGER.error("Client error on websocket API %s.", err)
         except HomeAssistantAuthError as err:
-            _LOGGER.error(
-                "Failed authentication to HomeAssistant websocket: %s", data)
+            _LOGGER.error("Failed authentication to HomeAssistant websocket")
 
         raise HTTPBadGateway()
 
