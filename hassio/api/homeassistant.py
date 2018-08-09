@@ -21,21 +21,20 @@ _LOGGER = logging.getLogger(__name__)
 SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_BOOT): vol.Boolean(),
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'):
-        vol.Any(None, vol.Coerce(str)),
+        vol.Maybe(vol.Coerce(str)),
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'):
         vol.Any(None, DOCKER_IMAGE),
     vol.Optional(ATTR_PORT): NETWORK_PORT,
-    vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
+    vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
     vol.Optional(ATTR_SSL): vol.Boolean(),
     vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
     vol.Optional(ATTR_WAIT_BOOT):
         vol.All(vol.Coerce(int), vol.Range(min=60)),
-    # Required once we enforce user system
-    vol.Optional(ATTR_REFRESH_TOKEN): str,
+    vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
 })
 
 SCHEMA_VERSION = vol.Schema({
-    vol.Optional(ATTR_VERSION): vol.Coerce(str),
+    vol.Optional(ATTR_VERSION): vol.Coerce(vol.Coerce(str)),
 })
 
 
