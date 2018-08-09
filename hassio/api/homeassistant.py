@@ -34,7 +34,7 @@ SCHEMA_OPTIONS = vol.Schema({
 })
 
 SCHEMA_VERSION = vol.Schema({
-    vol.Optional(ATTR_VERSION): vol.Coerce(vol.Coerce(str)),
+    vol.Optional(ATTR_VERSION): vol.Coerce(str),
 })
 
 
