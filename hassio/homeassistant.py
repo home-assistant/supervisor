@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager, suppress
 import logging
 import os
 import re
+from pathlib import Path
 import socket
 import time
 
@@ -28,6 +29,7 @@ from .validate import SCHEMA_HASS_CONFIG
 _LOGGER = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
+RE_TIMEZONE = re.compile(r"timezone: (?P<timezone>[\w/\-+]*")
 
 # pylint: disable=invalid-name
 ConfigResult = attr.make_class('ConfigResult', ['valid', 'log'], frozen=True)
@@ -192,6 +194,25 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Set Home Assistant refresh_token."""
         self._data[ATTR_REFRESH_TOKEN] = value
 
+    @property
+    def timezone(self):
+        """Read timezone from config."""
+        config_file = Path(self.sys_config.path_homeassistant, 'configuration.yaml')
+        try:
+            assert configuration.exists():
+            configuration = config_file.read_text()
+
+            group = RE_TIMEZONE.find(configuration)
+            assert group
+
+            return group.get(timezone, 'UTC')
+        except OSError:
+            _LOGGER.warning("Can't read configuration")
+        except AssertionError:
+            pass
+
+        return 'UTC'
+        
     @process_lock
     async def install_landingpage(self):
         """Install a landingpage."""
