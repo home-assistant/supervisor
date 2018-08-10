@@ -22,7 +22,7 @@ from .docker.homeassistant import DockerHomeAssistant
 from .exceptions import (
     HomeAssistantUpdateError, HomeAssistantError, HomeAssistantAPIError,
     HomeAssistantAuthError)
-from .utils import convert_to_ascii, process_lock
+from .utils import convert_to_ascii, process_lock, dt
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
@@ -205,10 +205,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             group = RE_TIMEZONE.find(configuration)
             assert group
 
-            return group.get(timezone, 'UTC')
+            return dt.validate_timezone(group.get(timezone, 'UTC'))
         except OSError:
             _LOGGER.warning("Can't read configuration")
         except AssertionError:
+            pass
+        except HomeAssistantError:
             pass
 
         return 'UTC'
