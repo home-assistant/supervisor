@@ -11,7 +11,6 @@ import time
 import aiohttp
 from aiohttp import hdrs
 import attr
-import pytz
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
@@ -30,7 +29,6 @@ from .validate import SCHEMA_HASS_CONFIG
 _LOGGER = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
-RE_TIMEZONE = re.compile(r"time_zone: (?P<timezone>[\w/\-+]*)")
 
 # pylint: disable=invalid-name
 ConfigResult = attr.make_class('ConfigResult', ['valid', 'log'], frozen=True)
@@ -194,26 +192,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def refresh_token(self, value):
         """Set Home Assistant refresh_token."""
         self._data[ATTR_REFRESH_TOKEN] = value
-
-    @property
-    def timezone(self):
-        """Read timezone from config."""
-        config_file = Path(
-            self.sys_config.path_homeassistant, 'configuration.yaml')
-        try:
-            assert config_file.exists()
-            configuration = config_file.read_text()
-
-            data = RE_TIMEZONE.match(configuration)
-            assert data
-
-            timezone = data.get('timezone')
-            pytz.timezone(timezone)
-        except (pytz.exceptions.UnknownTimeZoneError, OSError, AssertionError):
-            _LOGGER.debug("Can't parse HomeAssistant timezone")
-            return None
-
-        return timezone
 
     @process_lock
     async def install_landingpage(self):

@@ -69,7 +69,7 @@ class CoreSys:
     @property
     def timezone(self):
         """Return timezone."""
-        return self._homeassistant.timezone or self._config.timezone
+        return self._config.timezone
 
     @property
     def loop(self):
