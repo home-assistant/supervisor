@@ -32,7 +32,7 @@ APPARMOR_DATA = PurePath("apparmor")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
-RE_TIMEZONE = re.compile(r"time_zone: (?P<timezone>[\w/\-+]*)")
+RE_TIMEZONE = re.compile(r"time_zone: (?P<timezone>[\w/\-+]+)")
 
 
 class CoreConfig(JsonConfig):
@@ -53,7 +53,7 @@ class CoreConfig(JsonConfig):
             data = RE_TIMEZONE.search(configuration)
             assert data
 
-            timezone = data.get('timezone')
+            timezone = data('timezone')
             pytz.timezone(timezone)
         except (pytz.exceptions.UnknownTimeZoneError, OSError, AssertionError):
             _LOGGER.debug("Can't parse HomeAssistant timezone")
