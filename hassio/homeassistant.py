@@ -11,6 +11,7 @@ import time
 import aiohttp
 from aiohttp import hdrs
 import attr
+import pytz
 
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
@@ -22,7 +23,7 @@ from .docker.homeassistant import DockerHomeAssistant
 from .exceptions import (
     HomeAssistantUpdateError, HomeAssistantError, HomeAssistantAPIError,
     HomeAssistantAuthError)
-from .utils import convert_to_ascii, process_lock, dt
+from .utils import convert_to_ascii, process_lock
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
@@ -197,24 +198,27 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def timezone(self):
         """Read timezone from config."""
-        config_file = Path(self.sys_config.path_homeassistant, 'configuration.yaml')
+        config_file = Path(
+            self.sys_config.path_homeassistant, 'configuration.yaml')
         try:
-            assert configuration.exists():
+            assert config_file.exists()
             configuration = config_file.read_text()
 
             group = RE_TIMEZONE.find(configuration)
             assert group
 
-            return dt.validate_timezone(group.get(timezone, 'UTC'))
+            timezone = group.get('timezone', 'UTC')
+            pytz.timezone(timezone)
+            return timezone
         except OSError:
             _LOGGER.warning("Can't read configuration")
         except AssertionError:
             pass
-        except HomeAssistantError:
-            pass
+        except pytz.exceptions.UnknownTimeZoneError:
+            _LOGGER.warning("Invalid timezone: %s", timezone)
 
-        return 'UTC'
-        
+        return None
+
     @process_lock
     async def install_landingpage(self):
         """Install a landingpage."""
