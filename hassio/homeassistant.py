@@ -30,7 +30,7 @@ from .validate import SCHEMA_HASS_CONFIG
 _LOGGER = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
-RE_TIMEZONE = re.compile(r"timezone: (?P<timezone>[\w/\-+]*)")
+RE_TIMEZONE = re.compile(r"time_zone: (?P<timezone>[\w/\-+]*)")
 
 # pylint: disable=invalid-name
 ConfigResult = attr.make_class('ConfigResult', ['valid', 'log'], frozen=True)
