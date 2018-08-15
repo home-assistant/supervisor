@@ -67,6 +67,14 @@ class CoreSys:
         return self._updater.channel == CHANNEL_DEV
 
     @property
+    def timezone(self):
+        """Return timezone."""
+        hass_timezone = self._homeassistant.timezone
+        if hass_timezone != 'UTC':
+            return hass_timezone
+        return self._config.timezone
+
+    @property
     def loop(self):
         """Return loop object."""
         return self._loop
