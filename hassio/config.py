@@ -53,7 +53,7 @@ class CoreConfig(JsonConfig):
             data = RE_TIMEZONE.search(configuration)
             assert data
 
-            timezone = data('timezone')
+            timezone = data.group('timezone')
             pytz.timezone(timezone)
         except (pytz.exceptions.UnknownTimeZoneError, OSError, AssertionError):
             _LOGGER.debug("Can't parse HomeAssistant timezone")
