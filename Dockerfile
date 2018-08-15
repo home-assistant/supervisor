@@ -2,7 +2,7 @@ ARG BUILD_FROM
 FROM $BUILD_FROM
 
 # Install base
-apk add --no-cache \
+RUN apk add --no-cache \
     git \
     socat \
     glib \
