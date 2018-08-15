@@ -50,7 +50,7 @@ class CoreConfig(JsonConfig):
             assert config_file.exists()
             configuration = config_file.read_text()
 
-            data = RE_TIMEZONE.find(configuration)
+            data = RE_TIMEZONE.search(configuration)
             assert data
 
             timezone = data.get('timezone')
