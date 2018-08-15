@@ -204,18 +204,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             assert config_file.exists()
             configuration = config_file.read_text()
 
-            group = RE_TIMEZONE.search(configuration)
-            assert group
+            data = RE_TIMEZONE.match(configuration)
+            assert data
 
-            timezone = group.get('timezone')
+            timezone = data.get('timezone')
             pytz.timezone(timezone)
             return timezone
-        except OSError:
-            _LOGGER.warning("Can't read configuration")
-        except AssertionError:
-            pass
-        except pytz.exceptions.UnknownTimeZoneError:
-            _LOGGER.warning("Invalid timezone: %s", timezone)
+        except (pytz.exceptions.UnknownTimeZoneError, OSError, AssertionError):
+            _LOGGER.debug("Can't parse HomeAssistant timezone")
 
         return None
 
