@@ -70,7 +70,7 @@ class CoreSys:
     def timezone(self):
         """Return timezone."""
         hass_timezone = self._homeassistant.timezone
-        if hass_timezone != 'UTC':
+        if hass_timezone:
             return hass_timezone
         return self._config.timezone
 

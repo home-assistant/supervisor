@@ -207,7 +207,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             group = RE_TIMEZONE.find(configuration)
             assert group
 
-            timezone = group.get('timezone', 'UTC')
+            timezone = group.get('timezone')
             pytz.timezone(timezone)
             return timezone
         except OSError:
