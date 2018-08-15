@@ -66,10 +66,11 @@ def initialize_system_data(coresys):
     config = coresys.config
 
     # homeassistant config folder
-    if not config.path_config.is_dir():
+    if not config.path_homeassistant.is_dir():
         _LOGGER.info(
-            "Create Home-Assistant config folder %s", config.path_config)
-        config.path_config.mkdir()
+            "Create Home-Assistant config folder %s",
+            config.path_homeassistant)
+        config.path_homeassistant.mkdir()
 
     # hassio ssl folder
     if not config.path_ssl.is_dir():
