@@ -204,7 +204,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             assert config_file.exists()
             configuration = config_file.read_text()
 
-            group = RE_TIMEZONE.find(configuration)
+            group = RE_TIMEZONE.search(configuration)
             assert group
 
             timezone = group.get('timezone')
