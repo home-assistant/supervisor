@@ -173,7 +173,7 @@ class DockerAddon(DockerInterface):
         # setup config mappings
         if MAP_CONFIG in addon_mapping:
             volumes.update({
-                str(self.sys_config.path_extern_config): {
+                str(self.sys_config.path_extern_homeassistant): {
                     'bind': "/config", 'mode': addon_mapping[MAP_CONFIG]
                 }})
 

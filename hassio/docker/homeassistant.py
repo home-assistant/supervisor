@@ -65,7 +65,7 @@ class DockerHomeAssistant(DockerInterface):
                 ENV_TOKEN: self.sys_homeassistant.uuid,
             },
             volumes={
-                str(self.sys_config.path_extern_config):
+                str(self.sys_config.path_extern_homeassistant):
                     {'bind': '/config', 'mode': 'rw'},
                 str(self.sys_config.path_extern_ssl):
                     {'bind': '/ssl', 'mode': 'ro'},
@@ -98,7 +98,7 @@ class DockerHomeAssistant(DockerInterface):
                 ENV_TIME: self.sys_timezone,
             },
             volumes={
-                str(self.sys_config.path_extern_config):
+                str(self.sys_config.path_extern_homeassistant):
                     {'bind': '/config', 'mode': 'rw'},
                 str(self.sys_config.path_extern_ssl):
                     {'bind': '/ssl', 'mode': 'ro'},

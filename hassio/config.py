@@ -83,12 +83,12 @@ class CoreConfig(JsonConfig):
         return PurePath(os.environ['SUPERVISOR_SHARE'])
 
     @property
-    def path_extern_config(self):
+    def path_extern_homeassistant(self):
         """Return config path extern for docker."""
         return str(PurePath(self.path_extern_hassio, HOMEASSISTANT_CONFIG))
 
     @property
-    def path_config(self):
+    def path_homeassistant(self):
         """Return config path inside supervisor."""
         return Path(HASSIO_DATA, HOMEASSISTANT_CONFIG)
 
