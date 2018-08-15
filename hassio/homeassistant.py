@@ -209,11 +209,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             timezone = data.get('timezone')
             pytz.timezone(timezone)
-            return timezone
         except (pytz.exceptions.UnknownTimeZoneError, OSError, AssertionError):
             _LOGGER.debug("Can't parse HomeAssistant timezone")
+            return None
 
-        return None
+        return timezone
 
     @process_lock
     async def install_landingpage(self):
