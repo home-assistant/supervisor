@@ -4,7 +4,7 @@
 
 Interface for Home Assistant to control things from supervisor.
 
-On error / Code 400:
+On error / Code 40x:
 
 ```json
 {
@@ -478,6 +478,9 @@ Get all available addons.
     "changelog": "bool",
     "hassio_api": "bool",
     "homeassistant_api": "bool",
+    "full_access": "bool",
+    "protected": "bool",
+    "rating": "1-5",
     "stdin": "bool",
     "webui": "null|http(s)://[HOST]:port/xy/zx",
     "gpio": "bool",
@@ -507,6 +510,7 @@ Get all available addons.
       "CONTAINER": "port|[ip, port]"
     },
     "options": {},
+    "protected": "bool",
     "audio_output": "null|0,0",
     "audio_input": "null|0,0"
 }
