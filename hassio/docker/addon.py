@@ -259,6 +259,10 @@ class DockerAddon(DockerInterface):
         if self._is_running():
             return True
 
+        # Security check
+        if not self.addon.protected:
+            _LOGGER.warning("A not proteced add-on will start on host!")
+
         # cleanup
         self._stop()
 

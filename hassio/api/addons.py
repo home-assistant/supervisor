@@ -22,6 +22,7 @@ from ..const import (
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
+from ..exceptions import APINotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -157,7 +158,7 @@ class APIAddons(CoreSysAttributes):
         # Have Access
         if addon.slug == request[REQUEST_FROM]:
             _LOGGER.error("Add-on can't self modify his options!")
-            raise HassioNotSupportedError()
+            raise APINotSupportedError()
 
         addon_schema = SCHEMA_OPTIONS.extend({
             vol.Optional(ATTR_OPTIONS): vol.Any(None, addon.schema),
@@ -178,6 +179,7 @@ class APIAddons(CoreSysAttributes):
         if ATTR_AUDIO_OUTPUT in body:
             addon.audio_output = body[ATTR_AUDIO_OUTPUT]
         if ATTR_PROTECTED in body:
+            _LOGGER.warning("Protected flag changing for %s!", addon.slug)
             addon.protected = body[ATTR_PROTECTED]
 
         addon.save_data()

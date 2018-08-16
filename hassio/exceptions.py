@@ -76,6 +76,17 @@ class HostServiceError(HostError):
 
 class HostAppArmorError(HostError):
     """Host apparmor functions fails."""
+    pass
+
+
+# API
+
+class APIError(HassioError):
+    """API errors."""
+    pass
+
+class APINotSupportedError(HassioNotSupportedError):
+    """API not supported error."""
 
 
 # utils/gdbus
