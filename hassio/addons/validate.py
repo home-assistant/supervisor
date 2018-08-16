@@ -18,7 +18,8 @@ from ..const import (
     ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
     ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_SERVICES, ATTR_DISCOVERY,
-    ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API)
+    ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_PROTECTED,
+    ATTR_FULL_ACCESS)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE
 
 _LOGGER = logging.getLogger(__name__)
@@ -110,6 +111,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
     vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],
     vol.Optional(ATTR_APPARMOR, default=True): vol.Boolean(),
+    vol.Optional(ATTR_FULL_ACCESS, default=False): vol.Boolean(),
     vol.Optional(ATTR_AUDIO, default=False): vol.Boolean(),
     vol.Optional(ATTR_GPIO, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICETREE, default=False): vol.Boolean(),
@@ -170,6 +172,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
+    vol.Optional(ATTR_PROTECTED, default=False): vol.Boolean(),
 }, extra=vol.REMOVE_EXTRA)
 
 
