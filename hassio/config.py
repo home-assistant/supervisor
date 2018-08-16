@@ -2,7 +2,10 @@
 from datetime import datetime
 import logging
 import os
+import re
 from pathlib import Path, PurePath
+
+import pytz
 
 from .const import (
     FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
@@ -29,6 +32,8 @@ APPARMOR_DATA = PurePath("apparmor")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
+RE_TIMEZONE = re.compile(r"time_zone: (?P<timezone>[\w/\-+]+)")
+
 
 class CoreConfig(JsonConfig):
     """Hold all core config data."""
@@ -40,7 +45,21 @@ class CoreConfig(JsonConfig):
     @property
     def timezone(self):
         """Return system timezone."""
-        return self._data[ATTR_TIMEZONE]
+        config_file = Path(self.path_homeassistant, 'configuration.yaml')
+        try:
+            assert config_file.exists()
+            configuration = config_file.read_text()
+
+            data = RE_TIMEZONE.search(configuration)
+            assert data
+
+            timezone = data.group('timezone')
+            pytz.timezone(timezone)
+        except (pytz.exceptions.UnknownTimeZoneError, OSError, AssertionError):
+            _LOGGER.debug("Can't parse HomeAssistant timezone")
+            return self._data[ATTR_TIMEZONE]
+
+        return timezone
 
     @timezone.setter
     def timezone(self, value):
@@ -83,12 +102,12 @@ class CoreConfig(JsonConfig):
         return PurePath(os.environ['SUPERVISOR_SHARE'])
 
     @property
-    def path_extern_config(self):
+    def path_extern_homeassistant(self):
         """Return config path extern for docker."""
         return str(PurePath(self.path_extern_hassio, HOMEASSISTANT_CONFIG))
 
     @property
-    def path_config(self):
+    def path_homeassistant(self):
         """Return config path inside supervisor."""
         return Path(HASSIO_DATA, HOMEASSISTANT_CONFIG)
 
