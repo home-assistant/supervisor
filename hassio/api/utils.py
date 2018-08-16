@@ -9,7 +9,7 @@ from voluptuous.humanize import humanize_error
 from ..const import (
     JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
     CONTENT_TYPE_BINARY)
-from ..exceptions import HassioError, HassioNotSupportedError
+from ..exceptions import HassioError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,8 +30,6 @@ def api_process(method):
         """Return api information."""
         try:
             answer = await method(api, *args, **kwargs)
-        except HassioNotSupportedError:
-            return api_return_error(code=405)
         except HassioError:
             return api_return_error()
         except RuntimeError as err:
@@ -70,12 +68,12 @@ def api_process_raw(content):
     return wrap_method
 
 
-def api_return_error(message=None, code=400):
+def api_return_error(message=None):
     """Return an API error message."""
     return web.json_response({
         JSON_RESULT: RESULT_ERROR,
         JSON_MESSAGE: message,
-    }, status=code)
+    }, status=400)
 
 
 def api_return_ok(data=None):

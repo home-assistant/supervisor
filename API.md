@@ -4,7 +4,7 @@
 
 Interface for Home Assistant to control things from supervisor.
 
-On error / Code 40x:
+On error / Code 400:
 
 ```json
 {
