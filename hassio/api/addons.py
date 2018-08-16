@@ -18,7 +18,8 @@ from ..const import (
     ATTR_CPU_PERCENT, ATTR_MEMORY_LIMIT, ATTR_MEMORY_USAGE, ATTR_NETWORK_TX,
     ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
     ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API,
-    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT)
+    ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING,
+    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
 
@@ -35,6 +36,7 @@ SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
+    vol.Optional(ATTR_PROTECTED): vol.Boolean(),
 })
 
 
@@ -116,6 +118,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_REPOSITORY: addon.repository,
             ATTR_LAST_VERSION: addon.last_version,
             ATTR_STATE: await addon.state(),
+            ATTR_PROTECTED: addon.protected,
             ATTR_BOOT: addon.boot,
             ATTR_OPTIONS: addon.options,
             ATTR_URL: addon.url,
@@ -126,6 +129,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_HOST_IPC: addon.host_ipc,
             ATTR_HOST_DBUS: addon.host_dbus,
             ATTR_PRIVILEGED: addon.privileged,
+            ATTR_FULL_ACCESS: addon.with_full_access,
             ATTR_APPARMOR: addon.apparmor,
             ATTR_DEVICES: self._pretty_devices(addon),
             ATTR_ICON: addon.with_icon,
@@ -150,6 +154,11 @@ class APIAddons(CoreSysAttributes):
         """Store user options for addon."""
         addon = self._extract_addon(request)
 
+        # Have Access
+        if addon.slug == request[REQUEST_FROM]:
+            _LOGGER.error("Add-on can't self modify his options!")
+            raise HassioNotSupportedError()
+
         addon_schema = SCHEMA_OPTIONS.extend({
             vol.Optional(ATTR_OPTIONS): vol.Any(None, addon.schema),
         })
@@ -168,6 +177,8 @@ class APIAddons(CoreSysAttributes):
             addon.audio_input = body[ATTR_AUDIO_INPUT]
         if ATTR_AUDIO_OUTPUT in body:
             addon.audio_output = body[ATTR_AUDIO_OUTPUT]
+        if ATTR_PROTECTED in body:
+            addon.protected = body[ATTR_PROTECTED]
 
         addon.save_data()
         return True
