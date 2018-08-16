@@ -172,7 +172,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
-    vol.Optional(ATTR_PROTECTED, default=False): vol.Boolean(),
+    vol.Optional(ATTR_PROTECTED, default=True): vol.Boolean(),
 }, extra=vol.REMOVE_EXTRA)
 
 
