@@ -179,6 +179,9 @@ ATTR_VERSION_CLI = 'version_cli'
 ATTR_VERSION_CLI_LATEST = 'version_cli_latest'
 ATTR_REFRESH_TOKEN = 'refresh_token'
 ATTR_DOCKER_API = 'docker_api'
+ATTR_FULL_ACCESS = 'full_access'
+ATTR_PROTECTED = 'protected'
+ATTR_RATING = 'rating'
 
 SERVICE_MQTT = 'mqtt'
 
