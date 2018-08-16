@@ -25,8 +25,9 @@ from ..const import (
     ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
-    ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, SECURITY_PROFILE,
-    SECURITY_DISABLE, SECURITY_DEFAULT)
+    ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
+    ATTR_PROTECTED,
+    SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
 from ..utils.json import write_json_file, read_json_file
@@ -202,6 +203,11 @@ class Addon(CoreSysAttributes):
         return self.version_installed
 
     @property
+    def protected(self):
+        """Return if addon is in protected mode."""
+        return self._mesh[ATTR_PROTECTED]
+
+    @property
     def startup(self):
         """Return startup type of addon."""
         return self._mesh.get(ATTR_STARTUP)
@@ -359,6 +365,11 @@ class Addon(CoreSysAttributes):
     def with_gpio(self):
         """Return True if the add-on access to gpio interface."""
         return self._mesh[ATTR_GPIO]
+
+    @property
+    def with_full_access(self):
+        """Return True if the add-on want full access to hardware."""
+        return self._mesh[ATTR_FULL_ACCESS]
 
     @property
     def with_devicetree(self):
