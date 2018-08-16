@@ -205,12 +205,14 @@ class Addon(CoreSysAttributes):
     @property
     def protected(self):
         """Return if addon is in protected mode."""
-        return self._mesh[ATTR_PROTECTED]
+        if self.is_installed:
+            return self._data.user[self._id][ATTR_PROTECTED]
+        return True
 
     @protected.setter
     def protected(self, value):
         """Set addon in protected mode."""
-        self._mesh[ATTR_PROTECTED] = value
+        self._data.user[self._id][ATTR_PROTECTED] = value
 
     @property
     def startup(self):

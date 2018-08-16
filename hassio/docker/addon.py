@@ -68,6 +68,11 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
+    def full_access(self):
+        """Return True if full access is enabled."""
+        return not self.addon.protected and self.addon.with_full_access
+
+    @property
     def hostname(self):
         """Return slug/id of addon."""
         return self.addon.slug.replace('_', '-')
@@ -223,7 +228,7 @@ class DockerAddon(DockerInterface):
             })
 
         # Docker API support
-        if self.addon.access_docker_api:
+        if not self.addon.protected and self.addon.access_docker_api:
             volumes.update({
                 "/var/run/docker.sock": {
                     'bind': "/var/run/docker.sock", 'mode': 'ro'
@@ -263,6 +268,7 @@ class DockerAddon(DockerInterface):
             hostname=self.hostname,
             detach=True,
             init=True,
+            privileged=self.full_access,
             ipc_mode=self.ipc,
             stdin_open=self.addon.with_stdin,
             network_mode=self.network_mode,
