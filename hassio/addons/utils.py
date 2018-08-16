@@ -37,7 +37,7 @@ def rating_security(addon):
         rating += -1
 
     # Full Access
-    if addon.full_access:
+    if addon.with_full_access:
         rating += -2
 
     # Docker Access
