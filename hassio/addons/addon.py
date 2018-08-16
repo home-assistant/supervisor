@@ -207,6 +207,11 @@ class Addon(CoreSysAttributes):
         """Return if addon is in protected mode."""
         return self._mesh[ATTR_PROTECTED]
 
+    @protected.setter
+    def protected(self, value):
+        """Set addon in protected mode."""
+        self._mesh[ATTR_PROTECTED] = value
+
     @property
     def startup(self):
         """Return startup type of addon."""
@@ -342,7 +347,7 @@ class Addon(CoreSysAttributes):
         return self._mesh.get(ATTR_LEGACY)
 
     @property
-    def with_docker_api(self):
+    def access_docker_api(self):
         """Return if the add-on need read-only docker API access."""
         return self._mesh.get(ATTR_DOCKER_API)
 

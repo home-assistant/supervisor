@@ -223,7 +223,7 @@ class DockerAddon(DockerInterface):
             })
 
         # Docker API support
-        if self.addon.with_docker_api:
+        if self.addon.access_docker_api:
             volumes.update({
                 "/var/run/docker.sock": {
                     'bind': "/var/run/docker.sock", 'mode': 'ro'

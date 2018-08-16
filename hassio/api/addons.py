@@ -137,7 +137,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
             ATTR_GPIO: addon.with_gpio,
             ATTR_DEVICETREE: addon.with_devicetree,
-            ATTR_DOCKER_API: addon.with_docker_api,
+            ATTR_DOCKER_API: addon.access_docker_api,
             ATTR_AUDIO: addon.with_audio,
             ATTR_AUDIO_INPUT: addon.audio_input,
             ATTR_AUDIO_OUTPUT: addon.audio_output,
