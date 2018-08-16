@@ -1,15 +1,17 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Setup base
-COPY requirements.txt /usr/src/
+# Install base
 RUN apk add --no-cache \
-        git \
-        socat \
-        glib \
-        libstdc++ \
-        eudev-libs \
-    && apk add --no-cache --virtual .build-dependencies \
+    git \
+    socat \
+    glib \
+    libstdc++ \
+    eudev-libs
+
+# Install requirements
+COPY requirements.txt /usr/src/
+RUN apk add --no-cache --virtual .build-dependencies \
         make \
         g++ \
     && pip3 install --no-cache-dir -r /usr/src/requirements.txt \

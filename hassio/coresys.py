@@ -67,6 +67,11 @@ class CoreSys:
         return self._updater.channel == CHANNEL_DEV
 
     @property
+    def timezone(self):
+        """Return timezone."""
+        return self._config.timezone
+
+    @property
     def loop(self):
         """Return loop object."""
         return self._loop

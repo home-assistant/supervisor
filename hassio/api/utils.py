@@ -30,10 +30,10 @@ def api_process(method):
         """Return api information."""
         try:
             answer = await method(api, *args, **kwargs)
-        except RuntimeError as err:
-            return api_return_error(message=str(err))
         except HassioError:
             return api_return_error()
+        except RuntimeError as err:
+            return api_return_error(message=str(err))
 
         if isinstance(answer, dict):
             return api_return_ok(data=answer)

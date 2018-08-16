@@ -9,7 +9,6 @@ UTC = pytz.utc
 
 _LOGGER = logging.getLogger(__name__)
 
-FREEGEOIP_URL = "https://freegeoip.net/json/"
 
 # Copyright (c) Django Software Foundation and individual contributors.
 # All rights reserved.

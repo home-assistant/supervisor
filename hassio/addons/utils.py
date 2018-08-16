@@ -4,9 +4,47 @@ import hashlib
 import logging
 import re
 
+from ..const import (
+    SECURITY_DISABLE, SECURITY_PROFILE, PRIVILEGED_NET_ADMIN,
+    PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO)
+
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def rating_security(addon):
+    """Return 1-5 for security rating.
+
+    1 = not secure
+    5 = high secure
+    """
+    rating = 4
+
+    # AppArmor
+    if addon.apparmor == SECURITY_DISABLE:
+        rating += -1
+    elif addon.apparmor == SECURITY_PROFILE:
+        rating += 1
+
+    # API Access
+    if addon.access_hassio_api or addon.access_homeassistant_api:
+        rating += -1
+
+    # Privileged options
+    if addon.privileged in (PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
+                            PRIVILEGED_SYS_RAWIO):
+        rating += -1
+
+    # Full Access
+    if addon.with_full_access:
+        rating += -2
+
+    # Docker Access
+    if addon.access_docker_api:
+        rating = 1
+
+    return max(min(5, rating), 1)
 
 
 def get_hash_from_repository(name):
