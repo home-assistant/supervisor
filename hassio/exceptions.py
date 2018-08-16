@@ -85,6 +85,7 @@ class APIError(HassioError):
     """API errors."""
     pass
 
+
 class APINotSupportedError(HassioNotSupportedError):
     """API not supported error."""
     pass
