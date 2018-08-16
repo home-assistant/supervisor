@@ -6,6 +6,7 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .utils import api_process, api_process_raw, api_validate
+from ..addons.utils import rating_security
 from ..const import (
     ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
     ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
@@ -120,6 +121,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_LAST_VERSION: addon.last_version,
             ATTR_STATE: await addon.state(),
             ATTR_PROTECTED: addon.protected,
+            ATTR_RATING: rating_security(addon),
             ATTR_BOOT: addon.boot,
             ATTR_OPTIONS: addon.options,
             ATTR_URL: addon.url,
