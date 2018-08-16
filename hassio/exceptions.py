@@ -87,6 +87,7 @@ class APIError(HassioError):
 
 class APINotSupportedError(HassioNotSupportedError):
     """API not supported error."""
+    pass
 
 
 # utils/gdbus
