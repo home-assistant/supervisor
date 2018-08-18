@@ -102,6 +102,8 @@ class DockerHomeAssistant(DockerInterface):
                     {'bind': '/config', 'mode': 'rw'},
                 str(self.sys_config.path_extern_ssl):
                     {'bind': '/ssl', 'mode': 'ro'},
+                str(self.sys_config.path_extern_share):
+                    {'bind': '/share', 'mode': 'ro'},
             }
         )
 
