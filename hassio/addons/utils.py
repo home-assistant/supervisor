@@ -19,7 +19,7 @@ def rating_security(addon):
     1 = not secure
     5 = high secure
     """
-    rating = 4
+    rating = 5
 
     # AppArmor
     if addon.apparmor == SECURITY_DISABLE:
@@ -36,6 +36,10 @@ def rating_security(addon):
                             PRIVILEGED_SYS_RAWIO):
         rating += -1
 
+    # Not secure Networking
+    if addon.host_network:
+        rating += -1
+
     # Full Access
     if addon.with_full_access:
         rating += -2
@@ -44,7 +48,7 @@ def rating_security(addon):
     if addon.access_docker_api:
         rating = 1
 
-    return max(min(5, rating), 1)
+    return max(min(6, rating), 1)
 
 
 def get_hash_from_repository(name):
