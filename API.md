@@ -480,7 +480,7 @@ Get all available addons.
     "homeassistant_api": "bool",
     "full_access": "bool",
     "protected": "bool",
-    "rating": "1-5",
+    "rating": "1-6",
     "stdin": "bool",
     "webui": "null|http(s)://[HOST]:port/xy/zx",
     "gpio": "bool",
