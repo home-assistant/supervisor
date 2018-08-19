@@ -459,6 +459,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         while True:
             await asyncio.sleep(10)
 
+            # Check if Container is is_running
+            if not await self.instance.is_running():
+                _LOGGER.error("HomeAssistant is crashed!")
+                break
+
             # Running DB Migration
             if migration_file.exists():
                 if not migration_progress:
@@ -475,11 +480,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 _LOGGER.info("Detect a running HomeAssistant instance")
                 self._error_state = False
                 return
-
-            # Check if Container is is_running
-            if not await self.instance.is_running():
-                _LOGGER.error("HomeAssistant is crashed!")
-                break
 
             # Timeout
             if time.monotonic() - start_time > self.wait_boot:
