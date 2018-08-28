@@ -293,6 +293,7 @@ class SnapshotManager(CoreSysAttributes):
                 # Stop Home-Assistant if they will be restored later
                 if homeassistant and FOLDER_HOMEASSISTANT in folders:
                     await self.sys_homeassistant.stop()
+                    snapshot.restore_homeassistant()
 
                 # Process folders
                 if folders:
@@ -304,7 +305,6 @@ class SnapshotManager(CoreSysAttributes):
                 if homeassistant:
                     _LOGGER.info("Restore %s run Home-Assistant",
                                  snapshot.slug)
-                    snapshot.restore_homeassistant()
                     task_hass = self.sys_create_task(
                         self.sys_homeassistant.update(
                             snapshot.homeassistant_version))
@@ -322,12 +322,20 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.info("Restore %s old add-ons", snapshot.slug)
                     await snapshot.restore_addons(addon_list)
 
-                # make sure homeassistant run agen
+                # Make sure homeassistant run agen
                 if task_hass:
                     _LOGGER.info("Restore %s wait for Home-Assistant",
                                  snapshot.slug)
                     await task_hass
-                await self.sys_homeassistant.start()
+
+                # Do we need start HomeAssistant?
+                if not await self.sys_homeassistant.is_running():
+                    await self.sys_homeassistant.start()
+
+                # Check If we can access to API / otherwise restart
+                if not await self.sys_homeassistant.check_api_state():
+                    _LOGGER.warning("Need restart HomeAssistant for API")
+                    await self.sys_homeassistant.restart()
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
