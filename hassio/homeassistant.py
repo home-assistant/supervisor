@@ -1,6 +1,7 @@
 """HomeAssistant control object."""
 import asyncio
 from contextlib import asynccontextmanager, suppress
+from datetime import datetime, timedelta
 import logging
 import os
 import re
@@ -46,6 +47,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._error_state = False
         # We don't persist access tokens. Instead we fetch new ones when needed
         self.access_token = None
+        self.access_token_expires = None
 
     async def load(self):
         """Prepare HomeAssistant object."""
@@ -352,7 +354,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def ensure_access_token(self):
         """Ensures there is an access token."""
-        if self.access_token is not None:
+        if (self.access_token is not None and
+                self.access_token_expires < datetime.utcnow()):
             return
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
@@ -364,14 +367,15 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                         "refresh_token": self.refresh_token
                     }
             ) as resp:
-                if resp.status == 200:
-                    _LOGGER.info("Updated HomeAssistant API token")
-                    tokens = await resp.json()
-                    self.access_token = tokens['access_token']
-                    return
+                if resp.status != 200:
+                    _LOGGER.error("Can't update HomeAssistant access token!")
+                    raise HomeAssistantAuthError()
 
-        _LOGGER.error("Can't update HomeAssistant access token!")
-        raise HomeAssistantAuthError()
+                _LOGGER.info("Updated HomeAssistant API token")
+                tokens = await resp.json()
+                self.access_token = tokens['access_token']
+                self.access_token_expires = \
+                    datetime.utcnow() + timedelta(seconds=tokens['expires_in'])
 
     @asynccontextmanager
     async def make_request(self, method, path, json=None, content_type=None,
