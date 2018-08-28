@@ -388,7 +388,7 @@ class Snapshot(CoreSysAttributes):
         self.homeassistant[ATTR_PORT] = self.sys_homeassistant.api_port
         self.homeassistant[ATTR_SSL] = self.sys_homeassistant.api_ssl
         self.homeassistant[ATTR_REFRESH_TOKEN] = \
-            self.sys_homeassistant.refresh_token
+            self._encrypt_data(self.sys_homeassistant.refresh_token)
         self.homeassistant[ATTR_PASSWORD] = \
             self._encrypt_data(self.sys_homeassistant.api_password)
 
@@ -408,7 +408,7 @@ class Snapshot(CoreSysAttributes):
         self.sys_homeassistant.api_port = self.homeassistant[ATTR_PORT]
         self.sys_homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
         self.sys_homeassistant.refresh_token = \
-            self.homeassistant[ATTR_REFRESH_TOKEN]
+            self._decrypt_data(self.homeassistant[ATTR_REFRESH_TOKEN])
         self.sys_homeassistant.api_password = \
             self._decrypt_data(self.homeassistant[ATTR_PASSWORD])
 
