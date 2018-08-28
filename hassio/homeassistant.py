@@ -46,8 +46,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self.lock = asyncio.Lock(loop=coresys.loop)
         self._error_state = False
         # We don't persist access tokens. Instead we fetch new ones when needed
-        self.access_token = None
-        self.access_token_expires = None
+        self._access_token = None
+        self._access_token_expires = None
 
     async def load(self):
         """Prepare HomeAssistant object."""
@@ -189,6 +189,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def refresh_token(self):
         """Return the refresh token to authenticate with HomeAssistant."""
         return self._data.get(ATTR_REFRESH_TOKEN)
+
+    @property
+    def access_token(self):
+        """Return the access token to authenticate with HomeAssistant."""
+        return self._access_token
 
     @refresh_token.setter
     def refresh_token(self, value):
@@ -355,7 +360,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def ensure_access_token(self):
         """Ensures there is an access token."""
         if (self.access_token is not None and
-                self.access_token_expires < datetime.utcnow()):
+                self._access_token_expires > datetime.utcnow()):
             return
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
@@ -373,8 +378,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
                 _LOGGER.info("Updated HomeAssistant API token")
                 tokens = await resp.json()
-                self.access_token = tokens['access_token']
-                self.access_token_expires = \
+                self._access_token = tokens['access_token']
+                self._access_token_expires = \
                     datetime.utcnow() + timedelta(seconds=tokens['expires_in'])
 
     @asynccontextmanager
