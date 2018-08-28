@@ -327,7 +327,7 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.info("Restore %s wait for Home-Assistant",
                                  snapshot.slug)
                     await task_hass
-                
+
                 # Do we need start HomeAssistant?
                 if not await self.sys_homeassistant.is_running():
                     await self.sys_homeassistant.start()
