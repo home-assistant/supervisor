@@ -20,7 +20,7 @@ from ..const import (
     ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
     ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT, ATTR_CRYPTO,
     ATTR_LAST_VERSION, ATTR_PROTECTED, ATTR_WAIT_BOOT, ATTR_SIZE,
-    CRYPTO_AES128)
+    ATTR_REFRESH_TOKEN, CRYPTO_AES128)
 from ..coresys import CoreSysAttributes
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile
@@ -387,6 +387,8 @@ class Snapshot(CoreSysAttributes):
         # API/Proxy
         self.homeassistant[ATTR_PORT] = self.sys_homeassistant.api_port
         self.homeassistant[ATTR_SSL] = self.sys_homeassistant.api_ssl
+        self.homeassistant[ATTR_REFRESH_TOKEN] = \
+            self._encrypt_data(self.sys_homeassistant.refresh_token)
         self.homeassistant[ATTR_PASSWORD] = \
             self._encrypt_data(self.sys_homeassistant.api_password)
 
@@ -405,6 +407,8 @@ class Snapshot(CoreSysAttributes):
         # API/Proxy
         self.sys_homeassistant.api_port = self.homeassistant[ATTR_PORT]
         self.sys_homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
+        self.sys_homeassistant.refresh_token = \
+            self._decrypt_data(self.homeassistant[ATTR_REFRESH_TOKEN])
         self.sys_homeassistant.api_password = \
             self._decrypt_data(self.homeassistant[ATTR_PASSWORD])
 
