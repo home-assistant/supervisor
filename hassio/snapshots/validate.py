@@ -7,6 +7,7 @@ from ..const import (
     ATTR_VERSION, ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_TYPE, ATTR_IMAGE,
     ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG, ATTR_BOOT, ATTR_SIZE,
     ATTR_LAST_VERSION, ATTR_WAIT_BOOT, ATTR_PROTECTED, ATTR_CRYPTO,
+    ATTR_REFRESH_TOKEN,
     FOLDER_SHARE, FOLDER_HOMEASSISTANT, FOLDER_ADDONS, FOLDER_SSL,
     SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CRYPTO_AES128)
 from ..validate import NETWORK_PORT, REPOSITORIES, DOCKER_IMAGE
@@ -40,6 +41,7 @@ SCHEMA_SNAPSHOT = vol.Schema({
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
         vol.Optional(ATTR_PORT, default=8123): NETWORK_PORT,
         vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
         vol.Optional(ATTR_WAIT_BOOT, default=600):
             vol.All(vol.Coerce(int), vol.Range(min=60)),
