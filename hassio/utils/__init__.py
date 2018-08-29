@@ -1,7 +1,9 @@
 """Tools file for HassIO."""
 from datetime import datetime
 import logging
+import random
 import re
+import string
 
 _LOGGER = logging.getLogger(__name__)
 RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
@@ -49,3 +51,11 @@ class AsyncThrottle:
                 return await method(*args, **kwargs)
 
         return wrapper
+
+
+def password_generator(size=8, chars=string.ascii_letters + string.digits):
+    """ Returns a string of random characters.
+
+    Useful in generating temporary passwords for automated password resets.
+    """
+    return ''.join(random.choice(chars) for i in range(size))
