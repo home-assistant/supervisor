@@ -11,18 +11,18 @@ from ..coresys import CoreSysAttributes
 _LOGGER = logging.getLogger(__name__)
 
 NO_SECURITY_CHECK = re.compile(
-    r"^(?:",
-    r"|/homeassistant/api/.*$",
-    r"|/homeassistant/websocket$",
-    r"|/supervisor/ping$",
+    r"^(?:"
+    r"|/homeassistant/api/.*$"
+    r"|/homeassistant/websocket$"
+    r"|/supervisor/ping$"
     r")$"
 )
 
 ADDONS_API_BYPASS = re.compile(
-    r"^(?:",
-    r"|/homeassistant/info$",
-    r"|/supervisor/info$",
-    r"|/addons(?:/self/[^/]+)?$",
+    r"^(?:"
+    r"|/homeassistant/info$"
+    r"|/supervisor/info$"
+    r"|/addons(?:/self/[^/]+)?$"
     r")$"
 )
 

@@ -16,7 +16,7 @@ import attr
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
     ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
-    ATTR_WAIT_BOOT, ATTR_REFRESH_TOKEN,
+    ATTR_WAIT_BOOT, ATTR_REFRESH_TOKEN, ATTR_ACCESS_TOKEN,
     HEADER_HA_ACCESS)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
