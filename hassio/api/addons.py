@@ -20,7 +20,8 @@ from ..const import (
     ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
     ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API,
     ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING,
-    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
+    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM,
+    REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
 from ..exceptions import APINotSupportedError
@@ -47,7 +48,13 @@ class APIAddons(CoreSysAttributes):
 
     def _extract_addon(self, request, check_installed=True):
         """Return addon, throw an exception it it doesn't exist."""
-        addon = self.sys_addons.get(request.match_info.get('addon'))
+        addon_slug = request.match_info.get('addon')
+
+        # Lookup itself
+        if addon_slug == 'self':
+            addon_slug = reuquest.get(REQUEST_FROM)
+
+        addon = self.sys_addons.get(addon_slug)
         if not addon:
             raise RuntimeError("Addon does not exist")
 
