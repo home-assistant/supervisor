@@ -23,7 +23,7 @@ from .docker.homeassistant import DockerHomeAssistant
 from .exceptions import (
     HomeAssistantUpdateError, HomeAssistantError, HomeAssistantAPIError,
     HomeAssistantAuthError)
-from .utils import convert_to_ascii, process_lock
+from .utils import convert_to_ascii, process_lock, create_token
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
@@ -184,6 +184,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def uuid(self):
         """Return a UUID of this HomeAssistant."""
         return self._data[ATTR_UUID]
+    
+    @property
+    def hassio_token(self):
+        """Return a access token for Hass.io API."""
+        return self._data[ATTR_ACCESS_TOKEN]
 
     @property
     def refresh_token(self):
@@ -277,6 +282,13 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def _start(self):
         """Start HomeAssistant docker & wait."""
+        if await self.instance.is_running():
+            return
+
+        # Create new API token
+        self._data[ATTR_ACCESS_TOKEN] = create_token()
+        self.save_data()
+
         if not await self.instance.run():
             raise HomeAssistantError()
         await self._block_till_run()
