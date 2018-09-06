@@ -1,5 +1,6 @@
 """Tools file for HassIO."""
 from datetime import datetime
+import hashlib
 import logging
 import re
 import uuid
@@ -15,7 +16,7 @@ def convert_to_ascii(raw):
 
 def create_token():
     """Create token for API access."""
-    return uuid.uuid4().hex
+    return hashlib.sha256(uuid.uuid4().bytes).hexdigest()
 
 
 def process_lock(method):
