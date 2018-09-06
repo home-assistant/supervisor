@@ -184,11 +184,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def uuid(self):
         """Return a UUID of this HomeAssistant."""
         return self._data[ATTR_UUID]
-    
+
     @property
     def hassio_token(self):
         """Return a access token for Hass.io API."""
-        return self._data[ATTR_ACCESS_TOKEN]
+        return self._data.get(ATTR_ACCESS_TOKEN)
 
     @property
     def refresh_token(self):
