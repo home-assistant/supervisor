@@ -510,13 +510,22 @@ Get all available addons.
       "CONTAINER": "port|[ip, port]"
     },
     "options": {},
-    "protected": "bool",
     "audio_output": "null|0,0",
     "audio_input": "null|0,0"
 }
 ```
 
 Reset custom network/audio/options, set it `null`.
+
+- POST `/addons/{addon}/security`
+
+This function is not callable by itself.
+
+```json
+{
+    "protected": "bool",
+}
+```
 
 - POST `/addons/{addon}/start`
 
