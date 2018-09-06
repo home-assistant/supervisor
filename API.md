@@ -1,4 +1,4 @@
-# Hass.io Server
+# Hass.io
 
 ## Hass.io RESTful API
 
@@ -24,9 +24,12 @@ On success / Code 200:
 
 For access to API you need set the `X-HASSIO-KEY` they will be available for Add-ons/HomeAssistant with envoriment `HASSIO_TOKEN`.
 
-### Hass.io
+### Hass.io commands
 
 - GET `/supervisor/ping`
+
+This API call don't need a token.
+
 - GET `/supervisor/info`
 
 The addons from `addons` are only installed one.
@@ -411,6 +414,8 @@ Proxy to real websocket instance.
 ```
 
 ### RESTful for API addons
+
+If a add-on will call itself, you can use `/addons/self/...`.
 
 - GET `/addons`
 
