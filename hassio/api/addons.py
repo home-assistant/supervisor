@@ -20,7 +20,7 @@ from ..const import (
     ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
     ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API,
     ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING,
-    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM,
+    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT,
     REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
@@ -197,7 +197,7 @@ class APIAddons(CoreSysAttributes):
 
         # Have Access
         if addon.slug == request[REQUEST_FROM]:
-            _LOGGER.error("Add-on can't self modify his security!")
+            _LOGGER.error("Can't self modify his security!")
             raise APINotSupportedError()
 
         body = await api_validate(SCHEMA_SECURITY, request)
