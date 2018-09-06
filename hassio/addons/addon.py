@@ -14,7 +14,7 @@ from voluptuous.humanize import humanize_error
 
 from .validate import (
     validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME, RE_SERVICE)
-from .utils import check_installed, remove_data, create_token
+from .utils import check_installed, remove_data
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
     ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
@@ -30,6 +30,7 @@ from ..const import (
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
+from ..utils import create_token
 from ..utils.json import write_json_file, read_json_file
 from ..utils.apparmor import adjust_profile
 from ..exceptions import HostAppArmorError
