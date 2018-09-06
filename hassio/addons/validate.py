@@ -19,7 +19,7 @@ from ..const import (
     ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_SERVICES, ATTR_DISCOVERY,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_PROTECTED,
-    ATTR_FULL_ACCESS,
+    ATTR_FULL_ACCESS, ATTR_ACCESS_TOKEN,
     PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO,
     PRIVILEGED_IPC_LOCK, PRIVILEGED_SYS_TIME, PRIVILEGED_SYS_NICE,
     PRIVILEGED_SYS_RESOURCE)
@@ -168,6 +168,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
         vol.Match(r"^[0-9a-f]{32}$"),
+    vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{32}$"),
     vol.Optional(ATTR_OPTIONS, default=dict): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):
