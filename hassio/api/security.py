@@ -22,7 +22,7 @@ ADDONS_API_BYPASS = re.compile(
     r"^(?:",
     r"|/homeassistant/info$",
     r"|/supervisor/info$",
-    r"|"^/addons(?:/self/[^/]+)?$",
+    r"|/addons(?:/self/[^/]+)?$",
     r")$"
 )
 
