@@ -3,7 +3,7 @@ import logging
 import re
 
 from aiohttp.web import middleware
-from aiohttp.web_exceptions import HTTPUnauthorized
+from aiohttp.web_exceptions import HTTPUnauthorized, HTTPForbidden
 
 from ..const import HEADER_TOKEN, REQUEST_FROM
 from ..coresys import CoreSysAttributes
@@ -45,8 +45,15 @@ class SecurityMiddleware(CoreSysAttributes):
             _LOGGER.debug("Passthrough %s", request.path)
             return await handler(request)
 
+        # Not token
+        if not hassio_token:
+            _LOGGER.warning("No API token provided for %s", request.path)
+            raise HTTPUnauthorized()
+
         # Home-Assistant
-        if hassio_token == self.sys_homeassistant.uuid:
+        # UUID check need removed with 130
+        if hassio_token in (self.sys_homeassistant.uuid,
+                            self.sys_homeassistant.hassio_token):
             _LOGGER.debug("%s access from Home-Assistant", request.path)
             request_from = 'homeassistant'
 
@@ -57,7 +64,10 @@ class SecurityMiddleware(CoreSysAttributes):
 
         # Add-on
         if hassio_token and not request_from:
-            addon = self.sys_addons.from_uuid(hassio_token)
+            addon = self.sys_addons.from_token(hassio_token)
+            # Need removed with 130
+            if not addon:
+                addon = self.sys_addons.from_uuid(hassio_token)
 
         if addon and addon.with_hassio_api:
             _LOGGER.info("%s access from %s", request.path, addon.slug)
@@ -71,4 +81,4 @@ class SecurityMiddleware(CoreSysAttributes):
             return await handler(request)
 
         _LOGGER.warning("Invalid token for access %s", request.path)
-        raise HTTPUnauthorized()
+        raise HTTPForbidden()

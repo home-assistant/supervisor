@@ -50,6 +50,13 @@ class AddonManager(CoreSysAttributes):
                 return addon
         return None
 
+    def from_token(self, token):
+        """Return an add-on from hassio token."""
+        for addon in self.list_addons:
+            if addon.is_installed and token == addon.hassio_token:
+                return addon
+        return None
+
     async def load(self):
         """Startup addon management."""
         self.data.reload()
