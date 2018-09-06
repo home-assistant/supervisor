@@ -283,6 +283,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def _start(self):
         """Start HomeAssistant docker & wait."""
         if await self.instance.is_running():
+            _LOGGER.warning("HomeAssistant allready running!")
             return
 
         # Create new API token
