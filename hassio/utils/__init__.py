@@ -2,6 +2,7 @@
 from datetime import datetime
 import logging
 import re
+import uuid
 
 _LOGGER = logging.getLogger(__name__)
 RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
@@ -10,6 +11,11 @@ RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 def convert_to_ascii(raw):
     """Convert binary to ascii and remove colors."""
     return RE_STRING.sub("", raw.decode())
+
+
+def create_token():
+    """Create token for API access."""
+    return uuid.uuid4().hex
 
 
 def process_lock(method):
