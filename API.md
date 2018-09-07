@@ -1,4 +1,4 @@
-# Hass.io Server
+# Hass.io
 
 ## Hass.io RESTful API
 
@@ -27,6 +27,9 @@ For access to API you need set the `X-HASSIO-KEY` they will be available for Add
 ### Hass.io
 
 - GET `/supervisor/ping`
+
+This API call don't need a token.
+
 - GET `/supervisor/info`
 
 The addons from `addons` are only installed one.
@@ -412,6 +415,8 @@ Proxy to real websocket instance.
 
 ### RESTful for API addons
 
+If a add-on will call itself, you can use `/addons/self/...`.
+
 - GET `/addons`
 
 Get all available addons.
@@ -510,13 +515,22 @@ Get all available addons.
       "CONTAINER": "port|[ip, port]"
     },
     "options": {},
-    "protected": "bool",
     "audio_output": "null|0,0",
     "audio_input": "null|0,0"
 }
 ```
 
 Reset custom network/audio/options, set it `null`.
+
+- POST `/addons/{addon}/security`
+
+This function is not callable by itself.
+
+```json
+{
+    "protected": "bool",
+}
+```
 
 - POST `/addons/{addon}/start`
 

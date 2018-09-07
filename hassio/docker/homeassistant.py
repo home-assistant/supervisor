@@ -62,7 +62,7 @@ class DockerHomeAssistant(DockerInterface):
             environment={
                 'HASSIO': self.sys_docker.network.supervisor,
                 ENV_TIME: self.sys_timezone,
-                ENV_TOKEN: self.sys_homeassistant.uuid,
+                ENV_TOKEN: self.sys_homeassistant.hassio_token,
             },
             volumes={
                 str(self.sys_config.path_extern_homeassistant):

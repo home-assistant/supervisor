@@ -16,14 +16,14 @@ import attr
 from .const import (
     FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
     ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
-    ATTR_WAIT_BOOT, ATTR_REFRESH_TOKEN,
+    ATTR_WAIT_BOOT, ATTR_REFRESH_TOKEN, ATTR_ACCESS_TOKEN,
     HEADER_HA_ACCESS)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
 from .exceptions import (
     HomeAssistantUpdateError, HomeAssistantError, HomeAssistantAPIError,
     HomeAssistantAuthError)
-from .utils import convert_to_ascii, process_lock
+from .utils import convert_to_ascii, process_lock, create_token
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
@@ -186,6 +186,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return self._data[ATTR_UUID]
 
     @property
+    def hassio_token(self):
+        """Return a access token for Hass.io API."""
+        return self._data.get(ATTR_ACCESS_TOKEN)
+
+    @property
     def refresh_token(self):
         """Return the refresh token to authenticate with HomeAssistant."""
         return self._data.get(ATTR_REFRESH_TOKEN)
@@ -277,6 +282,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def _start(self):
         """Start HomeAssistant docker & wait."""
+        if await self.instance.is_running():
+            _LOGGER.warning("HomeAssistant allready running!")
+            return
+
+        # Create new API token
+        self._data[ATTR_ACCESS_TOKEN] = create_token()
+        self.save_data()
+
         if not await self.instance.run():
             raise HomeAssistantError()
         await self._block_till_run()
