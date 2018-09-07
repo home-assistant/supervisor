@@ -63,6 +63,7 @@ class SecurityMiddleware(CoreSysAttributes):
             request_from = 'host'
 
         # Add-on
+        addon = None
         if hassio_token and not request_from:
             addon = self.sys_addons.from_token(hassio_token)
             # Need removed with 130
