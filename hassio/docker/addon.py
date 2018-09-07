@@ -92,7 +92,7 @@ class DockerAddon(DockerInterface):
         return {
             **addon_env,
             ENV_TIME: self.sys_timezone,
-            ENV_TOKEN: self.addon.uuid,
+            ENV_TOKEN: self.addon.hassio_token,
         }
 
     @property

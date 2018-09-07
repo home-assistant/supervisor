@@ -20,7 +20,8 @@ from ..const import (
     ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
     ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API,
     ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING,
-    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
+    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT,
+    REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
 from ..exceptions import APINotSupportedError
@@ -38,6 +39,10 @@ SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
+})
+
+# pylint: disable=no-value-for-parameter
+SCHEMA_SECURITY = vol.Schema({
     vol.Optional(ATTR_PROTECTED): vol.Boolean(),
 })
 
@@ -47,7 +52,13 @@ class APIAddons(CoreSysAttributes):
 
     def _extract_addon(self, request, check_installed=True):
         """Return addon, throw an exception it it doesn't exist."""
-        addon = self.sys_addons.get(request.match_info.get('addon'))
+        addon_slug = request.match_info.get('addon')
+
+        # Lookup itself
+        if addon_slug == 'self':
+            addon_slug = request.get(REQUEST_FROM)
+
+        addon = self.sys_addons.get(addon_slug)
         if not addon:
             raise RuntimeError("Addon does not exist")
 
@@ -157,11 +168,6 @@ class APIAddons(CoreSysAttributes):
         """Store user options for addon."""
         addon = self._extract_addon(request)
 
-        # Have Access
-        if addon.slug == request[REQUEST_FROM]:
-            _LOGGER.error("Add-on can't self modify his options!")
-            raise APINotSupportedError()
-
         addon_schema = SCHEMA_OPTIONS.extend({
             vol.Optional(ATTR_OPTIONS): vol.Any(None, addon.schema),
         })
@@ -180,6 +186,22 @@ class APIAddons(CoreSysAttributes):
             addon.audio_input = body[ATTR_AUDIO_INPUT]
         if ATTR_AUDIO_OUTPUT in body:
             addon.audio_output = body[ATTR_AUDIO_OUTPUT]
+
+        addon.save_data()
+        return True
+
+    @api_process
+    async def security(self, request):
+        """Store security options for addon."""
+        addon = self._extract_addon(request)
+
+        # Have Access
+        if addon.slug == request[REQUEST_FROM]:
+            _LOGGER.error("Can't self modify his security!")
+            raise APINotSupportedError()
+
+        body = await api_validate(SCHEMA_SECURITY, request)
+
         if ATTR_PROTECTED in body:
             _LOGGER.warning("Protected flag changing for %s!", addon.slug)
             addon.protected = body[ATTR_PROTECTED]

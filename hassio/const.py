@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '128'
+HASSIO_VERSION = '129'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
@@ -178,6 +178,7 @@ ATTR_HASSOS_CLI = 'hassos_cli'
 ATTR_VERSION_CLI = 'version_cli'
 ATTR_VERSION_CLI_LATEST = 'version_cli_latest'
 ATTR_REFRESH_TOKEN = 'refresh_token'
+ATTR_ACCESS_TOKEN = 'access_token'
 ATTR_DOCKER_API = 'docker_api'
 ATTR_FULL_ACCESS = 'full_access'
 ATTR_PROTECTED = 'protected'

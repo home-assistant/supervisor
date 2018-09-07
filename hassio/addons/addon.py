@@ -26,10 +26,11 @@ from ..const import (
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
-    ATTR_PROTECTED,
+    ATTR_PROTECTED, ATTR_ACCESS_TOKEN,
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
+from ..utils import create_token
 from ..utils.json import write_json_file, read_json_file
 from ..utils.apparmor import adjust_profile
 from ..exceptions import HostAppArmorError
@@ -170,6 +171,13 @@ class Addon(CoreSysAttributes):
         """Return an API token for this add-on."""
         if self.is_installed:
             return self._data.user[self._id][ATTR_UUID]
+        return None
+
+    @property
+    def hassio_token(self):
+        """Return access token for hass.io API."""
+        if self.is_installed:
+            return self._data.user[self._id].get(ATTR_ACCESS_TOKEN)
         return None
 
     @property
@@ -686,6 +694,14 @@ class Addon(CoreSysAttributes):
     @check_installed
     async def start(self):
         """Set options and start addon."""
+        if await self.instance.is_running():
+            _LOGGER.warning("%s allready running!", self.slug)
+            return
+
+        # Access Token
+        self._data.user[self._id][ATTR_ACCESS_TOKEN] = create_token()
+        self._data.save_data()
+
         # Options
         if not self.write_options():
             return False
