@@ -77,7 +77,7 @@ class SecurityMiddleware(CoreSysAttributes):
             _LOGGER.debug("Passthrough %s from %s", request.path, addon.slug)
             request_from = addon.slug
 
-        if request.get(REQUEST_FROM):
+        if request_from:
             request[REQUEST_FROM] = request_from
             return await handler(request)
 
