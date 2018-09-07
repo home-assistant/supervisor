@@ -70,7 +70,8 @@ class SecurityMiddleware(CoreSysAttributes):
             if not addon:
                 addon = self.sys_addons.from_uuid(hassio_token)
 
-        if addon and addon.with_hassio_api:
+        # Check Add-on API access
+        if addon and addon.access_hassio_api:
             _LOGGER.info("%s access from %s", request.path, addon.slug)
             request_from = addon.slug
         elif addon and ADDONS_API_BYPASS.match(request.path):
