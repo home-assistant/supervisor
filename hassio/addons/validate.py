@@ -168,7 +168,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
         vol.Match(r"^[0-9a-f]{32}$"),
-    vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{32}$"),
+    vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{64}$"),
     vol.Optional(ATTR_OPTIONS, default=dict): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):

@@ -85,7 +85,7 @@ DOCKER_PORTS = vol.Schema({
 SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
         vol.Match(r"^[0-9a-f]{32}$"),
-    vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{32}$"),
+    vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{64}$"),
     vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): DOCKER_IMAGE,
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
