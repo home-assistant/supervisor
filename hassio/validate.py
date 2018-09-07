@@ -10,6 +10,7 @@ from .const import (
     ATTR_ADDONS_CUSTOM_LIST, ATTR_PASSWORD, ATTR_HOMEASSISTANT, ATTR_HASSIO,
     ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG,
     ATTR_WAIT_BOOT, ATTR_UUID, ATTR_REFRESH_TOKEN, ATTR_HASSOS_CLI,
+    ATTR_ACCESS_TOKEN,
     CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
 
 
@@ -84,6 +85,7 @@ DOCKER_PORTS = vol.Schema({
 SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
         vol.Match(r"^[0-9a-f]{32}$"),
+    vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{64}$"),
     vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): DOCKER_IMAGE,
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
