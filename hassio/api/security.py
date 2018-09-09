@@ -51,7 +51,7 @@ class SecurityMiddleware(CoreSysAttributes):
             raise HTTPUnauthorized()
 
         # Home-Assistant
-        # UUID check need removed with 130
+        # UUID check need removed with 131
         if hassio_token in (self.sys_homeassistant.uuid,
                             self.sys_homeassistant.hassio_token):
             _LOGGER.debug("%s access from Home-Assistant", request.path)
@@ -66,7 +66,7 @@ class SecurityMiddleware(CoreSysAttributes):
         addon = None
         if hassio_token and not request_from:
             addon = self.sys_addons.from_token(hassio_token)
-            # Need removed with 130
+            # Need removed with 131
             if not addon:
                 addon = self.sys_addons.from_uuid(hassio_token)
 
