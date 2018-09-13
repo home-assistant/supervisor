@@ -35,9 +35,9 @@ class DockerInterface(CoreSysAttributes):
     @property
     def meta_config(self):
         """Return meta data of config for container/image."""
-        if not self._meta or 'Config' not in self._meta:
+        if not self._meta:
             return {}
-        return self._meta['Config']
+        return self._meta.get('Config', {})
 
     @property
     def meta_labels(self):
