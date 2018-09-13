@@ -33,25 +33,33 @@ class DockerInterface(CoreSysAttributes):
         return None
 
     @property
+    def meta_config(self):
+        """Return meta data of config for container/image."""
+        if not self._meta or 'Config' not in self._meta:
+            return {}
+        return self._meta['Config']
+    
+    @property
+    def meta_labels(self):
+        """Return meta data of labels for container/image."""
+        if 'Labels' not in self.meta_config:
+            return {}
+        return self.meta_config['Labels']
+
+    @property
     def image(self):
         """Return name of docker image."""
-        if not self._meta:
-            return None
-        return self._meta['Config']['Image']
+        return self.meta_config.get('Image')
 
     @property
     def version(self):
         """Return version of docker image."""
-        if self._meta and LABEL_VERSION in self._meta['Config']['Labels']:
-            return self._meta['Config']['Labels'][LABEL_VERSION]
-        return None
+        return self.meta_labels.get(LABEL_VERSION)
 
     @property
     def arch(self):
         """Return arch of docker image."""
-        if self._meta and LABEL_ARCH in self._meta['Config']['Labels']:
-            return self._meta['Config']['Labels'][LABEL_ARCH]
-        return None
+        return self.meta_labels.get(LABEL_ARCH)
 
     @property
     def in_progress(self):
