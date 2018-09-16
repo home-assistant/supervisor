@@ -40,6 +40,10 @@ def rating_security(addon):
     if addon.host_network:
         rating += -1
 
+    # Insecure PID namespace
+    if addon.host_pid:
+        rating += -1
+
     # Full Access
     if addon.with_full_access:
         rating += -2

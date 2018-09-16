@@ -19,7 +19,7 @@ from ..const import (
     ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_SERVICES, ATTR_DISCOVERY,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_PROTECTED,
-    ATTR_FULL_ACCESS, ATTR_ACCESS_TOKEN,
+    ATTR_FULL_ACCESS, ATTR_ACCESS_TOKEN, ATTR_HOST_PID,
     PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO,
     PRIVILEGED_IPC_LOCK, PRIVILEGED_SYS_TIME, PRIVILEGED_SYS_NICE,
     PRIVILEGED_SYS_RESOURCE, PRIVILEGED_SYS_PTRACE)
@@ -105,6 +105,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_WEBUI):
         vol.Match(r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"),
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
+    vol.Optional(ATTR_HOST_PID, default=False): vol.Boolean(),
     vol.Optional(ATTR_HOST_IPC, default=False): vol.Boolean(),
     vol.Optional(ATTR_HOST_DBUS, default=False): vol.Boolean(),
     vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
