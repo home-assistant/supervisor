@@ -67,7 +67,7 @@ class Tasks(CoreSysAttributes):
             if addon.version_installed == addon.last_version:
                 continue
 
-            if addon.test_udpate_schema():
+            if addon.test_update_schema():
                 tasks.append(addon.update())
             else:
                 _LOGGER.warning(
