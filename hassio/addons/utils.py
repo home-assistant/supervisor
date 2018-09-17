@@ -42,7 +42,7 @@ def rating_security(addon):
 
     # Insecure PID namespace
     if addon.host_pid:
-        rating += -1
+        rating += -2
 
     # Full Access
     if addon.with_full_access:
