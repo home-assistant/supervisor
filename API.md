@@ -472,6 +472,7 @@ Get all available addons.
     "options": "{}",
     "network": "{}|null",
     "host_network": "bool",
+    "host_pid": "bool",
     "host_ipc": "bool",
     "host_dbus": "bool",
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
