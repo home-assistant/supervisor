@@ -197,6 +197,7 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon(request)
 
         # Have Access
+        # REMOVE: don't needed anymore
         if addon.slug == request[REQUEST_FROM]:
             _LOGGER.error("Can't self modify his security!")
             raise APINotSupportedError()

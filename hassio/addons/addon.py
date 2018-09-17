@@ -26,7 +26,7 @@ from ..const import (
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
-    ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID,
+    ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
@@ -375,6 +375,11 @@ class Addon(CoreSysAttributes):
     def access_homeassistant_api(self):
         """Return True if the add-on access to Home-Assistant api proxy."""
         return self._mesh[ATTR_HOMEASSISTANT_API]
+
+    @property
+    def hassio_api_role(self):
+        """Return Hass.io role for API."""
+        return self._mesh[ATTR_HASSIO_ROLE]
 
     @property
     def with_stdin(self):
