@@ -608,7 +608,7 @@ class Addon(CoreSysAttributes):
             return vol.Schema(dict)
         return vol.Schema(vol.All(dict, validate_options(raw_schema)))
 
-    def test_udpate_schema(self):
+    def test_update_schema(self):
         """Check if the exists config valid after update."""
         if not self.is_installed or self.is_detached:
             return True
