@@ -168,7 +168,7 @@ class DockerAddon(DockerInterface):
     @property
     def pid_mode(self):
         """Return PID mode for addon."""
-        if self.addon.host_pid:
+        if not self.addon.protected and self.addon.host_pid:
             return 'host'
         return None
 
