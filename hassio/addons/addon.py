@@ -26,7 +26,7 @@ from ..const import (
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
-    ATTR_PROTECTED, ATTR_ACCESS_TOKEN,
+    ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID,
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
@@ -306,6 +306,11 @@ class Addon(CoreSysAttributes):
     def host_network(self):
         """Return True if addon run on host network."""
         return self._mesh[ATTR_HOST_NETWORK]
+
+    @property
+    def host_pid(self):
+        """Return True if addon run on host PID namespace."""
+        return self._mesh[ATTR_HOST_PID]
 
     @property
     def host_ipc(self):

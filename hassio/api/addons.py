@@ -19,7 +19,7 @@ from ..const import (
     ATTR_CPU_PERCENT, ATTR_MEMORY_LIMIT, ATTR_MEMORY_USAGE, ATTR_NETWORK_TX,
     ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
     ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API,
-    ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING,
+    ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING, ATTR_HOST_PID,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT,
     REQUEST_FROM)
 from ..coresys import CoreSysAttributes
@@ -140,6 +140,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_BUILD: addon.need_build,
             ATTR_NETWORK: addon.ports,
             ATTR_HOST_NETWORK: addon.host_network,
+            ATTR_HOST_PID: addon.host_pid,
             ATTR_HOST_IPC: addon.host_ipc,
             ATTR_HOST_DBUS: addon.host_dbus,
             ATTR_PRIVILEGED: addon.privileged,
