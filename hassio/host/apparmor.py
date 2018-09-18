@@ -13,7 +13,7 @@ SYSTEMD_SERVICES = {'hassos-apparmor.service', 'hassio-apparmor.service'}
 
 
 class AppArmorControl(CoreSysAttributes):
-    """Handle host apparmor controls."""
+    """Handle host AppArmor controls."""
 
     def __init__(self, coresys):
         """Initialize host power handling."""
@@ -23,7 +23,7 @@ class AppArmorControl(CoreSysAttributes):
 
     @property
     def available(self):
-        """Return True if AppArmor is availabe on host."""
+        """Return True if AppArmor is available on host."""
         return self._service is not None
 
     def exists(self, profile):
@@ -62,12 +62,12 @@ class AppArmorControl(CoreSysAttributes):
         if self.available:
             await self._reload_service()
         else:
-            _LOGGER.info("AppArmor is not enabled on Host")
+            _LOGGER.info("AppArmor is not enabled on host")
 
     async def load_profile(self, profile_name, profile_file):
         """Load/Update a new/exists profile into AppArmor."""
         if not validate_profile(profile_name, profile_file):
-            _LOGGER.error("profile is not valid with name %s", profile_name)
+            _LOGGER.error("Profile is not valid with name %s", profile_name)
             raise HostAppArmorError()
 
         # Copy to AppArmor folder

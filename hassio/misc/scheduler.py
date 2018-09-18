@@ -1,4 +1,4 @@
-"""Schedule for HassIO."""
+"""Schedule for Hass.io."""
 import logging
 from datetime import date, datetime, time, timedelta
 
@@ -11,7 +11,7 @@ TASK = 'task'
 
 
 class Scheduler:
-    """Schedule task inside HassIO."""
+    """Schedule task inside Hass.io."""
 
     def __init__(self, loop):
         """Initialize task schedule."""
@@ -22,18 +22,18 @@ class Scheduler:
     def register_task(self, coro_callback, interval, repeat=True):
         """Schedule a coroutine.
 
-        The coroutien need to be a callback without arguments.
+        The coroutine need to be a callback without arguments.
         """
         task_id = hash(coro_callback)
 
-        # generate data
+        # Generate data
         opts = {
             CALL: coro_callback,
             INTERVAL: interval,
             REPEAT: repeat,
         }
 
-        # schedule task
+        # Schedule task
         self._data[task_id] = opts
         self._schedule_task(interval, task_id)
 
@@ -60,7 +60,7 @@ class Scheduler:
             tomorrow = datetime.combine(
                 date.today() + timedelta(days=1), interval)
 
-            # check if we run it today or next day
+            # Check if we run it today or next day
             if today > datetime.today():
                 calc = today
             else:
@@ -68,7 +68,7 @@ class Scheduler:
 
             job = self.loop.call_at(calc.timestamp(), self._run_task, task_id)
         else:
-            _LOGGER.fatal("Unknow interval %s (type: %s) for scheduler %s",
+            _LOGGER.fatal("Unknown interval %s (type: %s) for scheduler %s",
                           interval, type(interval), task_id)
 
         # Store job

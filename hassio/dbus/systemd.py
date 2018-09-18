@@ -16,7 +16,7 @@ class Systemd(DBusInterface):
     """Systemd function handler."""
 
     async def connect(self):
-        """Connect do bus."""
+        """Connect to D-Bus."""
         try:
             self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
         except DBusError:

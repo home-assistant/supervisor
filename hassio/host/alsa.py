@@ -1,4 +1,4 @@
-"""Host Audio-support."""
+"""Host Audio support."""
 import logging
 import json
 from pathlib import Path
@@ -19,7 +19,7 @@ class AlsaAudio(CoreSysAttributes):
     """Handle Audio ALSA host data."""
 
     def __init__(self, coresys):
-        """Initialize Alsa audio system."""
+        """Initialize ALSA audio system."""
         self.coresys = coresys
         self._data = {
             ATTR_INPUT: {},

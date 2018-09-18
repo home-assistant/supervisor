@@ -1,4 +1,4 @@
-"""Calc & represent docker stats data."""
+"""Calc and represent docker stats data."""
 from contextlib import suppress
 
 
@@ -6,7 +6,7 @@ class DockerStats:
     """Hold stats data from container inside."""
 
     def __init__(self, stats):
-        """Initialize docker stats."""
+        """Initialize Docker stats."""
         self._cpu = 0.0
         self._network_rx = 0
         self._network_tx = 0

@@ -1,4 +1,4 @@
-"""Provide MQTT Service."""
+"""Provide the MQTT Service."""
 import logging
 
 from .interface import ServiceInterface
@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class MQTTService(ServiceInterface):
-    """Provide mqtt services."""
+    """Provide MQTT services."""
 
     @property
     def slug(self):
@@ -35,7 +35,7 @@ class MQTTService(ServiceInterface):
 
     @property
     def hass_config(self):
-        """Return Home-Assistant mqtt config."""
+        """Return Home Assistant MQTT config."""
         if not self.enabled:
             return None
 
@@ -54,18 +54,18 @@ class MQTTService(ServiceInterface):
     def set_service_data(self, provider, data):
         """Write the data into service object."""
         if self.enabled:
-            _LOGGER.error("It is already a mqtt in use from %s", self.provider)
+            _LOGGER.error("It is already a MQTT in use from %s", self.provider)
             return False
 
         self._data.update(data)
         self._data[ATTR_PROVIDER] = provider
 
         if provider == 'homeassistant':
-            _LOGGER.info("Use mqtt settings from Home-Assistant")
+            _LOGGER.info("Use MQTT settings from Home Assistant")
             self.save()
             return True
 
-        # discover mqtt to homeassistant
+        # Discover MQTT to Home Assistant
         message = self.sys_discovery.send(
             provider, SERVICE_MQTT, None, self.hass_config)
 
@@ -76,7 +76,7 @@ class MQTTService(ServiceInterface):
     def del_service_data(self, provider):
         """Remove the data from service object."""
         if not self.enabled:
-            _LOGGER.warning("Can't remove not exists services.")
+            _LOGGER.warning("Can't remove not exists services")
             return False
 
         discovery_id = self._data.get(ATTR_DISCOVERY_ID)

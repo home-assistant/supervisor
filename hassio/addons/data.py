@@ -1,4 +1,4 @@
-"""Init file for HassIO addons."""
+"""Init file for Hass.io add-on data."""
 import logging
 import json
 from pathlib import Path
@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class AddonsData(JsonConfig, CoreSysAttributes):
-    """Hold data for addons inside HassIO."""
+    """Hold data for Add-ons inside Hass.io."""
 
     def __init__(self, coresys):
         """Initialize data holder."""
@@ -30,26 +30,26 @@ class AddonsData(JsonConfig, CoreSysAttributes):
 
     @property
     def user(self):
-        """Return local addon user data."""
+        """Return local add-on user data."""
         return self._data[ATTR_USER]
 
     @property
     def system(self):
-        """Return local addon data."""
+        """Return local add-on data."""
         return self._data[ATTR_SYSTEM]
 
     @property
     def cache(self):
-        """Return addon data from cache/repositories."""
+        """Return add-on data from cache/repositories."""
         return self._cache
 
     @property
     def repositories(self):
-        """Return addon data from repositories."""
+        """Return add-on data from repositories."""
         return self._repositories
 
     def reload(self):
-        """Read data from addons repository."""
+        """Read data from add-on repository."""
         self._cache = {}
         self._repositories = {}
 
@@ -94,7 +94,7 @@ class AddonsData(JsonConfig, CoreSysAttributes):
         self._read_addons_folder(path, slug)
 
     def _read_addons_folder(self, path, repository):
-        """Read data from addons folder."""
+        """Read data from add-ons folder."""
         for addon in path.glob("**/config.json"):
             try:
                 addon_config = read_json_file(addon)

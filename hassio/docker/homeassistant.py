@@ -1,4 +1,4 @@
-"""Init file for HassIO docker object."""
+"""Init file for Hass.io Docker object."""
 import logging
 
 import docker
@@ -12,35 +12,35 @@ HASS_DOCKER_NAME = 'homeassistant'
 
 
 class DockerHomeAssistant(DockerInterface):
-    """Docker hassio wrapper for HomeAssistant."""
+    """Docker Hass.io wrapper for Home Assistant."""
 
     @property
     def machine(self):
-        """Return machine of Home-Assistant docker image."""
+        """Return machine of Home Assistant Docker image."""
         if self._meta and LABEL_MACHINE in self._meta['Config']['Labels']:
             return self._meta['Config']['Labels'][LABEL_MACHINE]
         return None
 
     @property
     def image(self):
-        """Return name of docker image."""
+        """Return name of Docker image."""
         return self.sys_homeassistant.image
 
     @property
     def name(self):
-        """Return name of docker container."""
+        """Return name of Docker container."""
         return HASS_DOCKER_NAME
 
     @property
     def devices(self):
-        """Create list of special device to map into docker."""
+        """Create list of special device to map into Docker."""
         devices = []
         for device in self.sys_hardware.serial_devices:
             devices.append(f"{device}:{device}:rwm")
         return devices or None
 
     def _run(self):
-        """Run docker image.
+        """Run Docker image.
 
         Need run inside executor.
         """
@@ -108,7 +108,7 @@ class DockerHomeAssistant(DockerInterface):
         )
 
     def is_initialize(self):
-        """Return True if docker container exists."""
+        """Return True if Docker container exists."""
         return self.sys_run_in_executor(self._is_initialize)
 
     def _is_initialize(self):

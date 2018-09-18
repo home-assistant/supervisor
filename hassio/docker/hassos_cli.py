@@ -10,11 +10,11 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DockerHassOSCli(DockerInterface, CoreSysAttributes):
-    """Docker hassio wrapper for HassOS Cli."""
+    """Docker Hass.io wrapper for HassOS Cli."""
 
     @property
     def image(self):
-        """Return name of HassOS cli image."""
+        """Return name of HassOS CLI image."""
         return f"homeassistant/{self.sys_arch}-hassio-cli"
 
     def _stop(self):
@@ -22,16 +22,16 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
         return True
 
     def _attach(self):
-        """Attach to running docker container.
+        """Attach to running Docker container.
         Need run inside executor.
         """
         try:
             image = self.sys_docker.images.get(self.image)
 
         except docker.errors.DockerException:
-            _LOGGER.warning("Can't find a HassOS cli %s", self.image)
+            _LOGGER.warning("Can't find a HassOS CLI %s", self.image)
 
         else:
             self._meta = image.attrs
-            _LOGGER.info("Found HassOS cli %s with version %s",
+            _LOGGER.info("Found HassOS CLI %s with version %s",
                          self.image, self.version)

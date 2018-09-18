@@ -1,4 +1,4 @@
-"""Init file for HassIO homeassistant rest api."""
+"""Init file for Hass.io Home Assistant RESTful API."""
 import asyncio
 import logging
 
@@ -48,7 +48,7 @@ SCHEMA_SECURITY = vol.Schema({
 
 
 class APIAddons(CoreSysAttributes):
-    """Handle rest api for addons functions."""
+    """Handle RESTful API for add-on functions."""
 
     def _extract_addon(self, request, check_installed=True):
         """Return addon, throw an exception it it doesn't exist."""
@@ -77,7 +77,7 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     async def list(self, request):
-        """Return all addons / repositories ."""
+        """Return all add-ons or repositories."""
         data_addons = []
         for addon in self.sys_addons.list_addons:
             data_addons.append({
@@ -112,13 +112,13 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     async def reload(self, request):
-        """Reload all addons data."""
+        """Reload all add-on data."""
         await asyncio.shield(self.sys_addons.reload())
         return True
 
     @api_process
     async def info(self, request):
-        """Return addon information."""
+        """Return add-on information."""
         addon = self._extract_addon(request, check_installed=False)
 
         return {
@@ -167,7 +167,7 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     async def options(self, request):
-        """Store user options for addon."""
+        """Store user options for add-on."""
         addon = self._extract_addon(request)
 
         addon_schema = SCHEMA_OPTIONS.extend({
@@ -194,7 +194,7 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     async def security(self, request):
-        """Store security options for addon."""
+        """Store security options for add-on."""
         addon = self._extract_addon(request)
 
         # Have Access
@@ -233,19 +233,19 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     def install(self, request):
-        """Install addon."""
+        """Install add-on."""
         addon = self._extract_addon(request, check_installed=False)
         return asyncio.shield(addon.install())
 
     @api_process
     def uninstall(self, request):
-        """Uninstall addon."""
+        """Uninstall add-on."""
         addon = self._extract_addon(request)
         return asyncio.shield(addon.uninstall())
 
     @api_process
     def start(self, request):
-        """Start addon."""
+        """Start add-on."""
         addon = self._extract_addon(request)
 
         # check options
@@ -259,13 +259,13 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     def stop(self, request):
-        """Stop addon."""
+        """Stop add-on."""
         addon = self._extract_addon(request)
         return asyncio.shield(addon.stop())
 
     @api_process
     def update(self, request):
-        """Update addon."""
+        """Update add-on."""
         addon = self._extract_addon(request)
 
         if addon.last_version == addon.version_installed:
@@ -275,13 +275,13 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     def restart(self, request):
-        """Restart addon."""
+        """Restart add-on."""
         addon = self._extract_addon(request)
         return asyncio.shield(addon.restart())
 
     @api_process
     def rebuild(self, request):
-        """Rebuild local build addon."""
+        """Rebuild local build add-on."""
         addon = self._extract_addon(request)
         if not addon.need_build:
             raise RuntimeError("Only local build addons are supported")
@@ -290,13 +290,13 @@ class APIAddons(CoreSysAttributes):
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
-        """Return logs from addon."""
+        """Return logs from add-on."""
         addon = self._extract_addon(request)
         return addon.logs()
 
     @api_process_raw(CONTENT_TYPE_PNG)
     async def icon(self, request):
-        """Return icon from addon."""
+        """Return icon from add-on."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_icon:
             raise RuntimeError("No icon found!")
@@ -306,7 +306,7 @@ class APIAddons(CoreSysAttributes):
 
     @api_process_raw(CONTENT_TYPE_PNG)
     async def logo(self, request):
-        """Return logo from addon."""
+        """Return logo from add-on."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_logo:
             raise RuntimeError("No logo found!")
@@ -316,7 +316,7 @@ class APIAddons(CoreSysAttributes):
 
     @api_process_raw(CONTENT_TYPE_TEXT)
     async def changelog(self, request):
-        """Return changelog from addon."""
+        """Return changelog from add-on."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_changelog:
             raise RuntimeError("No changelog found!")
@@ -326,10 +326,10 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     async def stdin(self, request):
-        """Write to stdin of addon."""
+        """Write to stdin of add-on."""
         addon = self._extract_addon(request)
         if not addon.with_stdin:
-            raise RuntimeError("STDIN not supported by addon")
+            raise RuntimeError("STDIN not supported by add-on")
 
         data = await request.read()
         return await asyncio.shield(addon.write_stdin(data))
