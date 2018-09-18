@@ -32,7 +32,7 @@ ADDONS_API_BYPASS = re.compile(
 )
 
 # Policy role add-on API access
-ADDON_ROLE_ACCESS = {
+ADDONS_ROLE_ACCESS = {
     ROLE_DEFAULT: re.compile(
         r"^(?:"
         r"|/[^/]+/info"
