@@ -1,8 +1,8 @@
-"""Interface class for dbus wrappers."""
+"""Interface class for D-Bus wrappers."""
 
 
 class DBusInterface:
-    """Handle DBus interface for hostname/system."""
+    """Handle D-Bus interface for hostname/system."""
 
     def __init__(self):
         """Initialize systemd."""
@@ -10,9 +10,9 @@ class DBusInterface:
 
     @property
     def is_connected(self):
-        """Return True, if they is connected to dbus."""
+        """Return True, if they is connected to D-Bus."""
         return self.dbus is not None
 
     async def connect(self):
-        """Connect do bus."""
+        """Connect to D-Bus."""
         raise NotImplementedError()

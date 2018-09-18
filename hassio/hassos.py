@@ -68,7 +68,7 @@ class HassOS(CoreSysAttributes):
     def _check_host(self):
         """Check if HassOS is availabe."""
         if not self.available:
-            _LOGGER.error("No HassOS availabe")
+            _LOGGER.error("No HassOS available")
             raise HassOSNotSupportedError()
 
     async def _download_raucb(self, version):
@@ -97,7 +97,7 @@ class HassOS(CoreSysAttributes):
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
 
         except OSError as err:
-            _LOGGER.error("Can't write ota file: %s", err)
+            _LOGGER.error("Can't write OTA file: %s", err)
 
         raise HassOSUpdateError()
 
@@ -131,7 +131,7 @@ class HassOS(CoreSysAttributes):
         """
         self._check_host()
 
-        _LOGGER.info("Sync config from USB on HassOS.")
+        _LOGGER.info("Syncing configuration from USB with HassOS.")
         return self.sys_host.services.restart('hassos-config.service')
 
     async def update(self, version=None):
@@ -182,5 +182,5 @@ class HassOS(CoreSysAttributes):
         if await self.instance.update(version):
             return
 
-        _LOGGER.error("HassOS CLI update fails.")
+        _LOGGER.error("HassOS CLI update fails")
         raise HassOSUpdateError()

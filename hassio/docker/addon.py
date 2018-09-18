@@ -166,6 +166,13 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
+    def pid_mode(self):
+        """Return PID mode for addon."""
+        if not self.addon.protected and self.addon.host_pid:
+            return 'host'
+        return None
+
+    @property
     def volumes(self):
         """Generate volumes for mappings."""
         volumes = {
@@ -277,6 +284,7 @@ class DockerAddon(DockerInterface):
             ipc_mode=self.ipc,
             stdin_open=self.addon.with_stdin,
             network_mode=self.network_mode,
+            pid_mode=self.pid_mode,
             ports=self.ports,
             extra_hosts=self.network_mapping,
             devices=self.devices,

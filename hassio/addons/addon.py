@@ -26,7 +26,7 @@ from ..const import (
     ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
-    ATTR_PROTECTED, ATTR_ACCESS_TOKEN,
+    ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
@@ -308,6 +308,11 @@ class Addon(CoreSysAttributes):
         return self._mesh[ATTR_HOST_NETWORK]
 
     @property
+    def host_pid(self):
+        """Return True if addon run on host PID namespace."""
+        return self._mesh[ATTR_HOST_PID]
+
+    @property
     def host_ipc(self):
         """Return True if addon run on host IPC namespace."""
         return self._mesh[ATTR_HOST_IPC]
@@ -370,6 +375,11 @@ class Addon(CoreSysAttributes):
     def access_homeassistant_api(self):
         """Return True if the add-on access to Home-Assistant api proxy."""
         return self._mesh[ATTR_HOMEASSISTANT_API]
+
+    @property
+    def hassio_role(self):
+        """Return Hass.io role for API."""
+        return self._mesh[ATTR_HASSIO_ROLE]
 
     @property
     def with_stdin(self):
@@ -603,7 +613,7 @@ class Addon(CoreSysAttributes):
             return vol.Schema(dict)
         return vol.Schema(vol.All(dict, validate_options(raw_schema)))
 
-    def test_udpate_schema(self):
+    def test_update_schema(self):
         """Check if the exists config valid after update."""
         if not self.is_installed or self.is_detached:
             return True

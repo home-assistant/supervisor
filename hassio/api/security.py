@@ -5,26 +5,60 @@ import re
 from aiohttp.web import middleware
 from aiohttp.web_exceptions import HTTPUnauthorized, HTTPForbidden
 
-from ..const import HEADER_TOKEN, REQUEST_FROM
+from ..const import (
+    HEADER_TOKEN, REQUEST_FROM, ROLE_ADMIN, ROLE_DEFAULT, ROLE_HOMEASSISTANT,
+    ROLE_MANAGER)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
+# Free to call or have own security concepts
 NO_SECURITY_CHECK = re.compile(
     r"^(?:"
-    r"|/homeassistant/api/.*$"
-    r"|/homeassistant/websocket$"
-    r"|/supervisor/ping$"
+    r"|/homeassistant/api/.*"
+    r"|/homeassistant/websocket"
+    r"|/supervisor/ping"
+    r"|/services.*"
     r")$"
 )
 
+# Can called by every add-on
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
-    r"|/homeassistant/info$"
-    r"|/supervisor/info$"
-    r"|/addons(?:/self/[^/]+)?$"
+    r"|/homeassistant/info"
+    r"|/supervisor/info"
+    r"|/addons(?:/self/(?!security)[^/]+)?"
     r")$"
 )
+
+# Policy role add-on API access
+ADDONS_ROLE_ACCESS = {
+    ROLE_DEFAULT: re.compile(
+        r"^(?:"
+        r"|/[^/]+/info"
+        r")$"
+    ),
+    ROLE_HOMEASSISTANT: re.compile(
+        r"^(?:"
+        r"|/homeassistant/.+"
+        r")$"
+    ),
+    ROLE_MANAGER: re.compile(
+        r"^(?:"
+        r"|/homeassistant/.+"
+        r"|/host/.+"
+        r"|/hardware/.+"
+        r"|/hassos/.+"
+        r"|/supervisor/.+"
+        r"|/addons/.+/(?!security|options).+"
+        r"|/addons(?:/self/(?!security).+)"
+        r"|/snapshots.*"
+        r")$"
+    ),
+    ROLE_ADMIN: re.compile(
+        r".+"
+    ),
+}
 
 
 class SecurityMiddleware(CoreSysAttributes):
@@ -66,17 +100,22 @@ class SecurityMiddleware(CoreSysAttributes):
         addon = None
         if hassio_token and not request_from:
             addon = self.sys_addons.from_token(hassio_token)
-            # Need removed with 131
+            # REMOVE 132
             if not addon:
                 addon = self.sys_addons.from_uuid(hassio_token)
 
         # Check Add-on API access
-        if addon and addon.access_hassio_api:
-            _LOGGER.info("%s access from %s", request.path, addon.slug)
-            request_from = addon.slug
-        elif addon and ADDONS_API_BYPASS.match(request.path):
+        if addon and ADDONS_API_BYPASS.match(request.path):
             _LOGGER.debug("Passthrough %s from %s", request.path, addon.slug)
             request_from = addon.slug
+        elif addon and addon.access_hassio_api:
+            # Check Role
+            if ADDONS_ROLE_ACCESS[addon.hassio_role].match(request.path):
+                _LOGGER.info("%s access from %s", request.path, addon.slug)
+                request_from = addon.slug
+            else:
+                _LOGGER.warning("%s no role for %s", request.path, addon.slug)
+                request_from = addon.slug  # REMOVE: 132
 
         if request_from:
             request[REQUEST_FROM] = request_from

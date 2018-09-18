@@ -1,8 +1,8 @@
-"""Const file for HassIO."""
+"""Constants file for Hass.io."""
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '130'
+HASSIO_VERSION = '131'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
@@ -114,6 +114,7 @@ ATTR_BUILD = 'build'
 ATTR_DEVICES = 'devices'
 ATTR_ENVIRONMENT = 'environment'
 ATTR_HOST_NETWORK = 'host_network'
+ATTR_HOST_PID = 'host_pid'
 ATTR_HOST_IPC = 'host_ipc'
 ATTR_HOST_DBUS = 'host_dbus'
 ATTR_NETWORK = 'network'
@@ -183,6 +184,7 @@ ATTR_DOCKER_API = 'docker_api'
 ATTR_FULL_ACCESS = 'full_access'
 ATTR_PROTECTED = 'protected'
 ATTR_RATING = 'rating'
+ATTR_HASSIO_ROLE = 'hassio_role'
 
 SERVICE_MQTT = 'mqtt'
 
@@ -238,9 +240,15 @@ PRIVILEGED_IPC_LOCK = 'IPC_LOCK'
 PRIVILEGED_SYS_TIME = 'SYS_TIME'
 PRIVILEGED_SYS_NICE = 'SYS_NICE'
 PRIVILEGED_SYS_RESOURCE = 'SYS_RESOURCE'
+PRIVILEGED_SYS_PTRACE = 'SYS_PTRACE'
 
 FEATURES_SHUTDOWN = 'shutdown'
 FEATURES_REBOOT = 'reboot'
 FEATURES_HASSOS = 'hassos'
 FEATURES_HOSTNAME = 'hostname'
 FEATURES_SERVICES = 'services'
+
+ROLE_DEFAULT = 'default'
+ROLE_HOMEASSISTANT = 'homeassistant'
+ROLE_MANAGER = 'manager'
+ROLE_ADMIN = 'admin'
