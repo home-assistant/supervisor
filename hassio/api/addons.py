@@ -153,7 +153,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_WEBUI: addon.webui,
             ATTR_STDIN: addon.with_stdin,
             ATTR_HASSIO_API: addon.access_hassio_api,
-            ATTR_HASSIO_ROLE: addon.hassio_rule,
+            ATTR_HASSIO_ROLE: addon.hassio_role,
             ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
             ATTR_GPIO: addon.with_gpio,
             ATTR_DEVICETREE: addon.with_devicetree,

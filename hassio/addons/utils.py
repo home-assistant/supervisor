@@ -38,9 +38,9 @@ def rating_security(addon):
         rating += -1
 
     # API Hass.io role
-    if addon.hassio_rule == ROLE_MANAGER:
+    if addon.hassio_role == ROLE_MANAGER:
         rating += -1
-    elif addon.hassio_rule == ROLE_ADMIN:
+    elif addon.hassio_role == ROLE_ADMIN:
         rating += -2
 
     # Not secure Networking
