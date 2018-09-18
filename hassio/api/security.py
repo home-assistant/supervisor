@@ -114,7 +114,7 @@ class SecurityMiddleware(CoreSysAttributes):
                 _LOGGER.info("%s access from %s", request.path, addon.slug)
                 request_from = addon.slug
             else:
-                _LOGGER.warning("%s role for %s", request.path, addon.slug)
+                _LOGGER.warning("%s no role for %s", request.path, addon.slug)
                 request_from = addon.slug  # REMOVE: 132
 
         if request_from:
