@@ -1,4 +1,4 @@
-"""Validate addons options schema."""
+"""Validate add-ons options schema."""
 import logging
 import re
 import uuid
@@ -218,7 +218,7 @@ SCHEMA_ADDON_SNAPSHOT = vol.Schema({
 def validate_options(raw_schema):
     """Validate schema."""
     def validate(struct):
-        """Create schema validator for addons options."""
+        """Create schema validator for add-ons options."""
         options = {}
 
         # read options

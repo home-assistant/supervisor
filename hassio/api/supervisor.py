@@ -1,4 +1,4 @@
-"""Init file for HassIO supervisor rest api."""
+"""Init file for Hass.io Supervisor RESTful API."""
 import asyncio
 import logging
 
@@ -30,11 +30,11 @@ SCHEMA_VERSION = vol.Schema({
 
 
 class APISupervisor(CoreSysAttributes):
-    """Handle rest api for supervisor functions."""
+    """Handle RESTful API for Supervisor functions."""
 
     @api_process
     async def ping(self, request):
-        """Return ok for signal that the api is ready."""
+        """Return ok for signal that the API is ready."""
         return True
 
     @api_process
@@ -68,7 +68,7 @@ class APISupervisor(CoreSysAttributes):
 
     @api_process
     async def options(self, request):
-        """Set supervisor options."""
+        """Set Supervisor options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_CHANNEL in body:
@@ -107,7 +107,7 @@ class APISupervisor(CoreSysAttributes):
 
     @api_process
     async def update(self, request):
-        """Update supervisor OS."""
+        """Update Supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_updater.version_hassio)
 
@@ -119,7 +119,7 @@ class APISupervisor(CoreSysAttributes):
 
     @api_process
     async def reload(self, request):
-        """Reload addons, config etc."""
+        """Reload add-ons, configuration, etc."""
         tasks = [
             self.sys_updater.reload(),
         ]
@@ -134,5 +134,5 @@ class APISupervisor(CoreSysAttributes):
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
-        """Return supervisor docker logs."""
+        """Return supervisor Docker logs."""
         return self.sys_supervisor.logs()

@@ -1,4 +1,4 @@
-"""Init file for HassIO homeassistant rest api."""
+"""Init file for Hass.io Home Assistant RESTful API."""
 import asyncio
 import logging
 
@@ -39,7 +39,7 @@ SCHEMA_VERSION = vol.Schema({
 
 
 class APIHomeAssistant(CoreSysAttributes):
-    """Handle rest api for homeassistant functions."""
+    """Handle RESTful API for Home Assistant functions."""
 
     @api_process
     async def info(self, request):
@@ -59,7 +59,7 @@ class APIHomeAssistant(CoreSysAttributes):
 
     @api_process
     async def options(self, request):
-        """Set homeassistant options."""
+        """Set Home Assistant options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_IMAGE in body and ATTR_LAST_VERSION in body:
@@ -108,7 +108,7 @@ class APIHomeAssistant(CoreSysAttributes):
 
     @api_process
     async def update(self, request):
-        """Update homeassistant."""
+        """Update Home Assistant."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_homeassistant.last_version)
 
@@ -116,27 +116,27 @@ class APIHomeAssistant(CoreSysAttributes):
 
     @api_process
     def stop(self, request):
-        """Stop homeassistant."""
+        """Stop Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.stop())
 
     @api_process
     def start(self, request):
-        """Start homeassistant."""
+        """Start Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.start())
 
     @api_process
     def restart(self, request):
-        """Restart homeassistant."""
+        """Restart Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.restart())
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request):
-        """Return homeassistant docker logs."""
+        """Return Home Assistant Docker logs."""
         return self.sys_homeassistant.logs()
 
     @api_process
     async def check(self, request):
-        """Check config of homeassistant."""
+        """Check configuration of Home Assistant."""
         result = await self.sys_homeassistant.check_config()
         if not result.valid:
             raise RuntimeError(result.log)

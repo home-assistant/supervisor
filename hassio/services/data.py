@@ -14,10 +14,10 @@ class ServicesData(JsonConfig):
 
     @property
     def discovery(self):
-        """Return discovery data for home-assistant."""
+        """Return discovery data for Home Assistant."""
         return self._data[ATTR_DISCOVERY]
 
     @property
     def mqtt(self):
-        """Return settings for mqtt service."""
+        """Return settings for MQTT service."""
         return self._data[SERVICE_MQTT]

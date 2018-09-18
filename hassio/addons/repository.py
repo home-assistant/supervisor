@@ -1,4 +1,4 @@
-"""Represent a HassIO repository."""
+"""Represent a Hass.io repository."""
 from .git import GitRepoHassIO, GitRepoCustom
 from .utils import get_hash_from_repository
 from ..const import (
@@ -9,7 +9,7 @@ UNKNOWN = 'unknown'
 
 
 class Repository(CoreSysAttributes):
-    """Repository in HassIO."""
+    """Repository in Hass.io."""
 
     def __init__(self, coresys, repository):
         """Initialize repository object."""
@@ -44,7 +44,7 @@ class Repository(CoreSysAttributes):
 
     @property
     def url(self):
-        """Return url of repository."""
+        """Return URL of repository."""
         return self._mesh.get(ATTR_URL, self.source)
 
     @property
@@ -59,13 +59,13 @@ class Repository(CoreSysAttributes):
         return True
 
     async def update(self):
-        """Update addon repository."""
+        """Update add-on repository."""
         if self.git:
             return await self.git.pull()
         return True
 
     def remove(self):
-        """Remove addon repository."""
+        """Remove add-on repository."""
         if self._id in (REPOSITORY_CORE, REPOSITORY_LOCAL):
             raise RuntimeError("Can't remove built-in repositories!")
 

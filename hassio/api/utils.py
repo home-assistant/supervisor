@@ -1,4 +1,4 @@
-"""Init file for HassIO util for rest api."""
+"""Init file for Hass.io util for RESTful API."""
 import json
 import logging
 
@@ -27,7 +27,7 @@ def json_loads(data):
 def api_process(method):
     """Wrap function with true/false calls to rest api."""
     async def wrap_api(api, *args, **kwargs):
-        """Return api information."""
+        """Return API information."""
         try:
             answer = await method(api, *args, **kwargs)
         except HassioError:

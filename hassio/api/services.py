@@ -1,4 +1,4 @@
-"""Init file for HassIO network rest api."""
+"""Init file for Hass.io network RESTful API."""
 
 from .utils import api_process, api_validate
 from ..const import (
@@ -7,7 +7,7 @@ from ..coresys import CoreSysAttributes
 
 
 class APIServices(CoreSysAttributes):
-    """Handle rest api for services functions."""
+    """Handle RESTful API for services functions."""
 
     def _extract_service(self, request):
         """Return service, throw an exception if it doesn't exist."""

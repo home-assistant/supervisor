@@ -1,5 +1,4 @@
 """Validate some things around restore."""
-
 import voluptuous as vol
 
 from ..const import (

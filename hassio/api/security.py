@@ -88,7 +88,7 @@ class SecurityMiddleware(CoreSysAttributes):
         # UUID check need removed with 131
         if hassio_token in (self.sys_homeassistant.uuid,
                             self.sys_homeassistant.hassio_token):
-            _LOGGER.debug("%s access from Home-Assistant", request.path)
+            _LOGGER.debug("%s access from Home Assistant", request.path)
             request_from = 'homeassistant'
 
         # Host
