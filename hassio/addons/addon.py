@@ -377,7 +377,7 @@ class Addon(CoreSysAttributes):
         return self._mesh[ATTR_HOMEASSISTANT_API]
 
     @property
-    def hassio_api_role(self):
+    def hassio_role(self):
         """Return Hass.io role for API."""
         return self._mesh[ATTR_HASSIO_ROLE]
 

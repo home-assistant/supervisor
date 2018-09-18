@@ -98,14 +98,20 @@ class SecurityMiddleware(CoreSysAttributes):
         addon = None
         if hassio_token and not request_from:
             addon = self.sys_addons.from_token(hassio_token)
-            # Need removed with 131
+            # REMOVE 132
             if not addon:
                 addon = self.sys_addons.from_uuid(hassio_token)
 
         # Check Add-on API access
         if addon and addon.access_hassio_api:
-            _LOGGER.info("%s access from %s", request.path, addon.slug)
-            request_from = addon.slug
+            # Check Role
+            if ADDONS_API_BYPASS.match(request.path) or \
+                    ADDONS_ROLE[addon.hassio_role].match(request.path):
+                _LOGGER.info("%s access from %s", request.path, addon.slug)
+                request_from = addon.slug
+            else:
+                _LOGGER.error("%s role error for %s", request.path, addon.slug)
+                request_from = addon.slug  # REMOVE: 132
         elif addon and ADDONS_API_BYPASS.match(request.path):
             _LOGGER.debug("Passthrough %s from %s", request.path, addon.slug)
             request_from = addon.slug
