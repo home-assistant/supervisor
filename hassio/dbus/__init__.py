@@ -1,4 +1,4 @@
-"""DBus interface objects."""
+"""D-Bus interface objects."""
 
 from .systemd import Systemd
 from .hostname import Hostname
@@ -7,10 +7,10 @@ from ..coresys import CoreSysAttributes
 
 
 class DBusManager(CoreSysAttributes):
-    """DBus Interface handler."""
+    """A DBus Interface handler."""
 
     def __init__(self, coresys):
-        """Initialize DBus  Interface."""
+        """Initialize D-Bus interface."""
         self.coresys = coresys
 
         self._systemd = Systemd()
@@ -19,21 +19,21 @@ class DBusManager(CoreSysAttributes):
 
     @property
     def systemd(self):
-        """Return Systemd Interface."""
+        """Return the systemd interface."""
         return self._systemd
 
     @property
     def hostname(self):
-        """Return hostname Interface."""
+        """Return the hostname interface."""
         return self._hostname
 
     @property
     def rauc(self):
-        """Return rauc Interface."""
+        """Return the rauc interface."""
         return self._rauc
 
     async def load(self):
-        """Connect interfaces to dbus."""
+        """Connect interfaces to D-Bus."""
         await self.systemd.connect()
         await self.hostname.connect()
         await self.rauc.connect()

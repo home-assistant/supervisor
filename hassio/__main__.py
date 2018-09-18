@@ -1,4 +1,4 @@
-"""Main file for HassIO."""
+"""Main file for Hass.io."""
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import logging
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     executor = ThreadPoolExecutor(thread_name_prefix="SyncWorker")
     loop.set_default_executor(executor)
 
-    _LOGGER.info("Initialize Hassio setup")
+    _LOGGER.info("Initialize Hass.io setup")
     coresys = bootstrap.initialize_coresys(loop)
 
     bootstrap.migrate_system_env(coresys)
@@ -43,13 +43,13 @@ if __name__ == "__main__":
     loop.call_soon_threadsafe(bootstrap.reg_signal, loop)
 
     try:
-        _LOGGER.info("Run HassIO")
+        _LOGGER.info("Run Hass.io")
         loop.run_forever()
     finally:
-        _LOGGER.info("Stopping HassIO")
+        _LOGGER.info("Stopping Hass.io")
         loop.run_until_complete(coresys.core.stop())
         executor.shutdown(wait=False)
         loop.close()
 
-    _LOGGER.info("Close Hassio")
+    _LOGGER.info("Close Hass.io")
     sys.exit(0)

@@ -1,4 +1,4 @@
-"""Tools file for HassIO."""
+"""Tools file for Hass.io."""
 import json
 import logging
 
@@ -9,14 +9,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def write_json_file(jsonfile, data):
-    """Write a json file."""
+    """Write a JSON file."""
     json_str = json.dumps(data, indent=2)
     with jsonfile.open('w') as conf_file:
         conf_file.write(json_str)
 
 
 def read_json_file(jsonfile):
-    """Read a json file and return a dict."""
+    """Read a JSON file and return a dict."""
     with jsonfile.open('r') as cfile:
         return json.loads(cfile.read())
 
@@ -33,7 +33,7 @@ class JsonConfig:
         self.read_data()
 
     def reset_data(self):
-        """Reset json file to default."""
+        """Reset JSON file to default."""
         try:
             self._data = self._schema({})
         except vol.Invalid as ex:
@@ -41,7 +41,7 @@ class JsonConfig:
                           self._file, humanize_error(self._data, ex))
 
     def read_data(self):
-        """Read json file & validate."""
+        """Read JSON file & validate."""
         if self._file.is_file():
             try:
                 self._data = read_json_file(self._file)
@@ -61,7 +61,7 @@ class JsonConfig:
             self._data = self._schema({})
 
     def save_data(self):
-        """Store data to config file."""
+        """Store data to configuration file."""
         # Validate
         try:
             self._data = self._schema(self._data)
@@ -78,4 +78,5 @@ class JsonConfig:
         try:
             write_json_file(self._file, self._data)
         except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.error("Can't store config in %s: %s", self._file, err)
+            _LOGGER.error(
+                "Can't store configuration in %s: %s", self._file, err)

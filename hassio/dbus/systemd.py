@@ -1,4 +1,4 @@
-"""Interface to Systemd over dbus."""
+"""Interface to Systemd over D-Bus."""
 import logging
 
 from .interface import DBusInterface

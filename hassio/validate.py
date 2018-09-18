@@ -24,7 +24,7 @@ CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
 
 
 def validate_repository(repository):
-    """Validate a valide repository."""
+    """Validate a valid repository."""
     data = RE_REPOSITORY.match(repository)
     if not data:
         raise vol.Invalid("No valid repository format!")
@@ -55,7 +55,7 @@ def validate_timezone(timezone):
 
 # pylint: disable=inconsistent-return-statements
 def convert_to_docker_ports(data):
-    """Convert data into docker port list."""
+    """Convert data into Docker port list."""
     # dynamic ports
     if data is None:
         return None
@@ -72,7 +72,7 @@ def convert_to_docker_ports(data):
     if isinstance(data, list) and len(data) == 2:
         return (vol.Coerce(str)(data[0]), NETWORK_PORT(data[1]))
 
-    raise vol.Invalid("Can't validate docker host settings")
+    raise vol.Invalid("Can't validate Docker host settings")
 
 
 DOCKER_PORTS = vol.Schema({

@@ -39,27 +39,27 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def version_homeassistant(self):
-        """Return last version of homeassistant."""
+        """Return last version of Home Assistant."""
         return self._data.get(ATTR_HOMEASSISTANT)
 
     @property
     def version_hassio(self):
-        """Return last version of hassio."""
+        """Return last version of Hass.io."""
         return self._data.get(ATTR_HASSIO)
 
     @property
     def version_hassos(self):
-        """Return last version of hassos."""
+        """Return last version of HassOS."""
         return self._data.get(ATTR_HASSOS)
 
     @property
     def version_hassos_cli(self):
-        """Return last version of hassos cli."""
+        """Return last version of HassOS cli."""
         return self._data.get(ATTR_HASSOS_CLI)
 
     @property
     def channel(self):
-        """Return upstream channel of hassio instance."""
+        """Return upstream channel of Hass.io instance."""
         return self._data[ATTR_CHANNEL]
 
     @channel.setter
@@ -69,7 +69,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @AsyncThrottle(timedelta(seconds=60))
     async def fetch_data(self):
-        """Fetch current versions from github.
+        """Fetch current versions from Github.
 
         Is a coroutine.
         """
