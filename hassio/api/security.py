@@ -15,9 +15,9 @@ _LOGGER = logging.getLogger(__name__)
 # Free to call or have own security concepts
 NO_SECURITY_CHECK = re.compile(
     r"^(?:"
-    r"|/homeassistant/api/.*$"
-    r"|/homeassistant/websocket$"
-    r"|/supervisor/ping$"
+    r"|/homeassistant/api/.*"
+    r"|/homeassistant/websocket"
+    r"|/supervisor/ping"
     r"|/services.*"
     r")$"
 )
@@ -25,16 +25,18 @@ NO_SECURITY_CHECK = re.compile(
 # Can called by every add-on
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
-    r"|/homeassistant/info$"
-    r"|/supervisor/info$"
-    r"|/addons(?:/self/(?!security)[^/]+)?$"
+    r"|/homeassistant/info"
+    r"|/supervisor/info"
+    r"|/addons(?:/self/(?!security)[^/]+)?"
     r")$"
 )
 
 # Policy role add-on API access
 ADDON_ROLE_ACCESS = {
     ROLE_DEFAULT: re.compile(
-        r"^$"
+        r"^(?:"
+        r"|/[^/]+/info"
+        r")$"
     ),
     ROLE_HOMEASSISTANT: re.compile(
         r"^(?:"
