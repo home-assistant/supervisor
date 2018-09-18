@@ -1,4 +1,4 @@
-"""Main file for HassIO."""
+"""Main file for Hass.io."""
 from contextlib import suppress
 import asyncio
 import logging
@@ -14,10 +14,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class HassIO(CoreSysAttributes):
-    """Main object of hassio."""
+    """Main object of Hass.io."""
 
     def __init__(self, coresys):
-        """Initialize hassio object."""
+        """Initialize Hass.io object."""
         self.coresys = coresys
 
     async def setup(self):
@@ -56,7 +56,7 @@ class HassIO(CoreSysAttributes):
         self.sys_create_task(self.sys_dns.start())
 
     async def start(self):
-        """Start HassIO orchestration."""
+        """Start Hass.io orchestration."""
         # on release channel, try update itself
         # on dev mode, only read new versions
         if not self.sys_dev and self.sys_supervisor.need_update:

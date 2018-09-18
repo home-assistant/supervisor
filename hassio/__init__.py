@@ -1,1 +1,1 @@
-"""Init file for HassIO."""
+"""Init file for Hass.io."""
