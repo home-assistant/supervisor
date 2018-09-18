@@ -184,6 +184,7 @@ ATTR_DOCKER_API = 'docker_api'
 ATTR_FULL_ACCESS = 'full_access'
 ATTR_PROTECTED = 'protected'
 ATTR_RATING = 'rating'
+ATTR_HASSIO_ROLE = 'hassio_role'
 
 SERVICE_MQTT = 'mqtt'
 
@@ -246,3 +247,8 @@ FEATURES_REBOOT = 'reboot'
 FEATURES_HASSOS = 'hassos'
 FEATURES_HOSTNAME = 'hostname'
 FEATURES_SERVICES = 'services'
+
+ROLE_DEFAULT = 'default'
+ROLE_HOMEASSISTANT = 'homeassistant'
+ROLE_MANAGER = 'manager'
+ROLE_ADMIN = 'admin'

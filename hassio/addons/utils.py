@@ -6,7 +6,8 @@ import re
 
 from ..const import (
     SECURITY_DISABLE, SECURITY_PROFILE, PRIVILEGED_NET_ADMIN,
-    PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE)
+    PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE,
+    ROLE_ADMIN, ROLE_MANAGER)
 
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 
@@ -35,6 +36,12 @@ def rating_security(addon):
     if addon.privileged in (PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
                             PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE):
         rating += -1
+
+    # API Hass.io role
+    if addon.hassio_role == ROLE_MANAGER:
+        rating += -1
+    elif addon.hassio_role == ROLE_ADMIN:
+        rating += -2
 
     # Not secure Networking
     if addon.host_network:

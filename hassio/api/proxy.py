@@ -25,7 +25,7 @@ class APIProxy(CoreSysAttributes):
         hassio_token = request.headers.get(HEADER_HA_ACCESS)
         addon = self.sys_addons.from_token(hassio_token)
 
-        # Need removed with 131
+        # REMOVE 132
         if not addon:
             addon = self.sys_addons.from_uuid(hassio_token)
 
@@ -184,7 +184,7 @@ class APIProxy(CoreSysAttributes):
                             response.get('access_token'))
             addon = self.sys_addons.from_token(hassio_token)
 
-            # Need removed with 131
+            # REMOVE 132
             if not addon:
                 addon = self.sys_addons.from_uuid(hassio_token)
 
