@@ -483,6 +483,7 @@ Get all available addons.
     "logo": "bool",
     "changelog": "bool",
     "hassio_api": "bool",
+    "hassio_role": "default|homeassistant|manager|admin",
     "homeassistant_api": "bool",
     "full_access": "bool",
     "protected": "bool",
