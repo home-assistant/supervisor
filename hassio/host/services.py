@@ -95,5 +95,5 @@ class ServiceInfo:
 
     @staticmethod
     def read_from(unit):
-        """Parse data from dbus into this object."""
+        """Parse data from D-Bus into this object."""
         return ServiceInfo(unit[0], unit[1], unit[3])

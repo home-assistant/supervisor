@@ -1,4 +1,4 @@
-"""Util addons functions."""
+"""Util add-ons functions."""
 import asyncio
 import hashlib
 import logging
@@ -78,7 +78,7 @@ def extract_hash_from_path(path):
 
 
 def check_installed(method):
-    """Wrap function with check if addon is installed."""
+    """Wrap function with check if add-on is installed."""
     async def wrap_check(addon, *args, **kwargs):
         """Return False if not installed or the function."""
         if not addon.is_installed:

@@ -1,4 +1,4 @@
-"""Host function like audio/dbus/systemd."""
+"""Host function like audio, D-Bus or systemd."""
 from contextlib import suppress
 import logging
 
@@ -35,7 +35,7 @@ class HostManager(CoreSysAttributes):
 
     @property
     def apparmor(self):
-        """Return host apparmor handler."""
+        """Return host AppArmor handler."""
         return self._apparmor
 
     @property

@@ -48,7 +48,7 @@ class InfoCenter(CoreSysAttributes):
     async def update(self):
         """Update properties over dbus."""
         if not self.sys_dbus.hostname.is_connected:
-            _LOGGER.error("No hostname dbus connection available")
+            _LOGGER.error("No hostname D-Bus connection available")
             raise HostNotSupportedError()
 
         _LOGGER.info("Update local host information")

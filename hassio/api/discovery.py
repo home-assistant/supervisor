@@ -1,5 +1,4 @@
-"""Init file for HassIO network rest api."""
-
+"""Init file for Hass.io network RESTful API."""
 import voluptuous as vol
 
 from .utils import api_process, api_validate
@@ -17,7 +16,7 @@ SCHEMA_DISCOVERY = vol.Schema({
 
 
 class APIDiscovery(CoreSysAttributes):
-    """Handle rest api for discovery functions."""
+    """Handle RESTful API for discovery functions."""
 
     def _extract_message(self, request):
         """Extract discovery message from URL."""

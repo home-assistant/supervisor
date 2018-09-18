@@ -1,4 +1,4 @@
-"""Init file for HassIO addon docker object."""
+"""Init file for Hass.io add-on Docker object."""
 import logging
 import os
 from pathlib import Path
@@ -19,45 +19,45 @@ AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 
 
 class DockerAddon(DockerInterface):
-    """Docker hassio wrapper for HomeAssistant."""
+    """Docker Hass.io wrapper for Home Assistant."""
 
     def __init__(self, coresys, slug):
-        """Initialize docker homeassistant wrapper."""
+        """Initialize Docker Home Assistant wrapper."""
         super().__init__(coresys)
         self._id = slug
 
     @property
     def addon(self):
-        """Return addon of docker image."""
+        """Return add-on of Docker image."""
         return self.sys_addons.get(self._id)
 
     @property
     def image(self):
-        """Return name of docker image."""
+        """Return name of Docker image."""
         return self.addon.image
 
     @property
     def timeout(self):
-        """Return timeout for docker actions."""
+        """Return timeout for Docker actions."""
         return self.addon.timeout
 
     @property
     def version(self):
-        """Return version of docker image."""
+        """Return version of Docker image."""
         if not self.addon.legacy:
             return super().version
         return self.addon.version_installed
 
     @property
     def arch(self):
-        """Return arch of docker image."""
+        """Return arch of Docker image."""
         if not self.addon.legacy:
             return super().arch
         return self.sys_arch
 
     @property
     def name(self):
-        """Return name of docker container."""
+        """Return name of Docker container."""
         return "addon_{}".format(self.addon.slug)
 
     @property
@@ -74,12 +74,12 @@ class DockerAddon(DockerInterface):
 
     @property
     def hostname(self):
-        """Return slug/id of addon."""
+        """Return slug/id of add-on."""
         return self.addon.slug.replace('_', '-')
 
     @property
     def environment(self):
-        """Return environment for docker add-on."""
+        """Return environment for Docker add-on."""
         addon_env = self.addon.environment or {}
 
         # Need audio settings
@@ -114,7 +114,7 @@ class DockerAddon(DockerInterface):
 
     @property
     def ports(self):
-        """Filter None from addon ports."""
+        """Filter None from add-on ports."""
         if not self.addon.ports:
             return None
 
@@ -126,7 +126,7 @@ class DockerAddon(DockerInterface):
 
     @property
     def security_opt(self):
-        """Controlling security opt."""
+        """Controlling security options."""
         security = []
 
         # AppArmor
@@ -144,7 +144,7 @@ class DockerAddon(DockerInterface):
 
     @property
     def tmpfs(self):
-        """Return tmpfs for docker add-on."""
+        """Return tmpfs for Docker add-on."""
         options = self.addon.tmpfs
         if options:
             return {"/tmpfs": f"{options}"}
@@ -160,14 +160,14 @@ class DockerAddon(DockerInterface):
 
     @property
     def network_mode(self):
-        """Return network mode for addon."""
+        """Return network mode for add-on."""
         if self.addon.host_network:
             return 'host'
         return None
 
     @property
     def pid_mode(self):
-        """Return PID mode for addon."""
+        """Return PID mode for add-on."""
         if not self.addon.protected and self.addon.host_pid:
             return 'host'
         return None
@@ -242,7 +242,7 @@ class DockerAddon(DockerInterface):
                 },
             })
 
-        # Host dbus system
+        # Host D-Bus system
         if self.addon.host_dbus:
             volumes.update({
                 "/var/run/dbus": {
@@ -259,7 +259,7 @@ class DockerAddon(DockerInterface):
         return volumes
 
     def _run(self):
-        """Run docker image.
+        """Run Docker image.
 
         Need run inside executor.
         """
@@ -269,7 +269,7 @@ class DockerAddon(DockerInterface):
         # Security check
         if not self.addon.protected:
             _LOGGER.warning(
-                "%s run with disabled proteced mode!", self.addon.name)
+                "%s run with disabled protected mode!", self.addon.name)
 
         # cleanup
         self._stop()
@@ -296,13 +296,13 @@ class DockerAddon(DockerInterface):
         )
 
         if ret:
-            _LOGGER.info("Start docker addon %s with version %s",
+            _LOGGER.info("Start Docker add-on %s with version %s",
                          self.image, self.version)
 
         return ret
 
     def _install(self, tag):
-        """Pull docker image or build it.
+        """Pull Docker image or build it.
 
         Need run inside executor.
         """
@@ -312,7 +312,7 @@ class DockerAddon(DockerInterface):
         return super()._install(tag)
 
     def _build(self, tag):
-        """Build a docker container.
+        """Build a Docker container.
 
         Need run inside executor.
         """
@@ -329,7 +329,7 @@ class DockerAddon(DockerInterface):
             # Update meta data
             self._meta = image.attrs
 
-        except (docker.errors.DockerException) as err:
+        except docker.errors.DockerException as err:
             _LOGGER.error("Can't build %s:%s: %s", self.image, tag, err)
             return False
 
@@ -403,7 +403,7 @@ class DockerAddon(DockerInterface):
             return False
 
         try:
-            # load needed docker objects
+            # Load needed docker objects
             container = self.sys_docker.containers.get(self.name)
             socket = container.attach_socket(params={'stdin': 1, 'stream': 1})
         except docker.errors.DockerException as err:
@@ -411,7 +411,7 @@ class DockerAddon(DockerInterface):
             return False
 
         try:
-            # write to stdin
+            # Write to stdin
             data += b"\n"
             os.write(socket.fileno(), data)
             socket.close()

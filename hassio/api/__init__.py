@@ -1,4 +1,4 @@
-"""Init file for HassIO rest api."""
+"""Init file for Hass.io RESTful API."""
 import logging
 from pathlib import Path
 
@@ -21,10 +21,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class RestAPI(CoreSysAttributes):
-    """Handle rest api for hassio."""
+    """Handle RESTful API for Hass.io."""
 
     def __init__(self, coresys):
-        """Initialize docker base wrapper."""
+        """Initialize Docker base wrapper."""
         self.coresys = coresys
         self.security = SecurityMiddleware(coresys)
         self.webapp = web.Application(
@@ -49,7 +49,7 @@ class RestAPI(CoreSysAttributes):
         self._register_services()
 
     def _register_host(self):
-        """Register hostcontrol function."""
+        """Register hostcontrol functions."""
         api_host = APIHost()
         api_host.coresys = self.coresys
 
@@ -69,7 +69,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_hassos(self):
-        """Register hassos function."""
+        """Register HassOS functions."""
         api_hassos = APIHassOS()
         api_hassos.coresys = self.coresys
 
@@ -81,7 +81,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_hardware(self):
-        """Register hardware function."""
+        """Register hardware functions."""
         api_hardware = APIHardware()
         api_hardware.coresys = self.coresys
 
@@ -91,7 +91,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_supervisor(self):
-        """Register supervisor function."""
+        """Register Supervisor functions."""
         api_supervisor = APISupervisor()
         api_supervisor.coresys = self.coresys
 
@@ -106,7 +106,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_homeassistant(self):
-        """Register homeassistant function."""
+        """Register Home Assistant functions."""
         api_hass = APIHomeAssistant()
         api_hass.coresys = self.coresys
 
@@ -123,7 +123,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_proxy(self):
-        """Register HomeAssistant API Proxy."""
+        """Register Home Assistant API Proxy."""
         api_proxy = APIProxy()
         api_proxy.coresys = self.coresys
 
@@ -137,7 +137,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_addons(self):
-        """Register homeassistant function."""
+        """Register Add-on functions."""
         api_addons = APIAddons()
         api_addons.coresys = self.coresys
 
@@ -163,7 +163,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_snapshots(self):
-        """Register snapshots function."""
+        """Register snapshots functions."""
         api_snapshots = APISnapshots()
         api_snapshots.coresys = self.coresys
 
@@ -183,6 +183,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_services(self):
+        """Register services functions."""
         api_services = APIServices()
         api_services.coresys = self.coresys
 
@@ -194,6 +195,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_discovery(self):
+        """Register discovery functions."""
         api_discovery = APIDiscovery()
         api_discovery.coresys = self.coresys
 
@@ -206,7 +208,7 @@ class RestAPI(CoreSysAttributes):
         ])
 
     def _register_panel(self):
-        """Register panel for homeassistant."""
+        """Register panel for Home Assistant."""
         panel_dir = Path(__file__).parent.joinpath("panel")
 
         def create_response(panel_file):
@@ -234,7 +236,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes([web.static('/app', panel_dir)])
 
     async def start(self):
-        """Run rest api webserver."""
+        """Run RESTful API webserver."""
         await self._runner.setup()
         self._site = web.TCPSite(
             self._runner, host="0.0.0.0", port=80, shutdown_timeout=5)
@@ -248,7 +250,7 @@ class RestAPI(CoreSysAttributes):
             _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
 
     async def stop(self):
-        """Stop rest api webserver."""
+        """Stop RESTful API webserver."""
         if not self._site:
             return
 

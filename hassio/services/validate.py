@@ -1,5 +1,4 @@
 """Validate services schema."""
-
 import voluptuous as vol
 
 from ..const import (

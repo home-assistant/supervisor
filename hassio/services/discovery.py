@@ -1,4 +1,4 @@
-"""Handle discover message for Home-Assistant."""
+"""Handle discover message for Home Assistant."""
 import logging
 from uuid import uuid4
 
@@ -12,7 +12,7 @@ EVENT_DISCOVERY_DEL = 'hassio_discovery_del'
 
 
 class Discovery(CoreSysAttributes):
-    """Home-Assistant Discovery handler."""
+    """Home Assistant Discovery handler."""
 
     def __init__(self, coresys):
         """Initialize discovery handler."""
@@ -53,29 +53,29 @@ class Discovery(CoreSysAttributes):
         return self.message_obj.values()
 
     def send(self, provider, component, platform=None, config=None):
-        """Send a discovery message to Home-Assistant."""
+        """Send a discovery message to Home Assistant."""
         message = Message(provider, component, platform, config)
 
         # Already exists?
         for exists_message in self.message_obj:
             if exists_message == message:
-                _LOGGER.warning("Found douplicate discovery message from %s",
+                _LOGGER.warning("Found duplicate discovery message from %s",
                                 provider)
                 return exists_message
 
-        _LOGGER.info("Send discovery to Home-Assistant %s/%s from %s",
+        _LOGGER.info("Send discovery to Home Assistant %s/%s from %s",
                      component, platform, provider)
         self.message_obj[message.uuid] = message
         self.save()
 
-        # send event to Home-Assistant
+        # Send event to Home Assistant
         self.sys_create_task(self.sys_homeassistant.send_event(
             EVENT_DISCOVERY_ADD, {ATTR_UUID: message.uuid}))
 
         return message
 
     def remove(self, message):
-        """Remove a discovery message from Home-Assistant."""
+        """Remove a discovery message from Home Assistant."""
         self.message_obj.pop(message.uuid, None)
         self.save()
 
