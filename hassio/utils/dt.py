@@ -1,4 +1,4 @@
-"""Tools file for HassIO."""
+"""Tools file for Hass.io."""
 from datetime import datetime, timedelta, timezone
 import logging
 import re
@@ -58,5 +58,5 @@ def parse_datetime(dt_str):
 
 
 def utcnow():
-    """Returns current timestamp including timezone."""
+    """Return the current timestamp including timezone."""
     return datetime.now(UTC)

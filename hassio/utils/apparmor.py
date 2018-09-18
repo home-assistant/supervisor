@@ -1,4 +1,4 @@
-"""Some functions around apparmor profiles."""
+"""Some functions around AppArmor profiles."""
 import logging
 import re
 
@@ -21,7 +21,7 @@ def get_profile_name(profile_file):
                     continue
                 profiles.add(match.group(1))
     except OSError as err:
-        _LOGGER.error("Can't read apparmor profile: %s", err)
+        _LOGGER.error("Can't read AppArmor profile: %s", err)
         raise AppArmorFileError()
 
     if len(profiles) != 1:

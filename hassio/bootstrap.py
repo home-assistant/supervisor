@@ -1,4 +1,4 @@
-"""Bootstrap HassIO."""
+"""Bootstrap Hass.io."""
 import logging
 import os
 import signal
@@ -62,55 +62,55 @@ def initialize_coresys(loop):
 
 
 def initialize_system_data(coresys):
-    """Setup default config and create folders."""
+    """Set up the default configuration and create folders."""
     config = coresys.config
 
-    # homeassistant config folder
+    # Home Assistant configuration folder
     if not config.path_homeassistant.is_dir():
         _LOGGER.info(
-            "Create Home-Assistant config folder %s",
+            "Create Home Assistant configuration folder %s",
             config.path_homeassistant)
         config.path_homeassistant.mkdir()
 
     # hassio ssl folder
     if not config.path_ssl.is_dir():
-        _LOGGER.info("Create hassio ssl folder %s", config.path_ssl)
+        _LOGGER.info("Create Hass.io SSL/TLS folder %s", config.path_ssl)
         config.path_ssl.mkdir()
 
     # hassio addon data folder
     if not config.path_addons_data.is_dir():
         _LOGGER.info(
-            "Create hassio addon data folder %s", config.path_addons_data)
+            "Create Hass.io Add-on data folder %s", config.path_addons_data)
         config.path_addons_data.mkdir(parents=True)
 
     if not config.path_addons_local.is_dir():
-        _LOGGER.info("Create hassio addon local repository folder %s",
+        _LOGGER.info("Create Hass.io Add-on local repository folder %s",
                      config.path_addons_local)
         config.path_addons_local.mkdir(parents=True)
 
     if not config.path_addons_git.is_dir():
-        _LOGGER.info("Create hassio addon git repositories folder %s",
+        _LOGGER.info("Create Hass.io Add-on git repositories folder %s",
                      config.path_addons_git)
         config.path_addons_git.mkdir(parents=True)
 
     # hassio tmp folder
     if not config.path_tmp.is_dir():
-        _LOGGER.info("Create hassio temp folder %s", config.path_tmp)
+        _LOGGER.info("Create Hass.io temp folder %s", config.path_tmp)
         config.path_tmp.mkdir(parents=True)
 
     # hassio backup folder
     if not config.path_backup.is_dir():
-        _LOGGER.info("Create hassio backup folder %s", config.path_backup)
+        _LOGGER.info("Create Hass.io backup folder %s", config.path_backup)
         config.path_backup.mkdir()
 
     # share folder
     if not config.path_share.is_dir():
-        _LOGGER.info("Create hassio share folder %s", config.path_share)
+        _LOGGER.info("Create Hass.io share folder %s", config.path_share)
         config.path_share.mkdir()
 
     # apparmor folder
     if not config.path_apparmor.is_dir():
-        _LOGGER.info("Create hassio apparmor folder %s", config.path_apparmor)
+        _LOGGER.info("Create Hass.io Apparmor folder %s", config.path_apparmor)
         config.path_apparmor.mkdir()
 
     return config
@@ -126,7 +126,7 @@ def migrate_system_env(coresys):
         try:
             old_build.rmdir()
         except OSError:
-            _LOGGER.warning("Can't cleanup old addons build dir.")
+            _LOGGER.warning("Can't cleanup old Add-on build directory")
 
 
 def initialize_logging():
@@ -166,24 +166,24 @@ def check_environment():
 
     # check docker socket
     if not SOCKET_DOCKER.is_socket():
-        _LOGGER.fatal("Can't find docker socket!")
+        _LOGGER.fatal("Can't find Docker socket!")
         return False
 
     # check socat exec
     if not shutil.which('socat'):
-        _LOGGER.fatal("Can't find socat program!")
+        _LOGGER.fatal("Can't find socat!")
         return False
 
     # check socat exec
     if not shutil.which('gdbus'):
-        _LOGGER.fatal("Can't find gdbus program!")
+        _LOGGER.fatal("Can't find gdbus!")
         return False
 
     return True
 
 
 def reg_signal(loop):
-    """Register SIGTERM, SIGKILL to stop system."""
+    """Register SIGTERM and SIGKILL to stop system."""
     try:
         loop.add_signal_handler(
             signal.SIGTERM, lambda: loop.call_soon(loop.stop))
