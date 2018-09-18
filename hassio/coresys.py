@@ -1,5 +1,4 @@
 """Handle core shared data."""
-
 import aiohttp
 
 from .const import CHANNEL_DEV
@@ -49,21 +48,21 @@ class CoreSys:
 
     @property
     def arch(self):
-        """Return running arch of hass.io system."""
+        """Return running arch of the Hass.io system."""
         if self._supervisor:
             return self._supervisor.arch
         return None
 
     @property
     def machine(self):
-        """Return running machine type of hass.io system."""
+        """Return running machine type of the Hass.io system."""
         if self._homeassistant:
             return self._homeassistant.machine
         return None
 
     @property
     def dev(self):
-        """Return True if we run dev modus."""
+        """Return True if we run dev mode."""
         return self._updater.channel == CHANNEL_DEV
 
     @property
@@ -118,21 +117,21 @@ class CoreSys:
 
     @core.setter
     def core(self, value):
-        """Set a HassIO object."""
+        """Set a Hass.io object."""
         if self._core:
-            raise RuntimeError("HassIO already set!")
+            raise RuntimeError("Hass.io already set!")
         self._core = value
 
     @property
     def homeassistant(self):
-        """Return HomeAssistant object."""
+        """Return Home Assistant object."""
         return self._homeassistant
 
     @homeassistant.setter
     def homeassistant(self, value):
         """Set a HomeAssistant object."""
         if self._homeassistant:
-            raise RuntimeError("HomeAssistant already set!")
+            raise RuntimeError("Home Assistant already set!")
         self._homeassistant = value
 
     @property

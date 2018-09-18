@@ -1,4 +1,4 @@
-"""DBus interface for rauc."""
+"""D-Bus interface for rauc."""
 import logging
 
 from .interface import DBusInterface
@@ -13,10 +13,10 @@ DBUS_OBJECT = '/'
 
 
 class Rauc(DBusInterface):
-    """Handle DBus interface for rauc."""
+    """Handle D-Bus interface for rauc."""
 
     async def connect(self):
-        """Connect do bus."""
+        """Connect to D-Bus."""
         try:
             self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
         except DBusError:

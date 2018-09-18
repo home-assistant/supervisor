@@ -1,4 +1,4 @@
-"""Const file for HassIO."""
+"""Constants file for Hass.io."""
 from pathlib import Path
 from ipaddress import ip_network
 

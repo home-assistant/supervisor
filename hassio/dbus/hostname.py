@@ -1,4 +1,4 @@
-"""DBus interface for hostname."""
+"""D-Bus interface for hostname."""
 import logging
 
 from .interface import DBusInterface
@@ -13,10 +13,10 @@ DBUS_OBJECT = '/org/freedesktop/hostname1'
 
 
 class Hostname(DBusInterface):
-    """Handle DBus interface for hostname/system."""
+    """Handle D-Bus interface for hostname/system."""
 
     async def connect(self):
-        """Connect do bus."""
+        """Connect to system's D-Bus."""
         try:
             self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
         except DBusError:

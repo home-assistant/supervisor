@@ -1,4 +1,4 @@
-"""Tools file for HassIO."""
+"""Tools file for Hass.io."""
 from datetime import datetime
 import hashlib
 import logging
@@ -25,7 +25,8 @@ def process_lock(method):
         """Return api wrapper."""
         if api.lock.locked():
             _LOGGER.error(
-                "Can't excute %s while a task is in progress", method.__name__)
+                "Can't execute %s while a task is in progress",
+                method.__name__)
             return False
 
         async with api.lock:

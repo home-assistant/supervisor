@@ -1,4 +1,4 @@
-"""Bootstrap HassIO."""
+"""Bootstrap Hass.io."""
 from datetime import datetime
 import logging
 import os
@@ -16,7 +16,7 @@ from .validate import SCHEMA_HASSIO_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
-HOMEASSISTANT_CONFIG = PurePath("homeassistant")
+HOMEASSISTANT_CONFIG = PurePath('homeassistant')
 
 HASSIO_SSL = PurePath("ssl")
 
@@ -56,7 +56,7 @@ class CoreConfig(JsonConfig):
             timezone = data.group('timezone')
             pytz.timezone(timezone)
         except (pytz.exceptions.UnknownTimeZoneError, OSError, AssertionError):
-            _LOGGER.debug("Can't parse HomeAssistant timezone")
+            _LOGGER.debug("Can't parse Home Assistant timezone")
             return self._data[ATTR_TIMEZONE]
 
         return timezone
@@ -93,17 +93,17 @@ class CoreConfig(JsonConfig):
 
     @property
     def path_hassio(self):
-        """Return hassio data path."""
+        """Return Hass.io data path."""
         return HASSIO_DATA
 
     @property
     def path_extern_hassio(self):
-        """Return hassio data path extern for docker."""
+        """Return Hass.io data path external for Docker."""
         return PurePath(os.environ['SUPERVISOR_SHARE'])
 
     @property
     def path_extern_homeassistant(self):
-        """Return config path extern for docker."""
+        """Return config path external for Docker."""
         return str(PurePath(self.path_extern_hassio, HOMEASSISTANT_CONFIG))
 
     @property
@@ -113,7 +113,7 @@ class CoreConfig(JsonConfig):
 
     @property
     def path_extern_ssl(self):
-        """Return SSL path extern for docker."""
+        """Return SSL path external for Docker."""
         return str(PurePath(self.path_extern_hassio, HASSIO_SSL))
 
     @property
@@ -123,42 +123,42 @@ class CoreConfig(JsonConfig):
 
     @property
     def path_addons_core(self):
-        """Return git path for core addons."""
+        """Return git path for core Add-ons."""
         return Path(HASSIO_DATA, ADDONS_CORE)
 
     @property
     def path_addons_git(self):
-        """Return path for git addons."""
+        """Return path for Git Add-on."""
         return Path(HASSIO_DATA, ADDONS_GIT)
 
     @property
     def path_addons_local(self):
-        """Return path for customs addons."""
+        """Return path for custom Add-ons."""
         return Path(HASSIO_DATA, ADDONS_LOCAL)
 
     @property
     def path_extern_addons_local(self):
-        """Return path for customs addons."""
+        """Return path for custom Add-ons."""
         return PurePath(self.path_extern_hassio, ADDONS_LOCAL)
 
     @property
     def path_addons_data(self):
-        """Return root addon data folder."""
+        """Return root Add-on data folder."""
         return Path(HASSIO_DATA, ADDONS_DATA)
 
     @property
     def path_extern_addons_data(self):
-        """Return root addon data folder extern for docker."""
+        """Return root add-on data folder external for Docker."""
         return PurePath(self.path_extern_hassio, ADDONS_DATA)
 
     @property
     def path_tmp(self):
-        """Return hass.io temp folder."""
+        """Return Hass.io temp folder."""
         return Path(HASSIO_DATA, TMP_DATA)
 
     @property
     def path_extern_tmp(self):
-        """Return hass.io temp folder for docker."""
+        """Return Hass.io temp folder for Docker."""
         return PurePath(self.path_extern_hassio, TMP_DATA)
 
     @property
@@ -168,7 +168,7 @@ class CoreConfig(JsonConfig):
 
     @property
     def path_extern_backup(self):
-        """Return root backup data folder extern for docker."""
+        """Return root backup data folder external for Docker."""
         return PurePath(self.path_extern_hassio, BACKUP_DATA)
 
     @property
@@ -178,17 +178,17 @@ class CoreConfig(JsonConfig):
 
     @property
     def path_apparmor(self):
-        """Return root apparmor profile folder."""
+        """Return root Apparmor profile folder."""
         return Path(HASSIO_DATA, APPARMOR_DATA)
 
     @property
     def path_extern_share(self):
-        """Return root share data folder extern for docker."""
+        """Return root share data folder external for Docker."""
         return PurePath(self.path_extern_hassio, SHARE_DATA)
 
     @property
     def addons_repositories(self):
-        """Return list of addons custom repositories."""
+        """Return list of custom Add-on repositories."""
         return self._data[ATTR_ADDONS_CUSTOM_LIST]
 
     def add_addon_repository(self, repo):

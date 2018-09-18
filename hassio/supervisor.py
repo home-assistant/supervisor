@@ -1,4 +1,4 @@
-"""HomeAssistant control object."""
+"""Home Assistant control object."""
 import asyncio
 import logging
 from pathlib import Path
@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Supervisor(CoreSysAttributes):
-    """Hass core object for handle it."""
+    """Home Assistant core object for handle it."""
 
     def __init__(self, coresys):
         """Initialize hass object."""
@@ -23,9 +23,9 @@ class Supervisor(CoreSysAttributes):
         self.instance = DockerSupervisor(coresys)
 
     async def load(self):
-        """Prepare HomeAssistant object."""
+        """Prepare Home Assistant object."""
         if not await self.instance.attach():
-            _LOGGER.fatal("Can't setup supervisor docker container!")
+            _LOGGER.fatal("Can't setup Supervisor Docker container!")
         await self.instance.cleanup()
 
     @property
@@ -35,22 +35,22 @@ class Supervisor(CoreSysAttributes):
 
     @property
     def version(self):
-        """Return version of running homeassistant."""
+        """Return version of running Home Assistant."""
         return self.instance.version
 
     @property
     def last_version(self):
-        """Return last available version of homeassistant."""
+        """Return last available version of Home Assistant."""
         return self.sys_updater.version_hassio
 
     @property
     def image(self):
-        """Return image name of hass containter."""
+        """Return image name of Home Assistant container."""
         return self.instance.image
 
     @property
     def arch(self):
-        """Return arch of hass.io containter."""
+        """Return arch of the Hass.io container."""
         return self.instance.arch
 
     async def update_apparmor(self):
@@ -79,20 +79,20 @@ class Supervisor(CoreSysAttributes):
                 _LOGGER.error("Can't update AppArmor profile!")
 
     async def update(self, version=None):
-        """Update HomeAssistant version."""
+        """Update Home Assistant version."""
         version = version or self.last_version
 
         if version == self.sys_supervisor.version:
             _LOGGER.warning("Version %s is already installed", version)
             return
 
-        _LOGGER.info("Update supervisor to version %s", version)
+        _LOGGER.info("Update Supervisor to version %s", version)
         if await self.instance.install(version):
             await self.update_apparmor()
             self.sys_loop.call_later(1, self.sys_loop.stop)
             return True
 
-        _LOGGER.error("Update of hass.io fails!")
+        _LOGGER.error("Update of Hass.io fails!")
         return False
 
     @property
