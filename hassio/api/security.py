@@ -6,7 +6,7 @@ from aiohttp.web import middleware
 from aiohttp.web_exceptions import HTTPUnauthorized, HTTPForbidden
 
 from ..const import (
-    HEADER_TOKEN, REQUEST_FROM, ROLE_ADMIN, ROLE_DEFAULT, ROLE_HOMEASSISTANT
+    HEADER_TOKEN, REQUEST_FROM, ROLE_ADMIN, ROLE_DEFAULT, ROLE_HOMEASSISTANT,
     ROLE_MANAGER)
 from ..coresys import CoreSysAttributes
 
@@ -35,7 +35,7 @@ ADDONS_API_BYPASS = re.compile(
 ADDON_ROLE_ACCESS = {
     ROLE_DEFAULT: re.compile(
         r"^$"
-    )
+    ),
     ROLE_HOMEASSISTANT: re.compile(
         r"^(?:"
         r"|/homeassistant/.+"
@@ -108,7 +108,7 @@ class SecurityMiddleware(CoreSysAttributes):
             request_from = addon.slug
         elif addon and addon.access_hassio_api:
             # Check Role
-            if ADDONS_ROLE[addon.hassio_role].match(request.path):
+            if ADDONS_ROLE_ACCESS[addon.hassio_role].match(request.path):
                 _LOGGER.info("%s access from %s", request.path, addon.slug)
                 request_from = addon.slug
             else:
