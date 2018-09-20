@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 # Block Anytime
 BLACKLIST = re.compile(
     r"^(?:"
-    r"|/homeassistant/api/hassio/+*"
+    r"|/homeassistant/api/hassio/.*"
     r")$"
 )
 
