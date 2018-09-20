@@ -196,13 +196,6 @@ class APIAddons(CoreSysAttributes):
     async def security(self, request):
         """Store security options for add-on."""
         addon = self._extract_addon(request)
-
-        # Have Access
-        # REMOVE: don't needed anymore
-        if addon.slug == request[REQUEST_FROM]:
-            _LOGGER.error("Can't self modify his security!")
-            raise APINotSupportedError()
-
         body = await api_validate(SCHEMA_SECURITY, request)
 
         if ATTR_PROTECTED in body:
