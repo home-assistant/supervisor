@@ -12,6 +12,14 @@ from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
+
+# Block Anytime
+BLACKLIST = re.compile(
+    r"^(?:"
+    r"|/homeassistant/api/hassio/.*"
+    r")$"
+)
+
 # Free to call or have own security concepts
 NO_SECURITY_CHECK = re.compile(
     r"^(?:"
@@ -74,6 +82,10 @@ class SecurityMiddleware(CoreSysAttributes):
         request_from = None
         hassio_token = request.headers.get(HEADER_TOKEN)
 
+        # Blacklist
+        if BLACKLIST.match(request.path):
+            raise HTTPForbidden()
+
         # Ignore security check
         if NO_SECURITY_CHECK.match(request.path):
             _LOGGER.debug("Passthrough %s", request.path)
@@ -100,9 +112,6 @@ class SecurityMiddleware(CoreSysAttributes):
         addon = None
         if hassio_token and not request_from:
             addon = self.sys_addons.from_token(hassio_token)
-            # REMOVE 132
-            if not addon:
-                addon = self.sys_addons.from_uuid(hassio_token)
 
         # Check Add-on API access
         if addon and ADDONS_API_BYPASS.match(request.path):
@@ -115,7 +124,6 @@ class SecurityMiddleware(CoreSysAttributes):
                 request_from = addon.slug
             else:
                 _LOGGER.warning("%s no role for %s", request.path, addon.slug)
-                request_from = addon.slug  # REMOVE: 132
 
         if request_from:
             request[REQUEST_FROM] = request_from

@@ -25,10 +25,6 @@ class APIProxy(CoreSysAttributes):
         hassio_token = request.headers.get(HEADER_HA_ACCESS)
         addon = self.sys_addons.from_token(hassio_token)
 
-        # REMOVE 132
-        if not addon:
-            addon = self.sys_addons.from_uuid(hassio_token)
-
         if not addon:
             _LOGGER.warning("Unknown Home Assistant API access!")
         elif not addon.access_homeassistant_api:
@@ -183,10 +179,6 @@ class APIProxy(CoreSysAttributes):
             hassio_token = (response.get('api_password') or
                             response.get('access_token'))
             addon = self.sys_addons.from_token(hassio_token)
-
-            # REMOVE 132
-            if not addon:
-                addon = self.sys_addons.from_uuid(hassio_token)
 
             if not addon or not addon.access_homeassistant_api:
                 _LOGGER.warning("Unauthorized WebSocket access!")
