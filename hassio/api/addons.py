@@ -24,7 +24,6 @@ from ..const import (
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
-from ..exceptions import APINotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -196,13 +195,6 @@ class APIAddons(CoreSysAttributes):
     async def security(self, request):
         """Store security options for add-on."""
         addon = self._extract_addon(request)
-
-        # Have Access
-        # REMOVE: don't needed anymore
-        if addon.slug == request[REQUEST_FROM]:
-            _LOGGER.error("Can't self modify his security!")
-            raise APINotSupportedError()
-
         body = await api_validate(SCHEMA_SECURITY, request)
 
         if ATTR_PROTECTED in body:

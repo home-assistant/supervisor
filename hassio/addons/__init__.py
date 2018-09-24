@@ -43,13 +43,6 @@ class AddonManager(CoreSysAttributes):
         """Return an add-on from slug."""
         return self.addons_obj.get(addon_slug)
 
-    def from_uuid(self, uuid):
-        """Return an add-on from UUID."""
-        for addon in self.list_addons:
-            if addon.is_installed and uuid == addon.uuid:
-                return addon
-        return None
-
     def from_token(self, token):
         """Return an add-on from Hass.io token."""
         for addon in self.list_addons:
