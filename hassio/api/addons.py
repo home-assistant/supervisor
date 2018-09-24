@@ -24,7 +24,6 @@ from ..const import (
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
-from ..exceptions import APINotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
 

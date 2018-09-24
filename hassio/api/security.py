@@ -83,7 +83,7 @@ class SecurityMiddleware(CoreSysAttributes):
         hassio_token = request.headers.get(HEADER_TOKEN)
 
         # Blacklist
-        if BACKLIST.match(requst.path):
+        if BLACKLIST.match(request.path):
             raise HTTPForbidden()
 
         # Ignore security check
