@@ -1,10 +1,10 @@
 """Init file for HassIO addon docker object."""
 import logging
 import os
+import re
 from pathlib import Path
 
 import docker
-import re
 import requests
 
 from .interface import DockerInterface
@@ -18,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 RE_DEVICE = re.compile(r"^(?P<device>.*?):")
+
 
 class DockerAddon(DockerInterface):
     """Docker hassio wrapper for HomeAssistant."""
