@@ -33,9 +33,7 @@ NO_SECURITY_CHECK = re.compile(
 # Can called by every add-on
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
-    r"|/homeassistant/info"
-    r"|/supervisor/info"
-    r"|/addons(?:/self/(?!security)[^/]+)?"
+    r"|/addons/self/(?!security)[^/]+)?"
     r")$"
 )
 
@@ -44,6 +42,7 @@ ADDONS_ROLE_ACCESS = {
     ROLE_DEFAULT: re.compile(
         r"^(?:"
         r"|/[^/]+/info"
+        r"|addons"
         r")$"
     ),
     ROLE_HOMEASSISTANT: re.compile(
@@ -84,6 +83,7 @@ class SecurityMiddleware(CoreSysAttributes):
 
         # Blacklist
         if BLACKLIST.match(request.path):
+            _LOGGER.warning("%s is blacklisted!", request.path)
             raise HTTPForbidden()
 
         # Ignore security check
