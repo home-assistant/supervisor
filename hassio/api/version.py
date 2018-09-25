@@ -3,7 +3,8 @@ import logging
 
 from .utils import api_process
 from ..const import (
-    ATTR_HOMEASSISTANT, ATTR_SUPERVISOR, ATTR_MACHINE, ATTR_ARCH, ATTR_HASSOS)
+    ATTR_HOMEASSISTANT, ATTR_SUPERVISOR, ATTR_MACHINE, ATTR_ARCH, ATTR_HASSOS,
+    ATTR_CHANNEL)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ class APIVersion(CoreSysAttributes):
     """Handle RESTful API for version functions."""
 
     @api_process
-    async def verion(self, request):
+    async def info(self, request):
         """Show version info."""
         return {
             ATTR_SUPERVISOR: self.sys_supervisor.version,
@@ -21,4 +22,5 @@ class APIVersion(CoreSysAttributes):
             ATTR_HASSOS: self.sys_hassos.version,
             ATTR_MACHINE: self.sys_machine,
             ATTR_ARCH: self.sys_arch,
+            ATTR_CHANNEL: self.sys_channel,
         }
