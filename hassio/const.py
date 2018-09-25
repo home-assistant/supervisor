@@ -185,6 +185,7 @@ ATTR_FULL_ACCESS = 'full_access'
 ATTR_PROTECTED = 'protected'
 ATTR_RATING = 'rating'
 ATTR_HASSIO_ROLE = 'hassio_role'
+ATTR_SUPERVISOR = 'supervisor'
 
 SERVICE_MQTT = 'mqtt'
 
