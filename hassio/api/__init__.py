@@ -14,6 +14,7 @@ from .proxy import APIProxy
 from .supervisor import APISupervisor
 from .snapshots import APISnapshots
 from .services import APIServices
+from .version import APIVersion
 from .security import SecurityMiddleware
 from ..coresys import CoreSysAttributes
 
@@ -47,6 +48,7 @@ class RestAPI(CoreSysAttributes):
         self._register_snapshots()
         self._register_discovery()
         self._register_services()
+        self._register_version()
 
     def _register_host(self):
         """Register hostcontrol functions."""
@@ -88,6 +90,15 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes([
             web.get('/hardware/info', api_hardware.info),
             web.get('/hardware/audio', api_hardware.audio),
+        ])
+
+    def _register_version(self):
+        """Register version functions."""
+        api_version = APIVersion()
+        api_version.coresys = self.coresys
+
+        self.webapp.add_routes([
+            web.get('/version', api_version.info),
         ])
 
     def _register_supervisor(self):
