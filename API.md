@@ -660,3 +660,17 @@ This service performs an auto discovery to Home-Assistant.
 ```
 
 - DEL `/services/mqtt`
+
+### Misc
+
+- GET `/version`
+```json
+{
+    "supervisor": "version",
+    "homeassistant": "version",
+    "hassos": "null|version",
+    "machine": "type",
+    "arch": "arch",
+    "channel": "stable|beta|dev"
+}
+```
