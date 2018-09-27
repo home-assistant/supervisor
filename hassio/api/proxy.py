@@ -7,7 +7,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.web_exceptions import (
     HTTPBadGateway, HTTPInternalServerError, HTTPUnauthorized)
-from aiohttp.hdrs import CONTENT_TYPE
+from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
 import async_timeout
 
 from ..const import HEADER_HA_ACCESS
@@ -22,9 +22,13 @@ class APIProxy(CoreSysAttributes):
 
     def _check_access(self, request):
         """Check the Hass.io token."""
-        hassio_token = request.headers.get(HEADER_HA_ACCESS)
-        addon = self.sys_addons.from_token(hassio_token)
+        if AUTHORIZATION in request.headers:
+            bearer = request.headers[AUTHORIZATION]
+            hassio_token = bearer.split(' ')[1]
+        else:
+            hassio_token = request.headers.get(HEADER_HA_ACCESS)
 
+        addon = self.sys_addons.from_token(hassio_token)
         if not addon:
             _LOGGER.warning("Unknown Home Assistant API access!")
         elif not addon.access_homeassistant_api:
