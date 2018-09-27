@@ -24,7 +24,7 @@ class APIProxy(CoreSysAttributes):
         """Check the Hass.io token."""
         if AUTHORIZATION in request.headers:
             bearer = request.headers[AUTHORIZATION]
-            hassio_token = bearer.split(' ')[1]
+            hassio_token = bearer.split(' ')[-1]
         else:
             hassio_token = request.headers.get(HEADER_HA_ACCESS)
 
