@@ -2,13 +2,12 @@
 import logging
 from uuid import uuid4
 
+import attrs
+
 from ..const import ATTR_UUID
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
-
-EVENT_DISCOVERY_ADD = 'hassio_discovery_add'
-EVENT_DISCOVERY_DEL = 'hassio_discovery_del'
 
 
 class Discovery(CoreSysAttributes):
@@ -84,20 +83,19 @@ class Discovery(CoreSysAttributes):
             EVENT_DISCOVERY_DEL, {ATTR_UUID: message.uuid}))
 
 
+@attr.s
 class Message:
     """Represent a single Discovery message."""
 
-    def __init__(self, provider, component, platform, config, uuid=None):
-        """Initialize discovery message."""
-        self.provider = provider
-        self.component = component
-        self.platform = platform
-        self.config = config
-        self.uuid = uuid or uuid4().hex
+    provider = attr.ib()
+    component = attr.ib()
+    platform = attr.ib()
+    config = attr.ib()
+    uuid = attr.ib(factory=uuid4().hex)
 
     def raw(self):
         """Return raw discovery message."""
-        return self.__dict__
+        return attr.asdict(self)
 
     def __eq__(self, other):
         """Compare with other message."""
