@@ -605,6 +605,7 @@ Write data to add-on stdin
 - POST `/services/discovery`
 ```json
 {
+    "service": "name",
     "component": "component",
     "platform": "null|platform",
     "config": {}

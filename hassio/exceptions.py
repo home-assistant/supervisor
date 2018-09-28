@@ -86,6 +86,18 @@ class APIError(HassioError, RuntimeError):
     pass
 
 
+# Service / Discovery
+
+class DiscoveryError(HassioError):
+    """Discovery Errors."""
+    pass
+
+
+class ServicesError(HassioError):
+    """Services Errors."""
+    pass
+
+
 # utils/gdbus
 
 class DBusError(HassioError):

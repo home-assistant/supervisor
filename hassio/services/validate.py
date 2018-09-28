@@ -11,6 +11,11 @@ from ..validate import NETWORK_PORT
 
 UUID_MATCH = re.compile(r"^[0-9a-f]{32}$")
 
+SERVICE_ALL = [
+    SERVICE_MQTT
+]
+
+
 SCHEMA_DISCOVERY = vol.Schema([
     vol.Schema({
         vol.Required(ATTR_UUID): vol.Match(UUID_MATCH),
@@ -44,3 +49,8 @@ SCHEMA_SERVICES_FILE = vol.Schema({
     vol.Optional(SERVICE_MQTT, default=dict): vol.Any({}, SCHEMA_CONFIG_MQTT),
     vol.Optional(ATTR_DISCOVERY, default=list): vol.Any([], SCHEMA_DISCOVERY),
 }, extra=vol.REMOVE_EXTRA)
+
+
+DISCOVERY_SERVICES = {
+    SERVICE_MQTT: SCHEMA_SERVICE_MQTT,
+}

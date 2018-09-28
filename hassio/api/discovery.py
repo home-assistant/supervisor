@@ -4,14 +4,16 @@ import voluptuous as vol
 from .utils import api_process, api_validate
 from ..const import (
     ATTR_PROVIDER, ATTR_UUID, ATTR_COMPONENT, ATTR_PLATFORM, ATTR_CONFIG,
-    ATTR_DISCOVERY, REQUEST_FROM)
+    ATTR_DISCOVERY, ATTR_SERVICE, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
+from ..services.validate import SERVICE_ALL
 
 
 SCHEMA_DISCOVERY = vol.Schema({
+    vol.Required(ATTR_SERVICE): vol.In(SERVICE_ALL),
     vol.Required(ATTR_COMPONENT): vol.Coerce(str),
-    vol.Optional(ATTR_PLATFORM): vol.Any(None, vol.Coerce(str)),
-    vol.Optional(ATTR_CONFIG): vol.Any(None, dict),
+    vol.Optional(ATTR_PLATFORM): vol.Maybe(vol.Coerce(str)),
+    vol.Optional(ATTR_CONFIG): vol.Maybe(dict),
 })
 
 
