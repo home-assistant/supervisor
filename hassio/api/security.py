@@ -58,13 +58,13 @@ ADDONS_ROLE_ACCESS = {
         r"|/hardware/.+"
         r"|/hassos/.+"
         r"|/supervisor/.+"
-        r"|/addons/.+/(?!security|options).+"
-        r"|/addons(?:/self/(?!security).+)"
+        r"|/addons/[^/]+/(?!security|options).+"
+        r"|/addons(?:/self/(?!security).+)?"
         r"|/snapshots.*"
         r")$"
     ),
     ROLE_ADMIN: re.compile(
-        r".+"
+        r".*"
     ),
 }
 
