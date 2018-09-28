@@ -1,4 +1,6 @@
 """Validate services schema."""
+import re
+
 import voluptuous as vol
 
 from ..const import (
@@ -7,14 +9,15 @@ from ..const import (
     ATTR_PLATFORM, ATTR_CONFIG, ATTR_DISCOVERY_ID)
 from ..validate import NETWORK_PORT
 
+UUID_MATCH = re.compile(r"^[0-9a-f]{32}$")
 
 SCHEMA_DISCOVERY = vol.Schema([
     vol.Schema({
-        vol.Required(ATTR_UUID): vol.Match(r"^[0-9a-f]{32}$"),
+        vol.Required(ATTR_UUID): vol.Match(UUID_MATCH),
         vol.Required(ATTR_PROVIDER): vol.Coerce(str),
         vol.Required(ATTR_COMPONENT): vol.Coerce(str),
-        vol.Required(ATTR_PLATFORM): vol.Any(None, vol.Coerce(str)),
-        vol.Required(ATTR_CONFIG): vol.Any(None, dict),
+        vol.Required(ATTR_PLATFORM): vol.Maybe(vol.Coerce(str)),
+        vol.Required(ATTR_CONFIG): vol.Maybe(dict),
     }, extra=vol.REMOVE_EXTRA)
 ])
 
@@ -33,7 +36,7 @@ SCHEMA_SERVICE_MQTT = vol.Schema({
 
 SCHEMA_CONFIG_MQTT = SCHEMA_SERVICE_MQTT.extend({
     vol.Required(ATTR_PROVIDER): vol.Coerce(str),
-    vol.Optional(ATTR_DISCOVERY_ID): vol.Match(r"^[0-9a-f]{32}$"),
+    vol.Optional(ATTR_DISCOVERY_ID): vol.Match(UUID_MATCH),
 })
 
 
