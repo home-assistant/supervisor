@@ -13,7 +13,8 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import (
-    validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME, RE_SERVICE)
+    validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME, RE_SERVICE,
+    MACHINE_ALL)
 from .utils import check_installed, remove_data
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
@@ -27,6 +28,7 @@ from ..const import (
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
     ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
+    ATTR_MACHINE,
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
@@ -81,6 +83,15 @@ class Addon(CoreSysAttributes):
     def is_detached(self):
         """Return True if add-on is detached."""
         return self._id not in self._data.cache
+
+    @property
+    def available(self):
+        """Return True if this add-on is available on this platform."""
+        if self.sys_arch not in self.supported_arch:
+            return False
+        if self.sys_machine not in self.supported_machine:
+            return False
+        return True
 
     @property
     def version_installed(self):
@@ -469,6 +480,11 @@ class Addon(CoreSysAttributes):
         return self._mesh[ATTR_ARCH]
 
     @property
+    def supported_machine(self):
+        """Return list of supported machine."""
+        return self._mesh.get(ATTR_MACHINE) or MACHINE_ALL
+
+    @property
     def image(self):
         """Return image name of add-on."""
         addon_data = self._mesh
@@ -645,7 +661,7 @@ class Addon(CoreSysAttributes):
 
     async def install(self):
         """Install an add-on."""
-        if self.sys_arch not in self.supported_arch:
+        if not self.available:
             _LOGGER.error(
                 "Add-on %s not supported on %s", self._id, self.sys_arch)
             return False

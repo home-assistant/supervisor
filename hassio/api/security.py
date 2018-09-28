@@ -33,7 +33,7 @@ NO_SECURITY_CHECK = re.compile(
 # Can called by every add-on
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
-    r"|/addons/self/(?!security)[^/]+)?"
+    r"|/addons/self/(?!security)[^/]+"
     r"|/version"
     r")$"
 )
@@ -58,13 +58,13 @@ ADDONS_ROLE_ACCESS = {
         r"|/hardware/.+"
         r"|/hassos/.+"
         r"|/supervisor/.+"
-        r"|/addons/.+/(?!security|options).+"
-        r"|/addons(?:/self/(?!security).+)"
+        r"|/addons/[^/]+/(?!security|options).+"
+        r"|/addons(?:/self/(?!security).+)?"
         r"|/snapshots.*"
         r")$"
     ),
     ROLE_ADMIN: re.compile(
-        r".+"
+        r".*"
     ),
 }
 
@@ -130,5 +130,5 @@ class SecurityMiddleware(CoreSysAttributes):
             request[REQUEST_FROM] = request_from
             return await handler(request)
 
-        _LOGGER.warning("Invalid token for access %s", request.path)
+        _LOGGER.error("Invalid token for access %s", request.path)
         raise HTTPForbidden()

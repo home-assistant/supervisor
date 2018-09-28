@@ -22,5 +22,5 @@ class APIVersion(CoreSysAttributes):
             ATTR_HASSOS: self.sys_hassos.version,
             ATTR_MACHINE: self.sys_machine,
             ATTR_ARCH: self.sys_arch,
-            ATTR_CHANNEL: self.sys_channel,
+            ATTR_CHANNEL: self.sys_updater.channel,
         }
