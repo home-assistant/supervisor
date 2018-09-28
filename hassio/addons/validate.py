@@ -59,8 +59,9 @@ ARCH_ALL = [
 ]
 
 MACHINE_ALL = [
-    'intel-nuc', 'qemux86', 'qemux86-64', 'qemuarm', 'qemuarm-64', 'raspberrypi',
-    'raspberrypi2', 'raspberrypi3', 'raspberrypi3-64', 'odroid-cu2', 'odroid-xu',
+    'intel-nuc', 'qemux86', 'qemux86-64', 'qemuarm', 'qemuarm-64',
+    'raspberrypi', 'raspberrypi2', 'raspberrypi3', 'raspberrypi3-64',
+    'odroid-cu2', 'odroid-xu',
 ]
 
 STARTUP_ALL = [
