@@ -20,7 +20,7 @@ from ..const import (
     ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
     ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API,
     ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING, ATTR_HOST_PID,
-    ATTR_HASSIO_ROLE,
+    ATTR_HASSIO_ROLE, ATTR_MACHINE, ATTR_AVAILABLE,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
@@ -85,7 +85,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_DESCRIPTON: addon.description,
                 ATTR_VERSION: addon.last_version,
                 ATTR_INSTALLED: addon.version_installed,
-                ATTR_ARCH: addon.supported_arch,
+                ATTR_AVAILABLE: addon.available,
                 ATTR_DETACHED: addon.is_detached,
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
@@ -134,8 +134,11 @@ class APIAddons(CoreSysAttributes):
             ATTR_RATING: rating_security(addon),
             ATTR_BOOT: addon.boot,
             ATTR_OPTIONS: addon.options,
+            ATTR_ARCH: addon.supported_arch,
+            ATTR_MACHINE: addon.supported_machine,
             ATTR_URL: addon.url,
             ATTR_DETACHED: addon.is_detached,
+            ATTR_AVAILABLE: addon.available,
             ATTR_BUILD: addon.need_build,
             ATTR_NETWORK: addon.ports,
             ATTR_HOST_NETWORK: addon.host_network,
