@@ -4,7 +4,7 @@ from .utils import api_process, api_validate
 from ..const import (
     ATTR_AVAILABLE, ATTR_PROVIDER, ATTR_SLUG, ATTR_SERVICES, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
-
+from ..exceptions import APIError
 
 class APIServices(CoreSysAttributes):
     """Handle RESTful API for services functions."""
@@ -13,7 +13,7 @@ class APIServices(CoreSysAttributes):
         """Return service, throw an exception if it doesn't exist."""
         service = self.sys_services.get(request.match_info.get('service'))
         if not service:
-            raise RuntimeError("Service does not exist")
+            raise APIError("Service does not exist")
 
         return service
 
