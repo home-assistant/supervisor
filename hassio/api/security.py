@@ -130,5 +130,5 @@ class SecurityMiddleware(CoreSysAttributes):
             request[REQUEST_FROM] = request_from
             return await handler(request)
 
-        _LOGGER.warning("Invalid token for access %s", request.path)
+        _LOGGER.error("Invalid token for access %s", request.path)
         raise HTTPForbidden()
