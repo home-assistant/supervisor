@@ -255,7 +255,7 @@ class Addon(CoreSysAttributes):
     @property
     def discovery(self):
         """Return list of discoverable components/platforms."""
-        return self._mesh.get(ATTR_DISCOVERY)
+        return self._mesh.get(ATTR_DISCOVERY, [])
 
     @property
     def ports(self):
