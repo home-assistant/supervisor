@@ -14,6 +14,7 @@ from ..const import (
     ATTR_BLK_WRITE, CONTENT_TYPE_BINARY, ATTR_ICON)
 from ..coresys import CoreSysAttributes
 from ..validate import validate_timezone, WAIT_BOOT, REPOSITORIES, CHANNELS
+from ..exceptions import APIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ class APISupervisor(CoreSysAttributes):
         """Return resource information."""
         stats = await self.sys_supervisor.stats()
         if not stats:
-            raise RuntimeError("No stats available")
+            raise APIError("No stats available")
 
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
@@ -112,7 +113,7 @@ class APISupervisor(CoreSysAttributes):
         version = body.get(ATTR_VERSION, self.sys_updater.version_hassio)
 
         if version == self.sys_supervisor.version:
-            raise RuntimeError("Version {} is already in use".format(version))
+            raise APIError("Version {} is already in use".format(version))
 
         return await asyncio.shield(
             self.sys_supervisor.update(version))
@@ -128,7 +129,7 @@ class APISupervisor(CoreSysAttributes):
 
         for result in results:
             if result.exception() is not None:
-                raise RuntimeError("Some reload task fails!")
+                raise APIError("Some reload task fails!")
 
         return True
 

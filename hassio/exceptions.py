@@ -81,13 +81,25 @@ class HostAppArmorError(HostError):
 
 # API
 
-class APIError(HassioError):
+class APIError(HassioError, RuntimeError):
     """API errors."""
     pass
 
 
-class APINotSupportedError(HassioNotSupportedError):
-    """API not supported error."""
+class APIForbidden(APIError):
+    """API forbidden error."""
+    pass
+
+
+# Service / Discovery
+
+class DiscoveryError(HassioError):
+    """Discovery Errors."""
+    pass
+
+
+class ServicesError(HassioError):
+    """Services Errors."""
     pass
 
 

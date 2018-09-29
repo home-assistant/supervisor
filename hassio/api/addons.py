@@ -55,7 +55,7 @@ class APIAddons(CoreSysAttributes):
 
         # Lookup itself
         if addon_slug == 'self':
-            addon_slug = request.get(REQUEST_FROM)
+            return request.get(REQUEST_FROM)
 
         addon = self.sys_addons.get(addon_slug)
         if not addon:
@@ -65,14 +65,6 @@ class APIAddons(CoreSysAttributes):
             raise RuntimeError("Addon is not installed")
 
         return addon
-
-    @staticmethod
-    def _pretty_devices(addon):
-        """Return a simplified device list."""
-        dev_list = addon.devices
-        if not dev_list:
-            return None
-        return [row.split(':')[0] for row in dev_list]
 
     @api_process
     async def list(self, request):
@@ -148,7 +140,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_PRIVILEGED: addon.privileged,
             ATTR_FULL_ACCESS: addon.with_full_access,
             ATTR_APPARMOR: addon.apparmor,
-            ATTR_DEVICES: self._pretty_devices(addon),
+            ATTR_DEVICES: _pretty_devices(addon),
             ATTR_ICON: addon.with_icon,
             ATTR_LOGO: addon.with_logo,
             ATTR_CHANGELOG: addon.with_changelog,
@@ -163,7 +155,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_AUDIO: addon.with_audio,
             ATTR_AUDIO_INPUT: addon.audio_input,
             ATTR_AUDIO_OUTPUT: addon.audio_output,
-            ATTR_SERVICES: addon.services,
+            ATTR_SERVICES: _pretty_services(addon),
             ATTR_DISCOVERY: addon.discovery,
         }
 
@@ -328,3 +320,19 @@ class APIAddons(CoreSysAttributes):
 
         data = await request.read()
         return await asyncio.shield(addon.write_stdin(data))
+
+
+def _pretty_devices(addon):
+    """Return a simplified device list."""
+    dev_list = addon.devices
+    if not dev_list:
+        return None
+    return [row.split(':')[0] for row in dev_list]
+
+
+def _pretty_services(addon):
+    """Return a simplified services role list."""
+    services = []
+    for name, access in addon.services_role.items():
+        services.append(f"{name}:{access}")
+    return services

@@ -1,20 +1,40 @@
 """Validate services schema."""
+import re
+
 import voluptuous as vol
 
 from ..const import (
     SERVICE_MQTT, ATTR_HOST, ATTR_PORT, ATTR_PASSWORD, ATTR_USERNAME, ATTR_SSL,
-    ATTR_PROVIDER, ATTR_PROTOCOL, ATTR_DISCOVERY, ATTR_COMPONENT, ATTR_UUID,
-    ATTR_PLATFORM, ATTR_CONFIG, ATTR_DISCOVERY_ID)
+    ATTR_ADDON, ATTR_PROTOCOL, ATTR_DISCOVERY, ATTR_COMPONENT, ATTR_UUID,
+    ATTR_PLATFORM, ATTR_CONFIG, ATTR_SERVICE)
 from ..validate import NETWORK_PORT
+
+UUID_MATCH = re.compile(r"^[0-9a-f]{32}$")
+
+SERVICE_ALL = [
+    SERVICE_MQTT
+]
+
+
+def schema_or(schema):
+    """Allow schema or empty."""
+    def _wrapper(value):
+        """Wrapper for validator."""
+        if not value:
+            return value
+        return schema(value)
+
+    return _wrapper
 
 
 SCHEMA_DISCOVERY = vol.Schema([
     vol.Schema({
-        vol.Required(ATTR_UUID): vol.Match(r"^[0-9a-f]{32}$"),
-        vol.Required(ATTR_PROVIDER): vol.Coerce(str),
+        vol.Required(ATTR_UUID): vol.Match(UUID_MATCH),
+        vol.Required(ATTR_ADDON): vol.Coerce(str),
+        vol.Required(ATTR_SERVICE): vol.In(SERVICE_ALL),
         vol.Required(ATTR_COMPONENT): vol.Coerce(str),
-        vol.Required(ATTR_PLATFORM): vol.Any(None, vol.Coerce(str)),
-        vol.Required(ATTR_CONFIG): vol.Any(None, dict),
+        vol.Required(ATTR_PLATFORM): vol.Maybe(vol.Coerce(str)),
+        vol.Required(ATTR_CONFIG): vol.Maybe(dict),
     }, extra=vol.REMOVE_EXTRA)
 ])
 
@@ -32,12 +52,16 @@ SCHEMA_SERVICE_MQTT = vol.Schema({
 
 
 SCHEMA_CONFIG_MQTT = SCHEMA_SERVICE_MQTT.extend({
-    vol.Required(ATTR_PROVIDER): vol.Coerce(str),
-    vol.Optional(ATTR_DISCOVERY_ID): vol.Match(r"^[0-9a-f]{32}$"),
+    vol.Required(ATTR_ADDON): vol.Coerce(str),
 })
 
 
 SCHEMA_SERVICES_FILE = vol.Schema({
-    vol.Optional(SERVICE_MQTT, default=dict): vol.Any({}, SCHEMA_CONFIG_MQTT),
-    vol.Optional(ATTR_DISCOVERY, default=list): vol.Any([], SCHEMA_DISCOVERY),
+    vol.Optional(SERVICE_MQTT, default=dict): schema_or(SCHEMA_CONFIG_MQTT),
+    vol.Optional(ATTR_DISCOVERY, default=list): schema_or(SCHEMA_DISCOVERY),
 }, extra=vol.REMOVE_EXTRA)
+
+
+DISCOVERY_SERVICES = {
+    SERVICE_MQTT: SCHEMA_SERVICE_MQTT,
+}

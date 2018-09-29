@@ -13,6 +13,7 @@ from ..const import (
     ATTR_REFRESH_TOKEN, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
 from ..validate import NETWORK_PORT, DOCKER_IMAGE
+from ..exceptions import APIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ class APIHomeAssistant(CoreSysAttributes):
         """Return resource information."""
         stats = await self.sys_homeassistant.stats()
         if not stats:
-            raise RuntimeError("No stats available")
+            raise APIError("No stats available")
 
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
@@ -139,6 +140,6 @@ class APIHomeAssistant(CoreSysAttributes):
         """Check configuration of Home Assistant."""
         result = await self.sys_homeassistant.check_config()
         if not result.valid:
-            raise RuntimeError(result.log)
+            raise APIError(result.log)
 
         return True

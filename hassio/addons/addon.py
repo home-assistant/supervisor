@@ -239,24 +239,23 @@ class Addon(CoreSysAttributes):
         return self._mesh.get(ATTR_STARTUP)
 
     @property
-    def services(self):
+    def services_role(self):
         """Return dict of services with rights."""
         raw_services = self._mesh.get(ATTR_SERVICES)
         if not raw_services:
-            return None
+            return {}
 
-        formated_services = {}
+        services = {}
         for data in raw_services:
             service = RE_SERVICE.match(data)
-            formated_services[service.group('service')] = \
-                service.group('rights') or 'ro'
+            services[service.group('service')] = service.group('rights')
 
-        return formated_services
+        return services
 
     @property
     def discovery(self):
         """Return list of discoverable components/platforms."""
-        return self._mesh.get(ATTR_DISCOVERY)
+        return self._mesh.get(ATTR_DISCOVERY, [])
 
     @property
     def ports(self):

@@ -439,19 +439,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         _LOGGER.warning("Home Assistant API config mismatch: %d", err)
         return False
 
-    async def send_event(self, event_type, event_data=None):
-        """Send event to Home-Assistant."""
-        with suppress(HomeAssistantAPIError):
-            async with self.make_request(
-                    'get', f'api/events/{event_type}'
-            ) as resp:
-                if resp.status in (200, 201):
-                    return
-                err = resp.status
-
-        _LOGGER.warning("Home Assistant event %s fails: %s", event_type, err)
-        return HomeAssistantError()
-
     async def _block_till_run(self):
         """Block until Home-Assistant is booting up or startup timeout."""
         start_time = time.monotonic()

@@ -1,6 +1,7 @@
 """Interface for single service."""
 
 from ..coresys import CoreSysAttributes
+from ..const import PROVIDE_SERVICE
 
 
 class ServiceInterface(CoreSysAttributes):
@@ -26,9 +27,13 @@ class ServiceInterface(CoreSysAttributes):
         return None
 
     @property
-    def provider(self):
-        """Return name of service provider."""
-        return None
+    def providers(self):
+        """Return name of service providers addon."""
+        addons = []
+        for addon in self.sys_addons.list_installed:
+            if addon.services_role.get(self.slug) == PROVIDE_SERVICE:
+                addons.append(addon.slug)
+        return addons
 
     @property
     def enabled(self):
@@ -45,10 +50,10 @@ class ServiceInterface(CoreSysAttributes):
             return self._data
         return None
 
-    def set_service_data(self, provider, data):
+    def set_service_data(self, addon, data):
         """Write the data into service object."""
         raise NotImplementedError()
 
-    def del_service_data(self, provider):
+    def del_service_data(self, addon):
         """Remove the data from service object."""
         raise NotImplementedError()
