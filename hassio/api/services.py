@@ -69,7 +69,7 @@ def _check_access(request, service, provide=False):
     """Raise error if the rights are wrong."""
     addon = request[REQUEST_FROM]
     if not addon.services_role.get(service):
-        raise APIForbidden("No access to this service!")
+        raise APIForbidden(f"No access to {service} service!")
 
     if provide and addon.services_role.get(service) != PROVIDE_SERVICE:
-        raise APIForbidden("No access to write this service!")
+        raise APIForbidden(f"No access to write {service} service!")
