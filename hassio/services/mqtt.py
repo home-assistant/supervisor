@@ -37,7 +37,6 @@ class MQTTService(ServiceInterface):
 
         self._data.update(data)
         self._data[ATTR_ADDON] = addon.slug
-        _LOGGER.info("Test %s", self._data)
 
         _LOGGER.info("Set %s as service provider for mqtt", addon.slug)
         self.save()

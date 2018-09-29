@@ -62,6 +62,7 @@ class JsonConfig:
 
     def save_data(self):
         """Store data to configuration file."""
+        _LOGGER.info("TEst %s", self._data)
         # Validate
         try:
             self._data = self._schema(self._data)
@@ -75,6 +76,7 @@ class JsonConfig:
             return
 
         # write
+        _LOGGER.info("TEst write %s", self._data)
         try:
             write_json_file(self._file, self._data)
         except (OSError, json.JSONDecodeError) as err:
