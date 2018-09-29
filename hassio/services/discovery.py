@@ -73,17 +73,18 @@ class Discovery(CoreSysAttributes):
             raise DiscoveryError() from None
 
         # Create message
-        message = Message(provider, component, platform, config)
+        slug = provider.slug
+        message = Message(slug, component, platform, config)
 
         # Already exists?
         for old_message in self.message_obj:
             if old_message != message:
                 continue
-            _LOGGER.warning("Duplicate discovery message from %s", provider)
+            _LOGGER.warning("Duplicate discovery message from %s", slug)
             return old_message
 
         _LOGGER.info("Send discovery to Home Assistant %s/%s from %s",
-                     component, platform, provider)
+                     component, platform, slug)
         self.message_obj[message.uuid] = message
         self.save()
 

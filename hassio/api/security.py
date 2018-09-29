@@ -102,12 +102,12 @@ class SecurityMiddleware(CoreSysAttributes):
         if hassio_token in (self.sys_homeassistant.uuid,
                             self.sys_homeassistant.hassio_token):
             _LOGGER.debug("%s access from Home Assistant", request.path)
-            request_from = 'homeassistant'
+            request_from = self.sys_homeassistant
 
         # Host
         if hassio_token == self.sys_machine_id:
             _LOGGER.debug("%s access from Host", request.path)
-            request_from = 'host'
+            request_from = self.sys_host
 
         # Add-on
         addon = None
@@ -117,12 +117,12 @@ class SecurityMiddleware(CoreSysAttributes):
         # Check Add-on API access
         if addon and ADDONS_API_BYPASS.match(request.path):
             _LOGGER.debug("Passthrough %s from %s", request.path, addon.slug)
-            request_from = addon.slug
+            request_from = addon
         elif addon and addon.access_hassio_api:
             # Check Role
             if ADDONS_ROLE_ACCESS[addon.hassio_role].match(request.path):
                 _LOGGER.info("%s access from %s", request.path, addon.slug)
-                request_from = addon.slug
+                request_from = addon
             else:
                 _LOGGER.warning("%s no role for %s", request.path, addon.slug)
 

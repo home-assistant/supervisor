@@ -55,7 +55,7 @@ class APIAddons(CoreSysAttributes):
 
         # Lookup itself
         if addon_slug == 'self':
-            addon_slug = request.get(REQUEST_FROM)
+            return request.get(REQUEST_FROM)
 
         addon = self.sys_addons.get(addon_slug)
         if not addon:
