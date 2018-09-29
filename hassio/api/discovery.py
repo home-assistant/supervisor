@@ -6,6 +6,7 @@ from ..const import (
     ATTR_PROVIDER, ATTR_UUID, ATTR_COMPONENT, ATTR_PLATFORM, ATTR_CONFIG,
     ATTR_DISCOVERY, ATTR_SERVICE, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
+from ..exceptions import APIError, APIForbidden
 from ..services.validate import SERVICE_ALL
 
 
@@ -24,12 +25,20 @@ class APIDiscovery(CoreSysAttributes):
         """Extract discovery message from URL."""
         message = self.sys_discovery.get(request.match_info.get('uuid'))
         if not message:
-            raise RuntimeError("Discovery message not found")
+            raise APIError("Discovery message not found")
         return message
+
+    def _check_permission_ha(self, request):
+        """Check permission for API call / Home Assistant."""
+        provider = request[REQUEST_FROM]
+        if provider != self.sys_homeassistant:
+            raise APIForbidden("Only HomeAssistant can use this API!")
 
     @api_process
     async def list(self, request):
         """Show register services."""
+        self._check_permission_ha(request)
+
         discovery = []
         for message in self.sys_discovery.list_messages:
             discovery.append({
@@ -46,10 +55,14 @@ class APIDiscovery(CoreSysAttributes):
     async def set_discovery(self, request):
         """Write data into a discovery pipeline."""
         body = await api_validate(SCHEMA_DISCOVERY, request)
+        provider = request[REQUEST_FROM]
+
+        # Access?
+        if body[ATTR_SERVICE] not in provider.discovery:
+            raise APIForbidden(f"Can't use discovery!")
 
         # Process discovery message
-        message = self.sys_discovery.send(
-            provider=request[REQUEST_FROM], **body)
+        message = self.sys_discovery.send(provider=provider, **body)
 
         return {ATTR_UUID: message.uuid}
 
@@ -57,6 +70,9 @@ class APIDiscovery(CoreSysAttributes):
     async def get_discovery(self, request):
         """Read data into a discovery message."""
         message = self._extract_message(request)
+
+        # HomeAssistant?
+        self._check_permission_ha(request)
 
         return {
             ATTR_PROVIDER: message.provider,
@@ -70,6 +86,11 @@ class APIDiscovery(CoreSysAttributes):
     async def del_discovery(self, request):
         """Delete data into a discovery message."""
         message = self._extract_message(request)
+        provider = request[REQUEST_FROM]
+
+        # Permission
+        if message.provider != provider.slug:
+            raise APIForbidden(f"Can't remove discovery message")
 
         self.sys_discovery.remove(message)
         return True

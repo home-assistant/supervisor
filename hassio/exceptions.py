@@ -86,6 +86,11 @@ class APIError(HassioError, RuntimeError):
     pass
 
 
+class APIForbidden(APIError):
+    """API forbidden error."""
+    pass
+
+
 # Service / Discovery
 
 class DiscoveryError(HassioError):
