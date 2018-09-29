@@ -576,7 +576,7 @@ Write data to add-on stdin
 
 ### Service discovery
 
-- GET `/services/discovery`
+- GET `/discovery`
 ```json
 {
     "discovery": [
@@ -592,7 +592,7 @@ Write data to add-on stdin
 }
 ```
 
-- GET `/services/discovery/{UUID}`
+- GET `/discovery/{UUID}`
 ```json
 {
     "addon": "slug",
@@ -604,7 +604,7 @@ Write data to add-on stdin
 }
 ```
 
-- POST `/services/discovery`
+- POST `/discovery`
 ```json
 {
     "service": "name",
@@ -621,7 +621,7 @@ return:
 }
 ```
 
-- DEL `/services/discovery/{UUID}`
+- DEL `/discovery/{UUID}`
 
 - GET `/services`
 ```json
