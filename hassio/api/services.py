@@ -39,7 +39,7 @@ class APIServices(CoreSysAttributes):
         body = await api_validate(service.schema, request)
         addon = request[REQUEST_FROM]
 
-        _check_access(request, service)
+        _check_access(request, service.slug)
         service.set_service_data(addon, body)
 
     @api_process
@@ -48,7 +48,7 @@ class APIServices(CoreSysAttributes):
         service = self._extract_service(request)
 
         # Access
-        _check_access(request, service)
+        _check_access(request, service.slug)
 
         if not service.enabled:
             raise APIError("Service not enabled")
@@ -61,7 +61,7 @@ class APIServices(CoreSysAttributes):
         addon = request[REQUEST_FROM]
 
         # Access
-        _check_access(request, service, True)
+        _check_access(request, service.slug, True)
         service.del_service_data(addon)
 
 
