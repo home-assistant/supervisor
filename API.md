@@ -595,6 +595,7 @@ Write data to add-on stdin
 ```json
 {
     "provider": "name",
+    "service": "name",
     "uuid": "uuid",
     "component": "component",
     "platform": "null|platform",
