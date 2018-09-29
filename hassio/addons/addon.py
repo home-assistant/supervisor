@@ -245,13 +245,12 @@ class Addon(CoreSysAttributes):
         if not raw_services:
             return {}
 
-        formated_services = {}
+        services = {}
         for data in raw_services:
             service = RE_SERVICE.match(data)
-            formated_services[service.group('service')] = \
-                service.group('rights') or 'ro'
+            services[service.group('service')] = service.group('rights')
 
-        return formated_services
+        return services
 
     @property
     def discovery(self):

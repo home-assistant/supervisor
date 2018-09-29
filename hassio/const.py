@@ -187,6 +187,9 @@ ATTR_HASSIO_ROLE = 'hassio_role'
 ATTR_SUPERVISOR = 'supervisor'
 
 SERVICE_MQTT = 'mqtt'
+PROVIDE_SERVICE = 'provide'
+NEED_SERVICE = 'need'
+WANT_SERVICE = 'want'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'

@@ -2,7 +2,8 @@
 
 from .utils import api_process, api_validate
 from ..const import (
-    ATTR_AVAILABLE, ATTR_PROVIDERS, ATTR_SLUG, ATTR_SERVICES, REQUEST_FROM)
+    ATTR_AVAILABLE, ATTR_PROVIDERS, ATTR_SLUG, ATTR_SERVICES, REQUEST_FROM,
+    PROVIDE_SERVICE)
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
 
@@ -38,7 +39,7 @@ class APIServices(CoreSysAttributes):
         body = await api_validate(service.schema, request)
         addon = request[REQUEST_FROM]
 
-        _check_access(request, service, 'rw')
+        _check_access(request, service)
         service.set_service_data(addon, body)
 
     @api_process
@@ -47,7 +48,7 @@ class APIServices(CoreSysAttributes):
         service = self._extract_service(request)
 
         # Access
-        _check_access(request, service, 'ro')
+        _check_access(request, service)
 
         if not service.enabled:
             raise APIError("Service not enabled")
@@ -60,12 +61,15 @@ class APIServices(CoreSysAttributes):
         addon = request[REQUEST_FROM]
 
         # Access
-        _check_access(request, service, 'rw')
+        _check_access(request, service, True)
         service.del_service_data(addon)
 
 
-def _check_access(request, service, mode):
+def _check_access(request, service, provide=False):
     """Raise error if the rights are wrong."""
     addon = request[REQUEST_FROM]
-    if addon.services_role.get(service) != mode:
+    if not addon.services_role.get(service):
+        APIForbidden("No access to this service!")
+
+    if provide and addon.services_role.get(service) != PROVIDE_SERVICE:
         APIForbidden("No access to write this service!")

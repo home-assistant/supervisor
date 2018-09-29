@@ -1,6 +1,7 @@
 """Interface for single service."""
 
 from ..coresys import CoreSysAttributes
+from ..const import PROVIDE_SERVICE
 
 
 class ServiceInterface(CoreSysAttributes):
@@ -30,7 +31,7 @@ class ServiceInterface(CoreSysAttributes):
         """Return name of service providers addon."""
         addons = []
         for addon in self.sys_addons.list_installed:
-            if addon.services_role.get(self.slug) == 'rw':
+            if addon.services_role.get(self.slug) == PROVIDE_SERVICE:
                 addons.append(addon.slug)
         return addons
 
