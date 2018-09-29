@@ -14,6 +14,7 @@ from ..const import (
     ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS, ATTR_TYPE,
     ATTR_SNAPSHOTS, ATTR_PASSWORD, ATTR_PROTECTED, CONTENT_TYPE_TAR)
 from ..coresys import CoreSysAttributes
+from ..exceptions import APIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class APISnapshots(CoreSysAttributes):
         """Return snapshot, throw an exception if it doesn't exist."""
         snapshot = self.sys_snapshots.get(request.match_info.get('snapshot'))
         if not snapshot:
-            raise RuntimeError("Snapshot does not exist")
+            raise APIError("Snapshot does not exist")
         return snapshot
 
     @api_process

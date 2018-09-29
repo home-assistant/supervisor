@@ -499,8 +499,8 @@ Get all available addons.
     "audio": "bool",
     "audio_input": "null|0,0",
     "audio_output": "null|0,0",
-    "services": "null|['mqtt']",
-    "discovery": "null|['component/platform']"
+    "services_role": "['service:access']",
+    "discovery": "['service']"
 }
 ```
 
@@ -576,12 +576,13 @@ Write data to add-on stdin
 
 ### Service discovery
 
-- GET `/services/discovery`
+- GET `/discovery`
 ```json
 {
     "discovery": [
         {
-            "provider": "name",
+            "addon": "slug",
+            "service": "name",
             "uuid": "uuid",
             "component": "component",
             "platform": "null|platform",
@@ -591,10 +592,11 @@ Write data to add-on stdin
 }
 ```
 
-- GET `/services/discovery/{UUID}`
+- GET `/discovery/{UUID}`
 ```json
 {
-    "provider": "name",
+    "addon": "slug",
+    "service": "name",
     "uuid": "uuid",
     "component": "component",
     "platform": "null|platform",
@@ -602,9 +604,10 @@ Write data to add-on stdin
 }
 ```
 
-- POST `/services/discovery`
+- POST `/discovery`
 ```json
 {
+    "service": "name",
     "component": "component",
     "platform": "null|platform",
     "config": {}
@@ -618,7 +621,7 @@ return:
 }
 ```
 
-- DEL `/services/discovery/{UUID}`
+- DEL `/discovery/{UUID}`
 
 - GET `/services`
 ```json
@@ -627,7 +630,7 @@ return:
         {
             "slug": "name",
             "available": "bool",
-            "provider": "null|name|list"
+            "providers": "list"
         }
     ]
 }
@@ -635,12 +638,10 @@ return:
 
 #### MQTT
 
-This service performs an auto discovery to Home-Assistant.
-
 - GET `/services/mqtt`
 ```json
 {
-    "provider": "name",
+    "addon": "name",
     "host": "xy",
     "port": "8883",
     "ssl": "bool",

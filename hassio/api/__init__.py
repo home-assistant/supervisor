@@ -211,11 +211,11 @@ class RestAPI(CoreSysAttributes):
         api_discovery.coresys = self.coresys
 
         self.webapp.add_routes([
-            web.get('/services/discovery', api_discovery.list),
-            web.get('/services/discovery/{uuid}', api_discovery.get_discovery),
-            web.delete('/services/discovery/{uuid}',
+            web.get('/discovery', api_discovery.list),
+            web.get('/discovery/{uuid}', api_discovery.get_discovery),
+            web.delete('/discovery/{uuid}',
                        api_discovery.del_discovery),
-            web.post('/services/discovery', api_discovery.set_discovery),
+            web.post('/discovery', api_discovery.set_discovery),
         ])
 
     def _register_panel(self):

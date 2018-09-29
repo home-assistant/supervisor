@@ -26,13 +26,13 @@ from ..const import (
     PRIVILEGED_SYS_RESOURCE, PRIVILEGED_SYS_PTRACE,
     ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_MANAGER, ROLE_ADMIN)
 from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE
+from ..services.validate import DISCOVERY_SERVICES
 
 _LOGGER = logging.getLogger(__name__)
 
 
 RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$")
-RE_SERVICE = re.compile(r"^(?P<service>mqtt)(?::(?P<rights>rw|:ro))?$")
-RE_DISCOVERY = re.compile(r"^(?P<component>\w*)(?:/(?P<platform>\w*>))?$")
+RE_SERVICE = re.compile(r"^(?P<service>mqtt):(?P<rights>provide|want|need)$")
 
 V_STR = 'str'
 V_INT = 'int'
@@ -143,7 +143,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_LEGACY, default=False): vol.Boolean(),
     vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),
     vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
-    vol.Optional(ATTR_DISCOVERY): [vol.Match(RE_DISCOVERY)],
+    vol.Optional(ATTR_DISCOVERY): [vol.In(DISCOVERY_SERVICES)],
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [

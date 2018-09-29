@@ -1,14 +1,20 @@
 """Handle discover message for Home Assistant."""
 import logging
+from contextlib import suppress
 from uuid import uuid4
 
-from ..const import ATTR_UUID
+import attr
+import voluptuous as vol
+from voluptuous.humanize import humanize_error
+
+from .validate import DISCOVERY_SERVICES
 from ..coresys import CoreSysAttributes
+from ..exceptions import DiscoveryError, HomeAssistantAPIError
 
 _LOGGER = logging.getLogger(__name__)
 
-EVENT_DISCOVERY_ADD = 'hassio_discovery_add'
-EVENT_DISCOVERY_DEL = 'hassio_discovery_del'
+CMD_NEW = 'post'
+CMD_DEL = 'delete'
 
 
 class Discovery(CoreSysAttributes):
@@ -32,7 +38,7 @@ class Discovery(CoreSysAttributes):
         """Write discovery message into data file."""
         messages = []
         for message in self.message_obj.values():
-            messages.append(message.raw())
+            messages.append(attr.asdict(message))
 
         self._data.clear()
         self._data.extend(messages)
@@ -52,26 +58,31 @@ class Discovery(CoreSysAttributes):
         """Return list of available discovery messages."""
         return self.message_obj.values()
 
-    def send(self, provider, component, platform=None, config=None):
+    def send(self, addon, service, component, platform, config):
         """Send a discovery message to Home Assistant."""
-        message = Message(provider, component, platform, config)
+        try:
+            DISCOVERY_SERVICES[service](config)
+        except vol.Invalid as err:
+            _LOGGER.error(
+                "Invalid discovery %s config", humanize_error(config, err))
+            raise DiscoveryError() from None
+
+        # Create message
+        message = Message(addon.slug, service, component, platform, config)
 
         # Already exists?
-        for exists_message in self.message_obj:
-            if exists_message == message:
-                _LOGGER.warning("Found duplicate discovery message from %s",
-                                provider)
-                return exists_message
+        for old_message in self.message_obj:
+            if old_message != message:
+                continue
+            _LOGGER.warning("Duplicate discovery message from %s", addon.slug)
+            return old_message
 
         _LOGGER.info("Send discovery to Home Assistant %s/%s from %s",
-                     component, platform, provider)
+                     component, platform, addon.slug)
         self.message_obj[message.uuid] = message
         self.save()
 
-        # Send event to Home Assistant
-        self.sys_create_task(self.sys_homeassistant.send_event(
-            EVENT_DISCOVERY_ADD, {ATTR_UUID: message.uuid}))
-
+        self.sys_create_task(self._push_discovery(message.uuid, CMD_NEW))
         return message
 
     def remove(self, message):
@@ -79,29 +90,31 @@ class Discovery(CoreSysAttributes):
         self.message_obj.pop(message.uuid, None)
         self.save()
 
-        # send event to Home-Assistant
-        self.sys_create_task(self.sys_homeassistant.send_event(
-            EVENT_DISCOVERY_DEL, {ATTR_UUID: message.uuid}))
+        _LOGGER.info("Delete discovery to Home Assistant %s/%s from %s",
+                     message.component, message.platform, message.addon)
+        self.sys_create_task(self._push_discovery(message.uuid, CMD_DEL))
+
+    async def _push_discovery(self, uuid, command):
+        """Send a discovery request."""
+        if not await self.sys_homeassistant.check_api_state():
+            _LOGGER.info("Discovery %s mesage ignore", uuid)
+            return
+
+        with suppress(HomeAssistantAPIError):
+            async with self.sys_homeassistant.make_request(
+                    command, f"api/hassio_push/discovery/{uuid}"):
+                _LOGGER.info("Discovery %s message send", uuid)
+                return
+
+        _LOGGER.warning("Discovery %s message fail", uuid)
 
 
+@attr.s
 class Message:
     """Represent a single Discovery message."""
-
-    def __init__(self, provider, component, platform, config, uuid=None):
-        """Initialize discovery message."""
-        self.provider = provider
-        self.component = component
-        self.platform = platform
-        self.config = config
-        self.uuid = uuid or uuid4().hex
-
-    def raw(self):
-        """Return raw discovery message."""
-        return self.__dict__
-
-    def __eq__(self, other):
-        """Compare with other message."""
-        for attribute in ('provider', 'component', 'platform', 'config'):
-            if getattr(self, attribute) != getattr(other, attribute):
-                return False
-        return True
+    addon = attr.ib()
+    service = attr.ib()
+    component = attr.ib()
+    platform = attr.ib()
+    config = attr.ib()
+    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False)

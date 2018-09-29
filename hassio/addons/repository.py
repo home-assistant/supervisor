@@ -4,6 +4,7 @@ from .utils import get_hash_from_repository
 from ..const import (
     REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_NAME, ATTR_URL, ATTR_MAINTAINER)
 from ..coresys import CoreSysAttributes
+from ..exceptions import APIError
 
 UNKNOWN = 'unknown'
 
@@ -67,6 +68,6 @@ class Repository(CoreSysAttributes):
     def remove(self):
         """Remove add-on repository."""
         if self._id in (REPOSITORY_CORE, REPOSITORY_LOCAL):
-            raise RuntimeError("Can't remove built-in repositories!")
+            raise APIError("Can't remove built-in repositories!")
 
         self.git.remove()
