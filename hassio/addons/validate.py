@@ -143,7 +143,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_LEGACY, default=False): vol.Boolean(),
     vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),
     vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
-    vol.Optional(ATTR_DISCOVERY): vol.In(DISCOVERY_SERVICES),
+    vol.Optional(ATTR_DISCOVERY): [vol.In(DISCOVERY_SERVICES)],
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [
