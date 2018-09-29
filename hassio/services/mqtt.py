@@ -1,4 +1,5 @@
 """Provide the MQTT Service."""
+import copy
 import logging
 
 from .interface import ServiceInterface
@@ -30,11 +31,14 @@ class MQTTService(ServiceInterface):
     def set_service_data(self, addon, data):
         """Write the data into service object."""
         if self.enabled:
-            _LOGGER.error("It is already a MQTT in use from %s", self.provider)
+            _LOGGER.error(
+                "It is already a MQTT in use from %s", self._data[ATTR_ADDON])
             raise ServicesError()
 
-        self._data.update(data)
+        self._data = copy.deepcopy(data)
         self._data[ATTR_ADDON] = addon.slug
+
+        _LOGGER.info("Set %s as service provider for mqtt", addon.slug)
         self.save()
 
     def del_service_data(self, addon):
