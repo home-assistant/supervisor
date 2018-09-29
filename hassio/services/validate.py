@@ -5,8 +5,8 @@ import voluptuous as vol
 
 from ..const import (
     SERVICE_MQTT, ATTR_HOST, ATTR_PORT, ATTR_PASSWORD, ATTR_USERNAME, ATTR_SSL,
-    ATTR_PROVIDER, ATTR_PROTOCOL, ATTR_DISCOVERY, ATTR_COMPONENT, ATTR_UUID,
-    ATTR_PLATFORM, ATTR_CONFIG, ATTR_DISCOVERY_ID)
+    ATTR_ADDON, ATTR_PROTOCOL, ATTR_DISCOVERY, ATTR_COMPONENT, ATTR_UUID,
+    ATTR_PLATFORM, ATTR_CONFIG, ATTR_DISCOVERY_ID, ATTR_SERVICE)
 from ..validate import NETWORK_PORT
 
 UUID_MATCH = re.compile(r"^[0-9a-f]{32}$")
@@ -19,7 +19,8 @@ SERVICE_ALL = [
 SCHEMA_DISCOVERY = vol.Schema([
     vol.Schema({
         vol.Required(ATTR_UUID): vol.Match(UUID_MATCH),
-        vol.Required(ATTR_PROVIDER): vol.Coerce(str),
+        vol.Required(ATTR_ADDON): vol.Coerce(str),
+        vol.Required(ATTR_SERVICE): vol.In(SERVICE_ALL),
         vol.Required(ATTR_COMPONENT): vol.Coerce(str),
         vol.Required(ATTR_PLATFORM): vol.Maybe(vol.Coerce(str)),
         vol.Required(ATTR_CONFIG): vol.Maybe(dict),
@@ -40,8 +41,7 @@ SCHEMA_SERVICE_MQTT = vol.Schema({
 
 
 SCHEMA_CONFIG_MQTT = SCHEMA_SERVICE_MQTT.extend({
-    vol.Required(ATTR_PROVIDER): vol.Coerce(str),
-    vol.Optional(ATTR_DISCOVERY_ID): vol.Match(UUID_MATCH),
+    vol.Required(ATTR_ADDON): vol.Coerce(str),
 })
 
 

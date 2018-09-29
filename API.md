@@ -581,7 +581,8 @@ Write data to add-on stdin
 {
     "discovery": [
         {
-            "provider": "name",
+            "addon": "slug",
+            "service": "name",
             "uuid": "uuid",
             "component": "component",
             "platform": "null|platform",
@@ -594,7 +595,7 @@ Write data to add-on stdin
 - GET `/services/discovery/{UUID}`
 ```json
 {
-    "provider": "name",
+    "addon": "slug",
     "service": "name",
     "uuid": "uuid",
     "component": "component",
@@ -629,7 +630,7 @@ return:
         {
             "slug": "name",
             "available": "bool",
-            "provider": "null|name|list"
+            "addon": "null|name|list"
         }
     ]
 }
@@ -637,12 +638,10 @@ return:
 
 #### MQTT
 
-This service performs an auto discovery to Home-Assistant.
-
 - GET `/services/mqtt`
 ```json
 {
-    "provider": "name",
+    "addon": "name",
     "host": "xy",
     "port": "8883",
     "ssl": "bool",

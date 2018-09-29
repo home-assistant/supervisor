@@ -58,13 +58,8 @@ class Discovery(CoreSysAttributes):
         """Return list of available discovery messages."""
         return self.message_obj.values()
 
-    def send(self, provider, service, component, platform, config):
+    def send(self, addon, service, component, platform, config):
         """Send a discovery message to Home Assistant."""
-        if service not in DISCOVERY_SERVICES:
-            _LOGGER.error("Unknown service for discovery %s", service)
-            raise DiscoveryError()
-
-        # Check config
         try:
             DISCOVERY_SERVICES[service](config)
         except vol.Invalid as err:
@@ -73,18 +68,17 @@ class Discovery(CoreSysAttributes):
             raise DiscoveryError() from None
 
         # Create message
-        slug = provider.slug
-        message = Message(slug, component, platform, config)
+        message = Message(addon.slug, service, component, platform, config)
 
         # Already exists?
         for old_message in self.message_obj:
             if old_message != message:
                 continue
-            _LOGGER.warning("Duplicate discovery message from %s", slug)
+            _LOGGER.warning("Duplicate discovery message from %s", addon.slug)
             return old_message
 
         _LOGGER.info("Send discovery to Home Assistant %s/%s from %s",
-                     component, platform, slug)
+                     component, platform, addon.slug)
         self.message_obj[message.uuid] = message
         self.save()
 
@@ -97,7 +91,7 @@ class Discovery(CoreSysAttributes):
         self.save()
 
         _LOGGER.info("Delete discovery to Home Assistant %s/%s from %s",
-                     message.component, message.platform, message.provider)
+                     message.component, message.platform, message.addon)
         self.sys_create_task(self._push_discovery(message.uuid, CMD_DEL))
 
     async def _push_discovery(self, uuid, command):
@@ -118,7 +112,8 @@ class Discovery(CoreSysAttributes):
 @attr.s
 class Message:
     """Represent a single Discovery message."""
-    provider = attr.ib()
+    addon = attr.ib()
+    service = attr.ib()
     component = attr.ib()
     platform = attr.ib()
     config = attr.ib()
