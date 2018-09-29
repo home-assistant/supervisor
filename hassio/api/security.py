@@ -59,7 +59,6 @@ ADDONS_ROLE_ACCESS = {
         r"|/hassos/.+"
         r"|/supervisor/.+"
         r"|/addons/[^/]+/(?!security|options).+"
-        r"|/addons(?:/self/(?!security).+)?"
         r"|/snapshots.*"
         r")$"
     ),
