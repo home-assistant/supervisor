@@ -117,4 +117,4 @@ class Message:
     component = attr.ib()
     platform = attr.ib()
     config = attr.ib()
-    uuid = attr.ib(factory=uuid4().hex, cmp=False)
+    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False)
