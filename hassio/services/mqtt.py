@@ -35,7 +35,7 @@ class MQTTService(ServiceInterface):
                 "It is already a MQTT in use from %s", self._data[ATTR_ADDON])
             raise ServicesError()
 
-        self._data = copy.deepcopy(data)
+        self._data.update(data)
         self._data[ATTR_ADDON] = addon.slug
 
         _LOGGER.info("Set %s as service provider for mqtt", addon.slug)
