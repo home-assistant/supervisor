@@ -16,6 +16,17 @@ SERVICE_ALL = [
 ]
 
 
+def schema_or(schema):
+    """Allow schema or empty."""
+    def _wrapper(value):
+        """Wrapper for validator."""
+        if not value:
+            return value
+        return schema(value)
+
+    return _wrapper
+
+
 SCHEMA_DISCOVERY = vol.Schema([
     vol.Schema({
         vol.Required(ATTR_UUID): vol.Match(UUID_MATCH),
@@ -46,8 +57,8 @@ SCHEMA_CONFIG_MQTT = SCHEMA_SERVICE_MQTT.extend({
 
 
 SCHEMA_SERVICES_FILE = vol.Schema({
-    vol.Optional(SERVICE_MQTT, default=dict): vol.Any({}, SCHEMA_CONFIG_MQTT),
-    vol.Optional(ATTR_DISCOVERY, default=list): vol.Any([], SCHEMA_DISCOVERY),
+    vol.Optional(SERVICE_MQTT, default=dict): schema_or(SCHEMA_CONFIG_MQTT),
+    vol.Optional(ATTR_DISCOVERY, default=list): schema_or(SCHEMA_DISCOVERY),
 }, extra=vol.REMOVE_EXTRA)
 
 

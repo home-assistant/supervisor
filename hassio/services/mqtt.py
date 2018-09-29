@@ -1,5 +1,4 @@
 """Provide the MQTT Service."""
-import copy
 import logging
 
 from .interface import ServiceInterface
