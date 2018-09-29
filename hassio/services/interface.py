@@ -45,10 +45,10 @@ class ServiceInterface(CoreSysAttributes):
             return self._data
         return None
 
-    def set_service_data(self, provider, data):
+    def set_service_data(self, addon, data):
         """Write the data into service object."""
         raise NotImplementedError()
 
-    def del_service_data(self, provider):
+    def del_service_data(self, addon):
         """Remove the data from service object."""
         raise NotImplementedError()

@@ -6,6 +6,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 
+
 class APIServices(CoreSysAttributes):
     """Handle RESTful API for services functions."""
 
@@ -43,10 +44,7 @@ class APIServices(CoreSysAttributes):
         """Read data into a service."""
         service = self._extract_service(request)
 
-        return {
-            ATTR_AVAILABLE: service.enabled,
-            service.slug: service.get_service_data(),
-        }
+        return service.get_service_data()
 
     @api_process
     async def del_service(self, request):

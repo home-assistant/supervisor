@@ -3,7 +3,7 @@ import logging
 from contextlib import suppress
 from uuid import uuid4
 
-import attrs
+import attr
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -38,7 +38,7 @@ class Discovery(CoreSysAttributes):
         """Write discovery message into data file."""
         messages = []
         for message in self.message_obj.values():
-            messages.append(attrs.asdict(message))
+            messages.append(attr.asdict(message))
 
         self._data.clear()
         self._data.extend(messages)
@@ -102,7 +102,7 @@ class Discovery(CoreSysAttributes):
 
         with suppress(HomeAssistantAPIError):
             async with self.sys_homeassistant.make_request(
-                    command, f"api/hassio_push/discovery/{uuid}") as req:
+                    command, f"api/hassio_push/discovery/{uuid}"):
                 _LOGGER.info("Discovery %s message send", uuid)
                 return
 

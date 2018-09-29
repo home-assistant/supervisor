@@ -3,9 +3,7 @@ import logging
 
 from .interface import ServiceInterface
 from .validate import SCHEMA_SERVICE_MQTT
-from ..const import (
-    ATTR_ADDON, SERVICE_MQTT, ATTR_HOST, ATTR_PORT, ATTR_USERNAME,
-    ATTR_PASSWORD, ATTR_PROTOCOL, ATTR_DISCOVERY_ID)
+from ..const import ATTR_ADDON, SERVICE_MQTT
 from ..exceptions import ServicesError
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,7 +42,7 @@ class MQTTService(ServiceInterface):
         self._data[ATTR_ADDON] = addon.slug
         self.save()
 
-    def del_service_data(self, provider):
+    def del_service_data(self, addon):
         """Remove the data from service object."""
         if not self.enabled:
             _LOGGER.warning("Can't remove not exists services")
