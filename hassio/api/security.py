@@ -26,7 +26,6 @@ NO_SECURITY_CHECK = re.compile(
     r"|/homeassistant/api/.*"
     r"|/homeassistant/websocket"
     r"|/supervisor/ping"
-    r"|/services.*"
     r")$"
 )
 
@@ -35,6 +34,7 @@ ADDONS_API_BYPASS = re.compile(
     r"^(?:"
     r"|/addons/self/(?!security)[^/]+"
     r"|/version"
+    r"|/services.*"
     r")$"
 )
 

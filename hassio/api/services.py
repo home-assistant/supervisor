@@ -4,7 +4,7 @@ from .utils import api_process, api_validate
 from ..const import (
     ATTR_AVAILABLE, ATTR_PROVIDERS, ATTR_SLUG, ATTR_SERVICES, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
+from ..exceptions import APIError, APIForbidden
 
 
 class APIServices(CoreSysAttributes):
@@ -36,18 +36,36 @@ class APIServices(CoreSysAttributes):
         """Write data into a service."""
         service = self._extract_service(request)
         body = await api_validate(service.schema, request)
+        addon = request[REQUEST_FROM]
 
-        return service.set_service_data(request[REQUEST_FROM], body)
+        _check_access(request, service, 'rw')
+        service.set_service_data(addon, body)
 
     @api_process
     async def get_service(self, request):
         """Read data into a service."""
         service = self._extract_service(request)
 
+        # Access
+        _check_access(request, service, 'ro')
+
+        if not service.enabled:
+            raise APIError("Service not enabled")
         return service.get_service_data()
 
     @api_process
     async def del_service(self, request):
         """Delete data into a service."""
         service = self._extract_service(request)
-        return service.del_service_data(request[REQUEST_FROM])
+        addon = request[REQUEST_FROM]
+
+        # Access
+        _check_access(request, service, 'rw')
+        service.del_service_data(addon)
+
+
+def _check_access(request, service, mode):
+    """Raise error if the rights are wrong."""
+    addon = request[REQUEST_FROM]
+    if addon.services_role.get(service) != mode:
+        APIForbidden("No access to write this service!")

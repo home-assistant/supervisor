@@ -499,8 +499,8 @@ Get all available addons.
     "audio": "bool",
     "audio_input": "null|0,0",
     "audio_output": "null|0,0",
-    "services": "null|['mqtt']",
-    "discovery": "null|['component/platform']"
+    "services_role": "['service:access']",
+    "discovery": "['service']"
 }
 ```
 

@@ -239,11 +239,11 @@ class Addon(CoreSysAttributes):
         return self._mesh.get(ATTR_STARTUP)
 
     @property
-    def services(self):
+    def services_role(self):
         """Return dict of services with rights."""
         raw_services = self._mesh.get(ATTR_SERVICES)
         if not raw_services:
-            return None
+            return {}
 
         formated_services = {}
         for data in raw_services:

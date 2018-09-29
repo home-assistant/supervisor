@@ -28,7 +28,11 @@ class ServiceInterface(CoreSysAttributes):
     @property
     def providers(self):
         """Return name of service providers addon."""
-        return None
+        addons = []
+        for addon in self.sys_addons.list_installed:
+            if addon.services_role.get(self.slug) == 'rw':
+                addons.append(addon.slug)
+        return addons
 
     @property
     def enabled(self):

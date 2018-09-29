@@ -27,11 +27,6 @@ class MQTTService(ServiceInterface):
         """Return data schema of this service."""
         return SCHEMA_SERVICE_MQTT
 
-    @property
-    def providers(self):
-        """Return name of service provider."""
-        return [self._data.get(ATTR_ADDON)]
-
     def set_service_data(self, addon, data):
         """Write the data into service object."""
         if self.enabled:
