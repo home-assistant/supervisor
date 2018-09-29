@@ -2,7 +2,7 @@
 
 from .utils import api_process, api_validate
 from ..const import (
-    ATTR_AVAILABLE, ATTR_PROVIDER, ATTR_SLUG, ATTR_SERVICES, REQUEST_FROM)
+    ATTR_AVAILABLE, ATTR_PROVIDERS, ATTR_SLUG, ATTR_SERVICES, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 
@@ -25,7 +25,7 @@ class APIServices(CoreSysAttributes):
             services.append({
                 ATTR_SLUG: service.slug,
                 ATTR_AVAILABLE: service.enabled,
-                ATTR_PROVIDER: service.provider,
+                ATTR_PROVIDERS: service.providers,
             })
 
         return {ATTR_SERVICES: services}

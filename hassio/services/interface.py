@@ -26,8 +26,8 @@ class ServiceInterface(CoreSysAttributes):
         return None
 
     @property
-    def addon(self):
-        """Return name of service provider addon."""
+    def providers(self):
+        """Return name of service providers addon."""
         return None
 
     @property

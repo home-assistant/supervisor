@@ -630,7 +630,7 @@ return:
         {
             "slug": "name",
             "available": "bool",
-            "addon": "null|name|list"
+            "providers": "list"
         }
     ]
 }
