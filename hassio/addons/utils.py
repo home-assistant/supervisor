@@ -28,10 +28,6 @@ def rating_security(addon):
     elif addon.apparmor == SECURITY_PROFILE:
         rating += 1
 
-    # API Access
-    if addon.access_hassio_api or addon.access_homeassistant_api:
-        rating += -1
-
     # Privileged options
     if addon.privileged in (PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
                             PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE):
