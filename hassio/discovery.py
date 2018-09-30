@@ -41,7 +41,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
     def save(self):
         """Write discovery message into data file."""
         messages = []
-        for message in self.message_obj.values():
+        for message in self.list_messages:
             messages.append(attr.asdict(message))
 
         self._data[ATTR_DISCOVERY].clear()
@@ -70,7 +70,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
         message = Message(addon.slug, service, component, platform, config)
 
         # Already exists?
-        for old_message in self.message_obj.values():
+        for old_message in self.list_messages:
             if old_message != message:
                 continue
             _LOGGER.warning("Duplicate discovery message from %s", addon.slug)
