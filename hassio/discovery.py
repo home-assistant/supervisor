@@ -7,7 +7,7 @@ import attr
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .const import FILE_HASSIO_DISCOVERY, ATTR_CONFIG
+from .const import FILE_HASSIO_DISCOVERY, ATTR_CONFIG, ATTR_DISCOVERY
 from .coresys import CoreSysAttributes
 from .exceptions import DiscoveryError, HomeAssistantAPIError
 from .validate import SCHEMA_DISCOVERY_CONFIG
@@ -32,7 +32,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
     def load(self):
         """Load exists discovery message into storage."""
         messages = {}
-        for message in self._data:
+        for message in self._data[ATTR_DISCOVERY]:
             discovery = Message(**message)
             messages[discovery.uuid] = discovery
 
@@ -44,9 +44,9 @@ class Discovery(CoreSysAttributes, JsonConfig):
         for message in self.message_obj.values():
             messages.append(attr.asdict(message))
 
-        self._data.clear()
-        self._data.extend(messages)
-        self._data.save_data()
+        self._data[ATTR_DISCOVERY].clear()
+        self._data[ATTR_DISCOVERY].extend(messages)
+        self.save_data()
 
     def get(self, uuid):
         """Return discovery message."""
@@ -79,7 +79,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
         _LOGGER.info("Send discovery to Home Assistant %s/%s from %s",
                      component, platform, addon.slug)
         self.message_obj[message.uuid] = message
-        self.save_data()
+        self.save()
 
         self.sys_create_task(self._push_discovery(message, CMD_NEW))
         return message
@@ -87,7 +87,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
     def remove(self, message):
         """Remove a discovery message from Home Assistant."""
         self.message_obj.pop(message.uuid, None)
-        self.save_data()
+        self.save()
 
         _LOGGER.info("Delete discovery to Home Assistant %s/%s from %s",
                      message.component, message.platform, message.addon)
