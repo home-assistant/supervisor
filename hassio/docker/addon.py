@@ -1,6 +1,7 @@
 """Init file for Hass.io add-on Docker object."""
 import logging
 import os
+import re
 from pathlib import Path
 
 import docker
@@ -16,6 +17,7 @@ from ..utils import process_lock
 _LOGGER = logging.getLogger(__name__)
 
 AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
+RE_DEVICE = re.compile(r"^(?P<device>.*?):")
 
 
 class DockerAddon(DockerInterface):
@@ -98,7 +100,16 @@ class DockerAddon(DockerInterface):
     @property
     def devices(self):
         """Return needed devices."""
-        devices = self.addon.devices or []
+        devices = []
+
+        # Only add devices that actually exist
+        for device in self.addon.devices:
+            device_path = RE_DEVICE.match(device).group('device')
+            if not Path(device_path).exists():
+                _LOGGER.warning(
+                    "Device '%s' was not found, skipping!", device_path)
+                continue
+            devices.append(device)
 
         # Use audio devices
         if self.addon.with_audio and AUDIO_DEVICE not in devices:
