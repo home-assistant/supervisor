@@ -1,4 +1,4 @@
-"""Init file for HassIO host rest api."""
+"""Init file for Hass.io host RESTful API."""
 import asyncio
 import logging
 
@@ -21,7 +21,7 @@ SCHEMA_OPTIONS = vol.Schema({
 
 
 class APIHost(CoreSysAttributes):
-    """Handle rest api for host functions."""
+    """Handle RESTful API for host functions."""
 
     @api_process
     async def info(self, request):

@@ -1,6 +1,4 @@
 """Handle internal services discovery."""
-
-from .discovery import Discovery  # noqa
 from .mqtt import MQTTService
 from .data import ServicesData
 from ..const import SERVICE_MQTT
@@ -35,10 +33,6 @@ class ServiceManager(CoreSysAttributes):
         for slug, service in AVAILABLE_SERVICES.items():
             self.services_obj[slug] = service(self.coresys)
 
-        # Read exists discovery messages
-        self.sys_discovery.load()
-
     def reset(self):
         """Reset available data."""
         self.data.reset_data()
-        self.sys_discovery.load()

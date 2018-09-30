@@ -1,4 +1,4 @@
-"""Init file for HassIO hardware rest api."""
+"""Init file for Hass.io hardware RESTful API."""
 import logging
 
 from .utils import api_process
@@ -10,7 +10,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class APIHardware(CoreSysAttributes):
-    """Handle rest api for hardware functions."""
+    """Handle RESTful API for hardware functions."""
 
     @api_process
     async def info(self, request):

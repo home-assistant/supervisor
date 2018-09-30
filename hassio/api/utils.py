@@ -1,4 +1,4 @@
-"""Init file for HassIO util for rest api."""
+"""Init file for Hass.io util for RESTful API."""
 import json
 import logging
 
@@ -9,7 +9,7 @@ from voluptuous.humanize import humanize_error
 from ..const import (
     JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
     CONTENT_TYPE_BINARY)
-from ..exceptions import HassioError
+from ..exceptions import HassioError, APIError, APIForbidden
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,19 +21,19 @@ def json_loads(data):
     try:
         return json.loads(data)
     except json.JSONDecodeError:
-        raise RuntimeError("Invalid json")
+        raise APIError("Invalid json")
 
 
 def api_process(method):
     """Wrap function with true/false calls to rest api."""
     async def wrap_api(api, *args, **kwargs):
-        """Return api information."""
+        """Return API information."""
         try:
             answer = await method(api, *args, **kwargs)
-        except HassioError:
-            return api_return_error()
-        except RuntimeError as err:
+        except (APIError, APIForbidden) as err:
             return api_return_error(message=str(err))
+        except HassioError:
+            return api_return_error(message="Unknown Error, see logs")
 
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
@@ -55,7 +55,7 @@ def api_process_raw(content):
             try:
                 msg_data = await method(api, *args, **kwargs)
                 msg_type = content
-            except RuntimeError as err:
+            except (APIError, APIForbidden) as err:
                 msg_data = str(err).encode()
                 msg_type = CONTENT_TYPE_BINARY
             except HassioError:
@@ -90,6 +90,6 @@ async def api_validate(schema, request):
     try:
         data = schema(data)
     except vol.Invalid as ex:
-        raise RuntimeError(humanize_error(data, ex)) from None
+        raise APIError(humanize_error(data, ex)) from None
 
     return data

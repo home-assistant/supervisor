@@ -1,4 +1,4 @@
-"""Init file for HassIO docker object."""
+"""Init file for Hass.io Docker object."""
 import logging
 import os
 
@@ -11,11 +11,11 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DockerSupervisor(DockerInterface, CoreSysAttributes):
-    """Docker hassio wrapper for Supervisor."""
+    """Docker Hass.io wrapper for Supervisor."""
 
     @property
     def name(self):
-        """Return name of docker container."""
+        """Return name of Docker container."""
         return os.environ['SUPERVISOR_NAME']
 
     def _attach(self):
@@ -29,14 +29,14 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             return False
 
         self._meta = container.attrs
-        _LOGGER.info("Attach to supervisor %s with version %s",
+        _LOGGER.info("Attach to Supervisor %s with version %s",
                      self.image, self.version)
 
-        # if already attach
+        # If already attach
         if container in self.sys_docker.network.containers:
             return True
 
-        # attach to network
+        # Attach to network
         return self.sys_docker.network.attach_container(
             container, alias=['hassio'],
             ipv4=self.sys_docker.network.supervisor)

@@ -1,4 +1,4 @@
-"""Init file for HassIO addons."""
+"""Init file for Hass.io add-ons."""
 from contextlib import suppress
 from copy import deepcopy
 import logging
@@ -13,7 +13,8 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from .validate import (
-    validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME, RE_SERVICE)
+    validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME, RE_SERVICE,
+    MACHINE_ALL)
 from .utils import check_installed, remove_data
 from ..const import (
     ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
@@ -27,6 +28,7 @@ from ..const import (
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
     ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
+    ATTR_MACHINE,
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
@@ -43,7 +45,7 @@ RE_WEBUI = re.compile(
 
 
 class Addon(CoreSysAttributes):
-    """Hold data for addon inside HassIO."""
+    """Hold data for add-on inside Hass.io."""
 
     def __init__(self, coresys, slug):
         """Initialize data holder."""
@@ -59,28 +61,37 @@ class Addon(CoreSysAttributes):
 
     @property
     def slug(self):
-        """Return slug/id of addon."""
+        """Return slug/id of add-on."""
         return self._id
 
     @property
     def _mesh(self):
-        """Return addon data from system or cache."""
+        """Return add-on data from system or cache."""
         return self._data.system.get(self._id, self._data.cache.get(self._id))
 
     @property
     def _data(self):
-        """Return addons data storage."""
+        """Return add-ons data storage."""
         return self.sys_addons.data
 
     @property
     def is_installed(self):
-        """Return True if an addon is installed."""
+        """Return True if an add-on is installed."""
         return self._id in self._data.system
 
     @property
     def is_detached(self):
-        """Return True if addon is detached."""
+        """Return True if add-on is detached."""
         return self._id not in self._data.cache
+
+    @property
+    def available(self):
+        """Return True if this add-on is available on this platform."""
+        if self.sys_arch not in self.supported_arch:
+            return False
+        if self.sys_machine not in self.supported_machine:
+            return False
+        return True
 
     @property
     def version_installed(self):
@@ -97,19 +108,19 @@ class Addon(CoreSysAttributes):
         self._data.save_data()
 
     def _set_uninstall(self):
-        """Set addon as uninstalled."""
+        """Set add-on as uninstalled."""
         self._data.system.pop(self._id, None)
         self._data.user.pop(self._id, None)
         self._data.save_data()
 
     def _set_update(self, version):
-        """Update version of addon."""
+        """Update version of add-on."""
         self._data.system[self._id] = deepcopy(self._data.cache[self._id])
         self._data.user[self._id][ATTR_VERSION] = version
         self._data.save_data()
 
     def _restore_data(self, user, system):
-        """Restore data to addon."""
+        """Restore data to add-on."""
         self._data.user[self._id] = deepcopy(user)
         self._data.system[self._id] = deepcopy(system)
         self._data.save_data()
@@ -126,7 +137,7 @@ class Addon(CoreSysAttributes):
 
     @options.setter
     def options(self, value):
-        """Store user addon options."""
+        """Store user add-on options."""
         if value is None:
             self._data.user[self._id][ATTR_OPTIONS] = {}
         else:
@@ -158,7 +169,7 @@ class Addon(CoreSysAttributes):
 
     @property
     def name(self):
-        """Return name of addon."""
+        """Return name of add-on."""
         return self._mesh[ATTR_NAME]
 
     @property
@@ -175,14 +186,14 @@ class Addon(CoreSysAttributes):
 
     @property
     def hassio_token(self):
-        """Return access token for hass.io API."""
+        """Return access token for Hass.io API."""
         if self.is_installed:
             return self._data.user[self._id].get(ATTR_ACCESS_TOKEN)
         return None
 
     @property
     def description(self):
-        """Return description of addon."""
+        """Return description of add-on."""
         return self._mesh[ATTR_DESCRIPTON]
 
     @property
@@ -200,56 +211,55 @@ class Addon(CoreSysAttributes):
 
     @property
     def repository(self):
-        """Return repository of addon."""
+        """Return repository of add-on."""
         return self._mesh[ATTR_REPOSITORY]
 
     @property
     def last_version(self):
-        """Return version of addon."""
+        """Return version of add-on."""
         if self._id in self._data.cache:
             return self._data.cache[self._id][ATTR_VERSION]
         return self.version_installed
 
     @property
     def protected(self):
-        """Return if addon is in protected mode."""
+        """Return if add-on is in protected mode."""
         if self.is_installed:
             return self._data.user[self._id][ATTR_PROTECTED]
         return True
 
     @protected.setter
     def protected(self, value):
-        """Set addon in protected mode."""
+        """Set add-on in protected mode."""
         self._data.user[self._id][ATTR_PROTECTED] = value
 
     @property
     def startup(self):
-        """Return startup type of addon."""
+        """Return startup type of add-on."""
         return self._mesh.get(ATTR_STARTUP)
 
     @property
-    def services(self):
+    def services_role(self):
         """Return dict of services with rights."""
         raw_services = self._mesh.get(ATTR_SERVICES)
         if not raw_services:
-            return None
+            return {}
 
-        formated_services = {}
+        services = {}
         for data in raw_services:
             service = RE_SERVICE.match(data)
-            formated_services[service.group('service')] = \
-                service.group('rights') or 'ro'
+            services[service.group('service')] = service.group('rights')
 
-        return formated_services
+        return services
 
     @property
     def discovery(self):
         """Return list of discoverable components/platforms."""
-        return self._mesh.get(ATTR_DISCOVERY)
+        return self._mesh.get(ATTR_DISCOVERY, [])
 
     @property
     def ports(self):
-        """Return ports of addon."""
+        """Return ports of add-on."""
         if self.host_network or ATTR_PORTS not in self._mesh:
             return None
 
@@ -260,7 +270,7 @@ class Addon(CoreSysAttributes):
 
     @ports.setter
     def ports(self, value):
-        """Set custom ports of addon."""
+        """Set custom ports of add-on."""
         if value is None:
             self._data.user[self._id].pop(ATTR_NETWORK, None)
         else:
@@ -304,42 +314,42 @@ class Addon(CoreSysAttributes):
 
     @property
     def host_network(self):
-        """Return True if addon run on host network."""
+        """Return True if add-on run on host network."""
         return self._mesh[ATTR_HOST_NETWORK]
 
     @property
     def host_pid(self):
-        """Return True if addon run on host PID namespace."""
+        """Return True if add-on run on host PID namespace."""
         return self._mesh[ATTR_HOST_PID]
 
     @property
     def host_ipc(self):
-        """Return True if addon run on host IPC namespace."""
+        """Return True if add-on run on host IPC namespace."""
         return self._mesh[ATTR_HOST_IPC]
 
     @property
     def host_dbus(self):
-        """Return True if addon run on host DBUS."""
+        """Return True if add-on run on host D-BUS."""
         return self._mesh[ATTR_HOST_DBUS]
 
     @property
     def devices(self):
-        """Return devices of addon."""
+        """Return devices of add-on."""
         return self._mesh.get(ATTR_DEVICES)
 
     @property
     def auto_uart(self):
-        """Return True if we should map all uart device."""
+        """Return True if we should map all UART device."""
         return self._mesh.get(ATTR_AUTO_UART)
 
     @property
     def tmpfs(self):
-        """Return tmpfs of addon."""
+        """Return tmpfs of add-on."""
         return self._mesh.get(ATTR_TMPFS)
 
     @property
     def environment(self):
-        """Return environment of addon."""
+        """Return environment of add-on."""
         return self._mesh.get(ATTR_ENVIRONMENT)
 
     @property
@@ -349,7 +359,7 @@ class Addon(CoreSysAttributes):
 
     @property
     def apparmor(self):
-        """Return True if apparmor is enabled."""
+        """Return True if AppArmor is enabled."""
         if not self._mesh.get(ATTR_APPARMOR):
             return SECURITY_DISABLE
         elif self.sys_host.apparmor.exists(self.slug):
@@ -358,22 +368,22 @@ class Addon(CoreSysAttributes):
 
     @property
     def legacy(self):
-        """Return if the add-on don't support hass labels."""
+        """Return if the add-on don't support Home Assistant labels."""
         return self._mesh.get(ATTR_LEGACY)
 
     @property
     def access_docker_api(self):
-        """Return if the add-on need read-only docker API access."""
+        """Return if the add-on need read-only Docker API access."""
         return self._mesh.get(ATTR_DOCKER_API)
 
     @property
     def access_hassio_api(self):
-        """Return True if the add-on access to hassio api."""
+        """Return True if the add-on access to Hass.io REASTful API."""
         return self._mesh[ATTR_HASSIO_API]
 
     @property
     def access_homeassistant_api(self):
-        """Return True if the add-on access to Home-Assistant api proxy."""
+        """Return True if the add-on access to Home Assistant API proxy."""
         return self._mesh[ATTR_HOMEASSISTANT_API]
 
     @property
@@ -388,7 +398,7 @@ class Addon(CoreSysAttributes):
 
     @property
     def with_gpio(self):
-        """Return True if the add-on access to gpio interface."""
+        """Return True if the add-on access to GPIO interface."""
         return self._mesh[ATTR_GPIO]
 
     @property
@@ -445,7 +455,7 @@ class Addon(CoreSysAttributes):
 
     @property
     def url(self):
-        """Return url of addon."""
+        """Return URL of add-on."""
         return self._mesh.get(ATTR_URL)
 
     @property
@@ -469,11 +479,16 @@ class Addon(CoreSysAttributes):
         return self._mesh[ATTR_ARCH]
 
     @property
+    def supported_machine(self):
+        """Return list of supported machine."""
+        return self._mesh.get(ATTR_MACHINE) or MACHINE_ALL
+
+    @property
     def image(self):
-        """Return image name of addon."""
+        """Return image name of add-on."""
         addon_data = self._mesh
 
-        # Repository with dockerhub images
+        # Repository with Dockerhub images
         if ATTR_IMAGE in addon_data:
             return addon_data[ATTR_IMAGE].format(arch=self.sys_arch)
 
@@ -484,12 +499,12 @@ class Addon(CoreSysAttributes):
 
     @property
     def need_build(self):
-        """Return True if this  addon need a local build."""
+        """Return True if this  add-on need a local build."""
         return ATTR_IMAGE not in self._mesh
 
     @property
     def map_volumes(self):
-        """Return a dict of {volume: policy} from addon."""
+        """Return a dict of {volume: policy} from add-on."""
         volumes = {}
         for volume in self._mesh[ATTR_MAP]:
             result = RE_VOLUME.match(volume)
@@ -499,37 +514,37 @@ class Addon(CoreSysAttributes):
 
     @property
     def path_data(self):
-        """Return addon data path inside supervisor."""
+        """Return add-on data path inside Supervisor."""
         return Path(self.sys_config.path_addons_data, self._id)
 
     @property
     def path_extern_data(self):
-        """Return addon data path external for docker."""
+        """Return add-on data path external for Docker."""
         return PurePath(self.sys_config.path_extern_addons_data, self._id)
 
     @property
     def path_options(self):
-        """Return path to addons options."""
+        """Return path to add-on options."""
         return Path(self.path_data, "options.json")
 
     @property
     def path_location(self):
-        """Return path to this addon."""
+        """Return path to this add-on."""
         return Path(self._mesh[ATTR_LOCATON])
 
     @property
     def path_icon(self):
-        """Return path to addon icon."""
+        """Return path to add-on icon."""
         return Path(self.path_location, 'icon.png')
 
     @property
     def path_logo(self):
-        """Return path to addon logo."""
+        """Return path to add-on logo."""
         return Path(self.path_location, 'logo.png')
 
     @property
     def path_changelog(self):
-        """Return path to addon changelog."""
+        """Return path to add-on changelog."""
         return Path(self.path_location, 'CHANGELOG.md')
 
     @property
@@ -544,15 +559,15 @@ class Addon(CoreSysAttributes):
 
     @property
     def path_extern_asound(self):
-        """Return path to asound config for docker."""
+        """Return path to asound config for Docker."""
         return Path(self.sys_config.path_extern_tmp, f"{self.slug}_asound")
 
     def save_data(self):
-        """Save data of addon."""
+        """Save data of add-on."""
         self.sys_addons.data.save_data()
 
     def write_options(self):
-        """Return True if addon options is written to data."""
+        """Return True if add-on options is written to data."""
         schema = self.schema
         options = self.options
 
@@ -560,14 +575,21 @@ class Addon(CoreSysAttributes):
             schema(options)
             write_json_file(self.path_options, options)
         except vol.Invalid as ex:
-            _LOGGER.error("Addon %s have wrong options: %s", self._id,
+            _LOGGER.error("Add-on %s have wrong options: %s", self._id,
                           humanize_error(options, ex))
         except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.error("Addon %s can't write options: %s", self._id, err)
+            _LOGGER.error("Add-on %s can't write options: %s", self._id, err)
         else:
             return True
 
         return False
+
+    def remove_discovery(self):
+        """Remove all discovery message from add-on."""
+        for message in self.sys_discovery.list_messages:
+            if message.addon != self.slug:
+                continue
+            self.sys_discovery.remove(message)
 
     def write_asound(self):
         """Write asound config to file and return True on success."""
@@ -578,7 +600,7 @@ class Addon(CoreSysAttributes):
             with self.path_asound.open('w') as config_file:
                 config_file.write(asound_config)
         except OSError as err:
-            _LOGGER.error("Addon %s can't write asound: %s", self._id, err)
+            _LOGGER.error("Add-on %s can't write asound: %s", self._id, err)
             return False
 
         return True
@@ -606,7 +628,7 @@ class Addon(CoreSysAttributes):
 
     @property
     def schema(self):
-        """Create a schema for addon options."""
+        """Create a schema for add-on options."""
         raw_schema = self._mesh[ATTR_SCHEMA]
 
         if isinstance(raw_schema, bool):
@@ -614,7 +636,7 @@ class Addon(CoreSysAttributes):
         return vol.Schema(vol.All(dict, validate_options(raw_schema)))
 
     def test_update_schema(self):
-        """Check if the exists config valid after update."""
+        """Check if the existing configuration is valid after update."""
         if not self.is_installed or self.is_detached:
             return True
 
@@ -644,19 +666,19 @@ class Addon(CoreSysAttributes):
         return True
 
     async def install(self):
-        """Install an addon."""
-        if self.sys_arch not in self.supported_arch:
+        """Install an add-on."""
+        if not self.available:
             _LOGGER.error(
-                "Addon %s not supported on %s", self._id, self.sys_arch)
+                "Add-on %s not supported on %s", self._id, self.sys_arch)
             return False
 
         if self.is_installed:
-            _LOGGER.error("Addon %s is already installed", self._id)
+            _LOGGER.error("Add-on %s is already installed", self._id)
             return False
 
         if not self.path_data.is_dir():
             _LOGGER.info(
-                "Create Home-Assistant addon data folder %s", self.path_data)
+                "Create Home Assistant add-on data folder %s", self.path_data)
             self.path_data.mkdir()
 
         # Setup/Fix AppArmor profile
@@ -670,13 +692,13 @@ class Addon(CoreSysAttributes):
 
     @check_installed
     async def uninstall(self):
-        """Remove an addon."""
+        """Remove an add-on."""
         if not await self.instance.remove():
             return False
 
         if self.path_data.is_dir():
             _LOGGER.info(
-                "Remove Home-Assistant addon data folder %s", self.path_data)
+                "Remove Home Assistant add-on data folder %s", self.path_data)
             await remove_data(self.path_data)
 
         # Cleanup audio settings
@@ -684,16 +706,19 @@ class Addon(CoreSysAttributes):
             with suppress(OSError):
                 self.path_asound.unlink()
 
-        # Cleanup apparmor profile
+        # Cleanup AppArmor profile
         if self.sys_host.apparmor.exists(self.slug):
             with suppress(HostAppArmorError):
                 await self.sys_host.apparmor.remove_profile(self.slug)
+
+        # Remove discovery messages
+        self.remove_discovery()
 
         self._set_uninstall()
         return True
 
     async def state(self):
-        """Return running state of addon."""
+        """Return running state of add-on."""
         if not self.is_installed:
             return STATE_NONE
 
@@ -703,9 +728,9 @@ class Addon(CoreSysAttributes):
 
     @check_installed
     async def start(self):
-        """Set options and start addon."""
+        """Set options and start add-on."""
         if await self.instance.is_running():
-            _LOGGER.warning("%s allready running!", self.slug)
+            _LOGGER.warning("%s already running!", self.slug)
             return
 
         # Access Token
@@ -724,7 +749,7 @@ class Addon(CoreSysAttributes):
 
     @check_installed
     def stop(self):
-        """Stop addon.
+        """Stop add-on.
 
         Return a coroutine.
         """
@@ -732,11 +757,11 @@ class Addon(CoreSysAttributes):
 
     @check_installed
     async def update(self):
-        """Update addon."""
+        """Update add-on."""
         last_state = await self.state()
 
         if self.last_version == self.version_installed:
-            _LOGGER.warning("No update available for Addon %s", self._id)
+            _LOGGER.warning("No update available for add-on %s", self._id)
             return False
 
         if not await self.instance.update(self.last_version):
@@ -753,13 +778,13 @@ class Addon(CoreSysAttributes):
 
     @check_installed
     async def restart(self):
-        """Restart addon."""
+        """Restart add-on."""
         await self.stop()
         return await self.start()
 
     @check_installed
     def logs(self):
-        """Return addons log output.
+        """Return add-ons log output.
 
         Return a coroutine.
         """
@@ -775,11 +800,11 @@ class Addon(CoreSysAttributes):
 
     @check_installed
     async def rebuild(self):
-        """Performe a rebuild of local build addon."""
+        """Perform a rebuild of local build add-on."""
         last_state = await self.state()
 
         if not self.need_build:
-            _LOGGER.error("Can't rebuild a none local build addon!")
+            _LOGGER.error("Can't rebuild a none local build add-on!")
             return False
 
         # remove docker container but not addon config
@@ -808,7 +833,7 @@ class Addon(CoreSysAttributes):
 
     @check_installed
     async def snapshot(self, tar_file):
-        """Snapshot state of an addon."""
+        """Snapshot state of an add-on."""
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
             # store local image
             if self.need_build and not await \
@@ -822,7 +847,7 @@ class Addon(CoreSysAttributes):
                 ATTR_STATE: await self.state(),
             }
 
-            # store local configs/state
+            # Store local configs/state
             try:
                 write_json_file(Path(temp, 'addon.json'), data)
             except (OSError, json.JSONDecodeError) as err:
@@ -846,7 +871,7 @@ class Addon(CoreSysAttributes):
                     snapshot.add(self.path_data, arcname="data")
 
             try:
-                _LOGGER.info("Build snapshot for addon %s", self._id)
+                _LOGGER.info("Build snapshot for add-on %s", self._id)
                 await self.sys_run_in_executor(_write_tarfile)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
@@ -856,7 +881,7 @@ class Addon(CoreSysAttributes):
         return True
 
     async def restore(self, tar_file):
-        """Restore state of an addon."""
+        """Restore state of an add-on."""
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
             # extract snapshot
             def _extract_tarfile():
@@ -870,13 +895,13 @@ class Addon(CoreSysAttributes):
                 _LOGGER.error("Can't read tarfile %s: %s", tar_file, err)
                 return False
 
-            # read snapshot data
+            # Read snapshot data
             try:
                 data = read_json_file(Path(temp, 'addon.json'))
             except (OSError, json.JSONDecodeError) as err:
                 _LOGGER.error("Can't read addon.json: %s", err)
 
-            # validate
+            # Validate
             try:
                 data = SCHEMA_ADDON_SNAPSHOT(data)
             except vol.Invalid as err:
@@ -884,11 +909,11 @@ class Addon(CoreSysAttributes):
                               self._id, humanize_error(data, err))
                 return False
 
-            # restore data / reload addon
+            # Restore data or reload add-on
             _LOGGER.info("Restore config for addon %s", self._id)
             self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM])
 
-            # check version / restore image
+            # Check version / restore image
             version = data[ATTR_VERSION]
             if not await self.instance.exists():
                 _LOGGER.info("Restore image for addon %s", self._id)
@@ -902,7 +927,7 @@ class Addon(CoreSysAttributes):
             else:
                 await self.instance.stop()
 
-            # restore data
+            # Restore data
             def _restore_data():
                 """Restore data."""
                 shutil.copytree(str(Path(temp, "data")), str(self.path_data))
@@ -926,9 +951,9 @@ class Addon(CoreSysAttributes):
                     _LOGGER.error("Can't restore AppArmor profile")
                     return False
 
-            # run addon
+            # Run add-on
             if data[ATTR_STATE] == STATE_STARTED:
                 return await self.start()
 
-        _LOGGER.info("Finish restore for addon %s", self._id)
+        _LOGGER.info("Finish restore for add-on %s", self._id)
         return True

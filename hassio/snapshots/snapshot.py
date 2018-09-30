@@ -1,4 +1,4 @@
-"""Represent a snapshot file."""
+"""Representation of a snapshot file."""
 import asyncio
 from base64 import b64decode, b64encode
 import json
@@ -29,7 +29,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Snapshot(CoreSysAttributes):
-    """A signle hassio snapshot."""
+    """A single Hass.io snapshot."""
 
     def __init__(self, coresys, tar_file):
         """Initialize a snapshot."""
@@ -72,7 +72,7 @@ class Snapshot(CoreSysAttributes):
 
     @property
     def addon_list(self):
-        """Return a list of addons slugs."""
+        """Return a list of add-ons slugs."""
         return [addon_data[ATTR_SLUG] for addon_data in self.addons]
 
     @property
@@ -92,12 +92,12 @@ class Snapshot(CoreSysAttributes):
 
     @property
     def homeassistant_version(self):
-        """Return snapshot homeassistant version."""
+        """Return snapshot Home Assistant version."""
         return self._data[ATTR_HOMEASSISTANT].get(ATTR_VERSION)
 
     @property
     def homeassistant(self):
-        """Return snapshot homeassistant data."""
+        """Return snapshot Home Assistant data."""
         return self._data[ATTR_HOMEASSISTANT]
 
     @property
@@ -119,7 +119,7 @@ class Snapshot(CoreSysAttributes):
 
     def new(self, slug, name, date, sys_type, password=None):
         """Initialize a new snapshot."""
-        # init metadata
+        # Init metadata
         self._data[ATTR_SLUG] = slug
         self._data[ATTR_NAME] = name
         self._data[ATTR_DATE] = date
@@ -306,16 +306,16 @@ class Snapshot(CoreSysAttributes):
             await asyncio.wait(tasks)
 
     async def store_folders(self, folder_list=None):
-        """Backup hassio data into snapshot."""
+        """Backup Hass.io data into snapshot."""
         folder_list = set(folder_list or ALL_FOLDERS)
 
         def _folder_save(name):
-            """Intenal function to snapshot a folder."""
+            """Internal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self.sys_config.path_hassio, name)
 
-            # Check if exsits
+            # Check if exists
             if not origin_dir.is_dir():
                 _LOGGER.warning("Can't find snapshot folder %s", name)
                 return
@@ -338,7 +338,7 @@ class Snapshot(CoreSysAttributes):
             await asyncio.wait(tasks)
 
     async def restore_folders(self, folder_list=None):
-        """Backup hassio data into snapshot."""
+        """Backup Hass.io data into snapshot."""
         folder_list = set(folder_list or self.folders)
 
         def _folder_restore(name):
@@ -356,7 +356,7 @@ class Snapshot(CoreSysAttributes):
             if origin_dir.is_dir():
                 remove_folder(origin_dir)
 
-            # Performe a restore
+            # Perform a restore
             try:
                 _LOGGER.info("Restore folder %s", name)
                 with SecureTarFile(tar_name, 'r', key=self._key) as tar_file:
@@ -372,7 +372,7 @@ class Snapshot(CoreSysAttributes):
             await asyncio.wait(tasks)
 
     def store_homeassistant(self):
-        """Read all data from homeassistant object."""
+        """Read all data from Home Assistant object."""
         self.homeassistant[ATTR_VERSION] = self.sys_homeassistant.version
         self.homeassistant[ATTR_WATCHDOG] = self.sys_homeassistant.watchdog
         self.homeassistant[ATTR_BOOT] = self.sys_homeassistant.boot
@@ -393,7 +393,7 @@ class Snapshot(CoreSysAttributes):
             self._encrypt_data(self.sys_homeassistant.api_password)
 
     def restore_homeassistant(self):
-        """Write all data to homeassistant object."""
+        """Write all data to the Home Assistant object."""
         self.sys_homeassistant.watchdog = self.homeassistant[ATTR_WATCHDOG]
         self.sys_homeassistant.boot = self.homeassistant[ATTR_BOOT]
         self.sys_homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]

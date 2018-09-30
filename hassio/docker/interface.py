@@ -1,4 +1,4 @@
-"""Interface class for HassIO docker object."""
+"""Interface class for Hass.io Docker object."""
 import asyncio
 from contextlib import suppress
 import logging
@@ -14,27 +14,27 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DockerInterface(CoreSysAttributes):
-    """Docker hassio interface."""
+    """Docker Hass.io interface."""
 
     def __init__(self, coresys):
-        """Initialize docker base wrapper."""
+        """Initialize Docker base wrapper."""
         self.coresys = coresys
         self._meta = None
         self.lock = asyncio.Lock(loop=coresys.loop)
 
     @property
     def timeout(self):
-        """Return timeout for docker actions."""
+        """Return timeout for Docker actions."""
         return 30
 
     @property
     def name(self):
-        """Return name of docker container."""
+        """Return name of Docker container."""
         return None
 
     @property
     def meta_config(self):
-        """Return meta data of config for container/image."""
+        """Return meta data of configuration for container/image."""
         if not self._meta:
             return {}
         return self._meta.get('Config', {})
@@ -42,21 +42,21 @@ class DockerInterface(CoreSysAttributes):
     @property
     def meta_labels(self):
         """Return meta data of labels for container/image."""
-        return self.meta_config.get('Labels', {})
+        return self.meta_config.get('Labels') or {}
 
     @property
     def image(self):
-        """Return name of docker image."""
+        """Return name of Docker image."""
         return self.meta_config.get('Image')
 
     @property
     def version(self):
-        """Return version of docker image."""
+        """Return version of Docker image."""
         return self.meta_labels.get(LABEL_VERSION)
 
     @property
     def arch(self):
-        """Return arch of docker image."""
+        """Return arch of Docker image."""
         return self.meta_labels.get(LABEL_ARCH)
 
     @property
@@ -70,7 +70,7 @@ class DockerInterface(CoreSysAttributes):
         return self.sys_run_in_executor(self._install, tag)
 
     def _install(self, tag):
-        """Pull docker image.
+        """Pull Docker image.
 
         Need run inside executor.
         """
@@ -88,11 +88,11 @@ class DockerInterface(CoreSysAttributes):
         return True
 
     def exists(self):
-        """Return True if docker image exists in local repo."""
+        """Return True if Docker image exists in local repository."""
         return self.sys_run_in_executor(self._exists)
 
     def _exists(self):
-        """Return True if docker image exists in local repo.
+        """Return True if Docker image exists in local repository.
 
         Need run inside executor.
         """
@@ -105,14 +105,14 @@ class DockerInterface(CoreSysAttributes):
         return True
 
     def is_running(self):
-        """Return True if docker is Running.
+        """Return True if Docker is running.
 
         Return a Future.
         """
         return self.sys_run_in_executor(self._is_running)
 
     def _is_running(self):
-        """Return True if docker is Running.
+        """Return True if Docker is running.
 
         Need run inside executor.
         """
@@ -134,7 +134,7 @@ class DockerInterface(CoreSysAttributes):
 
     @process_lock
     def attach(self):
-        """Attach to running docker container."""
+        """Attach to running Docker container."""
         return self.sys_run_in_executor(self._attach)
 
     def _attach(self):
@@ -157,11 +157,11 @@ class DockerInterface(CoreSysAttributes):
 
     @process_lock
     def run(self):
-        """Run docker image."""
+        """Run Docker image."""
         return self.sys_run_in_executor(self._run)
 
     def _run(self):
-        """Run docker image.
+        """Run Docker image.
 
         Need run inside executor.
         """
@@ -169,7 +169,7 @@ class DockerInterface(CoreSysAttributes):
 
     @process_lock
     def stop(self):
-        """Stop/remove docker container."""
+        """Stop/remove Docker container."""
         return self.sys_run_in_executor(self._stop)
 
     def _stop(self):
@@ -183,19 +183,19 @@ class DockerInterface(CoreSysAttributes):
             return False
 
         if container.status == 'running':
-            _LOGGER.info("Stop %s docker application", self.image)
+            _LOGGER.info("Stop %s Docker application", self.image)
             with suppress(docker.errors.DockerException):
                 container.stop(timeout=self.timeout)
 
         with suppress(docker.errors.DockerException):
-            _LOGGER.info("Clean %s docker application", self.image)
+            _LOGGER.info("Clean %s Docker application", self.image)
             container.remove(force=True)
 
         return True
 
     @process_lock
     def remove(self):
-        """Remove docker images."""
+        """Remove Docker images."""
         return self.sys_run_in_executor(self._remove)
 
     def _remove(self):
@@ -203,11 +203,11 @@ class DockerInterface(CoreSysAttributes):
 
         Need run inside executor.
         """
-        # cleanup container
+        # Cleanup container
         self._stop()
 
         _LOGGER.info(
-            "Remove docker %s with latest and %s", self.image, self.version)
+            "Remove Docker %s with latest and %s", self.image, self.version)
 
         try:
             with suppress(docker.errors.ImageNotFound):
@@ -227,7 +227,7 @@ class DockerInterface(CoreSysAttributes):
 
     @process_lock
     def update(self, tag):
-        """Update a docker image."""
+        """Update a Docker image."""
         return self.sys_run_in_executor(self._update, tag)
 
     def _update(self, tag):
@@ -236,27 +236,27 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         _LOGGER.info(
-            "Update docker %s with %s:%s", self.version, self.image, tag)
+            "Update Docker %s with %s:%s", self.version, self.image, tag)
 
-        # update docker image
+        # Update docker image
         if not self._install(tag):
             return False
 
-        # stop container & cleanup
+        # Stop container & cleanup
         self._stop()
         self._cleanup()
 
         return True
 
     def logs(self):
-        """Return docker logs of container.
+        """Return Docker logs of container.
 
         Return a Future.
         """
         return self.sys_run_in_executor(self._logs)
 
     def _logs(self):
-        """Return docker logs of container.
+        """Return Docker logs of container.
 
         Need run inside executor.
         """
@@ -268,7 +268,7 @@ class DockerInterface(CoreSysAttributes):
         try:
             return container.logs(tail=100, stdout=True, stderr=True)
         except docker.errors.DockerException as err:
-            _LOGGER.warning("Can't grap logs from %s: %s", self.image, err)
+            _LOGGER.warning("Can't grep logs from %s: %s", self.image, err)
 
     @process_lock
     def cleanup(self):
@@ -291,7 +291,7 @@ class DockerInterface(CoreSysAttributes):
                 continue
 
             with suppress(docker.errors.DockerException):
-                _LOGGER.info("Cleanup docker images: %s", image.tags)
+                _LOGGER.info("Cleanup Docker images: %s", image.tags)
                 self.sys_docker.images.remove(image.id, force=True)
 
         return True
