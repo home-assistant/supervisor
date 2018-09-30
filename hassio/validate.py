@@ -3,15 +3,17 @@ import uuid
 import re
 
 import voluptuous as vol
-import pytz
 
 from .const import (
     ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_CHANNEL, ATTR_TIMEZONE, ATTR_HASSOS,
     ATTR_ADDONS_CUSTOM_LIST, ATTR_PASSWORD, ATTR_HOMEASSISTANT, ATTR_HASSIO,
-    ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG,
+    ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG, ATTR_CONFIG,
     ATTR_WAIT_BOOT, ATTR_UUID, ATTR_REFRESH_TOKEN, ATTR_HASSOS_CLI,
-    ATTR_ACCESS_TOKEN,
+    ATTR_ACCESS_TOKEN, ATTR_DISCOVERY, ATTR_ADDON, ATTR_COMPONENT,
+    ATTR_PLATFORM, ATTR_SERVICE,
     CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
+from .utils.validate import schema_or, validate_timezone
+from .services.validate import SERVICE_ALL
 
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
@@ -21,6 +23,7 @@ WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 ALSA_DEVICE = vol.Maybe(vol.Match(r"\d+,\d+"))
 CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
+UUID_MATCH = re.compile(r"^[0-9a-f]{32}$")
 
 
 def validate_repository(repository):
@@ -38,19 +41,6 @@ def validate_repository(repository):
 
 # pylint: disable=no-value-for-parameter
 REPOSITORIES = vol.All([validate_repository], vol.Unique())
-
-
-def validate_timezone(timezone):
-    """Validate voluptuous timezone."""
-    try:
-        pytz.timezone(timezone)
-    except pytz.exceptions.UnknownTimeZoneError:
-        raise vol.Invalid(
-            "Invalid time zone passed in. Valid options can be found here: "
-            "http://en.wikipedia.org/wiki/List_of_tz_database_time_zones") \
-                from None
-
-    return timezone
 
 
 # pylint: disable=inconsistent-return-statements
@@ -83,8 +73,7 @@ DOCKER_PORTS = vol.Schema({
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASS_CONFIG = vol.Schema({
-    vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
-        vol.Match(r"^[0-9a-f]{32}$"),
+    vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
     vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{64}$"),
     vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): DOCKER_IMAGE,
@@ -116,4 +105,20 @@ SCHEMA_HASSIO_CONFIG = vol.Schema({
         "https://github.com/hassio-addons/repository",
     ]): REPOSITORIES,
     vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,
+}, extra=vol.REMOVE_EXTRA)
+
+
+SCHEMA_DISCOVERY = vol.Schema([
+    vol.Schema({
+        vol.Required(ATTR_UUID): vol.Match(UUID_MATCH),
+        vol.Required(ATTR_ADDON): vol.Coerce(str),
+        vol.Required(ATTR_SERVICE): vol.In(SERVICE_ALL),
+        vol.Required(ATTR_COMPONENT): vol.Coerce(str),
+        vol.Required(ATTR_PLATFORM): vol.Maybe(vol.Coerce(str)),
+        vol.Required(ATTR_CONFIG): vol.Maybe(dict),
+    }, extra=vol.REMOVE_EXTRA)
+])
+
+SCHEMA_DISCOVERY_CONFIG = vol.Schema({
+    vol.Optional(ATTR_DISCOVERY, default=list): schema_or(SCHEMA_DISCOVERY),
 }, extra=vol.REMOVE_EXTRA)

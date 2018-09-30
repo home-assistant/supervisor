@@ -584,6 +584,13 @@ class Addon(CoreSysAttributes):
 
         return False
 
+    def remove_discovery(self):
+        """Remove all discovery message from add-on."""
+        for message in self.sys_discovery.list_message:
+            if message.addon != self.slug:
+                continue
+            self.sys_discovery.remove(message)
+
     def write_asound(self):
         """Write asound config to file and return True on success."""
         asound_config = self.sys_host.alsa.asound(
@@ -703,6 +710,9 @@ class Addon(CoreSysAttributes):
         if self.sys_host.apparmor.exists(self.slug):
             with suppress(HostAppArmorError):
                 await self.sys_host.apparmor.remove_profile(self.slug)
+
+        # Remove discovery messages
+        self.remove_discovery()
 
         self._set_uninstall()
         return True
