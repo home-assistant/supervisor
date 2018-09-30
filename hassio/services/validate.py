@@ -7,10 +7,6 @@ from ..const import (
 from ..validate import NETWORK_PORT
 from ..utils.validate import schema_or
 
-SERVICE_ALL = [
-    SERVICE_MQTT
-]
-
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_SERVICE_MQTT = vol.Schema({

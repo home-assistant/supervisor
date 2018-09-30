@@ -11,9 +11,9 @@ from .const import (
     ATTR_WAIT_BOOT, ATTR_UUID, ATTR_REFRESH_TOKEN, ATTR_HASSOS_CLI,
     ATTR_ACCESS_TOKEN, ATTR_DISCOVERY, ATTR_ADDON, ATTR_COMPONENT,
     ATTR_PLATFORM, ATTR_SERVICE,
+    SERVICE_MQTT,
     CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
 from .utils.validate import schema_or, validate_timezone
-from .services.validate import SERVICE_ALL
 
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
@@ -24,6 +24,10 @@ DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 ALSA_DEVICE = vol.Maybe(vol.Match(r"\d+,\d+"))
 CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
 UUID_MATCH = re.compile(r"^[0-9a-f]{32}$")
+
+SERVICE_ALL = [
+    SERVICE_MQTT
+]
 
 
 def validate_repository(repository):
