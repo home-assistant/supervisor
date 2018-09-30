@@ -23,7 +23,7 @@ WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 ALSA_DEVICE = vol.Maybe(vol.Match(r"\d+,\d+"))
 CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
-UUID_MATCH = re.compile(r"^[0-9a-f]{32}$")
+UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
 SERVICE_ALL = vol.In([SERVICE_MQTT])
 
 
