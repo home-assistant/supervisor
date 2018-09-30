@@ -13,8 +13,9 @@ from ..const import (
     ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX, ATTR_BLK_READ,
     ATTR_BLK_WRITE, CONTENT_TYPE_BINARY, ATTR_ICON)
 from ..coresys import CoreSysAttributes
-from ..validate import validate_timezone, WAIT_BOOT, REPOSITORIES, CHANNELS
+from ..validate import WAIT_BOOT, REPOSITORIES, CHANNELS
 from ..exceptions import APIError
+from ..utils.validate import validate_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
