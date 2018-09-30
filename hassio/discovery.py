@@ -29,7 +29,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
         self.coresys = coresys
         self.message_obj = {}
 
-    def load(self):
+    async def load(self):
         """Load exists discovery message into storage."""
         messages = {}
         for message in self._data[ATTR_DISCOVERY]:
@@ -70,7 +70,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
         message = Message(addon.slug, service, component, platform, config)
 
         # Already exists?
-        for old_message in self.message_obj:
+        for old_message in self.message_obj.values():
             if old_message != message:
                 continue
             _LOGGER.warning("Duplicate discovery message from %s", addon.slug)
