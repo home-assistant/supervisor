@@ -1,4 +1,4 @@
-"""Util addons functions."""
+"""Util add-on functions."""
 import hashlib
 import shutil
 import re

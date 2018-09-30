@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '131'
+HASSIO_VERSION = '132'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
@@ -21,6 +21,7 @@ FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
 FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
 FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
+FILE_HASSIO_DISCOVERY = Path(HASSIO_DATA, "discovery.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 
@@ -74,6 +75,7 @@ ATTR_TYPE = 'type'
 ATTR_SOURCE = 'source'
 ATTR_FEATURES = 'features'
 ATTR_ADDONS = 'addons'
+ATTR_PROVIDERS = 'providers'
 ATTR_VERSION = 'version'
 ATTR_VERSION_LATEST = 'version_latest'
 ATTR_AUTO_UART = 'auto_uart'
@@ -107,8 +109,6 @@ ATTR_MAINTAINER = 'maintainer'
 ATTR_PASSWORD = 'password'
 ATTR_TOTP = 'totp'
 ATTR_INITIALIZE = 'initialize'
-ATTR_SESSION = 'session'
-ATTR_SESSIONS = 'sessions'
 ATTR_LOCATON = 'location'
 ATTR_BUILD = 'build'
 ATTR_DEVICES = 'devices'
@@ -154,7 +154,7 @@ ATTR_MEMORY_LIMIT = 'memory_limit'
 ATTR_MEMORY_USAGE = 'memory_usage'
 ATTR_BLK_READ = 'blk_read'
 ATTR_BLK_WRITE = 'blk_write'
-ATTR_PROVIDER = 'provider'
+ATTR_ADDON = 'addon'
 ATTR_AVAILABLE = 'available'
 ATTR_HOST = 'host'
 ATTR_USERNAME = 'username'
@@ -163,8 +163,8 @@ ATTR_DISCOVERY = 'discovery'
 ATTR_PLATFORM = 'platform'
 ATTR_COMPONENT = 'component'
 ATTR_CONFIG = 'config'
-ATTR_DISCOVERY_ID = 'discovery_id'
 ATTR_SERVICES = 'services'
+ATTR_SERVICE = 'service'
 ATTR_DISCOVERY = 'discovery'
 ATTR_PROTECTED = 'protected'
 ATTR_CRYPTO = 'crypto'
@@ -185,8 +185,12 @@ ATTR_FULL_ACCESS = 'full_access'
 ATTR_PROTECTED = 'protected'
 ATTR_RATING = 'rating'
 ATTR_HASSIO_ROLE = 'hassio_role'
+ATTR_SUPERVISOR = 'supervisor'
 
 SERVICE_MQTT = 'mqtt'
+PROVIDE_SERVICE = 'provide'
+NEED_SERVICE = 'need'
+WANT_SERVICE = 'want'
 
 STARTUP_INITIALIZE = 'initialize'
 STARTUP_SYSTEM = 'system'

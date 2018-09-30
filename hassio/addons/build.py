@@ -1,4 +1,4 @@
-"""HassIO addons build environment."""
+"""Hass.io add-on build environment."""
 from pathlib import Path
 
 from .validate import SCHEMA_BUILD_CONFIG, BASE_IMAGE
@@ -8,10 +8,10 @@ from ..utils.json import JsonConfig
 
 
 class AddonBuild(JsonConfig, CoreSysAttributes):
-    """Handle build options for addons."""
+    """Handle build options for add-ons."""
 
     def __init__(self, coresys, slug):
-        """Initialize addon builder."""
+        """Initialize Hass.io add-on builder."""
         self.coresys = coresys
         self._id = slug
 
@@ -24,12 +24,12 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
 
     @property
     def addon(self):
-        """Return addon of build data."""
+        """Return add-on of build data."""
         return self.sys_addons.get(self._id)
 
     @property
     def base_image(self):
-        """Base images for this addon."""
+        """Base images for this add-on."""
         return self._data[ATTR_BUILD_FROM].get(
             self.sys_arch, BASE_IMAGE[self.sys_arch])
 
@@ -40,11 +40,11 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
 
     @property
     def additional_args(self):
-        """Return additional docker build arguments."""
+        """Return additional Docker build arguments."""
         return self._data[ATTR_ARGS]
 
     def get_docker_args(self, version):
-        """Create a dict with docker build arguments."""
+        """Create a dict with Docker build arguments."""
         args = {
             'path': str(self.addon.path_location),
             'tag': f"{self.addon.image}:{version}",

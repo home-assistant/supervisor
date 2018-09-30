@@ -90,3 +90,6 @@ ENV/
 
 # pylint
 .pylint.d/
+
+# VS Code
+.vscode/

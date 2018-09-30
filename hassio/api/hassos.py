@@ -1,4 +1,4 @@
-"""Init file for Hass.io hassos rest api."""
+"""Init file for Hass.io HassOS RESTful API."""
 import asyncio
 import logging
 
@@ -18,11 +18,11 @@ SCHEMA_VERSION = vol.Schema({
 
 
 class APIHassOS(CoreSysAttributes):
-    """Handle rest api for hassos functions."""
+    """Handle RESTful API for HassOS functions."""
 
     @api_process
     async def info(self, request):
-        """Return hassos information."""
+        """Return HassOS information."""
         return {
             ATTR_VERSION: self.sys_hassos.version,
             ATTR_VERSION_CLI: self.sys_hassos.version_cli,

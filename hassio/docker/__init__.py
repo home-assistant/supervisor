@@ -1,4 +1,4 @@
-"""Init file for HassIO docker object."""
+"""Init file for Hass.io Docker object."""
 from contextlib import suppress
 import logging
 
@@ -15,13 +15,13 @@ CommandReturn = attr.make_class('CommandReturn', ['exit_code', 'output'])
 
 
 class DockerAPI:
-    """Docker hassio wrapper.
+    """Docker Hass.io wrapper.
 
     This class is not AsyncIO safe!
     """
 
     def __init__(self):
-        """Initialize docker base wrapper."""
+        """Initialize Docker base wrapper."""
         self.docker = docker.DockerClient(
             base_url="unix:/{}".format(str(SOCKET_DOCKER)),
             version='auto', timeout=900)
@@ -29,21 +29,21 @@ class DockerAPI:
 
     @property
     def images(self):
-        """Return api images."""
+        """Return API images."""
         return self.docker.images
 
     @property
     def containers(self):
-        """Return api containers."""
+        """Return API containers."""
         return self.docker.containers
 
     @property
     def api(self):
-        """Return api containers."""
+        """Return API containers."""
         return self.docker.api
 
     def run(self, image, **kwargs):
-        """"Create a docker and run it.
+        """"Create a Docker container and run it.
 
         Need run inside executor.
         """
@@ -51,7 +51,7 @@ class DockerAPI:
         network_mode = kwargs.get('network_mode')
         hostname = kwargs.get('hostname')
 
-        # setup network
+        # Setup network
         kwargs['dns_search'] = ["."]
         if network_mode:
             kwargs['dns'] = [str(self.network.supervisor)]
@@ -59,7 +59,7 @@ class DockerAPI:
         else:
             kwargs['network'] = None
 
-        # create container
+        # Create container
         try:
             container = self.docker.containers.create(image, **kwargs)
         except docker.errors.DockerException as err:

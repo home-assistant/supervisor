@@ -1,4 +1,4 @@
-"""Internal network manager for HassIO."""
+"""Internal network manager for Hass.io."""
 import logging
 
 import docker
@@ -9,13 +9,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DockerNetwork:
-    """Internal HassIO Network.
+    """Internal Hass.io Network.
 
     This class is not AsyncIO safe!
     """
 
     def __init__(self, dock):
-        """Initialize internal hassio network."""
+        """Initialize internal Hass.io network."""
         self.docker = dock
         self.network = self._get_network()
 
@@ -44,7 +44,7 @@ class DockerNetwork:
         try:
             return self.docker.networks.get(DOCKER_NETWORK)
         except docker.errors.NotFound:
-            _LOGGER.info("Can't find HassIO network, create new network")
+            _LOGGER.info("Can't find Hass.io network, create new network")
 
         ipam_pool = docker.types.IPAMPool(
             subnet=str(DOCKER_NETWORK_MASK),
@@ -61,7 +61,7 @@ class DockerNetwork:
             })
 
     def attach_container(self, container, alias=None, ipv4=None):
-        """Attach container to hassio network.
+        """Attach container to Hass.io network.
 
         Need run inside executor.
         """
@@ -77,7 +77,7 @@ class DockerNetwork:
         return True
 
     def detach_default_bridge(self, container):
-        """Detach default docker bridge.
+        """Detach default Docker bridge.
 
         Need run inside executor.
         """

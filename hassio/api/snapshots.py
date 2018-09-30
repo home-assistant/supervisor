@@ -1,4 +1,4 @@
-"""Init file for HassIO snapshot rest api."""
+"""Init file for Hass.io snapshot RESTful API."""
 import asyncio
 import logging
 from pathlib import Path
@@ -14,6 +14,7 @@ from ..const import (
     ATTR_HOMEASSISTANT, ATTR_VERSION, ATTR_SIZE, ATTR_FOLDERS, ATTR_TYPE,
     ATTR_SNAPSHOTS, ATTR_PASSWORD, ATTR_PROTECTED, CONTENT_TYPE_TAR)
 from ..coresys import CoreSysAttributes
+from ..exceptions import APIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,13 +47,13 @@ SCHEMA_SNAPSHOT_PARTIAL = SCHEMA_SNAPSHOT_FULL.extend({
 
 
 class APISnapshots(CoreSysAttributes):
-    """Handle rest api for snapshot functions."""
+    """Handle RESTful API for snapshot functions."""
 
     def _extract_snapshot(self, request):
         """Return snapshot, throw an exception if it doesn't exist."""
         snapshot = self.sys_snapshots.get(request.match_info.get('snapshot'))
         if not snapshot:
-            raise RuntimeError("Snapshot does not exist")
+            raise APIError("Snapshot does not exist")
         return snapshot
 
     @api_process

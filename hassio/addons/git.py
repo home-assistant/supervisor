@@ -1,4 +1,4 @@
-"""Init file for HassIO addons git."""
+"""Init file for Hass.io add-on Git."""
 import asyncio
 import logging
 import functools as ft
@@ -16,10 +16,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class GitRepo(CoreSysAttributes):
-    """Manage addons git repo."""
+    """Manage Add-on Git repository."""
 
     def __init__(self, coresys, path, url):
-        """Initialize git base wrapper."""
+        """Initialize Git base wrapper."""
         self.coresys = coresys
         self.repo = None
         self.path = path
@@ -38,13 +38,13 @@ class GitRepo(CoreSysAttributes):
         return self._data[ATTR_BRANCH]
 
     async def load(self):
-        """Init git addon repo."""
+        """Init Git add-on repository."""
         if not self.path.is_dir():
             return await self.clone()
 
         async with self.lock:
             try:
-                _LOGGER.info("Load addon %s repository", self.path)
+                _LOGGER.info("Load add-on %s repository", self.path)
                 self.repo = await self.sys_run_in_executor(
                     git.Repo, str(self.path))
 
@@ -57,7 +57,7 @@ class GitRepo(CoreSysAttributes):
             return True
 
     async def clone(self):
-        """Clone git addon repo."""
+        """Clone git add-on repository."""
         async with self.lock:
             git_args = {
                 attribute: value
@@ -70,7 +70,7 @@ class GitRepo(CoreSysAttributes):
             }
 
             try:
-                _LOGGER.info("Clone addon %s repository", self.url)
+                _LOGGER.info("Clone add-on %s repository", self.url)
                 self.repo = await self.sys_run_in_executor(ft.partial(
                     git.Repo.clone_from, self.url, str(self.path),
                     **git_args
@@ -78,20 +78,20 @@ class GitRepo(CoreSysAttributes):
 
             except (git.InvalidGitRepositoryError, git.NoSuchPathError,
                     git.GitCommandError) as err:
-                _LOGGER.error("Can't clone %s repo: %s.", self.url, err)
+                _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
                 self._remove()
                 return False
 
             return True
 
     async def pull(self):
-        """Pull git addon repo."""
+        """Pull Git add-on repo."""
         if self.lock.locked():
-            _LOGGER.warning("It is already a task in progress.")
+            _LOGGER.warning("It is already a task in progress")
             return False
 
         async with self.lock:
-            _LOGGER.info("Update addon %s repository", self.url)
+            _LOGGER.info("Update add-on %s repository", self.url)
             branch = self.repo.active_branch.name
 
             try:
@@ -130,19 +130,19 @@ class GitRepo(CoreSysAttributes):
 
 
 class GitRepoHassIO(GitRepo):
-    """HassIO addons repository."""
+    """Hass.io add-ons repository."""
 
     def __init__(self, coresys):
-        """Initialize git hassio addon repository."""
+        """Initialize Git Hass.io add-on repository."""
         super().__init__(
             coresys, coresys.config.path_addons_core, URL_HASSIO_ADDONS)
 
 
 class GitRepoCustom(GitRepo):
-    """Custom addons repository."""
+    """Custom add-ons repository."""
 
     def __init__(self, coresys, url):
-        """Initialize git hassio addon repository."""
+        """Initialize custom Git Hass.io addo-n repository."""
         path = Path(
             coresys.config.path_addons_git,
             get_hash_from_repository(url))
@@ -151,5 +151,5 @@ class GitRepoCustom(GitRepo):
 
     def remove(self):
         """Remove a custom repository."""
-        _LOGGER.info("Remove custom addon repository %s", self.url)
+        _LOGGER.info("Remove custom add-on repository %s", self.url)
         self._remove()

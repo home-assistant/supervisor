@@ -24,7 +24,7 @@ class SystemControl(CoreSysAttributes):
         if flag == HOSTNAME and self.sys_dbus.hostname.is_connected:
             return
 
-        _LOGGER.error("No %s dbus connection available", flag)
+        _LOGGER.error("No %s D-Bus connection available", flag)
         raise HostNotSupportedError()
 
     async def reboot(self):
@@ -51,6 +51,6 @@ class SystemControl(CoreSysAttributes):
         """Set local a new Hostname."""
         self._check_dbus(HOSTNAME)
 
-        _LOGGER.info("Set Hostname %s", hostname)
+        _LOGGER.info("Set hostname %s", hostname)
         await self.sys_dbus.hostname.set_static_hostname(hostname)
         await self.sys_host.info.update()

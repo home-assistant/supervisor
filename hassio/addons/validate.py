@@ -1,4 +1,4 @@
-"""Validate addons options schema."""
+"""Validate add-ons options schema."""
 import logging
 import re
 import uuid
@@ -20,18 +20,19 @@ from ..const import (
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_SERVICES, ATTR_DISCOVERY,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_PROTECTED,
     ATTR_FULL_ACCESS, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
+    ATTR_MACHINE,
     PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO,
     PRIVILEGED_IPC_LOCK, PRIVILEGED_SYS_TIME, PRIVILEGED_SYS_NICE,
     PRIVILEGED_SYS_RESOURCE, PRIVILEGED_SYS_PTRACE,
     ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_MANAGER, ROLE_ADMIN)
-from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE
+from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE, UUID_MATCH
+from ..services.validate import DISCOVERY_SERVICES
 
 _LOGGER = logging.getLogger(__name__)
 
 
 RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$")
-RE_SERVICE = re.compile(r"^(?P<service>mqtt)(?::(?P<rights>rw|:ro))?$")
-RE_DISCOVERY = re.compile(r"^(?P<component>\w*)(?:/(?P<platform>\w*>))?$")
+RE_SERVICE = re.compile(r"^(?P<service>mqtt):(?P<rights>provide|want|need)$")
 
 V_STR = 'str'
 V_INT = 'int'
@@ -55,6 +56,12 @@ SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
 
 ARCH_ALL = [
     ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386
+]
+
+MACHINE_ALL = [
+    'intel-nuc', 'qemux86', 'qemux86-64', 'qemuarm', 'qemuarm-64',
+    'raspberrypi', 'raspberrypi2', 'raspberrypi3', 'raspberrypi3-64',
+    'odroid-cu2', 'odroid-xu',
 ]
 
 STARTUP_ALL = [
@@ -105,6 +112,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
     vol.Optional(ATTR_URL): vol.Url(),
     vol.Optional(ATTR_ARCH, default=ARCH_ALL): [vol.In(ARCH_ALL)],
+    vol.Optional(ATTR_MACHINE): [vol.In(MACHINE_ALL)],
     vol.Required(ATTR_STARTUP):
         vol.All(_simple_startup, vol.In(STARTUP_ALL)),
     vol.Required(ATTR_BOOT):
@@ -135,7 +143,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_LEGACY, default=False): vol.Boolean(),
     vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),
     vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
-    vol.Optional(ATTR_DISCOVERY): [vol.Match(RE_DISCOVERY)],
+    vol.Optional(ATTR_DISCOVERY): [vol.In(DISCOVERY_SERVICES)],
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [
@@ -177,8 +185,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
-    vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex):
-        vol.Match(r"^[0-9a-f]{32}$"),
+    vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
     vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{64}$"),
     vol.Optional(ATTR_OPTIONS, default=dict): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
@@ -218,7 +225,7 @@ SCHEMA_ADDON_SNAPSHOT = vol.Schema({
 def validate_options(raw_schema):
     """Validate schema."""
     def validate(struct):
-        """Create schema validator for addons options."""
+        """Create schema validator for add-ons options."""
         options = {}
 
         # read options
