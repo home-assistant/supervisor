@@ -24,10 +24,7 @@ DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 ALSA_DEVICE = vol.Maybe(vol.Match(r"\d+,\d+"))
 CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
 UUID_MATCH = re.compile(r"^[0-9a-f]{32}$")
-
-SERVICE_ALL = [
-    SERVICE_MQTT
-]
+SERVICE_ALL = vol.In([SERVICE_MQTT])
 
 
 def validate_repository(repository):
@@ -116,7 +113,7 @@ SCHEMA_DISCOVERY = vol.Schema([
     vol.Schema({
         vol.Required(ATTR_UUID): vol.Match(UUID_MATCH),
         vol.Required(ATTR_ADDON): vol.Coerce(str),
-        vol.Required(ATTR_SERVICE): vol.In(SERVICE_ALL),
+        vol.Required(ATTR_SERVICE): SERVICE_ALL,
         vol.Required(ATTR_COMPONENT): vol.Coerce(str),
         vol.Required(ATTR_PLATFORM): vol.Maybe(vol.Coerce(str)),
         vol.Required(ATTR_CONFIG): vol.Maybe(dict),
