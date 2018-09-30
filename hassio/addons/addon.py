@@ -586,7 +586,7 @@ class Addon(CoreSysAttributes):
 
     def remove_discovery(self):
         """Remove all discovery message from add-on."""
-        for message in self.sys_discovery.list_message:
+        for message in self.sys_discovery.list_messages:
             if message.addon != self.slug:
                 continue
             self.sys_discovery.remove(message)
