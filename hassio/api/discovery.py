@@ -7,11 +7,11 @@ from ..const import (
     ATTR_DISCOVERY, ATTR_SERVICE, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
-from ..services.validate import SERVICE_ALL
+from ..validate import SERVICE_ALL
 
 
 SCHEMA_DISCOVERY = vol.Schema({
-    vol.Required(ATTR_SERVICE): vol.In(SERVICE_ALL),
+    vol.Required(ATTR_SERVICE): SERVICE_ALL,
     vol.Required(ATTR_COMPONENT): vol.Coerce(str),
     vol.Optional(ATTR_PLATFORM): vol.Maybe(vol.Coerce(str)),
     vol.Optional(ATTR_CONFIG): vol.Maybe(dict),

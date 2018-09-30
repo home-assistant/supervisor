@@ -21,6 +21,7 @@ FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
 FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
 FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
+FILE_HASSIO_DISCOVERY = Path(HASSIO_DATA, "discovery.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 

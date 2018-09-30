@@ -7,9 +7,12 @@ import attr
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .validate import DISCOVERY_SERVICES
-from ..coresys import CoreSysAttributes
-from ..exceptions import DiscoveryError, HomeAssistantAPIError
+from .const import FILE_HASSIO_DISCOVERY, ATTR_CONFIG, ATTR_DISCOVERY
+from .coresys import CoreSysAttributes
+from .exceptions import DiscoveryError, HomeAssistantAPIError
+from .validate import SCHEMA_DISCOVERY_CONFIG
+from .utils.json import JsonConfig
+from .services.validate import DISCOVERY_SERVICES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,18 +20,19 @@ CMD_NEW = 'post'
 CMD_DEL = 'delete'
 
 
-class Discovery(CoreSysAttributes):
+class Discovery(CoreSysAttributes, JsonConfig):
     """Home Assistant Discovery handler."""
 
     def __init__(self, coresys):
         """Initialize discovery handler."""
+        super().__init__(FILE_HASSIO_DISCOVERY, SCHEMA_DISCOVERY_CONFIG)
         self.coresys = coresys
         self.message_obj = {}
 
-    def load(self):
+    async def load(self):
         """Load exists discovery message into storage."""
         messages = {}
-        for message in self._data:
+        for message in self._data[ATTR_DISCOVERY]:
             discovery = Message(**message)
             messages[discovery.uuid] = discovery
 
@@ -40,18 +44,13 @@ class Discovery(CoreSysAttributes):
         for message in self.message_obj.values():
             messages.append(attr.asdict(message))
 
-        self._data.clear()
-        self._data.extend(messages)
-        self.sys_services.data.save_data()
+        self._data[ATTR_DISCOVERY].clear()
+        self._data[ATTR_DISCOVERY].extend(messages)
+        self.save_data()
 
     def get(self, uuid):
         """Return discovery message."""
         return self.message_obj.get(uuid)
-
-    @property
-    def _data(self):
-        """Return discovery data."""
-        return self.sys_services.data.discovery
 
     @property
     def list_messages(self):
@@ -71,7 +70,7 @@ class Discovery(CoreSysAttributes):
         message = Message(addon.slug, service, component, platform, config)
 
         # Already exists?
-        for old_message in self.message_obj:
+        for old_message in self.list_messages:
             if old_message != message:
                 continue
             _LOGGER.warning("Duplicate discovery message from %s", addon.slug)
@@ -82,7 +81,7 @@ class Discovery(CoreSysAttributes):
         self.message_obj[message.uuid] = message
         self.save()
 
-        self.sys_create_task(self._push_discovery(message.uuid, CMD_NEW))
+        self.sys_create_task(self._push_discovery(message, CMD_NEW))
         return message
 
     def remove(self, message):
@@ -92,21 +91,25 @@ class Discovery(CoreSysAttributes):
 
         _LOGGER.info("Delete discovery to Home Assistant %s/%s from %s",
                      message.component, message.platform, message.addon)
-        self.sys_create_task(self._push_discovery(message.uuid, CMD_DEL))
+        self.sys_create_task(self._push_discovery(message, CMD_DEL))
 
-    async def _push_discovery(self, uuid, command):
+    async def _push_discovery(self, message, command):
         """Send a discovery request."""
         if not await self.sys_homeassistant.check_api_state():
-            _LOGGER.info("Discovery %s mesage ignore", uuid)
+            _LOGGER.info("Discovery %s mesage ignore", message.uuid)
             return
+
+        data = attr.asdict(message)
+        data.pop(ATTR_CONFIG)
 
         with suppress(HomeAssistantAPIError):
             async with self.sys_homeassistant.make_request(
-                    command, f"api/hassio_push/discovery/{uuid}"):
-                _LOGGER.info("Discovery %s message send", uuid)
+                    command, f"api/hassio_push/discovery/{message.uuid}",
+                    json=data, timeout=10):
+                _LOGGER.info("Discovery %s message send", message.uuid)
                 return
 
-        _LOGGER.warning("Discovery %s message fail", uuid)
+        _LOGGER.warning("Discovery %s message fail", message.uuid)
 
 
 @attr.s
@@ -116,5 +119,5 @@ class Message:
     service = attr.ib()
     component = attr.ib()
     platform = attr.ib()
-    config = attr.ib()
+    config = attr.ib(cmp=False)
     uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False)

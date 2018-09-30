@@ -18,7 +18,7 @@ from .snapshots import SnapshotManager
 from .tasks import Tasks
 from .updater import Updater
 from .services import ServiceManager
-from .services import Discovery
+from .discovery import Discovery
 from .host import HostManager
 from .dbus import DBusManager
 from .hassos import HassOS
