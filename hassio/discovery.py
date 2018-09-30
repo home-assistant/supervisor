@@ -41,7 +41,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
     def save(self):
         """Write discovery message into data file."""
         messages = []
-        for message in self.message_obj.values():
+        for message in self.list_messages:
             messages.append(attr.asdict(message))
 
         self._data[ATTR_DISCOVERY].clear()
@@ -55,7 +55,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
     @property
     def list_messages(self):
         """Return list of available discovery messages."""
-        return self.message_obj.values()
+        return list(self.message_obj.values())
 
     def send(self, addon, service, component, platform, config):
         """Send a discovery message to Home Assistant."""
