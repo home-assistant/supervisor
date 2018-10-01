@@ -574,7 +574,7 @@ Write data to add-on stdin
 }
 ```
 
-### Service discovery
+### discovery
 
 - GET `/discovery`
 ```json
@@ -584,8 +584,6 @@ Write data to add-on stdin
             "addon": "slug",
             "service": "name",
             "uuid": "uuid",
-            "component": "component",
-            "platform": "null|platform",
             "config": {}
         }
     ]
@@ -598,8 +596,6 @@ Write data to add-on stdin
     "addon": "slug",
     "service": "name",
     "uuid": "uuid",
-    "component": "component",
-    "platform": "null|platform",
     "config": {}
 }
 ```
@@ -608,8 +604,6 @@ Write data to add-on stdin
 ```json
 {
     "service": "name",
-    "component": "component",
-    "platform": "null|platform",
     "config": {}
 }
 ```
@@ -622,6 +616,8 @@ return:
 ```
 
 - DEL `/discovery/{UUID}`
+
+### Services
 
 - GET `/services`
 ```json
