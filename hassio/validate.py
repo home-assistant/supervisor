@@ -9,8 +9,7 @@ from .const import (
     ATTR_ADDONS_CUSTOM_LIST, ATTR_PASSWORD, ATTR_HOMEASSISTANT, ATTR_HASSIO,
     ATTR_BOOT, ATTR_LAST_BOOT, ATTR_SSL, ATTR_PORT, ATTR_WATCHDOG, ATTR_CONFIG,
     ATTR_WAIT_BOOT, ATTR_UUID, ATTR_REFRESH_TOKEN, ATTR_HASSOS_CLI,
-    ATTR_ACCESS_TOKEN, ATTR_DISCOVERY, ATTR_ADDON, ATTR_COMPONENT,
-    ATTR_PLATFORM, ATTR_SERVICE,
+    ATTR_ACCESS_TOKEN, ATTR_DISCOVERY, ATTR_ADDON, ATTR_SERVICE,
     SERVICE_MQTT,
     CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV)
 from .utils.validate import schema_or, validate_timezone
@@ -114,8 +113,6 @@ SCHEMA_DISCOVERY = vol.Schema([
         vol.Required(ATTR_UUID): UUID_MATCH,
         vol.Required(ATTR_ADDON): vol.Coerce(str),
         vol.Required(ATTR_SERVICE): SERVICE_ALL,
-        vol.Required(ATTR_COMPONENT): vol.Coerce(str),
-        vol.Required(ATTR_PLATFORM): vol.Maybe(vol.Coerce(str)),
         vol.Required(ATTR_CONFIG): vol.Maybe(dict),
     }, extra=vol.REMOVE_EXTRA)
 ])
