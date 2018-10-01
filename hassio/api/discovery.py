@@ -3,8 +3,8 @@ import voluptuous as vol
 
 from .utils import api_process, api_validate
 from ..const import (
-    ATTR_ADDON, ATTR_UUID, ATTR_COMPONENT, ATTR_PLATFORM, ATTR_CONFIG,
-    ATTR_DISCOVERY, ATTR_SERVICE, REQUEST_FROM)
+    ATTR_ADDON, ATTR_UUID, ATTR_CONFIG, ATTR_DISCOVERY, ATTR_SERVICE,
+    REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
 from ..validate import SERVICE_ALL
@@ -12,8 +12,6 @@ from ..validate import SERVICE_ALL
 
 SCHEMA_DISCOVERY = vol.Schema({
     vol.Required(ATTR_SERVICE): SERVICE_ALL,
-    vol.Required(ATTR_COMPONENT): vol.Coerce(str),
-    vol.Optional(ATTR_PLATFORM): vol.Maybe(vol.Coerce(str)),
     vol.Optional(ATTR_CONFIG): vol.Maybe(dict),
 })
 
@@ -44,8 +42,6 @@ class APIDiscovery(CoreSysAttributes):
                 ATTR_ADDON: message.addon,
                 ATTR_SERVICE: message.service,
                 ATTR_UUID: message.uuid,
-                ATTR_COMPONENT: message.component,
-                ATTR_PLATFORM: message.platform,
                 ATTR_CONFIG: message.config,
             })
 
@@ -78,8 +74,6 @@ class APIDiscovery(CoreSysAttributes):
             ATTR_ADDON: message.addon,
             ATTR_SERVICE: message.service,
             ATTR_UUID: message.uuid,
-            ATTR_COMPONENT: message.component,
-            ATTR_PLATFORM: message.platform,
             ATTR_CONFIG: message.config,
         }
 
