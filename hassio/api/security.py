@@ -32,7 +32,7 @@ NO_SECURITY_CHECK = re.compile(
 # Can called by every add-on
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
-    r"|/addons/self/(?!security)[^/]+"
+    r"|/addons/self/(?!security|update)[^/]+"
     r"|/version"
     r"|/services.*"
     r"|/discovery.*"
