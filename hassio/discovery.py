@@ -57,7 +57,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
         """Return list of available discovery messages."""
         return list(self.message_obj.values())
 
-    def send(self, addon, service, component, platform, config):
+    def send(self, addon, service, config):
         """Send a discovery message to Home Assistant."""
         try:
             DISCOVERY_SERVICES[service](config)
@@ -67,7 +67,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
             raise DiscoveryError() from None
 
         # Create message
-        message = Message(addon.slug, service, component, platform, config)
+        message = Message(addon.slug, service, config)
 
         # Already exists?
         for old_message in self.list_messages:
@@ -76,8 +76,8 @@ class Discovery(CoreSysAttributes, JsonConfig):
             _LOGGER.warning("Duplicate discovery message from %s", addon.slug)
             return old_message
 
-        _LOGGER.info("Send discovery to Home Assistant %s/%s from %s",
-                     component, platform, addon.slug)
+        _LOGGER.info("Send discovery to Home Assistant %s from %s",
+                     service, addon.slug)
         self.message_obj[message.uuid] = message
         self.save()
 
@@ -89,8 +89,8 @@ class Discovery(CoreSysAttributes, JsonConfig):
         self.message_obj.pop(message.uuid, None)
         self.save()
 
-        _LOGGER.info("Delete discovery to Home Assistant %s/%s from %s",
-                     message.component, message.platform, message.addon)
+        _LOGGER.info("Delete discovery to Home Assistant %s from %s",
+                     message.service, message.addon)
         self.sys_create_task(self._push_discovery(message, CMD_DEL))
 
     async def _push_discovery(self, message, command):
@@ -115,9 +115,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
 @attr.s
 class Message:
     """Represent a single Discovery message."""
+    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False, init=False)
     addon = attr.ib()
     service = attr.ib()
-    component = attr.ib()
-    platform = attr.ib()
     config = attr.ib(cmp=False)
-    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False)
