@@ -57,7 +57,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
         """Return list of available discovery messages."""
         return list(self.message_obj.values())
 
-    def send(self, addon, service, component, platform, config):
+    def send(self, addon, service, config):
         """Send a discovery message to Home Assistant."""
         try:
             DISCOVERY_SERVICES[service](config)
@@ -67,7 +67,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
             raise DiscoveryError() from None
 
         # Create message
-        message = Message(addon.slug, service, component, platform, config)
+        message = Message(addon.slug, service, config)
 
         # Already exists?
         for old_message in self.list_messages:
@@ -115,7 +115,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
 @attr.s
 class Message:
     """Represent a single Discovery message."""
-    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False)
+    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False, init=False)
     addon = attr.ib()
     service = attr.ib()
     config = attr.ib(cmp=False)
