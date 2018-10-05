@@ -11,7 +11,7 @@ from ..const import SOCKET_DOCKER
 _LOGGER = logging.getLogger(__name__)
 
 
-@attr.s
+@attr.s(frozen=True)
 class CommandReturn:
     exit_code = attr.ib()
     output = attr.ib()
