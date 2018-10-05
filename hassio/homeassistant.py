@@ -31,8 +31,11 @@ _LOGGER = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
-# pylint: disable=invalid-name
-ConfigResult = attr.make_class('ConfigResult', ['valid', 'log'], frozen=True)
+
+attr.s(frozen=True)
+class ConfigResult:
+    valid = attr.ib()
+    log = attr.ib()
 
 
 class HomeAssistant(JsonConfig, CoreSysAttributes):
