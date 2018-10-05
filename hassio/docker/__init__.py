@@ -10,8 +10,11 @@ from ..const import SOCKET_DOCKER
 
 _LOGGER = logging.getLogger(__name__)
 
-# pylint: disable=invalid-name
-CommandReturn = attr.make_class('CommandReturn', ['exit_code', 'output'])
+
+@attr.s
+class CommandReturn:
+    exit_code = attr.ib()
+    output = attr.ib()
 
 
 class DockerAPI:
@@ -108,8 +111,9 @@ class DockerAPI:
             _LOGGER.error("Can't execute command: %s", err)
             return CommandReturn(None, b"")
 
-        # cleanup container
-        with suppress(docker.errors.DockerException):
-            container.remove(force=True)
+        finally:
+            # cleanup container
+            with suppress(docker.errors.DockerException):
+                container.remove(force=True)
 
         return CommandReturn(result.get('StatusCode'), output)
