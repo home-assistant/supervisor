@@ -360,12 +360,16 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # if not valid
         if result.exit_code is None:
+            _LOGGER.error("Fatal error on config check!")
             raise HomeAssistantError()
 
         # parse output
         log = convert_to_ascii(result.output)
         if result.exit_code != 0 or RE_YAML_ERROR.search(log):
+            _LOGGER.error("Invalid Home Assistant config found!")
             return ConfigResult(False, log)
+
+        _LOGGER.info("Home Assistant config is valid")
         return ConfigResult(True, log)
 
     async def ensure_access_token(self):
