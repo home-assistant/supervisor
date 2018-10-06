@@ -7,7 +7,7 @@ import re
 from ..const import (
     SECURITY_DISABLE, SECURITY_PROFILE, PRIVILEGED_NET_ADMIN,
     PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE,
-    ROLE_ADMIN, ROLE_MANAGER)
+    PRIVILEGED_DAC_READ_SEARCH, ROLE_ADMIN, ROLE_MANAGER)
 
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 
@@ -30,7 +30,8 @@ def rating_security(addon):
 
     # Privileged options
     if addon.privileged in (PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
-                            PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE):
+                            PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE,
+                            PRIVILEGED_DAC_READ_SEARCH):
         rating += -1
 
     # API Hass.io role
