@@ -355,7 +355,7 @@ class Addon(CoreSysAttributes):
     @property
     def privileged(self):
         """Return list of privilege."""
-        return self._mesh.get(ATTR_PRIVILEGED)
+        return self._mesh.get(ATTR_PRIVILEGED, [])
 
     @property
     def apparmor(self):

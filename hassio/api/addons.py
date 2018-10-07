@@ -24,6 +24,7 @@ from ..const import (
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
+from ..exceptions import APIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,10 +60,10 @@ class APIAddons(CoreSysAttributes):
 
         addon = self.sys_addons.get(addon_slug)
         if not addon:
-            raise RuntimeError("Addon does not exist")
+            raise APIError("Addon does not exist")
 
         if check_installed and not addon.is_installed:
-            raise RuntimeError("Addon is not installed")
+            raise APIError("Addon is not installed")
 
         return addon
 
@@ -206,7 +207,7 @@ class APIAddons(CoreSysAttributes):
         stats = await addon.stats()
 
         if not stats:
-            raise RuntimeError("No stats available")
+            raise APIError("No stats available")
 
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
@@ -240,7 +241,7 @@ class APIAddons(CoreSysAttributes):
         try:
             addon.schema(options)
         except vol.Invalid as ex:
-            raise RuntimeError(humanize_error(options, ex)) from None
+            raise APIError(humanize_error(options, ex)) from None
 
         return asyncio.shield(addon.start())
 
@@ -256,7 +257,7 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon(request)
 
         if addon.last_version == addon.version_installed:
-            raise RuntimeError("No update available!")
+            raise APIError("No update available!")
 
         return asyncio.shield(addon.update())
 
@@ -271,7 +272,7 @@ class APIAddons(CoreSysAttributes):
         """Rebuild local build add-on."""
         addon = self._extract_addon(request)
         if not addon.need_build:
-            raise RuntimeError("Only local build addons are supported")
+            raise APIError("Only local build addons are supported")
 
         return asyncio.shield(addon.rebuild())
 
@@ -286,7 +287,7 @@ class APIAddons(CoreSysAttributes):
         """Return icon from add-on."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_icon:
-            raise RuntimeError("No icon found!")
+            raise APIError("No icon found!")
 
         with addon.path_icon.open('rb') as png:
             return png.read()
@@ -296,7 +297,7 @@ class APIAddons(CoreSysAttributes):
         """Return logo from add-on."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_logo:
-            raise RuntimeError("No logo found!")
+            raise APIError("No logo found!")
 
         with addon.path_logo.open('rb') as png:
             return png.read()
@@ -306,7 +307,7 @@ class APIAddons(CoreSysAttributes):
         """Return changelog from add-on."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_changelog:
-            raise RuntimeError("No changelog found!")
+            raise APIError("No changelog found!")
 
         with addon.path_changelog.open('r') as changelog:
             return changelog.read()
@@ -316,7 +317,7 @@ class APIAddons(CoreSysAttributes):
         """Write to stdin of add-on."""
         addon = self._extract_addon(request)
         if not addon.with_stdin:
-            raise RuntimeError("STDIN not supported by add-on")
+            raise APIError("STDIN not supported by add-on")
 
         data = await request.read()
         return await asyncio.shield(addon.write_stdin(data))
