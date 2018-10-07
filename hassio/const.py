@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '133'
+HASSIO_VERSION = '134'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
@@ -243,6 +243,7 @@ PRIVILEGED_SYS_TIME = 'SYS_TIME'
 PRIVILEGED_SYS_NICE = 'SYS_NICE'
 PRIVILEGED_SYS_RESOURCE = 'SYS_RESOURCE'
 PRIVILEGED_SYS_PTRACE = 'SYS_PTRACE'
+PRIVILEGED_DAC_READ_SEARCH = 'DAC_READ_SEARCH'
 
 FEATURES_SHUTDOWN = 'shutdown'
 FEATURES_REBOOT = 'reboot'

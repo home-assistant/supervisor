@@ -141,5 +141,3 @@ class APIHomeAssistant(CoreSysAttributes):
         result = await self.sys_homeassistant.check_config()
         if not result.valid:
             raise APIError(result.log)
-
-        return True
