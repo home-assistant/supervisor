@@ -13,6 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @attr.s(frozen=True)
 class CommandReturn:
+    """Return object from command run."""
     exit_code = attr.ib()
     output = attr.ib()
 
