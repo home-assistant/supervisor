@@ -32,8 +32,9 @@ _LOGGER = logging.getLogger(__name__)
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
 
-attr.s(frozen=True)
+@attr.s(frozen=True)
 class ConfigResult:
+    """Return object from config check."""
     valid = attr.ib()
     log = attr.ib()
 
