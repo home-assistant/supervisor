@@ -29,9 +29,10 @@ def rating_security(addon):
         rating += 1
 
     # Privileged options
-    if addon.privileged in (PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
-                            PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE,
-                            PRIVILEGED_DAC_READ_SEARCH):
+    if any(privilege in addon.privileged
+           for privilege in (PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
+                             PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE,
+                             PRIVILEGED_DAC_READ_SEARCH)):
         rating += -1
 
     # API Hass.io role
