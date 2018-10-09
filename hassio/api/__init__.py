@@ -10,11 +10,11 @@ from .homeassistant import APIHomeAssistant
 from .hardware import APIHardware
 from .host import APIHost
 from .hassos import APIHassOS
+from .info import APIInfo
 from .proxy import APIProxy
 from .supervisor import APISupervisor
 from .snapshots import APISnapshots
 from .services import APIServices
-from .version import APIVersion
 from .security import SecurityMiddleware
 from ..coresys import CoreSysAttributes
 
@@ -48,7 +48,7 @@ class RestAPI(CoreSysAttributes):
         self._register_snapshots()
         self._register_discovery()
         self._register_services()
-        self._register_version()
+        self._register_info()
 
     def _register_host(self):
         """Register hostcontrol functions."""
@@ -92,13 +92,13 @@ class RestAPI(CoreSysAttributes):
             web.get('/hardware/audio', api_hardware.audio),
         ])
 
-    def _register_version(self):
-        """Register version functions."""
-        api_version = APIVersion()
-        api_version.coresys = self.coresys
+    def _register_info(self):
+        """Register info functions."""
+        api_info = APIInfo()
+        api_info.coresys = self.coresys
 
         self.webapp.add_routes([
-            web.get('/version', api_version.info),
+            web.get('/info', api_info.info),
         ])
 
     def _register_supervisor(self):
