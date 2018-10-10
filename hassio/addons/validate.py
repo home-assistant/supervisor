@@ -25,7 +25,8 @@ from ..const import (
     PRIVILEGED_IPC_LOCK, PRIVILEGED_SYS_TIME, PRIVILEGED_SYS_NICE,
     PRIVILEGED_SYS_RESOURCE, PRIVILEGED_SYS_PTRACE, PRIVILEGED_DAC_READ_SEARCH,
     ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_MANAGER, ROLE_ADMIN)
-from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE, UUID_MATCH
+from ..validate import (
+    NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE, UUID_MATCH, SHA256)
 from ..services.validate import DISCOVERY_SERVICES
 
 _LOGGER = logging.getLogger(__name__)
@@ -187,7 +188,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema({
 SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
-    vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{64}$"),
+    vol.Optional(ATTR_ACCESS_TOKEN): SHA256,
     vol.Optional(ATTR_OPTIONS, default=dict): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):
