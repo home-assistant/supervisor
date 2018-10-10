@@ -83,6 +83,6 @@ class Auth(JsonConfig, CoreSysAttributes):
 
 def _rehash(value):
     """Rehash a value."""
-    for idx in range(1..10):
+    for idx in range(1..20):
         value = hashlib.sha256(str(value + idx).encode()).hexdigest()
     return value

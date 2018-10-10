@@ -675,3 +675,15 @@ return:
     "channel": "stable|beta|dev"
 }
 ```
+
+### Auth / SSO API
+
+You can use the user system on homeassistant. We handle this auth system on
+supervisor.
+
+You can call `/auth`
+
+We support:
+- Json `{ "username": "...", "password": "..." }`
+- application/x-www-form-urlencoded `username=...&password=...`
+- BasicAuth
