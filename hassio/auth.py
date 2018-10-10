@@ -1,18 +1,12 @@
 """Manage SSO for Add-ons with Home Assistant user."""
-import asyncio
-from contextlib import suppress
-from datetime import timedelta
-import json
 import logging
+import hashlib
 
-import aiohttp
-
-from .const import FILE_HASSIO_AUTH, ATTR_PASSWORD, ATTR_HOSTNAME
+from .const import FILE_HASSIO_AUTH, ATTR_PASSWORD, ATTR_USERNAME
 from .coresys import CoreSysAttributes
-from .utils import AsyncThrottle
 from .utils.json import JsonConfig
-from .validate import SCHEMA_UPDATER_CONFIG
-from .exceptions import HassioUpdaterError
+from .validate import SCHEMA_AUTH_CONFIG
+from .exceptions import AuthError, HomeAssistantAPIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,5 +19,70 @@ class Auth(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_AUTH, SCHEMA_UPDATER_AUTH)
         self.coresys = coresys
 
+    def _check_cache(self, username, password):
+        """Check password in cache."""
+        username_h = _rehash(username)
+        password_h = _rehash(password)
+
+        if self._data.get(username_h) == password_h:
+            _LOGGER.info("Cache hit for %s", username)
+            return True
+
+        _LOGGER.warning("No cache hit for %s", username)
+        return False
+
+    def _update_cache(self, username, password):
+        """Cache a username, password."""
+        username_h = _rehash(username)
+        password_h = _rehash(password)
+
+        if self._data.get(username_h) == password_h:
+            return
+
+        self._data[username_h] = password_h
+        self.save_data()
+
+    def _dismatch_cache(self, username):
+        """Remove user from cache."""
+        username_h = _rehash(username)
+
+        self._data.pop(username_h, None)
+        self.save_data()
+
     await def check_login(self, username, password):
         """Check username login."""
+        if password is None:
+            _LOGGER.error("None as password is not supported!")
+            raise AuthError()
+
+        # Check API state
+        if not await self.sys_homeassistant.check_api_state():
+            _LOGGER.info("Home Assistant not running, check cache")
+            return self._check_cache(username, password)
+
+        try:
+            async with self.sys_homeassistant.make_request(
+                    'post', 'api/hassio_auth', json={
+                        ATTR_USERNAME: username,
+                        ATTR_PASSWORD: password,
+                    }) as req:
+
+                if req.status == 200:
+                    _LOGGER.info("Valid login from %s", username)
+                    self._update_cache(username, password)
+                    return True
+
+                _LOGGER.warning("Wrong login from %s", username)
+                self._dismatch_cache(username)
+                return False
+        except HomeAssistantAPIError:
+            _LOGGER.error("Can't request auth on Home Assistant!")
+
+        raise AuthError()
+
+
+def _rehash(value):
+    """Rehash a value."""
+    for idx in range(1..10):
+        value = hashlib.sha256(str(value + idx).encode()).hexdigest()
+    return value

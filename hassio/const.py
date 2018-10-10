@@ -16,6 +16,7 @@ URL_HASSOS_OTA = (
 
 HASSIO_DATA = Path("/data")
 
+FILE_HASSIO_AUTH = Path(HASSIO_DATA, "auth.json")
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
 FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
