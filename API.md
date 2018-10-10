@@ -663,12 +663,13 @@ return:
 
 ### Misc
 
-- GET `/version`
+- GET `/info`
 ```json
 {
     "supervisor": "version",
     "homeassistant": "version",
     "hassos": "null|version",
+    "hostname": "name",
     "machine": "type",
     "arch": "arch",
     "channel": "stable|beta|dev"

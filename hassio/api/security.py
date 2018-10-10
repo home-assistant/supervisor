@@ -33,7 +33,7 @@ NO_SECURITY_CHECK = re.compile(
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
     r"|/addons/self/(?!security|update)[^/]+"
-    r"|/version"
+    r"|/info"
     r"|/services.*"
     r"|/discovery.*"
     r")$"
