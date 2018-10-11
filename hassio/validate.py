@@ -75,7 +75,7 @@ DOCKER_PORTS = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
-    vol.Optional(ATTR_ACCESS_TOKEN): SHA256"),
+    vol.Optional(ATTR_ACCESS_TOKEN): SHA256,
     vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): DOCKER_IMAGE,
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
