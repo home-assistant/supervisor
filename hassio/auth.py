@@ -55,6 +55,7 @@ class Auth(JsonConfig, CoreSysAttributes):
         if password is None:
             _LOGGER.error("None as password is not supported!")
             raise AuthError()
+        _LOGGER.info("Auth request from %s for %s", addon.slug)
 
         # Check API state
         if not await self.sys_homeassistant.check_api_state():
@@ -70,7 +71,7 @@ class Auth(JsonConfig, CoreSysAttributes):
                     }) as req:
 
                 if req.status == 200:
-                    _LOGGER.info("Valid login from %s", username)
+                    _LOGGER.info("Success login from %s", username)
                     self._update_cache(username, password)
                     return True
 
