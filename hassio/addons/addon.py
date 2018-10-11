@@ -28,7 +28,7 @@ from ..const import (
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
     ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
-    ATTR_MACHINE,
+    ATTR_MACHINE, ATTR_LOGIN_BACKEND,
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
@@ -410,6 +410,11 @@ class Addon(CoreSysAttributes):
     def with_devicetree(self):
         """Return True if the add-on read access to devicetree."""
         return self._mesh[ATTR_DEVICETREE]
+
+    @property
+    def with_login_backend(self):
+        """Return True if the add-on access to login/auth backend."""
+        return self._mesh[ATTR_LOGIN_BACKEND]
 
     @property
     def with_audio(self):
