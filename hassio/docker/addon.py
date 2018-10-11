@@ -1,7 +1,6 @@
 """Init file for Hass.io add-on Docker object."""
 import logging
 import os
-from pathlib import Path
 
 import docker
 import requests
