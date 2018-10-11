@@ -11,6 +11,9 @@ _LOGGER = logging.getLogger(__name__)
 
 class APIAuth(CoreSysAttributes):
     """Handle RESTful API for auth functions."""
+    
+    async _process_basic_auth(self):
+        """Process login request w
 
     @api_process
     async def auth(self, request):
