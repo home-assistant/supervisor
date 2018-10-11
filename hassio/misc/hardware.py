@@ -102,7 +102,7 @@ class Hardware:
         return audio_list
 
     @property
-    support_gpio(self):
+    def support_gpio(self):
         """Return True if device support GPIOs."""
         return SOC_DEVICES.exists() and GPIO_DEVICES.exists()
 
