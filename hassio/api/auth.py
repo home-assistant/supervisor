@@ -1,6 +1,5 @@
 """Init file for Hass.io auth/SSO RESTful API."""
 import logging
-import json
 
 from aiohttp import BasicAuth
 from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
@@ -16,17 +15,17 @@ _LOGGER = logging.getLogger(__name__)
 class APIAuth(CoreSysAttributes):
     """Handle RESTful API for auth functions."""
 
-    def _process_basic_auth(self, request, addon):
+    def _process_basicauth(self, request, addon):
         """Process login request with basic auth.
-        
+
         Return a coroutine.
         """
         auth = BasicAuth.decode(request.headers[AUTHORIZATION])
         return self.sys_auth.check_login(addon, auth.login, auth.password)
 
-    def _process_dict_auth(self, request, addon, data):
+    def _process_dict(self, request, addon, data):
         """Process login with dict data.
-        
+
         Return a coroutine.
         """
         username = data.get('username') or data.get('user')
@@ -44,16 +43,16 @@ class APIAuth(CoreSysAttributes):
 
         # BasicAuth
         if AUTHORIZATION in request.headers:
-            return await _process_basic_auth(self, request, addon)
+            return await _process_basicauth(self, request, addon)
 
         # Json
         if request.headers[CONTENT_TYPE] == CONTENT_TYPE_JSON:
             data = await request.json()
-            return await _process_dict_auth(self, request, addon, data)
+            return await self._process_dict(self, request, addon, data)
  
         # URL encoded
         if request.headers[CONTENT_TYPE] == CONTENT_TYPE_URL:
             data = await request.post()
-            return await _process_dict_auth(self, request, addon, data)
+            return await self._process_dict(self, request, addon, data)
 
         raise APIError("Auth method not detected!")
