@@ -185,6 +185,7 @@ ATTR_PROTECTED = 'protected'
 ATTR_RATING = 'rating'
 ATTR_HASSIO_ROLE = 'hassio_role'
 ATTR_SUPERVISOR = 'supervisor'
+ATTR_HOMEASSISTANT_AUTH = 'homeassistant_auth'
 
 SERVICE_MQTT = 'mqtt'
 PROVIDE_SERVICE = 'provide'
