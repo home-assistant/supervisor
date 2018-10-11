@@ -2,7 +2,8 @@
 import logging
 import hashlib
 
-from .const import FILE_HASSIO_AUTH, ATTR_PASSWORD, ATTR_USERNAME
+from .const import (
+    FILE_HASSIO_AUTH, ATTR_PASSWORD, ATTR_USERNAME, ATTR_ADDON)
 from .coresys import CoreSysAttributes
 from .utils.json import JsonConfig
 from .validate import SCHEMA_AUTH_CONFIG
@@ -49,7 +50,7 @@ class Auth(JsonConfig, CoreSysAttributes):
         self._data.pop(username_h, None)
         self.save_data()
 
-    await def check_login(self, username, password):
+    await def check_login(self, addon, username, password):
         """Check username login."""
         if password is None:
             _LOGGER.error("None as password is not supported!")
@@ -65,6 +66,7 @@ class Auth(JsonConfig, CoreSysAttributes):
                     'post', 'api/hassio_auth', json={
                         ATTR_USERNAME: username,
                         ATTR_PASSWORD: password,
+                        ATTR_ADDON: addon.slug,
                     }) as req:
 
                 if req.status == 200:
