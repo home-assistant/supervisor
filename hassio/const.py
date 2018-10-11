@@ -51,6 +51,7 @@ CONTENT_TYPE_PNG = 'image/png'
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_TEXT = 'text/plain'
 CONTENT_TYPE_TAR = 'application/tar'
+CONTENT_TYPE_URL = 'application/x-www-form-urlencoded'
 HEADER_HA_ACCESS = 'x-ha-access'
 HEADER_TOKEN = 'x-hassio-key'
 
