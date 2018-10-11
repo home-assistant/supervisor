@@ -11,9 +11,15 @@ _LOGGER = logging.getLogger(__name__)
 
 class APIAuth(CoreSysAttributes):
     """Handle RESTful API for auth functions."""
-    
-    async _process_basic_auth(self):
-        """Process login request w
+
+    async def _process_basic_auth(self, request):
+        """Process login request with basic auth."""
+
+    async def _process_json_auth(self, request):
+        """Process login with json reuqest."""
+
+    async def _process_post_auth(self, request):
+        """Process login with post variable reuqest."""
 
     @api_process
     async def auth(self, request):
@@ -22,3 +28,5 @@ class APIAuth(CoreSysAttributes):
 
         if not addon.with_login_backend:
             raise APIForbidden("Can't use Home Assistant auth!")
+
+        if Authorization
