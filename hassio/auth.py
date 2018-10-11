@@ -50,7 +50,7 @@ class Auth(JsonConfig, CoreSysAttributes):
         self._data.pop(username_h, None)
         self.save_data()
 
-    await def check_login(self, addon, username, password):
+    async def check_login(self, addon, username, password):
         """Check username login."""
         if password is None:
             _LOGGER.error("None as password is not supported!")
