@@ -126,9 +126,9 @@ class CoreSys:
     @property
     def auth(self):
         """Return Auth object."""
-        return self._core
+        return self._auth
 
-    @core.setter
+    @auth.setter
     def auth(self, value):
         """Set a Auth object."""
         if self._auth:
