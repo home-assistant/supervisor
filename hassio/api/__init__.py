@@ -5,6 +5,7 @@ from pathlib import Path
 from aiohttp import web
 
 from .addons import APIAddons
+from .auth import APIAuth
 from .discovery import APIDiscovery
 from .homeassistant import APIHomeAssistant
 from .hardware import APIHardware
@@ -49,6 +50,7 @@ class RestAPI(CoreSysAttributes):
         self._register_discovery()
         self._register_services()
         self._register_info()
+        self._register_auth()
 
     def _register_host(self):
         """Register hostcontrol functions."""
@@ -99,6 +101,15 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes([
             web.get('/info', api_info.info),
+        ])
+
+    def _register_auth(self):
+        """Register auth functions."""
+        api_auth = APIAuth()
+        api_auth.coresys = self.coresys
+
+        self.webapp.add_routes([
+            web.post('/auth', api_auth.auth),
         ])
 
     def _register_supervisor(self):
