@@ -33,6 +33,7 @@ class CoreSys:
 
         # Internal objects pointers
         self._core = None
+        self._auth = None
         self._homeassistant = None
         self._supervisor = None
         self._addons = None
@@ -121,6 +122,18 @@ class CoreSys:
         if self._core:
             raise RuntimeError("Hass.io already set!")
         self._core = value
+
+    @property
+    def auth(self):
+        """Return Auth object."""
+        return self._core
+
+    @core.setter
+    def auth(self, value):
+        """Set a Auth object."""
+        if self._auth:
+            raise RuntimeError("Auth already set!")
+        self._auth = value
 
     @property
     def homeassistant(self):
