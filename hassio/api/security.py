@@ -7,7 +7,7 @@ from aiohttp.web_exceptions import HTTPUnauthorized, HTTPForbidden
 
 from ..const import (
     HEADER_TOKEN, REQUEST_FROM, ROLE_ADMIN, ROLE_DEFAULT, ROLE_HOMEASSISTANT,
-    ROLE_MANAGER)
+    ROLE_MANAGER, ROLE_BACKUP)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,9 +33,10 @@ NO_SECURITY_CHECK = re.compile(
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
     r"|/addons/self/(?!security|update)[^/]+"
-    r"|/version"
+    r"|/info"
     r"|/services.*"
     r"|/discovery.*"
+    r"|/auth"
     r")$"
 )
 
@@ -50,6 +51,11 @@ ADDONS_ROLE_ACCESS = {
     ROLE_HOMEASSISTANT: re.compile(
         r"^(?:"
         r"|/homeassistant/.+"
+        r")$"
+    ),
+    ROLE_BACKUP: re.compile(
+        r"^(?:"
+        r"|/snapshots.*"
         r")$"
     ),
     ROLE_MANAGER: re.compile(

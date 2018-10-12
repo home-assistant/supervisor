@@ -8,6 +8,7 @@ from pathlib import Path
 from colorlog import ColoredFormatter
 
 from .core import HassIO
+from .auth import Auth
 from .addons import AddonManager
 from .api import RestAPI
 from .const import SOCKET_DOCKER
@@ -38,6 +39,7 @@ def initialize_coresys(loop):
 
     # Initialize core objects
     coresys.core = HassIO(coresys)
+    coresys.auth = Auth(coresys)
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
     coresys.supervisor = Supervisor(coresys)

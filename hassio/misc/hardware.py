@@ -20,6 +20,7 @@ PROC_STAT = Path("/proc/stat")
 RE_BOOT_TIME = re.compile(r"btime (\d+)")
 
 GPIO_DEVICES = Path("/sys/class/gpio")
+SOC_DEVICES = Path("/sys/devices/platform/soc")
 RE_TTY = re.compile(r"tty[A-Z]+")
 
 
@@ -61,6 +62,11 @@ class Hardware:
         return dev_list
 
     @property
+    def support_audio(self):
+        """Return True if the system have audio support."""
+        return bool(self.audio_devices)
+
+    @property
     def audio_devices(self):
         """Return all available audio interfaces."""
         if not ASOUND_CARDS.exists():
@@ -68,10 +74,8 @@ class Hardware:
             return {}
 
         try:
-            with ASOUND_CARDS.open('r') as cards_file:
-                cards = cards_file.read()
-            with ASOUND_DEVICES.open('r') as devices_file:
-                devices = devices_file.read()
+            cards = ASOUND_CARDS.read_text()
+            devices = ASOUND_DEVICES.read_text()
         except OSError as err:
             _LOGGER.error("Can't read asound data: %s", err)
             return {}
@@ -96,6 +100,11 @@ class Hardware:
                 continue
 
         return audio_list
+
+    @property
+    def support_gpio(self):
+        """Return True if device support GPIOs."""
+        return SOC_DEVICES.exists() and GPIO_DEVICES.exists()
 
     @property
     def gpio_devices(self):

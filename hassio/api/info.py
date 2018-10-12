@@ -1,4 +1,4 @@
-"""Init file for Hass.io version RESTful API."""
+"""Init file for Hass.io info RESTful API."""
 import logging
 
 from .utils import api_process
@@ -10,12 +10,12 @@ from ..coresys import CoreSysAttributes
 _LOGGER = logging.getLogger(__name__)
 
 
-class APIVersion(CoreSysAttributes):
-    """Handle RESTful API for version functions."""
+class APIInfo(CoreSysAttributes):
+    """Handle RESTful API for info functions."""
 
     @api_process
     async def info(self, request):
-        """Show version info."""
+        """Show system info."""
         return {
             ATTR_SUPERVISOR: self.sys_supervisor.version,
             ATTR_HOMEASSISTANT: self.sys_homeassistant.version,
