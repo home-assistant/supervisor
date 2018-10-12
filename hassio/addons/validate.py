@@ -20,12 +20,13 @@ from ..const import (
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_SERVICES, ATTR_DISCOVERY,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_PROTECTED,
     ATTR_FULL_ACCESS, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
-    ATTR_MACHINE,
+    ATTR_MACHINE, ATTR_LOGIN_BACKEND,
     PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO,
     PRIVILEGED_IPC_LOCK, PRIVILEGED_SYS_TIME, PRIVILEGED_SYS_NICE,
     PRIVILEGED_SYS_RESOURCE, PRIVILEGED_SYS_PTRACE, PRIVILEGED_DAC_READ_SEARCH,
-    ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_MANAGER, ROLE_ADMIN)
-from ..validate import NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE, UUID_MATCH
+    ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_MANAGER, ROLE_ADMIN, ROLE_BACKUP)
+from ..validate import (
+    NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE, UUID_MATCH, SHA256)
 from ..services.validate import DISCOVERY_SERVICES
 
 _LOGGER = logging.getLogger(__name__)
@@ -84,6 +85,7 @@ PRIVILEGED_ALL = [
 ROLE_ALL = [
     ROLE_DEFAULT,
     ROLE_HOMEASSISTANT,
+    ROLE_BACKUP,
     ROLE_MANAGER,
     ROLE_ADMIN,
 ]
@@ -143,6 +145,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_STDIN, default=False): vol.Boolean(),
     vol.Optional(ATTR_LEGACY, default=False): vol.Boolean(),
     vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),
+    vol.Optional(ATTR_LOGIN_BACKEND, default=False): vol.Boolean(),
     vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
     vol.Optional(ATTR_DISCOVERY): [vol.In(DISCOVERY_SERVICES)],
     vol.Required(ATTR_OPTIONS): dict,
@@ -187,7 +190,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema({
 SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
-    vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{64}$"),
+    vol.Optional(ATTR_ACCESS_TOKEN): SHA256,
     vol.Optional(ATTR_OPTIONS, default=dict): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
     vol.Optional(ATTR_BOOT):

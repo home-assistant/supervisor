@@ -663,14 +663,27 @@ return:
 
 ### Misc
 
-- GET `/version`
+- GET `/info`
 ```json
 {
     "supervisor": "version",
     "homeassistant": "version",
     "hassos": "null|version",
+    "hostname": "name",
     "machine": "type",
     "arch": "arch",
     "channel": "stable|beta|dev"
 }
 ```
+
+### Auth / SSO API
+
+You can use the user system on homeassistant. We handle this auth system on
+supervisor.
+
+You can call post `/auth`
+
+We support:
+- Json `{ "user|name": "...", "password": "..." }`
+- application/x-www-form-urlencoded `user|name=...&password=...`
+- BasicAuth

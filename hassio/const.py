@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = '135'
+HASSIO_VERSION = '136'
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = \
@@ -16,6 +16,7 @@ URL_HASSOS_OTA = (
 
 HASSIO_DATA = Path("/data")
 
+FILE_HASSIO_AUTH = Path(HASSIO_DATA, "auth.json")
 FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
 FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
 FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
@@ -50,6 +51,7 @@ CONTENT_TYPE_PNG = 'image/png'
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_TEXT = 'text/plain'
 CONTENT_TYPE_TAR = 'application/tar'
+CONTENT_TYPE_URL = 'application/x-www-form-urlencoded'
 HEADER_HA_ACCESS = 'x-ha-access'
 HEADER_TOKEN = 'x-hassio-key'
 
@@ -184,6 +186,7 @@ ATTR_PROTECTED = 'protected'
 ATTR_RATING = 'rating'
 ATTR_HASSIO_ROLE = 'hassio_role'
 ATTR_SUPERVISOR = 'supervisor'
+ATTR_LOGIN_BACKEND = 'login_backend'
 
 SERVICE_MQTT = 'mqtt'
 PROVIDE_SERVICE = 'provide'
@@ -253,5 +256,6 @@ FEATURES_SERVICES = 'services'
 
 ROLE_DEFAULT = 'default'
 ROLE_HOMEASSISTANT = 'homeassistant'
+ROLE_BACKUP = 'backup'
 ROLE_MANAGER = 'manager'
 ROLE_ADMIN = 'admin'
