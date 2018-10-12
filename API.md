@@ -684,6 +684,6 @@ supervisor.
 You can call post `/auth`
 
 We support:
-- Json `{ "username": "...", "password": "..." }`
-- application/x-www-form-urlencoded `username=...&password=...`
+- Json `{ "user|name": "...", "password": "..." }`
+- application/x-www-form-urlencoded `user|name=...&password=...`
 - BasicAuth
