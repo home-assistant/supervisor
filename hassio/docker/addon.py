@@ -1,7 +1,6 @@
 """Init file for Hass.io add-on Docker object."""
 import logging
 import os
-from pathlib import Path
 
 import docker
 import requests
@@ -101,7 +100,7 @@ class DockerAddon(DockerInterface):
         devices = self.addon.devices or []
 
         # Use audio devices
-        if self.addon.with_audio and AUDIO_DEVICE not in devices:
+        if self.addon.with_audio and self.sys_hardware.support_audio:
             devices.append(AUDIO_DEVICE)
 
         # Auto mapping UART devices
@@ -216,10 +215,8 @@ class DockerAddon(DockerInterface):
         # Init other hardware mappings
 
         # GPIO support
-        if self.addon.with_gpio:
+        if self.addon.with_gpio and self.sys_hardware.support_gpio:
             for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
-                if not Path(gpio_path).exists():
-                    continue
                 volumes.update({
                     gpio_path: {
                         'bind': gpio_path, 'mode': 'rw'
