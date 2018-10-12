@@ -67,7 +67,7 @@ class Auth(JsonConfig, CoreSysAttributes):
                     'post', 'api/hassio_auth', json={
                         ATTR_USERNAME: username,
                         ATTR_PASSWORD: password,
-                        #ATTR_ADDON: addon.slug,
+                        ATTR_ADDON: addon.slug,
                     }) as req:
 
                 if req.status == 200:
