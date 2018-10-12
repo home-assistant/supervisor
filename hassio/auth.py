@@ -17,7 +17,7 @@ class Auth(JsonConfig, CoreSysAttributes):
 
     def __init__(self, coresys):
         """Initialize updater."""
-        super().__init__(FILE_HASSIO_AUTH, SCHEMA_UPDATER_AUTH)
+        super().__init__(FILE_HASSIO_AUTH, SCHEMA_AUTH_CONFIG)
         self.coresys = coresys
 
     def _check_cache(self, username, password):
@@ -55,7 +55,7 @@ class Auth(JsonConfig, CoreSysAttributes):
         if password is None:
             _LOGGER.error("None as password is not supported!")
             raise AuthError()
-        _LOGGER.info("Auth request from %s for %s", addon.slug)
+        _LOGGER.info("Auth request from %s for %s", addon.slug, username)
 
         # Check API state
         if not await self.sys_homeassistant.check_api_state():
