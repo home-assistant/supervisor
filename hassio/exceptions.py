@@ -57,6 +57,13 @@ class HassioUpdaterError(HassioError):
     pass
 
 
+# Auth
+
+class AuthError(HassioError):
+    """Auth errors."""
+    pass
+
+
 # Host
 
 class HostError(HassioError):

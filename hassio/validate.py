@@ -23,6 +23,7 @@ DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 ALSA_DEVICE = vol.Maybe(vol.Match(r"\d+,\d+"))
 CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
 UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
+SHA256 = vol.Match(r"^[0-9a-f]{64}$")
 SERVICE_ALL = vol.In([SERVICE_MQTT])
 
 
@@ -74,7 +75,7 @@ DOCKER_PORTS = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASS_CONFIG = vol.Schema({
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
-    vol.Optional(ATTR_ACCESS_TOKEN): vol.Match(r"^[0-9a-f]{64}$"),
+    vol.Optional(ATTR_ACCESS_TOKEN): SHA256,
     vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'): DOCKER_IMAGE,
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'): vol.Coerce(str),
@@ -120,3 +121,8 @@ SCHEMA_DISCOVERY = vol.Schema([
 SCHEMA_DISCOVERY_CONFIG = vol.Schema({
     vol.Optional(ATTR_DISCOVERY, default=list): schema_or(SCHEMA_DISCOVERY),
 }, extra=vol.REMOVE_EXTRA)
+
+
+SCHEMA_AUTH_CONFIG = vol.Schema({
+    SHA256: SHA256
+})
