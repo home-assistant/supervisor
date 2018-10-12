@@ -23,7 +23,7 @@ class Auth(JsonConfig, CoreSysAttributes):
     def _check_cache(self, username, password):
         """Check password in cache."""
         username_h = _rehash(username)
-        password_h = _rehash(password)
+        password_h = _rehash(password, username)
 
         if self._data.get(username_h) == password_h:
             _LOGGER.info("Cache hit for %s", username)
@@ -35,7 +35,7 @@ class Auth(JsonConfig, CoreSysAttributes):
     def _update_cache(self, username, password):
         """Cache a username, password."""
         username_h = _rehash(username)
-        password_h = _rehash(password)
+        password_h = _rehash(password, username)
 
         if self._data.get(username_h) == password_h:
             return
@@ -84,8 +84,8 @@ class Auth(JsonConfig, CoreSysAttributes):
         raise AuthError()
 
 
-def _rehash(value):
+def _rehash(value, salt2=""):
     """Rehash a value."""
     for idx in range(1, 20):
-        value = hashlib.sha256(str(value + idx).encode()).hexdigest()
+        value = hashlib.sha256(f"{value}{idx}{salt2}".encode()).hexdigest()
     return value
