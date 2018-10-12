@@ -444,7 +444,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                     return True
                 status = resp.status
             _LOGGER.warning("Home Assistant API config mismatch: %s", status)
-        
+
         return False
 
     async def _block_till_run(self):
