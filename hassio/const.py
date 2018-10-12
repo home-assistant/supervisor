@@ -256,5 +256,6 @@ FEATURES_SERVICES = 'services'
 
 ROLE_DEFAULT = 'default'
 ROLE_HOMEASSISTANT = 'homeassistant'
+ROLE_BACKUP = 'backup'
 ROLE_MANAGER = 'manager'
 ROLE_ADMIN = 'admin'
