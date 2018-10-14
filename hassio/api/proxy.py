@@ -84,7 +84,7 @@ class APIProxy(CoreSysAttributes):
             response.content_type = request.headers.get(CONTENT_TYPE)
             try:
                 await response.prepare(request)
-                async for data in client.content.iter_chunked(10)
+                async for data in client.content.iter_chunked(10):
                     await response.write(data)
 
             except aiohttp.ClientError:
