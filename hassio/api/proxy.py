@@ -243,7 +243,7 @@ class APIProxy(CoreSysAttributes):
         except asyncio.CancelledError:
             pass
 
-        except (RuntimeError, ConnectionError) as err:
+        except (RuntimeError, ConnectionError, TypeError) as err:
             _LOGGER.info("Home Assistant WebSocket API error: %s", err)
 
         finally:
