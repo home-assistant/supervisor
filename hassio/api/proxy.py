@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 
 import aiohttp
-from aiohttp import web
+from aiohttp import web, ClientConnectorError
 from aiohttp.web_exceptions import (
     HTTPBadGateway, HTTPInternalServerError, HTTPUnauthorized)
 from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
@@ -208,7 +208,6 @@ class APIProxy(CoreSysAttributes):
             client = await self._websocket_client()
         except APIError:
             return server
-
 
         _LOGGER.info("Home Assistant WebSocket API request running")
         try:
