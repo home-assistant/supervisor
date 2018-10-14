@@ -87,7 +87,7 @@ class APIProxy(CoreSysAttributes):
                 async for data in client.content.iter_chunked(10):
                     await response.write(data)
 
-            except aiohttp.ClientError:
+            except (aiohttp.ClientError, aiohttp.ClientPayloadError):
                 pass
 
             _LOGGER.info("Home Assistant EventStream close")
