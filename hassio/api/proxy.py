@@ -158,8 +158,7 @@ class APIProxy(CoreSysAttributes):
 
             raise HomeAssistantAuthError()
 
-        except (RuntimeError, ValueError,
-                ConnectionError, ClientConnectorError) as err:
+        except (RuntimeError, ValueError, ClientConnectorError) as err:
             _LOGGER.error("Client error on WebSocket API %s.", err)
         except HomeAssistantAuthError as err:
             _LOGGER.error("Failed authentication to Home Assistant WebSocket")
