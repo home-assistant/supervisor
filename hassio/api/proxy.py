@@ -4,9 +4,10 @@ from contextlib import asynccontextmanager
 import logging
 
 import aiohttp
-from aiohttp import web, ClientConnectorError
+from aiohttp import web
 from aiohttp.web_exceptions import (
     HTTPBadGateway, HTTPInternalServerError, HTTPUnauthorized)
+from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
 import async_timeout
 
@@ -157,7 +158,8 @@ class APIProxy(CoreSysAttributes):
 
             raise HomeAssistantAuthError()
 
-        except (RuntimeError, ValueError, ClientConnectorError) as err:
+        except (RuntimeError, ValueError,
+                ConnectionError, ClientConnectorError) as err:
             _LOGGER.error("Client error on WebSocket API %s.", err)
         except HomeAssistantAuthError as err:
             _LOGGER.error("Failed authentication to Home Assistant WebSocket")
@@ -242,7 +244,7 @@ class APIProxy(CoreSysAttributes):
         except asyncio.CancelledError:
             pass
 
-        except RuntimeError as err:
+        except (RuntimeError, ConnectionError) as err:
             _LOGGER.info("Home Assistant WebSocket API error: %s", err)
 
         finally:
