@@ -5,8 +5,7 @@ import logging
 
 import aiohttp
 from aiohttp import web
-from aiohttp.web_exceptions import (
-    HTTPBadGateway, HTTPInternalServerError, HTTPUnauthorized)
+from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
 import async_timeout
