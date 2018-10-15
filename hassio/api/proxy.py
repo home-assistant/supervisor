@@ -5,14 +5,15 @@ import logging
 
 import aiohttp
 from aiohttp import web
-from aiohttp.web_exceptions import (
-    HTTPBadGateway, HTTPInternalServerError, HTTPUnauthorized)
+from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
+from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
 import async_timeout
 
 from ..const import HEADER_HA_ACCESS
 from ..coresys import CoreSysAttributes
-from ..exceptions import HomeAssistantAuthError, HomeAssistantAPIError
+from ..exceptions import (
+    HomeAssistantAuthError, HomeAssistantAPIError, APIError)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,19 +83,13 @@ class APIProxy(CoreSysAttributes):
             response.content_type = request.headers.get(CONTENT_TYPE)
             try:
                 await response.prepare(request)
-                while True:
-                    data = await client.content.read(10)
-                    if not data:
-                        break
+                async for data in client.content:
                     await response.write(data)
 
-            except aiohttp.ClientError:
+            except (aiohttp.ClientError, aiohttp.ClientPayloadError):
                 pass
 
-            finally:
-                client.close()
-                _LOGGER.info("Home Assistant EventStream close")
-
+            _LOGGER.info("Home Assistant EventStream close")
             return response
 
     async def api(self, request):
@@ -117,7 +112,7 @@ class APIProxy(CoreSysAttributes):
 
         try:
             client = await self.sys_websession_ssl.ws_connect(
-                url, heartbeat=60, verify_ssl=False)
+                url, heartbeat=30, verify_ssl=False)
 
             # Handle authentication
             data = await client.receive_json()
@@ -129,7 +124,7 @@ class APIProxy(CoreSysAttributes):
                 # Invalid protocol
                 _LOGGER.error(
                     "Got unexpected response from HA WebSocket: %s", data)
-                raise HTTPBadGateway()
+                raise APIError()
 
             if self.sys_homeassistant.refresh_token:
                 await self.sys_homeassistant.ensure_access_token()
@@ -156,19 +151,19 @@ class APIProxy(CoreSysAttributes):
 
             raise HomeAssistantAuthError()
 
-        except (RuntimeError, ValueError) as err:
+        except (RuntimeError, ValueError, ClientConnectorError) as err:
             _LOGGER.error("Client error on WebSocket API %s.", err)
         except HomeAssistantAuthError as err:
             _LOGGER.error("Failed authentication to Home Assistant WebSocket")
 
-        raise HTTPBadGateway()
+        raise APIError()
 
     async def websocket(self, request):
         """Initialize a WebSocket API connection."""
         _LOGGER.info("Home Assistant WebSocket API request initialize")
 
         # init server
-        server = web.WebSocketResponse(heartbeat=60)
+        server = web.WebSocketResponse(heartbeat=30)
         await server.prepare(request)
 
         # handle authentication
@@ -200,10 +195,13 @@ class APIProxy(CoreSysAttributes):
             })
         except (RuntimeError, ValueError) as err:
             _LOGGER.error("Can't initialize handshake: %s", err)
-            raise HTTPInternalServerError() from None
+            return server
 
         # init connection to hass
-        client = await self._websocket_client()
+        try:
+            client = await self._websocket_client()
+        except APIError:
+            return server
 
         _LOGGER.info("Home Assistant WebSocket API request running")
         try:
@@ -238,7 +236,7 @@ class APIProxy(CoreSysAttributes):
         except asyncio.CancelledError:
             pass
 
-        except RuntimeError as err:
+        except (RuntimeError, ConnectionError, TypeError) as err:
             _LOGGER.info("Home Assistant WebSocket API error: %s", err)
 
         finally:
@@ -248,8 +246,10 @@ class APIProxy(CoreSysAttributes):
                 server_read.cancel()
 
             # close connections
-            await client.close()
-            await server.close()
+            if not client.closed:
+                await client.close()
+            if not server.closed:
+                await server.close()
 
         _LOGGER.info("Home Assistant WebSocket API connection is closed")
         return server
