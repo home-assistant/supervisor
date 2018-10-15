@@ -1,11 +1,11 @@
 attr==0.3.1
-async_timeout==3.0.0
-aiohttp==3.4.0
+async_timeout==3.0.1
+aiohttp==3.4.4
 docker==3.5.0
-colorlog==3.1.2
+colorlog==3.1.4
 voluptuous==0.11.5
 gitpython==2.1.10
-pytz==2018.4
+pytz==2018.5
 pyudev==0.21.0
 pycryptodome==3.6.6
 cpe==1.2.1
