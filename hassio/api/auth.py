@@ -38,7 +38,7 @@ class APIAuth(CoreSysAttributes):
         """Process login request."""
         addon = request[REQUEST_FROM]
 
-        if not addon.with_login_backend:
+        if not addon.access_auth_api:
             raise APIForbidden("Can't use Home Assistant auth!")
 
         # BasicAuth
