@@ -20,7 +20,7 @@ from ..const import (
     ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
     ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API,
     ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING, ATTR_HOST_PID,
-    ATTR_HASSIO_ROLE, ATTR_MACHINE, ATTR_AVAILABLE,
+    ATTR_HASSIO_ROLE, ATTR_MACHINE, ATTR_AVAILABLE, ATTR_AUTH_API,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
@@ -149,6 +149,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_STDIN: addon.with_stdin,
             ATTR_HASSIO_API: addon.access_hassio_api,
             ATTR_HASSIO_ROLE: addon.hassio_role,
+            ATTR_AUTH_API: addon.access_auth_api,
             ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
             ATTR_GPIO: addon.with_gpio,
             ATTR_DEVICETREE: addon.with_devicetree,
