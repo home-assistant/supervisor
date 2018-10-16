@@ -6,7 +6,7 @@ import re
 
 import pyudev
 
-from ..const import ATTR_NAME, ATTR_TYPE, ATTR_DEVICES
+from ..const import ATTR_NAME, ATTR_TYPE, ATTR_DEVICES, CHAN_ID, CHAN_TYPE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,14 +87,16 @@ class Hardware:
             audio_list[match.group(1)] = {
                 ATTR_NAME: match.group(3),
                 ATTR_TYPE: match.group(2),
-                ATTR_DEVICES: {},
+                ATTR_DEVICES: [],
             }
 
         # parse devices
         for match in RE_DEVICES.finditer(devices):
             try:
-                audio_list[match.group(1)][ATTR_DEVICES][match.group(2)] = \
-                    match.group(3)
+                audio_list[match.group(1)][ATTR_DEVICES].append({
+                    CHAN_ID: match.group(2),
+                    CHAN_TYPE: match.group(3)
+                })
             except KeyError:
                 _LOGGER.warning("Wrong audio device found %s", match.group(0))
                 continue
