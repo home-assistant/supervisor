@@ -48,7 +48,7 @@ class Auth(JsonConfig, CoreSysAttributes):
         username_h = _rehash(username)
         password_h = _rehash(password, username)
 
-        if self._data.get(username_h) =! password_h:
+        if self._data.get(username_h) != password_h:
             return
 
         self._data.pop(username_h, None)
