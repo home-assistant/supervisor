@@ -488,6 +488,7 @@ Get all available addons.
     "hassio_api": "bool",
     "hassio_role": "default|homeassistant|manager|admin",
     "homeassistant_api": "bool",
+    "auth_api": "bool",
     "full_access": "bool",
     "protected": "bool",
     "rating": "1-6",
