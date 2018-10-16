@@ -6,7 +6,7 @@ from string import Template
 
 import attr
 
-from ..const import ATTR_INPUT, ATTR_OUTPUT, ATTR_DEVICES, ATTR_NAME
+from ..const import ATTR_INPUT, ATTR_OUTPUT, ATTR_DEVICES, ATTR_NAME, CHAN_ID, CHAN_TYPE
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,7 +58,9 @@ class AlsaAudio(CoreSysAttributes):
 
         # Process devices
         for dev_id, dev_data in self.sys_hardware.audio_devices.items():
-            for chan_id, chan_type in dev_data[ATTR_DEVICES].items():
+            for chan_info in dev_data[ATTR_DEVICES]:
+                chan_id = chan_info[CHAN_ID]
+                chan_type = chan_info[CHAN_TYPE]
                 alsa_id = f"{dev_id},{chan_id}"
                 dev_name = dev_data[ATTR_NAME]
 

@@ -259,3 +259,6 @@ ROLE_HOMEASSISTANT = 'homeassistant'
 ROLE_BACKUP = 'backup'
 ROLE_MANAGER = 'manager'
 ROLE_ADMIN = 'admin'
+
+CHAN_ID = 'chan_id'
+CHAN_TYPE = 'chan_type'
