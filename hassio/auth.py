@@ -43,9 +43,13 @@ class Auth(JsonConfig, CoreSysAttributes):
         self._data[username_h] = password_h
         self.save_data()
 
-    def _dismatch_cache(self, username):
+    def _dismatch_cache(self, username, password):
         """Remove user from cache."""
         username_h = _rehash(username)
+        password_h = _rehash(password, username)
+
+        if self._data.get(username_h) != password_h:
+            return
 
         self._data.pop(username_h, None)
         self.save_data()
@@ -76,7 +80,7 @@ class Auth(JsonConfig, CoreSysAttributes):
                     return True
 
                 _LOGGER.warning("Wrong login from %s", username)
-                self._dismatch_cache(username)
+                self._dismatch_cache(username, password)
                 return False
         except HomeAssistantAPIError:
             _LOGGER.error("Can't request auth on Home Assistant!")
