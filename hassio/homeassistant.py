@@ -191,7 +191,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     @property
     def hassio_token(self):
-        """Return a access token for the Hass.io API."""
+        """Return an access token for the Hass.io API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
 
     @property
@@ -260,7 +260,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             _LOGGER.warning("Version %s is already installed", version)
             return HomeAssistantUpdateError()
 
-        # process a update
+        # process an update
         async def _update(to_version):
             """Run Home Assistant update."""
             try:
