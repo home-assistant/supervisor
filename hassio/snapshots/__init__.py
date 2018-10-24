@@ -118,7 +118,7 @@ class SnapshotManager(CoreSysAttributes):
     async def do_snapshot_full(self, name="", password=None):
         """Create a full snapshot."""
         if self.lock.locked():
-            _LOGGER.error("It is already a snapshot/restore process running")
+            _LOGGER.error("A snapshot/restore process is already running")
             return None
 
         snapshot = self._create_snapshot(name, SNAPSHOT_FULL, password)
@@ -153,7 +153,7 @@ class SnapshotManager(CoreSysAttributes):
                                   password=None):
         """Create a partial snapshot."""
         if self.lock.locked():
-            _LOGGER.error("It is already a snapshot/restore process running")
+            _LOGGER.error("A snapshot/restore process is already running")
             return None
 
         addons = addons or []
@@ -201,7 +201,7 @@ class SnapshotManager(CoreSysAttributes):
     async def do_restore_full(self, snapshot, password=None):
         """Restore a snapshot."""
         if self.lock.locked():
-            _LOGGER.error("It is already a snapshot/restore process running")
+            _LOGGER.error("A snapshot/restore process is already running")
             return False
 
         if snapshot.sys_type != SNAPSHOT_FULL:
@@ -274,7 +274,7 @@ class SnapshotManager(CoreSysAttributes):
                                  addons=None, folders=None, password=None):
         """Restore a snapshot."""
         if self.lock.locked():
-            _LOGGER.error("It is already a snapshot/restore process running")
+            _LOGGER.error("A snapshot/restore process is already running")
             return False
 
         if snapshot.protected and not snapshot.set_password(password):
