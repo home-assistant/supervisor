@@ -3,6 +3,7 @@ import asyncio
 import logging
 
 from .coresys import CoreSysAttributes
+from .exception import HomeAssistantError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,7 +105,10 @@ class Tasks(CoreSysAttributes):
             return
 
         _LOGGER.warning("Watchdog found a problem with Home Assistant Docker!")
-        await self.sys_homeassistant.start()
+        try:
+            await self.sys_homeassistant.start()
+        except HomeAssistantError:
+            _LOGGER.error("Watchdog Home Assistant reanimation fails!")
 
     async def _watchdog_homeassistant_api(self):
         """Create scheduler task for monitoring running state of API.
@@ -136,6 +140,8 @@ class Tasks(CoreSysAttributes):
         _LOGGER.error("Watchdog found a problem with Home Assistant API!")
         try:
             await self.sys_homeassistant.restart()
+        except HomeAssistantError:
+            _LOGGER.error("Watchdog Home Assistant reanimation fails!")
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
 
