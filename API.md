@@ -415,7 +415,7 @@ Proxy to real websocket instance.
 
 ### RESTful for API addons
 
-If a add-on will call itself, you can use `/addons/self/...`.
+If an add-on will call itself, you can use `/addons/self/...`.
 
 - GET `/addons`
 

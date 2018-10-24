@@ -66,7 +66,7 @@ class HassOS(CoreSysAttributes):
         return self._board
 
     def _check_host(self):
-        """Check if HassOS is availabe."""
+        """Check if HassOS is available."""
         if not self.available:
             _LOGGER.error("No HassOS available")
             raise HassOSNotSupportedError()
