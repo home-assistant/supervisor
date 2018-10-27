@@ -674,7 +674,7 @@ class Addon(CoreSysAttributes):
         """Install an add-on."""
         if not self.available:
             _LOGGER.error(
-                "Add-on %s not supported on %s", self._id, self.sys_arch)
+                "Add-on %s not supported on %s with %s architecture", self._id, self.sys_machine, self.sys_arch)
             return False
 
         if self.is_installed:
