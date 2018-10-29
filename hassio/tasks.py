@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from .coresys import CoreSysAttributes
-from .exception import HomeAssistantError
+from .exceptions import HomeAssistantError
 
 _LOGGER = logging.getLogger(__name__)
 
