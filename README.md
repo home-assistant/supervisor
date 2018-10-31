@@ -16,3 +16,27 @@ and updating software.
 ## Installation
 
 Installation instructions can be found at <https://home-assistant.io/hassio>.
+
+In Brazilian Portuguese
+Em Português Brasileiro
+
+
+# Hass.io
+
+## Primeira solução de nuvem privada para automação residencial
+
+O Hass.io é um sistema baseado no Docker para gerenciar sua instalação do Home Assistant
+e suas aplicações. O sistema é controlado via Home Assistant, que
+comunica com o Supervisor. O Supervisor fornece uma API para gerenciar a
+instalação. Isso inclui alterar as configurações de rede ou instalar
+e atualizar o software.
+
+! [] (misc / hassio.png? raw = true)
+
+- [Hass.io Addons] (https://github.com/home-assistant/hassio-addons)
+- [Hass.io Construtor] (https://github.com/home-assistant/hassio-build)
+
+## Instalação
+
+As instruções de instalação podem ser encontradas em <https://home-assistant.io/hassio>.
+
