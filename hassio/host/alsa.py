@@ -60,7 +60,9 @@ class AlsaAudio(CoreSysAttributes):
         # Process devices
         for dev_id, dev_data in self.sys_hardware.audio_devices.items():
             for chan_info in dev_data[ATTR_DEVICES]:
-                alsa_id = f"{chan_info[CHAN_ID]},{chan_info[CHAN_TYPE]}"
+                chan_id = chan_info[CHAN_ID]
+                chan_type = chan_info[CHAN_TYPE]
+                alsa_id = f"{dev_id},{chan_id}"
                 dev_name = dev_data[ATTR_NAME]
 
                 # Lookup type
