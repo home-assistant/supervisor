@@ -699,6 +699,8 @@ class Addon(CoreSysAttributes):
     @check_installed
     async def uninstall(self):
         """Remove an add-on."""
+        await self.instance.stop()
+
         if not await self.instance.remove():
             return False
 
