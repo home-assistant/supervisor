@@ -2,12 +2,13 @@
 import logging
 
 from aiohttp import BasicAuth
-from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
+from aiohttp.web_exceptions import HTTPUnauthorized
+from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION, WWW_AUTHENTICATE
 
 from .utils import api_process
 from ..const import REQUEST_FROM, CONTENT_TYPE_JSON, CONTENT_TYPE_URL
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APIForbidden
+from ..exceptions import APIForbidden
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,4 +56,6 @@ class APIAuth(CoreSysAttributes):
             data = await request.post()
             return await self._process_dict(request, addon, data)
 
-        raise APIError("Auth method not detected!")
+        raise HTTPUnauthorized(headers={
+            WWW_AUTHENTICATE: "Basic realm=\"Hass.io Authentication\""
+        })
