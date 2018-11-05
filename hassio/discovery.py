@@ -115,7 +115,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
 @attr.s
 class Message:
     """Represent a single Discovery message."""
-    uuid = attr.ib(factory=lambda: uuid4().hex, kw_only=True, cmp=False)
     addon = attr.ib()
     service = attr.ib()
     config = attr.ib(cmp=False)
+    uuid = attr.ib(factory=lambda: uuid4().hex, kw_only=True, cmp=False)
