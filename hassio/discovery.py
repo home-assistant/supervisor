@@ -36,6 +36,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
             discovery = Message(**message)
             messages[discovery.uuid] = discovery
 
+        _LOGGER.info("Load %d messages", len(messages))
         self.message_obj = messages
 
     def save(self):
@@ -60,7 +61,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
     def send(self, addon, service, config):
         """Send a discovery message to Home Assistant."""
         try:
-            DISCOVERY_SERVICES[service](config)
+            config = DISCOVERY_SERVICES[service](config)
         except vol.Invalid as err:
             _LOGGER.error(
                 "Invalid discovery %s config", humanize_error(config, err))
@@ -115,7 +116,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
 @attr.s
 class Message:
     """Represent a single Discovery message."""
-    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False, init=False)
     addon = attr.ib()
     service = attr.ib()
     config = attr.ib(cmp=False)
+    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False)
