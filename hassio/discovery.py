@@ -118,4 +118,4 @@ class Message:
     addon = attr.ib()
     service = attr.ib()
     config = attr.ib(cmp=False)
-    uuid = attr.ib(factory=lambda: uuid4().hex, kw_only=True, cmp=False)
+    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False)
