@@ -67,7 +67,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
             raise DiscoveryError() from None
 
         # Create message
-        message = Message(addon.slug, service, config)
+        message = Message(addon=addon.slug, service=service, config=config)
 
         # Already exists?
         for old_message in self.list_messages:
@@ -115,7 +115,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
 @attr.s
 class Message:
     """Represent a single Discovery message."""
-    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False, init=False)
+    uuid = attr.ib(factory=lambda: uuid4().hex, cmp=False)
     addon = attr.ib()
     service = attr.ib()
     config = attr.ib(cmp=False)
