@@ -60,7 +60,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
     def send(self, addon, service, config):
         """Send a discovery message to Home Assistant."""
         try:
-            DISCOVERY_SERVICES[service](config)
+            config = DISCOVERY_SERVICES[service](config)
         except vol.Invalid as err:
             _LOGGER.error(
                 "Invalid discovery %s config", humanize_error(config, err))
