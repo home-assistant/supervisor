@@ -32,7 +32,7 @@ from ..services.validate import DISCOVERY_SERVICES
 _LOGGER = logging.getLogger(__name__)
 
 
-RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$")
+RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|ro))?$")
 RE_SERVICE = re.compile(r"^(?P<service>mqtt):(?P<rights>provide|want|need)$")
 
 V_STR = 'str'
