@@ -10,9 +10,6 @@ and updating software.
 
 ![](misc/hassio.png?raw=true)
 
-- [Hass.io Addons](https://github.com/home-assistant/hassio-addons)
-- [Hass.io Build](https://github.com/home-assistant/hassio-build)
-
 ## Installation
 
 Installation instructions can be found at <https://home-assistant.io/hassio>.
