@@ -48,7 +48,10 @@ class DockerHomeAssistant(DockerInterface):
             return False
 
         # cleanup
-        self._stop()
+        with suppress(docker.errors.DockerException):
+            container = self.sys_docker.containers.get(self.name)
+            container.start()
+            return True
 
         ret = self.sys_docker.run(
             self.image,
