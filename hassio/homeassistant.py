@@ -317,8 +317,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @process_lock
     async def restart(self):
         """Restart Home Assistant Docker."""
-        await self.instance.stop()
-        await self._start()
+        if not await self.instance.restart():
+            raise HomeAssistantError()
+
+        await self._block_till_run()
 
     def logs(self):
         """Get HomeAssistant docker logs.
