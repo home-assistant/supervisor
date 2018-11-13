@@ -300,6 +300,29 @@ class DockerInterface(CoreSysAttributes):
 
         return True
 
+    @process_lock	
+    def restart(self):	
+        """Restart docker container."""	
+        return self._loop.run_in_executor(None, self._restart)	
+
+    def _restart(self):	
+        """Restart docker container.	
+
+        Need run inside executor.	
+        """	
+        try:
+            container = self._docker.containers.get(self.name)
+        except docker.errors.DockerException:
+            return False
+
+        _LOGGER.info("Restart %s", self.image)
+        try:
+            container.restart(timeout=self.timeout)
+        except docker.errors.DockerException as err:
+            _LOGGER.warning("Can't restart %s: %s", self.image, err)
+            return False
+        return True
+
     @process_lock
     def execute_command(self, command):
         """Create a temporary container and run command."""
