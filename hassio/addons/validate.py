@@ -160,7 +160,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         }))
     }), False),
     vol.Optional(ATTR_IMAGE):
-        vol.Match(r"^([a-zA-Z.:\d{}]+/)*?([\w{}]+)/([\-\w{}]+)$"),
+        vol.Match(r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$"),
     vol.Optional(ATTR_TIMEOUT, default=10):
         vol.All(vol.Coerce(int), vol.Range(min=10, max=120)),
 }, extra=vol.REMOVE_EXTRA)
