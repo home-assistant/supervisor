@@ -87,6 +87,12 @@ class DockerAddon(DockerInterface):
                 'ALSA_OUTPUT': self.addon.audio_output,
                 'ALSA_INPUT': self.addon.audio_input,
             })
+        
+        # Provide options for legacy add-ons
+        if self.addon.legacy:
+            addon_env.update({
+                **self.addon.options
+            })
 
         return {
             **addon_env,
