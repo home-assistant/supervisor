@@ -1,0 +1,1 @@
+"""Add-ons tests."""
