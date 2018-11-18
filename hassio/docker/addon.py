@@ -90,9 +90,12 @@ class DockerAddon(DockerInterface):
 
         # Provide options for legacy add-ons
         if self.addon.legacy:
-            addon_env.update({
-                **self.addon.options
-            })
+            for key, value in self.addon.options.items():
+                if isinstance(value, (int, str)):
+                    addon_env.update({key: value})
+                else: 
+                    _LOGGER.warning(
+                        "Can not set nested option %s as Docker environment variable", key)
 
         return {
             **addon_env,
