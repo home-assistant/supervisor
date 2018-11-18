@@ -29,13 +29,26 @@ def test_basic_config():
 
 
 def test_invalid_repository():
-    """Validate basic config with invalid repository."""
+    """Validate basic config with invalid repositories."""
     config = load_json_fixture("basic-addon-config.json")
 
-    config['image'] = "home-assistant/no-valid-repo"
+    config['image'] = "something"
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
 
     config['image'] = "homeassistant/no-valid-repo:no-tag-allow"
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
+
+    config['image'] = "registry.gitlab.com/company/add-ons/test-example/text-example:no-tag-allow"
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(config)
+
+def test_valid_repository():
+    """Validate basic config with different valid repositories"""
+    config = load_json_fixture("basic-addon-config.json")
+
+    custom_registry = "registry.gitlab.com/company/add-ons/core/test-example"
+    config['image'] = custom_registry
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    assert valid_config['image'] == custom_registry
