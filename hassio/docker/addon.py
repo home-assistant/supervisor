@@ -93,9 +93,9 @@ class DockerAddon(DockerInterface):
             for key, value in self.addon.options.items():
                 if isinstance(value, (int, str)):
                     addon_env.update({key: value})
-                else: 
+                else:
                     _LOGGER.warning(
-                        "Can not set nested option %s as Docker environment variable", key)
+                        "Can not set nested option %s as Docker env", key)
 
         return {
             **addon_env,
