@@ -29,7 +29,7 @@ def rating_security(addon):
         rating += 1
 
     # Home Assistant Login
-    if addon.auth_api:
+    if addon.access_auth_api:
         rating += 1
 
     # Privileged options
