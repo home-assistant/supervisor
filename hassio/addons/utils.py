@@ -28,6 +28,10 @@ def rating_security(addon):
     elif addon.apparmor == SECURITY_PROFILE:
         rating += 1
 
+    # Home Assistant Login
+    if addon.access_auth_api:
+        rating += 1
+
     # Privileged options
     if any(privilege in addon.privileged
            for privilege in (PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
