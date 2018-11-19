@@ -74,7 +74,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
         for old_message in self.list_messages:
             if old_message != message:
                 continue
-            _LOGGER.warning("Duplicate discovery message from %s", addon.slug)
+            _LOGGER.info("Duplicate discovery message from %s", addon.slug)
             return old_message
 
         _LOGGER.info("Send discovery to Home Assistant %s from %s",
