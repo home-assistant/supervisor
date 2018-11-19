@@ -52,3 +52,11 @@ def test_valid_repository():
     config['image'] = custom_registry
     valid_config = vd.SCHEMA_ADDON_CONFIG(config)
     assert valid_config['image'] == custom_registry
+
+
+def test_valid_map():
+    """Validate basic config with different valid maps"""
+    config = load_json_fixture("basic-addon-config.json")
+
+    config['map'] = ['backup:rw', 'ssl:ro', 'config']
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
