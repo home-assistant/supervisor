@@ -471,18 +471,18 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         while True:
             await asyncio.sleep(10)
 
-            # Check if Container is is_running
+            # 1: Check if Container is is_running
             if not await self.instance.is_running():
                 _LOGGER.error("Home Assistant has crashed!")
                 break
 
-            # Check if API response
+            # 2: Check if API response
             if await self.sys_run_in_executor(check_port):
                 _LOGGER.info("Detect a running Home Assistant instance")
                 self._error_state = False
                 return
 
-            # Running DB Migration
+            # 3: Running DB Migration
             if migration_file.exists():
                 if not migration_progress:
                     migration_progress = True
@@ -493,7 +493,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 start_time = time.monotonic()
                 _LOGGER.info("Home Assistant record migration done")
 
-            # Timeout
+            # 4: Timeout
             if time.monotonic() - start_time > self.wait_boot:
                 _LOGGER.warning(
                     "Don't wait anymore of Home Assistant startup!")
