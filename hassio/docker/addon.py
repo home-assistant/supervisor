@@ -81,18 +81,11 @@ class DockerAddon(DockerInterface):
         """Return environment for Docker add-on."""
         addon_env = self.addon.environment or {}
 
-        # Need audio settings
-        if self.addon.with_audio:
-            addon_env.update({
-                'ALSA_OUTPUT': self.addon.audio_output,
-                'ALSA_INPUT': self.addon.audio_input,
-            })
-
         # Provide options for legacy add-ons
         if self.addon.legacy:
             for key, value in self.addon.options.items():
                 if isinstance(value, (int, str)):
-                    addon_env.update({key: value})
+                    addon_env[key] = value
                 else:
                     _LOGGER.warning(
                         "Can not set nested option %s as Docker env", key)
