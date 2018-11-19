@@ -15,10 +15,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def rating_security(addon):
-    """Return 1-5 for security rating.
+    """Return 1-6 for security rating.
 
     1 = not secure
-    5 = high secure
+    6 = high secure
     """
     rating = 5
 
