@@ -32,7 +32,7 @@ from ..services.validate import DISCOVERY_SERVICES
 _LOGGER = logging.getLogger(__name__)
 
 
-RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|:ro))?$")
+RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|ro))?$")
 RE_SERVICE = re.compile(r"^(?P<service>mqtt):(?P<rights>provide|want|need)$")
 
 V_STR = 'str'
@@ -160,7 +160,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         }))
     }), False),
     vol.Optional(ATTR_IMAGE):
-        vol.Match(r"^([a-zA-Z.:\d{}]+/)*?([\w{}]+)/([\-\w{}]+)$"),
+        vol.Match(r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$"),
     vol.Optional(ATTR_TIMEOUT, default=10):
         vol.All(vol.Coerce(int), vol.Range(min=10, max=120)),
 }, extra=vol.REMOVE_EXTRA)
