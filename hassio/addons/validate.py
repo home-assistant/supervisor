@@ -60,6 +60,7 @@ ARCH_ALL = [
 ]
 
 MACHINE_ALL = [
+    'generic-aarch64', 'generic-amd64', 'generic-armhf', 'generic-i386',
     'intel-nuc',
     'odroid-c2', 'odroid-xu',
     'orangepi-prime',
