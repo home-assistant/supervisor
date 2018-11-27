@@ -66,7 +66,7 @@ class HassIO(CoreSysAttributes):
             if await self.sys_supervisor.update():
                 return
         else:
-            _LOGGER.info("Ignore Hass.io auto updates on dev channel")
+            _LOGGER.info("Your are either on DEV-channel or there is currently no Hass.io update available")
 
         # start api
         await self.sys_api.start()
