@@ -102,7 +102,8 @@ async def remove_data(folder):
         _, error_msg = await proc.communicate()
     except OSError as err:
         error_msg = str(err)
+    else:
+        if proc.returncode == 0:
+            return
 
-    if proc.returncode == 0:
-        return
     _LOGGER.error("Can't remove Add-on Data: %s", error_msg)
