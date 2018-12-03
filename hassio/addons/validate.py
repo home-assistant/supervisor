@@ -56,7 +56,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r")\??$"
 )
 
-SCHEMA_LENGTH_PARTS = (
+_SCHEMA_LENGTH_PARTS = (
     'i_min', 'i_max', 'f_min', 'f_max', 's_min', 's_max')
 
 SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
@@ -281,7 +281,7 @@ def _single_validate(typ, value, key):
 
     # prepare range
     range_args = {}
-    for group_name in SCHEMA_LENGTH_PARTS:
+    for group_name in _SCHEMA_LENGTH_PARTS:
         group_value = match.group(group_name)
         if group_value:
             range_args[group_name[2:]] = float(group_value)
