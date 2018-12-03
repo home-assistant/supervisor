@@ -51,8 +51,8 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|str(?:\((?P<s_min>\d+)?,(?P<s_max>\d+)?\))?"
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
     r"|float(?:\((?P<f_min>[\d\.]+)?,(?P<f_max>[\d\.]+)?\))?"
-    r"|match\((?P<match>.*)\)"
-    r"|list\((?P<list>.*)\)"
+    r"|match\((?P<match>.+)\)"
+    r"|list\((?P<list>.+)\)"
     r")\??$"
 )
 
@@ -287,7 +287,7 @@ def _single_validate(typ, value, key):
             range_args[group_name[2:]] = float(group_value)
 
     if typ.startswith(V_STR):
-        return str(value)
+        return str(value,vol. Range(**range_args))(value)
     elif typ.startswith(V_INT):
         return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
     elif typ.startswith(V_FLOAT):
@@ -302,6 +302,8 @@ def _single_validate(typ, value, key):
         return NETWORK_PORT(value)
     elif typ.startswith(V_MATCH):
         return vol.Match(match.group('match'))(str(value))
+    elif typ.strartswith(V_LIST):
+        return vol.In(match.group('list').split('|'))(str(value))
 
     raise vol.Invalid(f"Fatal error for {key} type {typ}")
 
