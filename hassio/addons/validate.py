@@ -43,15 +43,21 @@ V_EMAIL = 'email'
 V_URL = 'url'
 V_PORT = 'port'
 V_MATCH = 'match'
+V_LIST = 'list'
 
 RE_SCHEMA_ELEMENT = re.compile(
     r"^(?:"
-    r"|str|bool|email|url|port"
+    r"|bool|email|url|port"
+    r"|str(?:\((?P<s_min>\d+)?,(?P<s_max>\d+)?\))?"
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
     r"|float(?:\((?P<f_min>[\d\.]+)?,(?P<f_max>[\d\.]+)?\))?"
     r"|match\((?P<match>.*)\)"
+    r"|list\((?P<list>.*)\)"
     r")\??$"
 )
+
+SCHEMA_LENGTH_PARTS = (
+    'i_min', 'i_max', 'f_min', 'f_max', 's_min', 's_max')
 
 SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
 
@@ -275,7 +281,7 @@ def _single_validate(typ, value, key):
 
     # prepare range
     range_args = {}
-    for group_name in ('i_min', 'i_max', 'f_min', 'f_max'):
+    for group_name in SCHEMA_LENGTH_PARTS:
         group_value = match.group(group_name)
         if group_value:
             range_args[group_name[2:]] = float(group_value)
