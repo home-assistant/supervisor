@@ -314,9 +314,10 @@ Load host configs from a USB stick.
         "CARD_ID": {
             "name": "xy",
             "type": "microphone",
-            "devices": {
-                "DEV_ID": "type of device"
-            }
+            "devices": [
+                "chan_id": "channel ID",
+                "chan_type": "type of device"
+            ]
         }
     }
 }
@@ -352,7 +353,7 @@ Load host configs from a USB stick.
     "port": 8123,
     "ssl": "bool",
     "watchdog": "bool",
-    "startup_time": 600
+    "wait_boot": 600
 }
 ```
 
@@ -386,7 +387,7 @@ Output is the raw Docker log.
     "password": "",
     "refresh_token": "",
     "watchdog": "bool",
-    "startup_time": 600
+    "wait_boot": 600
 }
 ```
 
