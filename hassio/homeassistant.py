@@ -214,13 +214,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             _LOGGER.warning("Fails install landingpage, retry after 60sec")
             await asyncio.sleep(60)
 
-        # Run landingpage after installation
-        _LOGGER.info("Start landing page")
-        try:
-            await self._start()
-        except HomeAssistantError:
-            _LOGGER.warning("Can't start landing page")
-
     @process_lock
     async def install(self):
         """Install a landing page."""
