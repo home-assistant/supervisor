@@ -21,6 +21,7 @@ from ..const import (
     ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API,
     ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING, ATTR_HOST_PID,
     ATTR_HASSIO_ROLE, ATTR_MACHINE, ATTR_AVAILABLE, ATTR_AUTH_API,
+    ATTR_KERNEL_MODULES,
     CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
 from ..coresys import CoreSysAttributes
 from ..validate import DOCKER_PORTS, ALSA_DEVICE
@@ -152,6 +153,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_AUTH_API: addon.access_auth_api,
             ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
             ATTR_GPIO: addon.with_gpio,
+            ATTR_KERNEL_MODULES: addon.with_kernel_modules,
             ATTR_DEVICETREE: addon.with_devicetree,
             ATTR_DOCKER_API: addon.access_docker_api,
             ATTR_AUDIO: addon.with_audio,
