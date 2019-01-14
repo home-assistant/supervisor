@@ -5,9 +5,17 @@ import logging
 import re
 
 from ..const import (
-    SECURITY_DISABLE, SECURITY_PROFILE, PRIVILEGED_NET_ADMIN,
-    PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE,
-    PRIVILEGED_DAC_READ_SEARCH, ROLE_ADMIN, ROLE_MANAGER)
+    SECURITY_DISABLE,
+    SECURITY_PROFILE,
+    PRIVILEGED_NET_ADMIN,
+    PRIVILEGED_SYS_ADMIN,
+    PRIVILEGED_SYS_RAWIO,
+    PRIVILEGED_SYS_PTRACE,
+    PRIVILEGED_DAC_READ_SEARCH,
+    PRIVILEGED_SYS_MODULE,
+    ROLE_ADMIN,
+    ROLE_MANAGER,
+)
 
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 
@@ -33,10 +41,17 @@ def rating_security(addon):
         rating += 1
 
     # Privileged options
-    if any(privilege in addon.privileged
-           for privilege in (PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
-                             PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE,
-                             PRIVILEGED_DAC_READ_SEARCH)):
+    if any(
+        privilege in addon.privileged
+        for privilege in (
+            PRIVILEGED_NET_ADMIN,
+            PRIVILEGED_SYS_ADMIN,
+            PRIVILEGED_SYS_RAWIO,
+            PRIVILEGED_SYS_PTRACE,
+            PRIVILEGED_SYS_MODULE,
+            PRIVILEGED_DAC_READ_SEARCH,
+        )
+    ):
         rating += -1
 
     # API Hass.io role
@@ -81,6 +96,7 @@ def extract_hash_from_path(path):
 
 def check_installed(method):
     """Wrap function with check if add-on is installed."""
+
     async def wrap_check(addon, *args, **kwargs):
         """Return False if not installed or the function."""
         if not addon.is_installed:
@@ -95,8 +111,7 @@ async def remove_data(folder):
     """Remove folder and reset privileged."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            "rm", "-rf", str(folder),
-            stdout=asyncio.subprocess.DEVNULL
+            "rm", "-rf", str(folder), stdout=asyncio.subprocess.DEVNULL
         )
 
         _, error_msg = await proc.communicate()
