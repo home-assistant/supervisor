@@ -65,7 +65,8 @@ class DockerAPI:
 
         # Create container
         try:
-            container = self.docker.containers.create(image, **kwargs)
+            container = self.docker.containers.create(
+                image, use_config_proxy=False, **kwargs)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't create container from %s: %s", name, err)
             return False
@@ -101,6 +102,7 @@ class DockerAPI:
                 image,
                 command=command,
                 network=self.network.name,
+                use_config_proxy=False,
                 **kwargs
             )
 

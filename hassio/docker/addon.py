@@ -320,6 +320,7 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:
             image, log = self.sys_docker.images.build(
+                use_config_proxy=False,
                 **build_env.get_docker_args(tag))
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)
