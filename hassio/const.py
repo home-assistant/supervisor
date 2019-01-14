@@ -262,4 +262,3 @@ ROLE_ADMIN = "admin"
 
 CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
-
