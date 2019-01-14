@@ -233,6 +233,14 @@ class DockerAddon(DockerInterface):
                 },
             })
 
+        # Kernel Modules support
+        if self.addon.with_kernel_modules:
+            volumes.update({
+                "/lib/modules": {
+                    'bind': "/lib/modules", 'mode': 'ro'
+                },
+            })
+
         # Docker API support
         if not self.addon.protected and self.addon.access_docker_api:
             volumes.update({
