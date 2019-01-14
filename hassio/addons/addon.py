@@ -28,7 +28,7 @@ from ..const import (
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
     ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
-    ATTR_MACHINE, ATTR_AUTH_API,
+    ATTR_MACHINE, ATTR_AUTH_API, ATTR_KERNEL_MODULES,
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
@@ -400,6 +400,11 @@ class Addon(CoreSysAttributes):
     def with_gpio(self):
         """Return True if the add-on access to GPIO interface."""
         return self._mesh[ATTR_GPIO]
+
+    @property
+    def with_kernel_modules(self):
+        """Return True if the add-on access to kernel modules."""
+        return self._mesh[ATTR_KERNEL_MODULES]
 
     @property
     def with_full_access(self):

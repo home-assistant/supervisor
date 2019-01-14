@@ -496,6 +496,7 @@ Get all available addons.
     "stdin": "bool",
     "webui": "null|http(s)://[HOST]:port/xy/zx",
     "gpio": "bool",
+    "kernel_modules": "bool",
     "devicetree": "bool",
     "docker_api": "bool",
     "audio": "bool",
