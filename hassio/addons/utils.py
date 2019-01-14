@@ -37,12 +37,12 @@ def rating_security(addon):
     if any(
             privilege in addon.privileged
             for privilege in (
-                PRIVILEGED_NET_ADMIN,
-                PRIVILEGED_SYS_ADMIN,
-                PRIVILEGED_SYS_RAWIO,
-                PRIVILEGED_SYS_PTRACE,
-                PRIVILEGED_SYS_MODULE,
-                PRIVILEGED_DAC_READ_SEARCH,
+                    PRIVILEGED_NET_ADMIN,
+                    PRIVILEGED_SYS_ADMIN,
+                    PRIVILEGED_SYS_RAWIO,
+                    PRIVILEGED_SYS_PTRACE,
+                    PRIVILEGED_SYS_MODULE,
+                    PRIVILEGED_DAC_READ_SEARCH,
             )
     ):
         rating += -1
