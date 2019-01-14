@@ -211,8 +211,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         while True:
             if await self.instance.install('landingpage'):
                 break
-            _LOGGER.warning("Fails install landingpage, retry after 60sec")
-            await asyncio.sleep(60)
+            _LOGGER.warning("Fails install landingpage, retry after 30sec")
+            await asyncio.sleep(30)
 
     @process_lock
     async def install(self):
@@ -226,8 +226,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             tag = self.last_version
             if tag and await self.instance.install(tag):
                 break
-            _LOGGER.warning("Error on install Home Assistant. Retry in 60sec")
-            await asyncio.sleep(60)
+            _LOGGER.warning("Error on install Home Assistant. Retry in 30sec")
+            await asyncio.sleep(30)
 
         # finishing
         _LOGGER.info("Home Assistant docker now installed")
