@@ -5,17 +5,10 @@ import logging
 import re
 
 from ..const import (
-    SECURITY_DISABLE,
-    SECURITY_PROFILE,
-    PRIVILEGED_NET_ADMIN,
-    PRIVILEGED_SYS_ADMIN,
-    PRIVILEGED_SYS_RAWIO,
-    PRIVILEGED_SYS_PTRACE,
-    PRIVILEGED_DAC_READ_SEARCH,
-    PRIVILEGED_SYS_MODULE,
-    ROLE_ADMIN,
-    ROLE_MANAGER,
-)
+    SECURITY_DISABLE, SECURITY_PROFILE, PRIVILEGED_NET_ADMIN,
+    PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE,
+    PRIVILEGED_DAC_READ_SEARCH, PRIVILEGED_SYS_MODULE, ROLE_ADMIN,
+    ROLE_MANAGER)
 
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 
@@ -42,15 +35,15 @@ def rating_security(addon):
 
     # Privileged options
     if any(
-        privilege in addon.privileged
-        for privilege in (
-            PRIVILEGED_NET_ADMIN,
-            PRIVILEGED_SYS_ADMIN,
-            PRIVILEGED_SYS_RAWIO,
-            PRIVILEGED_SYS_PTRACE,
-            PRIVILEGED_SYS_MODULE,
-            PRIVILEGED_DAC_READ_SEARCH,
-        )
+            privilege in addon.privileged
+            for privilege in (
+                PRIVILEGED_NET_ADMIN,
+                PRIVILEGED_SYS_ADMIN,
+                PRIVILEGED_SYS_RAWIO,
+                PRIVILEGED_SYS_PTRACE,
+                PRIVILEGED_SYS_MODULE,
+                PRIVILEGED_DAC_READ_SEARCH,
+            )
     ):
         rating += -1
 
