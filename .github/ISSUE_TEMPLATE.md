@@ -13,12 +13,6 @@
 - Or use this command: hass --version
 -->
 
-**Home Assistant release with the issue:**
-<!--
-- Frontend -> Developer tools -> Info
-- Or use this command: hass --version
--->
-
 **Operating environment (HassOS/Generic):**
 <!--
 Please provide details about your environment.

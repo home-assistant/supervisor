@@ -233,6 +233,14 @@ class DockerAddon(DockerInterface):
                 },
             })
 
+        # Kernel Modules support
+        if self.addon.with_kernel_modules:
+            volumes.update({
+                "/lib/modules": {
+                    'bind': "/lib/modules", 'mode': 'ro'
+                },
+            })
+
         # Docker API support
         if not self.addon.protected and self.addon.access_docker_api:
             volumes.update({
@@ -320,6 +328,7 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:
             image, log = self.sys_docker.images.build(
+                use_config_proxy=False,
                 **build_env.get_docker_args(tag))
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)

@@ -20,7 +20,6 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
 
     def save_data(self):
         """Ignore save function."""
-        pass
 
     @property
     def addon(self):
