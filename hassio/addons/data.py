@@ -124,7 +124,7 @@ class AddonsData(JsonConfig, CoreSysAttributes):
     def _set_builtin_repositories(self):
         """Add local built-in repository into dataset."""
         try:
-            builtin_file = Path(__file__).parent.joinpath('built-in.json')
+            builtin_file = Path(__file__).parent.joinpath("data/built-in.json")
             builtin_data = read_json_file(builtin_file)
         except (OSError, json.JSONDecodeError) as err:
             _LOGGER.warning("Can't read built-in json: %s", err)

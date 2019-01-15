@@ -213,6 +213,7 @@ MAP_BACKUP = "backup"
 MAP_SHARE = "share"
 
 ARCH_ARMHF = "armhf"
+ARCH_ARMV7 = "armv7"
 ARCH_AARCH64 = "aarch64"
 ARCH_AMD64 = "amd64"
 ARCH_I386 = "i386"
