@@ -6,14 +6,13 @@ from pathlib import Path
 import re
 from typing import TYPE_CHECKING
 
-from ..const import (
-    PRIVILEGED_DAC_READ_SEARCH, PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
-    PRIVILEGED_SYS_MODULE, PRIVILEGED_SYS_PTRACE, PRIVILEGED_SYS_RAWIO,
-    ROLE_ADMIN, ROLE_MANAGER, SECURITY_DISABLE, SECURITY_PROFILE)
+from ..const import (PRIVILEGED_DAC_READ_SEARCH, PRIVILEGED_NET_ADMIN,
+                     PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_MODULE,
+                     PRIVILEGED_SYS_PTRACE, PRIVILEGED_SYS_RAWIO, ROLE_ADMIN,
+                     ROLE_MANAGER, SECURITY_DISABLE, SECURITY_PROFILE)
 
 if TYPE_CHECKING:
     from .addon import Addon
-
 
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 _LOGGER = logging.getLogger(__name__)
@@ -40,16 +39,14 @@ def rating_security(addon: Addon):
     # Privileged options
     # pylint: disable=bad-continuation
     if any(
-        privilege in addon.privileged
-        for privilege in (
-            PRIVILEGED_NET_ADMIN,
-            PRIVILEGED_SYS_ADMIN,
-            PRIVILEGED_SYS_RAWIO,
-            PRIVILEGED_SYS_PTRACE,
-            PRIVILEGED_SYS_MODULE,
-            PRIVILEGED_DAC_READ_SEARCH,
-        )
-    ):
+            privilege in addon.privileged for privilege in (
+                PRIVILEGED_NET_ADMIN,
+                PRIVILEGED_SYS_ADMIN,
+                PRIVILEGED_SYS_RAWIO,
+                PRIVILEGED_SYS_PTRACE,
+                PRIVILEGED_SYS_MODULE,
+                PRIVILEGED_DAC_READ_SEARCH,
+            )):
         rating += -1
 
     # API Hass.io role
@@ -109,8 +106,7 @@ async def remove_data(folder: Path):
     """Remove folder and reset privileged."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            "rm", "-rf", str(folder), stdout=asyncio.subprocess.DEVNULL
-        )
+            "rm", "-rf", str(folder), stdout=asyncio.subprocess.DEVNULL)
 
         _, error_msg = await proc.communicate()
     except OSError as err:

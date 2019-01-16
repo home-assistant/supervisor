@@ -46,6 +46,7 @@ class CpuArch(CoreSysAttributes):
             self._supported_arch.append(self.default)
             return
 
+        # Use configs from arch.json
         self._supported_arch.extend(arch_data[self.sys_machine])
         self._default_arch = self.supported[0]
 
