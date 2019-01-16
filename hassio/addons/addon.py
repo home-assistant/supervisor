@@ -87,10 +87,14 @@ class Addon(CoreSysAttributes):
     @property
     def available(self):
         """Return True if this add-on is available on this platform."""
-        if self.sys_arch not in self.supported_arch:
+        # Architecture
+        if not self.sys_arch.is_supported(self.supported_arch):
             return False
+
+        # Machine / Hardware
         if self.sys_machine not in self.supported_machine:
             return False
+
         return True
 
     @property
@@ -504,9 +508,9 @@ class Addon(CoreSysAttributes):
             return addon_data[ATTR_IMAGE].format(arch=self.sys_arch)
 
         # local build
-        return "{}/{}-addon-{}".format(
-            addon_data[ATTR_REPOSITORY], self.sys_arch,
-            addon_data[ATTR_SLUG])
+        return (f"{addon_data[ATTR_REPOSITORY]}/"
+                f"{self.sys_arch.default}-"
+                f"addon-{addon_data[ATTR_SLUG]}")
 
     @property
     def need_build(self):
@@ -681,7 +685,7 @@ class Addon(CoreSysAttributes):
         if not self.available:
             _LOGGER.error(
                 "Add-on %s not supported on %s with %s architecture",
-                self._id, self.sys_machine, self.sys_arch)
+                self._id, self.sys_machine, self.sys_arch.supported)
             return False
 
         if self.is_installed:

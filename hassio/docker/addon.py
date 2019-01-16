@@ -7,9 +7,8 @@ import requests
 
 from .interface import DockerInterface
 from ..addons.build import AddonBuild
-from ..const import (
-    MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE, ENV_TOKEN,
-    ENV_TIME, SECURITY_PROFILE, SECURITY_DISABLE)
+from ..const import (MAP_CONFIG, MAP_SSL, MAP_ADDONS, MAP_BACKUP, MAP_SHARE,
+                     ENV_TOKEN, ENV_TIME, SECURITY_PROFILE, SECURITY_DISABLE)
 from ..utils import process_lock
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,16 +42,16 @@ class DockerAddon(DockerInterface):
     @property
     def version(self):
         """Return version of Docker image."""
-        if not self.addon.legacy:
-            return super().version
-        return self.addon.version_installed
+        if self.addon.legacy:
+            return self.addon.version_installed
+        return super().version
 
     @property
     def arch(self):
         """Return arch of Docker image."""
-        if not self.addon.legacy:
-            return super().arch
-        return self.sys_arch
+        if self.addon.legacy:
+            return self.sys_arch.default
+        return super().arch
 
     @property
     def name(self):
@@ -178,8 +177,10 @@ class DockerAddon(DockerInterface):
         """Generate volumes for mappings."""
         volumes = {
             str(self.addon.path_extern_data): {
-                'bind': "/data", 'mode': 'rw'
-            }}
+                'bind': "/data",
+                'mode': 'rw'
+            }
+        }
 
         addon_mapping = self.addon.map_volumes
 
@@ -187,32 +188,42 @@ class DockerAddon(DockerInterface):
         if MAP_CONFIG in addon_mapping:
             volumes.update({
                 str(self.sys_config.path_extern_homeassistant): {
-                    'bind': "/config", 'mode': addon_mapping[MAP_CONFIG]
-                }})
+                    'bind': "/config",
+                    'mode': addon_mapping[MAP_CONFIG]
+                }
+            })
 
         if MAP_SSL in addon_mapping:
             volumes.update({
                 str(self.sys_config.path_extern_ssl): {
-                    'bind': "/ssl", 'mode': addon_mapping[MAP_SSL]
-                }})
+                    'bind': "/ssl",
+                    'mode': addon_mapping[MAP_SSL]
+                }
+            })
 
         if MAP_ADDONS in addon_mapping:
             volumes.update({
                 str(self.sys_config.path_extern_addons_local): {
-                    'bind': "/addons", 'mode': addon_mapping[MAP_ADDONS]
-                }})
+                    'bind': "/addons",
+                    'mode': addon_mapping[MAP_ADDONS]
+                }
+            })
 
         if MAP_BACKUP in addon_mapping:
             volumes.update({
                 str(self.sys_config.path_extern_backup): {
-                    'bind': "/backup", 'mode': addon_mapping[MAP_BACKUP]
-                }})
+                    'bind': "/backup",
+                    'mode': addon_mapping[MAP_BACKUP]
+                }
+            })
 
         if MAP_SHARE in addon_mapping:
             volumes.update({
                 str(self.sys_config.path_extern_share): {
-                    'bind': "/share", 'mode': addon_mapping[MAP_SHARE]
-                }})
+                    'bind': "/share",
+                    'mode': addon_mapping[MAP_SHARE]
+                }
+            })
 
         # Init other hardware mappings
 
@@ -221,7 +232,8 @@ class DockerAddon(DockerInterface):
             for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
                 volumes.update({
                     gpio_path: {
-                        'bind': gpio_path, 'mode': 'rw'
+                        'bind': gpio_path,
+                        'mode': 'rw'
                     },
                 })
 
@@ -229,7 +241,8 @@ class DockerAddon(DockerInterface):
         if self.addon.with_devicetree:
             volumes.update({
                 "/sys/firmware/devicetree/base": {
-                    'bind': "/device-tree", 'mode': 'ro'
+                    'bind': "/device-tree",
+                    'mode': 'ro'
                 },
             })
 
@@ -237,7 +250,8 @@ class DockerAddon(DockerInterface):
         if self.addon.with_kernel_modules:
             volumes.update({
                 "/lib/modules": {
-                    'bind': "/lib/modules", 'mode': 'ro'
+                    'bind': "/lib/modules",
+                    'mode': 'ro'
                 },
             })
 
@@ -245,7 +259,8 @@ class DockerAddon(DockerInterface):
         if not self.addon.protected and self.addon.access_docker_api:
             volumes.update({
                 "/var/run/docker.sock": {
-                    'bind': "/var/run/docker.sock", 'mode': 'ro'
+                    'bind': "/var/run/docker.sock",
+                    'mode': 'ro'
                 },
             })
 
@@ -253,15 +268,19 @@ class DockerAddon(DockerInterface):
         if self.addon.host_dbus:
             volumes.update({
                 "/var/run/dbus": {
-                    'bind': "/var/run/dbus", 'mode': 'rw'
-                }})
+                    'bind': "/var/run/dbus",
+                    'mode': 'rw'
+                }
+            })
 
         # ALSA configuration
         if self.addon.with_audio:
             volumes.update({
                 str(self.addon.path_extern_asound): {
-                    'bind': "/etc/asound.conf", 'mode': 'ro'
-                }})
+                    'bind': "/etc/asound.conf",
+                    'mode': 'ro'
+                }
+            })
 
         return volumes
 
@@ -275,8 +294,8 @@ class DockerAddon(DockerInterface):
 
         # Security check
         if not self.addon.protected:
-            _LOGGER.warning(
-                "%s run with disabled protected mode!", self.addon.name)
+            _LOGGER.warning("%s run with disabled protected mode!",
+                            self.addon.name)
 
         # cleanup
         self._stop()
@@ -299,12 +318,11 @@ class DockerAddon(DockerInterface):
             security_opt=self.security_opt,
             environment=self.environment,
             volumes=self.volumes,
-            tmpfs=self.tmpfs
-        )
+            tmpfs=self.tmpfs)
 
         if ret:
-            _LOGGER.info("Start Docker add-on %s with version %s",
-                         self.image, self.version)
+            _LOGGER.info("Start Docker add-on %s with version %s", self.image,
+                         self.version)
 
         return ret
 
@@ -328,8 +346,7 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:
             image, log = self.sys_docker.images.build(
-                use_config_proxy=False,
-                **build_env.get_docker_args(tag))
+                use_config_proxy=False, **build_env.get_docker_args(tag))
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)
             image.tag(self.image, tag='latest')

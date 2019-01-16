@@ -4,34 +4,39 @@ import logging
 
 import voluptuous as vol
 
-from .utils import api_process, api_process_raw, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_IMAGE, ATTR_CUSTOM, ATTR_BOOT,
-    ATTR_PORT, ATTR_PASSWORD, ATTR_SSL, ATTR_WATCHDOG, ATTR_CPU_PERCENT,
-    ATTR_MEMORY_USAGE, ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX,
-    ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_WAIT_BOOT, ATTR_MACHINE,
-    ATTR_REFRESH_TOKEN, CONTENT_TYPE_BINARY)
+    ATTR_ARCH, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_BOOT, ATTR_CPU_PERCENT,
+    ATTR_CUSTOM, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_MACHINE, ATTR_MEMORY_LIMIT,
+    ATTR_MEMORY_USAGE, ATTR_NETWORK_RX, ATTR_NETWORK_TX, ATTR_PASSWORD,
+    ATTR_PORT, ATTR_REFRESH_TOKEN, ATTR_SSL, ATTR_VERSION, ATTR_WAIT_BOOT,
+    ATTR_WATCHDOG, CONTENT_TYPE_BINARY)
 from ..coresys import CoreSysAttributes
-from ..validate import NETWORK_PORT, DOCKER_IMAGE
 from ..exceptions import APIError
+from ..validate import DOCKER_IMAGE, NETWORK_PORT
+from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER = logging.getLogger(__name__)
 
-
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_BOOT): vol.Boolean(),
+    vol.Optional(ATTR_BOOT):
+        vol.Boolean(),
     vol.Inclusive(ATTR_IMAGE, 'custom_hass'):
         vol.Maybe(vol.Coerce(str)),
     vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'):
         vol.Any(None, DOCKER_IMAGE),
-    vol.Optional(ATTR_PORT): NETWORK_PORT,
-    vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
-    vol.Optional(ATTR_SSL): vol.Boolean(),
-    vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
+    vol.Optional(ATTR_PORT):
+        NETWORK_PORT,
+    vol.Optional(ATTR_PASSWORD):
+        vol.Maybe(vol.Coerce(str)),
+    vol.Optional(ATTR_SSL):
+        vol.Boolean(),
+    vol.Optional(ATTR_WATCHDOG):
+        vol.Boolean(),
     vol.Optional(ATTR_WAIT_BOOT):
         vol.All(vol.Coerce(int), vol.Range(min=60)),
-    vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
+    vol.Optional(ATTR_REFRESH_TOKEN):
+        vol.Maybe(vol.Coerce(str)),
 })
 
 SCHEMA_VERSION = vol.Schema({
@@ -49,6 +54,7 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_VERSION: self.sys_homeassistant.version,
             ATTR_LAST_VERSION: self.sys_homeassistant.last_version,
             ATTR_MACHINE: self.sys_homeassistant.machine,
+            ATTR_ARCH: self.sys_homeassistant.arch,
             ATTR_IMAGE: self.sys_homeassistant.image,
             ATTR_CUSTOM: self.sys_homeassistant.is_custom_image,
             ATTR_BOOT: self.sys_homeassistant.boot,

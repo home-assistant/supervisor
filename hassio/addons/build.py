@@ -1,11 +1,11 @@
 """Hass.io add-on build environment."""
 from pathlib import Path
-from typing import Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
-from .validate import SCHEMA_BUILD_CONFIG, BASE_IMAGE
-from ..const import ATTR_SQUASH, ATTR_BUILD_FROM, ATTR_ARGS, META_ADDON
-from ..coresys import CoreSysAttributes, CoreSys
+from ..const import ATTR_ARGS, ATTR_BUILD_FROM, ATTR_SQUASH, META_ADDON
+from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.json import JsonConfig
+from .validate import BASE_IMAGE, SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
     from .addon import Addon
@@ -34,7 +34,8 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
     def base_image(self) -> str:
         """Base images for this add-on."""
         return self._data[ATTR_BUILD_FROM].get(
-            self.sys_arch.default, f"homeassistant/{self.sys_arch.default}")
+            self.sys_arch.default,
+            f"homeassistant/{self.sys_arch.default}-base:latest")
 
     @property
     def squash(self) -> bool:

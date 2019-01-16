@@ -8,10 +8,8 @@ URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = "https://s3.amazonaws.com/hassio-version/{channel}.json"
 URL_HASSIO_APPARMOR = "https://s3.amazonaws.com/hassio-version/apparmor.txt"
 
-URL_HASSOS_OTA = (
-    "https://github.com/home-assistant/hassos/releases/download/"
-    "{version}/hassos_{board}-{version}.raucb"
-)
+URL_HASSOS_OTA = ("https://github.com/home-assistant/hassos/releases/download/"
+                  "{version}/hassos_{board}-{version}.raucb")
 
 HASSIO_DATA = Path("/data")
 
@@ -187,6 +185,7 @@ ATTR_HASSIO_ROLE = "hassio_role"
 ATTR_SUPERVISOR = "supervisor"
 ATTR_AUTH_API = "auth_api"
 ATTR_KERNEL_MODULES = "kernel_modules"
+ATTR_SUPPORTED_ARCH = "supported_arch"
 
 SERVICE_MQTT = "mqtt"
 PROVIDE_SERVICE = "provide"
@@ -223,9 +222,7 @@ ARCH_AARCH64 = "aarch64"
 ARCH_AMD64 = "amd64"
 ARCH_I386 = "i386"
 
-ARCH_ALL = [
-    ARCH_ARMHF, ARCH_ARMV7, ARCH_AARCH64, ARCH_AMD64, ARCH_I386
-]
+ARCH_ALL = [ARCH_ARMHF, ARCH_ARMV7, ARCH_AARCH64, ARCH_AMD64, ARCH_I386]
 
 CHANNEL_STABLE = "stable"
 CHANNEL_BETA = "beta"
