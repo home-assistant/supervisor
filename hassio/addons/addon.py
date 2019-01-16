@@ -28,7 +28,7 @@ from ..const import (
     ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
     ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
     ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
-    ATTR_MACHINE, ATTR_AUTH_API, ATTR_KERNEL_MODULES,
+    ATTR_MACHINE, ATTR_AUTH_API, ATTR_KERNEL_MODULES, ATTR_IMAGE,
     SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
@@ -104,6 +104,7 @@ class Addon(CoreSysAttributes):
         self._data.user[self._id] = {
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
+            ATTR_IMAGE: self.image,
         }
         self._data.save_data()
 

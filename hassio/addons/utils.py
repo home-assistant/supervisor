@@ -2,11 +2,14 @@
 import asyncio
 import hashlib
 import logging
-import re
 from pathlib import Path
+import re
 from typing import TYPE_CHECKING
 
-from .. import const as con
+from ..const import (
+    PRIVILEGED_DAC_READ_SEARCH, PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN,
+    PRIVILEGED_SYS_MODULE, PRIVILEGED_SYS_PTRACE, PRIVILEGED_SYS_RAWIO,
+    ROLE_ADMIN, ROLE_MANAGER, SECURITY_DISABLE, SECURITY_PROFILE)
 
 if TYPE_CHECKING:
     from .addon import Addon
@@ -25,9 +28,9 @@ def rating_security(addon: Addon):
     rating = 5
 
     # AppArmor
-    if addon.apparmor == con.SECURITY_DISABLE:
+    if addon.apparmor == SECURITY_DISABLE:
         rating += -1
-    elif addon.apparmor == con.SECURITY_PROFILE:
+    elif addon.apparmor == SECURITY_PROFILE:
         rating += 1
 
     # Home Assistant Login
@@ -39,20 +42,20 @@ def rating_security(addon: Addon):
     if any(
         privilege in addon.privileged
         for privilege in (
-            con.PRIVILEGED_NET_ADMIN,
-            con.PRIVILEGED_SYS_ADMIN,
-            con.PRIVILEGED_SYS_RAWIO,
-            con.PRIVILEGED_SYS_PTRACE,
-            con.PRIVILEGED_SYS_MODULE,
-            con.PRIVILEGED_DAC_READ_SEARCH,
+            PRIVILEGED_NET_ADMIN,
+            PRIVILEGED_SYS_ADMIN,
+            PRIVILEGED_SYS_RAWIO,
+            PRIVILEGED_SYS_PTRACE,
+            PRIVILEGED_SYS_MODULE,
+            PRIVILEGED_DAC_READ_SEARCH,
         )
     ):
         rating += -1
 
     # API Hass.io role
-    if addon.hassio_role == con.ROLE_MANAGER:
+    if addon.hassio_role == ROLE_MANAGER:
         rating += -1
-    elif addon.hassio_role == con.ROLE_ADMIN:
+    elif addon.hassio_role == ROLE_ADMIN:
         rating += -2
 
     # Not secure Networking
