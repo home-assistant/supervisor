@@ -22,7 +22,8 @@ class CoreSys:
         self._loop = loop
         self._websession = aiohttp.ClientSession(loop=loop)
         self._websession_ssl = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(verify_ssl=False), loop=loop)
+            connector=aiohttp.TCPConnector(verify_ssl=False), loop=loop
+        )
 
         # Global objects
         self._config = CoreConfig()
@@ -33,6 +34,7 @@ class CoreSys:
 
         # Internal objects pointers
         self._core = None
+        self._arch = None
         self._auth = None
         self._homeassistant = None
         self._supervisor = None
@@ -46,13 +48,6 @@ class CoreSys:
         self._hassos = None
         self._services = None
         self._discovery = None
-
-    @property
-    def arch(self):
-        """Return running arch of the Hass.io system."""
-        if self._supervisor:
-            return self._supervisor.arch
-        return None
 
     @property
     def machine(self):
@@ -122,6 +117,18 @@ class CoreSys:
         if self._core:
             raise RuntimeError("Hass.io already set!")
         self._core = value
+
+    @property
+    def arch(self):
+        """Return CpuArch object."""
+        return self._arch
+
+    @arch.setter
+    def arch(self, value):
+        """Set a CpuArch object."""
+        if self._arch:
+            raise RuntimeError("CpuArch already set!")
+        self._arch = value
 
     @property
     def auth(self):

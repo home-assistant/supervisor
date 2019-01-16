@@ -13,6 +13,7 @@ from .addons import AddonManager
 from .api import RestAPI
 from .const import SOCKET_DOCKER
 from .coresys import CoreSys
+from .arch import CpuArch
 from .supervisor import Supervisor
 from .homeassistant import HomeAssistant
 from .snapshots import SnapshotManager
@@ -26,11 +27,11 @@ from .hassos import HassOS
 
 _LOGGER = logging.getLogger(__name__)
 
-ENV_SHARE = 'SUPERVISOR_SHARE'
-ENV_NAME = 'SUPERVISOR_NAME'
-ENV_REPO = 'HOMEASSISTANT_REPOSITORY'
+ENV_SHARE = "SUPERVISOR_SHARE"
+ENV_NAME = "SUPERVISOR_NAME"
+ENV_REPO = "HOMEASSISTANT_REPOSITORY"
 
-MACHINE_ID = Path('/etc/machine-id')
+MACHINE_ID = Path("/etc/machine-id")
 
 
 def initialize_coresys(loop):
@@ -39,6 +40,7 @@ def initialize_coresys(loop):
 
     # Initialize core objects
     coresys.core = HassIO(coresys)
+    coresys.arch = CpuArch(coresys)
     coresys.auth = Auth(coresys)
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
@@ -70,8 +72,8 @@ def initialize_system_data(coresys):
     # Home Assistant configuration folder
     if not config.path_homeassistant.is_dir():
         _LOGGER.info(
-            "Create Home Assistant configuration folder %s",
-            config.path_homeassistant)
+            "Create Home Assistant configuration folder %s", config.path_homeassistant
+        )
         config.path_homeassistant.mkdir()
 
     # hassio ssl folder
@@ -81,18 +83,19 @@ def initialize_system_data(coresys):
 
     # hassio addon data folder
     if not config.path_addons_data.is_dir():
-        _LOGGER.info(
-            "Create Hass.io Add-on data folder %s", config.path_addons_data)
+        _LOGGER.info("Create Hass.io Add-on data folder %s", config.path_addons_data)
         config.path_addons_data.mkdir(parents=True)
 
     if not config.path_addons_local.is_dir():
-        _LOGGER.info("Create Hass.io Add-on local repository folder %s",
-                     config.path_addons_local)
+        _LOGGER.info(
+            "Create Hass.io Add-on local repository folder %s", config.path_addons_local
+        )
         config.path_addons_local.mkdir(parents=True)
 
     if not config.path_addons_git.is_dir():
-        _LOGGER.info("Create Hass.io Add-on git repositories folder %s",
-                     config.path_addons_git)
+        _LOGGER.info(
+            "Create Hass.io Add-on git repositories folder %s", config.path_addons_git
+        )
         config.path_addons_git.mkdir(parents=True)
 
     # hassio tmp folder
@@ -134,26 +137,27 @@ def migrate_system_env(coresys):
 def initialize_logging():
     """Setup the logging."""
     logging.basicConfig(level=logging.INFO)
-    fmt = ("%(asctime)s %(levelname)s (%(threadName)s) "
-           "[%(name)s] %(message)s")
+    fmt = "%(asctime)s %(levelname)s (%(threadName)s) " "[%(name)s] %(message)s"
     colorfmt = "%(log_color)s{}%(reset)s".format(fmt)
-    datefmt = '%y-%m-%d %H:%M:%S'
+    datefmt = "%y-%m-%d %H:%M:%S"
 
     # suppress overly verbose logs from libraries that aren't helpful
     logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
-    logging.getLogger().handlers[0].setFormatter(ColoredFormatter(
-        colorfmt,
-        datefmt=datefmt,
-        reset=True,
-        log_colors={
-            'DEBUG': 'cyan',
-            'INFO': 'green',
-            'WARNING': 'yellow',
-            'ERROR': 'red',
-            'CRITICAL': 'red',
-        }
-    ))
+    logging.getLogger().handlers[0].setFormatter(
+        ColoredFormatter(
+            colorfmt,
+            datefmt=datefmt,
+            reset=True,
+            log_colors={
+                "DEBUG": "cyan",
+                "INFO": "green",
+                "WARNING": "yellow",
+                "ERROR": "red",
+                "CRITICAL": "red",
+            },
+        )
+    )
 
 
 def check_environment():
@@ -172,12 +176,12 @@ def check_environment():
         return False
 
     # check socat exec
-    if not shutil.which('socat'):
+    if not shutil.which("socat"):
         _LOGGER.fatal("Can't find socat!")
         return False
 
     # check socat exec
-    if not shutil.which('gdbus'):
+    if not shutil.which("gdbus"):
         _LOGGER.fatal("Can't find gdbus!")
         return False
 
@@ -187,19 +191,16 @@ def check_environment():
 def reg_signal(loop):
     """Register SIGTERM and SIGKILL to stop system."""
     try:
-        loop.add_signal_handler(
-            signal.SIGTERM, lambda: loop.call_soon(loop.stop))
+        loop.add_signal_handler(signal.SIGTERM, lambda: loop.call_soon(loop.stop))
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGTERM")
 
     try:
-        loop.add_signal_handler(
-            signal.SIGHUP, lambda: loop.call_soon(loop.stop))
+        loop.add_signal_handler(signal.SIGHUP, lambda: loop.call_soon(loop.stop))
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGHUP")
 
     try:
-        loop.add_signal_handler(
-            signal.SIGINT, lambda: loop.call_soon(loop.stop))
+        loop.add_signal_handler(signal.SIGINT, lambda: loop.call_soon(loop.stop))
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGINT")
