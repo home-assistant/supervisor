@@ -102,24 +102,24 @@ class AddonsData(JsonConfig, CoreSysAttributes):
             except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 _LOGGER.warning("Can't read %s", addon)
                 continue
-               
+
+            # validate
             try:
-                # validate
                 addon_config = SCHEMA_ADDON_CONFIG(addon_config)
-  
+
              except vol.Invalid as ex:
                 _LOGGER.warning("Can't read %s: %s", addon,
                                 humanize_error(addon_config, ex))
                 continue
 
-             # Generate slug
-                addon_slug = "{}_{}".format(
-                    repository, addon_config[ATTR_SLUG])
+            # Generate slug
+            addon_slug = "{}_{}".format(
+                repository, addon_config[ATTR_SLUG])
 
-                # store
-                addon_config[ATTR_REPOSITORY] = repository
-                addon_config[ATTR_LOCATON] = str(addon.parent)
-                self._cache[addon_slug] = addon_config
+            # store
+            addon_config[ATTR_REPOSITORY] = repository
+            addon_config[ATTR_LOCATON] = str(addon.parent)
+            self._cache[addon_slug] = addon_config
 
     def _set_builtin_repositories(self):
         """Add local built-in repository into dataset."""
