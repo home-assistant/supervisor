@@ -107,7 +107,7 @@ class AddonsData(JsonConfig, CoreSysAttributes):
             try:
                 addon_config = SCHEMA_ADDON_CONFIG(addon_config)
 
-             except vol.Invalid as ex:
+            except vol.Invalid as ex:
                 _LOGGER.warning("Can't read %s: %s", addon,
                                 humanize_error(addon_config, ex))
                 continue
