@@ -18,7 +18,7 @@ RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 _LOGGER = logging.getLogger(__name__)
 
 
-def rating_security(addon: Addon):
+def rating_security(addon: Addon) -> int:
     """Return 1-6 for security rating.
 
     1 = not secure
@@ -74,13 +74,13 @@ def rating_security(addon: Addon):
     return max(min(6, rating), 1)
 
 
-def get_hash_from_repository(name: str):
+def get_hash_from_repository(name: str) -> str:
     """Generate a hash from repository."""
     key = name.lower().encode()
     return hashlib.sha1(key).hexdigest()[:8]
 
 
-def extract_hash_from_path(path: Path):
+def extract_hash_from_path(path: Path) -> str:
     """Extract repo id from path."""
     repository_dir = path.parts[-1]
 
@@ -102,7 +102,7 @@ def check_installed(method):
     return wrap_check
 
 
-async def remove_data(folder: Path):
+async def remove_data(folder: Path) -> None:
     """Remove folder and reset privileged."""
     try:
         proc = await asyncio.create_subprocess_exec(
