@@ -2,8 +2,6 @@
 
 import pytest
 
-from hassio.arch import CpuArch
-
 
 async def test_machine_not_exits(coresys, sys_arch):
     """Test arch for raspberrypi."""

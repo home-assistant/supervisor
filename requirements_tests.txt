@@ -1,0 +1,4 @@
+flake8==3.6.0
+pylint==2.2.2
+pytest==4.1.1
+pytest-sanic==0.1.15

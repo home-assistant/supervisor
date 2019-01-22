@@ -1,8 +1,8 @@
 """Init file for Hass.io add-ons."""
 from contextlib import suppress
 from copy import deepcopy
-import logging
 import json
+import logging
 from pathlib import Path, PurePath
 import re
 import shutil
@@ -12,30 +12,30 @@ from tempfile import TemporaryDirectory
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .validate import (
-    validate_options, SCHEMA_ADDON_SNAPSHOT, RE_VOLUME, RE_SERVICE,
-    MACHINE_ALL)
-from .utils import check_installed, remove_data
 from ..const import (
-    ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_BOOT, ATTR_MAP,
-    ATTR_OPTIONS, ATTR_PORTS, ATTR_SCHEMA, ATTR_IMAGE, ATTR_REPOSITORY,
-    ATTR_URL, ATTR_ARCH, ATTR_LOCATON, ATTR_DEVICES, ATTR_ENVIRONMENT,
-    ATTR_HOST_NETWORK, ATTR_TMPFS, ATTR_PRIVILEGED, ATTR_STARTUP, ATTR_UUID,
-    STATE_STARTED, STATE_STOPPED, STATE_NONE, ATTR_USER, ATTR_SYSTEM,
-    ATTR_STATE, ATTR_TIMEOUT, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_WEBUI,
-    ATTR_HASSIO_API, ATTR_AUDIO, ATTR_AUDIO_OUTPUT, ATTR_AUDIO_INPUT,
-    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY, ATTR_HOST_IPC,
-    ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_DISCOVERY, ATTR_SERVICES,
-    ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_FULL_ACCESS,
-    ATTR_PROTECTED, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
-    ATTR_MACHINE, ATTR_AUTH_API, ATTR_KERNEL_MODULES, ATTR_IMAGE,
-    SECURITY_PROFILE, SECURITY_DISABLE, SECURITY_DEFAULT)
+    ATTR_ACCESS_TOKEN, ATTR_APPARMOR, ATTR_ARCH, ATTR_AUDIO, ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT, ATTR_AUTH_API, ATTR_AUTO_UART, ATTR_AUTO_UPDATE,
+    ATTR_BOOT, ATTR_DESCRIPTON, ATTR_DEVICES, ATTR_DEVICETREE, ATTR_DISCOVERY,
+    ATTR_DOCKER_API, ATTR_ENVIRONMENT, ATTR_FULL_ACCESS, ATTR_GPIO,
+    ATTR_HASSIO_API, ATTR_HASSIO_ROLE, ATTR_HOMEASSISTANT_API, ATTR_HOST_DBUS,
+    ATTR_HOST_IPC, ATTR_HOST_NETWORK, ATTR_HOST_PID, ATTR_IMAGE,
+    ATTR_KERNEL_MODULES, ATTR_LEGACY, ATTR_LOCATON, ATTR_MACHINE, ATTR_MAP,
+    ATTR_NAME, ATTR_NETWORK, ATTR_OPTIONS, ATTR_PORTS, ATTR_PRIVILEGED,
+    ATTR_PROTECTED, ATTR_REPOSITORY, ATTR_SCHEMA, ATTR_SERVICES, ATTR_SLUG,
+    ATTR_STARTUP, ATTR_STATE, ATTR_STDIN, ATTR_SYSTEM, ATTR_TIMEOUT,
+    ATTR_TMPFS, ATTR_URL, ATTR_USER, ATTR_UUID, ATTR_VERSION, ATTR_WEBUI,
+    SECURITY_DEFAULT, SECURITY_DISABLE, SECURITY_PROFILE, STATE_NONE,
+    STATE_STARTED, STATE_STOPPED)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
-from ..utils import create_token
-from ..utils.json import write_json_file, read_json_file
-from ..utils.apparmor import adjust_profile
 from ..exceptions import HostAppArmorError
+from ..utils import create_token
+from ..utils.apparmor import adjust_profile
+from ..utils.json import read_json_file, write_json_file
+from .utils import check_installed, remove_data
+from .validate import (
+    MACHINE_ALL, RE_SERVICE, RE_VOLUME, SCHEMA_ADDON_SNAPSHOT,
+    validate_options)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,8 +56,13 @@ class Addon(CoreSysAttributes):
 
     async def load(self):
         """Async initialize of object."""
-        if self.is_installed:
-            await self.instance.attach()
+        if not self.is_installed:
+            return
+        await self.instance.attach()
+
+        if ATTR_IMAGE not in self._data.user[self._id]:
+            self._data.user[self._id][ATTR_IMAGE] = self.image
+            self.save_data()
 
     @property
     def slug(self):
@@ -110,25 +115,25 @@ class Addon(CoreSysAttributes):
             ATTR_VERSION: version,
             ATTR_IMAGE: self.image,
         }
-        self._data.save_data()
+        self.save_data()
 
     def _set_uninstall(self):
         """Set add-on as uninstalled."""
         self._data.system.pop(self._id, None)
         self._data.user.pop(self._id, None)
-        self._data.save_data()
+        self.save_data()
 
     def _set_update(self, version):
         """Update version of add-on."""
         self._data.system[self._id] = deepcopy(self._data.cache[self._id])
         self._data.user[self._id][ATTR_VERSION] = version
-        self._data.save_data()
+        self.save_data()
 
     def _restore_data(self, user, system):
         """Restore data to add-on."""
         self._data.user[self._id] = deepcopy(user)
         self._data.system[self._id] = deepcopy(system)
-        self._data.save_data()
+        self.save_data()
 
     @property
     def options(self):
@@ -503,6 +508,12 @@ class Addon(CoreSysAttributes):
         """Return image name of add-on."""
         addon_data = self._mesh
 
+        # if installed
+        if self.is_installed:
+            # NOTE: cleanup
+            if ATTR_IMAGE in self._data.user[self._id]:
+                return self._data.user[self._id][ATTR_IMAGE]
+
         # Repository with Dockerhub images
         if ATTR_IMAGE in addon_data:
             return addon_data[ATTR_IMAGE].format(arch=self.sys_arch)
@@ -751,7 +762,7 @@ class Addon(CoreSysAttributes):
 
         # Access Token
         self._data.user[self._id][ATTR_ACCESS_TOKEN] = create_token()
-        self._data.save_data()
+        self.save_data()
 
         # Options
         if not self.write_options():

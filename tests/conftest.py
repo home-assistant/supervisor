@@ -3,6 +3,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from hassio.arch import CpuArch
+
 
 @pytest.fixture
 def coresys():

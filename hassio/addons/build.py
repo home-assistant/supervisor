@@ -1,11 +1,12 @@
 """Hass.io add-on build environment."""
+from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict
 
 from ..const import ATTR_ARGS, ATTR_BUILD_FROM, ATTR_SQUASH, META_ADDON
 from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.json import JsonConfig
-from .validate import BASE_IMAGE, SCHEMA_BUILD_CONFIG
+from .validate import SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
     from .addon import Addon
