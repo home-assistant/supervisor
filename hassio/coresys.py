@@ -22,8 +22,7 @@ class CoreSys:
         self._loop = loop
         self._websession = aiohttp.ClientSession(loop=loop)
         self._websession_ssl = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(verify_ssl=False), loop=loop
-        )
+            connector=aiohttp.TCPConnector(ssl=False), loop=loop)
 
         # Global objects
         self._config = CoreConfig()

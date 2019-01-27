@@ -34,7 +34,7 @@ ENV_REPO = "HOMEASSISTANT_REPOSITORY"
 MACHINE_ID = Path("/etc/machine-id")
 
 
-def initialize_coresys(loop):
+async def initialize_coresys(loop):
     """Initialize HassIO coresys/objects."""
     coresys = CoreSys(loop)
 

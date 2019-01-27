@@ -32,7 +32,7 @@ if __name__ == "__main__":
     loop.set_default_executor(executor)
 
     _LOGGER.info("Initialize Hass.io setup")
-    coresys = bootstrap.initialize_coresys(loop)
+    coresys = loop.run_until_complete(bootstrap.initialize_coresys())
 
     bootstrap.migrate_system_env(coresys)
 
