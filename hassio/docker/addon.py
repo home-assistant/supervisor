@@ -326,7 +326,7 @@ class DockerAddon(DockerInterface):
 
         return ret
 
-    def _install(self, tag):
+    def _install(self, tag, image=None):
         """Pull Docker image or build it.
 
         Need run inside executor.
@@ -334,7 +334,7 @@ class DockerAddon(DockerInterface):
         if self.addon.need_build:
             return self._build(tag)
 
-        return super()._install(tag)
+        return super()._install(tag, image)
 
     def _build(self, tag):
         """Build a Docker container.

@@ -506,17 +506,20 @@ class Addon(CoreSysAttributes):
     @property
     def image(self):
         """Return image name of add-on."""
-        addon_data = self._mesh
-
-        # if installed
         if self.is_installed:
             # NOTE: cleanup
             if ATTR_IMAGE in self._data.user[self._id]:
                 return self._data.user[self._id][ATTR_IMAGE]
+        return self.image_install
+
+    @property
+    def image_name(self):
+        """Return image name for install/update."""
+        addon_data = self._mesh
 
         # Repository with Dockerhub images
         if ATTR_IMAGE in addon_data:
-            return addon_data[ATTR_IMAGE].format(arch=self.sys_arch)
+            return addon_data[ATTR_IMAGE].format(arch=self.sys_arch.default)
 
         # local build
         return (f"{addon_data[ATTR_REPOSITORY]}/"
@@ -711,7 +714,8 @@ class Addon(CoreSysAttributes):
         # Setup/Fix AppArmor profile
         await self._install_apparmor()
 
-        if not await self.instance.install(self.last_version):
+        if not await self.instance.install(
+                self.last_version, self.image_name):
             return False
 
         self._set_install(self.last_version)
@@ -791,7 +795,8 @@ class Addon(CoreSysAttributes):
             _LOGGER.warning("No update available for add-on %s", self._id)
             return False
 
-        if not await self.instance.update(self.last_version):
+        if not await self.instance.update(
+                self.last_version, self.image_name):
             return False
         self._set_update(self.last_version)
 
