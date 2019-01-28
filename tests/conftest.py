@@ -5,6 +5,8 @@ import pytest
 
 from hassio.bootstrap import initialize_coresys
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def docker():
@@ -16,8 +18,10 @@ def docker():
 @pytest.fixture
 async def coresys(loop, docker):
     """Create a CoreSys Mock."""
-    coresys = await initialize_coresys(loop)
-    yield coresys
+    with patch('hassio.bootstrap.initialize_system_data'):
+        coresys_obj = await initialize_coresys(loop)
+
+    yield coresys_obj
 
 
 @pytest.fixture
