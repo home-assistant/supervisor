@@ -1,29 +1,29 @@
 """Bootstrap Hass.io."""
 import logging
 import os
-import signal
-import shutil
 from pathlib import Path
+import shutil
+import signal
 
 from colorlog import ColoredFormatter
 
-from .core import HassIO
-from .auth import Auth
 from .addons import AddonManager
 from .api import RestAPI
-from .const import SOCKET_DOCKER
-from .coresys import CoreSys
 from .arch import CpuArch
-from .supervisor import Supervisor
+from .auth import Auth
+from .const import SOCKET_DOCKER
+from .core import HassIO
+from .coresys import CoreSys
+from .dbus import DBusManager
+from .discovery import Discovery
+from .hassos import HassOS
 from .homeassistant import HomeAssistant
+from .host import HostManager
+from .services import ServiceManager
 from .snapshots import SnapshotManager
+from .supervisor import Supervisor
 from .tasks import Tasks
 from .updater import Updater
-from .services import ServiceManager
-from .discovery import Discovery
-from .host import HostManager
-from .dbus import DBusManager
-from .hassos import HassOS
 
 _LOGGER = logging.getLogger(__name__)
 
