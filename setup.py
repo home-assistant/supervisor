@@ -2,7 +2,6 @@ from setuptools import setup
 
 from hassio.const import HASSIO_VERSION
 
-
 setup(
     name='HassIO',
     version=HASSIO_VERSION,
@@ -11,9 +10,9 @@ setup(
     author_email='hello@home-assistant.io',
     url='https://home-assistant.io/',
     description=('Open-source private cloud os for Home-Assistant'
-                 ' based on ResinOS'),
+                 ' based on HassOS'),
     long_description=('A maintainless private cloud operator system that'
-                      'setup a Home-Assistant instance. Based on ResinOS'),
+                      'setup a Home-Assistant instance. Based on HassOS'),
     classifiers=[
         'Intended Audience :: End Users/Desktop',
         'Intended Audience :: Developers',
@@ -30,13 +29,7 @@ setup(
     zip_safe=False,
     platforms='any',
     packages=[
-        'hassio',
-        'hassio.docker',
-        'hassio.addons',
-        'hassio.api',
-        'hassio.misc',
-        'hassio.utils',
-        'hassio.snapshots'
+        'hassio', 'hassio.docker', 'hassio.addons', 'hassio.api', 'hassio.misc',
+        'hassio.utils', 'hassio.snapshots'
     ],
-    include_package_data=True
-)
+    include_package_data=True)
