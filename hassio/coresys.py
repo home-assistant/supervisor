@@ -1,8 +1,10 @@
 """Handle core shared data."""
+import asyncio
+
 import aiohttp
 
-from .const import CHANNEL_DEV
 from .config import CoreConfig
+from .const import CHANNEL_DEV
 from .docker import DockerAPI
 from .misc.dns import DNSForward
 from .misc.hardware import Hardware
@@ -12,24 +14,24 @@ from .misc.scheduler import Scheduler
 class CoreSys:
     """Class that handle all shared data."""
 
-    def __init__(self, loop):
+    def __init__(self):
         """Initialize coresys."""
         # Static attributes
         self.exit_code = 0
         self.machine_id = None
 
         # External objects
-        self._loop = loop
-        self._websession = aiohttp.ClientSession(loop=loop)
+        self._loop = asyncio.get_running_loop()
+        self._websession = aiohttp.ClientSession()
         self._websession_ssl = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(ssl=False), loop=loop)
+            connector=aiohttp.TCPConnector(ssl=False))
 
         # Global objects
         self._config = CoreConfig()
         self._hardware = Hardware()
         self._docker = DockerAPI()
-        self._scheduler = Scheduler(loop=loop)
-        self._dns = DNSForward(loop=loop)
+        self._scheduler = Scheduler()
+        self._dns = DNSForward()
 
         # Internal objects pointers
         self._core = None
