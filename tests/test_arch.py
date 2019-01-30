@@ -21,6 +21,17 @@ async def test_machine_not_exits_in_db(coresys, sys_machine, sys_supervisor):
     assert coresys.arch.supported == ["amd64"]
 
 
+async def test_supervisor_arch(coresys, sys_machine, sys_supervisor):
+    """Test arch for raspberrypi."""
+    sys_machine.return_value = None
+    sys_supervisor.arch = "amd64"
+    assert coresys.arch.supervisor == "amd64"
+
+    await coresys.arch.load()
+
+    assert coresys.arch.supervisor == "amd64"
+
+
 async def test_raspberrypi_arch(coresys, sys_machine):
     """Test arch for raspberrypi."""
     sys_machine.return_value = "raspberrypi"

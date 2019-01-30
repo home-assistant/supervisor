@@ -26,6 +26,11 @@ class CpuArch(CoreSysAttributes):
         return self._default_arch
 
     @property
+    def supervisor(self) -> str:
+        """Return supervisor arch."""
+        return self.sys_supervisor.arch
+
+    @property
     def supported(self) -> List[str]:
         """Return support arch by CPU/Machine."""
         return self._supported_arch

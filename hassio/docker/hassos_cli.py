@@ -15,7 +15,7 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
     @property
     def image(self):
         """Return name of HassOS CLI image."""
-        return f"homeassistant/{self.sys_arch.default}-hassio-cli"
+        return f"homeassistant/{self.sys_arch.supervisor}-hassio-cli"
 
     def _stop(self):
         """Don't need stop."""

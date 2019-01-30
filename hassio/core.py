@@ -31,11 +31,11 @@ class HassIO(CoreSysAttributes):
         # Load Host
         await self.sys_host.load()
 
-        # Load CPU/Arch
-        await self.sys_arch.load()
-
         # Load Home Assistant
         await self.sys_homeassistant.load()
+
+        # Load CPU/Arch
+        await self.sys_arch.load()
 
         # Load HassOS
         await self.sys_hassos.load()
