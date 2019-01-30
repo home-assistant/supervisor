@@ -36,13 +36,13 @@ class CoreSys:
     def __init__(self):
         """Initialize coresys."""
         # Static attributes
-        self.exit_code = 0
-        self.machine_id = None
+        self.exit_code: int = 0
+        self.machine_id: str = None
 
         # External objects
-        self._loop = asyncio.get_running_loop()
-        self._websession = aiohttp.ClientSession()
-        self._websession_ssl = aiohttp.ClientSession(
+        self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
+        self._websession: aiohttp.ClientSession = aiohttp.ClientSession()
+        self._websession_ssl: aiohttp.ClientSession = aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(ssl=False))
 
         # Global objects
@@ -53,21 +53,21 @@ class CoreSys:
         self._dns: DNSForward = DNSForward()
 
         # Internal objects pointers
-        self._core: HassIO
-        self._arch: CpuArch
-        self._auth: Auth
-        self._homeassistant: HomeAssistant
-        self._supervisor: Supervisor
-        self._addons: AddonManager
-        self._api: RestAPI
-        self._updater: Updater
-        self._snapshots: SnapshotManager
-        self._tasks: Tasks
-        self._host: HostManager
-        self._dbus: DBusManager
-        self._hassos: HassOS
-        self._services: ServiceManager
-        self._discovery: Discovery
+        self._core: HassIO = None
+        self._arch: CpuArch = None
+        self._auth: Auth = None
+        self._homeassistant: HomeAssistant = None
+        self._supervisor: Supervisor = None
+        self._addons: AddonManager = None
+        self._api: RestAPI = None
+        self._updater: Updater = None
+        self._snapshots: SnapshotManager = None
+        self._tasks: Tasks = None
+        self._host: HostManager = None
+        self._dbus: DBusManager = None
+        self._hassos: HassOS = None
+        self._services: ServiceManager = None
+        self._discovery: Discovery = None
 
     @property
     def machine(self) -> str:
