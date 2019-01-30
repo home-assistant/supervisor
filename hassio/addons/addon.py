@@ -510,7 +510,7 @@ class Addon(CoreSysAttributes):
             # NOTE: cleanup
             if ATTR_IMAGE in self._data.user[self._id]:
                 return self._data.user[self._id][ATTR_IMAGE]
-        return self.image_install
+        return self.image_name
 
     @property
     def image_name(self):

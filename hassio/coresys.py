@@ -287,22 +287,151 @@ class CoreSys:
             raise RuntimeError("HassOS already set!")
         self._hassos = value
 
-    def run_in_executor(self, funct, *args):
-        """Wrapper for executor pool."""
-        return self._loop.run_in_executor(None, funct, *args)
-
-    def create_task(self, coroutine):
-        """Wrapper for async task."""
-        return self._loop.create_task(coroutine)
-
 
 class CoreSysAttributes:
     """Inheret basic CoreSysAttributes."""
 
     coresys = None
 
-    def __getattr__(self, name):
-        """Mapping to coresys."""
-        if name.startswith("sys_") and hasattr(self.coresys, name[4:]):
-            return getattr(self.coresys, name[4:])
-        raise AttributeError(f"Can't resolve {name} on {self}")
+    @property
+    def sys_machine(self):
+        """Return running machine type of the Hass.io system."""
+        return self.coresys.machine
+
+    @property
+    def sys_dev(self):
+        """Return True if we run dev mode."""
+        return self.coresys.dev
+
+    @property
+    def sys_timezone(self):
+        """Return timezone."""
+        return self.coresys.timezone
+
+    @property
+    def sys_machine_id(self):
+        """Return timezone."""
+        return self.coresys.machine_id
+
+    @property
+    def sys_loop(self):
+        """Return loop object."""
+        return self.coresys.loop
+
+    @property
+    def sys_websession(self):
+        """Return websession object."""
+        return self.coresys.websession
+
+    @property
+    def sys_websession_ssl(self):
+        """Return websession object with disabled SSL."""
+        return self.coresys.websession_ssl
+
+    @property
+    def sys_config(self):
+        """Return CoreConfig object."""
+        return self.coresys.config
+
+    @property
+    def sys_hardware(self):
+        """Return Hardware object."""
+        return self.coresys.hardware
+
+    @property
+    def sys_docker(self):
+        """Return DockerAPI object."""
+        return self.coresys.docker
+
+    @property
+    def sys_scheduler(self):
+        """Return Scheduler object."""
+        return self.coresys.scheduler
+
+    @property
+    def sys_dns(self):
+        """Return DNSForward object."""
+        return self.coresys.dns
+
+    @property
+    def sys_core(self):
+        """Return HassIO object."""
+        return self.coresys.core
+
+    @property
+    def sys_arch(self):
+        """Return CpuArch object."""
+        return self.coresys.arch
+
+    @property
+    def sys_auth(self):
+        """Return Auth object."""
+        return self.coresys.auth
+
+    @property
+    def sys_homeassistant(self):
+        """Return Home Assistant object."""
+        return self.coresys.homeassistant
+
+    @property
+    def sys_supervisor(self):
+        """Return Supervisor object."""
+        return self.coresys.supervisor
+
+    @property
+    def sys_api(self):
+        """Return API object."""
+        return self.coresys.api
+
+    @property
+    def sys_updater(self):
+        """Return Updater object."""
+        return self.coresys.updater
+
+    @property
+    def sys_addons(self):
+        """Return AddonManager object."""
+        return self.coresys.addons
+
+    @property
+    def sys_snapshots(self):
+        """Return SnapshotManager object."""
+        return self.coresys.snapshots
+
+    @property
+    def sys_tasks(self):
+        """Return Tasks object."""
+        return self.coresys.tasks
+
+    @property
+    def sys_services(self):
+        """Return ServiceManager object."""
+        return self.coresys.services
+
+    @property
+    def sys_discovery(self):
+        """Return ServiceManager object."""
+        return self.coresys.discovery
+
+    @property
+    def sys_dbus(self):
+        """Return DBusManager object."""
+        return self.coresys.dbus
+
+    @property
+    def sys_host(self):
+        """Return HostManager object."""
+        return self.coresys.host
+
+    @property
+    def sys_hassos(self):
+        """Return HassOS object."""
+        return self.coresys.hassos
+
+    def sys_run_in_executor(self, funct, *args):
+        """Wrapper for executor pool."""
+        return self.sys_loop.run_in_executor(None, funct, *args)
+
+    def sys_create_task(self, coroutine):
+        """Wrapper for async task."""
+        return self.sys_loop.create_task(coroutine)
