@@ -16,7 +16,7 @@ class CpuArch(CoreSysAttributes):
 
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize CPU Architecture handler."""
-        self.coresys: CoreSys = coresys
+        self.coresys = coresys
         self._supported_arch: List[str] = []
         self._default_arch: str
 
