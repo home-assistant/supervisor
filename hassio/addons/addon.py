@@ -60,6 +60,7 @@ class Addon(CoreSysAttributes):
             return
         await self.instance.attach()
 
+        # NOTE: Can't be removed after soon
         if ATTR_IMAGE not in self._data.user[self._id]:
             self._data.user[self._id][ATTR_IMAGE] = self.image_name
             self.save_data()
