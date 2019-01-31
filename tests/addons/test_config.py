@@ -40,9 +40,11 @@ def test_invalid_repository():
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
 
-    config['image'] = "registry.gitlab.com/company/add-ons/test-example/text-example:no-tag-allow"
+    config[
+        'image'] = "registry.gitlab.com/company/add-ons/test-example/text-example:no-tag-allow"
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
+
 
 def test_valid_repository():
     """Validate basic config with different valid repositories"""
@@ -59,4 +61,11 @@ def test_valid_map():
     config = load_json_fixture("basic-addon-config.json")
 
     config['map'] = ['backup:rw', 'ssl:ro', 'config']
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_valid_basic_build():
+    """Validate basic build config."""
+    config = load_json_fixture("basic-build-config.json")
+
+    vd.SCHEMA_BUILD_CONFIG(config)

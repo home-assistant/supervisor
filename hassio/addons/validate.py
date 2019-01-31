@@ -51,6 +51,8 @@ RE_SCHEMA_ELEMENT = re.compile(
 
 RE_DOCKER_IMAGE = re.compile(
     r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$")
+RE_DOCKER_IMAGE_BUILD = re.compile(
+    r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)(:[\.\-\w{}]+)?$")
 
 SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
 
@@ -142,7 +144,7 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_BUILD_CONFIG = vol.Schema({
     vol.Optional(ATTR_BUILD_FROM, default=dict): vol.Schema({
-        vol.In(ARCH_ALL): vol.Match(RE_DOCKER_IMAGE),
+        vol.In(ARCH_ALL): vol.Match(RE_DOCKER_IMAGE_BUILD),
     }),
     vol.Optional(ATTR_SQUASH, default=False): vol.Boolean(),
     vol.Optional(ATTR_ARGS, default=dict): vol.Schema({
