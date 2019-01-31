@@ -114,7 +114,7 @@ class Addon(CoreSysAttributes):
         self._data.user[self._id] = {
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
-            ATTR_IMAGE: self.image,
+            ATTR_IMAGE: self.image_name,
         }
         self.save_data()
 
