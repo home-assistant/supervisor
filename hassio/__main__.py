@@ -13,7 +13,7 @@ def initialize_event_loop():
     """Attempt to use uvloop."""
     try:
         import uvloop
-        uvloop.install()
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     except ImportError:
         pass
 
