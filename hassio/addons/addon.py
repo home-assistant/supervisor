@@ -516,11 +516,15 @@ class Addon(CoreSysAttributes):
     @property
     def image_name(self):
         """Return image name for install/update."""
-        addon_data = self._mesh
+        if self.is_detached:
+            addon_data = self._data.system.get(self._id)
+        else:
+            addon_data = self._data.cache.get(self._id)
 
         # Repository with Dockerhub images
         if ATTR_IMAGE in addon_data:
-            return addon_data[ATTR_IMAGE].format(arch=self.sys_arch.default)
+            arch = self.sys_arch.match(addon_data[ATTR_ARCH])
+            return addon_data[ATTR_IMAGE].format(arch=arch)
 
         # local build
         return (f"{addon_data[ATTR_REPOSITORY]}/"
