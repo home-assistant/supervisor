@@ -9,5 +9,5 @@ pytz==2018.5
 pyudev==0.21.0
 pycryptodome==3.6.6
 cpe==1.2.1
-uvloop==0.11.3
+uvloop==0.12.0
 cchardet==2.1.1
