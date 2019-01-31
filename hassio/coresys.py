@@ -36,7 +36,6 @@ class CoreSys:
     def __init__(self):
         """Initialize coresys."""
         # Static attributes
-        self.exit_code: int = 0
         self.machine_id: str = None
 
         # External objects
