@@ -80,7 +80,7 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.info("Pull image %s tag %s.", image, tag)
             docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
 
-            docker_image.tag(docker_image, tag='latest')
+            docker_image.tag(image, tag='latest')
             self._meta = docker_image.attrs
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
