@@ -534,7 +534,9 @@ class Addon(CoreSysAttributes):
     @property
     def need_build(self):
         """Return True if this  add-on need a local build."""
-        return ATTR_IMAGE not in self._mesh
+        if self.is_detached:
+            return ATTR_IMAGE not in self._data.system.get(self._id)
+        return ATTR_IMAGE not in self._data.cache.get(self._id)
 
     @property
     def map_volumes(self):
