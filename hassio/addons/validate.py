@@ -6,29 +6,24 @@ import uuid
 import voluptuous as vol
 
 from ..const import (
-    ATTR_NAME, ATTR_VERSION, ATTR_SLUG, ATTR_DESCRIPTON, ATTR_STARTUP,
-    ATTR_BOOT, ATTR_MAP, ATTR_OPTIONS, ATTR_PORTS, STARTUP_ONCE,
-    STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION, STARTUP_INITIALIZE,
-    BOOT_AUTO, BOOT_MANUAL, ATTR_SCHEMA, ATTR_IMAGE, ATTR_URL, ATTR_MAINTAINER,
-    ATTR_ARCH, ATTR_DEVICES, ATTR_ENVIRONMENT, ATTR_HOST_NETWORK, ARCH_ARMHF,
-    ARCH_AARCH64, ARCH_AMD64, ARCH_I386, ATTR_TMPFS, ATTR_PRIVILEGED,
-    ATTR_USER, ATTR_STATE, ATTR_SYSTEM, STATE_STARTED, STATE_STOPPED,
-    ATTR_LOCATON, ATTR_REPOSITORY, ATTR_TIMEOUT, ATTR_NETWORK, ATTR_UUID,
-    ATTR_AUTO_UPDATE, ATTR_WEBUI, ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_HOST_IPC,
-    ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API, ATTR_BUILD_FROM, ATTR_SQUASH,
-    ATTR_ARGS, ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, ATTR_LEGACY,
-    ATTR_HOST_DBUS, ATTR_AUTO_UART, ATTR_SERVICES, ATTR_DISCOVERY,
-    ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API, ATTR_PROTECTED,
-    ATTR_FULL_ACCESS, ATTR_ACCESS_TOKEN, ATTR_HOST_PID, ATTR_HASSIO_ROLE,
-    ATTR_MACHINE, ATTR_AUTH_API, ATTR_KERNEL_MODULES,
-    PRIVILEGED_NET_ADMIN, PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO,
-    PRIVILEGED_IPC_LOCK, PRIVILEGED_SYS_TIME, PRIVILEGED_SYS_NICE,
-    PRIVILEGED_SYS_RESOURCE, PRIVILEGED_SYS_PTRACE, PRIVILEGED_DAC_READ_SEARCH,
-    PRIVILEGED_SYS_MODULE, ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_MANAGER,
-    ROLE_ADMIN, ROLE_BACKUP)
-from ..validate import (
-    NETWORK_PORT, DOCKER_PORTS, ALSA_DEVICE, UUID_MATCH, SHA256)
+    ARCH_ALL, ATTR_ACCESS_TOKEN, ATTR_APPARMOR, ATTR_ARCH, ATTR_ARGS,
+    ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_AUTH_API,
+    ATTR_AUTO_UART, ATTR_AUTO_UPDATE, ATTR_BOOT, ATTR_BUILD_FROM,
+    ATTR_DESCRIPTON, ATTR_DEVICES, ATTR_DEVICETREE, ATTR_DISCOVERY,
+    ATTR_DOCKER_API, ATTR_ENVIRONMENT, ATTR_FULL_ACCESS, ATTR_GPIO,
+    ATTR_HASSIO_API, ATTR_HASSIO_ROLE, ATTR_HOMEASSISTANT_API, ATTR_HOST_DBUS,
+    ATTR_HOST_IPC, ATTR_HOST_NETWORK, ATTR_HOST_PID, ATTR_IMAGE,
+    ATTR_KERNEL_MODULES, ATTR_LEGACY, ATTR_LOCATON, ATTR_MACHINE,
+    ATTR_MAINTAINER, ATTR_MAP, ATTR_NAME, ATTR_NETWORK, ATTR_OPTIONS,
+    ATTR_PORTS, ATTR_PRIVILEGED, ATTR_PROTECTED, ATTR_REPOSITORY, ATTR_SCHEMA,
+    ATTR_SERVICES, ATTR_SLUG, ATTR_SQUASH, ATTR_STARTUP, ATTR_STATE,
+    ATTR_STDIN, ATTR_SYSTEM, ATTR_TIMEOUT, ATTR_TMPFS, ATTR_URL, ATTR_USER,
+    ATTR_UUID, ATTR_VERSION, ATTR_WEBUI, BOOT_AUTO, BOOT_MANUAL,
+    PRIVILEGED_ALL, ROLE_ALL, ROLE_DEFAULT, STARTUP_ALL, STARTUP_APPLICATION,
+    STARTUP_SERVICES, STATE_STARTED, STATE_STOPPED)
 from ..services.validate import DISCOVERY_SERVICES
+from ..validate import (
+    ALSA_DEVICE, DOCKER_PORTS, NETWORK_PORT, SHA256, UUID_MATCH)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,53 +49,19 @@ RE_SCHEMA_ELEMENT = re.compile(
     r")\??$"
 )
 
+RE_DOCKER_IMAGE = re.compile(
+    r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$")
+RE_DOCKER_IMAGE_BUILD = re.compile(
+    r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)(:[\.\-\w{}]+)?$")
+
 SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
 
-ARCH_ALL = [
-    ARCH_ARMHF, ARCH_AARCH64, ARCH_AMD64, ARCH_I386
-]
 
 MACHINE_ALL = [
-    'intel-nuc',
-    'odroid-c2', 'odroid-xu',
-    'orangepi-prime',
-    'qemux86', 'qemux86-64', 'qemuarm', 'qemuarm-64',
-    'raspberrypi', 'raspberrypi2', 'raspberrypi3', 'raspberrypi3-64',
-    'tinker',
+    'intel-nuc', 'odroid-c2', 'odroid-xu', 'orangepi-prime', 'qemux86',
+    'qemux86-64', 'qemuarm', 'qemuarm-64', 'raspberrypi', 'raspberrypi2',
+    'raspberrypi3', 'raspberrypi3-64', 'tinker',
 ]
-
-STARTUP_ALL = [
-    STARTUP_ONCE, STARTUP_INITIALIZE, STARTUP_SYSTEM, STARTUP_SERVICES,
-    STARTUP_APPLICATION
-]
-
-PRIVILEGED_ALL = [
-    PRIVILEGED_NET_ADMIN,
-    PRIVILEGED_SYS_ADMIN,
-    PRIVILEGED_SYS_RAWIO,
-    PRIVILEGED_IPC_LOCK,
-    PRIVILEGED_SYS_TIME,
-    PRIVILEGED_SYS_NICE,
-    PRIVILEGED_SYS_RESOURCE,
-    PRIVILEGED_SYS_PTRACE,
-    PRIVILEGED_SYS_MODULE,
-    PRIVILEGED_DAC_READ_SEARCH,
-]
-
-ROLE_ALL = [
-    ROLE_DEFAULT,
-    ROLE_HOMEASSISTANT,
-    ROLE_BACKUP,
-    ROLE_MANAGER,
-    ROLE_ADMIN,
-]
-
-BASE_IMAGE = {
-    ARCH_ARMHF: "homeassistant/armhf-base:latest",
-    ARCH_AARCH64: "homeassistant/aarch64-base:latest",
-    ARCH_I386: "homeassistant/i386-base:latest",
-    ARCH_AMD64: "homeassistant/amd64-base:latest",
-}
 
 
 def _simple_startup(value):
@@ -166,7 +127,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         }))
     }), False),
     vol.Optional(ATTR_IMAGE):
-        vol.Match(r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$"),
+        vol.Match(RE_DOCKER_IMAGE),
     vol.Optional(ATTR_TIMEOUT, default=10):
         vol.All(vol.Coerce(int), vol.Range(min=10, max=120)),
 }, extra=vol.REMOVE_EXTRA)
@@ -182,8 +143,8 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema({
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_BUILD_CONFIG = vol.Schema({
-    vol.Optional(ATTR_BUILD_FROM, default=BASE_IMAGE): vol.Schema({
-        vol.In(ARCH_ALL): vol.Match(r"(?:^[\w{}]+/)?[\-\w{}]+:[\.\-\w{}]+$"),
+    vol.Optional(ATTR_BUILD_FROM, default=dict): vol.Schema({
+        vol.In(ARCH_ALL): vol.Match(RE_DOCKER_IMAGE_BUILD),
     }),
     vol.Optional(ATTR_SQUASH, default=False): vol.Boolean(),
     vol.Optional(ATTR_ARGS, default=dict): vol.Schema({
@@ -195,6 +156,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema({
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
+    vol.Optional(ATTR_IMAGE): vol.Maybe(vol.Coerce(str)),
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
     vol.Optional(ATTR_ACCESS_TOKEN): SHA256,
     vol.Optional(ATTR_OPTIONS, default=dict): dict,

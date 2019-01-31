@@ -9,7 +9,7 @@ from hassio import bootstrap
 _LOGGER = logging.getLogger(__name__)
 
 
-def attempt_use_uvloop():
+def initialize_event_loop():
     """Attempt to use uvloop."""
     try:
         import uvloop
@@ -17,13 +17,17 @@ def attempt_use_uvloop():
     except ImportError:
         pass
 
+    return asyncio.get_event_loop()
+
 
 # pylint: disable=invalid-name
 if __name__ == "__main__":
     bootstrap.initialize_logging()
-    attempt_use_uvloop()
-    loop = asyncio.get_event_loop()
 
+    # Init async event loop
+    loop = initialize_event_loop()
+
+    # Check if all information are available to setup Hass.io
     if not bootstrap.check_environment():
         sys.exit(1)
 
@@ -32,7 +36,7 @@ if __name__ == "__main__":
     loop.set_default_executor(executor)
 
     _LOGGER.info("Initialize Hass.io setup")
-    coresys = bootstrap.initialize_coresys(loop)
+    coresys = loop.run_until_complete(bootstrap.initialize_coresys())
 
     bootstrap.migrate_system_env(coresys)
 

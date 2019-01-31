@@ -1,19 +1,24 @@
 """Hass.io add-on build environment."""
+from __future__ import annotations
 from pathlib import Path
+from typing import TYPE_CHECKING, Dict
 
-from .validate import SCHEMA_BUILD_CONFIG, BASE_IMAGE
-from ..const import ATTR_SQUASH, ATTR_BUILD_FROM, ATTR_ARGS, META_ADDON
-from ..coresys import CoreSysAttributes
+from ..const import ATTR_ARGS, ATTR_BUILD_FROM, ATTR_SQUASH, META_ADDON
+from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.json import JsonConfig
+from .validate import SCHEMA_BUILD_CONFIG
+
+if TYPE_CHECKING:
+    from .addon import Addon
 
 
 class AddonBuild(JsonConfig, CoreSysAttributes):
     """Handle build options for add-ons."""
 
-    def __init__(self, coresys, slug):
+    def __init__(self, coresys: CoreSys, slug: str) -> None:
         """Initialize Hass.io add-on builder."""
-        self.coresys = coresys
-        self._id = slug
+        self.coresys: CoreSys = coresys
+        self._id: str = slug
 
         super().__init__(
             Path(self.addon.path_location, 'build.json'), SCHEMA_BUILD_CONFIG)
@@ -22,23 +27,24 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
         """Ignore save function."""
 
     @property
-    def addon(self):
+    def addon(self) -> Addon:
         """Return add-on of build data."""
         return self.sys_addons.get(self._id)
 
     @property
-    def base_image(self):
+    def base_image(self) -> str:
         """Base images for this add-on."""
         return self._data[ATTR_BUILD_FROM].get(
-            self.sys_arch, BASE_IMAGE[self.sys_arch])
+            self.sys_arch.default,
+            f"homeassistant/{self.sys_arch.default}-base:latest")
 
     @property
-    def squash(self):
+    def squash(self) -> bool:
         """Return True or False if squash is active."""
         return self._data[ATTR_SQUASH]
 
     @property
-    def additional_args(self):
+    def additional_args(self) -> Dict[str, str]:
         """Return additional Docker build arguments."""
         return self._data[ATTR_ARGS]
 
@@ -52,7 +58,7 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
             'squash': self.squash,
             'labels': {
                 'io.hass.version': version,
-                'io.hass.arch': self.sys_arch,
+                'io.hass.arch': self.sys_arch.default,
                 'io.hass.type': META_ADDON,
                 'io.hass.name': self._fix_label('name'),
                 'io.hass.description': self._fix_label('description'),
@@ -60,7 +66,7 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
             'buildargs': {
                 'BUILD_FROM': self.base_image,
                 'BUILD_VERSION': version,
-                'BUILD_ARCH': self.sys_arch,
+                'BUILD_ARCH': self.sys_arch.default,
                 **self.additional_args,
             }
         }
@@ -70,7 +76,7 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
 
         return args
 
-    def _fix_label(self, label_name):
+    def _fix_label(self, label_name: str) -> str:
         """Remove characters they are not supported."""
         label = getattr(self.addon, label_name, "")
         return label.replace("'", "")

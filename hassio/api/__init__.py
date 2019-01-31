@@ -30,7 +30,7 @@ class RestAPI(CoreSysAttributes):
         self.coresys = coresys
         self.security = SecurityMiddleware(coresys)
         self.webapp = web.Application(
-            middlewares=[self.security.token_validation], loop=coresys.loop)
+            middlewares=[self.security.token_validation])
 
         # service stuff
         self._runner = web.AppRunner(self.webapp)
@@ -66,10 +66,10 @@ class RestAPI(CoreSysAttributes):
             web.get('/host/services', api_host.services),
             web.post('/host/services/{service}/stop', api_host.service_stop),
             web.post('/host/services/{service}/start', api_host.service_start),
-            web.post(
-                '/host/services/{service}/restart', api_host.service_restart),
-            web.post(
-                '/host/services/{service}/reload', api_host.service_reload),
+            web.post('/host/services/{service}/restart',
+                     api_host.service_restart),
+            web.post('/host/services/{service}/reload',
+                     api_host.service_reload),
         ])
 
     def _register_hassos(self):
@@ -224,8 +224,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes([
             web.get('/discovery', api_discovery.list),
             web.get('/discovery/{uuid}', api_discovery.get_discovery),
-            web.delete('/discovery/{uuid}',
-                       api_discovery.del_discovery),
+            web.delete('/discovery/{uuid}', api_discovery.del_discovery),
             web.post('/discovery', api_discovery.set_discovery),
         ])
 
@@ -239,8 +238,8 @@ class RestAPI(CoreSysAttributes):
             return lambda request: web.FileResponse(path)
 
         # This route is for backwards compatibility with HA < 0.58
-        self.webapp.add_routes([
-            web.get('/panel', create_response('hassio-main-es5'))])
+        self.webapp.add_routes(
+            [web.get('/panel', create_response('hassio-main-es5'))])
 
         # This route is for backwards compatibility with HA 0.58 - 0.61
         self.webapp.add_routes([
@@ -266,8 +265,8 @@ class RestAPI(CoreSysAttributes):
         try:
             await self._site.start()
         except OSError as err:
-            _LOGGER.fatal(
-                "Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
+            _LOGGER.fatal("Failed to create HTTP server at 0.0.0.0:80 -> %s",
+                          err)
         else:
             _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
 

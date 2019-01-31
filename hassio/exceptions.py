@@ -11,6 +11,7 @@ class HassioNotSupportedError(HassioError):
 
 # HomeAssistant
 
+
 class HomeAssistantError(HassioError):
     """Home Assistant exception."""
 
@@ -29,6 +30,7 @@ class HomeAssistantAuthError(HomeAssistantAPIError):
 
 # HassOS
 
+
 class HassOSError(HassioError):
     """HassOS exception."""
 
@@ -41,7 +43,15 @@ class HassOSNotSupportedError(HassioNotSupportedError):
     """Function not supported by HassOS."""
 
 
+# Arch
+
+
+class HassioArchNotFound(HassioNotSupportedError):
+    """No matches with exists arch."""
+
+
 # Updater
+
 
 class HassioUpdaterError(HassioError):
     """Error on Updater."""
@@ -49,11 +59,13 @@ class HassioUpdaterError(HassioError):
 
 # Auth
 
+
 class AuthError(HassioError):
     """Auth errors."""
 
 
 # Host
+
 
 class HostError(HassioError):
     """Internal Host error."""
@@ -73,6 +85,7 @@ class HostAppArmorError(HostError):
 
 # API
 
+
 class APIError(HassioError, RuntimeError):
     """API errors."""
 
@@ -83,6 +96,7 @@ class APIForbidden(APIError):
 
 # Service / Discovery
 
+
 class DiscoveryError(HassioError):
     """Discovery Errors."""
 
@@ -92,6 +106,7 @@ class ServicesError(HassioError):
 
 
 # utils/gdbus
+
 
 class DBusError(HassioError):
     """DBus generic error."""
@@ -110,6 +125,7 @@ class DBusParseError(DBusError):
 
 
 # util/apparmor
+
 
 class AppArmorError(HostAppArmorError):
     """General AppArmor error."""

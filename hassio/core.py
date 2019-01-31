@@ -6,8 +6,8 @@ import logging
 import async_timeout
 
 from .coresys import CoreSysAttributes
-from .const import (
-    STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION, STARTUP_INITIALIZE)
+from .const import (STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION,
+                    STARTUP_INITIALIZE)
 from .exceptions import HassioError, HomeAssistantError
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,11 +31,14 @@ class HassIO(CoreSysAttributes):
         # Load Host
         await self.sys_host.load()
 
-        # Load HassOS
-        await self.sys_hassos.load()
-
         # Load Home Assistant
         await self.sys_homeassistant.load()
+
+        # Load CPU/Arch
+        await self.sys_arch.load()
+
+        # Load HassOS
+        await self.sys_hassos.load()
 
         # Load Add-ons
         await self.sys_addons.load()
