@@ -61,7 +61,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.sys_updater.version_hassio,
             ATTR_CHANNEL: self.sys_updater.channel,
-            ATTR_ARCH: self.sys_arch,
+            ATTR_ARCH: self.sys_supervisor.arch,
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_TIMEZONE: self.sys_config.timezone,
             ATTR_ADDONS: list_addons,
@@ -116,8 +116,7 @@ class APISupervisor(CoreSysAttributes):
         if version == self.sys_supervisor.version:
             raise APIError("Version {} is already in use".format(version))
 
-        return await asyncio.shield(
-            self.sys_supervisor.update(version))
+        return await asyncio.shield(self.sys_supervisor.update(version))
 
     @api_process
     async def reload(self, request):
@@ -125,8 +124,7 @@ class APISupervisor(CoreSysAttributes):
         tasks = [
             self.sys_updater.reload(),
         ]
-        results, _ = await asyncio.shield(
-            asyncio.wait(tasks))
+        results, _ = await asyncio.shield(asyncio.wait(tasks))
 
         for result in results:
             if result.exception() is not None:

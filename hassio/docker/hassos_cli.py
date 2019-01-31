@@ -3,8 +3,8 @@ import logging
 
 import docker
 
-from .interface import DockerInterface
 from ..coresys import CoreSysAttributes
+from .interface import DockerInterface
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
     @property
     def image(self):
         """Return name of HassOS CLI image."""
-        return f"homeassistant/{self.sys_arch}-hassio-cli"
+        return f"homeassistant/{self.sys_arch.supervisor}-hassio-cli"
 
     def _stop(self):
         """Don't need stop."""
@@ -33,5 +33,5 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
 
         else:
             self._meta = image.attrs
-            _LOGGER.info("Found HassOS CLI %s with version %s",
-                         self.image, self.version)
+            _LOGGER.info("Found HassOS CLI %s with version %s", self.image,
+                         self.version)
