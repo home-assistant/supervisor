@@ -61,7 +61,7 @@ class Addon(CoreSysAttributes):
         await self.instance.attach()
 
         if ATTR_IMAGE not in self._data.user[self._id]:
-            self._data.user[self._id][ATTR_IMAGE] = self.image
+            self._data.user[self._id][ATTR_IMAGE] = self.image_name
             self.save_data()
 
     @property
