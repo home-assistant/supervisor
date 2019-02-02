@@ -1,11 +1,11 @@
 """Init file for Hass.io info RESTful API."""
 import logging
 
-from .utils import api_process
-from ..const import (
-    ATTR_HOMEASSISTANT, ATTR_SUPERVISOR, ATTR_MACHINE, ATTR_ARCH, ATTR_HASSOS,
-    ATTR_CHANNEL, ATTR_HOSTNAME)
+from ..const import (ATTR_ARCH, ATTR_CHANNEL, ATTR_HASSOS, ATTR_HOMEASSISTANT,
+                     ATTR_HOSTNAME, ATTR_MACHINE, ATTR_SUPERVISOR,
+                     ATTR_SUPPORTED_ARCH)
 from ..coresys import CoreSysAttributes
+from .utils import api_process
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ class APIInfo(CoreSysAttributes):
             ATTR_HASSOS: self.sys_hassos.version,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_MACHINE: self.sys_machine,
-            ATTR_ARCH: self.sys_arch,
+            ATTR_ARCH: self.sys_arch.default,
+            ATTR_SUPPORTED_ARCH: self.sys_arch.supported,
             ATTR_CHANNEL: self.sys_updater.channel,
         }

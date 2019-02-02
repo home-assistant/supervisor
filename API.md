@@ -346,6 +346,7 @@ Load host configs from a USB stick.
 {
     "version": "INSTALL_VERSION",
     "last_version": "LAST_VERSION",
+    "arch": "arch",
     "machine": "Image machine type",
     "image": "str",
     "custom": "bool -> if custom image",
@@ -675,6 +676,7 @@ return:
     "hostname": "name",
     "machine": "type",
     "arch": "arch",
+    "supported_arch": ["arch1", "arch2"],
     "channel": "stable|beta|dev"
 }
 ```

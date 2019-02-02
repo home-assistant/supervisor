@@ -1,6 +1,7 @@
 """Schedule for Hass.io."""
-import logging
+import asyncio
 from datetime import date, datetime, time, timedelta
+import logging
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,9 +14,9 @@ TASK = 'task'
 class Scheduler:
     """Schedule task inside Hass.io."""
 
-    def __init__(self, loop):
+    def __init__(self):
         """Initialize task schedule."""
-        self.loop = loop
+        self.loop = asyncio.get_running_loop()
         self._data = {}
         self.suspend = False
 
@@ -57,8 +58,8 @@ class Scheduler:
             job = self.loop.call_later(interval, self._run_task, task_id)
         elif isinstance(interval, time):
             today = datetime.combine(date.today(), interval)
-            tomorrow = datetime.combine(
-                date.today() + timedelta(days=1), interval)
+            tomorrow = datetime.combine(date.today() + timedelta(days=1),
+                                        interval)
 
             # Check if we run it today or next day
             if today > datetime.today():

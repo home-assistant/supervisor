@@ -13,9 +13,8 @@ COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:127.0.0.11:53"
 class DNSForward:
     """Manage DNS forwarding to internal DNS."""
 
-    def __init__(self, loop):
+    def __init__(self):
         """Initialize DNS forwarding."""
-        self.loop = loop
         self.proc = None
 
     async def start(self):
@@ -25,9 +24,7 @@ class DNSForward:
                 *shlex.split(COMMAND),
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
-                loop=self.loop
-            )
+                stderr=asyncio.subprocess.DEVNULL)
         except OSError as err:
             _LOGGER.error("Can't start DNS forwarding: %s", err)
         else:

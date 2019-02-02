@@ -13,16 +13,14 @@ import aiohttp
 from aiohttp import hdrs
 import attr
 
-from .const import (
-    FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_UUID,
-    ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL, ATTR_WATCHDOG,
-    ATTR_WAIT_BOOT, ATTR_REFRESH_TOKEN, ATTR_ACCESS_TOKEN,
-    HEADER_HA_ACCESS)
+from .const import (FILE_HASSIO_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION,
+                    ATTR_UUID, ATTR_BOOT, ATTR_PASSWORD, ATTR_PORT, ATTR_SSL,
+                    ATTR_WATCHDOG, ATTR_WAIT_BOOT, ATTR_REFRESH_TOKEN,
+                    ATTR_ACCESS_TOKEN, HEADER_HA_ACCESS)
 from .coresys import CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
-from .exceptions import (
-    HomeAssistantUpdateError, HomeAssistantError, HomeAssistantAPIError,
-    HomeAssistantAuthError)
+from .exceptions import (HomeAssistantUpdateError, HomeAssistantError,
+                         HomeAssistantAPIError, HomeAssistantAuthError)
 from .utils import convert_to_ascii, process_lock, create_token
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
@@ -67,6 +65,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return self.instance.machine
 
     @property
+    def arch(self):
+        """Return arch of running Home Assistant."""
+        return self.instance.arch
+
+    @property
     def error_state(self):
         """Return True if system is in error."""
         return self._error_state
@@ -109,9 +112,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def api_url(self):
         """Return API url to Home Assistant."""
-        return "{}://{}:{}".format(
-            'https' if self.api_ssl else 'http', self.api_ip, self.api_port
-        )
+        return "{}://{}:{}".format('https' if self.api_ssl else 'http',
+                                   self.api_ip, self.api_port)
 
     @property
     def watchdog(self):
@@ -171,8 +173,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def is_custom_image(self):
         """Return True if a custom image is used."""
-        return all(attr in self._data for attr in
-                   (ATTR_IMAGE, ATTR_LAST_VERSION))
+        return all(
+            attr in self._data for attr in (ATTR_IMAGE, ATTR_LAST_VERSION))
 
     @property
     def boot(self):
@@ -349,8 +351,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def check_config(self):
         """Run Home Assistant config check."""
         result = await self.instance.execute_command(
-            "python3 -m homeassistant -c /config --script check_config"
-        )
+            "python3 -m homeassistant -c /config --script check_config")
 
         # if not valid
         if result.exit_code is None:
@@ -379,8 +380,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                     data={
                         "grant_type": "refresh_token",
                         "refresh_token": self.refresh_token
-                    }
-            ) as resp:
+                    }) as resp:
                 if resp.status != 200:
                     _LOGGER.error("Can't update Home Assistant access token!")
                     raise HomeAssistantAuthError()
@@ -392,8 +392,13 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                     datetime.utcnow() + timedelta(seconds=tokens['expires_in'])
 
     @asynccontextmanager
-    async def make_request(self, method, path, json=None, content_type=None,
-                           data=None, timeout=30):
+    async def make_request(self,
+                           method,
+                           path,
+                           json=None,
+                           content_type=None,
+                           data=None,
+                           timeout=30):
         """Async context manager to make a request with right auth."""
         url = f"{self.api_url}/{path}"
         headers = {}
@@ -415,8 +420,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             try:
                 async with getattr(self.sys_websession_ssl, method)(
                         url, data=data, timeout=timeout, json=json,
-                        headers=headers
-                ) as resp:
+                        headers=headers) as resp:
                     # Access token expired
                     if resp.status == 401 and self.refresh_token:
                         self.access_token = None
@@ -444,8 +448,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Block until Home-Assistant is booting up or startup timeout."""
         start_time = time.monotonic()
         migration_progress = False
-        migration_file = Path(
-            self.sys_config.path_homeassistant, '.migration_progress')
+        migration_file = Path(self.sys_config.path_homeassistant,
+                              '.migration_progress')
 
         def check_port():
             """Check if port is mapped."""
@@ -488,8 +492,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             # 4: Timeout
             if time.monotonic() - start_time > self.wait_boot:
-                _LOGGER.warning(
-                    "Don't wait anymore of Home Assistant startup!")
+                _LOGGER.warning("Don't wait anymore of Home Assistant startup!")
                 break
 
         self._error_state = True

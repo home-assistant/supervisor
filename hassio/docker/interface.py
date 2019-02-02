@@ -65,26 +65,28 @@ class DockerInterface(CoreSysAttributes):
         return self.lock.locked()
 
     @process_lock
-    def install(self, tag):
+    def install(self, tag, image=None):
         """Pull docker image."""
-        return self.sys_run_in_executor(self._install, tag)
+        return self.sys_run_in_executor(self._install, tag, image)
 
-    def _install(self, tag):
+    def _install(self, tag, image=None):
         """Pull Docker image.
 
         Need run inside executor.
         """
-        try:
-            _LOGGER.info("Pull image %s tag %s.", self.image, tag)
-            image = self.sys_docker.images.pull(f"{self.image}:{tag}")
+        image = image or self.image
 
-            image.tag(self.image, tag='latest')
-            self._meta = image.attrs
+        try:
+            _LOGGER.info("Pull image %s tag %s.", image, tag)
+            docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
+
+            docker_image.tag(image, tag='latest')
+            self._meta = docker_image.attrs
         except docker.errors.APIError as err:
-            _LOGGER.error("Can't install %s:%s -> %s.", self.image, tag, err)
+            _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
             return False
 
-        _LOGGER.info("Tag image %s with version %s as latest", self.image, tag)
+        _LOGGER.info("Tag image %s with version %s as latest", image, tag)
         return True
 
     def exists(self):
@@ -97,8 +99,8 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            image = self.sys_docker.images.get(self.image)
-            assert f"{self.image}:{self.version}" in image.tags
+            docker_image = self.sys_docker.images.get(self.image)
+            assert f"{self.image}:{self.version}" in docker_image.tags
         except (docker.errors.DockerException, AssertionError):
             return False
 
@@ -117,17 +119,17 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            container = self.sys_docker.containers.get(self.name)
-            image = self.sys_docker.images.get(self.image)
+            docker_container = self.sys_docker.containers.get(self.name)
+            docker_image = self.sys_docker.images.get(self.image)
         except docker.errors.DockerException:
             return False
 
         # container is not running
-        if container.status != 'running':
+        if docker_container.status != 'running':
             return False
 
         # we run on an old image, stop and start it
-        if container.image.id != image.id:
+        if docker_container.image.id != docker_image.id:
             return False
 
         return True
@@ -150,8 +152,8 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.DockerException:
             return False
 
-        _LOGGER.info(
-            "Attach to image %s with version %s", self.image, self.version)
+        _LOGGER.info("Attach to image %s with version %s", self.image,
+                     self.version)
 
         return True
 
@@ -178,18 +180,18 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            container = self.sys_docker.containers.get(self.name)
+            docker_container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
             return False
 
-        if container.status == 'running':
+        if docker_container.status == 'running':
             _LOGGER.info("Stop %s Docker application", self.image)
             with suppress(docker.errors.DockerException):
-                container.stop(timeout=self.timeout)
+                docker_container.stop(timeout=self.timeout)
 
         with suppress(docker.errors.DockerException):
             _LOGGER.info("Clean %s Docker application", self.image)
-            container.remove(force=True)
+            docker_container.remove(force=True)
 
         return True
 
@@ -206,8 +208,8 @@ class DockerInterface(CoreSysAttributes):
         # Cleanup container
         self._stop()
 
-        _LOGGER.info(
-            "Remove Docker %s with latest and %s", self.image, self.version)
+        _LOGGER.info("Remove Docker %s with latest and %s", self.image,
+                     self.version)
 
         try:
             with suppress(docker.errors.ImageNotFound):
@@ -226,20 +228,22 @@ class DockerInterface(CoreSysAttributes):
         return True
 
     @process_lock
-    def update(self, tag):
+    def update(self, tag, image=None):
         """Update a Docker image."""
-        return self.sys_run_in_executor(self._update, tag)
+        return self.sys_run_in_executor(self._update, tag, image)
 
-    def _update(self, tag):
+    def _update(self, tag, image=None):
         """Update a docker image.
 
         Need run inside executor.
         """
-        _LOGGER.info(
-            "Update Docker %s with %s:%s", self.version, self.image, tag)
+        image = image or self.image
+
+        _LOGGER.info("Update Docker %s:%s to %s:%s", self.image, self.version,
+                     image, tag)
 
         # Update docker image
-        if not self._install(tag):
+        if not self._install(tag, image):
             return False
 
         # Stop container & cleanup
@@ -261,12 +265,12 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            container = self.sys_docker.containers.get(self.name)
+            docker_container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
             return b""
 
         try:
-            return container.logs(tail=100, stdout=True, stderr=True)
+            return docker_container.logs(tail=100, stdout=True, stderr=True)
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't grep logs from %s: %s", self.image, err)
 
@@ -318,12 +322,12 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            container = self.sys_docker.containers.get(self.name)
+            docker_container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
             return None
 
         try:
-            stats = container.stats(stream=False)
+            stats = docker_container.stats(stream=False)
             return DockerStats(stats)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't read stats from %s: %s", self.name, err)

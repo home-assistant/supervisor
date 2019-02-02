@@ -99,29 +99,32 @@ class AddonsData(JsonConfig, CoreSysAttributes):
             try:
                 addon_config = read_json_file(addon)
 
-                # validate
-                addon_config = SCHEMA_ADDON_CONFIG(addon_config)
-
-                # Generate slug
-                addon_slug = "{}_{}".format(
-                    repository, addon_config[ATTR_SLUG])
-
-                # store
-                addon_config[ATTR_REPOSITORY] = repository
-                addon_config[ATTR_LOCATON] = str(addon.parent)
-                self._cache[addon_slug] = addon_config
-
-            except (OSError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 _LOGGER.warning("Can't read %s", addon)
+                continue
+
+            # validate
+            try:
+                addon_config = SCHEMA_ADDON_CONFIG(addon_config)
 
             except vol.Invalid as ex:
                 _LOGGER.warning("Can't read %s: %s", addon,
                                 humanize_error(addon_config, ex))
+                continue
+
+            # Generate slug
+            addon_slug = "{}_{}".format(
+                repository, addon_config[ATTR_SLUG])
+
+            # store
+            addon_config[ATTR_REPOSITORY] = repository
+            addon_config[ATTR_LOCATON] = str(addon.parent)
+            self._cache[addon_slug] = addon_config
 
     def _set_builtin_repositories(self):
         """Add local built-in repository into dataset."""
         try:
-            builtin_file = Path(__file__).parent.joinpath('built-in.json')
+            builtin_file = Path(__file__).parent.joinpath("built-in.json")
             builtin_data = read_json_file(builtin_file)
         except (OSError, json.JSONDecodeError) as err:
             _LOGGER.warning("Can't read built-in json: %s", err)

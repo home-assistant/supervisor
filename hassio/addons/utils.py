@@ -1,21 +1,25 @@
 """Util add-ons functions."""
+from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+from pathlib import Path
 import re
+from typing import TYPE_CHECKING
 
-from ..const import (
-    SECURITY_DISABLE, SECURITY_PROFILE, PRIVILEGED_NET_ADMIN,
-    PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_RAWIO, PRIVILEGED_SYS_PTRACE,
-    PRIVILEGED_DAC_READ_SEARCH, PRIVILEGED_SYS_MODULE, ROLE_ADMIN,
-    ROLE_MANAGER)
+from ..const import (PRIVILEGED_DAC_READ_SEARCH, PRIVILEGED_NET_ADMIN,
+                     PRIVILEGED_SYS_ADMIN, PRIVILEGED_SYS_MODULE,
+                     PRIVILEGED_SYS_PTRACE, PRIVILEGED_SYS_RAWIO, ROLE_ADMIN,
+                     ROLE_MANAGER, SECURITY_DISABLE, SECURITY_PROFILE)
+
+if TYPE_CHECKING:
+    from .addon import Addon
 
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
-
 _LOGGER = logging.getLogger(__name__)
 
 
-def rating_security(addon):
+def rating_security(addon: Addon) -> int:
     """Return 1-6 for security rating.
 
     1 = not secure
@@ -34,17 +38,16 @@ def rating_security(addon):
         rating += 1
 
     # Privileged options
+    # pylint: disable=bad-continuation
     if any(
-            privilege in addon.privileged
-            for privilege in (
-                    PRIVILEGED_NET_ADMIN,
-                    PRIVILEGED_SYS_ADMIN,
-                    PRIVILEGED_SYS_RAWIO,
-                    PRIVILEGED_SYS_PTRACE,
-                    PRIVILEGED_SYS_MODULE,
-                    PRIVILEGED_DAC_READ_SEARCH,
-            )
-    ):
+            privilege in addon.privileged for privilege in (
+                PRIVILEGED_NET_ADMIN,
+                PRIVILEGED_SYS_ADMIN,
+                PRIVILEGED_SYS_RAWIO,
+                PRIVILEGED_SYS_PTRACE,
+                PRIVILEGED_SYS_MODULE,
+                PRIVILEGED_DAC_READ_SEARCH,
+            )):
         rating += -1
 
     # API Hass.io role
@@ -72,19 +75,19 @@ def rating_security(addon):
     return max(min(6, rating), 1)
 
 
-def get_hash_from_repository(name):
+def get_hash_from_repository(name: str) -> str:
     """Generate a hash from repository."""
     key = name.lower().encode()
     return hashlib.sha1(key).hexdigest()[:8]
 
 
-def extract_hash_from_path(path):
+def extract_hash_from_path(path: Path) -> str:
     """Extract repo id from path."""
-    repo_dir = path.parts[-1]
+    repository_dir = path.parts[-1]
 
-    if not RE_SHA1.match(repo_dir):
-        return get_hash_from_repository(repo_dir)
-    return repo_dir
+    if not RE_SHA1.match(repository_dir):
+        return get_hash_from_repository(repository_dir)
+    return repository_dir
 
 
 def check_installed(method):
@@ -100,12 +103,11 @@ def check_installed(method):
     return wrap_check
 
 
-async def remove_data(folder):
+async def remove_data(folder: Path) -> None:
     """Remove folder and reset privileged."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            "rm", "-rf", str(folder), stdout=asyncio.subprocess.DEVNULL
-        )
+            "rm", "-rf", str(folder), stdout=asyncio.subprocess.DEVNULL)
 
         _, error_msg = await proc.communicate()
     except OSError as err:
