@@ -3,7 +3,7 @@ import hashlib
 import os
 from pathlib import Path
 import tarfile
-from typing import Optional
+from typing import Optional, IO
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import ciphers, padding
@@ -19,17 +19,17 @@ class SecureTarFile:
 
     def __init__(
         self, name: Path, mode: str, key: Optional[bytes] = None, gzip: bool = True
-    ):
+    ) -> None:
         """Initialize encryption handler."""
-        self._file = None
+        self._file: Optional[IO[bytes]] = None
         self._mode: str = mode
         self._name: Path = name
 
         # Tarfile options
-        self._tar = None
-        self._tar_mode = f"{mode}|gz" if gzip else f"{mode}|"
+        self._tar: Optional[tarfile.TarFile] = None
+        self._tar_mode: str = f"{mode}|gz" if gzip else f"{mode}|"
 
-        # Encryption/Decription
+        # Encryption/Description
         self._aes: Optional[ciphers.Cipher] = None
         self._key: bytes = key
 
@@ -37,7 +37,7 @@ class SecureTarFile:
         self._decrypt: Optional[ciphers.CipherContext] = None
         self._encrypt: Optional[ciphers.CipherContext] = None
 
-    def __enter__(self):
+    def __enter__(self) -> tarfile.TarFile:
         """Start context manager tarfile."""
         if not self._key:
             self._tar = tarfile.open(name=str(self._name), mode=self._tar_mode)
@@ -66,14 +66,14 @@ class SecureTarFile:
         self._tar = tarfile.open(fileobj=self, mode=self._tar_mode)
         return self._tar
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         """Close file."""
         if self._tar:
             self._tar.close()
         if self._file:
             self._file.close()
 
-    def write(self, data: bytes):
+    def write(self, data: bytes) -> None:
         """Write data."""
         if len(data) % BLOCK_SIZE != 0:
             padder = padding.PKCS7(BLOCK_SIZE).padder()
@@ -81,24 +81,24 @@ class SecureTarFile:
 
         self._file.write(self._encrypt.update(data))
 
-    def read(self, size: int = 0):
+    def read(self, size: int = 0) -> bytes:
         """Read data."""
         return self._decrypt.update(self._file.read(size))
 
     @property
-    def path(self):
+    def path(self) -> Path:
         """Return path object of tarfile."""
         return self._name
 
     @property
-    def size(self):
+    def size(self) -> int:
         """Return snapshot size."""
         if not self._name.is_file():
             return 0
         return round(self._name.stat().st_size / 1_048_576, 2)  # calc mbyte
 
 
-def _generate_iv(key: bytes, salt: bytes):
+def _generate_iv(key: bytes, salt: bytes) -> bytes:
     """Generate an iv from data."""
     temp_iv = key + salt
     for _ in range(100):
