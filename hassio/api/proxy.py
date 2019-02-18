@@ -144,8 +144,7 @@ class APIProxy(CoreSysAttributes):
                 return client
 
             # Renew the Token is invalid
-            if (data.get('type') == 'invalid_auth' and
-                    self.sys_homeassistant.refresh_token):
+            if data.get('type') == 'invalid_auth' and self.sys_homeassistant.refresh_token:
                 self.sys_homeassistant.access_token = None
                 return await self._websocket_client()
 
@@ -175,8 +174,7 @@ class APIProxy(CoreSysAttributes):
 
             # Check API access
             response = await server.receive_json()
-            hassio_token = (response.get('api_password') or
-                            response.get('access_token'))
+            hassio_token = response.get('api_password') or response.get('access_token')
             addon = self.sys_addons.from_token(hassio_token)
 
             if not addon or not addon.access_homeassistant_api:

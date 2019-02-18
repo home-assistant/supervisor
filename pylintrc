@@ -38,8 +38,10 @@ disable=
   bad-continuation,
   too-few-public-methods,
   no-self-use,
+  not-async-context-manager,
   too-many-locals,
-  too-many-branches
+  too-many-branches,
+  no-else-return
 
 [EXCEPTIONS]
 overgeneral-exceptions=Exception

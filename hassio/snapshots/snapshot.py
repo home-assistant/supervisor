@@ -130,9 +130,7 @@ class Snapshot(CoreSysAttributes):
 
         # Set password
         if password:
-            self._key = password_to_key(password)
-            self._aes = AES.new(
-                self._key, AES.MODE_CBC, iv=key_to_iv(self._key))
+            self._init_password(password)
             self._data[ATTR_PROTECTED] = password_for_validating(password)
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
@@ -145,13 +143,17 @@ class Snapshot(CoreSysAttributes):
         if validating != self._data[ATTR_PROTECTED]:
             return False
 
+        self._init_password(password)
+        return True
+
+    def _init_password(self, password: str) -> None:
+        """Set password + init aes cipher."""
         self._key = password_to_key(password)
         self._aes = ciphers.Cipher(
             ciphers.algorithms.AES(self._key),
             ciphers.modes.CBC(key_to_iv(self._key)),
             backend=default_backend(),
         )
-        return True
 
     def _encrypt_data(self, data: str) -> str:
         """Make data secure."""
