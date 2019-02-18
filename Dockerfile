@@ -3,6 +3,7 @@ FROM $BUILD_FROM
 
 # Install base
 RUN apk add --no-cache \
+    openssl \
     git \
     socat \
     glib \
@@ -12,8 +13,9 @@ RUN apk add --no-cache \
 # Install requirements
 COPY requirements.txt /usr/src/
 RUN apk add --no-cache --virtual .build-dependencies \
-        make \
-        g++ \
+    make \
+    g++ \
+    openssl-dev \
     && export MAKEFLAGS="-j$(nproc)" \
     && pip3 install --no-cache-dir -r /usr/src/requirements.txt \
     && apk del .build-dependencies \
