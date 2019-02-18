@@ -136,7 +136,7 @@ class Snapshot(CoreSysAttributes):
             self._data[ATTR_PROTECTED] = password_for_validating(password)
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
-    def set_password(self, password):
+    def set_password(self, password: str) -> bool:
         """Set the password for an existing snapshot."""
         if not password:
             return False
