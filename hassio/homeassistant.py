@@ -466,7 +466,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return False
 
         while True:
-            await asyncio.sleep(10)
+            await asyncio.sleep(5)
 
             # 1: Check if Container is is_running
             if not await self.instance.is_running():
