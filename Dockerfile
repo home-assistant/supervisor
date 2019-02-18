@@ -5,6 +5,7 @@ FROM $BUILD_FROM
 RUN apk add --no-cache \
     openssl \
     libffi \
+    musl \
     git \
     socat \
     glib \
@@ -18,6 +19,7 @@ RUN apk add --no-cache --virtual .build-dependencies \
     g++ \
     openssl-dev \
     libffi-dev \
+    musl-dev \
     && export MAKEFLAGS="-j$(nproc)" \
     && pip3 install --no-cache-dir -r /usr/src/requirements.txt \
     && apk del .build-dependencies \
