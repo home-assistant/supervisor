@@ -6,7 +6,7 @@ import tarfile
 from typing import Optional, IO
 
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import ciphers, padding
+from cryptography.hazmat.primitives import ciphers, padding, algorithms, modes
 
 BLOCK_SIZE = 16
 
@@ -55,8 +55,8 @@ class SecureTarFile:
 
         # Create Cipher
         self._aes = ciphers.Cipher(
-            ciphers.algorithms.AES(self._key),
-            ciphers.modes.CBC(_generate_iv(self._key, cbc_rand)),
+            algorithms.AES(self._key),
+            modes.CBC(_generate_iv(self._key, cbc_rand)),
             backend=default_backend(),
         )
 

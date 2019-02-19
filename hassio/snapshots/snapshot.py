@@ -8,7 +8,7 @@ import tarfile
 from tempfile import TemporaryDirectory
 
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import ciphers, padding
+from cryptography.hazmat.primitives import ciphers, padding, algorithms, modes
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -150,8 +150,8 @@ class Snapshot(CoreSysAttributes):
         """Set password + init aes cipher."""
         self._key = password_to_key(password)
         self._aes = ciphers.Cipher(
-            ciphers.algorithms.AES(self._key),
-            ciphers.modes.CBC(key_to_iv(self._key)),
+            algorithms.AES(self._key),
+            modes.CBC(key_to_iv(self._key)),
             backend=default_backend(),
         )
 
