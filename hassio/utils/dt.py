@@ -1,5 +1,5 @@
 """Tools file for Hass.io."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 import logging
 import re
 from typing import Any, Dict, Optional
@@ -41,20 +41,20 @@ def parse_datetime(dt_str):
         kws["microsecond"] = kws["microsecond"].ljust(6, "0")
     tzinfo_str = kws.pop("tzinfo")
 
-    tzinfo: Optional[dt.tzinfo] = None
+    tzinfo_val: Optional[tzinfo] = None
     if tzinfo_str == "Z":
-        tzinfo = UTC
+        tzinfo_val = UTC
     elif tzinfo_str is not None:
         offset_mins = int(tzinfo_str[-2:]) if len(tzinfo_str) > 3 else 0
         offset_hours = int(tzinfo_str[1:3])
         offset = timedelta(hours=offset_hours, minutes=offset_mins)
         if tzinfo_str[0] == "-":
             offset = -offset
-        tzinfo = timezone(offset)
+        tzinfo_val = timezone(offset)
     else:
-        tzinfo = None
+        tzinfo_val = None
     kws = {k: int(v) for k, v in kws.items() if v is not None}
-    kws["tzinfo"] = tzinfo
+    kws["tzinfo"] = tzinfo_val
     return datetime(**kws)
 
 
