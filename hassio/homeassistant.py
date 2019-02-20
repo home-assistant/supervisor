@@ -369,8 +369,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def ensure_access_token(self):
         """Ensures there is an access token."""
-        if (self.access_token is not None and
-                self._access_token_expires > datetime.utcnow()):
+        if self.access_token is not None and self._access_token_expires > datetime.utcnow():
             return
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
@@ -466,7 +465,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return False
 
         while True:
-            await asyncio.sleep(10)
+            await asyncio.sleep(5)
 
             # 1: Check if Container is is_running
             if not await self.instance.is_running():
