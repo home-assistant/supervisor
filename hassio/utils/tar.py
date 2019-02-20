@@ -3,10 +3,16 @@ import hashlib
 import os
 from pathlib import Path
 import tarfile
-from typing import Optional, IO
+from typing import IO, Optional
 
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import ciphers, padding, algorithms, modes
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import (
+    CipherContext,
+    Cipher,
+    algorithms,
+    modes,
+)
 
 BLOCK_SIZE = 16
 
@@ -30,12 +36,12 @@ class SecureTarFile:
         self._tar_mode: str = f"{mode}|gz" if gzip else f"{mode}|"
 
         # Encryption/Description
-        self._aes: Optional[ciphers.Cipher] = None
+        self._aes: Optional[Cipher] = None
         self._key: bytes = key
 
         # Function helper
-        self._decrypt: Optional[ciphers.CipherContext] = None
-        self._encrypt: Optional[ciphers.CipherContext] = None
+        self._decrypt: Optional[CipherContext] = None
+        self._encrypt: Optional[CipherContext] = None
 
     def __enter__(self) -> tarfile.TarFile:
         """Start context manager tarfile."""
@@ -54,7 +60,7 @@ class SecureTarFile:
             self._file.write(cbc_rand)
 
         # Create Cipher
-        self._aes = ciphers.Cipher(
+        self._aes = Cipher(
             algorithms.AES(self._key),
             modes.CBC(_generate_iv(self._key, cbc_rand)),
             backend=default_backend(),

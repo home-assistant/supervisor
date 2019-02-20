@@ -6,23 +6,42 @@ import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
+from typing import Any, Dict, Optional
 
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import ciphers, padding, algorithms, modes
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
-    ATTR_ADDONS, ATTR_BOOT, ATTR_CRYPTO, ATTR_DATE, ATTR_FOLDERS,
-    ATTR_HOMEASSISTANT, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_NAME,
-    ATTR_PASSWORD, ATTR_PORT, ATTR_PROTECTED, ATTR_REFRESH_TOKEN,
-    ATTR_REPOSITORIES, ATTR_SIZE, ATTR_SLUG, ATTR_SSL, ATTR_TYPE, ATTR_VERSION,
-    ATTR_WAIT_BOOT, ATTR_WATCHDOG, CRYPTO_AES128)
-from ..coresys import CoreSysAttributes
+    ATTR_ADDONS,
+    ATTR_BOOT,
+    ATTR_CRYPTO,
+    ATTR_DATE,
+    ATTR_FOLDERS,
+    ATTR_HOMEASSISTANT,
+    ATTR_IMAGE,
+    ATTR_LAST_VERSION,
+    ATTR_NAME,
+    ATTR_PASSWORD,
+    ATTR_PORT,
+    ATTR_PROTECTED,
+    ATTR_REFRESH_TOKEN,
+    ATTR_REPOSITORIES,
+    ATTR_SIZE,
+    ATTR_SLUG,
+    ATTR_SSL,
+    ATTR_TYPE,
+    ATTR_VERSION,
+    ATTR_WAIT_BOOT,
+    ATTR_WATCHDOG,
+    CRYPTO_AES128,
+)
+from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile
-from .utils import (
-    key_to_iv, password_for_validating, password_to_key, remove_folder)
+from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
 from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,14 +50,14 @@ _LOGGER = logging.getLogger(__name__)
 class Snapshot(CoreSysAttributes):
     """A single Hass.io snapshot."""
 
-    def __init__(self, coresys, tar_file):
+    def __init__(self, coresys: CoreSys, tar_file: Path):
         """Initialize a snapshot."""
-        self.coresys = coresys
-        self._tarfile = tar_file
-        self._data = {}
+        self.coresys: CoreSys = coresys
+        self._tarfile: Path = tar_file
+        self._data: Dict[str, Any] = {}
         self._tmp = None
-        self._key = None
-        self._aes = None
+        self._key: Optional[bytes] = None
+        self._aes: Optional[Cipher] = None
 
     @property
     def slug(self):
@@ -149,7 +168,7 @@ class Snapshot(CoreSysAttributes):
     def _init_password(self, password: str) -> None:
         """Set password + init aes cipher."""
         self._key = password_to_key(password)
-        self._aes = ciphers.Cipher(
+        self._aes = Cipher(
             algorithms.AES(self._key),
             modes.CBC(key_to_iv(self._key)),
             backend=default_backend(),
