@@ -6,24 +6,43 @@ import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
+from typing import Any, Dict, Optional
 
-from Crypto.Cipher import AES
-from Crypto.Util import Padding
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .validate import SCHEMA_SNAPSHOT, ALL_FOLDERS
-from .utils import (
-    remove_folder, password_to_key, password_for_validating, key_to_iv)
 from ..const import (
-    ATTR_SLUG, ATTR_NAME, ATTR_DATE, ATTR_ADDONS, ATTR_REPOSITORIES,
-    ATTR_HOMEASSISTANT, ATTR_FOLDERS, ATTR_VERSION, ATTR_TYPE, ATTR_IMAGE,
-    ATTR_PORT, ATTR_SSL, ATTR_PASSWORD, ATTR_WATCHDOG, ATTR_BOOT, ATTR_CRYPTO,
-    ATTR_LAST_VERSION, ATTR_PROTECTED, ATTR_WAIT_BOOT, ATTR_SIZE,
-    ATTR_REFRESH_TOKEN, CRYPTO_AES128)
-from ..coresys import CoreSysAttributes
+    ATTR_ADDONS,
+    ATTR_BOOT,
+    ATTR_CRYPTO,
+    ATTR_DATE,
+    ATTR_FOLDERS,
+    ATTR_HOMEASSISTANT,
+    ATTR_IMAGE,
+    ATTR_LAST_VERSION,
+    ATTR_NAME,
+    ATTR_PASSWORD,
+    ATTR_PORT,
+    ATTR_PROTECTED,
+    ATTR_REFRESH_TOKEN,
+    ATTR_REPOSITORIES,
+    ATTR_SIZE,
+    ATTR_SLUG,
+    ATTR_SSL,
+    ATTR_TYPE,
+    ATTR_VERSION,
+    ATTR_WAIT_BOOT,
+    ATTR_WATCHDOG,
+    CRYPTO_AES128,
+)
+from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile
+from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
+from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,14 +50,14 @@ _LOGGER = logging.getLogger(__name__)
 class Snapshot(CoreSysAttributes):
     """A single Hass.io snapshot."""
 
-    def __init__(self, coresys, tar_file):
+    def __init__(self, coresys: CoreSys, tar_file: Path):
         """Initialize a snapshot."""
-        self.coresys = coresys
-        self._tarfile = tar_file
-        self._data = {}
+        self.coresys: CoreSys = coresys
+        self._tarfile: Path = tar_file
+        self._data: Dict[str, Any] = {}
         self._tmp = None
-        self._key = None
-        self._aes = None
+        self._key: Optional[bytes] = None
+        self._aes: Optional[Cipher] = None
 
     @property
     def slug(self):
@@ -130,13 +149,11 @@ class Snapshot(CoreSysAttributes):
 
         # Set password
         if password:
-            self._key = password_to_key(password)
-            self._aes = AES.new(
-                self._key, AES.MODE_CBC, iv=key_to_iv(self._key))
+            self._init_password(password)
             self._data[ATTR_PROTECTED] = password_for_validating(password)
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
-    def set_password(self, password):
+    def set_password(self, password: str) -> bool:
         """Set the password for an existing snapshot."""
         if not password:
             return False
@@ -145,25 +162,39 @@ class Snapshot(CoreSysAttributes):
         if validating != self._data[ATTR_PROTECTED]:
             return False
 
-        self._key = password_to_key(password)
-        self._aes = AES.new(self._key, AES.MODE_CBC, iv=key_to_iv(self._key))
+        self._init_password(password)
         return True
 
-    def _encrypt_data(self, data):
+    def _init_password(self, password: str) -> None:
+        """Set password + init aes cipher."""
+        self._key = password_to_key(password)
+        self._aes = Cipher(
+            algorithms.AES(self._key),
+            modes.CBC(key_to_iv(self._key)),
+            backend=default_backend(),
+        )
+
+    def _encrypt_data(self, data: str) -> str:
         """Make data secure."""
         if not self._key or data is None:
             return data
 
-        return b64encode(
-            self._aes.encrypt(Padding.pad(data.encode(), 16))).decode()
+        encrypt = self._aes.encryptor()
+        padder = padding.PKCS7(128).padder()
 
-    def _decrypt_data(self, data):
+        data = padder.update(data.encode()) + padder.finalize()
+        return b64encode(encrypt.update(data)).decode()
+
+    def _decrypt_data(self, data: str) -> str:
         """Make data readable."""
         if not self._key or data is None:
             return data
 
-        return Padding.unpad(
-            self._aes.decrypt(b64decode(data)), 16).decode()
+        decrypt = self._aes.decryptor()
+        padder = padding.PKCS7(128).unpadder()
+
+        data = padder.update(decrypt.update(b64decode(data))) + padder.finalize()
+        return data.decode()
 
     async def load(self):
         """Read snapshot.json from tar file."""
