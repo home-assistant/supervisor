@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives.ciphers import (
 )
 
 BLOCK_SIZE = 16
+BLOCK_SIZE_BITS = 128
 
 MOD_READ = "r"
 MOD_WRITE = "w"
@@ -82,7 +83,7 @@ class SecureTarFile:
     def write(self, data: bytes) -> None:
         """Write data."""
         if len(data) % BLOCK_SIZE != 0:
-            padder = padding.PKCS7(BLOCK_SIZE).padder()
+            padder = padding.PKCS7(BLOCK_SIZE_BITS).padder()
             data = padder.update(data) + padder.finalize()
 
         self._file.write(self._encrypt.update(data))

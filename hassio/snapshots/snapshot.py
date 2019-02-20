@@ -179,22 +179,22 @@ class Snapshot(CoreSysAttributes):
         if not self._key or data is None:
             return data
 
-        encryptor = self._aes.encryptor()
-        padder = padding.PKCS7(16).padder()
+        encrypt = self._aes.encryptor()
+        padder = padding.PKCS7(128).padder()
 
         data = padder.update(data.encode()) + padder.finalize()
-        return b64encode(encryptor.update(data)).decode()
+        return b64encode(encrypt.update(data)).decode()
 
     def _decrypt_data(self, data: str) -> str:
         """Make data readable."""
         if not self._key or data is None:
             return data
 
-        decryptor = self._aes.decryptor()
-        unpadder = padding.PKCS7(16).unpadder()
+        decrypt = self._aes.decryptor()
+        padder = padding.PKCS7(128).unpadder()
 
-        unpadder.update(decryptor.update(b64decode(data)))
-        return unpadder.finalize().decode()
+        data = padder.update(decrypt.update(b64decode(data))) + padder.finalize()
+        return data.decode()
 
     async def load(self):
         """Read snapshot.json from tar file."""
