@@ -8,6 +8,7 @@ import re
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
+from typing import Dict, Any
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -108,32 +109,34 @@ class Addon(CoreSysAttributes):
         """Return installed version."""
         return self._data.user.get(self._id, {}).get(ATTR_VERSION)
 
-    def _set_install(self, version):
+    def _set_install(self, image: str, version: str) -> None:
         """Set addon as installed."""
         self._data.system[self._id] = deepcopy(self._data.cache[self._id])
         self._data.user[self._id] = {
             ATTR_OPTIONS: {},
             ATTR_VERSION: version,
-            ATTR_IMAGE: self.image_name,
+            ATTR_IMAGE: image,
         }
         self.save_data()
 
-    def _set_uninstall(self):
+    def _set_uninstall(self) -> None:
         """Set add-on as uninstalled."""
         self._data.system.pop(self._id, None)
         self._data.user.pop(self._id, None)
         self.save_data()
 
-    def _set_update(self, version):
+    def _set_update(self, image: str, version: str) -> None:
         """Update version of add-on."""
         self._data.system[self._id] = deepcopy(self._data.cache[self._id])
         self._data.user[self._id][ATTR_VERSION] = version
         self.save_data()
 
-    def _restore_data(self, user, system):
+    def _restore_data(self, user: Dict[str, Any], system: Dict[str, Any], image: str) -> None:
         """Restore data to add-on."""
         self._data.user[self._id] = deepcopy(user)
         self._data.system[self._id] = deepcopy(system)
+
+        self._data.user[self._id][ATTR_IMAGE] = image
         self.save_data()
 
     @property
@@ -725,7 +728,7 @@ class Addon(CoreSysAttributes):
                 self.last_version, self.image_name):
             return False
 
-        self._set_install(self.last_version)
+        self._set_install(self.image_name, self.last_version)
         return True
 
     @check_installed
@@ -805,7 +808,7 @@ class Addon(CoreSysAttributes):
         if not await self.instance.update(
                 self.last_version, self.image_name):
             return False
-        self._set_update(self.last_version)
+        self._set_update(self.image_name, self.last_version)
 
         # Setup/Fix AppArmor profile
         await self._install_apparmor()
@@ -950,7 +953,7 @@ class Addon(CoreSysAttributes):
 
             # Restore data or reload add-on
             _LOGGER.info("Restore config for addon %s", self._id)
-            self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM])
+            self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM], self.image_name)
 
             # Check version / restore image
             version = data[ATTR_VERSION]
@@ -961,7 +964,7 @@ class Addon(CoreSysAttributes):
                 if image_file.is_file():
                     await self.instance.import_image(image_file, version)
                 else:
-                    if await self.instance.install(version):
+                    if await self.instance.install(version, self.image_name):
                         await self.instance.cleanup()
             else:
                 await self.instance.stop()
