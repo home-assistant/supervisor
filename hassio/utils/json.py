@@ -2,7 +2,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -15,9 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 def write_json_file(jsonfile: Path, data: Any) -> None:
     """Write a JSON file."""
     try:
-        json_str = json.dumps(data, indent=2)
-        with jsonfile.open("w") as conf_file:
-            conf_file.write(json_str)
+        jsonfile.write_text(json.dumps(data, indent=2))
     except (OSError, ValueError, TypeError) as err:
         _LOGGER.error("Can't write %s: %s", jsonfile, err)
         raise JsonFileError() from None
@@ -26,8 +24,7 @@ def write_json_file(jsonfile: Path, data: Any) -> None:
 def read_json_file(jsonfile: Path) -> Any:
     """Read a JSON file and return a dict."""
     try:
-        with jsonfile.open("r") as cfile:
-            return json.loads(cfile.read())
+        return json.loads(jsonfile.read_text())
     except (OSError, ValueError, TypeError, UnicodeDecodeError) as err:
         _LOGGER.error("Can't read json from %s: %s", jsonfile, err)
         raise JsonFileError() from None
@@ -36,15 +33,15 @@ def read_json_file(jsonfile: Path) -> Any:
 class JsonConfig:
     """Hass core object for handle it."""
 
-    def __init__(self, json_file, schema):
+    def __init__(self, json_file: Path, schema: vol.Schema):
         """Initialize hass object."""
-        self._file = json_file
-        self._schema = schema
-        self._data = {}
+        self._file: Path = json_file
+        self._schema: vol.schema = schema
+        self._data: Dict[str, Any] = {}
 
         self.read_data()
 
-    def reset_data(self):
+    def reset_data(self) -> None:
         """Reset JSON file to default."""
         try:
             self._data = self._schema({})
@@ -53,7 +50,7 @@ class JsonConfig:
                 "Can't reset %s: %s", self._file, humanize_error(self._data, ex)
             )
 
-    def read_data(self):
+    def read_data(self) -> None:
         """Read JSON file & validate."""
         if self._file.is_file():
             try:
@@ -73,7 +70,7 @@ class JsonConfig:
             _LOGGER.warning("Reset %s to default", self._file)
             self._data = self._schema({})
 
-    def save_data(self):
+    def save_data(self) -> None:
         """Store data to configuration file."""
         # Validate
         try:
