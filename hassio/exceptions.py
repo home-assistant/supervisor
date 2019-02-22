@@ -137,3 +137,10 @@ class AppArmorFileError(AppArmorError):
 
 class AppArmorInvalidError(AppArmorError):
     """AppArmor profile validate error."""
+
+
+# util/json
+
+
+class JsonFileError(HassioError):
+    """Invalid json file."""
