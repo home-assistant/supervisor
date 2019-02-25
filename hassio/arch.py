@@ -1,5 +1,4 @@
 """Handle Arch for underlay maschine/platforms."""
-import json
 import logging
 from typing import List
 from pathlib import Path

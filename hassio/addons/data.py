@@ -1,5 +1,4 @@
 """Init file for Hass.io add-on data."""
-import json
 import logging
 from pathlib import Path
 

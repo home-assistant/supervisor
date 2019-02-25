@@ -1,7 +1,6 @@
 """Init file for Hass.io add-ons."""
 from contextlib import suppress
 from copy import deepcopy
-import json
 import logging
 from pathlib import Path, PurePath
 import re

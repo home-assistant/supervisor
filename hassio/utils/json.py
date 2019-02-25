@@ -36,7 +36,7 @@ class JsonConfig:
     def __init__(self, json_file: Path, schema: vol.Schema):
         """Initialize hass object."""
         self._file: Path = json_file
-        self._schema: vol.schema = schema
+        self._schema: vol.Schema = schema
         self._data: Dict[str, Any] = {}
 
         self.read_data()
