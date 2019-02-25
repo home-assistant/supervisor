@@ -1,11 +1,10 @@
 """Handle Arch for underlay maschine/platforms."""
-import json
 import logging
 from typing import List
 from pathlib import Path
 
 from .coresys import CoreSysAttributes, CoreSys
-from .exceptions import HassioArchNotFound
+from .exceptions import HassioArchNotFound, JsonFileError
 from .utils.json import read_json_file
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,10 +37,9 @@ class CpuArch(CoreSysAttributes):
     async def load(self) -> None:
         """Load data and initialize default arch."""
         try:
-            arch_file = Path(__file__).parent.joinpath("arch.json")
-            arch_data = read_json_file(arch_file)
-        except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.warning("Can't read arch json: %s", err)
+            arch_data = read_json_file(Path(__file__).parent.joinpath("arch.json"))
+        except JsonFileError:
+            _LOGGER.warning("Can't read arch json")
             return
 
         # Evaluate current CPU/Platform
