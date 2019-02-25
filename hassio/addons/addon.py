@@ -1,7 +1,6 @@
 """Init file for Hass.io add-ons."""
 from contextlib import suppress
 from copy import deepcopy
-import json
 import logging
 from pathlib import Path, PurePath
 import re
@@ -29,7 +28,7 @@ from ..const import (
     STATE_STARTED, STATE_STOPPED)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
-from ..exceptions import HostAppArmorError
+from ..exceptions import HostAppArmorError, JsonFileError
 from ..utils import create_token
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
@@ -616,8 +615,8 @@ class Addon(CoreSysAttributes):
         except vol.Invalid as ex:
             _LOGGER.error("Add-on %s have wrong options: %s", self._id,
                           humanize_error(options, ex))
-        except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.error("Add-on %s can't write options: %s", self._id, err)
+        except JsonFileError:
+            _LOGGER.error("Add-on %s can't write options", self._id)
         else:
             return True
 
@@ -892,8 +891,8 @@ class Addon(CoreSysAttributes):
             # Store local configs/state
             try:
                 write_json_file(Path(temp, 'addon.json'), data)
-            except (OSError, json.JSONDecodeError) as err:
-                _LOGGER.error("Can't save meta for %s: %s", self._id, err)
+            except JsonFileError:
+                _LOGGER.error("Can't save meta for %s", self._id)
                 return False
 
             # Store AppArmor Profile
@@ -940,8 +939,8 @@ class Addon(CoreSysAttributes):
             # Read snapshot data
             try:
                 data = read_json_file(Path(temp, 'addon.json'))
-            except (OSError, json.JSONDecodeError) as err:
-                _LOGGER.error("Can't read addon.json: %s", err)
+            except JsonFileError:
+                return False
 
             # Validate
             try:

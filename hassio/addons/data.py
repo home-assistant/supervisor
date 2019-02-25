@@ -1,19 +1,25 @@
 """Init file for Hass.io add-on data."""
 import logging
-import json
 from pathlib import Path
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .utils import extract_hash_from_path
-from .validate import (
-    SCHEMA_ADDON_CONFIG, SCHEMA_ADDONS_FILE, SCHEMA_REPOSITORY_CONFIG)
 from ..const import (
-    FILE_HASSIO_ADDONS, ATTR_SLUG, ATTR_REPOSITORY, ATTR_LOCATON,
-    REPOSITORY_CORE, REPOSITORY_LOCAL, ATTR_USER, ATTR_SYSTEM)
+    ATTR_LOCATON,
+    ATTR_REPOSITORY,
+    ATTR_SLUG,
+    ATTR_SYSTEM,
+    ATTR_USER,
+    FILE_HASSIO_ADDONS,
+    REPOSITORY_CORE,
+    REPOSITORY_LOCAL,
+)
 from ..coresys import CoreSysAttributes
+from ..exceptions import JsonFileError
 from ..utils.json import JsonConfig, read_json_file
+from .utils import extract_hash_from_path
+from .validate import SCHEMA_ADDON_CONFIG, SCHEMA_ADDONS_FILE, SCHEMA_REPOSITORY_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,12 +60,10 @@ class AddonsData(JsonConfig, CoreSysAttributes):
         self._repositories = {}
 
         # read core repository
-        self._read_addons_folder(
-            self.sys_config.path_addons_core, REPOSITORY_CORE)
+        self._read_addons_folder(self.sys_config.path_addons_core, REPOSITORY_CORE)
 
         # read local repository
-        self._read_addons_folder(
-            self.sys_config.path_addons_local, REPOSITORY_LOCAL)
+        self._read_addons_folder(self.sys_config.path_addons_local, REPOSITORY_LOCAL)
 
         # add built-in repositories information
         self._set_builtin_repositories()
@@ -76,15 +80,12 @@ class AddonsData(JsonConfig, CoreSysAttributes):
         # exists repository json
         repository_file = Path(path, "repository.json")
         try:
-            repository_info = SCHEMA_REPOSITORY_CONFIG(
-                read_json_file(repository_file)
+            repository_info = SCHEMA_REPOSITORY_CONFIG(read_json_file(repository_file))
+        except JsonFileError:
+            _LOGGER.warning(
+                "Can't read repository information from %s", repository_file
             )
-
-        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-            _LOGGER.warning("Can't read repository information from %s",
-                            repository_file)
             return
-
         except vol.Invalid:
             _LOGGER.warning("Repository parse error %s", repository_file)
             return
@@ -98,23 +99,21 @@ class AddonsData(JsonConfig, CoreSysAttributes):
         for addon in path.glob("**/config.json"):
             try:
                 addon_config = read_json_file(addon)
-
-            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-                _LOGGER.warning("Can't read %s", addon)
+            except JsonFileError:
+                _LOGGER.warning("Can't read %s from repository %s", addon, repository)
                 continue
 
             # validate
             try:
                 addon_config = SCHEMA_ADDON_CONFIG(addon_config)
-
             except vol.Invalid as ex:
-                _LOGGER.warning("Can't read %s: %s", addon,
-                                humanize_error(addon_config, ex))
+                _LOGGER.warning(
+                    "Can't read %s: %s", addon, humanize_error(addon_config, ex)
+                )
                 continue
 
             # Generate slug
-            addon_slug = "{}_{}".format(
-                repository, addon_config[ATTR_SLUG])
+            addon_slug = "{}_{}".format(repository, addon_config[ATTR_SLUG])
 
             # store
             addon_config[ATTR_REPOSITORY] = repository
@@ -126,14 +125,12 @@ class AddonsData(JsonConfig, CoreSysAttributes):
         try:
             builtin_file = Path(__file__).parent.joinpath("built-in.json")
             builtin_data = read_json_file(builtin_file)
-        except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.warning("Can't read built-in json: %s", err)
+        except JsonFileError:
+            _LOGGER.warning("Can't read built-in json")
             return
 
         # core repository
-        self._repositories[REPOSITORY_CORE] = \
-            builtin_data[REPOSITORY_CORE]
+        self._repositories[REPOSITORY_CORE] = builtin_data[REPOSITORY_CORE]
 
         # local repository
-        self._repositories[REPOSITORY_LOCAL] = \
-            builtin_data[REPOSITORY_LOCAL]
+        self._repositories[REPOSITORY_LOCAL] = builtin_data[REPOSITORY_LOCAL]
