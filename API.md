@@ -22,7 +22,7 @@ On success / Code 200:
 }
 ```
 
-For access to API you need set the `X-HASSIO-KEY` they will be available for Add-ons/HomeAssistant with envoriment `HASSIO_TOKEN`.
+For access to API you need set the `X-HASSIO-KEY` they will be available for Add-ons/HomeAssistant with environment `HASSIO_TOKEN`.
 
 ### Hass.io
 
