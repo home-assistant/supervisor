@@ -505,9 +505,7 @@ class Addon(CoreSysAttributes):
     def image(self):
         """Return image name of add-on."""
         if self.is_installed:
-            # NOTE: cleanup
-            if ATTR_IMAGE in self._data.user[self._id]:
-                return self._data.user[self._id][ATTR_IMAGE]
+            return self._data.user[self._id].get(ATTR_IMAGE)
         return self.image_next
 
     @property
