@@ -47,7 +47,7 @@ async def test_raspberrypi2_arch(coresys, sys_machine):
     await coresys.arch.load()
 
     assert coresys.arch.default == "armv7"
-    assert coresys.arch.supported == ["armv7, armhf"]
+    assert coresys.arch.supported == ["armv7", "armhf"]
 
 
 async def test_raspberrypi3_arch(coresys, sys_machine):
@@ -56,7 +56,7 @@ async def test_raspberrypi3_arch(coresys, sys_machine):
     await coresys.arch.load()
 
     assert coresys.arch.default == "armv7"
-    assert coresys.arch.supported == ["armv7, armhf"]
+    assert coresys.arch.supported == ["armv7", "armhf"]
 
 
 async def test_raspberrypi3_64_arch(coresys, sys_machine):
