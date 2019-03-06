@@ -46,8 +46,8 @@ async def test_raspberrypi2_arch(coresys, sys_machine):
     sys_machine.return_value = "raspberrypi2"
     await coresys.arch.load()
 
-    assert coresys.arch.default == "armhf"
-    assert coresys.arch.supported == ["armhf"]
+    assert coresys.arch.default == "armv7"
+    assert coresys.arch.supported == ["armv7, armhf"]
 
 
 async def test_raspberrypi3_arch(coresys, sys_machine):
@@ -55,8 +55,8 @@ async def test_raspberrypi3_arch(coresys, sys_machine):
     sys_machine.return_value = "raspberrypi3"
     await coresys.arch.load()
 
-    assert coresys.arch.default == "armhf"
-    assert coresys.arch.supported == ["armhf"]
+    assert coresys.arch.default == "armv7"
+    assert coresys.arch.supported == ["armv7, armhf"]
 
 
 async def test_raspberrypi3_64_arch(coresys, sys_machine):
@@ -65,7 +65,7 @@ async def test_raspberrypi3_64_arch(coresys, sys_machine):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == ["aarch64", "armhf"]
+    assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
 
 
 async def test_tinker_arch(coresys, sys_machine):
@@ -73,8 +73,8 @@ async def test_tinker_arch(coresys, sys_machine):
     sys_machine.return_value = "tinker"
     await coresys.arch.load()
 
-    assert coresys.arch.default == "armhf"
-    assert coresys.arch.supported == ["armhf"]
+    assert coresys.arch.default == "armv7"
+    assert coresys.arch.supported == ["armv7", "armhf"]
 
 
 async def test_odroid_c2_arch(coresys, sys_machine):
@@ -91,8 +91,8 @@ async def test_odroid_xu_arch(coresys, sys_machine):
     sys_machine.return_value = "odroid-xu"
     await coresys.arch.load()
 
-    assert coresys.arch.default == "armhf"
-    assert coresys.arch.supported == ["armhf"]
+    assert coresys.arch.default == "armv7"
+    assert coresys.arch.supported == ["armv7", "armhf"]
 
 
 async def test_orangepi_prime_arch(coresys, sys_machine):

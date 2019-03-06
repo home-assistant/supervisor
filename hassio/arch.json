@@ -3,22 +3,27 @@
         "armhf"
     ],
     "raspberrypi2": [
+        "armv7",
         "armhf"
     ],
     "raspberrypi3": [
+        "armv7",
         "armhf"
     ],
     "raspberrypi3-64": [
         "aarch64",
+        "armv7",
         "armhf"
     ],
     "tinker": [
+        "armv7",
         "armhf"
     ],
     "odroid-c2": [
         "aarch64"
     ],
     "odroid-xu": [
+        "armv7",
         "armhf"
     ],
     "orangepi-prime": [
