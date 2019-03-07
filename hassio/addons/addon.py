@@ -1,7 +1,6 @@
 """Init file for Hass.io add-ons."""
 from contextlib import suppress
 from copy import deepcopy
-import json
 import logging
 from pathlib import Path, PurePath
 import re
@@ -29,7 +28,7 @@ from ..const import (
     STATE_STARTED, STATE_STOPPED)
 from ..coresys import CoreSysAttributes
 from ..docker.addon import DockerAddon
-from ..exceptions import HostAppArmorError
+from ..exceptions import HostAppArmorError, JsonFileError
 from ..utils import create_token
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
@@ -60,11 +59,6 @@ class Addon(CoreSysAttributes):
         if not self.is_installed:
             return
         await self.instance.attach()
-
-        # NOTE: Can't be removed after soon
-        if ATTR_IMAGE not in self._data.user[self._id]:
-            self._data.user[self._id][ATTR_IMAGE] = self.image_name
-            self.save_data()
 
     @property
     def slug(self):
@@ -511,19 +505,20 @@ class Addon(CoreSysAttributes):
     def image(self):
         """Return image name of add-on."""
         if self.is_installed:
-            # NOTE: cleanup
-            if ATTR_IMAGE in self._data.user[self._id]:
-                return self._data.user[self._id][ATTR_IMAGE]
-        return self.image_name
+            return self._data.user[self._id].get(ATTR_IMAGE)
+        return self.image_next
 
     @property
-    def image_name(self):
+    def image_next(self):
         """Return image name for install/update."""
         if self.is_detached:
             addon_data = self._data.system.get(self._id)
         else:
             addon_data = self._data.cache.get(self._id)
+        return self._get_image(addon_data)
 
+    def _get_image(self, addon_data) -> str:
+        """Generate image name from data."""
         # Repository with Dockerhub images
         if ATTR_IMAGE in addon_data:
             arch = self.sys_arch.match(addon_data[ATTR_ARCH])
@@ -616,8 +611,8 @@ class Addon(CoreSysAttributes):
         except vol.Invalid as ex:
             _LOGGER.error("Add-on %s have wrong options: %s", self._id,
                           humanize_error(options, ex))
-        except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.error("Add-on %s can't write options: %s", self._id, err)
+        except JsonFileError:
+            _LOGGER.error("Add-on %s can't write options", self._id)
         else:
             return True
 
@@ -725,10 +720,10 @@ class Addon(CoreSysAttributes):
         await self._install_apparmor()
 
         if not await self.instance.install(
-                self.last_version, self.image_name):
+                self.last_version, self.image_next):
             return False
 
-        self._set_install(self.image_name, self.last_version)
+        self._set_install(self.image_next, self.last_version)
         return True
 
     @check_installed
@@ -806,9 +801,9 @@ class Addon(CoreSysAttributes):
             return False
 
         if not await self.instance.update(
-                self.last_version, self.image_name):
+                self.last_version, self.image_next):
             return False
-        self._set_update(self.image_name, self.last_version)
+        self._set_update(self.image_next, self.last_version)
 
         # Setup/Fix AppArmor profile
         await self._install_apparmor()
@@ -892,8 +887,8 @@ class Addon(CoreSysAttributes):
             # Store local configs/state
             try:
                 write_json_file(Path(temp, 'addon.json'), data)
-            except (OSError, json.JSONDecodeError) as err:
-                _LOGGER.error("Can't save meta for %s: %s", self._id, err)
+            except JsonFileError:
+                _LOGGER.error("Can't save meta for %s", self._id)
                 return False
 
             # Store AppArmor Profile
@@ -940,8 +935,8 @@ class Addon(CoreSysAttributes):
             # Read snapshot data
             try:
                 data = read_json_file(Path(temp, 'addon.json'))
-            except (OSError, json.JSONDecodeError) as err:
-                _LOGGER.error("Can't read addon.json: %s", err)
+            except JsonFileError:
+                return False
 
             # Validate
             try:
@@ -953,7 +948,8 @@ class Addon(CoreSysAttributes):
 
             # Restore data or reload add-on
             _LOGGER.info("Restore config for addon %s", self._id)
-            self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM], self.image_name)
+            restore_image = self._get_image(data[ATTR_SYSTEM])
+            self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM], restore_image)
 
             # Check version / restore image
             version = data[ATTR_VERSION]
@@ -964,7 +960,7 @@ class Addon(CoreSysAttributes):
                 if image_file.is_file():
                     await self.instance.import_image(image_file, version)
                 else:
-                    if await self.instance.install(version, self.image_name):
+                    if await self.instance.install(version, restore_image):
                         await self.instance.cleanup()
             else:
                 await self.instance.stop()
