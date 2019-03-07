@@ -122,7 +122,10 @@ class Addon(CoreSysAttributes):
     def _set_update(self, image: str, version: str) -> None:
         """Update version of add-on."""
         self._data.system[self._id] = deepcopy(self._data.cache[self._id])
-        self._data.user[self._id][ATTR_VERSION] = version
+        self._data.user[self._id].update({
+            ATTR_VERSION: version,
+            ATTR_IMAGE: image,
+        })
         self.save_data()
 
     def _restore_data(self, user: Dict[str, Any], system: Dict[str, Any], image: str) -> None:
