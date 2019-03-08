@@ -949,7 +949,7 @@ class Addon(CoreSysAttributes):
                               self._id, humanize_error(data, err))
                 return False
 
-            # Restore data or reload add-on
+            # Restore local add-on informations
             _LOGGER.info("Restore config for addon %s", self._id)
             restore_image = self._get_image(data[ATTR_SYSTEM])
             self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM], restore_image)
@@ -957,7 +957,7 @@ class Addon(CoreSysAttributes):
             # Check version / restore image
             version = data[ATTR_VERSION]
             if not await self.instance.exists():
-                _LOGGER.info("Restore image for addon %s", self._id)
+                _LOGGER.info("Restore/Install image for addon %s", self._id)
 
                 image_file = Path(temp, 'image.tar')
                 if image_file.is_file():
@@ -965,6 +965,9 @@ class Addon(CoreSysAttributes):
                 else:
                     if await self.instance.install(version, restore_image):
                         await self.instance.cleanup()
+            elif self.instance.version != version or self.legacy:
+                _LOGGER.info("Restore/Update image for addon %s", self._id)
+                await self.instance.update(version, restore_image)
             else:
                 await self.instance.stop()
 
