@@ -8,8 +8,10 @@ URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = "https://s3.amazonaws.com/hassio-version/{channel}.json"
 URL_HASSIO_APPARMOR = "https://s3.amazonaws.com/hassio-version/apparmor.txt"
 
-URL_HASSOS_OTA = ("https://github.com/home-assistant/hassos/releases/download/"
-                  "{version}/hassos_{board}-{version}.raucb")
+URL_HASSOS_OTA = (
+    "https://github.com/home-assistant/hassos/releases/download/"
+    "{version}/hassos_{board}-{version}.raucb"
+)
 
 HASSIO_DATA = Path("/data")
 
@@ -199,8 +201,11 @@ STARTUP_APPLICATION = "application"
 STARTUP_ONCE = "once"
 
 STARTUP_ALL = [
-    STARTUP_ONCE, STARTUP_INITIALIZE, STARTUP_SYSTEM, STARTUP_SERVICES,
-    STARTUP_APPLICATION
+    STARTUP_ONCE,
+    STARTUP_INITIALIZE,
+    STARTUP_SYSTEM,
+    STARTUP_SERVICES,
+    STARTUP_APPLICATION,
 ]
 
 BOOT_AUTO = "auto"
@@ -281,13 +286,7 @@ ROLE_BACKUP = "backup"
 ROLE_MANAGER = "manager"
 ROLE_ADMIN = "admin"
 
-ROLE_ALL = [
-    ROLE_DEFAULT,
-    ROLE_HOMEASSISTANT,
-    ROLE_BACKUP,
-    ROLE_MANAGER,
-    ROLE_ADMIN,
-]
+ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_ADMIN]
 
 CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
