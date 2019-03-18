@@ -72,7 +72,7 @@ class Tasks(CoreSysAttributes):
                 tasks.append(addon.update())
             else:
                 _LOGGER.warning(
-                    "Add-on %s will be ignore, schema tests fails", addon.slug)
+                    "Add-on %s will be ignored, schema tests fails", addon.slug)
 
         if tasks:
             _LOGGER.info("Add-on auto update process %d tasks", len(tasks))
