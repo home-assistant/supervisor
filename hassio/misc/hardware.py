@@ -38,7 +38,6 @@ class Hardware:
         for device in self.context.list_devices(subsystem='tty'):
             if 'ID_VENDOR' in device or RE_TTY.search(device.device_node):
                 dev_list.add(device.device_node)
-                dev_list.update(device.device_links)
 
         return dev_list
 
