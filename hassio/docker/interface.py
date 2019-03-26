@@ -5,10 +5,10 @@ import logging
 
 import docker
 
-from .stats import DockerStats
-from ..const import LABEL_VERSION, LABEL_ARCH
+from ..const import LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSysAttributes
 from ..utils import process_lock
+from .stats import DockerStats
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -170,11 +170,11 @@ class DockerInterface(CoreSysAttributes):
         raise NotImplementedError()
 
     @process_lock
-    def stop(self):
+    def stop(self, remove=True):
         """Stop/remove Docker container."""
-        return self.sys_run_in_executor(self._stop)
+        return self.sys_run_in_executor(self._stop, remove)
 
-    def _stop(self):
+    def _stop(self, remove=True):
         """Stop/remove and remove docker container.
 
         Need run inside executor.
@@ -189,9 +189,10 @@ class DockerInterface(CoreSysAttributes):
             with suppress(docker.errors.DockerException):
                 docker_container.stop(timeout=self.timeout)
 
-        with suppress(docker.errors.DockerException):
-            _LOGGER.info("Clean %s Docker application", self.image)
-            docker_container.remove(force=True)
+        if remove:
+            with suppress(docker.errors.DockerException):
+                _LOGGER.info("Clean %s Docker application", self.image)
+                docker_container.remove(force=True)
 
         return True
 
@@ -300,16 +301,16 @@ class DockerInterface(CoreSysAttributes):
 
         return True
 
-    @process_lock	
-    def restart(self):	
-        """Restart docker container."""	
-        return self._loop.run_in_executor(None, self._restart)	
+    @process_lock
+    def restart(self):
+        """Restart docker container."""
+        return self._loop.run_in_executor(None, self._restart)
 
-    def _restart(self):	
-        """Restart docker container.	
+    def _restart(self):
+        """Restart docker container.
 
-        Need run inside executor.	
-        """	
+        Need run inside executor.
+        """
         try:
             container = self._docker.containers.get(self.name)
         except docker.errors.DockerException:
