@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import socket
 import time
-from typing import Optional
+from typing import Optional, Coroutine, AsyncContextManager, Dict, Any
 
 import aiohttp
 from aiohttp import hdrs
@@ -235,7 +235,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await asyncio.sleep(30)
 
     @process_lock
-    async def install(self):
+    async def install(self) -> None:
         """Install a landing page."""
         _LOGGER.info("Setup Home Assistant")
         while True:
@@ -262,7 +262,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await self.instance.cleanup()
 
     @process_lock
-    async def update(self, version=None):
+    async def update(self, version=None) -> None:
         """Update HomeAssistant version."""
         version = version or self.last_version
         rollback = self.version if not self.error_state else None
@@ -296,7 +296,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         else:
             raise HomeAssistantUpdateError()
 
-    async def _start(self):
+    async def _start(self) -> None:
         """Start Home Assistant Docker & wait."""
         if await self.instance.is_running():
             _LOGGER.warning("Home Assistant is already running!")
@@ -311,22 +311,20 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         await self._block_till_run()
 
     @process_lock
-    def start(self):
-        """Run Home Assistant docker.
-
-        Return a coroutine.
-        """
+    async def start(self) -> None:
+        """Run Home Assistant docker."""
         if await self.instance.is_running():
             await self.instance.restart()
         elif await self.instance.is_initialize():
             await self.instance.start()
         else:
-            return self._start()
+            await self._start()
+            return
 
         await self._block_till_run()
 
     @process_lock
-    def stop(self):
+    def stop(self) -> Coroutine:
         """Stop Home Assistant Docker.
 
         Return a coroutine.
@@ -334,35 +332,35 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return self.instance.stop(remove=False)
 
     @process_lock
-    async def restart(self):
+    async def restart(self) -> None:
         """Restart Home Assistant Docker."""
         if not await self.instance.restart():
             raise HomeAssistantError()
 
         await self._block_till_run()
 
-    def logs(self):
+    def logs(self) -> Coroutine:
         """Get HomeAssistant docker logs.
 
         Return a coroutine.
         """
         return self.instance.logs()
 
-    def stats(self):
+    def stats(self) -> Coroutine:
         """Return stats of Home Assistant.
 
         Return a coroutine.
         """
         return self.instance.stats()
 
-    def is_running(self):
+    def is_running(self) -> Coroutine:
         """Return True if Docker container is running.
 
         Return a coroutine.
         """
         return self.instance.is_running()
 
-    def is_initialize(self):
+    def is_initialize(self) -> Coroutine:
         """Return True if a Docker container is exists.
 
         Return a coroutine.
@@ -370,11 +368,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return self.instance.is_initialize()
 
     @property
-    def in_progress(self):
+    def in_progress(self) -> bool:
         """Return True if a task is in progress."""
         return self.instance.in_progress or self.lock.locked()
 
-    async def check_config(self):
+    async def check_config(self) -> ConfigResult:
         """Run Home Assistant config check."""
         result = await self.instance.execute_command(
             "python3 -m homeassistant -c /config --script check_config")
@@ -393,7 +391,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Home Assistant config is valid")
         return ConfigResult(True, log)
 
-    async def ensure_access_token(self):
+    async def ensure_access_token(self) -> None:
         """Ensures there is an access token."""
         if self.access_token is not None and self._access_token_expires > datetime.utcnow():
             return
@@ -418,12 +416,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     @asynccontextmanager
     async def make_request(self,
-                           method,
-                           path,
-                           json=None,
-                           content_type=None,
-                           data=None,
-                           timeout=30):
+                           method: str,
+                           path: str,
+                           json: Optional[Dict[str, Any]] = None,
+                           content_type: Optional[str] = None,
+                           data: Optional[bytes] = None,
+                           timeout=30) -> AsyncContextManager[aiohttp.ClientResponse]:
         """Async context manager to make a request with right auth."""
         url = f"{self.api_url}/{path}"
         headers = {}
@@ -458,7 +456,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         raise HomeAssistantAPIError()
 
-    async def check_api_state(self):
+    async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
         with suppress(HomeAssistantAPIError):
             async with self.make_request('get', 'api/') as resp:
@@ -469,7 +467,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         return False
 
-    async def _block_till_run(self):
+    async def _block_till_run(self) -> None:
         """Block until Home-Assistant is booting up or startup timeout."""
         start_time = time.monotonic()
         migration_progress = False
