@@ -340,6 +340,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         await self._block_till_run()
 
+    @process_lock
+    async def rebuild(self) -> None:
+        """Rebuild Home Assistant Docker container."""
+        await self.instance.stop()
+        await self._start()
+
     def logs(self) -> Coroutine:
         """Get HomeAssistant docker logs.
 

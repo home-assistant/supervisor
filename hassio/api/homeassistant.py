@@ -1,15 +1,34 @@
 """Init file for Hass.io Home Assistant RESTful API."""
 import asyncio
 import logging
+from typing import Coroutine, Dict, Any
 
 import voluptuous as vol
+from aiohttp import web
 
 from ..const import (
-    ATTR_ARCH, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_BOOT, ATTR_CPU_PERCENT,
-    ATTR_CUSTOM, ATTR_IMAGE, ATTR_LAST_VERSION, ATTR_MACHINE, ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_USAGE, ATTR_NETWORK_RX, ATTR_NETWORK_TX, ATTR_PASSWORD,
-    ATTR_PORT, ATTR_REFRESH_TOKEN, ATTR_SSL, ATTR_VERSION, ATTR_WAIT_BOOT,
-    ATTR_WATCHDOG, CONTENT_TYPE_BINARY)
+    ATTR_ARCH,
+    ATTR_BLK_READ,
+    ATTR_BLK_WRITE,
+    ATTR_BOOT,
+    ATTR_CPU_PERCENT,
+    ATTR_CUSTOM,
+    ATTR_IMAGE,
+    ATTR_LAST_VERSION,
+    ATTR_MACHINE,
+    ATTR_MEMORY_LIMIT,
+    ATTR_MEMORY_USAGE,
+    ATTR_NETWORK_RX,
+    ATTR_NETWORK_TX,
+    ATTR_PASSWORD,
+    ATTR_PORT,
+    ATTR_REFRESH_TOKEN,
+    ATTR_SSL,
+    ATTR_VERSION,
+    ATTR_WAIT_BOOT,
+    ATTR_WATCHDOG,
+    CONTENT_TYPE_BINARY,
+)
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import DOCKER_IMAGE, NETWORK_PORT
@@ -18,37 +37,28 @@ from .utils import api_process, api_process_raw, api_validate
 _LOGGER = logging.getLogger(__name__)
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_BOOT):
-        vol.Boolean(),
-    vol.Inclusive(ATTR_IMAGE, 'custom_hass'):
-        vol.Maybe(vol.Coerce(str)),
-    vol.Inclusive(ATTR_LAST_VERSION, 'custom_hass'):
-        vol.Any(None, DOCKER_IMAGE),
-    vol.Optional(ATTR_PORT):
-        NETWORK_PORT,
-    vol.Optional(ATTR_PASSWORD):
-        vol.Maybe(vol.Coerce(str)),
-    vol.Optional(ATTR_SSL):
-        vol.Boolean(),
-    vol.Optional(ATTR_WATCHDOG):
-        vol.Boolean(),
-    vol.Optional(ATTR_WAIT_BOOT):
-        vol.All(vol.Coerce(int), vol.Range(min=60)),
-    vol.Optional(ATTR_REFRESH_TOKEN):
-        vol.Maybe(vol.Coerce(str)),
-})
+SCHEMA_OPTIONS = vol.Schema(
+    {
+        vol.Optional(ATTR_BOOT): vol.Boolean(),
+        vol.Inclusive(ATTR_IMAGE, "custom_hass"): vol.Maybe(vol.Coerce(str)),
+        vol.Inclusive(ATTR_LAST_VERSION, "custom_hass"): vol.Any(None, DOCKER_IMAGE),
+        vol.Optional(ATTR_PORT): NETWORK_PORT,
+        vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_SSL): vol.Boolean(),
+        vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
+        vol.Optional(ATTR_WAIT_BOOT): vol.All(vol.Coerce(int), vol.Range(min=60)),
+        vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
+    }
+)
 
-SCHEMA_VERSION = vol.Schema({
-    vol.Optional(ATTR_VERSION): vol.Coerce(str),
-})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 
 
 class APIHomeAssistant(CoreSysAttributes):
     """Handle RESTful API for Home Assistant functions."""
 
     @api_process
-    async def info(self, request):
+    async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return host information."""
         return {
             ATTR_VERSION: self.sys_homeassistant.version,
@@ -65,7 +75,7 @@ class APIHomeAssistant(CoreSysAttributes):
         }
 
     @api_process
-    async def options(self, request):
+    async def options(self, request: web.Request) -> None:
         """Set Home Assistant options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
@@ -97,7 +107,7 @@ class APIHomeAssistant(CoreSysAttributes):
         self.sys_homeassistant.save_data()
 
     @api_process
-    async def stats(self, request):
+    async def stats(self, request: web.Request) -> Dict[Any, str]:
         """Return resource information."""
         stats = await self.sys_homeassistant.stats()
         if not stats:
@@ -114,7 +124,7 @@ class APIHomeAssistant(CoreSysAttributes):
         }
 
     @api_process
-    async def update(self, request):
+    async def update(self, request: web.Request) -> None:
         """Update Home Assistant."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_homeassistant.last_version)
@@ -122,27 +132,32 @@ class APIHomeAssistant(CoreSysAttributes):
         await asyncio.shield(self.sys_homeassistant.update(version))
 
     @api_process
-    def stop(self, request):
+    def stop(self, request: web.Request) -> Coroutine:
         """Stop Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.stop())
 
     @api_process
-    def start(self, request):
+    def start(self, request: web.Request) -> Coroutine:
         """Start Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.start())
 
     @api_process
-    def restart(self, request):
+    def restart(self, request: web.Request) -> Coroutine:
         """Restart Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.restart())
 
+    @api_process
+    def rebuild(self, request: web.Request) -> Coroutine:
+        """Rebuild Home Assistant."""
+        return asyncio.shield(self.sys_homeassistant.rebuild())
+
     @api_process_raw(CONTENT_TYPE_BINARY)
-    def logs(self, request):
+    def logs(self, request: web.Request) -> Coroutine:
         """Return Home Assistant Docker logs."""
         return self.sys_homeassistant.logs()
 
     @api_process
-    async def check(self, request):
+    async def check(self, request: web.Request) -> None:
         """Check configuration of Home Assistant."""
         result = await self.sys_homeassistant.check_config()
         if not result.valid:
