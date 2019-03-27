@@ -3,17 +3,24 @@ import voluptuous as vol
 
 from .utils import api_process, api_validate
 from ..const import (
-    ATTR_ADDON, ATTR_UUID, ATTR_CONFIG, ATTR_DISCOVERY, ATTR_SERVICE,
-    REQUEST_FROM)
+    ATTR_ADDON,
+    ATTR_UUID,
+    ATTR_CONFIG,
+    ATTR_DISCOVERY,
+    ATTR_SERVICE,
+    REQUEST_FROM,
+)
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
-from ..validate import SERVICE_ALL
+from ..discovery.validate import DISCOVERY_ALL
 
 
-SCHEMA_DISCOVERY = vol.Schema({
-    vol.Required(ATTR_SERVICE): SERVICE_ALL,
-    vol.Optional(ATTR_CONFIG): vol.Maybe(dict),
-})
+SCHEMA_DISCOVERY = vol.Schema(
+    {
+        vol.Required(ATTR_SERVICE): DISCOVERY_ALL,
+        vol.Optional(ATTR_CONFIG): vol.Maybe(dict),
+    }
+)
 
 
 class APIDiscovery(CoreSysAttributes):
@@ -21,7 +28,7 @@ class APIDiscovery(CoreSysAttributes):
 
     def _extract_message(self, request):
         """Extract discovery message from URL."""
-        message = self.sys_discovery.get(request.match_info.get('uuid'))
+        message = self.sys_discovery.get(request.match_info.get("uuid"))
         if not message:
             raise APIError("Discovery message not found")
         return message
@@ -38,12 +45,14 @@ class APIDiscovery(CoreSysAttributes):
 
         discovery = []
         for message in self.sys_discovery.list_messages:
-            discovery.append({
-                ATTR_ADDON: message.addon,
-                ATTR_SERVICE: message.service,
-                ATTR_UUID: message.uuid,
-                ATTR_CONFIG: message.config,
-            })
+            discovery.append(
+                {
+                    ATTR_ADDON: message.addon,
+                    ATTR_SERVICE: message.service,
+                    ATTR_UUID: message.uuid,
+                    ATTR_CONFIG: message.config,
+                }
+            )
 
         return {ATTR_DISCOVERY: discovery}
 

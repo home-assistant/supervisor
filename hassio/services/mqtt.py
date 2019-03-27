@@ -1,10 +1,11 @@
 """Provide the MQTT Service."""
 import logging
 
+from ..const import ATTR_ADDON
+from ..exceptions import ServicesError
+from .const import SERVICE_MQTT
 from .interface import ServiceInterface
 from .validate import SCHEMA_SERVICE_MQTT
-from ..const import ATTR_ADDON, SERVICE_MQTT
-from ..exceptions import ServicesError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,8 +31,7 @@ class MQTTService(ServiceInterface):
     def set_service_data(self, addon, data):
         """Write the data into service object."""
         if self.enabled:
-            _LOGGER.error(
-                "It is already a MQTT in use from %s", self._data[ATTR_ADDON])
+            _LOGGER.error("It is already a MQTT in use from %s", self._data[ATTR_ADDON])
             raise ServicesError()
 
         self._data.update(data)
