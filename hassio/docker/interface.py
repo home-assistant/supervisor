@@ -210,10 +210,11 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.DockerException:
             return False
 
+        _LOGGER.info("Start %s", self.image)
         try:
             docker_container.start()
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't start %s: %s", self.name, err)
+            _LOGGER.error("Can't start %s: %s", self.image, err)
             return False
 
         return True
