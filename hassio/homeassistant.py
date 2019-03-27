@@ -320,7 +320,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await self.instance.restart()
         elif await self.instance.is_initialize():
             await self.instance.start()
-        else
+        else:
             return self._start()
 
         await self._block_till_run()

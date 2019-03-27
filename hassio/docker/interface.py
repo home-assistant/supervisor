@@ -174,7 +174,7 @@ class DockerInterface(CoreSysAttributes):
         return self.sys_run_in_executor(self._stop, remove_container)
 
     def _stop(self, remove_container=True):
-        """Stop/remove and remove docker container.
+        """Stop/remove Docker container.
 
         Need run inside executor.
         """
@@ -192,6 +192,29 @@ class DockerInterface(CoreSysAttributes):
             with suppress(docker.errors.DockerException):
                 _LOGGER.info("Clean %s Docker application", self.image)
                 docker_container.remove(force=True)
+
+        return True
+
+    @process_lock
+    def start(self):
+        """Start Docker container."""
+        return self.sys_run_in_executor(self._start)
+
+    def _start(self):
+        """Start docker container.
+
+        Need run inside executor.
+        """
+        try:
+            docker_container = self.sys_docker.containers.get(self.name)
+        except docker.errors.DockerException:
+            return False
+
+        try:
+            docker_container.start()
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't start %s: %s", self.name, err)
+            return False
 
         return True
 
