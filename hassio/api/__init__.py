@@ -1,23 +1,24 @@
 """Init file for Hass.io RESTful API."""
 import logging
 from pathlib import Path
+from typing import Optional
 
 from aiohttp import web
 
+from ..coresys import CoreSys, CoreSysAttributes
 from .addons import APIAddons
 from .auth import APIAuth
 from .discovery import APIDiscovery
-from .homeassistant import APIHomeAssistant
 from .hardware import APIHardware
-from .host import APIHost
 from .hassos import APIHassOS
+from .homeassistant import APIHomeAssistant
+from .host import APIHost
 from .info import APIInfo
 from .proxy import APIProxy
-from .supervisor import APISupervisor
-from .snapshots import APISnapshots
-from .services import APIServices
 from .security import SecurityMiddleware
-from ..coresys import CoreSysAttributes
+from .services import APIServices
+from .snapshots import APISnapshots
+from .supervisor import APISupervisor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,18 +26,18 @@ _LOGGER = logging.getLogger(__name__)
 class RestAPI(CoreSysAttributes):
     """Handle RESTful API for Hass.io."""
 
-    def __init__(self, coresys):
+    def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
-        self.coresys = coresys
-        self.security = SecurityMiddleware(coresys)
-        self.webapp = web.Application(
+        self.coresys: CoreSys = coresys
+        self.security: SecurityMiddleware = SecurityMiddleware(coresys)
+        self.webapp: web.Application = web.Application(
             middlewares=[self.security.token_validation])
 
         # service stuff
-        self._runner = web.AppRunner(self.webapp)
-        self._site = None
+        self._runner: web.AppRunner = web.AppRunner(self.webapp)
+        self._site: Optional[web.TCPSite] = None
 
-    async def load(self):
+    async def load(self) -> None:
         """Register REST API Calls."""
         self._register_supervisor()
         self._register_host()
@@ -52,7 +53,7 @@ class RestAPI(CoreSysAttributes):
         self._register_info()
         self._register_auth()
 
-    def _register_host(self):
+    def _register_host(self) -> None:
         """Register hostcontrol functions."""
         api_host = APIHost()
         api_host.coresys = self.coresys
@@ -72,7 +73,7 @@ class RestAPI(CoreSysAttributes):
                      api_host.service_reload),
         ])
 
-    def _register_hassos(self):
+    def _register_hassos(self) -> None:
         """Register HassOS functions."""
         api_hassos = APIHassOS()
         api_hassos.coresys = self.coresys
@@ -84,7 +85,7 @@ class RestAPI(CoreSysAttributes):
             web.post('/hassos/config/sync', api_hassos.config_sync),
         ])
 
-    def _register_hardware(self):
+    def _register_hardware(self) -> None:
         """Register hardware functions."""
         api_hardware = APIHardware()
         api_hardware.coresys = self.coresys
@@ -94,7 +95,7 @@ class RestAPI(CoreSysAttributes):
             web.get('/hardware/audio', api_hardware.audio),
         ])
 
-    def _register_info(self):
+    def _register_info(self) -> None:
         """Register info functions."""
         api_info = APIInfo()
         api_info.coresys = self.coresys
@@ -103,7 +104,7 @@ class RestAPI(CoreSysAttributes):
             web.get('/info', api_info.info),
         ])
 
-    def _register_auth(self):
+    def _register_auth(self) -> None:
         """Register auth functions."""
         api_auth = APIAuth()
         api_auth.coresys = self.coresys
@@ -112,7 +113,7 @@ class RestAPI(CoreSysAttributes):
             web.post('/auth', api_auth.auth),
         ])
 
-    def _register_supervisor(self):
+    def _register_supervisor(self) -> None:
         """Register Supervisor functions."""
         api_supervisor = APISupervisor()
         api_supervisor.coresys = self.coresys
@@ -127,7 +128,7 @@ class RestAPI(CoreSysAttributes):
             web.post('/supervisor/options', api_supervisor.options),
         ])
 
-    def _register_homeassistant(self):
+    def _register_homeassistant(self) -> None:
         """Register Home Assistant functions."""
         api_hass = APIHomeAssistant()
         api_hass.coresys = self.coresys
@@ -142,9 +143,10 @@ class RestAPI(CoreSysAttributes):
             web.post('/homeassistant/stop', api_hass.stop),
             web.post('/homeassistant/start', api_hass.start),
             web.post('/homeassistant/check', api_hass.check),
+            web.post('/homeassistant/rebuild', api_hass.rebuild),
         ])
 
-    def _register_proxy(self):
+    def _register_proxy(self) -> None:
         """Register Home Assistant API Proxy."""
         api_proxy = APIProxy()
         api_proxy.coresys = self.coresys
@@ -158,7 +160,7 @@ class RestAPI(CoreSysAttributes):
             web.get('/homeassistant/api/', api_proxy.api),
         ])
 
-    def _register_addons(self):
+    def _register_addons(self) -> None:
         """Register Add-on functions."""
         api_addons = APIAddons()
         api_addons.coresys = self.coresys
@@ -184,7 +186,7 @@ class RestAPI(CoreSysAttributes):
             web.get('/addons/{addon}/stats', api_addons.stats),
         ])
 
-    def _register_snapshots(self):
+    def _register_snapshots(self) -> None:
         """Register snapshots functions."""
         api_snapshots = APISnapshots()
         api_snapshots.coresys = self.coresys
@@ -204,7 +206,7 @@ class RestAPI(CoreSysAttributes):
             web.get('/snapshots/{snapshot}/download', api_snapshots.download),
         ])
 
-    def _register_services(self):
+    def _register_services(self) -> None:
         """Register services functions."""
         api_services = APIServices()
         api_services.coresys = self.coresys
@@ -216,7 +218,7 @@ class RestAPI(CoreSysAttributes):
             web.delete('/services/{service}', api_services.del_service),
         ])
 
-    def _register_discovery(self):
+    def _register_discovery(self) -> None:
         """Register discovery functions."""
         api_discovery = APIDiscovery()
         api_discovery.coresys = self.coresys
@@ -228,7 +230,7 @@ class RestAPI(CoreSysAttributes):
             web.post('/discovery', api_discovery.set_discovery),
         ])
 
-    def _register_panel(self):
+    def _register_panel(self) -> None:
         """Register panel for Home Assistant."""
         panel_dir = Path(__file__).parent.joinpath("panel")
 
@@ -256,7 +258,7 @@ class RestAPI(CoreSysAttributes):
         # This route is for HA > 0.70
         self.webapp.add_routes([web.static('/app', panel_dir)])
 
-    async def start(self):
+    async def start(self) -> None:
         """Run RESTful API webserver."""
         await self._runner.setup()
         self._site = web.TCPSite(
@@ -270,7 +272,7 @@ class RestAPI(CoreSysAttributes):
         else:
             _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop RESTful API webserver."""
         if not self._site:
             return

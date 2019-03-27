@@ -376,6 +376,7 @@ Output is the raw Docker log.
 - POST `/homeassistant/check`
 - POST `/homeassistant/start`
 - POST `/homeassistant/stop`
+- POST `/homeassistant/rebuild`
 
 - POST `/homeassistant/options`
 

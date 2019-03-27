@@ -17,7 +17,7 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
         """Return name of HassOS CLI image."""
         return f"homeassistant/{self.sys_arch.supervisor}-hassio-cli"
 
-    def _stop(self):
+    def _stop(self, remove_container=True):
         """Don't need stop."""
         return True
 
@@ -33,5 +33,6 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
 
         else:
             self._meta = image.attrs
-            _LOGGER.info("Found HassOS CLI %s with version %s", self.image,
-                         self.version)
+            _LOGGER.info(
+                "Found HassOS CLI %s with version %s", self.image, self.version
+            )
