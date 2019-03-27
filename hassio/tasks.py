@@ -94,7 +94,7 @@ class Tasks(CoreSysAttributes):
     async def _watchdog_homeassistant_docker(self):
         """Check running state of Docker and start if they is close."""
         # if Home Assistant is active
-        if not await self.sys_homeassistant.is_initialize() or \
+        if not await self.sys_homeassistant.is_fails() or \
                 not self.sys_homeassistant.watchdog or \
                 self.sys_homeassistant.error_state:
             return
@@ -117,7 +117,7 @@ class Tasks(CoreSysAttributes):
         a delay in our system.
         """
         # If Home-Assistant is active
-        if not await self.sys_homeassistant.is_initialize() or \
+        if not await self.sys_homeassistant.is_fails() or \
                 not self.sys_homeassistant.watchdog or \
                 self.sys_homeassistant.error_state:
             return
