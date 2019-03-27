@@ -9,7 +9,8 @@ from pathlib import Path
 import re
 import socket
 import time
-from typing import Optional, Coroutine, AsyncContextManager, Dict, Any
+from typing import Any, AsyncContextManager, Coroutine, Dict, Optional
+from uuid import UUID
 
 import aiohttp
 from aiohttp import hdrs
@@ -329,7 +330,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         Return a coroutine.
         """
-        return self.instance.stop(remove=False)
+        return self.instance.stop(remove_container=False)
 
     @process_lock
     async def restart(self) -> None:

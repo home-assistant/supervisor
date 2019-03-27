@@ -326,7 +326,7 @@ class DockerInterface(CoreSysAttributes):
     @process_lock
     def restart(self):
         """Restart docker container."""
-        return self._loop.run_in_executor(None, self._restart)
+        return self.sys_loop.run_in_executor(None, self._restart)
 
     def _restart(self):
         """Restart docker container.
@@ -334,7 +334,7 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            container = self._docker.containers.get(self.name)
+            container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
             return False
 
