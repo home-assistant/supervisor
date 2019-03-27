@@ -394,7 +394,6 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-            docker_image = self.sys_docker.images.get(self.image)
         except docker.errors.DockerException:
             return False
 
