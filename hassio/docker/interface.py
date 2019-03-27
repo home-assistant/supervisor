@@ -379,3 +379,31 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't read stats from %s: %s", self.name, err)
             return None
+
+    def is_fails(self):
+        """Return True if Docker is failing state.
+
+        Return a Future.
+        """
+        return self.sys_run_in_executor(self._is_fails)
+
+    def _is_fails(self):
+        """Return True if Docker is failing state.
+
+        Need run inside executor.
+        """
+        try:
+            docker_container = self.sys_docker.containers.get(self.name)
+            docker_image = self.sys_docker.images.get(self.image)
+        except docker.errors.DockerException:
+            return False
+
+        # container is not running
+        if docker_container.status != "exited":
+            return False
+
+        # Check return value
+        if int(docker_container.attrs["State"]["ExitCode"]) != 0:
+            return True
+
+        return False

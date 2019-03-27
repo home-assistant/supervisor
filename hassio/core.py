@@ -6,8 +6,12 @@ import logging
 import async_timeout
 
 from .coresys import CoreSysAttributes
-from .const import (STARTUP_SYSTEM, STARTUP_SERVICES, STARTUP_APPLICATION,
-                    STARTUP_INITIALIZE)
+from .const import (
+    STARTUP_SYSTEM,
+    STARTUP_SERVICES,
+    STARTUP_APPLICATION,
+    STARTUP_INITIALIZE,
+)
 from .exceptions import HassioError, HomeAssistantError
 
 _LOGGER = logging.getLogger(__name__)
@@ -108,7 +112,7 @@ class HassIO(CoreSysAttributes):
             await self.sys_tasks.load()
 
             # If landingpage / run upgrade in background
-            if self.sys_homeassistant.version == 'landingpage':
+            if self.sys_homeassistant.version == "landingpage":
                 self.sys_create_task(self.sys_homeassistant.install())
 
             _LOGGER.info("Hass.io is up and running")
@@ -121,12 +125,14 @@ class HassIO(CoreSysAttributes):
         # process async stop tasks
         try:
             with async_timeout.timeout(10):
-                await asyncio.wait([
-                    self.sys_api.stop(),
-                    self.sys_dns.stop(),
-                    self.sys_websession.close(),
-                    self.sys_websession_ssl.close()
-                ])
+                await asyncio.wait(
+                    [
+                        self.sys_api.stop(),
+                        self.sys_dns.stop(),
+                        self.sys_websession.close(),
+                        self.sys_websession_ssl.close(),
+                    ]
+                )
         except asyncio.TimeoutError:
             _LOGGER.warning("Force Shutdown!")
 

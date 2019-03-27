@@ -367,12 +367,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """
         return self.instance.is_running()
 
-    def is_initialize(self) -> Coroutine:
-        """Return True if a Docker container is exists.
+    def is_fails(self) -> Coroutine:
+        """Return True if a Docker container is fails state.
 
         Return a coroutine.
         """
-        return self.instance.is_initialize()
+        return self.instance.is_fails()
 
     @property
     def in_progress(self) -> bool:

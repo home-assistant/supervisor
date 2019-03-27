@@ -91,6 +91,7 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_PASSWORD in body:
             self.sys_homeassistant.api_password = body[ATTR_PASSWORD]
+            self.sys_homeassistant.refresh_token = None
 
         if ATTR_SSL in body:
             self.sys_homeassistant.api_ssl = body[ATTR_SSL]
