@@ -8,7 +8,7 @@ from ..const import ENV_TOKEN, ENV_TIME, LABEL_MACHINE
 
 _LOGGER = logging.getLogger(__name__)
 
-HASS_DOCKER_NAME = 'homeassistant'
+HASS_DOCKER_NAME = "homeassistant"
 
 
 class DockerHomeAssistant(DockerInterface):
@@ -17,8 +17,8 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def machine(self):
         """Return machine of Home Assistant Docker image."""
-        if self._meta and LABEL_MACHINE in self._meta['Config']['Labels']:
-            return self._meta['Config']['Labels'][LABEL_MACHINE]
+        if self._meta and LABEL_MACHINE in self._meta["Config"]["Labels"]:
+            return self._meta["Config"]["Labels"][LABEL_MACHINE]
         return None
 
     @property
@@ -58,25 +58,29 @@ class DockerHomeAssistant(DockerInterface):
             privileged=True,
             init=True,
             devices=self.devices,
-            network_mode='host',
+            network_mode="host",
             environment={
-                'HASSIO': self.sys_docker.network.supervisor,
+                "HASSIO": self.sys_docker.network.supervisor,
                 ENV_TIME: self.sys_timezone,
                 ENV_TOKEN: self.sys_homeassistant.hassio_token,
             },
             volumes={
-                str(self.sys_config.path_extern_homeassistant):
-                    {'bind': '/config', 'mode': 'rw'},
-                str(self.sys_config.path_extern_ssl):
-                    {'bind': '/ssl', 'mode': 'ro'},
-                str(self.sys_config.path_extern_share):
-                    {'bind': '/share', 'mode': 'rw'},
-            }
+                str(self.sys_config.path_extern_homeassistant): {
+                    "bind": "/config",
+                    "mode": "rw",
+                },
+                str(self.sys_config.path_extern_ssl): {"bind": "/ssl", "mode": "ro"},
+                str(self.sys_config.path_extern_share): {
+                    "bind": "/share",
+                    "mode": "rw",
+                },
+            },
         )
 
         if ret:
-            _LOGGER.info("Start homeassistant %s with version %s",
-                         self.image, self.version)
+            _LOGGER.info(
+                "Start homeassistant %s with version %s", self.image, self.version
+            )
 
         return ret
 
@@ -94,17 +98,18 @@ class DockerHomeAssistant(DockerInterface):
             detach=True,
             stdout=True,
             stderr=True,
-            environment={
-                ENV_TIME: self.sys_timezone,
-            },
+            environment={ENV_TIME: self.sys_timezone},
             volumes={
-                str(self.sys_config.path_extern_homeassistant):
-                    {'bind': '/config', 'mode': 'rw'},
-                str(self.sys_config.path_extern_ssl):
-                    {'bind': '/ssl', 'mode': 'ro'},
-                str(self.sys_config.path_extern_share):
-                    {'bind': '/share', 'mode': 'ro'},
-            }
+                str(self.sys_config.path_extern_homeassistant): {
+                    "bind": "/config",
+                    "mode": "rw",
+                },
+                str(self.sys_config.path_extern_ssl): {"bind": "/ssl", "mode": "ro"},
+                str(self.sys_config.path_extern_share): {
+                    "bind": "/share",
+                    "mode": "ro",
+                },
+            },
         )
 
     def is_initialize(self):
@@ -117,8 +122,13 @@ class DockerHomeAssistant(DockerInterface):
         Need run inside executor.
         """
         try:
-            self.sys_docker.containers.get(self.name)
+            docker_container = self.sys_docker.containers.get(self.name)
+            docker_image = self.sys_docker.images.get(self.image)
         except docker.errors.DockerException:
+            return False
+
+        # we run on an old image, stop and start it
+        if docker_container.image.id != docker_image.id:
             return False
 
         return True

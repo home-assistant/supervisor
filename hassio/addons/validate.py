@@ -21,7 +21,7 @@ from ..const import (
     ATTR_UUID, ATTR_VERSION, ATTR_WEBUI, BOOT_AUTO, BOOT_MANUAL,
     PRIVILEGED_ALL, ROLE_ALL, ROLE_DEFAULT, STARTUP_ALL, STARTUP_APPLICATION,
     STARTUP_SERVICES, STATE_STARTED, STATE_STOPPED)
-from ..services.validate import DISCOVERY_SERVICES
+from ..discovery.validate import valid_discovery_service
 from ..validate import (
     ALSA_DEVICE, DOCKER_PORTS, NETWORK_PORT, SHA256, UUID_MATCH)
 
@@ -79,9 +79,9 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Required(ATTR_SLUG): vol.Coerce(str),
     vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
-    vol.Optional(ATTR_URL): vol.Url(),
-    vol.Optional(ATTR_ARCH, default=ARCH_ALL): [vol.In(ARCH_ALL)],
+    vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
     vol.Optional(ATTR_MACHINE): [vol.In(MACHINE_ALL)],
+    vol.Optional(ATTR_URL): vol.Url(),
     vol.Required(ATTR_STARTUP):
         vol.All(_simple_startup, vol.In(STARTUP_ALL)),
     vol.Required(ATTR_BOOT):
@@ -114,7 +114,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),
     vol.Optional(ATTR_AUTH_API, default=False): vol.Boolean(),
     vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
-    vol.Optional(ATTR_DISCOVERY): [vol.In(DISCOVERY_SERVICES)],
+    vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
     vol.Required(ATTR_OPTIONS): dict,
     vol.Required(ATTR_SCHEMA): vol.Any(vol.Schema({
         vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [
