@@ -1,24 +1,38 @@
 """Handle discover message for Home Assistant."""
+from __future__ import annotations
+
 from contextlib import suppress
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from uuid import uuid4, UUID
 
 import attr
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons.addon import Addon
 from ..const import ATTR_CONFIG, ATTR_DISCOVERY, FILE_HASSIO_DISCOVERY
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DiscoveryError, HomeAssistantAPIError
 from ..utils.json import JsonConfig
-from .validate import DISCOVERY_SERVICES, SCHEMA_DISCOVERY_CONFIG
+from .validate import SCHEMA_DISCOVERY_CONFIG, valid_discovery_config
+
+if TYPE_CHECKING:
+    from ..addons.addon import Addon
 
 _LOGGER = logging.getLogger(__name__)
 
 CMD_NEW = "post"
 CMD_DEL = "delete"
+
+
+@attr.s
+class Message:
+    """Represent a single Discovery message."""
+
+    addon: str = attr.ib()
+    service: str = attr.ib()
+    config: Dict[str, Any] = attr.ib(cmp=False)
+    uuid: UUID = attr.ib(factory=lambda: uuid4().hex, cmp=False)
 
 
 class Discovery(CoreSysAttributes, JsonConfig):
@@ -62,7 +76,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
     def send(self, addon: Addon, service: str, config: Dict[str, Any]) -> Message:
         """Send a discovery message to Home Assistant."""
         try:
-            config = DISCOVERY_SERVICES[service](config)
+            config = valid_discovery_config(service, config)
         except vol.Invalid as err:
             _LOGGER.error("Invalid discovery %s config", humanize_error(config, err))
             raise DiscoveryError() from None
@@ -116,13 +130,3 @@ class Discovery(CoreSysAttributes, JsonConfig):
                 return
 
         _LOGGER.warning("Discovery %s message fail", message.uuid)
-
-
-@attr.s
-class Message:
-    """Represent a single Discovery message."""
-
-    addon: str = attr.ib()
-    service: str = attr.ib()
-    config: Dict[str, Any] = attr.ib(cmp=False)
-    uuid: UUID = attr.ib(factory=lambda: uuid4().hex, cmp=False)

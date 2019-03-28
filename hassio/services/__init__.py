@@ -1,13 +1,11 @@
 """Handle internal services discovery."""
 from .mqtt import MQTTService
 from .data import ServicesData
-from ..const import SERVICE_MQTT
+from .const import SERVICE_MQTT
 from ..coresys import CoreSysAttributes
 
 
-AVAILABLE_SERVICES = {
-    SERVICE_MQTT: MQTTService
-}
+AVAILABLE_SERVICES = {SERVICE_MQTT: MQTTService}
 
 
 class ServiceManager(CoreSysAttributes):

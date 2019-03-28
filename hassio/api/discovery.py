@@ -12,12 +12,12 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
-from ..discovery.validate import DISCOVERY_ALL
+from ..discovery.validate import valid_discovery_service
 
 
 SCHEMA_DISCOVERY = vol.Schema(
     {
-        vol.Required(ATTR_SERVICE): DISCOVERY_ALL,
+        vol.Required(ATTR_SERVICE): valid_discovery_service,
         vol.Optional(ATTR_CONFIG): vol.Maybe(dict),
     }
 )
