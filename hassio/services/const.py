@@ -1,5 +1,6 @@
 """Service API static data."""
 
+ATTR_ADDON = "addon"
 ATTR_HOST = "host"
 ATTR_PASSWORD = "password"
 ATTR_PORT = "port"
