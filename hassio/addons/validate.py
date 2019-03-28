@@ -79,9 +79,9 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Required(ATTR_SLUG): vol.Coerce(str),
     vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
-    vol.Optional(ATTR_URL): vol.Url(),
-    vol.Optional(ATTR_ARCH, default=ARCH_ALL): [vol.In(ARCH_ALL)],
+    vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
     vol.Optional(ATTR_MACHINE): [vol.In(MACHINE_ALL)],
+    vol.Optional(ATTR_URL): vol.Url(),
     vol.Required(ATTR_STARTUP):
         vol.All(_simple_startup, vol.In(STARTUP_ALL)),
     vol.Required(ATTR_BOOT):
