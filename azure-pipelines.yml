@@ -32,13 +32,8 @@ jobs:
     vmImage: 'ubuntu-16.04'
 
   steps:
-  - task: UsePythonVersion@0
-    displayName: 'Use Python $(python.version)'
-    inputs:
-      versionSpec: '$(python.version)'
-
   - script: apt-get install jq
     displayName: 'Install JQ'
 
-  - script: "cat **/*.json | jq"
+  - bash: "cat **/*.json | jq"
     displayName: 'Run JQ'
