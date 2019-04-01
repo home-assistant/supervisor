@@ -32,7 +32,7 @@ jobs:
     vmImage: 'ubuntu-16.04'
 
   steps:
-  - script: apt-get install jq
+  - script: sudo apt-get install -y jq
     displayName: 'Install JQ'
 
   - bash: "cat **/*.json | jq"
