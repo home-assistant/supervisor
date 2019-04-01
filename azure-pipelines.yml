@@ -5,6 +5,10 @@
 
 trigger:
 - master
+- dev
+
+pr:
+- dev
 
 jobs:
 
