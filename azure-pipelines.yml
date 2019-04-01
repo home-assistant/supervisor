@@ -35,5 +35,7 @@ jobs:
   - script: sudo apt-get install -y jq
     displayName: 'Install JQ'
 
-  - bash: "cat **/*.json | jq"
+  - bash: |
+      shopt -s globstar
+      cat **/*.json | jq '.'
     displayName: 'Run JQ'
