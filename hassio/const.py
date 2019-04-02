@@ -2,6 +2,9 @@
 from pathlib import Path
 from ipaddress import ip_network
 
+from multidict import istr
+
+
 HASSIO_VERSION = "153"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -51,8 +54,8 @@ CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_TEXT = "text/plain"
 CONTENT_TYPE_TAR = "application/tar"
 CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
-HEADER_HA_ACCESS = "x-ha-access"
-HEADER_TOKEN = "x-hassio-key"
+HEADER_HA_ACCESS = istr("X-Ha-Access")
+HEADER_TOKEN = istr("X-Hassio-Key")
 
 ENV_TOKEN = "HASSIO_TOKEN"
 ENV_TIME = "TZ"
