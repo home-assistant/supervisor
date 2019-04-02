@@ -14,6 +14,7 @@ from .hassos import APIHassOS
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .info import APIInfo
+from .ingress import APIIngress
 from .proxy import APIProxy
 from .security import SecurityMiddleware
 from .services import APIServices
@@ -47,6 +48,7 @@ class RestAPI(CoreSysAttributes):
         self._register_proxy()
         self._register_panel()
         self._register_addons()
+        self._register_ingress()
         self._register_snapshots()
         self._register_discovery()
         self._register_services()
@@ -184,6 +186,15 @@ class RestAPI(CoreSysAttributes):
             web.post('/addons/{addon}/stdin', api_addons.stdin),
             web.post('/addons/{addon}/security', api_addons.security),
             web.get('/addons/{addon}/stats', api_addons.stats),
+        ])
+
+    def _register_ingress(self) -> None:
+        """Register Ingress functions."""
+        api_ingress = APIIngress()
+        api_ingress.coresys = self.coresys
+
+        self.webapp.add_routes([
+            web.view('/addons/{addon}/web/{path:.*}', api_ingress.handler),
         ])
 
     def _register_snapshots(self) -> None:
