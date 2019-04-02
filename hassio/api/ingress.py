@@ -1,17 +1,23 @@
 """Hass.io Add-on ingress service."""
 import asyncio
 from ipaddress import ip_address
+import logging
 from typing import Dict, Union
 
 import aiohttp
-from aiohttp import web
-from aiohttp import hdrs
-from aiohttp.web_exceptions import HTTPBadGateway, HTTPServiceUnavailable
+from aiohttp import hdrs, web
+from aiohttp.web_exceptions import (
+    HTTPBadGateway,
+    HTTPServiceUnavailable,
+    HTTPUnauthorized,
+)
 from multidict import CIMultiDict
 
-from .addons.addon import Addon
+from ..const import HEADER_TOKEN, REQUEST_FROM
 from ..coresys import CoreSysAttributes
-from ..const import HEADER_TOKEN
+from .addons.addon import Addon
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class APIIngress(CoreSysAttributes):
@@ -21,12 +27,14 @@ class APIIngress(CoreSysAttributes):
         """Return addon, throw an exception it it doesn't exist."""
         addon_slug = request.match_info.get("addon")
 
-        addon = self.sys_addons.get(addon_slug)
-        if not addon:
-            raise HTTPServiceUnavailable()
+        try:
+            addon = self.sys_addons.get(addon_slug)
+            assert addon
+            assert not addon.is_installed
 
-        if not addon.is_installed:
-            raise HTTPServiceUnavailable()
+        except AssertionError:
+            _LOGGER.warning("Ingress for %s not available", addon_slug)
+            raise HTTPServiceUnavailable() from None
 
         return addon
 
@@ -40,6 +48,11 @@ class APIIngress(CoreSysAttributes):
         """Route data to Hass.io ingress service."""
         addon = self._extract_addon(request)
         path = request.match_info.get("path")
+
+        # Only Home Assistant call this
+        if request[REQUEST_FROM] != self.sys_homeassistant:
+            _LOGGER.warning("Ingress is only available behind Home Assistant")
+            raise HTTPUnauthorized()
 
         try:
             # Websocket
