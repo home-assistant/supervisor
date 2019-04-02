@@ -11,7 +11,7 @@ from aiohttp.web_exceptions import (
     HTTPServiceUnavailable,
     HTTPUnauthorized,
 )
-from multidict import CIMultiDict
+from multidict import CIMultiDict, istr
 
 from ..const import HEADER_TOKEN, REQUEST_FROM
 from ..coresys import CoreSysAttributes
@@ -147,7 +147,7 @@ def _init_header(
 
     # filter flags
     for name, value in request.headers.items():
-        if name in (hdrs.CONTENT_LENGTH, hdrs.CONTENT_TYPE, HEADER_TOKEN):
+        if name in (hdrs.CONTENT_LENGTH, hdrs.CONTENT_TYPE, istr(HEADER_TOKEN)):
             continue
         headers[name] = value
 
