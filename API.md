@@ -566,6 +566,10 @@ Only supported for local build addons
 
 Write data to add-on stdin
 
+- VIEW `/addons/{addon}/web`
+
+Ingress WebUI for this Add-on. The addon need support HASS Auth!
+
 - GET `/addons/{addon}/stats`
 ```json
 {
