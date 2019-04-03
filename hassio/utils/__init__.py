@@ -31,9 +31,7 @@ def process_lock(method):
             return False
 
         async with api.lock:
-            val = await method(api, *args, **kwargs)
-            if val is not None:
-                return val
+            return await method(api, *args, **kwargs)
 
     return wrap_api
 

@@ -137,7 +137,7 @@ class DockerInterface(CoreSysAttributes):
         return True
 
     @process_lock
-    def attach(self) -> Awaitable[None]:
+    def attach(self):
         """Attach to running Docker container."""
         return self.sys_run_in_executor(self._attach)
 
