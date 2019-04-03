@@ -56,10 +56,11 @@ class DockerHomeAssistant(DockerInterface):
         if self._is_running():
             return
 
-        # cleanup
+        # Cleanup
         with suppress(DockerAPIError):
             self._stop()
 
+        # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
             name=self.name,
