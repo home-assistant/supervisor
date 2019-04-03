@@ -28,6 +28,17 @@ class HomeAssistantAuthError(HomeAssistantAPIError):
     """Home Assistant Auth API exception."""
 
 
+# Supervisor
+
+
+class SupervisorError(HassioError):
+    """Supervisor error."""
+
+
+class SupervisorUpdateError(SupervisorError):
+    """Supervisor update error."""
+
+
 # HassOS
 
 

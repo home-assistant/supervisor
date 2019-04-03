@@ -1,15 +1,23 @@
 """Home Assistant control object."""
 import asyncio
+from contextlib import suppress
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Awaitable, Optional
 
 import aiohttp
 
-from .coresys import CoreSysAttributes
-from .docker.supervisor import DockerSupervisor
 from .const import URL_HASSIO_APPARMOR
-from .exceptions import HostAppArmorError
+from .coresys import CoreSys, CoreSysAttributes
+from .docker.stats import DockerStats
+from .docker.supervisor import DockerSupervisor
+from .exceptions import (
+    DockerAPIError,
+    HostAppArmorError,
+    SupervisorError,
+    SupervisorUpdateError,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,43 +25,47 @@ _LOGGER = logging.getLogger(__name__)
 class Supervisor(CoreSysAttributes):
     """Home Assistant core object for handle it."""
 
-    def __init__(self, coresys):
+    def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
-        self.coresys = coresys
-        self.instance = DockerSupervisor(coresys)
+        self.coresys: CoreSys = coresys
+        self.instance: DockerSupervisor = DockerSupervisor(coresys)
 
-    async def load(self):
+    async def load(self) -> None:
         """Prepare Home Assistant object."""
-        if not await self.instance.attach():
+        try:
+            await self.instance.attach()
+        except DockerAPIError:
             _LOGGER.fatal("Can't setup Supervisor Docker container!")
-        await self.instance.cleanup()
+
+        with suppress(DockerAPIError):
+            await self.instance.cleanup()
 
     @property
-    def need_update(self):
+    def need_update(self) -> bool:
         """Return True if an update is available."""
         return self.version != self.last_version
 
     @property
-    def version(self):
+    def version(self) -> str:
         """Return version of running Home Assistant."""
         return self.instance.version
 
     @property
-    def last_version(self):
+    def last_version(self) -> str:
         """Return last available version of Home Assistant."""
         return self.sys_updater.version_hassio
 
     @property
-    def image(self):
+    def image(self) -> str:
         """Return image name of Home Assistant container."""
         return self.instance.image
 
     @property
-    def arch(self):
+    def arch(self) -> str:
         """Return arch of the Hass.io container."""
         return self.instance.arch
 
-    async def update_apparmor(self):
+    async def update_apparmor(self) -> None:
         """Fetch last version and update profile."""
         url = URL_HASSIO_APPARMOR
         try:
@@ -63,22 +75,25 @@ class Supervisor(CoreSysAttributes):
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch AppArmor profile: %s", err)
-            return
+            raise SupervisorError() from None
 
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
-            profile_file = Path(tmp_dir, 'apparmor.txt')
+            profile_file = Path(tmp_dir, "apparmor.txt")
             try:
                 profile_file.write_text(data)
             except OSError as err:
                 _LOGGER.error("Can't write temporary profile: %s", err)
-                return
+                raise SupervisorError() from None
+
             try:
                 await self.sys_host.apparmor.load_profile(
-                    "hassio-supervisor", profile_file)
+                    "hassio-supervisor", profile_file
+                )
             except HostAppArmorError:
                 _LOGGER.error("Can't update AppArmor profile!")
+                raise SupervisorError() from None
 
-    async def update(self, version=None):
+    async def update(self, version: Optional[str] = None) -> None:
         """Update Home Assistant version."""
         version = version or self.last_version
 
@@ -87,29 +102,31 @@ class Supervisor(CoreSysAttributes):
             return
 
         _LOGGER.info("Update Supervisor to version %s", version)
-        if await self.instance.install(version):
-            await self.update_apparmor()
-            self.sys_loop.call_later(1, self.sys_loop.stop)
-            return True
+        try:
+            await self.instance.install(version)
+        except DockerAPIError:
+            _LOGGER.error("Update of Hass.io fails!")
+            raise SupervisorUpdateError() from None
 
-        _LOGGER.error("Update of Hass.io fails!")
-        return False
+        with suppress(SupervisorError):
+            await self.update_apparmor()
+        self.sys_loop.call_later(1, self.sys_loop.stop)
 
     @property
-    def in_progress(self):
+    def in_progress(self) -> bool:
         """Return True if a task is in progress."""
         return self.instance.in_progress
 
-    def logs(self):
+    def logs(self) -> Awaitable[bytes]:
         """Get Supervisor docker logs.
 
-        Return a coroutine.
+        Return Coroutine.
         """
         return self.instance.logs()
 
-    def stats(self):
-        """Return stats of Supervisor.
-
-        Return a coroutine.
-        """
-        return self.instance.stats()
+    async def stats(self) -> DockerStats:
+        """Return stats of Supervisor."""
+        try:
+            return await self.instance.stats()
+        except DockerAPIError:
+            raise SupervisorError() from None
