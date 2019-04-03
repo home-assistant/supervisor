@@ -509,7 +509,8 @@ Get all available addons.
     "services_role": "['service:access']",
     "discovery": "['service']",
     "ip_address": "ip address",
-    "ingress": "bool"
+    "ingress": "bool",
+    "ingress_entry": "/api/hassio_ingress/slug"
 }
 ```
 

@@ -41,7 +41,10 @@ from ..const import (
     ATTR_HOST_NETWORK,
     ATTR_HOST_PID,
     ATTR_ICON,
+    ATTR_INGRESS,
+    ATTR_INGRESS_ENTRY,
     ATTR_INSTALLED,
+    ATTR_IP_ADDRESS,
     ATTR_KERNEL_MODULES,
     ATTR_LAST_VERSION,
     ATTR_LOGO,
@@ -68,8 +71,6 @@ from ..const import (
     ATTR_URL,
     ATTR_VERSION,
     ATTR_WEBUI,
-    ATTR_IP_ADDRESS,
-    ATTR_INGRESS,
     BOOT_AUTO,
     BOOT_MANUAL,
     CONTENT_TYPE_BINARY,
@@ -217,6 +218,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_DISCOVERY: addon.discovery,
             ATTR_IP_ADDRESS: str(addon.ip_address),
             ATTR_INGRESS: addon.with_ingress,
+            ATTR_INGRESS_ENTRY: f"/api/hassio_ingress/{addon.slug}"
         }
 
     @api_process

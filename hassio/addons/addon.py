@@ -40,6 +40,9 @@ from ..const import (
     ATTR_HOST_NETWORK,
     ATTR_HOST_PID,
     ATTR_IMAGE,
+    ATTR_INGRESS,
+    ATTR_INGRESS_ENTRY,
+    ATTR_INGRESS_PORT,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -59,7 +62,6 @@ from ..const import (
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_SYSTEM,
-    ATTR_INGRESS,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_URL,
@@ -361,6 +363,14 @@ class Addon(CoreSysAttributes):
     @property
     def webui(self):
         """Return URL to webui or None."""
+        # Use ingress
+        if self.with_ingress:
+            webui = f"/api/hassio_ingress/{self.slug}/"
+            if ATTR_INGRESS_ENTRY in self._mesh:
+                return f"{webui}{self._mesh[ATTR_INGRESS_ENTRY]}"
+            return webui
+
+        # Use direct access
         if ATTR_WEBUI not in self._mesh:
             return None
         webui = RE_WEBUI.match(self._mesh[ATTR_WEBUI])
@@ -388,6 +398,11 @@ class Addon(CoreSysAttributes):
             proto = s_prefix
 
         return f"{proto}://[HOST]:{port}{s_suffix}"
+
+    @property
+    def ingress_url(self):
+        """Return Ingress host URL."""
+        return f"http://{self.ip_address}:{self._mesh[ATTR_INGRESS_PORT]}"
 
     @property
     def host_network(self):
