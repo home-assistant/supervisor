@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import socket
 import time
-from typing import Any, AsyncContextManager, Coroutine, Dict, Optional
+from typing import Any, AsyncContextManager, Awaitable, Dict, Optional
 from uuid import UUID
 
 import aiohttp
@@ -33,11 +33,13 @@ from .const import (
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
+from .docker.stats import DockerStats
 from .exceptions import (
     HomeAssistantAPIError,
     HomeAssistantAuthError,
     HomeAssistantError,
     HomeAssistantUpdateError,
+    DockerAPIError
 )
 from .utils import convert_to_ascii, create_token, process_lock
 from .utils.json import JsonConfig
@@ -72,7 +74,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
-        if await self.instance.attach():
+        try:
+            await self.instance.attach()
+        except DockerAPIError:
             return
 
         _LOGGER.info("No Home Assistant Docker image %s found.", self.image)
@@ -230,8 +234,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Install a landing page."""
         _LOGGER.info("Setup HomeAssistant landingpage")
         while True:
-            if await self.instance.install('landingpage'):
-                break
+            with suppress(DockerAPIError):
+                await self.instance.install('landingpage')
+                return
             _LOGGER.warning("Fails install landingpage, retry after 30sec")
             await asyncio.sleep(30)
 
@@ -245,8 +250,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 await self.sys_updater.reload()
 
             tag = self.last_version
-            if tag and await self.instance.install(tag):
-                break
+            if tag:
+                with suppress(DockerAPIError):
+                    await self.instance.install(tag)
+                    break
             _LOGGER.warning("Error on install Home Assistant. Retry in 30sec")
             await asyncio.sleep(30)
 
@@ -260,7 +267,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         except HomeAssistantError:
             _LOGGER.error("Can't start Home Assistant!")
         finally:
-            await self.instance.cleanup()
+            with suppress(DockerAPIError):
+                await self.instance.cleanup()
 
     @process_lock
     async def update(self, version=None) -> None:
@@ -278,8 +286,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         async def _update(to_version):
             """Run Home Assistant update."""
             _LOGGER.info("Update Home Assistant to version %s", to_version)
-            if not await self.instance.update(to_version):
-                raise HomeAssistantUpdateError()
+            try:
+                await self.instance.update(to_version)
+            except DockerAPIError:
+                raise HomeAssistantUpdateError() from None
 
             if running:
                 await self._start()
@@ -307,67 +317,81 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._data[ATTR_ACCESS_TOKEN] = create_token()
         self.save_data()
 
-        if not await self.instance.run():
-            raise HomeAssistantError()
+        try:
+            await self.instance.run()
+        except DockerAPIError:
+            raise HomeAssistantError() from None
         await self._block_till_run()
 
     @process_lock
     async def start(self) -> None:
         """Run Home Assistant docker."""
-        if await self.instance.is_running():
-            await self.instance.restart()
-        elif await self.instance.is_initialize():
-            await self.instance.start()
-        else:
-            await self._start()
-            return
+        try:
+            if await self.instance.is_running():
+                await self.instance.restart()
+            elif await self.instance.is_initialize():
+                await self.instance.start()
+            else:
+                await self._start()
+                return
 
-        await self._block_till_run()
+            await self._block_till_run()
+        except DockerAPIError:
+            raise HomeAssistantError() from None
 
     @process_lock
-    def stop(self) -> Coroutine:
+    async def stop(self) -> None:
         """Stop Home Assistant Docker.
 
         Return a coroutine.
         """
-        return self.instance.stop(remove_container=False)
+        try:
+            return await self.instance.stop(remove_container=False)
+        except DockerAPIError:
+            raise HomeAssistantError() from None
 
     @process_lock
     async def restart(self) -> None:
         """Restart Home Assistant Docker."""
-        if not await self.instance.restart():
-            raise HomeAssistantError()
+        try:
+            await self.instance.restart()
+        except DockerAPIError:
+            raise HomeAssistantError() from None
 
         await self._block_till_run()
 
     @process_lock
     async def rebuild(self) -> None:
         """Rebuild Home Assistant Docker container."""
-        await self.instance.stop()
+        with suppress(DockerAPIError):
+            await self.instance.stop()
         await self._start()
 
-    def logs(self) -> Coroutine:
+    def logs(self) -> Awaitable[bytes]:
         """Get HomeAssistant docker logs.
 
         Return a coroutine.
         """
         return self.instance.logs()
 
-    def stats(self) -> Coroutine:
+    async def stats(self) -> DockerStats:
         """Return stats of Home Assistant.
 
         Return a coroutine.
         """
-        return self.instance.stats()
+        try:
+            return await self.instance.stats()
+        except DockerAPIError:
+            raise HomeAssistantError() from None
 
-    def is_running(self) -> Coroutine:
+    def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
 
         Return a coroutine.
         """
         return self.instance.is_running()
 
-    def is_fails(self) -> Coroutine:
+    def is_fails(self) -> Awaitable[bool]:
         """Return True if a Docker container is fails state.
 
         Return a coroutine.
