@@ -101,3 +101,4 @@ class DockerNetwork:
 
         except docker.errors.APIError as err:
             _LOGGER.warning("Can't disconnect container from default: %s", err)
+            raise DockerAPIError() from None

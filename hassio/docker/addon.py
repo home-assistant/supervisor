@@ -60,8 +60,10 @@ class DockerAddon(DockerInterface):
         if self.addon.host_network:
             return self.sys_docker.network.gateway
 
+        # Extract IP-Address
         try:
-            return ip_address(self._meta["Networks"]["hassio"]["IPAddress"])
+            return ip_address(
+                self._meta["NetworkSettings"]["Networks"]["hassio"]["IPAddress"])
         except (KeyError, TypeError):
             return ip_address("0.0.0.0")
 

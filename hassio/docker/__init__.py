@@ -77,15 +77,18 @@ class DockerAPI:
             _LOGGER.error("Can't create container from %s: %s", name, err)
             raise DockerAPIError() from None
 
-        # attach network
+        # Attach network
         if not network_mode:
             alias = [hostname] if hostname else None
-            if self.network.attach_container(container, alias=alias):
-                self.network.detach_default_bridge(container)
-            else:
+            try:
+                self.network.attach_container(container, alias=alias)
+            except DockerAPIError:
                 _LOGGER.warning("Can't attach %s to hassio-net!", name)
+            else:
+                with suppress(DockerAPIError):
+                    self.network.detach_default_bridge(container)
 
-        # run container
+        # Run container
         try:
             container.start()
         except docker.errors.DockerException as err:
