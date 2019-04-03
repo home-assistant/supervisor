@@ -32,20 +32,21 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            container = self.sys_docker.containers.get(self.name)
+            docker_container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
             raise DockerAPIError() from None
 
-        self._meta = container.attrs
+        self._meta = docker_container.attrs
         _LOGGER.info(
             "Attach to Supervisor %s with version %s", self.image, self.version
         )
 
         # If already attach
-        if container in self.sys_docker.network.containers:
+        if docker_container in self.sys_docker.network.containers:
             return
 
         # Attach to network
+        _LOGGER.info("Attach Supervisor to Hass.io Network")
         self.sys_docker.network.attach_container(
-            container, alias=["hassio"], ipv4=self.sys_docker.network.supervisor
+            docker_container, alias=["hassio"], ipv4=self.sys_docker.network.supervisor
         )

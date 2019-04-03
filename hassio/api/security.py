@@ -113,7 +113,7 @@ class SecurityMiddleware(CoreSysAttributes):
             raise HTTPUnauthorized()
 
         # Home-Assistant
-        if hassio_token in self.sys_homeassistant.hassio_token:
+        if hassio_token == self.sys_homeassistant.hassio_token:
             _LOGGER.debug("%s access from Home Assistant", request.path)
             request_from = self.sys_homeassistant
 

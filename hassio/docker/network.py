@@ -17,9 +17,9 @@ class DockerNetwork:
     This class is not AsyncIO safe!
     """
 
-    def __init__(self, dock: docker.DockerClient):
+    def __init__(self, docker_client: docker.DockerClient):
         """Initialize internal Hass.io network."""
-        self.docker: docker.DockerClient = dock
+        self.docker: docker.DockerClient = docker_client
         self.network: docker.models.networks.Network = self._get_network()
 
     @property
