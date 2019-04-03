@@ -57,6 +57,9 @@ class DockerAddon(DockerInterface):
     @property
     def ip_address(self) -> IPv4Address:
         """Return IP address of this container."""
+        if self.addon.host_network:
+            return self.sys_docker.network.gateway
+
         try:
             return ip_address(self._meta["Networks"]["hassio"]["IPAddress"])
         except (KeyError, TypeError):
