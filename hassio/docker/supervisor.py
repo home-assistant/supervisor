@@ -50,4 +50,3 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         self.sys_docker.network.attach_container(
             docker_container, alias=["hassio"], ipv4=self.sys_docker.network.supervisor
         )
-        _LOGGER.info("Connect Supervisor to Hass.io Network")

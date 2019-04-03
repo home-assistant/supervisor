@@ -13,7 +13,8 @@ def initialize_event_loop():
     """Attempt to use uvloop."""
     try:
         import uvloop
-        uvloop.install()
+
+        # uvloop.install()
     except ImportError:
         pass
 
