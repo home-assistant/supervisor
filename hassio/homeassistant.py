@@ -74,9 +74,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
-        try:
+        with suppress(DockerAPIError):
             await self.instance.attach()
-        except DockerAPIError:
             return
 
         _LOGGER.info("No Home Assistant Docker image %s found.", self.image)
