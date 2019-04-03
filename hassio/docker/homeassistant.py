@@ -1,10 +1,14 @@
 """Init file for Hass.io Docker object."""
+from contextlib import suppress
+from ipaddress import IPv4Address
 import logging
+from typing import Awaitable
 
 import docker
 
-from .interface import DockerInterface
-from ..const import ENV_TOKEN, ENV_TIME, LABEL_MACHINE
+from ..const import ENV_TIME, ENV_TOKEN, LABEL_MACHINE
+from ..exceptions import DockerAPIError
+from .interface import CommandReturn, DockerInterface
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,18 +43,24 @@ class DockerHomeAssistant(DockerInterface):
             devices.append(f"{device}:{device}:rwm")
         return devices or None
 
-    def _run(self):
+    @property
+    def ip_address(self) -> IPv4Address:
+        """Return IP address of this container."""
+        return self.sys_docker.network.gateway
+
+    def _run(self) -> None:
         """Run Docker image.
 
         Need run inside executor.
         """
         if self._is_running():
-            return False
+            return
 
         # cleanup
-        self._stop()
+        with suppress(DockerAPIError):
+            self._stop()
 
-        ret = self.sys_docker.run(
+        docker_container = self.sys_docker.run(
             self.image,
             name=self.name,
             hostname=self.name,
@@ -77,14 +87,10 @@ class DockerHomeAssistant(DockerInterface):
             },
         )
 
-        if ret:
-            _LOGGER.info(
-                "Start homeassistant %s with version %s", self.image, self.version
-            )
+        _LOGGER.info("Start homeassistant %s with version %s", self.image, self.version)
+        self._meta = docker_container.attrs
 
-        return ret
-
-    def _execute_command(self, command):
+    def _execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command.
 
         Need run inside executor.
@@ -112,11 +118,11 @@ class DockerHomeAssistant(DockerInterface):
             },
         )
 
-    def is_initialize(self):
+    def is_initialize(self) -> Awaitable[bool]:
         """Return True if Docker container exists."""
         return self.sys_run_in_executor(self._is_initialize)
 
-    def _is_initialize(self):
+    def _is_initialize(self) -> bool:
         """Return True if docker container exists.
 
         Need run inside executor.

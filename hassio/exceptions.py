@@ -144,3 +144,10 @@ class AppArmorInvalidError(AppArmorError):
 
 class JsonFileError(HassioError):
     """Invalid json file."""
+
+
+# docker/api
+
+
+class DockerAPIError(HassioError):
+    """Docker API error."""

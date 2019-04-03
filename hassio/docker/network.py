@@ -1,9 +1,12 @@
 """Internal network manager for Hass.io."""
+from ipaddress import IPv4Address
 import logging
+from typing import List, Optional
 
 import docker
 
-from ..const import DOCKER_NETWORK_MASK, DOCKER_NETWORK, DOCKER_NETWORK_RANGE
+from ..const import DOCKER_NETWORK, DOCKER_NETWORK_MASK, DOCKER_NETWORK_RANGE
+from ..exceptions import DockerAPIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,32 +17,32 @@ class DockerNetwork:
     This class is not AsyncIO safe!
     """
 
-    def __init__(self, dock):
+    def __init__(self, dock: docker.DockerClient):
         """Initialize internal Hass.io network."""
-        self.docker = dock
-        self.network = self._get_network()
+        self.docker: docker.DockerClient = dock
+        self.network: docker.models.networks.Network = self._get_network()
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return name of network."""
         return DOCKER_NETWORK
 
     @property
-    def containers(self):
+    def containers(self) -> List[docker.models.containers.Container]:
         """Return of connected containers from network."""
         return self.network.containers
 
     @property
-    def gateway(self):
+    def gateway(self) -> IPv4Address:
         """Return gateway of the network."""
         return DOCKER_NETWORK_MASK[1]
 
     @property
-    def supervisor(self):
+    def supervisor(self) -> IPv4Address:
         """Return supervisor of the network."""
         return DOCKER_NETWORK_MASK[2]
 
-    def _get_network(self):
+    def _get_network(self) -> docker.models.networks.Network:
         """Get HassIO network."""
         try:
             return self.docker.networks.get(DOCKER_NETWORK)
@@ -49,18 +52,25 @@ class DockerNetwork:
         ipam_pool = docker.types.IPAMPool(
             subnet=str(DOCKER_NETWORK_MASK),
             gateway=str(self.gateway),
-            iprange=str(DOCKER_NETWORK_RANGE)
+            iprange=str(DOCKER_NETWORK_RANGE),
         )
 
         ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
 
         return self.docker.networks.create(
-            DOCKER_NETWORK, driver='bridge', ipam=ipam_config,
-            enable_ipv6=False, options={
-                "com.docker.network.bridge.name": DOCKER_NETWORK,
-            })
+            DOCKER_NETWORK,
+            driver="bridge",
+            ipam=ipam_config,
+            enable_ipv6=False,
+            options={"com.docker.network.bridge.name": DOCKER_NETWORK},
+        )
 
-    def attach_container(self, container, alias=None, ipv4=None):
+    def attach_container(
+        self,
+        container: docker.models.containers.Container,
+        alias: Optional[List[str]] = None,
+        ipv4: Optional[IPv4Address] = None,
+    ) -> None:
         """Attach container to Hass.io network.
 
         Need run inside executor.
@@ -71,23 +81,23 @@ class DockerNetwork:
             self.network.connect(container, aliases=alias, ipv4_address=ipv4)
         except docker.errors.APIError as err:
             _LOGGER.error("Can't link container to hassio-net: %s", err)
-            return False
+            raise DockerAPIError() from None
 
         self.network.reload()
-        return True
 
-    def detach_default_bridge(self, container):
+    def detach_default_bridge(
+        self, container: docker.models.containers.Container
+    ) -> None:
         """Detach default Docker bridge.
 
         Need run inside executor.
         """
         try:
-            default_network = self.docker.networks.get('bridge')
+            default_network = self.docker.networks.get("bridge")
             default_network.disconnect(container)
 
         except docker.errors.NotFound:
             return
 
         except docker.errors.APIError as err:
-            _LOGGER.warning(
-                "Can't disconnect container from default: %s", err)
+            _LOGGER.warning("Can't disconnect container from default: %s", err)
