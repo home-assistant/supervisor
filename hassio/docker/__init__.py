@@ -95,6 +95,10 @@ class DockerAPI:
             _LOGGER.error("Can't start %s: %s", name, err)
             raise DockerAPIError() from None
 
+        # Update metadata
+        with suppress(docker.error.DockerException):
+            container.refresh()
+
         return container
 
     def run_command(
