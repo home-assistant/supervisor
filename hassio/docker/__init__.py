@@ -96,7 +96,7 @@ class DockerAPI:
             raise DockerAPIError() from None
 
         # Update metadata
-        with suppress(docker.error.DockerException):
+        with suppress(docker.errors.DockerException):
             container.refresh()
 
         return container
