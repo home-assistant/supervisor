@@ -98,9 +98,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return self._error_state
 
     @property
-    def api_ip(self) -> IPv4Address:
+    def ip_address(self) -> IPv4Address:
         """Return IP of Home Assistant instance."""
-        return self.sys_docker.network.gateway
+        return self.instance.ip_address
 
     @property
     def api_port(self) -> int:
@@ -136,7 +136,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def api_url(self) -> str:
         """Return API url to Home Assistant."""
         return "{}://{}:{}".format('https' if self.api_ssl else 'http',
-                                   self.api_ip, self.api_port)
+                                   self.ip_address, self.api_port)
 
     @property
     def watchdog(self) -> bool:
@@ -509,7 +509,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             """Check if port is mapped."""
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
-                result = sock.connect_ex((str(self.api_ip), self.api_port))
+                result = sock.connect_ex((str(self.ip_address), self.api_port))
                 sock.close()
 
                 # Check if the port is available

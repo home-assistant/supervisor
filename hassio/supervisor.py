@@ -1,6 +1,7 @@
 """Home Assistant control object."""
 import asyncio
 from contextlib import suppress
+from ipaddress import IPv4Address
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -39,6 +40,11 @@ class Supervisor(CoreSysAttributes):
 
         with suppress(DockerAPIError):
             await self.instance.cleanup()
+
+    @property
+    def ip_address(self) -> IPv4Address:
+        """Return IP of Supervisor instance."""
+        return self.instance.ip_address
 
     @property
     def need_update(self) -> bool:

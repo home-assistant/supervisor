@@ -41,6 +41,7 @@ The addons from `addons` are only installed one.
     "arch": "armhf|aarch64|i386|amd64",
     "channel": "stable|beta|dev",
     "timezone": "TIMEZONE",
+    "ip_address": "ip address",
     "wait_boot": "int",
     "addons": [
         {
@@ -348,6 +349,7 @@ Load host configs from a USB stick.
     "last_version": "LAST_VERSION",
     "arch": "arch",
     "machine": "Image machine type",
+    "ip_address": "ip address",
     "image": "str",
     "custom": "bool -> if custom image",
     "boot": "bool",
@@ -505,7 +507,9 @@ Get all available addons.
     "audio_input": "null|0,0",
     "audio_output": "null|0,0",
     "services_role": "['service:access']",
-    "discovery": "['service']"
+    "discovery": "['service']",
+    "ip_address": "ip address",
+    "ingress": "bool"
 }
 ```
 

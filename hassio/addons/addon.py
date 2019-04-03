@@ -1,6 +1,7 @@
 """Init file for Hass.io add-ons."""
 from contextlib import suppress
 from copy import deepcopy
+from ipaddress import IPv4Address, ip_address
 import logging
 from pathlib import Path, PurePath
 import re
@@ -58,6 +59,7 @@ from ..const import (
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_SYSTEM,
+    ATTR_INGRESS,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_URL,
@@ -116,6 +118,13 @@ class Addon(CoreSysAttributes):
             return
         with suppress(DockerAPIError):
             await self.instance.attach()
+
+    @property
+    def ip_address(self) -> IPv4Address:
+        """Return IP of Add-on instance."""
+        if not self.is_installed:
+            return ip_address("0.0.0.0")
+        return self.instance.ip_address
 
     @property
     def slug(self) -> str:
@@ -463,6 +472,11 @@ class Addon(CoreSysAttributes):
     def with_stdin(self):
         """Return True if the add-on access use stdin input."""
         return self._mesh[ATTR_STDIN]
+
+    @property
+    def with_ingress(self):
+        """Return True if the add-on access support ingress."""
+        return self._mesh[ATTR_INGRESS]
 
     @property
     def with_gpio(self):

@@ -18,7 +18,8 @@ from ..const import (
     ATTR_PORTS, ATTR_PRIVILEGED, ATTR_PROTECTED, ATTR_REPOSITORY, ATTR_SCHEMA,
     ATTR_SERVICES, ATTR_SLUG, ATTR_SQUASH, ATTR_STARTUP, ATTR_STATE,
     ATTR_STDIN, ATTR_SYSTEM, ATTR_TIMEOUT, ATTR_TMPFS, ATTR_URL, ATTR_USER,
-    ATTR_UUID, ATTR_VERSION, ATTR_WEBUI, BOOT_AUTO, BOOT_MANUAL,
+    ATTR_UUID, ATTR_VERSION, ATTR_WEBUI, ATTR_INGRESS, ATTR_INGRESS_PORT,
+    ATTR_INGRESS_ENTRY, BOOT_AUTO, BOOT_MANUAL,
     PRIVILEGED_ALL, ROLE_ALL, ROLE_DEFAULT, STARTUP_ALL, STARTUP_APPLICATION,
     STARTUP_SERVICES, STATE_STARTED, STATE_STOPPED)
 from ..discovery.validate import valid_discovery_service
@@ -89,6 +90,9 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_PORTS): DOCKER_PORTS,
     vol.Optional(ATTR_WEBUI):
         vol.Match(r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"),
+    vol.Optional(ATTR_INGRESS, default=False): vol.Boolean(),
+    vol.Optional(ATTR_INGRESS_PORT, default=80): NETWORK_PORT,
+    vol.Optional(ATTR_INGRESS_ENTRY): vol.Coerce(str),
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
     vol.Optional(ATTR_HOST_PID, default=False): vol.Boolean(),
     vol.Optional(ATTR_HOST_IPC, default=False): vol.Boolean(),

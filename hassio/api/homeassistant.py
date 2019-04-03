@@ -27,6 +27,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
+    ATTR_IP_ADDRESS,
     CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
@@ -64,6 +65,7 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_VERSION: self.sys_homeassistant.version,
             ATTR_LAST_VERSION: self.sys_homeassistant.last_version,
             ATTR_MACHINE: self.sys_homeassistant.machine,
+            ATTR_IP_ADDRESS: str(self.sys_homeassistant.ip_address),
             ATTR_ARCH: self.sys_homeassistant.arch,
             ATTR_IMAGE: self.sys_homeassistant.image,
             ATTR_CUSTOM: self.sys_homeassistant.is_custom_image,

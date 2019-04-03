@@ -30,6 +30,7 @@ from ..const import (
     ATTR_TIMEZONE,
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
+    ATTR_IP_ADDRESS,
     CONTENT_TYPE_BINARY,
     HASSIO_VERSION,
 )
@@ -86,6 +87,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_LAST_VERSION: self.sys_updater.version_hassio,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_ARCH: self.sys_supervisor.arch,
+            ATTR_IP_ADDRESS: str(self.sys_supervisor.ip_address),
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_TIMEZONE: self.sys_config.timezone,
             ATTR_ADDONS: list_addons,

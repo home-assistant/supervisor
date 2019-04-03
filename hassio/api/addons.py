@@ -68,6 +68,8 @@ from ..const import (
     ATTR_URL,
     ATTR_VERSION,
     ATTR_WEBUI,
+    ATTR_IP_ADDRESS,
+    ATTR_INGRESS,
     BOOT_AUTO,
     BOOT_MANUAL,
     CONTENT_TYPE_BINARY,
@@ -213,6 +215,8 @@ class APIAddons(CoreSysAttributes):
             ATTR_AUDIO_OUTPUT: addon.audio_output,
             ATTR_SERVICES: _pretty_services(addon),
             ATTR_DISCOVERY: addon.discovery,
+            ATTR_IP_ADDRESS: str(addon.ip_address),
+            ATTR_INGRESS: addon.with_ingress,
         }
 
     @api_process
