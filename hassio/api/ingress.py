@@ -13,9 +13,9 @@ from aiohttp.web_exceptions import (
 )
 from multidict import CIMultiDict, istr
 
+from ..addons.addon import Addon
 from ..const import HEADER_TOKEN, REQUEST_FROM
 from ..coresys import CoreSysAttributes
-from .addons.addon import Addon
 
 _LOGGER = logging.getLogger(__name__)
 
