@@ -53,7 +53,11 @@ class APIIngress(CoreSysAttributes):
         if request[REQUEST_FROM] != self.sys_homeassistant:
             _LOGGER.warning("Ingress is only available behind Home Assistant")
             raise HTTPUnauthorized()
+        if not addon.with_ingress:
+            _LOGGER.warning("Add-on %s don't support ingress feature", addon.slug)
+            raise HTTPBadGateway() from None
 
+        # Process requests
         try:
             # Websocket
             if _is_websocket(request):
