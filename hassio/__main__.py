@@ -14,7 +14,7 @@ def initialize_event_loop():
     try:
         import uvloop
 
-        # uvloop.install()
+        uvloop.install()
     except ImportError:
         pass
 
