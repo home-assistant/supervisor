@@ -7,35 +7,92 @@ import re
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Dict, Any
+from typing import Any, Awaitable, Dict, Optional
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
-    ATTR_ACCESS_TOKEN, ATTR_APPARMOR, ATTR_ARCH, ATTR_AUDIO, ATTR_AUDIO_INPUT,
-    ATTR_AUDIO_OUTPUT, ATTR_AUTH_API, ATTR_AUTO_UART, ATTR_AUTO_UPDATE,
-    ATTR_BOOT, ATTR_DESCRIPTON, ATTR_DEVICES, ATTR_DEVICETREE, ATTR_DISCOVERY,
-    ATTR_DOCKER_API, ATTR_ENVIRONMENT, ATTR_FULL_ACCESS, ATTR_GPIO,
-    ATTR_HASSIO_API, ATTR_HASSIO_ROLE, ATTR_HOMEASSISTANT_API, ATTR_HOST_DBUS,
-    ATTR_HOST_IPC, ATTR_HOST_NETWORK, ATTR_HOST_PID, ATTR_IMAGE,
-    ATTR_KERNEL_MODULES, ATTR_LEGACY, ATTR_LOCATON, ATTR_MACHINE, ATTR_MAP,
-    ATTR_NAME, ATTR_NETWORK, ATTR_OPTIONS, ATTR_PORTS, ATTR_PRIVILEGED,
-    ATTR_PROTECTED, ATTR_REPOSITORY, ATTR_SCHEMA, ATTR_SERVICES, ATTR_SLUG,
-    ATTR_STARTUP, ATTR_STATE, ATTR_STDIN, ATTR_SYSTEM, ATTR_TIMEOUT,
-    ATTR_TMPFS, ATTR_URL, ATTR_USER, ATTR_UUID, ATTR_VERSION, ATTR_WEBUI,
-    SECURITY_DEFAULT, SECURITY_DISABLE, SECURITY_PROFILE, STATE_NONE,
-    STATE_STARTED, STATE_STOPPED)
-from ..coresys import CoreSysAttributes
+    ATTR_ACCESS_TOKEN,
+    ATTR_APPARMOR,
+    ATTR_ARCH,
+    ATTR_AUDIO,
+    ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT,
+    ATTR_AUTH_API,
+    ATTR_AUTO_UART,
+    ATTR_AUTO_UPDATE,
+    ATTR_BOOT,
+    ATTR_DESCRIPTON,
+    ATTR_DEVICES,
+    ATTR_DEVICETREE,
+    ATTR_DISCOVERY,
+    ATTR_DOCKER_API,
+    ATTR_ENVIRONMENT,
+    ATTR_FULL_ACCESS,
+    ATTR_GPIO,
+    ATTR_HASSIO_API,
+    ATTR_HASSIO_ROLE,
+    ATTR_HOMEASSISTANT_API,
+    ATTR_HOST_DBUS,
+    ATTR_HOST_IPC,
+    ATTR_HOST_NETWORK,
+    ATTR_HOST_PID,
+    ATTR_IMAGE,
+    ATTR_KERNEL_MODULES,
+    ATTR_LEGACY,
+    ATTR_LOCATON,
+    ATTR_MACHINE,
+    ATTR_MAP,
+    ATTR_NAME,
+    ATTR_NETWORK,
+    ATTR_OPTIONS,
+    ATTR_PORTS,
+    ATTR_PRIVILEGED,
+    ATTR_PROTECTED,
+    ATTR_REPOSITORY,
+    ATTR_SCHEMA,
+    ATTR_SERVICES,
+    ATTR_SLUG,
+    ATTR_STARTUP,
+    ATTR_STATE,
+    ATTR_STDIN,
+    ATTR_SYSTEM,
+    ATTR_TIMEOUT,
+    ATTR_TMPFS,
+    ATTR_URL,
+    ATTR_USER,
+    ATTR_UUID,
+    ATTR_VERSION,
+    ATTR_WEBUI,
+    SECURITY_DEFAULT,
+    SECURITY_DISABLE,
+    SECURITY_PROFILE,
+    STATE_NONE,
+    STATE_STARTED,
+    STATE_STOPPED,
+)
+from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.addon import DockerAddon
-from ..exceptions import HostAppArmorError, JsonFileError
+from ..docker.stats import DockerStats
+from ..exceptions import (
+    AddonsError,
+    AddonsNotSupportedError,
+    DockerAPIError,
+    HostAppArmorError,
+    JsonFileError,
+)
 from ..utils import create_token
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from .utils import check_installed, remove_data
 from .validate import (
-    MACHINE_ALL, RE_SERVICE, RE_VOLUME, SCHEMA_ADDON_SNAPSHOT,
-    validate_options)
+    MACHINE_ALL,
+    RE_SERVICE,
+    RE_VOLUME,
+    SCHEMA_ADDON_SNAPSHOT,
+    validate_options,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,21 +104,21 @@ RE_WEBUI = re.compile(
 class Addon(CoreSysAttributes):
     """Hold data for add-on inside Hass.io."""
 
-    def __init__(self, coresys, slug):
+    def __init__(self, coresys: CoreSys, slug: str):
         """Initialize data holder."""
-        self.coresys = coresys
-        self.instance = DockerAddon(coresys, slug)
+        self.coresys: CoreSys = coresys
+        self.instance: DockerAddon = DockerAddon(coresys, slug)
+        self._id: str = slug
 
-        self._id = slug
-
-    async def load(self):
+    async def load(self) -> None:
         """Async initialize of object."""
         if not self.is_installed:
             return
-        await self.instance.attach()
+        with suppress(DockerAPIError):
+            await self.instance.attach()
 
     @property
-    def slug(self):
+    def slug(self) -> str:
         """Return slug/id of add-on."""
         return self._id
 
@@ -76,17 +133,17 @@ class Addon(CoreSysAttributes):
         return self.sys_addons.data
 
     @property
-    def is_installed(self):
+    def is_installed(self) -> bool:
         """Return True if an add-on is installed."""
         return self._id in self._data.system
 
     @property
-    def is_detached(self):
+    def is_detached(self) -> bool:
         """Return True if add-on is detached."""
         return self._id not in self._data.cache
 
     @property
-    def available(self):
+    def available(self) -> bool:
         """Return True if this add-on is available on this platform."""
         # Architecture
         if not self.sys_arch.is_supported(self.supported_arch):
@@ -99,7 +156,7 @@ class Addon(CoreSysAttributes):
         return True
 
     @property
-    def version_installed(self):
+    def version_installed(self) -> Optional[str]:
         """Return installed version."""
         return self._data.user.get(self._id, {}).get(ATTR_VERSION)
 
@@ -642,7 +699,7 @@ class Addon(CoreSysAttributes):
 
         return True
 
-    async def _install_apparmor(self):
+    async def _install_apparmor(self) -> None:
         """Install or Update AppArmor profile for Add-on."""
         exists_local = self.sys_host.apparmor.exists(self.slug)
         exists_addon = self.path_apparmor.exists()
@@ -664,7 +721,7 @@ class Addon(CoreSysAttributes):
             await self.sys_host.apparmor.load_profile(self.slug, profile_file)
 
     @property
-    def schema(self):
+    def schema(self) -> vol.Schema:
         """Create a schema for add-on options."""
         raw_schema = self._mesh[ATTR_SCHEMA]
 
@@ -672,7 +729,7 @@ class Addon(CoreSysAttributes):
             return vol.Schema(dict)
         return vol.Schema(vol.All(dict, validate_options(raw_schema)))
 
-    def test_update_schema(self):
+    def test_update_schema(self) -> bool:
         """Check if the existing configuration is valid after update."""
         if not self.is_installed or self.is_detached:
             return True
@@ -702,17 +759,17 @@ class Addon(CoreSysAttributes):
             return False
         return True
 
-    async def install(self):
+    async def install(self) -> None:
         """Install an add-on."""
         if not self.available:
             _LOGGER.error(
                 "Add-on %s not supported on %s with %s architecture",
                 self._id, self.sys_machine, self.sys_arch.supported)
-            return False
+            raise AddonsNotSupportedError()
 
         if self.is_installed:
-            _LOGGER.error("Add-on %s is already installed", self._id)
-            return False
+            _LOGGER.warning("Add-on %s is already installed", self._id)
+            return
 
         if not self.path_data.is_dir():
             _LOGGER.info(
@@ -722,18 +779,20 @@ class Addon(CoreSysAttributes):
         # Setup/Fix AppArmor profile
         await self._install_apparmor()
 
-        if not await self.instance.install(
-                self.last_version, self.image_next):
-            return False
-
-        self._set_install(self.image_next, self.last_version)
-        return True
+        try:
+            await self.instance.install(self.last_version, self.image_next)
+        except DockerAPIError:
+            raise AddonsError() from None
+        else:
+            self._set_install(self.image_next, self.last_version)
 
     @check_installed
-    async def uninstall(self):
+    async def uninstall(self) -> None:
         """Remove an add-on."""
-        if not await self.instance.remove():
-            return False
+        try:
+            await self.instance.remove()
+        except DockerAPIError:
+            raise AddonsError() from None
 
         if self.path_data.is_dir():
             _LOGGER.info(
@@ -750,13 +809,11 @@ class Addon(CoreSysAttributes):
             with suppress(HostAppArmorError):
                 await self.sys_host.apparmor.remove_profile(self.slug)
 
-        # Remove discovery messages
+        # Cleanup internal data
         self.remove_discovery()
-
         self._set_uninstall()
-        return True
 
-    async def state(self):
+    async def state(self) -> str:
         """Return running state of add-on."""
         if not self.is_installed:
             return STATE_NONE
@@ -766,7 +823,7 @@ class Addon(CoreSysAttributes):
         return STATE_STOPPED
 
     @check_installed
-    async def start(self):
+    async def start(self) -> None:
         """Set options and start add-on."""
         if await self.instance.is_running():
             _LOGGER.warning("%s already running!", self.slug)
@@ -778,34 +835,39 @@ class Addon(CoreSysAttributes):
 
         # Options
         if not self.write_options():
-            return False
+            raise AddonsError()
 
         # Sound
         if self.with_audio and not self.write_asound():
-            return False
+            raise AddonsError()
 
-        return await self.instance.run()
-
-    @check_installed
-    def stop(self):
-        """Stop add-on.
-
-        Return a coroutine.
-        """
-        return self.instance.stop()
+        try:
+            await self.instance.run()
+        except DockerAPIError:
+            raise AddonsError() from None
 
     @check_installed
-    async def update(self):
+    async def stop(self) -> None:
+        """Stop add-on."""
+        try:
+            return await self.instance.stop()
+        except DockerAPIError:
+            raise AddonsError() from None
+
+    @check_installed
+    async def update(self) -> None:
         """Update add-on."""
         last_state = await self.state()
 
         if self.last_version == self.version_installed:
             _LOGGER.warning("No update available for add-on %s", self._id)
-            return False
+            return
 
-        if not await self.instance.update(
-                self.last_version, self.image_next):
-            return False
+        # Update instance
+        try:
+            await self.instance.update(self.last_version, self.image_next)
+        except DockerAPIError:
+            raise AddonsError() from None
         self._set_update(self.image_next, self.last_version)
 
         # Setup/Fix AppArmor profile
@@ -814,16 +876,16 @@ class Addon(CoreSysAttributes):
         # restore state
         if last_state == STATE_STARTED:
             await self.start()
-        return True
 
     @check_installed
-    async def restart(self):
+    async def restart(self) -> None:
         """Restart add-on."""
-        await self.stop()
-        return await self.start()
+        with suppress(AddonsError):
+            await self.stop()
+        await self.start()
 
     @check_installed
-    def logs(self):
+    def logs(self) -> Awaitable[bytes]:
         """Return add-ons log output.
 
         Return a coroutine.
@@ -831,33 +893,32 @@ class Addon(CoreSysAttributes):
         return self.instance.logs()
 
     @check_installed
-    def stats(self):
-        """Return stats of container.
-
-        Return a coroutine.
-        """
-        return self.instance.stats()
+    async def stats(self) -> DockerStats:
+        """Return stats of container."""
+        try:
+            return await self.instance.stats()
+        except DockerAPIError:
+            raise AddonsError() from None
 
     @check_installed
-    async def rebuild(self):
+    async def rebuild(self) -> None:
         """Perform a rebuild of local build add-on."""
         last_state = await self.state()
 
         if not self.need_build:
             _LOGGER.error("Can't rebuild a none local build add-on!")
-            return False
+            raise AddonsNotSupportedError()
 
         # remove docker container but not addon config
-        if not await self.instance.remove():
-            return False
-
-        if not await self.instance.install(self.version_installed):
-            return False
+        try:
+            await self.instance.remove()
+            await self.instance.install(self.version_installed)
+        except DockerAPIError:
+            raise AddonsError() from None
 
         # restore state
         if last_state == STATE_STARTED:
             await self.start()
-        return True
 
     @check_installed
     async def write_stdin(self, data):
@@ -867,18 +928,23 @@ class Addon(CoreSysAttributes):
         """
         if not self.with_stdin:
             _LOGGER.error("Add-on don't support write to stdin!")
-            return False
+            raise AddonsNotSupportedError()
 
-        return await self.instance.write_stdin(data)
+        try:
+            return await self.instance.write_stdin(data)
+        except DockerAPIError:
+            raise AddonsError() from None
 
     @check_installed
-    async def snapshot(self, tar_file):
+    async def snapshot(self, tar_file: tarfile.TarFile) -> None:
         """Snapshot state of an add-on."""
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
             # store local image
-            if self.need_build and not await \
-                    self.instance.export_image(Path(temp, 'image.tar')):
-                return False
+            if self.need_build:
+                try:
+                    await self.instance.export_image(Path(temp, 'image.tar'))
+                except DockerAPIError:
+                    raise AddonsError() from None
 
             data = {
                 ATTR_USER: self._data.user.get(self._id, {}),
@@ -892,7 +958,7 @@ class Addon(CoreSysAttributes):
                 write_json_file(Path(temp, 'addon.json'), data)
             except JsonFileError:
                 _LOGGER.error("Can't save meta for %s", self._id)
-                return False
+                raise AddonsError() from None
 
             # Store AppArmor Profile
             if self.sys_host.apparmor.exists(self.slug):
@@ -901,7 +967,7 @@ class Addon(CoreSysAttributes):
                     self.sys_host.apparmor.backup_profile(self.slug, profile)
                 except HostAppArmorError:
                     _LOGGER.error("Can't backup AppArmor profile")
-                    return False
+                    raise AddonsError() from None
 
             # write into tarfile
             def _write_tarfile():
@@ -915,12 +981,11 @@ class Addon(CoreSysAttributes):
                 await self.sys_run_in_executor(_write_tarfile)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
-                return False
+                raise AddonsError() from None
 
         _LOGGER.info("Finish snapshot for addon %s", self._id)
-        return True
 
-    async def restore(self, tar_file):
+    async def restore(self, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
             # extract snapshot
@@ -933,13 +998,13 @@ class Addon(CoreSysAttributes):
                 await self.sys_run_in_executor(_extract_tarfile)
             except tarfile.TarError as err:
                 _LOGGER.error("Can't read tarfile %s: %s", tar_file, err)
-                return False
+                raise AddonsError() from None
 
             # Read snapshot data
             try:
                 data = read_json_file(Path(temp, 'addon.json'))
             except JsonFileError:
-                return False
+                raise AddonsError() from None
 
             # Validate
             try:
@@ -947,7 +1012,7 @@ class Addon(CoreSysAttributes):
             except vol.Invalid as err:
                 _LOGGER.error("Can't validate %s, snapshot data: %s",
                               self._id, humanize_error(data, err))
-                return False
+                raise AddonsError() from None
 
             # Restore local add-on informations
             _LOGGER.info("Restore config for addon %s", self._id)
@@ -961,15 +1026,19 @@ class Addon(CoreSysAttributes):
 
                 image_file = Path(temp, 'image.tar')
                 if image_file.is_file():
-                    await self.instance.import_image(image_file, version)
+                    with suppress(DockerAPIError):
+                        await self.instance.import_image(image_file, version)
                 else:
-                    if await self.instance.install(version, restore_image):
+                    with suppress(DockerAPIError):
+                        await self.instance.install(version, restore_image)
                         await self.instance.cleanup()
             elif self.instance.version != version or self.legacy:
                 _LOGGER.info("Restore/Update image for addon %s", self._id)
-                await self.instance.update(version, restore_image)
+                with suppress(DockerAPIError):
+                    await self.instance.update(version, restore_image)
             else:
-                await self.instance.stop()
+                with suppress(DockerAPIError):
+                    await self.instance.stop()
 
             # Restore data
             def _restore_data():
@@ -983,7 +1052,7 @@ class Addon(CoreSysAttributes):
                 await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data: %s", err)
-                return False
+                raise AddonsError() from None
 
             # Restore AppArmor
             profile_file = Path(temp, 'apparmor.txt')
@@ -993,11 +1062,10 @@ class Addon(CoreSysAttributes):
                         self.slug, profile_file)
                 except HostAppArmorError:
                     _LOGGER.error("Can't restore AppArmor profile")
-                    return False
+                    raise AddonsError() from None
 
             # Run add-on
             if data[ATTR_STATE] == STATE_STARTED:
                 return await self.start()
 
         _LOGGER.info("Finish restore for add-on %s", self._id)
-        return True

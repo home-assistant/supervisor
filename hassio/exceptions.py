@@ -54,6 +54,17 @@ class HassOSNotSupportedError(HassioNotSupportedError):
     """Function not supported by HassOS."""
 
 
+# Addons
+
+
+class AddonsError(HassioError):
+    """Addons exception."""
+
+
+class AddonsNotSupportedError(HassioNotSupportedError):
+    """Addons don't support a function."""
+
+
 # Arch
 
 

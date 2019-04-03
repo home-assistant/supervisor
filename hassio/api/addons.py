@@ -1,31 +1,84 @@
 """Init file for Hass.io Home Assistant RESTful API."""
 import asyncio
 import logging
+from typing import Any, Awaitable, Dict, List
 
+from aiohttp import web
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from .utils import api_process, api_process_raw, api_validate
+from ..addons.addon import Addon
 from ..addons.utils import rating_security
 from ..const import (
-    ATTR_VERSION, ATTR_LAST_VERSION, ATTR_STATE, ATTR_BOOT, ATTR_OPTIONS,
-    ATTR_URL, ATTR_DESCRIPTON, ATTR_DETACHED, ATTR_NAME, ATTR_REPOSITORY,
-    ATTR_BUILD, ATTR_AUTO_UPDATE, ATTR_NETWORK, ATTR_HOST_NETWORK, ATTR_SLUG,
-    ATTR_SOURCE, ATTR_REPOSITORIES, ATTR_ADDONS, ATTR_ARCH, ATTR_MAINTAINER,
-    ATTR_INSTALLED, ATTR_LOGO, ATTR_WEBUI, ATTR_DEVICES, ATTR_PRIVILEGED,
-    ATTR_AUDIO, ATTR_AUDIO_INPUT, ATTR_AUDIO_OUTPUT, ATTR_HASSIO_API,
-    ATTR_GPIO, ATTR_HOMEASSISTANT_API, ATTR_STDIN, BOOT_AUTO, BOOT_MANUAL,
-    ATTR_CHANGELOG, ATTR_HOST_IPC, ATTR_HOST_DBUS, ATTR_LONG_DESCRIPTION,
-    ATTR_CPU_PERCENT, ATTR_MEMORY_LIMIT, ATTR_MEMORY_USAGE, ATTR_NETWORK_TX,
-    ATTR_NETWORK_RX, ATTR_BLK_READ, ATTR_BLK_WRITE, ATTR_ICON, ATTR_SERVICES,
-    ATTR_DISCOVERY, ATTR_APPARMOR, ATTR_DEVICETREE, ATTR_DOCKER_API,
-    ATTR_FULL_ACCESS, ATTR_PROTECTED, ATTR_RATING, ATTR_HOST_PID,
-    ATTR_HASSIO_ROLE, ATTR_MACHINE, ATTR_AVAILABLE, ATTR_AUTH_API,
+    ATTR_ADDONS,
+    ATTR_APPARMOR,
+    ATTR_ARCH,
+    ATTR_AUDIO,
+    ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT,
+    ATTR_AUTH_API,
+    ATTR_AUTO_UPDATE,
+    ATTR_AVAILABLE,
+    ATTR_BLK_READ,
+    ATTR_BLK_WRITE,
+    ATTR_BOOT,
+    ATTR_BUILD,
+    ATTR_CHANGELOG,
+    ATTR_CPU_PERCENT,
+    ATTR_DESCRIPTON,
+    ATTR_DETACHED,
+    ATTR_DEVICES,
+    ATTR_DEVICETREE,
+    ATTR_DISCOVERY,
+    ATTR_DOCKER_API,
+    ATTR_FULL_ACCESS,
+    ATTR_GPIO,
+    ATTR_HASSIO_API,
+    ATTR_HASSIO_ROLE,
+    ATTR_HOMEASSISTANT_API,
+    ATTR_HOST_DBUS,
+    ATTR_HOST_IPC,
+    ATTR_HOST_NETWORK,
+    ATTR_HOST_PID,
+    ATTR_ICON,
+    ATTR_INSTALLED,
     ATTR_KERNEL_MODULES,
-    CONTENT_TYPE_PNG, CONTENT_TYPE_BINARY, CONTENT_TYPE_TEXT, REQUEST_FROM)
+    ATTR_LAST_VERSION,
+    ATTR_LOGO,
+    ATTR_LONG_DESCRIPTION,
+    ATTR_MACHINE,
+    ATTR_MAINTAINER,
+    ATTR_MEMORY_LIMIT,
+    ATTR_MEMORY_USAGE,
+    ATTR_NAME,
+    ATTR_NETWORK,
+    ATTR_NETWORK_RX,
+    ATTR_NETWORK_TX,
+    ATTR_OPTIONS,
+    ATTR_PRIVILEGED,
+    ATTR_PROTECTED,
+    ATTR_RATING,
+    ATTR_REPOSITORIES,
+    ATTR_REPOSITORY,
+    ATTR_SERVICES,
+    ATTR_SLUG,
+    ATTR_SOURCE,
+    ATTR_STATE,
+    ATTR_STDIN,
+    ATTR_URL,
+    ATTR_VERSION,
+    ATTR_WEBUI,
+    BOOT_AUTO,
+    BOOT_MANUAL,
+    CONTENT_TYPE_BINARY,
+    CONTENT_TYPE_PNG,
+    CONTENT_TYPE_TEXT,
+    REQUEST_FROM,
+)
 from ..coresys import CoreSysAttributes
-from ..validate import DOCKER_PORTS, ALSA_DEVICE
 from ..exceptions import APIError
+from ..validate import ALSA_DEVICE, DOCKER_PORTS
+from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +104,7 @@ SCHEMA_SECURITY = vol.Schema({
 class APIAddons(CoreSysAttributes):
     """Handle RESTful API for add-on functions."""
 
-    def _extract_addon(self, request, check_installed=True):
+    def _extract_addon(self, request: web.Request, check_installed: bool = True) -> Addon:
         """Return addon, throw an exception it it doesn't exist."""
         addon_slug = request.match_info.get('addon')
 
@@ -69,7 +122,7 @@ class APIAddons(CoreSysAttributes):
         return addon
 
     @api_process
-    async def list(self, request):
+    async def list(self, request: web.Request) -> Dict[str, Any]:
         """Return all add-ons or repositories."""
         data_addons = []
         for addon in self.sys_addons.list_addons:
@@ -104,13 +157,12 @@ class APIAddons(CoreSysAttributes):
         }
 
     @api_process
-    async def reload(self, request):
+    async def reload(self, request: web.Request) -> None:
         """Reload all add-on data."""
         await asyncio.shield(self.sys_addons.reload())
-        return True
 
     @api_process
-    async def info(self, request):
+    async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return add-on information."""
         addon = self._extract_addon(request, check_installed=False)
 
@@ -164,14 +216,13 @@ class APIAddons(CoreSysAttributes):
         }
 
     @api_process
-    async def options(self, request):
+    async def options(self, request: web.Request) -> None:
         """Store user options for add-on."""
         addon = self._extract_addon(request)
 
         addon_schema = SCHEMA_OPTIONS.extend({
             vol.Optional(ATTR_OPTIONS): vol.Any(None, addon.schema),
         })
-
         body = await api_validate(addon_schema, request)
 
         if ATTR_OPTIONS in body:
@@ -188,10 +239,9 @@ class APIAddons(CoreSysAttributes):
             addon.audio_output = body[ATTR_AUDIO_OUTPUT]
 
         addon.save_data()
-        return True
 
     @api_process
-    async def security(self, request):
+    async def security(self, request: web.Request) -> None:
         """Store security options for add-on."""
         addon = self._extract_addon(request)
         body = await api_validate(SCHEMA_SECURITY, request)
@@ -201,16 +251,12 @@ class APIAddons(CoreSysAttributes):
             addon.protected = body[ATTR_PROTECTED]
 
         addon.save_data()
-        return True
 
     @api_process
-    async def stats(self, request):
+    async def stats(self, request: web.Request) -> Dict[str, Any]:
         """Return resource information."""
         addon = self._extract_addon(request)
         stats = await addon.stats()
-
-        if not stats:
-            raise APIError("No stats available")
 
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
@@ -223,19 +269,19 @@ class APIAddons(CoreSysAttributes):
         }
 
     @api_process
-    def install(self, request):
+    def install(self, request: web.Request) -> Awaitable[None]:
         """Install add-on."""
         addon = self._extract_addon(request, check_installed=False)
         return asyncio.shield(addon.install())
 
     @api_process
-    def uninstall(self, request):
+    def uninstall(self, request: web.Request) -> Awaitable[None]:
         """Uninstall add-on."""
         addon = self._extract_addon(request)
         return asyncio.shield(addon.uninstall())
 
     @api_process
-    def start(self, request):
+    def start(self, request: web.Request) -> Awaitable[None]:
         """Start add-on."""
         addon = self._extract_addon(request)
 
@@ -249,13 +295,13 @@ class APIAddons(CoreSysAttributes):
         return asyncio.shield(addon.start())
 
     @api_process
-    def stop(self, request):
+    def stop(self, request: web.Request) -> Awaitable[None]:
         """Stop add-on."""
         addon = self._extract_addon(request)
         return asyncio.shield(addon.stop())
 
     @api_process
-    def update(self, request):
+    def update(self, request: web.Request) -> Awaitable[None]:
         """Update add-on."""
         addon = self._extract_addon(request)
 
@@ -265,13 +311,13 @@ class APIAddons(CoreSysAttributes):
         return asyncio.shield(addon.update())
 
     @api_process
-    def restart(self, request):
+    def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart add-on."""
         addon = self._extract_addon(request)
         return asyncio.shield(addon.restart())
 
     @api_process
-    def rebuild(self, request):
+    def rebuild(self, request: web.Request) -> Awaitable[None]:
         """Rebuild local build add-on."""
         addon = self._extract_addon(request)
         if not addon.need_build:
@@ -280,13 +326,13 @@ class APIAddons(CoreSysAttributes):
         return asyncio.shield(addon.rebuild())
 
     @api_process_raw(CONTENT_TYPE_BINARY)
-    def logs(self, request):
+    def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return logs from add-on."""
         addon = self._extract_addon(request)
         return addon.logs()
 
     @api_process_raw(CONTENT_TYPE_PNG)
-    async def icon(self, request):
+    async def icon(self, request: web.Request) -> bytes:
         """Return icon from add-on."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_icon:
@@ -296,7 +342,7 @@ class APIAddons(CoreSysAttributes):
             return png.read()
 
     @api_process_raw(CONTENT_TYPE_PNG)
-    async def logo(self, request):
+    async def logo(self, request: web.Request) -> bytes:
         """Return logo from add-on."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_logo:
@@ -306,7 +352,7 @@ class APIAddons(CoreSysAttributes):
             return png.read()
 
     @api_process_raw(CONTENT_TYPE_TEXT)
-    async def changelog(self, request):
+    async def changelog(self, request: web.Request) -> str:
         """Return changelog from add-on."""
         addon = self._extract_addon(request, check_installed=False)
         if not addon.with_changelog:
@@ -316,17 +362,17 @@ class APIAddons(CoreSysAttributes):
             return changelog.read()
 
     @api_process
-    async def stdin(self, request):
+    async def stdin(self, request: web.Request) -> None:
         """Write to stdin of add-on."""
         addon = self._extract_addon(request)
         if not addon.with_stdin:
             raise APIError("STDIN not supported by add-on")
 
         data = await request.read()
-        return await asyncio.shield(addon.write_stdin(data))
+        await asyncio.shield(addon.write_stdin(data))
 
 
-def _pretty_devices(addon):
+def _pretty_devices(addon: Addon) -> List[str]:
     """Return a simplified device list."""
     dev_list = addon.devices
     if not dev_list:
@@ -334,7 +380,7 @@ def _pretty_devices(addon):
     return [row.split(':')[0] for row in dev_list]
 
 
-def _pretty_services(addon):
+def _pretty_services(addon: Addon) -> List[str]:
     """Return a simplified services role list."""
     services = []
     for name, access in addon.services_role.items():
