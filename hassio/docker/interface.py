@@ -149,11 +149,13 @@ class DockerInterface(CoreSysAttributes):
         try:
             if self.image:
                 self._meta = self.sys_docker.images.get(self.image).attrs
-            else:
-                self._meta = self.sys_docker.containers.get(self.name).attrs
+            self._meta = self.sys_docker.containers.get(self.name).attrs
         except docker.errors.DockerException:
-            raise DockerAPIError() from None
+            pass
 
+        # Successfull?
+        if not self._meta:
+            raise DockerAPIError() from None
         _LOGGER.info("Attach to image %s with version %s", self.image, self.version)
 
     @process_lock
