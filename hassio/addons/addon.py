@@ -279,6 +279,13 @@ class Addon(CoreSysAttributes):
         return None
 
     @property
+    def ingress_entry(self):
+        """Return ingress external URL."""
+        if self.is_installed and self.with_ingress:
+            return f"/api/hassio_ingress/{self.ingress_token}"
+        return None
+
+    @property
     def description(self):
         """Return description of add-on."""
         return self._mesh[ATTR_DESCRIPTON]
