@@ -168,7 +168,12 @@ def _response_header(response: aiohttp.ClientResponse) -> Dict[str, str]:
     headers = {}
 
     for name, value in response.headers.items():
-        if name in (hdrs.TRANSFER_ENCODING, hdrs.CONTENT_LENGTH, hdrs.CONTENT_TYPE):
+        if name in (
+            hdrs.TRANSFER_ENCODING,
+            hdrs.CONTENT_LENGTH,
+            hdrs.CONTENT_TYPE,
+            hdrs.CONTENT_ENCODING,
+        ):
             continue
         headers[name] = value
 

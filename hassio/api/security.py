@@ -39,7 +39,7 @@ NO_SECURITY_CHECK = re.compile(
 # Can called by every add-on
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
-    r"|/addons/self/(?!security|update|web)[^/]+"
+    r"|/addons/self/(?!security|update)[^/]+"
     r"|/info"
     r"|/services.*"
     r"|/discovery.*"
@@ -72,7 +72,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/hardware/.+"
         r"|/hassos/.+"
         r"|/supervisor/.+"
-        r"|/addons(?:/[^/]+/(?!security|web).+)?"
+        r"|/addons(?:/[^/]+/(?!security).+)?"
         r"|/snapshots.*"
         r")$"
     ),
