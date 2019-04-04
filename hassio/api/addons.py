@@ -218,7 +218,8 @@ class APIAddons(CoreSysAttributes):
             ATTR_DISCOVERY: addon.discovery,
             ATTR_IP_ADDRESS: str(addon.ip_address),
             ATTR_INGRESS: addon.with_ingress,
-            ATTR_INGRESS_ENTRY: f"/api/hassio_ingress/{addon.ingress_token}"
+            ATTR_INGRESS_ENTRY:
+                f"/api/hassio_ingress/{addon.ingress_token}" if addon.with_ingress else None,
         }
 
     @api_process
