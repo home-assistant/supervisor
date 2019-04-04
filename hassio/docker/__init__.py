@@ -97,7 +97,7 @@ class DockerAPI:
 
         # Update metadata
         with suppress(docker.errors.DockerException):
-            container.refresh()
+            container.reload()
 
         return container
 
