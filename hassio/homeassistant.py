@@ -279,7 +279,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         if exists and version == self.instance.version:
             _LOGGER.warning("Version %s is already installed", version)
-            return HomeAssistantUpdateError()
+            return
 
         # process an update
         async def _update(to_version):
@@ -288,6 +288,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             try:
                 await self.instance.update(to_version)
             except DockerAPIError:
+                _LOGGER.warning("Update Home Assistant image fails")
                 raise HomeAssistantUpdateError() from None
 
             if running:

@@ -83,13 +83,13 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.info("Pull image %s tag %s.", image, tag)
             docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
 
+            _LOGGER.info("Tag image %s with version %s as latest", image, tag)
             docker_image.tag(image, tag="latest")
-            self._meta = docker_image.attrs
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
             raise DockerAPIError() from None
-
-        _LOGGER.info("Tag image %s with version %s as latest", image, tag)
+        else:
+            self._meta = docker_image.attrs
 
     def exists(self) -> Awaitable[bool]:
         """Return True if Docker image exists in local repository."""
@@ -265,8 +265,7 @@ class DockerInterface(CoreSysAttributes):
         )
 
         # Update docker image
-        if not self._install(tag, image):
-            raise DockerAPIError() from None
+        self._install(tag, image)
 
         # Stop container & cleanup
         with suppress(DockerAPIError):
