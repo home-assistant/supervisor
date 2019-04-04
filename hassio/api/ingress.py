@@ -25,18 +25,16 @@ class APIIngress(CoreSysAttributes):
 
     def _extract_addon(self, request: web.Request) -> Addon:
         """Return addon, throw an exception it it doesn't exist."""
-        addon_slug = request.match_info.get("addon")
+        token = request.match_info.get("token")
 
-        try:
-            addon = self.sys_addons.get(addon_slug)
-            assert addon
-            assert not addon.is_installed
+        # Find correct add-on
+        for addon in self.sys_addons.list_installed:
+            if addon.ingress_token != token:
+                continue
+            return addon
 
-        except AssertionError:
-            _LOGGER.warning("Ingress for %s not available", addon_slug)
-            raise HTTPServiceUnavailable() from None
-
-        return addon
+        _LOGGER.warning("Ingress for %s not available", token)
+        raise HTTPServiceUnavailable()
 
     def _create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
@@ -55,7 +53,7 @@ class APIIngress(CoreSysAttributes):
             raise HTTPUnauthorized()
         if not addon.with_ingress:
             _LOGGER.warning("Add-on %s don't support ingress feature", addon.slug)
-            raise HTTPBadGateway() from None
+            raise HTTPBadGateway()
 
         # Process requests
         try:

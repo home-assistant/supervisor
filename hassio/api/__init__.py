@@ -194,7 +194,7 @@ class RestAPI(CoreSysAttributes):
         api_ingress.coresys = self.coresys
 
         self.webapp.add_routes([
-            web.view('/addons/{addon}/web/{path:.*}', api_ingress.handler),
+            web.view('/ingress/{token}/{path:.*}', api_ingress.handler),
         ])
 
     def _register_snapshots(self) -> None:

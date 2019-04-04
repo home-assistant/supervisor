@@ -43,6 +43,7 @@ from ..const import (
     ATTR_INGRESS,
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PORT,
+    ATTR_INGRESS_TOKEN,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -268,6 +269,13 @@ class Addon(CoreSysAttributes):
         """Return access token for Hass.io API."""
         if self.is_installed:
             return self._data.user[self._id].get(ATTR_ACCESS_TOKEN)
+        return None
+
+    @property
+    def ingress_token(self):
+        """Return access token for Hass.io API."""
+        if self.is_installed:
+            return self._data.user[self._id].get(ATTR_INGRESS_TOKEN)
         return None
 
     @property

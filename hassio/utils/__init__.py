@@ -1,20 +1,20 @@
 """Tools file for Hass.io."""
-from datetime import datetime
 import hashlib
 import logging
 import re
 import uuid
+from datetime import datetime
 
 _LOGGER = logging.getLogger(__name__)
 RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 
 
-def convert_to_ascii(raw):
+def convert_to_ascii(raw) -> str:
     """Convert binary to ascii and remove colors."""
     return RE_STRING.sub("", raw.decode())
 
 
-def create_token():
+def create_token() -> str:
     """Create token for API access."""
     return hashlib.sha256(uuid.uuid4().bytes).hexdigest()
 
