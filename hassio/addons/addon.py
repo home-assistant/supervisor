@@ -373,7 +373,7 @@ class Addon(CoreSysAttributes):
         """Return URL to webui or None."""
         # Use ingress
         if self.with_ingress:
-            webui = f"/api/hassio_ingress/{self.slug}/"
+            webui = f"/api/hassio_ingress/{self.ingress_token}/"
             if ATTR_INGRESS_ENTRY in self._mesh:
                 return f"{webui}{self._mesh[ATTR_INGRESS_ENTRY]}"
             return webui
