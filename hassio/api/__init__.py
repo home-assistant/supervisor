@@ -195,7 +195,6 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes([
             web.view('/ingress/{token}/{path:.*}', api_ingress.handler),
-            web.view('/addons/{token}/web/{path:.*}', api_ingress.handler),  # REMOVE: for tests only with 0.90.0
         ])
 
     def _register_snapshots(self) -> None:
