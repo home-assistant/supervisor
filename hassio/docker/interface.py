@@ -156,7 +156,7 @@ class DockerInterface(CoreSysAttributes):
         # Successfull?
         if not self._meta:
             raise DockerAPIError() from None
-        _LOGGER.info("Attach to image %s with version %s", self.image, self.version)
+        _LOGGER.info("Attach to %s with version %s", self.image, self.version)
 
     @process_lock
     def run(self) -> Awaitable[None]:
@@ -186,13 +186,13 @@ class DockerInterface(CoreSysAttributes):
             raise DockerAPIError() from None
 
         if docker_container.status == "running":
-            _LOGGER.info("Stop %s Docker application", self.image)
+            _LOGGER.info("Stop %s application", self.name)
             with suppress(docker.errors.DockerException):
                 docker_container.stop(timeout=self.timeout)
 
         if remove_container:
             with suppress(docker.errors.DockerException):
-                _LOGGER.info("Clean %s Docker application", self.image)
+                _LOGGER.info("Clean %s application", self.name)
                 docker_container.remove(force=True)
 
     @process_lock
@@ -231,7 +231,7 @@ class DockerInterface(CoreSysAttributes):
         with suppress(DockerAPIError):
             self._stop()
 
-        _LOGGER.info("Remove Docker %s with latest and %s", self.image, self.version)
+        _LOGGER.info("Remove image %s with latest and %s", self.image, self.version)
 
         try:
             with suppress(docker.errors.ImageNotFound):
@@ -261,7 +261,7 @@ class DockerInterface(CoreSysAttributes):
         image = image or self.image
 
         _LOGGER.info(
-            "Update Docker %s:%s to %s:%s", self.image, self.version, image, tag
+            "Update image %s:%s to %s:%s", self.image, self.version, image, tag
         )
 
         # Update docker image
@@ -317,7 +317,7 @@ class DockerInterface(CoreSysAttributes):
                 continue
 
             with suppress(docker.errors.DockerException):
-                _LOGGER.info("Cleanup Docker images: %s", image.tags)
+                _LOGGER.info("Cleanup images: %s", image.tags)
                 self.sys_docker.images.remove(image.id, force=True)
 
     @process_lock
