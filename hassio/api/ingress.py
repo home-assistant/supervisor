@@ -65,7 +65,7 @@ class APIIngress(CoreSysAttributes):
             return await self._handle_request(request, addon, path)
 
         except aiohttp.ClientError as err:
-            _LOGGER.debug("Ingress error: %s", err)
+            _LOGGER.error("Ingress error: %s", err)
 
         raise HTTPBadGateway() from None
 
@@ -136,7 +136,7 @@ class APIIngress(CoreSysAttributes):
                     await response.write(data)
 
             except (aiohttp.ClientError, aiohttp.ClientPayloadError) as err:
-                _LOGGER.debug("Stream error: %s", err)
+                _LOGGER.error("Stream error with %s: %s", url, err)
 
             return response
 
