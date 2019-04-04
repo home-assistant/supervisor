@@ -66,6 +66,8 @@ class APIIngress(CoreSysAttributes):
 
         except aiohttp.ClientError:
             pass
+        except Exception:
+            _LOGGER.exception("Error")
 
         raise HTTPBadGateway() from None
 
