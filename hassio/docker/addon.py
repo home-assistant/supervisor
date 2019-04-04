@@ -64,7 +64,7 @@ class DockerAddon(DockerInterface):
         try:
             return ip_address(
                 self._meta["NetworkSettings"]["Networks"]["hassio"]["IPAddress"])
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, ValueError):
             return ip_address("0.0.0.0")
 
     @property
