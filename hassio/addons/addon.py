@@ -1,6 +1,7 @@
 """Init file for Hass.io add-ons."""
 from contextlib import suppress
 from copy import deepcopy
+from distutils.version import StrictVersion
 from ipaddress import IPv4Address, ip_address
 import logging
 from pathlib import Path, PurePath
@@ -34,6 +35,7 @@ from ..const import (
     ATTR_GPIO,
     ATTR_HASSIO_API,
     ATTR_HASSIO_ROLE,
+    ATTR_HOMEASSISTANT,
     ATTR_HOMEASSISTANT_API,
     ATTR_HOST_DBUS,
     ATTR_HOST_IPC,
@@ -157,12 +159,23 @@ class Addon(CoreSysAttributes):
     @property
     def available(self) -> bool:
         """Return True if this add-on is available on this platform."""
+        if self.is_detached:
+            addon_data = self._data.system.get(self._id)
+        else:
+            addon_data = self._data.cache.get(self._id)
+
         # Architecture
-        if not self.sys_arch.is_supported(self.supported_arch):
+        if not self.sys_arch.is_supported(addon_data[ATTR_ARCH]):
             return False
 
         # Machine / Hardware
-        if self.sys_machine not in self.supported_machine:
+        machine = addon_data.get(ATTR_MACHINE) or MACHINE_ALL
+        if self.sys_machine not in machine:
+            return False
+
+        # Home Assistant
+        version = addon_data.get(ATTR_HOMEASSISTANT) or self.sys_homeassistant.version
+        if StrictVersion(self.sys_homeassistant.version) < StrictVersion(version):
             return False
 
         return True
@@ -539,6 +552,11 @@ class Addon(CoreSysAttributes):
         return self._mesh[ATTR_AUDIO]
 
     @property
+    def homeassistant_version(self) -> Optional[str]:
+        """Return min Home Assistant version they needed by Add-on."""
+        return self._mesh.get(ATTR_HOMEASSISTANT)
+
+    @property
     def audio_output(self):
         """Return ALSA config for output or None."""
         if not self.with_audio:
@@ -901,13 +919,19 @@ class Addon(CoreSysAttributes):
     @check_installed
     async def update(self) -> None:
         """Update add-on."""
-        last_state = await self.state()
-
         if self.last_version == self.version_installed:
             _LOGGER.warning("No update available for add-on %s", self._id)
             return
 
+        # Check if available, Maybe something have changed
+        if not self.available:
+            _LOGGER.error(
+                "Add-on %s not supported on %s with %s architecture",
+                self._id, self.sys_machine, self.sys_arch.supported)
+            raise AddonsNotSupportedError()
+
         # Update instance
+        last_state = await self.state()
         try:
             await self.instance.update(self.last_version, self.image_next)
         except DockerAPIError:

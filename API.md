@@ -471,6 +471,7 @@ Get all available addons.
     "available": "bool",
     "arch": ["armhf", "aarch64", "i386", "amd64"],
     "machine": "[raspberrypi2, tinker]",
+    "homeassistant": "min Home Assistant version",
     "repository": "12345678|null",
     "version": "null|VERSION_INSTALLED",
     "last_version": "LAST_VERSION",
