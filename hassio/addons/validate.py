@@ -81,7 +81,7 @@ from ..const import (
     STATE_STOPPED,
 )
 from ..discovery.validate import valid_discovery_service
-from ..validate import ALSA_DEVICE, DOCKER_PORTS, NETWORK_PORT, SHA256, UUID_MATCH
+from ..validate import ALSA_DEVICE, DOCKER_PORTS, NETWORK_PORT, TOKEN, UUID_MATCH
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -220,7 +220,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Required(ATTR_VERSION): vol.Coerce(str),
     vol.Optional(ATTR_IMAGE): vol.Coerce(str),
     vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
-    vol.Optional(ATTR_ACCESS_TOKEN): SHA256,
+    vol.Optional(ATTR_ACCESS_TOKEN): TOKEN,
     vol.Optional(ATTR_INGRESS_TOKEN, default=secrets.token_urlsafe): vol.Coerce(str),
     vol.Optional(ATTR_OPTIONS, default=dict): dict,
     vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
