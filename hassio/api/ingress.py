@@ -2,7 +2,7 @@
 import asyncio
 from ipaddress import ip_address
 import logging
-from typing import Dict, Union
+from typing import Any, Dict, Union
 
 import aiohttp
 from aiohttp import hdrs, web
@@ -14,8 +14,9 @@ from aiohttp.web_exceptions import (
 from multidict import CIMultiDict, istr
 
 from ..addons.addon import Addon
-from ..const import HEADER_TOKEN, REQUEST_FROM
+from ..const import ATTR_SESSION, HEADER_TOKEN, REQUEST_FROM
 from ..coresys import CoreSysAttributes
+from .utils import api_process
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,26 +36,32 @@ class APIIngress(CoreSysAttributes):
 
         return addon
 
+    def _check_ha_access(self, request: web.Request) -> None:
+        if request[REQUEST_FROM] != self.sys_homeassistant:
+            _LOGGER.warning("Ingress is only available behind Home Assistant")
+            raise HTTPUnauthorized()
+
     def _create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
         return f"{addon.ingress_internal}/{path}"
+
+    @api_process
+    async def create_session(self, request: web.Request) -> Dict[str, Any]:
+        """Create a new session."""
+        self._check_ha_access(request)
+
+        session = self.sys_ingress.create_session()
+        return {ATTR_SESSION: session}
 
     async def handler(
         self, request: web.Request
     ) -> Union[web.Response, web.StreamResponse, web.WebSocketResponse]:
         """Route data to Hass.io ingress service."""
-        addon = self._extract_addon(request)
-        path = request.match_info.get("path")
-
-        # Only Home Assistant call this
-        if request[REQUEST_FROM] != self.sys_homeassistant:
-            _LOGGER.warning("Ingress is only available behind Home Assistant")
-            raise HTTPUnauthorized()
-        if not addon.with_ingress:
-            _LOGGER.warning("Add-on %s don't support ingress feature", addon.slug)
-            raise HTTPBadGateway()
+        self._check_ha_access(request)
 
         # Process requests
+        addon = self._extract_addon(request)
+        path = request.match_info.get("path")
         try:
             # Websocket
             if _is_websocket(request):

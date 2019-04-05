@@ -134,6 +134,7 @@ class HassIO(CoreSysAttributes):
                         self.sys_dns.stop(),
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
+                        self.sys_ingress.unload(),
                     ]
                 )
         except asyncio.TimeoutError:

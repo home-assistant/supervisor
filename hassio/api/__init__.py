@@ -194,6 +194,7 @@ class RestAPI(CoreSysAttributes):
         api_ingress.coresys = self.coresys
 
         self.webapp.add_routes([
+            web.post('/ingress/session', api_ingress.create_session),
             web.view('/ingress/{token}/{path:.*}', api_ingress.handler),
         ])
 
