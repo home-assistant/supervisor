@@ -9,6 +9,7 @@ def test_session_handling(coresys):
     session = coresys.ingress.create_session()
     validate = coresys.ingress.sessions[session]
 
+    assert coresys.ingress.save_data.called
     assert session
     assert validate
 
