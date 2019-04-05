@@ -11,15 +11,17 @@ from hassio.bootstrap import initialize_coresys
 @pytest.fixture
 def docker():
     """Mock Docker API."""
-    with patch('hassio.coresys.DockerAPI') as mock:
+    with patch("hassio.coresys.DockerAPI") as mock:
         yield mock
 
 
 @pytest.fixture
 async def coresys(loop, docker):
     """Create a CoreSys Mock."""
-    with patch('hassio.bootstrap.initialize_system_data'):
+    with patch("hassio.bootstrap.initialize_system_data"):
         coresys_obj = await initialize_coresys()
+
+    coresys_obj.ingress.save_data = MagicMock()
 
     yield coresys_obj
 
@@ -27,16 +29,12 @@ async def coresys(loop, docker):
 @pytest.fixture
 def sys_machine():
     """Mock sys_machine."""
-    with patch(
-            'hassio.coresys.CoreSys.machine',
-            new_callable=PropertyMock) as mock:
+    with patch("hassio.coresys.CoreSys.machine", new_callable=PropertyMock) as mock:
         yield mock
 
 
 @pytest.fixture
 def sys_supervisor():
-    with patch(
-            'hassio.coresys.CoreSys.supervisor',
-            new_callable=PropertyMock) as mock:
+    with patch("hassio.coresys.CoreSys.supervisor", new_callable=PropertyMock) as mock:
         mock.return_value = MagicMock()
         yield MagicMock

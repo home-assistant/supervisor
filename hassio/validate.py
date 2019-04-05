@@ -1,35 +1,35 @@
 """Validate functions."""
-import uuid
 import re
+import uuid
 
 import voluptuous as vol
 
 from .const import (
-    ATTR_IMAGE,
-    ATTR_LAST_VERSION,
-    ATTR_CHANNEL,
-    ATTR_TIMEZONE,
-    ATTR_HASSOS,
-    ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_PASSWORD,
-    ATTR_HOMEASSISTANT,
-    ATTR_HASSIO,
-    ATTR_BOOT,
-    ATTR_LAST_BOOT,
-    ATTR_SSL,
-    ATTR_PORT,
-    ATTR_WATCHDOG,
-    ATTR_WAIT_BOOT,
-    ATTR_UUID,
-    ATTR_REFRESH_TOKEN,
-    ATTR_HASSOS_CLI,
     ATTR_ACCESS_TOKEN,
-    CHANNEL_STABLE,
+    ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_BOOT,
+    ATTR_CHANNEL,
+    ATTR_HASSIO,
+    ATTR_HASSOS,
+    ATTR_HASSOS_CLI,
+    ATTR_HOMEASSISTANT,
+    ATTR_IMAGE,
+    ATTR_LAST_BOOT,
+    ATTR_LAST_VERSION,
+    ATTR_PASSWORD,
+    ATTR_PORT,
+    ATTR_REFRESH_TOKEN,
+    ATTR_SESSION,
+    ATTR_SSL,
+    ATTR_TIMEZONE,
+    ATTR_UUID,
+    ATTR_WAIT_BOOT,
+    ATTR_WATCHDOG,
     CHANNEL_BETA,
     CHANNEL_DEV,
+    CHANNEL_STABLE,
 )
 from .utils.validate import validate_timezone
-
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 
@@ -139,3 +139,12 @@ SCHEMA_HASSIO_CONFIG = vol.Schema(
 
 
 SCHEMA_AUTH_CONFIG = vol.Schema({SHA256: SHA256})
+
+
+SCHEMA_INGRESS_CONFIG = vol.Schema(
+    {
+        vol.Required(ATTR_SESSION, default=dict): vol.Schema(
+            {vol.Coerce(str): vol.Coerce(float)}
+        )
+    }
+)

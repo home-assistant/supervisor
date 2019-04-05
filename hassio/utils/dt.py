@@ -58,6 +58,11 @@ def parse_datetime(dt_str):
     return datetime(**kws)
 
 
-def utcnow():
+def utcnow() -> datetime:
     """Return the current timestamp including timezone."""
     return datetime.now(UTC)
+
+
+def utc_from_timestamp(timestamp: float) -> datetime:
+    """Return a UTC time from a timestamp."""
+    return UTC.localize(datetime.utcfromtimestamp(timestamp))

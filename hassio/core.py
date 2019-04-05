@@ -62,6 +62,9 @@ class HassIO(CoreSysAttributes):
         # Load discovery
         await self.sys_discovery.load()
 
+        # Load ingress
+        await self.sys_ingress.load()
+
         # start dns forwarding
         self.sys_create_task(self.sys_dns.start())
 
@@ -131,6 +134,7 @@ class HassIO(CoreSysAttributes):
                         self.sys_dns.stop(),
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
+                        self.sys_ingress.unload(),
                     ]
                 )
         except asyncio.TimeoutError:

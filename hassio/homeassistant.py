@@ -7,6 +7,7 @@ import logging
 import os
 from pathlib import Path
 import re
+import secrets
 import socket
 import time
 from typing import Any, AsyncContextManager, Awaitable, Dict, Optional
@@ -35,13 +36,13 @@ from .coresys import CoreSys, CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
 from .docker.stats import DockerStats
 from .exceptions import (
+    DockerAPIError,
     HomeAssistantAPIError,
     HomeAssistantAuthError,
     HomeAssistantError,
     HomeAssistantUpdateError,
-    DockerAPIError
 )
-from .utils import convert_to_ascii, create_token, process_lock
+from .utils import convert_to_ascii, process_lock
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
@@ -314,7 +315,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return
 
         # Create new API token
-        self._data[ATTR_ACCESS_TOKEN] = create_token()
+        self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
         self.save_data()
 
         try:
