@@ -62,6 +62,9 @@ class HassIO(CoreSysAttributes):
         # Load discovery
         await self.sys_discovery.load()
 
+        # Load ingress
+        await self.sys_ingress.load()
+
         # start dns forwarding
         self.sys_create_task(self.sys_dns.start())
 

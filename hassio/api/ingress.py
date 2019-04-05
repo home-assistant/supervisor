@@ -28,13 +28,12 @@ class APIIngress(CoreSysAttributes):
         token = request.match_info.get("token")
 
         # Find correct add-on
-        for addon in self.sys_addons.list_installed:
-            if addon.ingress_token != token:
-                continue
-            return addon
+        addon = self.sys_ingress.get(token)
+        if not addon:
+            _LOGGER.warning("Ingress for %s not available", token)
+            raise HTTPServiceUnavailable()
 
-        _LOGGER.warning("Ingress for %s not available", token)
-        raise HTTPServiceUnavailable()
+        return addon
 
     def _create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
