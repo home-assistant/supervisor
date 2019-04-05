@@ -98,6 +98,6 @@ class Ingress(JsonConfig, CoreSysAttributes):
 
         # Update time
         valid_until = valid_until + timedelta(minutes=15)
-        self.sessions[session] = valid_until
+        self.sessions[session] = valid_until.timestamp()
 
         return True
