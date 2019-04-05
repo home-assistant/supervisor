@@ -511,7 +511,8 @@ Get all available addons.
     "discovery": "['service']",
     "ip_address": "ip address",
     "ingress": "bool",
-    "ingress_entry": "/api/hassio_ingress/slug"
+    "ingress_entry": "/api/hassio_ingress/slug",
+    "ingress_url": "/api/hassio_ingress/slug/entry.html"
 }
 ```
 
