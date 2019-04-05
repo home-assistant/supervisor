@@ -20,6 +20,7 @@ from ..const import (
     SECURITY_DISABLE,
     SECURITY_PROFILE,
 )
+from ..exceptions import AddonsNotSupportedError
 
 if TYPE_CHECKING:
     from .addon import Addon
@@ -107,7 +108,7 @@ def check_installed(method):
         """Return False if not installed or the function."""
         if not addon.is_installed:
             _LOGGER.error("Addon %s is not installed", addon.slug)
-            return False
+            raise AddonsNotSupportedError()
         return await method(addon, *args, **kwargs)
 
     return wrap_check

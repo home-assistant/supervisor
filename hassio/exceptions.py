@@ -28,6 +28,17 @@ class HomeAssistantAuthError(HomeAssistantAPIError):
     """Home Assistant Auth API exception."""
 
 
+# Supervisor
+
+
+class SupervisorError(HassioError):
+    """Supervisor error."""
+
+
+class SupervisorUpdateError(SupervisorError):
+    """Supervisor update error."""
+
+
 # HassOS
 
 
@@ -41,6 +52,17 @@ class HassOSUpdateError(HassOSError):
 
 class HassOSNotSupportedError(HassioNotSupportedError):
     """Function not supported by HassOS."""
+
+
+# Addons
+
+
+class AddonsError(HassioError):
+    """Addons exception."""
+
+
+class AddonsNotSupportedError(HassioNotSupportedError):
+    """Addons don't support a function."""
 
 
 # Arch
@@ -144,3 +166,10 @@ class AppArmorInvalidError(AppArmorError):
 
 class JsonFileError(HassioError):
     """Invalid json file."""
+
+
+# docker/api
+
+
+class DockerAPIError(HassioError):
+    """Docker API error."""

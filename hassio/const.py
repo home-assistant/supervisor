@@ -2,6 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
+
 HASSIO_VERSION = "153"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -51,8 +52,8 @@ CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_TEXT = "text/plain"
 CONTENT_TYPE_TAR = "application/tar"
 CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
-HEADER_HA_ACCESS = "x-ha-access"
-HEADER_TOKEN = "x-hassio-key"
+HEADER_HA_ACCESS = "X-Ha-Access"
+HEADER_TOKEN = "X-Hassio-Key"
 
 ENV_TOKEN = "HASSIO_TOKEN"
 ENV_TIME = "TZ"
@@ -187,6 +188,12 @@ ATTR_SUPERVISOR = "supervisor"
 ATTR_AUTH_API = "auth_api"
 ATTR_KERNEL_MODULES = "kernel_modules"
 ATTR_SUPPORTED_ARCH = "supported_arch"
+ATTR_INGRESS = "ingress"
+ATTR_INGRESS_PORT = "ingress_port"
+ATTR_INGRESS_ENTRY = "ingress_entry"
+ATTR_INGRESS_TOKEN = "ingress_token"
+ATTR_INGRESS_URL = "ingress_url"
+ATTR_IP_ADDRESS = "ip_address"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

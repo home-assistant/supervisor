@@ -1,32 +1,33 @@
 """Tools file for Hass.io."""
-from datetime import datetime
 import hashlib
 import logging
 import re
 import uuid
+from datetime import datetime
 
 _LOGGER = logging.getLogger(__name__)
 RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 
 
-def convert_to_ascii(raw):
+def convert_to_ascii(raw) -> str:
     """Convert binary to ascii and remove colors."""
     return RE_STRING.sub("", raw.decode())
 
 
-def create_token():
+def create_token() -> str:
     """Create token for API access."""
     return hashlib.sha256(uuid.uuid4().bytes).hexdigest()
 
 
 def process_lock(method):
     """Wrap function with only run once."""
+
     async def wrap_api(api, *args, **kwargs):
         """Return api wrapper."""
         if api.lock.locked():
             _LOGGER.error(
-                "Can't execute %s while a task is in progress",
-                method.__name__)
+                "Can't execute %s while a task is in progress", method.__name__
+            )
             return False
 
         async with api.lock:
@@ -40,6 +41,7 @@ class AsyncThrottle:
     Decorator that prevents a function from being called more than once every
     time period.
     """
+
     def __init__(self, delta):
         """Initialize async throttle."""
         self.throttle_period = delta
@@ -47,6 +49,7 @@ class AsyncThrottle:
 
     def __call__(self, method):
         """Throttle function"""
+
         async def wrapper(*args, **kwargs):
             """Throttle function wrapper"""
             now = datetime.now()

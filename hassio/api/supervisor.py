@@ -1,34 +1,57 @@
 """Init file for Hass.io Supervisor RESTful API."""
 import asyncio
 import logging
+from typing import Any, Awaitable, Dict
 
+from aiohttp import web
 import voluptuous as vol
 
-from .utils import api_process, api_process_raw, api_validate
 from ..const import (
-    ATTR_ADDONS, ATTR_VERSION, ATTR_LAST_VERSION, ATTR_CHANNEL, ATTR_ARCH,
-    HASSIO_VERSION, ATTR_ADDONS_REPOSITORIES, ATTR_LOGO, ATTR_REPOSITORY,
-    ATTR_DESCRIPTON, ATTR_NAME, ATTR_SLUG, ATTR_INSTALLED, ATTR_TIMEZONE,
-    ATTR_STATE, ATTR_WAIT_BOOT, ATTR_CPU_PERCENT, ATTR_MEMORY_USAGE,
-    ATTR_MEMORY_LIMIT, ATTR_NETWORK_RX, ATTR_NETWORK_TX, ATTR_BLK_READ,
-    ATTR_BLK_WRITE, CONTENT_TYPE_BINARY, ATTR_ICON)
+    ATTR_ADDONS,
+    ATTR_ADDONS_REPOSITORIES,
+    ATTR_ARCH,
+    ATTR_BLK_READ,
+    ATTR_BLK_WRITE,
+    ATTR_CHANNEL,
+    ATTR_CPU_PERCENT,
+    ATTR_DESCRIPTON,
+    ATTR_ICON,
+    ATTR_INSTALLED,
+    ATTR_LAST_VERSION,
+    ATTR_LOGO,
+    ATTR_MEMORY_LIMIT,
+    ATTR_MEMORY_USAGE,
+    ATTR_NAME,
+    ATTR_NETWORK_RX,
+    ATTR_NETWORK_TX,
+    ATTR_REPOSITORY,
+    ATTR_SLUG,
+    ATTR_STATE,
+    ATTR_TIMEZONE,
+    ATTR_VERSION,
+    ATTR_WAIT_BOOT,
+    ATTR_IP_ADDRESS,
+    CONTENT_TYPE_BINARY,
+    HASSIO_VERSION,
+)
 from ..coresys import CoreSysAttributes
-from ..validate import WAIT_BOOT, REPOSITORIES, CHANNELS
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
+from ..validate import CHANNELS, REPOSITORIES, WAIT_BOOT
+from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER = logging.getLogger(__name__)
 
-SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_CHANNEL): CHANNELS,
-    vol.Optional(ATTR_ADDONS_REPOSITORIES): REPOSITORIES,
-    vol.Optional(ATTR_TIMEZONE): validate_timezone,
-    vol.Optional(ATTR_WAIT_BOOT): WAIT_BOOT,
-})
+SCHEMA_OPTIONS = vol.Schema(
+    {
+        vol.Optional(ATTR_CHANNEL): CHANNELS,
+        vol.Optional(ATTR_ADDONS_REPOSITORIES): REPOSITORIES,
+        vol.Optional(ATTR_TIMEZONE): validate_timezone,
+        vol.Optional(ATTR_WAIT_BOOT): WAIT_BOOT,
+    }
+)
 
-SCHEMA_VERSION = vol.Schema({
-    vol.Optional(ATTR_VERSION): vol.Coerce(str),
-})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 
 
 class APISupervisor(CoreSysAttributes):
@@ -40,28 +63,31 @@ class APISupervisor(CoreSysAttributes):
         return True
 
     @api_process
-    async def info(self, request):
+    async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return host information."""
         list_addons = []
         for addon in self.sys_addons.list_addons:
             if addon.is_installed:
-                list_addons.append({
-                    ATTR_NAME: addon.name,
-                    ATTR_SLUG: addon.slug,
-                    ATTR_DESCRIPTON: addon.description,
-                    ATTR_STATE: await addon.state(),
-                    ATTR_VERSION: addon.last_version,
-                    ATTR_INSTALLED: addon.version_installed,
-                    ATTR_REPOSITORY: addon.repository,
-                    ATTR_ICON: addon.with_icon,
-                    ATTR_LOGO: addon.with_logo,
-                })
+                list_addons.append(
+                    {
+                        ATTR_NAME: addon.name,
+                        ATTR_SLUG: addon.slug,
+                        ATTR_DESCRIPTON: addon.description,
+                        ATTR_STATE: await addon.state(),
+                        ATTR_VERSION: addon.last_version,
+                        ATTR_INSTALLED: addon.version_installed,
+                        ATTR_REPOSITORY: addon.repository,
+                        ATTR_ICON: addon.with_icon,
+                        ATTR_LOGO: addon.with_logo,
+                    }
+                )
 
         return {
             ATTR_VERSION: HASSIO_VERSION,
             ATTR_LAST_VERSION: self.sys_updater.version_hassio,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_ARCH: self.sys_supervisor.arch,
+            ATTR_IP_ADDRESS: str(self.sys_supervisor.ip_address),
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_TIMEZONE: self.sys_config.timezone,
             ATTR_ADDONS: list_addons,
@@ -69,7 +95,7 @@ class APISupervisor(CoreSysAttributes):
         }
 
     @api_process
-    async def options(self, request):
+    async def options(self, request: web.Request) -> None:
         """Set Supervisor options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
@@ -88,14 +114,11 @@ class APISupervisor(CoreSysAttributes):
 
         self.sys_updater.save_data()
         self.sys_config.save_data()
-        return True
 
     @api_process
-    async def stats(self, request):
+    async def stats(self, request: web.Request) -> Dict[str, Any]:
         """Return resource information."""
         stats = await self.sys_supervisor.stats()
-        if not stats:
-            raise APIError("No stats available")
 
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
@@ -108,31 +131,21 @@ class APISupervisor(CoreSysAttributes):
         }
 
     @api_process
-    async def update(self, request):
+    async def update(self, request: web.Request) -> None:
         """Update Supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_updater.version_hassio)
 
         if version == self.sys_supervisor.version:
             raise APIError("Version {} is already in use".format(version))
-
-        return await asyncio.shield(self.sys_supervisor.update(version))
+        await asyncio.shield(self.sys_supervisor.update(version))
 
     @api_process
-    async def reload(self, request):
+    def reload(self, request: web.Request) -> Awaitable[None]:
         """Reload add-ons, configuration, etc."""
-        tasks = [
-            self.sys_updater.reload(),
-        ]
-        results, _ = await asyncio.shield(asyncio.wait(tasks))
-
-        for result in results:
-            if result.exception() is not None:
-                raise APIError("Some reload task fails!")
-
-        return True
+        return asyncio.shield(self.sys_updater.reload())
 
     @api_process_raw(CONTENT_TYPE_BINARY)
-    def logs(self, request):
+    def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return supervisor Docker logs."""
         return self.sys_supervisor.logs()

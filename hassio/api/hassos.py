@@ -1,27 +1,31 @@
 """Init file for Hass.io HassOS RESTful API."""
 import asyncio
 import logging
+from typing import Any, Awaitable, Dict
 
 import voluptuous as vol
+from aiohttp import web
 
-from .utils import api_process, api_validate
 from ..const import (
-    ATTR_VERSION, ATTR_BOARD, ATTR_VERSION_LATEST, ATTR_VERSION_CLI,
-    ATTR_VERSION_CLI_LATEST)
+    ATTR_BOARD,
+    ATTR_VERSION,
+    ATTR_VERSION_CLI,
+    ATTR_VERSION_CLI_LATEST,
+    ATTR_VERSION_LATEST,
+)
 from ..coresys import CoreSysAttributes
+from .utils import api_process, api_validate
 
 _LOGGER = logging.getLogger(__name__)
 
-SCHEMA_VERSION = vol.Schema({
-    vol.Optional(ATTR_VERSION): vol.Coerce(str),
-})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 
 
 class APIHassOS(CoreSysAttributes):
     """Handle RESTful API for HassOS functions."""
 
     @api_process
-    async def info(self, request):
+    async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return HassOS information."""
         return {
             ATTR_VERSION: self.sys_hassos.version,
@@ -32,7 +36,7 @@ class APIHassOS(CoreSysAttributes):
         }
 
     @api_process
-    async def update(self, request):
+    async def update(self, request: web.Request) -> None:
         """Update HassOS."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_hassos.version_latest)
@@ -40,7 +44,7 @@ class APIHassOS(CoreSysAttributes):
         await asyncio.shield(self.sys_hassos.update(version))
 
     @api_process
-    async def update_cli(self, request):
+    async def update_cli(self, request: web.Request) -> None:
         """Update HassOS CLI."""
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_hassos.version_cli_latest)
@@ -48,6 +52,6 @@ class APIHassOS(CoreSysAttributes):
         await asyncio.shield(self.sys_hassos.update_cli(version))
 
     @api_process
-    def config_sync(self, request):
+    def config_sync(self, request: web.Request) -> Awaitable[None]:
         """Trigger config reload on HassOS."""
         return asyncio.shield(self.sys_hassos.config_sync())
