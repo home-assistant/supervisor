@@ -47,9 +47,6 @@ class APIIngress(CoreSysAttributes):
         addon = self._extract_addon(request)
         path = request.match_info.get("path")
 
-        print(request.headers)
-        print(request.cookies)
-
         # Only Home Assistant call this
         if request[REQUEST_FROM] != self.sys_homeassistant:
             _LOGGER.warning("Ingress is only available behind Home Assistant")
@@ -111,12 +108,7 @@ class APIIngress(CoreSysAttributes):
         source_header = _init_header(request, addon)
 
         async with self.sys_websession.request(
-            request.method,
-            url,
-            headers=source_header,
-            params=request.query,
-            data=data,
-            cookies=request.cookies,
+            request.method, url, headers=source_header, params=request.query, data=data
         ) as result:
             headers = _response_header(result)
 
@@ -152,7 +144,12 @@ def _init_header(
 
     # filter flags
     for name, value in request.headers.items():
-        if name in (hdrs.CONTENT_LENGTH, hdrs.CONTENT_TYPE, istr(HEADER_TOKEN)):
+        if name in (
+            hdrs.CONTENT_LENGTH,
+            hdrs.CONTENT_TYPE,
+            hdrs.CONTENT_ENCODING,
+            istr(HEADER_TOKEN),
+        ):
             continue
         headers[name] = value
 
