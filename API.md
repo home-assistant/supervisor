@@ -588,9 +588,20 @@ Write data to add-on stdin
 
 ### ingress
 
+- POST `/ingress/session`
+
+Create a new Session for access to ingress service.
+
+```json
+{
+    "session": "token"
+}
+```
+
 - VIEW `/ingress/{token}`
 
 Ingress WebUI for this Add-on. The addon need support HASS Auth!
+Need ingress session as cookie.
 
 ### discovery
 

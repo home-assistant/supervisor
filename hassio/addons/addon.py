@@ -6,6 +6,7 @@ from ipaddress import IPv4Address, ip_address
 import logging
 from pathlib import Path, PurePath
 import re
+import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
@@ -89,7 +90,6 @@ from ..exceptions import (
     HostAppArmorError,
     JsonFileError,
 )
-from ..utils import create_token
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from .utils import check_installed, remove_data
@@ -896,7 +896,7 @@ class Addon(CoreSysAttributes):
             return
 
         # Access Token
-        self._data.user[self._id][ATTR_ACCESS_TOKEN] = create_token()
+        self._data.user[self._id][ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
         self.save_data()
 
         # Options
