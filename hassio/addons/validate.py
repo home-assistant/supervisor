@@ -148,7 +148,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_WEBUI):
         vol.Match(r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"),
     vol.Optional(ATTR_INGRESS, default=False): vol.Boolean(),
-    vol.Optional(ATTR_INGRESS_PORT, default=8080): NETWORK_PORT,
+    vol.Optional(ATTR_INGRESS_PORT, default=8099): NETWORK_PORT,
     vol.Optional(ATTR_INGRESS_ENTRY): vol.Coerce(str),
     vol.Optional(ATTR_HOMEASSISTANT): vol.Maybe(vol.Coerce(str)),
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
