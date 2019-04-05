@@ -44,6 +44,7 @@ from ..const import (
     ATTR_ICON,
     ATTR_INGRESS,
     ATTR_INGRESS_ENTRY,
+    ATTR_INGRESS_URL,
     ATTR_INSTALLED,
     ATTR_IP_ADDRESS,
     ATTR_KERNEL_MODULES,
@@ -221,6 +222,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_IP_ADDRESS: str(addon.ip_address),
             ATTR_INGRESS: addon.with_ingress,
             ATTR_INGRESS_ENTRY: addon.ingress_entry,
+            ATTR_INGRESS_url: addon.ingress_url,
         }
 
     @api_process

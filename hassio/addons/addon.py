@@ -389,16 +389,20 @@ class Addon(CoreSysAttributes):
             self._data.user[self._id][ATTR_NETWORK] = new_ports
 
     @property
+    def ingress_url(self):
+        """Return URL to ingress url."""
+        # Use ingress
+        if not self.with_ingress:
+            return None
+
+        webui = f"/api/hassio_ingress/{self.ingress_token}/"
+        if ATTR_INGRESS_ENTRY in self._mesh:
+            return f"{webui}{self._mesh[ATTR_INGRESS_ENTRY]}"
+        return webui
+
+    @property
     def webui(self):
         """Return URL to webui or None."""
-        # Use ingress
-        if self.with_ingress:
-            webui = f"/api/hassio_ingress/{self.ingress_token}/"
-            if ATTR_INGRESS_ENTRY in self._mesh:
-                return f"{webui}{self._mesh[ATTR_INGRESS_ENTRY]}"
-            return webui
-
-        # Use direct access
         if ATTR_WEBUI not in self._mesh:
             return None
         webui = RE_WEBUI.match(self._mesh[ATTR_WEBUI])

@@ -192,6 +192,7 @@ ATTR_INGRESS = "ingress"
 ATTR_INGRESS_PORT = "ingress_port"
 ATTR_INGRESS_ENTRY = "ingress_entry"
 ATTR_INGRESS_TOKEN = "ingress_token"
+ATTR_INGRESS_URL = "ingress_url"
 ATTR_IP_ADDRESS = "ip_address"
 
 PROVIDE_SERVICE = "provide"

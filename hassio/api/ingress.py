@@ -47,6 +47,9 @@ class APIIngress(CoreSysAttributes):
         addon = self._extract_addon(request)
         path = request.match_info.get("path")
 
+        print(request.headers)
+        print(request.cookies)
+
         # Only Home Assistant call this
         if request[REQUEST_FROM] != self.sys_homeassistant:
             _LOGGER.warning("Ingress is only available behind Home Assistant")
