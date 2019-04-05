@@ -432,7 +432,7 @@ class Addon(CoreSysAttributes):
         return f"{proto}://[HOST]:{port}{s_suffix}"
 
     @property
-    def ingress_url(self):
+    def ingress_internal(self):
         """Return Ingress host URL."""
         return f"http://{self.ip_address}:{self._mesh[ATTR_INGRESS_PORT]}"
 

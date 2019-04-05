@@ -38,7 +38,7 @@ class APIIngress(CoreSysAttributes):
 
     def _create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
-        return f"{addon.ingress_url}/{path}"
+        return f"{addon.ingress_internal}/{path}"
 
     async def handler(
         self, request: web.Request
