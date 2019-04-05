@@ -14,7 +14,7 @@ from aiohttp.web_exceptions import (
 from multidict import CIMultiDict, istr
 
 from ..addons.addon import Addon
-from ..const import ATTR_SESSION, HEADER_TOKEN, REQUEST_FROM
+from ..const import ATTR_SESSION, HEADER_TOKEN, REQUEST_FROM, COOKIE_INGRESS
 from ..coresys import CoreSysAttributes
 from .utils import api_process
 
@@ -58,6 +58,12 @@ class APIIngress(CoreSysAttributes):
     ) -> Union[web.Response, web.StreamResponse, web.WebSocketResponse]:
         """Route data to Hass.io ingress service."""
         self._check_ha_access(request)
+
+        # Check Ingress Session
+        session = request.cookies.get(COOKIE_INGRESS)
+        if not self.sys_ingress.validate_session(session):
+            _LOGGER.warning("No valid ingress session %s", session)
+            raise HTTPUnauthorized()
 
         # Process requests
         addon = self._extract_addon(request)

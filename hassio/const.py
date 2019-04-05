@@ -55,6 +55,7 @@ CONTENT_TYPE_TAR = "application/tar"
 CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
 HEADER_HA_ACCESS = "X-Ha-Access"
 HEADER_TOKEN = "X-Hassio-Key"
+COOKIE_INGRESS = "ingress_session"
 
 ENV_TOKEN = "HASSIO_TOKEN"
 ENV_TIME = "TZ"
