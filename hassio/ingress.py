@@ -26,8 +26,8 @@ class Ingress(JsonConfig, CoreSysAttributes):
     def get(self, token: str) -> Optional[Addon]:
         """Return addon they have this ingress token."""
         if token not in self.tokens:
-            return None
-        return self.sys_addons.get(self.tokens[token])
+            self._update_token_list()
+        return self.sys_addons.get(self.tokens.get(token))
 
     @property
     def sessions(self) -> Dict[str, float]:
