@@ -143,10 +143,6 @@ SCHEMA_AUTH_CONFIG = vol.Schema({SHA256: SHA256})
 
 
 SCHEMA_INGRESS_CONFIG = vol.Schema(
-    {
-        vol.Required(ATTR_SESSION, default=dict): vol.Schema(
-            {vol.Coerce(str): vol.Coerce(float)}
-        )
-    },
+    {vol.Required(ATTR_SESSION, default=dict): vol.Schema({TOKEN: vol.Coerce(float)})},
     extra=vol.REMOVE_EXTRA,
 )
