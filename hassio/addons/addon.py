@@ -391,8 +391,7 @@ class Addon(CoreSysAttributes):
     @property
     def ingress_url(self):
         """Return URL to ingress url."""
-        # Use ingress
-        if not self.with_ingress:
+        if not self.is_installed or not self.with_ingress:
             return None
 
         webui = f"/api/hassio_ingress/{self.ingress_token}/"
