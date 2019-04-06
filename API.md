@@ -471,7 +471,7 @@ Get all available addons.
     "available": "bool",
     "arch": ["armhf", "aarch64", "i386", "amd64"],
     "machine": "[raspberrypi2, tinker]",
-    "homeassistant": "min Home Assistant version",
+    "homeassistant": "null|min Home Assistant version",
     "repository": "12345678|null",
     "version": "null|VERSION_INSTALLED",
     "last_version": "LAST_VERSION",
@@ -511,8 +511,8 @@ Get all available addons.
     "discovery": "['service']",
     "ip_address": "ip address",
     "ingress": "bool",
-    "ingress_entry": "/api/hassio_ingress/slug",
-    "ingress_url": "/api/hassio_ingress/slug/entry.html"
+    "ingress_entry": "null|/api/hassio_ingress/slug",
+    "ingress_url": "null|/api/hassio_ingress/slug/entry.html"
 }
 ```
 
