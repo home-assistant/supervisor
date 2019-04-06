@@ -2,7 +2,8 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = "152"
+
+HASSIO_VERSION = "153"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = "https://s3.amazonaws.com/hassio-version/{channel}.json"
@@ -22,6 +23,7 @@ FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
 FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
 FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
 FILE_HASSIO_DISCOVERY = Path(HASSIO_DATA, "discovery.json")
+FILE_HASSIO_INGRESS = Path(HASSIO_DATA, "ingress.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 
@@ -51,8 +53,9 @@ CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_TEXT = "text/plain"
 CONTENT_TYPE_TAR = "application/tar"
 CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
-HEADER_HA_ACCESS = "x-ha-access"
-HEADER_TOKEN = "x-hassio-key"
+HEADER_HA_ACCESS = "X-Ha-Access"
+HEADER_TOKEN = "X-Hassio-Key"
+COOKIE_INGRESS = "ingress_session"
 
 ENV_TOKEN = "HASSIO_TOKEN"
 ENV_TIME = "TZ"
@@ -187,6 +190,13 @@ ATTR_SUPERVISOR = "supervisor"
 ATTR_AUTH_API = "auth_api"
 ATTR_KERNEL_MODULES = "kernel_modules"
 ATTR_SUPPORTED_ARCH = "supported_arch"
+ATTR_INGRESS = "ingress"
+ATTR_INGRESS_PORT = "ingress_port"
+ATTR_INGRESS_ENTRY = "ingress_entry"
+ATTR_INGRESS_TOKEN = "ingress_token"
+ATTR_INGRESS_URL = "ingress_url"
+ATTR_IP_ADDRESS = "ip_address"
+ATTR_SESSION = "session"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .hassos import HassOS
     from .homeassistant import HomeAssistant
     from .host import HostManager
+    from .ingress import Ingress
     from .services import ServiceManager
     from .snapshots import SnapshotManager
     from .supervisor import Supervisor
@@ -63,6 +64,7 @@ class CoreSys:
         self._snapshots: SnapshotManager = None
         self._tasks: Tasks = None
         self._host: HostManager = None
+        self._ingress: Ingress = None
         self._dbus: DBusManager = None
         self._hassos: HassOS = None
         self._services: ServiceManager = None
@@ -294,6 +296,18 @@ class CoreSys:
         self._host = value
 
     @property
+    def ingress(self) -> Ingress:
+        """Return Ingress object."""
+        return self._ingress
+
+    @ingress.setter
+    def ingress(self, value: Ingress):
+        """Set a Ingress object."""
+        if self._ingress:
+            raise RuntimeError("Ingress already set!")
+        self._ingress = value
+
+    @property
     def hassos(self) -> HassOS:
         """Return HassOS object."""
         return self._hassos
@@ -440,6 +454,11 @@ class CoreSysAttributes:
     def sys_host(self) -> HostManager:
         """Return HostManager object."""
         return self.coresys.host
+
+    @property
+    def sys_ingress(self) -> Ingress:
+        """Return Ingress object."""
+        return self.coresys.ingress
 
     @property
     def sys_hassos(self) -> HassOS:

@@ -35,7 +35,7 @@ class APIProxy(CoreSysAttributes):
         elif not addon.access_homeassistant_api:
             _LOGGER.warning("Not permitted API access: %s", addon.slug)
         else:
-            _LOGGER.info("%s access from %s", request.path, addon.slug)
+            _LOGGER.debug("%s access from %s", request.path, addon.slug)
             return
 
         raise HTTPUnauthorized()

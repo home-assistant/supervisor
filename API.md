@@ -41,6 +41,7 @@ The addons from `addons` are only installed one.
     "arch": "armhf|aarch64|i386|amd64",
     "channel": "stable|beta|dev",
     "timezone": "TIMEZONE",
+    "ip_address": "ip address",
     "wait_boot": "int",
     "addons": [
         {
@@ -348,6 +349,7 @@ Load host configs from a USB stick.
     "last_version": "LAST_VERSION",
     "arch": "arch",
     "machine": "Image machine type",
+    "ip_address": "ip address",
     "image": "str",
     "custom": "bool -> if custom image",
     "boot": "bool",
@@ -469,6 +471,7 @@ Get all available addons.
     "available": "bool",
     "arch": ["armhf", "aarch64", "i386", "amd64"],
     "machine": "[raspberrypi2, tinker]",
+    "homeassistant": "null|min Home Assistant version",
     "repository": "12345678|null",
     "version": "null|VERSION_INSTALLED",
     "last_version": "LAST_VERSION",
@@ -505,7 +508,11 @@ Get all available addons.
     "audio_input": "null|0,0",
     "audio_output": "null|0,0",
     "services_role": "['service:access']",
-    "discovery": "['service']"
+    "discovery": "['service']",
+    "ip_address": "ip address",
+    "ingress": "bool",
+    "ingress_entry": "null|/api/hassio_ingress/slug",
+    "ingress_url": "null|/api/hassio_ingress/slug/entry.html"
 }
 ```
 
@@ -578,6 +585,23 @@ Write data to add-on stdin
     "blk_write": 0
 }
 ```
+
+### ingress
+
+- POST `/ingress/session`
+
+Create a new Session for access to ingress service.
+
+```json
+{
+    "session": "token"
+}
+```
+
+- VIEW `/ingress/{token}`
+
+Ingress WebUI for this Add-on. The addon need support HASS Auth!
+Need ingress session as cookie.
 
 ### discovery
 

@@ -1,0 +1,45 @@
+# Python package
+# Create and test a Python package on multiple Python versions.
+# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+trigger:
+- master
+- dev
+
+pr:
+- dev
+
+jobs:
+
+- job: "Tox"
+
+  pool:
+    vmImage: 'ubuntu-16.04'
+
+  steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python $(python.version)'
+    inputs:
+      versionSpec: '3.7'
+
+  - script: pip install tox
+    displayName: 'Install Tox'
+
+  - script: tox
+    displayName: 'Run Tox'
+
+
+- job: "JQ"
+
+  pool:
+    vmImage: 'ubuntu-16.04'
+
+  steps:
+  - script: sudo apt-get install -y jq
+    displayName: 'Install JQ'
+
+  - bash: |
+      shopt -s globstar
+      cat **/*.json | jq '.'
+    displayName: 'Run JQ'

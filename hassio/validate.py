@@ -1,35 +1,35 @@
 """Validate functions."""
-import uuid
 import re
+import uuid
 
 import voluptuous as vol
 
 from .const import (
-    ATTR_IMAGE,
-    ATTR_LAST_VERSION,
-    ATTR_CHANNEL,
-    ATTR_TIMEZONE,
-    ATTR_HASSOS,
-    ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_PASSWORD,
-    ATTR_HOMEASSISTANT,
-    ATTR_HASSIO,
-    ATTR_BOOT,
-    ATTR_LAST_BOOT,
-    ATTR_SSL,
-    ATTR_PORT,
-    ATTR_WATCHDOG,
-    ATTR_WAIT_BOOT,
-    ATTR_UUID,
-    ATTR_REFRESH_TOKEN,
-    ATTR_HASSOS_CLI,
     ATTR_ACCESS_TOKEN,
-    CHANNEL_STABLE,
+    ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_BOOT,
+    ATTR_CHANNEL,
+    ATTR_HASSIO,
+    ATTR_HASSOS,
+    ATTR_HASSOS_CLI,
+    ATTR_HOMEASSISTANT,
+    ATTR_IMAGE,
+    ATTR_LAST_BOOT,
+    ATTR_LAST_VERSION,
+    ATTR_PASSWORD,
+    ATTR_PORT,
+    ATTR_REFRESH_TOKEN,
+    ATTR_SESSION,
+    ATTR_SSL,
+    ATTR_TIMEZONE,
+    ATTR_UUID,
+    ATTR_WAIT_BOOT,
+    ATTR_WATCHDOG,
     CHANNEL_BETA,
     CHANNEL_DEV,
+    CHANNEL_STABLE,
 )
 from .utils.validate import validate_timezone
-
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 
@@ -40,6 +40,7 @@ ALSA_DEVICE = vol.Maybe(vol.Match(r"\d+,\d+"))
 CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
 UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
 SHA256 = vol.Match(r"^[0-9a-f]{64}$")
+TOKEN = vol.Match(r"^[0-9a-f]{32,256}$")
 
 
 def validate_repository(repository):
@@ -94,7 +95,7 @@ DOCKER_PORTS = vol.Schema(
 SCHEMA_HASS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
-        vol.Optional(ATTR_ACCESS_TOKEN): SHA256,
+        vol.Optional(ATTR_ACCESS_TOKEN): TOKEN,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
         vol.Inclusive(ATTR_IMAGE, "custom_hass"): DOCKER_IMAGE,
         vol.Inclusive(ATTR_LAST_VERSION, "custom_hass"): vol.Coerce(str),
@@ -139,3 +140,9 @@ SCHEMA_HASSIO_CONFIG = vol.Schema(
 
 
 SCHEMA_AUTH_CONFIG = vol.Schema({SHA256: SHA256})
+
+
+SCHEMA_INGRESS_CONFIG = vol.Schema(
+    {vol.Required(ATTR_SESSION, default=dict): vol.Schema({TOKEN: vol.Coerce(float)})},
+    extra=vol.REMOVE_EXTRA,
+)

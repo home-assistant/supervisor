@@ -39,6 +39,7 @@ from ..const import (
     CRYPTO_AES128,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import AddonsError
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
@@ -289,7 +290,9 @@ class Snapshot(CoreSysAttributes):
                 'w', key=self._key)
 
             # Take snapshot
-            if not await addon.snapshot(addon_file):
+            try:
+                await addon.snapshot(addon_file)
+            except AddonsError:
                 _LOGGER.error("Can't make snapshot from %s", addon.slug)
                 return
 
@@ -326,10 +329,11 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.error("Can't find snapshot for %s", addon.slug)
                 return
 
-            # Performe a restore
-            if not await addon.restore(addon_file):
+            # Perform a restore
+            try:
+                await addon.restore(addon_file)
+            except AddonsError:
                 _LOGGER.error("Can't restore snapshot for %s", addon.slug)
-                return
 
         # Run tasks
         tasks = [_addon_restore(addon) for addon in addon_list]

@@ -45,3 +45,7 @@ disable=
 
 [EXCEPTIONS]
 overgeneral-exceptions=Exception
+
+
+[TYPECHECK]
+ignored-modules = distutils

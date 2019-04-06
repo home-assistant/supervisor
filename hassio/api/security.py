@@ -6,12 +6,19 @@ from aiohttp.web import middleware
 from aiohttp.web_exceptions import HTTPUnauthorized, HTTPForbidden
 
 from ..const import (
-    HEADER_TOKEN, REQUEST_FROM, ROLE_ADMIN, ROLE_DEFAULT, ROLE_HOMEASSISTANT,
-    ROLE_MANAGER, ROLE_BACKUP)
+    HEADER_TOKEN,
+    REQUEST_FROM,
+    ROLE_ADMIN,
+    ROLE_DEFAULT,
+    ROLE_HOMEASSISTANT,
+    ROLE_MANAGER,
+    ROLE_BACKUP,
+)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
+# fmt: off
 
 # Block Anytime
 BLACKLIST = re.compile(
@@ -65,7 +72,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/hardware/.+"
         r"|/hassos/.+"
         r"|/supervisor/.+"
-        r"|/addons(?:/[^/]+/(?!security).+)?"
+        r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
         r"|/snapshots.*"
         r")$"
     ),
@@ -73,6 +80,8 @@ ADDONS_ROLE_ACCESS = {
         r".*"
     ),
 }
+
+# fmt: off
 
 
 class SecurityMiddleware(CoreSysAttributes):
@@ -104,9 +113,7 @@ class SecurityMiddleware(CoreSysAttributes):
             raise HTTPUnauthorized()
 
         # Home-Assistant
-        # UUID check need removed with 131
-        if hassio_token in (self.sys_homeassistant.uuid,
-                            self.sys_homeassistant.hassio_token):
+        if hassio_token == self.sys_homeassistant.hassio_token:
             _LOGGER.debug("%s access from Home Assistant", request.path)
             request_from = self.sys_homeassistant
 
