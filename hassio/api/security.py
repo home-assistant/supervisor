@@ -72,7 +72,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/hardware/.+"
         r"|/hassos/.+"
         r"|/supervisor/.+"
-        r"|/addons(?:/[^/]+/(?!security).+)?"
+        r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
         r"|/snapshots.*"
         r")$"
     ),
