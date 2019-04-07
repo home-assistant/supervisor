@@ -170,7 +170,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return self._data.get(ATTR_LAST_VERSION)
         return self.sys_updater.version_homeassistant
 
-    @last_version.setter
+    @latest_version.setter
     def latest_version(self, value: str):
         """Set last available version of Home Assistant."""
         if value:
