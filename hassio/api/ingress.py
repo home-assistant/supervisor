@@ -43,7 +43,7 @@ class APIIngress(CoreSysAttributes):
 
     def _create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
-        return f"{addon.ingress_internal}/{path}"
+        return f"http://{addon.ip_address}:{addon.ingress_port}/{path}"
 
     @api_process
     async def create_session(self, request: web.Request) -> Dict[str, Any]:

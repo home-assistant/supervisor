@@ -512,7 +512,8 @@ Get all available addons.
     "ip_address": "ip address",
     "ingress": "bool",
     "ingress_entry": "null|/api/hassio_ingress/slug",
-    "ingress_url": "null|/api/hassio_ingress/slug/entry.html"
+    "ingress_url": "null|/api/hassio_ingress/slug/entry.html",
+    "ingress_port": "null|int"
 }
 ```
 
