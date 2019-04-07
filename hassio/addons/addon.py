@@ -431,9 +431,15 @@ class Addon(CoreSysAttributes):
         return f"{proto}://[HOST]:{port}{s_suffix}"
 
     @property
-    def ingress_internal(self):
-        """Return Ingress host URL."""
-        return f"http://{self.ip_address}:{self._mesh[ATTR_INGRESS_PORT]}"
+    def ingress_port(self):
+        """Return Ingress port."""
+        if not self.is_installed or not self.with_ingress:
+            return None
+
+        port = self._mesh[ATTR_INGRESS_PORT]
+        if port == 0:
+            return self.sys_ingress.get_dynamic_port(self.slug)
+        return port
 
     @property
     def host_network(self):
