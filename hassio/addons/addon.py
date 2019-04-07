@@ -433,7 +433,7 @@ class Addon(CoreSysAttributes):
     @property
     def ingress_port(self):
         """Return Ingress port."""
-        if self.is_installed and self.with_ingress:
+        if not self.is_installed or not self.with_ingress:
             return None
 
         port = self._mesh[ATTR_INGRESS_PORT]
