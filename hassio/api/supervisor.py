@@ -74,7 +74,7 @@ class APISupervisor(CoreSysAttributes):
                         ATTR_SLUG: addon.slug,
                         ATTR_DESCRIPTON: addon.description,
                         ATTR_STATE: await addon.state(),
-                        ATTR_VERSION: addon.last_version,
+                        ATTR_VERSION: addon.latest_version,
                         ATTR_INSTALLED: addon.version_installed,
                         ATTR_REPOSITORY: addon.repository,
                         ATTR_ICON: addon.with_icon,

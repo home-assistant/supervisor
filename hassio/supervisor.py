@@ -49,7 +49,7 @@ class Supervisor(CoreSysAttributes):
     @property
     def need_update(self) -> bool:
         """Return True if an update is available."""
-        return self.version != self.last_version
+        return self.version != self.latest_version
 
     @property
     def version(self) -> str:
@@ -57,7 +57,7 @@ class Supervisor(CoreSysAttributes):
         return self.instance.version
 
     @property
-    def last_version(self) -> str:
+    def latest_version(self) -> str:
         """Return last available version of Home Assistant."""
         return self.sys_updater.version_hassio
 
@@ -101,7 +101,7 @@ class Supervisor(CoreSysAttributes):
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update Home Assistant version."""
-        version = version or self.last_version
+        version = version or self.latest_version
 
         if version == self.sys_supervisor.version:
             _LOGGER.warning("Version %s is already installed", version)

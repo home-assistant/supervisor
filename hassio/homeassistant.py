@@ -164,14 +164,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return self.instance.version
 
     @property
-    def last_version(self) -> str:
+    def latest_version(self) -> str:
         """Return last available version of Home Assistant."""
         if self.is_custom_image:
             return self._data.get(ATTR_LAST_VERSION)
         return self.sys_updater.version_homeassistant
 
-    @last_version.setter
-    def last_version(self, value: str):
+    @latest_version.setter
+    def latest_version(self, value: str):
         """Set last available version of Home Assistant."""
         if value:
             self._data[ATTR_LAST_VERSION] = value
@@ -246,10 +246,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Setup Home Assistant")
         while True:
             # read homeassistant tag and install it
-            if not self.last_version:
+            if not self.latest_version:
                 await self.sys_updater.reload()
 
-            tag = self.last_version
+            tag = self.latest_version
             if tag:
                 with suppress(DockerAPIError):
                     await self.instance.install(tag)
@@ -273,7 +273,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @process_lock
     async def update(self, version=None) -> None:
         """Update HomeAssistant version."""
-        version = version or self.last_version
+        version = version or self.latest_version
         rollback = self.version if not self.error_state else None
         running = await self.instance.is_running()
         exists = await self.instance.exists()

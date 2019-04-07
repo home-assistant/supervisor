@@ -355,8 +355,8 @@ class DockerAddon(DockerInterface):
         """
         if self.addon.need_build:
             self._build(tag)
-
-        super()._install(tag, image)
+        else:
+            super()._install(tag, image)
 
     def _build(self, tag: str) -> None:
         """Build a Docker container.

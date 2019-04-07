@@ -322,7 +322,7 @@ class Addon(CoreSysAttributes):
         return self._mesh[ATTR_REPOSITORY]
 
     @property
-    def last_version(self):
+    def latest_version(self):
         """Return version of add-on."""
         if self._id in self._data.cache:
             return self._data.cache[self._id][ATTR_VERSION]
@@ -845,11 +845,11 @@ class Addon(CoreSysAttributes):
         await self._install_apparmor()
 
         try:
-            await self.instance.install(self.last_version, self.image_next)
+            await self.instance.install(self.latest_version, self.image_next)
         except DockerAPIError:
             raise AddonsError() from None
         else:
-            self._set_install(self.image_next, self.last_version)
+            self._set_install(self.image_next, self.latest_version)
 
     @check_installed
     async def uninstall(self) -> None:
@@ -922,7 +922,7 @@ class Addon(CoreSysAttributes):
     @check_installed
     async def update(self) -> None:
         """Update add-on."""
-        if self.last_version == self.version_installed:
+        if self.latest_version == self.version_installed:
             _LOGGER.warning("No update available for add-on %s", self._id)
             return
 
@@ -936,10 +936,10 @@ class Addon(CoreSysAttributes):
         # Update instance
         last_state = await self.state()
         try:
-            await self.instance.update(self.last_version, self.image_next)
+            await self.instance.update(self.latest_version, self.image_next)
         except DockerAPIError:
             raise AddonsError() from None
-        self._set_update(self.image_next, self.last_version)
+        self._set_update(self.image_next, self.latest_version)
 
         # Setup/Fix AppArmor profile
         await self._install_apparmor()
@@ -977,8 +977,11 @@ class Addon(CoreSysAttributes):
         last_state = await self.state()
 
         if not self.need_build:
-            _LOGGER.error("Can't rebuild a none local build add-on!")
+            _LOGGER.error("Can't rebuild a image based add-on")
             raise AddonsNotSupportedError()
+        if self.version_installed != self.latest_version:
+            _LOGGER.error("Version changed, use Update instead Rebuild")
+            raise AddonsError()
 
         # remove docker container but not addon config
         try:
@@ -986,6 +989,8 @@ class Addon(CoreSysAttributes):
             await self.instance.install(self.version_installed)
         except DockerAPIError:
             raise AddonsError() from None
+        else:
+            self._set_update(self.image, self.version_installed)
 
         # restore state
         if last_state == STATE_STARTED:
