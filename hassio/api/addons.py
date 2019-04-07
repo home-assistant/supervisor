@@ -135,7 +135,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_NAME: addon.name,
                 ATTR_SLUG: addon.slug,
                 ATTR_DESCRIPTON: addon.description,
-                ATTR_VERSION: addon.last_version,
+                ATTR_VERSION: addon.latest_version,
                 ATTR_INSTALLED: addon.version_installed,
                 ATTR_AVAILABLE: addon.available,
                 ATTR_DETACHED: addon.is_detached,
@@ -179,7 +179,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_VERSION: addon.version_installed,
             ATTR_AUTO_UPDATE: addon.auto_update,
             ATTR_REPOSITORY: addon.repository,
-            ATTR_LAST_VERSION: addon.last_version,
+            ATTR_LAST_VERSION: addon.latest_version,
             ATTR_STATE: await addon.state(),
             ATTR_PROTECTED: addon.protected,
             ATTR_RATING: rating_security(addon),
@@ -315,7 +315,7 @@ class APIAddons(CoreSysAttributes):
         """Update add-on."""
         addon = self._extract_addon(request)
 
-        if addon.last_version == addon.version_installed:
+        if addon.latest_version == addon.version_installed:
             raise APIError("No update available!")
 
         return asyncio.shield(addon.update())

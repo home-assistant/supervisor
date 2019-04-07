@@ -417,7 +417,7 @@ class Snapshot(CoreSysAttributes):
         if self.sys_homeassistant.is_custom_image:
             self.homeassistant[ATTR_IMAGE] = self.sys_homeassistant.image
             self.homeassistant[ATTR_LAST_VERSION] = \
-                self.sys_homeassistant.last_version
+                self.sys_homeassistant.latest_version
 
         # API/Proxy
         self.homeassistant[ATTR_PORT] = self.sys_homeassistant.api_port
@@ -436,7 +436,7 @@ class Snapshot(CoreSysAttributes):
         # Custom image
         if self.homeassistant.get(ATTR_IMAGE):
             self.sys_homeassistant.image = self.homeassistant[ATTR_IMAGE]
-            self.sys_homeassistant.last_version = \
+            self.sys_homeassistant.latest_version = \
                 self.homeassistant[ATTR_LAST_VERSION]
 
         # API/Proxy

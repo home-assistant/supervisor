@@ -63,7 +63,7 @@ class APIHomeAssistant(CoreSysAttributes):
         """Return host information."""
         return {
             ATTR_VERSION: self.sys_homeassistant.version,
-            ATTR_LAST_VERSION: self.sys_homeassistant.last_version,
+            ATTR_LAST_VERSION: self.sys_homeassistant.latest_version,
             ATTR_MACHINE: self.sys_homeassistant.machine,
             ATTR_IP_ADDRESS: str(self.sys_homeassistant.ip_address),
             ATTR_ARCH: self.sys_homeassistant.arch,
@@ -83,7 +83,7 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_IMAGE in body and ATTR_LAST_VERSION in body:
             self.sys_homeassistant.image = body[ATTR_IMAGE]
-            self.sys_homeassistant.last_version = body[ATTR_LAST_VERSION]
+            self.sys_homeassistant.latest_version = body[ATTR_LAST_VERSION]
 
         if ATTR_BOOT in body:
             self.sys_homeassistant.boot = body[ATTR_BOOT]
@@ -130,7 +130,7 @@ class APIHomeAssistant(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update Home Assistant."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_homeassistant.last_version)
+        version = body.get(ATTR_VERSION, self.sys_homeassistant.latest_version)
 
         await asyncio.shield(self.sys_homeassistant.update(version))
 
