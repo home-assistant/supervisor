@@ -990,7 +990,7 @@ class Addon(CoreSysAttributes):
         except DockerAPIError:
             raise AddonsError() from None
         else:
-            self._set_update(self.image_next, self.version_installed)
+            self._set_update(self.image, self.version_installed)
 
         # restore state
         if last_state == STATE_STARTED:
