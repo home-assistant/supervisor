@@ -20,3 +20,22 @@ def test_session_handling(coresys):
     coresys.ingress.sessions[session] = not_valid.timestamp()
     assert not coresys.ingress.validate_session(session)
     assert not coresys.ingress.validate_session("invalid session")
+
+
+def test_dynamic_ports(coresys):
+    """Test dyanmic port handling."""
+    port_test1 = coresys.ingress.get_dynamic_port("test1")
+
+    assert port_test1
+    assert coresys.ingress.save_data.called
+    assert port_test1 == coresys.ingress.get_dynamic_port("test1")
+
+    port_test2 = coresys.ingress.get_dynamic_port("test2")
+
+    assert port_test2
+    assert port_test2 != port_test1
+
+    assert port_test2 > 62000
+    assert port_test2 < 65500
+    assert port_test1 > 62000
+    assert port_test1 < 65500
