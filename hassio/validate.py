@@ -18,6 +18,7 @@ from .const import (
     ATTR_LAST_VERSION,
     ATTR_PASSWORD,
     ATTR_PORT,
+    ATTR_PORTS,
     ATTR_REFRESH_TOKEN,
     ATTR_SESSION,
     ATTR_SSL,
@@ -144,5 +145,10 @@ SCHEMA_AUTH_CONFIG = vol.Schema({SHA256: SHA256})
 
 SCHEMA_INGRESS_CONFIG = vol.Schema(
     {vol.Required(ATTR_SESSION, default=dict): vol.Schema({TOKEN: vol.Coerce(float)})},
+    {
+        vol.Required(ATTR_PORTS, default=dict): vol.Schema(
+            {vol.Coerce(str): NETWORK_PORT}
+        )
+    },
     extra=vol.REMOVE_EXTRA,
 )
