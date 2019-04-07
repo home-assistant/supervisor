@@ -977,8 +977,11 @@ class Addon(CoreSysAttributes):
         last_state = await self.state()
 
         if not self.need_build:
-            _LOGGER.error("Can't rebuild a none local build add-on!")
+            _LOGGER.error("Can't rebuild a image based add-on")
             raise AddonsNotSupportedError()
+        if self.version_installed != self.last_version:
+            _LOGGER.error("Version changed, use Update instead Rebuild")
+            raise AddonsError()
 
         # remove docker container but not addon config
         try:
@@ -986,6 +989,8 @@ class Addon(CoreSysAttributes):
             await self.instance.install(self.version_installed)
         except DockerAPIError:
             raise AddonsError() from None
+        else:
+            self._set_update(self.image, self.version_installed)
 
         # restore state
         if last_state == STATE_STARTED:
