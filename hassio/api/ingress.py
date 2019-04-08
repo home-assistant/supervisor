@@ -43,7 +43,7 @@ class APIIngress(CoreSysAttributes):
 
     def _create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
-        return f"{addon.ingress_internal}/{path}"
+        return f"http://{addon.ip_address}:{addon.ingress_port}/{path}"
 
     @api_process
     async def create_session(self, request: web.Request) -> Dict[str, Any]:
@@ -131,7 +131,12 @@ class APIIngress(CoreSysAttributes):
             ):
                 # Return Response
                 body = await result.read()
-                return web.Response(headers=headers, status=result.status, body=body)
+                return web.Response(
+                    headers=headers,
+                    status=result.status,
+                    content_type=result.content_type,
+                    body=body,
+                )
 
             # Stream response
             response = web.StreamResponse(status=result.status, headers=headers)
@@ -156,12 +161,7 @@ def _init_header(
 
     # filter flags
     for name, value in request.headers.items():
-        if name in (
-            hdrs.CONTENT_LENGTH,
-            hdrs.CONTENT_TYPE,
-            hdrs.CONTENT_ENCODING,
-            istr(HEADER_TOKEN),
-        ):
+        if name in (hdrs.CONTENT_LENGTH, hdrs.CONTENT_ENCODING, istr(HEADER_TOKEN)):
             continue
         headers[name] = value
 

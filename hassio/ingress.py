@@ -1,14 +1,15 @@
 """Fetch last versions from webserver."""
 from datetime import timedelta
 import logging
-from typing import Dict, Optional
+import random
 import secrets
+from typing import Dict, Optional
 
 from .addons.addon import Addon
-from .const import ATTR_SESSION, FILE_HASSIO_INGRESS
+from .const import ATTR_PORTS, ATTR_SESSION, FILE_HASSIO_INGRESS
 from .coresys import CoreSys, CoreSysAttributes
+from .utils.dt import utc_from_timestamp, utcnow
 from .utils.json import JsonConfig
-from .utils.dt import utcnow, utc_from_timestamp
 from .validate import SCHEMA_INGRESS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,6 +34,11 @@ class Ingress(JsonConfig, CoreSysAttributes):
     def sessions(self) -> Dict[str, float]:
         """Return sessions."""
         return self._data[ATTR_SESSION]
+
+    @property
+    def ports(self) -> Dict[str, int]:
+        """Return list of dynamic ports."""
+        return self._data[ATTR_PORTS]
 
     async def load(self) -> None:
         """Update internal data."""
@@ -101,3 +107,14 @@ class Ingress(JsonConfig, CoreSysAttributes):
         self.sessions[session] = valid_until.timestamp()
 
         return True
+
+    def get_dynamic_port(self, addon_slug: str) -> int:
+        """Get/Create a dynamic port from range."""
+        if addon_slug in self.ports:
+            return self.ports[addon_slug]
+        port = random.randint(62000, 65500)
+
+        # Save port for next time
+        self.ports[addon_slug] = port
+        self.save_data()
+        return port
