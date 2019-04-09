@@ -56,6 +56,7 @@ from ..const import (
     ATTR_NETWORK,
     ATTR_OPTIONS,
     ATTR_PORTS,
+    ATTR_PORTS_DESCRIPTION,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
     ATTR_REPOSITORY,
@@ -365,9 +366,14 @@ class Addon(CoreSysAttributes):
         return self._mesh.get(ATTR_DISCOVERY, [])
 
     @property
+    def ports_description(self):
+        """Return descriptions of ports."""
+        return self._mesh.get(ATTR_PORTS_DESCRIPTION)
+
+    @property
     def ports(self):
         """Return ports of add-on."""
-        if self.host_network or ATTR_PORTS not in self._mesh:
+        if ATTR_PORTS not in self._mesh:
             return None
 
         if not self.is_installed or \
@@ -380,13 +386,15 @@ class Addon(CoreSysAttributes):
         """Set custom ports of add-on."""
         if value is None:
             self._data.user[self._id].pop(ATTR_NETWORK, None)
-        else:
-            new_ports = {}
-            for container_port, host_port in value.items():
-                if container_port in self._mesh.get(ATTR_PORTS, {}):
-                    new_ports[container_port] = host_port
+            return
 
-            self._data.user[self._id][ATTR_NETWORK] = new_ports
+        # Secure map ports to value
+        new_ports = {}
+        for container_port, host_port in value.items():
+            if container_port in self._mesh.get(ATTR_PORTS, {}):
+                new_ports[container_port] = host_port
+
+        self._data.user[self._id][ATTR_NETWORK] = new_ports
 
     @property
     def ingress_url(self):

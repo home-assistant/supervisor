@@ -480,6 +480,7 @@ Get all available addons.
     "build": "bool",
     "options": "{}",
     "network": "{}|null",
+    "network_description": "{}|null",
     "host_network": "bool",
     "host_pid": "bool",
     "host_ipc": "bool",

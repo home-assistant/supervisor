@@ -147,7 +147,7 @@ class DockerAddon(DockerInterface):
     @property
     def ports(self) -> Optional[Dict[str, Union[str, int, None]]]:
         """Filter None from add-on ports."""
-        if not self.addon.ports:
+        if self.addon.host_network or not self.addon.ports:
             return None
 
         return {
