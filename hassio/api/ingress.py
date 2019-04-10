@@ -85,7 +85,17 @@ class APIIngress(CoreSysAttributes):
         self, request: web.Request, addon: Addon, path: str
     ) -> web.WebSocketResponse:
         """Ingress route for websocket."""
-        ws_server = web.WebSocketResponse()
+        if hdrs.SEC_WEBSOCKET_PROTOCOL in request.headers:
+            req_protocols = [
+                str(proto.strip())
+                for proto in request.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(",")
+            ]
+        else:
+            req_protocols = ()
+
+        ws_server = web.WebSocketResponse(
+            protocols=req_protocols, autoclose=False, autoping=False
+        )
         await ws_server.prepare(request)
 
         # Preparing
@@ -98,7 +108,11 @@ class APIIngress(CoreSysAttributes):
 
         # Start proxy
         async with self.sys_websession.ws_connect(
-            url, headers=source_header
+            url,
+            headers=source_header,
+            protocols=req_protocols,
+            autoclose=False,
+            autoping=False,
         ) as ws_client:
             # Proxy requests
             await asyncio.wait(
@@ -204,14 +218,17 @@ def _is_websocket(request: web.Request) -> bool:
 
 async def _websocket_forward(ws_from, ws_to):
     """Handle websocket message directly."""
-    async for msg in ws_from:
-        if msg.type == aiohttp.WSMsgType.TEXT:
-            await ws_to.send_str(msg.data)
-        elif msg.type == aiohttp.WSMsgType.BINARY:
-            await ws_to.send_bytes(msg.data)
-        elif msg.type == aiohttp.WSMsgType.PING:
-            await ws_to.ping()
-        elif msg.type == aiohttp.WSMsgType.PONG:
-            await ws_to.pong()
-        elif ws_to.closed:
-            await ws_to.close(code=ws_to.close_code, message=msg.extra)
+    try:
+        async for msg in ws_from:
+            if msg.type == aiohttp.WSMsgType.TEXT:
+                await ws_to.send_str(msg.data)
+            elif msg.type == aiohttp.WSMsgType.BINARY:
+                await ws_to.send_bytes(msg.data)
+            elif msg.type == aiohttp.WSMsgType.PING:
+                await ws_to.ping()
+            elif msg.type == aiohttp.WSMsgType.PONG:
+                await ws_to.pong()
+            elif ws_to.closed:
+                await ws_to.close(code=ws_to.close_code, message=msg.extra)
+    except RuntimeError:
+        _LOGGER.warning("Ingress Websocket runtime error")

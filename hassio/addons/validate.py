@@ -30,8 +30,8 @@ from ..const import (
     ATTR_GPIO,
     ATTR_HASSIO_API,
     ATTR_HASSIO_ROLE,
-    ATTR_HOMEASSISTANT_API,
     ATTR_HOMEASSISTANT,
+    ATTR_HOMEASSISTANT_API,
     ATTR_HOST_DBUS,
     ATTR_HOST_IPC,
     ATTR_HOST_NETWORK,
@@ -51,6 +51,7 @@ from ..const import (
     ATTR_NETWORK,
     ATTR_OPTIONS,
     ATTR_PORTS,
+    ATTR_PORTS_DESCRIPTION,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
     ATTR_REPOSITORY,
@@ -81,7 +82,14 @@ from ..const import (
     STATE_STOPPED,
 )
 from ..discovery.validate import valid_discovery_service
-from ..validate import ALSA_DEVICE, DOCKER_PORTS, NETWORK_PORT, TOKEN, UUID_MATCH
+from ..validate import (
+    ALSA_DEVICE,
+    DOCKER_PORTS,
+    DOCKER_PORTS_DESCRIPTION,
+    NETWORK_PORT,
+    TOKEN,
+    UUID_MATCH,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -145,6 +153,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Required(ATTR_BOOT):
         vol.In([BOOT_AUTO, BOOT_MANUAL]),
     vol.Optional(ATTR_PORTS): DOCKER_PORTS,
+    vol.Optional(ATTR_PORTS_DESCRIPTION): DOCKER_PORTS_DESCRIPTION,
     vol.Optional(ATTR_WEBUI):
         vol.Match(r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"),
     vol.Optional(ATTR_INGRESS, default=False): vol.Boolean(),
