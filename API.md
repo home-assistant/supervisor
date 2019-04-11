@@ -41,6 +41,7 @@ The addons from `addons` are only installed one.
     "arch": "armhf|aarch64|i386|amd64",
     "channel": "stable|beta|dev",
     "timezone": "TIMEZONE",
+    "logging": "debug|info|warning|error|critical",
     "ip_address": "ip address",
     "wait_boot": "int",
     "addons": [
@@ -79,6 +80,7 @@ Optional:
     "channel": "stable|beta|dev",
     "timezone": "TIMEZONE",
     "wait_boot": "int",
+    "logging": "debug|info|warning|error|critical",
     "addons_repositories": [
         "REPO_URL"
     ]
@@ -704,7 +706,8 @@ return:
     "machine": "type",
     "arch": "arch",
     "supported_arch": ["arch1", "arch2"],
-    "channel": "stable|beta|dev"
+    "channel": "stable|beta|dev",
+    "logging": "debug|info|warning|error|critical"
 }
 ```
 

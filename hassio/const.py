@@ -3,7 +3,7 @@ from pathlib import Path
 from ipaddress import ip_network
 
 
-HASSIO_VERSION = "157"
+HASSIO_VERSION = "158"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = "https://s3.amazonaws.com/hassio-version/{channel}.json"
@@ -67,6 +67,7 @@ ATTR_WAIT_BOOT = "wait_boot"
 ATTR_DEPLOYMENT = "deployment"
 ATTR_WATCHDOG = "watchdog"
 ATTR_CHANGELOG = "changelog"
+ATTR_LOGGING = "logging"
 ATTR_DATE = "date"
 ATTR_ARCH = "arch"
 ATTR_LONG_DESCRIPTION = "long_description"
