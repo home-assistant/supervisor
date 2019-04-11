@@ -16,6 +16,7 @@ from .const import (
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
     ATTR_LAST_VERSION,
+    ATTR_LOGGING,
     ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PORTS,
@@ -42,6 +43,7 @@ CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
 UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
 SHA256 = vol.Match(r"^[0-9a-f]{64}$")
 TOKEN = vol.Match(r"^[0-9a-f]{32,256}$")
+LOG_LEVEL = vol.In(["debug", "info", "warning", "error", "critical"])
 
 
 def validate_repository(repository):
@@ -117,6 +119,7 @@ SCHEMA_HASSIO_CONFIG = vol.Schema(
             default=["https://github.com/hassio-addons/repository"],
         ): REPOSITORIES,
         vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,
+        vol.Optional(ATTR_LOGGING, default="info"): LOG_LEVEL,
     },
     extra=vol.REMOVE_EXTRA,
 )
