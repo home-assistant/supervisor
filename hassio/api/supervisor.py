@@ -17,7 +17,9 @@ from ..const import (
     ATTR_DESCRIPTON,
     ATTR_ICON,
     ATTR_INSTALLED,
+    ATTR_IP_ADDRESS,
     ATTR_LAST_VERSION,
+    ATTR_LOGGING,
     ATTR_LOGO,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_USAGE,
@@ -30,14 +32,13 @@ from ..const import (
     ATTR_TIMEZONE,
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
-    ATTR_IP_ADDRESS,
     CONTENT_TYPE_BINARY,
     HASSIO_VERSION,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
-from ..validate import CHANNELS, REPOSITORIES, WAIT_BOOT
+from ..validate import CHANNELS, LOG_LEVEL, REPOSITORIES, WAIT_BOOT
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_ADDONS_REPOSITORIES): REPOSITORIES,
         vol.Optional(ATTR_TIMEZONE): validate_timezone,
         vol.Optional(ATTR_WAIT_BOOT): WAIT_BOOT,
+        vol.Optional(ATTR_LOGGING): LOG_LEVEL,
     }
 )
 
@@ -90,6 +92,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_IP_ADDRESS: str(self.sys_supervisor.ip_address),
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_TIMEZONE: self.sys_config.timezone,
+            ATTR_LOGGING: self.sys_config.logging,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
         }
@@ -107,6 +110,9 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_WAIT_BOOT in body:
             self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
+
+        if ATTR_LOGGING in body:
+            self.sys_config.logging = body[ATTR_LOGGING]
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])

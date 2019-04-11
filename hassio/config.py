@@ -8,15 +8,21 @@ from pathlib import Path, PurePath
 import pytz
 
 from .const import (
-    FILE_HASSIO_CONFIG, HASSIO_DATA, ATTR_TIMEZONE, ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_LAST_BOOT, ATTR_WAIT_BOOT)
+    FILE_HASSIO_CONFIG,
+    HASSIO_DATA,
+    ATTR_TIMEZONE,
+    ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_LAST_BOOT,
+    ATTR_WAIT_BOOT,
+    ATTR_LOGGING,
+)
 from .utils.dt import parse_datetime
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASSIO_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
-HOMEASSISTANT_CONFIG = PurePath('homeassistant')
+HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 
 HASSIO_SSL = PurePath("ssl")
 
@@ -45,7 +51,7 @@ class CoreConfig(JsonConfig):
     @property
     def timezone(self):
         """Return system timezone."""
-        config_file = Path(self.path_homeassistant, 'configuration.yaml')
+        config_file = Path(self.path_homeassistant, "configuration.yaml")
         try:
             assert config_file.exists()
             configuration = config_file.read_text()
@@ -53,7 +59,7 @@ class CoreConfig(JsonConfig):
             data = RE_TIMEZONE.search(configuration)
             assert data
 
-            timezone = data.group('timezone')
+            timezone = data.group("timezone")
             pytz.timezone(timezone)
         except (pytz.exceptions.UnknownTimeZoneError, OSError, AssertionError):
             _LOGGER.debug("Can't parse Home Assistant timezone")
@@ -67,14 +73,24 @@ class CoreConfig(JsonConfig):
         self._data[ATTR_TIMEZONE] = value
 
     @property
-    def wait_boot(self):
+    def wait_boot(self) -> int:
         """Return wait time for auto boot stages."""
         return self._data[ATTR_WAIT_BOOT]
 
     @wait_boot.setter
-    def wait_boot(self, value):
+    def wait_boot(self, value: int):
         """Set wait boot time."""
         self._data[ATTR_WAIT_BOOT] = value
+
+    @property
+    def logging(self) -> str:
+        """Return log level of system."""
+        return self._data[ATTR_LOGGING]
+
+    @logging.setter
+    def logging(self, value: str):
+        """Set system log level."""
+        self._data[ATTR_LOGGING] = value
 
     @property
     def last_boot(self):
@@ -99,7 +115,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_extern_hassio(self):
         """Return Hass.io data path external for Docker."""
-        return PurePath(os.environ['SUPERVISOR_SHARE'])
+        return PurePath(os.environ["SUPERVISOR_SHARE"])
 
     @property
     def path_extern_homeassistant(self):
