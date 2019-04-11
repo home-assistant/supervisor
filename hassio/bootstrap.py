@@ -121,7 +121,7 @@ def initialize_system_data(coresys):
         config.path_apparmor.mkdir()
 
     # Update log level
-    coresys.config.update_log_level()
+    coresys.config.modify_log_level()
 
 
 def migrate_system_env(coresys):
