@@ -91,6 +91,12 @@ class CoreConfig(JsonConfig):
     def logging(self, value: str):
         """Set system log level."""
         self._data[ATTR_LOGGING] = value
+        self.change_log_level()
+
+    def change_log_level(self) -> None:
+        """Change log level."""
+        lvl = getattr(logging, self.logging.upper())
+        logging.basicConfig(level=lvl)
 
     @property
     def last_boot(self):

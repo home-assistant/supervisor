@@ -120,7 +120,8 @@ def initialize_system_data(coresys):
         _LOGGER.info("Create Hass.io Apparmor folder %s", config.path_apparmor)
         config.path_apparmor.mkdir()
 
-    return config
+    # Update log level
+    coresys.config.update_log_level()
 
 
 def migrate_system_env(coresys):
