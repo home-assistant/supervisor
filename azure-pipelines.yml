@@ -12,7 +12,8 @@ pr:
 
 jobs:
 
-- job: "Tox"
+- job: 'Tox'
+  condition: startsWith(variables['Build.SourceBranch'], '/refs/heads')
 
   pool:
     vmImage: 'ubuntu-16.04'
@@ -30,7 +31,8 @@ jobs:
     displayName: 'Run Tox'
 
 
-- job: "JQ"
+- job: 'JQ'
+  condition: startsWith(variables['Build.SourceBranch'], '/refs/heads')
 
   pool:
     vmImage: 'ubuntu-16.04'
