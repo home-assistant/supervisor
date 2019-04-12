@@ -1,7 +1,4 @@
-# Python package
-# Create and test a Python package on multiple Python versions.
-# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+# https://dev.azure.com/home-assistant
 
 trigger:
 - master
@@ -14,34 +11,55 @@ jobs:
 
 - job: 'Tox'
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads')
-
   pool:
     vmImage: 'ubuntu-16.04'
-
   steps:
   - task: UsePythonVersion@0
     displayName: 'Use Python $(python.version)'
     inputs:
       versionSpec: '3.7'
-
   - script: pip install tox
     displayName: 'Install Tox'
-
   - script: tox
     displayName: 'Run Tox'
 
 
 - job: 'JQ'
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads')
-
   pool:
     vmImage: 'ubuntu-16.04'
-
   steps:
   - script: sudo apt-get install -y jq
     displayName: 'Install JQ'
-
   - bash: |
       shopt -s globstar
       cat **/*.json | jq '.'
     displayName: 'Run JQ'
+
+
+- job: 'Release'
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
+  pool:
+    vmImage: 'ubuntu-16.04'
+  strategy:
+    maxParallel: 4
+    matrix:
+      amd64:
+        buildArch: 'amd64'
+      i386:
+        buildArch: 'i386'
+      armhf:
+        buildArch: 'armhf'
+      armv7:
+        buildArch: 'armv7'
+      aarch64:
+        buildArch: 'aarch64'
+  steps:
+  - script: sudo docker pull homeassistant/amd64-builder
+    displayName: 'Install Builder'
+  - script: |
+      sudo docker run --rm --privileged \
+        -v ~/.docker:/root/.docker -v $(pwd):/data \
+        homeassistant/amd64-builder --supervisor "--$(buildArch)" \
+        -t /data --docker-hub homeassistant
+    displayName: 'Run build'
