@@ -58,7 +58,7 @@ jobs:
 
 
 - job: 'ReleaseDEV'
-  condition: eq(variables['Build.SourceBranchName'], 'dev')
+  condition: and(eq(variables['Build.SourceBranchName'], 'dev'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'))
   dependsOn:
   - 'JQ'
   - 'Tox'
@@ -93,7 +93,7 @@ jobs:
 
 
 - job: 'Release'
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
+  condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'))
   dependsOn:
   - 'JQ'
   - 'Tox'
