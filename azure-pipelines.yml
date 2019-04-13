@@ -43,11 +43,26 @@ jobs:
     displayName: 'Run JQ'
 
 
+- job: 'Hadolint'
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads')
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - script: sudo docker pull hadolint/hadolint:v1.16.3
+    displayName: 'Install Hadolint'
+  - script: |
+      sudo docker run --rm -i \
+        -v $(pwd)/.hadolint.yaml:/.hadolint.yaml:ro \
+        hadolint/hadolint:v1.16.3 < Dockerfile
+    displayName: 'Run Hadolint'
+
+
 - job: 'ReleaseDEV'
   condition: eq(variables['Build.SourceBranchName'], 'dev')
   dependsOn:
   - 'JQ'
   - 'Tox'
+  - 'Hadolint'
   pool:
     vmImage: 'ubuntu-16.04'
   strategy:
@@ -82,6 +97,7 @@ jobs:
   dependsOn:
   - 'JQ'
   - 'Tox'
+  - 'Hadolint'
   pool:
     vmImage: 'ubuntu-16.04'
   strategy:
