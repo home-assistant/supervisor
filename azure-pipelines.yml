@@ -70,6 +70,7 @@ jobs:
     displayName: 'Install Builder'
   - script: |
       sudo docker run --rm --privileged \
+        -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
         homeassistant/amd64-builder --supervisor "--$(buildArch)" \
         -t /data --version dev --docker-hub homeassistant
@@ -84,7 +85,7 @@ jobs:
   pool:
     vmImage: 'ubuntu-16.04'
   strategy:
-    maxParallel: 4
+    maxParallel: 5
     matrix:
       amd64:
         buildArch: 'amd64'
@@ -103,6 +104,7 @@ jobs:
     displayName: 'Install Builder'
   - script: |
       sudo docker run --rm --privileged \
+        -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
         homeassistant/amd64-builder --supervisor "--$(buildArch)" \
         -t /data --docker-hub homeassistant
