@@ -64,7 +64,7 @@ jobs:
       aarch64:
         buildArch: 'aarch64'
   steps:
-  - script: sudo docker logn -u -p
+  - script: sudo docker logn -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
   - script: sudo docker pull homeassistant/amd64-builder
     displayName: 'Install Builder'
@@ -97,11 +97,13 @@ jobs:
       aarch64:
         buildArch: 'aarch64'
   steps:
+  - script: sudo docker logn -u $(dockerUser) -p $(dockerPassword)
+    displayName: 'Docker hub login'
   - script: sudo docker pull homeassistant/amd64-builder
     displayName: 'Install Builder'
   - script: |
       sudo docker run --rm --privileged \
-        -v ~/.docker:/root/.docker -v $(pwd):/data \
+        -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
         homeassistant/amd64-builder --supervisor "--$(buildArch)" \
         -t /data --docker-hub homeassistant
     displayName: 'Build Release'
