@@ -64,7 +64,7 @@ jobs:
       aarch64:
         buildArch: 'aarch64'
   steps:
-  - script: sudo docker logn -u $(dockerUser) -p $(dockerPassword)
+  - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
   - script: sudo docker pull homeassistant/amd64-builder
     displayName: 'Install Builder'
@@ -97,7 +97,7 @@ jobs:
       aarch64:
         buildArch: 'aarch64'
   steps:
-  - script: sudo docker logn -u $(dockerUser) -p $(dockerPassword)
+  - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
   - script: sudo docker pull homeassistant/amd64-builder
     displayName: 'Install Builder'
