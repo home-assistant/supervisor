@@ -45,6 +45,9 @@ jobs:
 
 - job: 'ReleaseDEV'
   condition: eq(variables['Build.SourceBranchName'], 'dev')
+  dependsOn:
+  - 'JQ'
+  - 'Tox'
   pool:
     vmImage: 'ubuntu-16.04'
   strategy:
@@ -61,11 +64,13 @@ jobs:
       aarch64:
         buildArch: 'aarch64'
   steps:
+  - script: sudo docker logn -u -p
+    displayName: 'Docker hub login'
   - script: sudo docker pull homeassistant/amd64-builder
     displayName: 'Install Builder'
   - script: |
       sudo docker run --rm --privileged \
-        -v ~/.docker:/root/.docker -v $(pwd):/data \
+        -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
         homeassistant/amd64-builder --supervisor "--$(buildArch)" \
         -t /data --version dev --docker-hub homeassistant
     displayName: 'Build DEV'
@@ -73,6 +78,9 @@ jobs:
 
 - job: 'Release'
   condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
+  dependsOn:
+  - 'JQ'
+  - 'Tox'
   pool:
     vmImage: 'ubuntu-16.04'
   strategy:
