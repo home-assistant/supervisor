@@ -1,10 +1,15 @@
 # https://dev.azure.com/home-assistant
 
 trigger:
-- master
-- dev
-- releases/*
-
+  branches:
+    include:
+    - master
+    - dev
+  tags:
+    include:
+    - '*'
+    exclude:
+    - untagged*
 pr:
 - dev
 
@@ -38,6 +43,34 @@ jobs:
     displayName: 'Run JQ'
 
 
+- job: 'ReleaseDEV'
+  condition: eq(variables['Build.SourceBranchName'], 'dev')
+  pool:
+    vmImage: 'ubuntu-16.04'
+  strategy:
+    maxParallel: 2
+    matrix:
+      amd64:
+        buildArch: 'amd64'
+      i386:
+        buildArch: 'i386'
+      armhf:
+        buildArch: 'armhf'
+      armv7:
+        buildArch: 'armv7'
+      aarch64:
+        buildArch: 'aarch64'
+  steps:
+  - script: sudo docker pull homeassistant/amd64-builder
+    displayName: 'Install Builder'
+  - script: |
+      sudo docker run --rm --privileged \
+        -v ~/.docker:/root/.docker -v $(pwd):/data \
+        homeassistant/amd64-builder --supervisor "--$(buildArch)" \
+        -t /data --version dev --docker-hub homeassistant
+    displayName: 'Build DEV'
+
+
 - job: 'Release'
   condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
   pool:
@@ -63,4 +96,4 @@ jobs:
         -v ~/.docker:/root/.docker -v $(pwd):/data \
         homeassistant/amd64-builder --supervisor "--$(buildArch)" \
         -t /data --docker-hub homeassistant
-    displayName: 'Run build'
+    displayName: 'Build Release'
