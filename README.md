@@ -1,3 +1,5 @@
+[![Build Status](https://dev.azure.com/home-assistant/Home%20Assistant/_apis/build/status/home-assistant.hassio?branchName=dev)](https://dev.azure.com/home-assistant/Home%20Assistant/_build/latest?definitionId=2&branchName=dev)
+
 # Hass.io
 
 ## First private cloud solution for home automation

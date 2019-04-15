@@ -1,45 +1,130 @@
-# Python package
-# Create and test a Python package on multiple Python versions.
-# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+# https://dev.azure.com/home-assistant
 
 trigger:
-- master
-- dev
-
+  branches:
+    include:
+    - master
+    - dev
+  tags:
+    include:
+    - '*'
+    exclude:
+    - untagged*
 pr:
 - dev
 
+variables:
+  versionHadolint: v1.16.3
+  versionBuilder: 1.1
+
 jobs:
 
-- job: "Tox"
-
+- job: 'Tox'
   pool:
     vmImage: 'ubuntu-16.04'
-
   steps:
   - task: UsePythonVersion@0
     displayName: 'Use Python $(python.version)'
     inputs:
       versionSpec: '3.7'
-
   - script: pip install tox
     displayName: 'Install Tox'
-
   - script: tox
     displayName: 'Run Tox'
 
 
-- job: "JQ"
-
+- job: 'JQ'
   pool:
     vmImage: 'ubuntu-16.04'
-
   steps:
   - script: sudo apt-get install -y jq
     displayName: 'Install JQ'
-
   - bash: |
       shopt -s globstar
       cat **/*.json | jq '.'
     displayName: 'Run JQ'
+
+
+- job: 'Hadolint'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - script: sudo docker pull hadolint/hadolint:$(versionHadolint)
+    displayName: 'Install Hadolint'
+  - script: |
+      sudo docker run --rm -i \
+        -v $(pwd)/.hadolint.yaml:/.hadolint.yaml:ro \
+        hadolint/hadolint:$(versionHadolint) < Dockerfile
+    displayName: 'Run Hadolint'
+
+
+- job: 'ReleaseDEV'
+  condition: and(eq(variables['Build.SourceBranchName'], 'dev'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'))
+  dependsOn:
+  - 'JQ'
+  - 'Tox'
+  - 'Hadolint'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  strategy:
+    maxParallel: 2
+    matrix:
+      amd64:
+        buildArch: 'amd64'
+      i386:
+        buildArch: 'i386'
+      armhf:
+        buildArch: 'armhf'
+      armv7:
+        buildArch: 'armv7'
+      aarch64:
+        buildArch: 'aarch64'
+  steps:
+  - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
+    displayName: 'Docker hub login'
+  - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
+    displayName: 'Install Builder'
+  - script: |
+      sudo docker run --rm --privileged \
+        -v ~/.docker:/root/.docker \
+        -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
+        homeassistant/amd64-builder:$(versionBuilder) \
+        --supervisor "--$(buildArch)" \
+        -t /data --version dev --docker-hub homeassistant
+    displayName: 'Build DEV'
+
+
+- job: 'Release'
+  condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'))
+  dependsOn:
+  - 'JQ'
+  - 'Tox'
+  - 'Hadolint'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  strategy:
+    maxParallel: 5
+    matrix:
+      amd64:
+        buildArch: 'amd64'
+      i386:
+        buildArch: 'i386'
+      armhf:
+        buildArch: 'armhf'
+      armv7:
+        buildArch: 'armv7'
+      aarch64:
+        buildArch: 'aarch64'
+  steps:
+  - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
+    displayName: 'Docker hub login'
+  - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
+    displayName: 'Install Builder'
+  - script: |
+      sudo docker run --rm --privileged \
+        -v ~/.docker:/root/.docker \
+        -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
+        homeassistant/amd64-builder:$(versionBuilder) \
+        --supervisor "--$(buildArch)" \
+        -t /data --docker-hub homeassistant
+    displayName: 'Build Release'
