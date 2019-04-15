@@ -13,6 +13,10 @@ trigger:
 pr:
 - dev
 
+variables:
+  versionHadolint: v1.16.3
+  versionBuilder: 1.1
+
 jobs:
 
 - job: 'Tox'
@@ -45,12 +49,12 @@ jobs:
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
-  - script: sudo docker pull hadolint/hadolint:v1.16.3
+  - script: sudo docker pull hadolint/hadolint:$(versionHadolint)
     displayName: 'Install Hadolint'
   - script: |
       sudo docker run --rm -i \
         -v $(pwd)/.hadolint.yaml:/.hadolint.yaml:ro \
-        hadolint/hadolint:v1.16.3 < Dockerfile
+        hadolint/hadolint:$(versionHadolint) < Dockerfile
     displayName: 'Run Hadolint'
 
 
@@ -78,13 +82,14 @@ jobs:
   steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
-  - script: sudo docker pull homeassistant/amd64-builder
+  - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
     displayName: 'Install Builder'
   - script: |
       sudo docker run --rm --privileged \
         -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
-        homeassistant/amd64-builder --supervisor "--$(buildArch)" \
+        homeassistant/amd64-builder:$(versionBuilder) \
+        --supervisor "--$(buildArch)" \
         -t /data --version dev --docker-hub homeassistant
     displayName: 'Build DEV'
 
@@ -113,12 +118,13 @@ jobs:
   steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
-  - script: sudo docker pull homeassistant/amd64-builder
+  - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
     displayName: 'Install Builder'
   - script: |
       sudo docker run --rm --privileged \
         -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
-        homeassistant/amd64-builder --supervisor "--$(buildArch)" \
+        homeassistant/amd64-builder:$(versionBuilder) \
+        --supervisor "--$(buildArch)" \
         -t /data --docker-hub homeassistant
     displayName: 'Build Release'
