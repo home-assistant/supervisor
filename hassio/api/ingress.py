@@ -209,7 +209,7 @@ def _is_websocket(request: web.Request) -> bool:
     headers = request.headers
 
     if (
-        headers.get(hdrs.CONNECTION, "").lower() == "upgrade"
+        "upgrade" in headers.get(hdrs.CONNECTION, "").lower()
         and headers.get(hdrs.UPGRADE, "").lower() == "websocket"
     ):
         return True
