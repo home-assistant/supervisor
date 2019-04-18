@@ -561,8 +561,8 @@ class Addon(CoreSysAttributes):
     def with_ingress_panel(self):
         """Return True if the add-on access support ingress."""
         if self.is_installed:
-            return self._data.user[self._id].get(ATTR_INGRESS_PANEL)
-        return False
+            return self._data.user[self._id][ATTR_INGRESS_PANEL]
+        return None
 
     @property
     def with_gpio(self):
