@@ -602,6 +602,23 @@ Create a new Session for access to ingress service.
 }
 ```
 
+- GET `/ingress/panels`
+
+Return a list of enabled panels.
+
+```json
+{
+    "panels": {
+        "addon_slug": {
+            "enable": "boolean",
+            "icon": "mdi:...",
+            "title": "title",
+            "admin": "boolean"
+        }
+    }
+}
+```
+
 - VIEW `/ingress/{token}`
 
 Ingress WebUI for this Add-on. The addon need support HASS Auth!

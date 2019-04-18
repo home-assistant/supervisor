@@ -14,7 +14,16 @@ from aiohttp.web_exceptions import (
 from multidict import CIMultiDict, istr
 
 from ..addons.addon import Addon
-from ..const import ATTR_SESSION, HEADER_TOKEN, REQUEST_FROM, COOKIE_INGRESS
+from ..const import (
+    ATTR_ADMIN,
+    ATTR_ICON,
+    ATTR_SESSION,
+    ATTR_TITLE,
+    ATTR_PANELS,
+    COOKIE_INGRESS,
+    HEADER_TOKEN,
+    REQUEST_FROM,
+)
 from ..coresys import CoreSysAttributes
 from .utils import api_process
 
@@ -44,6 +53,19 @@ class APIIngress(CoreSysAttributes):
     def _create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
         return f"http://{addon.ip_address}:{addon.ingress_port}/{path}"
+
+    @api_process
+    async def panels(self, request: web.Request) -> Dict[str, Any]:
+        """Create a list of panel data."""
+        addons = {}
+        for addon in self.sys_ingress.addons:
+            addons[addon.slug] = {
+                ATTR_TITLE: addon.ingress_title,
+                ATTR_ICON: addon.ingress_icon,
+                ATTR_ADMIN: addon.ingress_admin,
+            }
+
+        return {ATTR_PANELS: addons}
 
     @api_process
     async def create_session(self, request: web.Request) -> Dict[str, Any]:

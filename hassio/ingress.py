@@ -3,7 +3,7 @@ from datetime import timedelta
 import logging
 import random
 import secrets
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from .addons.addon import Addon
 from .const import ATTR_PORTS, ATTR_SESSION, FILE_HASSIO_INGRESS
@@ -39,6 +39,16 @@ class Ingress(JsonConfig, CoreSysAttributes):
     def ports(self) -> Dict[str, int]:
         """Return list of dynamic ports."""
         return self._data[ATTR_PORTS]
+
+    @property
+    def addons(self) -> List[Addon]:
+        """Return list of ingress Add-ons."""
+        addons = []
+        for addon in self.sys_addons.list_installed:
+            if not addon.with_ingress:
+                continue
+            addons.append(addon)
+        return addons
 
     async def load(self) -> None:
         """Update internal data."""
@@ -77,9 +87,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
         self.tokens.clear()
 
         # Read all ingress token and build a map
-        for addon in self.sys_addons.list_installed:
-            if not addon.with_ingress:
-                continue
+        for addon in self.addons:
             self.tokens[addon.ingress_token] = addon.slug
 
     def create_session(self) -> str:
