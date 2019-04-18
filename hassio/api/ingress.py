@@ -64,7 +64,7 @@ class APIIngress(CoreSysAttributes):
                 ATTR_TITLE: addon.ingress_title,
                 ATTR_ICON: addon.ingress_icon,
                 ATTR_ADMIN: addon.ingress_admin,
-                ATTR_ENABLE: addon.with_ingress_panel,
+                ATTR_ENABLE: addon.ingress_panel,
             }
 
         return {ATTR_PANELS: addons}

@@ -558,11 +558,16 @@ class Addon(CoreSysAttributes):
         return self._mesh[ATTR_INGRESS]
 
     @property
-    def with_ingress_panel(self):
+    def ingress_panel(self) -> Optional[bool]:
         """Return True if the add-on access support ingress."""
         if self.is_installed:
             return self._data.user[self._id][ATTR_INGRESS_PANEL]
         return None
+
+    @ingress_panel.setter
+    def ingress_panel(self, value: bool):
+        """Return True if the add-on access support ingress."""
+        self._data.user[self._id][ATTR_INGRESS_PANEL] = value
 
     @property
     def with_gpio(self):

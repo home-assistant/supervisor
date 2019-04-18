@@ -101,6 +101,7 @@ SCHEMA_OPTIONS = vol.Schema({
     vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
+    vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
 })
 
 # pylint: disable=no-value-for-parameter
@@ -228,7 +229,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_INGRESS_ENTRY: addon.ingress_entry,
             ATTR_INGRESS_URL: addon.ingress_url,
             ATTR_INGRESS_PORT: addon.ingress_port,
-            ATTR_INGRESS_PANEL: addon.with_ingress_panel,
+            ATTR_INGRESS_PANEL: addon.ingress_panel,
         }
 
     @api_process
@@ -253,6 +254,8 @@ class APIAddons(CoreSysAttributes):
             addon.audio_input = body[ATTR_AUDIO_INPUT]
         if ATTR_AUDIO_OUTPUT in body:
             addon.audio_output = body[ATTR_AUDIO_OUTPUT]
+        if ATTR_INGRESS_PANEL in body:
+            addon.ingress_panel = body[ATTR_INGRESS_PANEL]
 
         addon.save_data()
 
