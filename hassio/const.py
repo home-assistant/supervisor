@@ -207,6 +207,7 @@ ATTR_ENABLE = "enable"
 ATTR_IP_ADDRESS = "ip_address"
 ATTR_SESSION = "session"
 ATTR_ADMIN = "admin"
+ATTR_PANELS = "panels"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
