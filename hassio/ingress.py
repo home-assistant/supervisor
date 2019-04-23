@@ -3,7 +3,7 @@ from datetime import timedelta
 import logging
 import random
 import secrets
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 from .addons.addon import Addon
 from .const import ATTR_PORTS, ATTR_SESSION, FILE_HASSIO_INGRESS
@@ -126,3 +126,12 @@ class Ingress(JsonConfig, CoreSysAttributes):
         self.ports[addon_slug] = port
         self.save_data()
         return port
+
+    async def update_hass_panel(self, addon: Addon):
+        """Return True if Home Assistant up and running."""
+        method = "get" if addon.ingress_panel else "delete"
+        async with self.sys_homeassistant.make_request(method, f"api/hassio_push/{addon.slug}") as resp:
+            if resp.status in (200, 201):
+                _LOGGER.info("Update Ingress as panel for %s", addon.slug)
+            else:
+                _LOGGER.warning("Fails Ingress panel for %s", addon.slug)

@@ -256,6 +256,7 @@ class APIAddons(CoreSysAttributes):
             addon.audio_output = body[ATTR_AUDIO_OUTPUT]
         if ATTR_INGRESS_PANEL in body:
             addon.ingress_panel = body[ATTR_INGRESS_PANEL]
+            await self.sys_ingress.update_hass_panel(addon)
 
         addon.save_data()
 
