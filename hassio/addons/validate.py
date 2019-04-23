@@ -41,6 +41,10 @@ from ..const import (
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PORT,
     ATTR_INGRESS_TOKEN,
+    ATTR_INGRESS_PANEL,
+    ATTR_INGRESS_PANEL_ADMIN,
+    ATTR_INGRESS_PANEL_ICON,
+    ATTR_INGRESS_PANEL_TITLE,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -159,6 +163,9 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
     vol.Optional(ATTR_INGRESS, default=False): vol.Boolean(),
     vol.Optional(ATTR_INGRESS_PORT, default=8099): vol.Any(NETWORK_PORT, vol.Equal(0)),
     vol.Optional(ATTR_INGRESS_ENTRY): vol.Coerce(str),
+    vol.Optional(ATTR_INGRESS_PANEL_ICON, default="mdi:puzzle"): vol.Coerce(str),
+    vol.Optional(ATTR_INGRESS_PANEL_TITLE): vol.Coerce(str),
+    vol.Optional(ATTR_INGRESS_PANEL_ADMIN, default=True): vol.Boolean(),
     vol.Optional(ATTR_HOMEASSISTANT): vol.Maybe(vol.Coerce(str)),
     vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
     vol.Optional(ATTR_HOST_PID, default=False): vol.Boolean(),
@@ -239,6 +246,7 @@ SCHEMA_ADDON_USER = vol.Schema({
     vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
     vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
     vol.Optional(ATTR_PROTECTED, default=True): vol.Boolean(),
+    vol.Optional(ATTR_INGRESS_PANEL, default=False): vol.Boolean(),
 }, extra=vol.REMOVE_EXTRA)
 
 

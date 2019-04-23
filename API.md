@@ -516,7 +516,8 @@ Get all available addons.
     "ingress": "bool",
     "ingress_entry": "null|/api/hassio_ingress/slug",
     "ingress_url": "null|/api/hassio_ingress/slug/entry.html",
-    "ingress_port": "null|int"
+    "ingress_port": "null|int",
+    "ingress_panel": "null|bool"
 }
 ```
 
@@ -537,7 +538,8 @@ Get all available addons.
     },
     "options": {},
     "audio_output": "null|0,0",
-    "audio_input": "null|0,0"
+    "audio_input": "null|0,0",
+    "ingress_panel": "bool"
 }
 ```
 
@@ -599,6 +601,23 @@ Create a new Session for access to ingress service.
 ```json
 {
     "session": "token"
+}
+```
+
+- GET `/ingress/panels`
+
+Return a list of enabled panels.
+
+```json
+{
+    "panels": {
+        "addon_slug": {
+            "enable": "boolean",
+            "icon": "mdi:...",
+            "title": "title",
+            "admin": "boolean"
+        }
+    }
 }
 ```
 

@@ -3,7 +3,7 @@ from pathlib import Path
 from ipaddress import ip_network
 
 
-HASSIO_VERSION = "160"
+HASSIO_VERSION = "161"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = "https://s3.amazonaws.com/hassio-version/{channel}.json"
@@ -198,8 +198,16 @@ ATTR_INGRESS_PORT = "ingress_port"
 ATTR_INGRESS_ENTRY = "ingress_entry"
 ATTR_INGRESS_TOKEN = "ingress_token"
 ATTR_INGRESS_URL = "ingress_url"
+ATTR_INGRESS_PANEL = "ingress_panel"
+ATTR_INGRESS_PANEL_ICON = "ingress_panel_icon"
+ATTR_INGRESS_PANEL_TITLE = "ingress_panel_title"
+ATTR_INGRESS_PANEL_ADMIN = "ingress_panel_admin"
+ATTR_TITLE = "title"
+ATTR_ENABLE = "enable"
 ATTR_IP_ADDRESS = "ip_address"
 ATTR_SESSION = "session"
+ATTR_ADMIN = "admin"
+ATTR_PANELS = "panels"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
