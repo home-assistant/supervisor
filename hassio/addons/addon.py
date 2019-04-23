@@ -47,6 +47,10 @@ from ..const import (
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PORT,
     ATTR_INGRESS_TOKEN,
+    ATTR_INGRESS_PANEL,
+    ATTR_INGRESS_PANEL_ADMIN,
+    ATTR_INGRESS_PANEL_ICON,
+    ATTR_INGRESS_PANEL_TITLE,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -450,6 +454,21 @@ class Addon(CoreSysAttributes):
         return port
 
     @property
+    def ingress_icon(self) -> str:
+        """Return panel icon for Ingress frame."""
+        return self._mesh[ATTR_INGRESS_PANEL_ICON]
+
+    @property
+    def ingress_title(self) -> str:
+        """Return panel icon for Ingress frame."""
+        return self._mesh.get(ATTR_INGRESS_PANEL_TITLE, self.name)
+
+    @property
+    def ingress_admin(self) -> str:
+        """Return panel icon for Ingress frame."""
+        return self._mesh[ATTR_INGRESS_PANEL_ADMIN]
+
+    @property
     def host_network(self):
         """Return True if add-on run on host network."""
         return self._mesh[ATTR_HOST_NETWORK]
@@ -537,6 +556,18 @@ class Addon(CoreSysAttributes):
     def with_ingress(self):
         """Return True if the add-on access support ingress."""
         return self._mesh[ATTR_INGRESS]
+
+    @property
+    def ingress_panel(self) -> Optional[bool]:
+        """Return True if the add-on access support ingress."""
+        if self.is_installed:
+            return self._data.user[self._id][ATTR_INGRESS_PANEL]
+        return None
+
+    @ingress_panel.setter
+    def ingress_panel(self, value: bool):
+        """Return True if the add-on access support ingress."""
+        self._data.user[self._id][ATTR_INGRESS_PANEL] = value
 
     @property
     def with_gpio(self):
