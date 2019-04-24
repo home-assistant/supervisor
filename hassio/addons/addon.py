@@ -48,9 +48,9 @@ from ..const import (
     ATTR_INGRESS_PORT,
     ATTR_INGRESS_TOKEN,
     ATTR_INGRESS_PANEL,
-    ATTR_INGRESS_PANEL_ADMIN,
-    ATTR_INGRESS_PANEL_ICON,
-    ATTR_INGRESS_PANEL_TITLE,
+    ATTR_PANEL_ADMIN,
+    ATTR_PANEL_ICON,
+    ATTR_PANEL_TITLE,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -454,19 +454,19 @@ class Addon(CoreSysAttributes):
         return port
 
     @property
-    def ingress_icon(self) -> str:
+    def panel_icon(self) -> str:
         """Return panel icon for Ingress frame."""
-        return self._mesh[ATTR_INGRESS_PANEL_ICON]
+        return self._mesh[ATTR_PANEL_ICON]
 
     @property
-    def ingress_title(self) -> str:
+    def panel_title(self) -> str:
         """Return panel icon for Ingress frame."""
-        return self._mesh.get(ATTR_INGRESS_PANEL_TITLE, self.name)
+        return self._mesh.get(ATTR_PANEL_TITLE, self.name)
 
     @property
-    def ingress_admin(self) -> str:
+    def panel_admin(self) -> str:
         """Return panel icon for Ingress frame."""
-        return self._mesh[ATTR_INGRESS_PANEL_ADMIN]
+        return self._mesh[ATTR_PANEL_ADMIN]
 
     @property
     def host_network(self):
