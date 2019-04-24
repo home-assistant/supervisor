@@ -78,6 +78,7 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         image = image or self.image
+        image = image.partition(':')[0]  # remove potential tag
 
         try:
             _LOGGER.info("Pull image %s tag %s.", image, tag)

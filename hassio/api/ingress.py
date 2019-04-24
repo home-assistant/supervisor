@@ -61,9 +61,9 @@ class APIIngress(CoreSysAttributes):
         addons = {}
         for addon in self.sys_ingress.addons:
             addons[addon.slug] = {
-                ATTR_TITLE: addon.ingress_title,
-                ATTR_ICON: addon.ingress_icon,
-                ATTR_ADMIN: addon.ingress_admin,
+                ATTR_TITLE: addon.panel_title,
+                ATTR_ICON: addon.panel_icon,
+                ATTR_ADMIN: addon.panel_admin,
                 ATTR_ENABLE: addon.ingress_panel,
             }
 
