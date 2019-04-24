@@ -20,9 +20,9 @@ Installation instructions can be found at <https://home-assistant.io/hassio>.
 
 The development of the supervisor is a bit tricky. Not difficult but tricky.
 
-- You can use the builder to build your supervisor: https://github.com/home-assistant/hassio-build/tree/master/builder
+- You can use the builder to build your supervisor: https://github.com/home-assistant/hassio-builder
 - Go into a HassOS device or VM and pull your supervisor.
-- Set the developer modus on updater.json
+- Set the developer modus with cli `hassio supervisor options --channel=dev`
 - Tag it as `homeassistant/xy-hassio-supervisor:latest`
 - Restart the service like `systemctl restart hassos-supervisor | journalctl -fu hassos-supervisor`
 - Test your changes
