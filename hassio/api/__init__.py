@@ -246,29 +246,6 @@ class RestAPI(CoreSysAttributes):
     def _register_panel(self) -> None:
         """Register panel for Home Assistant."""
         panel_dir = Path(__file__).parent.joinpath("panel")
-
-        def create_response(panel_file):
-            """Create a function to generate a response."""
-            path = panel_dir.joinpath(f"{panel_file!s}.html")
-            return lambda request: web.FileResponse(path)
-
-        # This route is for backwards compatibility with HA < 0.58
-        self.webapp.add_routes(
-            [web.get('/panel', create_response('hassio-main-es5'))])
-
-        # This route is for backwards compatibility with HA 0.58 - 0.61
-        self.webapp.add_routes([
-            web.get('/panel_es5', create_response('hassio-main-es5')),
-            web.get('/panel_latest', create_response('hassio-main-latest')),
-        ])
-
-        # This route is for backwards compatibility with HA 0.62 - 0.70
-        self.webapp.add_routes([
-            web.get('/app-es5/index.html', create_response('index')),
-            web.get('/app-es5/hassio-app.html', create_response('hassio-app')),
-        ])
-
-        # This route is for HA > 0.70
         self.webapp.add_routes([web.static('/app', panel_dir)])
 
     async def start(self) -> None:
