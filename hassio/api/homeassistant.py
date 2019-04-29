@@ -106,6 +106,7 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_REFRESH_TOKEN in body:
             self.sys_homeassistant.refresh_token = body[ATTR_REFRESH_TOKEN]
+            self.sys_homeassistant.api_password = None
 
         self.sys_homeassistant.save_data()
 
