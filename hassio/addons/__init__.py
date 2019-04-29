@@ -1,117 +1,62 @@
 """Init file for Hass.io add-ons."""
 import asyncio
 import logging
+from typing import Dict, List, Optional
 
 from .addon import Addon
-from .repository import Repository
 from .data import AddonsData
-from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, BOOT_AUTO, STATE_STARTED
-from ..coresys import CoreSysAttributes
+from ..const import BOOT_AUTO, STATE_STARTED
+from ..coresys import CoreSys, CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
-
-BUILTIN_REPOSITORIES = set((REPOSITORY_CORE, REPOSITORY_LOCAL))
 
 
 class AddonManager(CoreSysAttributes):
     """Manage add-ons inside Hass.io."""
 
-    def __init__(self, coresys):
+    def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
-        self.coresys = coresys
-        self.data = AddonsData(coresys)
-        self.addons_obj = {}
-        self.repositories_obj = {}
+        self.coresys: CoreSys = coresys
+        self.data: AddonsData = AddonsData(coresys)
+        self.addons: Dict[str, Addon] = {}
 
     @property
-    def list_addons(self):
-        """Return a list of all add-ons."""
-        return list(self.addons_obj.values())
+    def all(self) -> List[Addon]:
+        """Return a list of all installed add-ons."""
+        return list(self.addons.values())
 
-    @property
-    def list_installed(self):
-        """Return a list of installed add-ons."""
-        return [addon for addon in self.addons_obj.values()
-                if addon.is_installed]
-
-    @property
-    def list_repositories(self):
-        """Return list of add-on repositories."""
-        return list(self.repositories_obj.values())
-
-    def get(self, addon_slug):
+    def get(self, addon_slug: str) -> Optional[Addon]:
         """Return an add-on from slug."""
-        return self.addons_obj.get(addon_slug)
+        return self.addons.get(addon_slug)
 
-    def from_token(self, token):
+    def from_token(self, token: str) -> Optional[Addon]:
         """Return an add-on from Hass.io token."""
-        for addon in self.list_addons:
+        for addon in self.all:
             if addon.is_installed and token == addon.hassio_token:
                 return addon
         return None
 
-    async def load(self):
+    async def load(self) -> None:
         """Start up add-on management."""
         self.data.reload()
 
-        # Init Hass.io built-in repositories
-        repositories = \
-            set(self.sys_config.addons_repositories) | BUILTIN_REPOSITORIES
+        # Initialize and load add-ons
+        await self.load_addons()
 
-        # Init custom repositories and load add-ons
-        await self.load_repositories(repositories)
-
-    async def reload(self):
+    async def reload(self) -> None:
         """Update add-ons from repository and reload list."""
-        tasks = [repository.update() for repository in
-                 self.repositories_obj.values()]
-        if tasks:
-            await asyncio.wait(tasks)
-
-        # read data from repositories
         self.data.reload()
 
         # update addons
         await self.load_addons()
 
-    async def load_repositories(self, list_repositories):
-        """Add a new custom repository."""
-        new_rep = set(list_repositories)
-        old_rep = set(self.repositories_obj)
-
-        # add new repository
-        async def _add_repository(url):
-            """Helper function to async add repository."""
-            repository = Repository(self.coresys, url)
-            if not await repository.load():
-                _LOGGER.error("Can't load from repository %s", url)
-                return
-            self.repositories_obj[url] = repository
-
-            # don't add built-in repository to config
-            if url not in BUILTIN_REPOSITORIES:
-                self.sys_config.add_addon_repository(url)
-
-        tasks = [_add_repository(url) for url in new_rep - old_rep]
-        if tasks:
-            await asyncio.wait(tasks)
-
-        # del new repository
-        for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
-            self.repositories_obj.pop(url).remove()
-            self.sys_config.drop_addon_repository(url)
-
-        # update data
-        self.data.reload()
-        await self.load_addons()
-
-    async def load_addons(self):
+    async def load_addons(self) -> None:
         """Update/add internal add-on store."""
         all_addons = set(self.data.system) | set(self.data.cache)
 
         # calc diff
-        add_addons = all_addons - set(self.addons_obj)
-        del_addons = set(self.addons_obj) - all_addons
+        add_addons = all_addons - set(self.addons)
+        del_addons = set(self.addons) - all_addons
 
         _LOGGER.info("Load add-ons: %d all - %d new - %d remove",
                      len(all_addons), len(add_addons), len(del_addons))
@@ -122,19 +67,19 @@ class AddonManager(CoreSysAttributes):
             addon = Addon(self.coresys, addon_slug)
 
             tasks.append(addon.load())
-            self.addons_obj[addon_slug] = addon
+            self.addons[addon_slug] = addon
 
         if tasks:
             await asyncio.wait(tasks)
 
         # remove
         for addon_slug in del_addons:
-            self.addons_obj.pop(addon_slug)
+            self.addons.pop(addon_slug)
 
-    async def boot(self, stage):
+    async def boot(self, stage: str) -> None:
         """Boot add-ons with mode auto."""
         tasks = []
-        for addon in self.addons_obj.values():
+        for addon in self.addons.values():
             if addon.is_installed and addon.boot == BOOT_AUTO and \
                     addon.startup == stage:
                 tasks.append(addon.start())
@@ -144,10 +89,10 @@ class AddonManager(CoreSysAttributes):
             await asyncio.wait(tasks)
             await asyncio.sleep(self.sys_config.wait_boot)
 
-    async def shutdown(self, stage):
+    async def shutdown(self, stage: str) -> None:
         """Shutdown addons."""
         tasks = []
-        for addon in self.addons_obj.values():
+        for addon in self.addons.values():
             if addon.is_installed and \
                     await addon.state() == STATE_STARTED and \
                     addon.startup == stage:

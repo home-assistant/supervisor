@@ -23,6 +23,7 @@ from .ingress import Ingress
 from .services import ServiceManager
 from .snapshots import SnapshotManager
 from .supervisor import Supervisor
+from .store import StoreManager
 from .tasks import Tasks
 from .updater import Updater
 
@@ -53,6 +54,7 @@ async def initialize_coresys():
     coresys.ingress = Ingress(coresys)
     coresys.tasks = Tasks(coresys)
     coresys.services = ServiceManager(coresys)
+    coresys.store = StoreManager(coresys)
     coresys.discovery = Discovery(coresys)
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
