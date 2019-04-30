@@ -1,7 +1,8 @@
 """Init file for Hass.io add-ons."""
+from distutils.version import StrictVersion
 from ipaddress import IPv4Address, ip_address
 from pathlib import Path
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -31,9 +32,6 @@ from ..const import (
     ATTR_HOST_PID,
     ATTR_IMAGE,
     ATTR_INGRESS,
-    ATTR_PANEL_ADMIN,
-    ATTR_PANEL_ICON,
-    ATTR_PANEL_TITLE,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -41,6 +39,9 @@ from ..const import (
     ATTR_MAP,
     ATTR_NAME,
     ATTR_OPTIONS,
+    ATTR_PANEL_ADMIN,
+    ATTR_PANEL_ICON,
+    ATTR_PANEL_TITLE,
     ATTR_PORTS,
     ATTR_PORTS_DESCRIPTION,
     ATTR_PRIVILEGED,
@@ -59,11 +60,13 @@ from ..const import (
     SECURITY_PROFILE,
 )
 from ..coresys import CoreSysAttributes
-from .validate import RE_SERVICE, RE_VOLUME, MACHINE_ALL, validate_options
+from .validate import MACHINE_ALL, RE_SERVICE, RE_VOLUME, validate_options
 
 
 class AddonModel(CoreSysAttributes):
     """Add-on Data layout."""
+
+    slug: str = None
 
     @property
     def data(self) -> Dict[str, Any]:
@@ -71,24 +74,19 @@ class AddonModel(CoreSysAttributes):
         raise NotImplementedError()
 
     @property
-    def slug(self) -> str:
-        """Return slug/id of add-on."""
-        raise NotImplementedError()
-
-    @property
     def is_installed(self) -> bool:
         """Return True if an add-on is installed."""
-        raise NotImplementedError()
+        return False
 
     @property
     def is_detached(self) -> bool:
         """Return True if add-on is detached."""
-        raise NotImplementedError()
+        return False
 
     @property
     def available(self) -> bool:
         """Return True if this add-on is available on this platform."""
-        raise NotImplementedError()
+        return self._available(self.data)
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -397,15 +395,7 @@ class AddonModel(CoreSysAttributes):
     @property
     def image(self) -> str:
         """Generate image name from data."""
-        # Repository with Dockerhub images
-        if ATTR_IMAGE in self.data:
-            arch = self.sys_arch.match(self.arch)
-            return self.data[ATTR_IMAGE].format(arch=arch)
-
-        # local build
-        return (f"{self.data[ATTR_REPOSITORY]}/"
-                f"{self.sys_arch.default}-"
-                f"addon-{self.slug}")
+        return self._image(self.data)
 
     @property
     def need_build(self) -> bool:
@@ -421,11 +411,6 @@ class AddonModel(CoreSysAttributes):
             volumes[result.group(1)] = result.group(2) or 'ro'
 
         return volumes
-
-    @property
-    def path_options(self) -> Path:
-        """Return path to add-on options."""
-        return Path(self.path_data, "options.json")
 
     @property
     def path_location(self) -> Path:
@@ -460,3 +445,31 @@ class AddonModel(CoreSysAttributes):
         if isinstance(raw_schema, bool):
             return vol.Schema(dict)
         return vol.Schema(vol.All(dict, validate_options(raw_schema)))
+
+    def _available(self, config) -> bool:
+        """Return True if this add-on is available on this platform."""
+        # Architecture
+        if not self.sys_arch.is_supported(config[ATTR_ARCH]):
+            return False
+
+        # Machine / Hardware
+        machine = config.get(ATTR_MACHINE) or MACHINE_ALL
+        if self.sys_machine not in machine:
+            return False
+
+        # Home Assistant
+        version = config.get(ATTR_HOMEASSISTANT) or self.sys_homeassistant.version
+        if StrictVersion(self.sys_homeassistant.version) < StrictVersion(version):
+            return False
+
+        return True
+
+    def _image(self, config) -> str:
+        """Generate image name from data."""
+        # Repository with Dockerhub images
+        if ATTR_IMAGE in config:
+            arch = self.sys_arch.match(config[ATTR_ARCH])
+            return config[ATTR_IMAGE].format(arch=arch)
+
+        # local build
+        return f"{config[ATTR_REPOSITORY]}/{self.sys_arch.default}-addon-{config[ATTR_SLUG]}"
