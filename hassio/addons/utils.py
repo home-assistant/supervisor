@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 from pathlib import Path
-import re
 from typing import TYPE_CHECKING
 
 from ..const import (
@@ -20,15 +18,14 @@ from ..const import (
     SECURITY_DISABLE,
     SECURITY_PROFILE,
 )
-from ..exceptions import AddonsNotSupportedError
 
 if TYPE_CHECKING:
-    from .addon import Addon
+    from .model import AddonModel
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def rating_security(addon: Addon) -> int:
+def rating_security(addon: AddonModel) -> int:
     """Return 1-6 for security rating.
 
     1 = not secure
@@ -83,19 +80,6 @@ def rating_security(addon: Addon) -> int:
         rating = 1
 
     return max(min(6, rating), 1)
-
-
-def check_installed(method):
-    """Wrap function with check if add-on is installed."""
-
-    async def wrap_check(addon, *args, **kwargs):
-        """Return False if not installed or the function."""
-        if not addon.is_installed:
-            _LOGGER.error("Addon %s is not installed", addon.slug)
-            raise AddonsNotSupportedError()
-        return await method(addon, *args, **kwargs)
-
-    return wrap_check
 
 
 async def remove_data(folder: Path) -> None:
