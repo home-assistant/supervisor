@@ -9,6 +9,8 @@ from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
     ATTR_BOOT,
     ATTR_CHANNEL,
+    ATTR_DEBUG,
+    ATTR_DEBUG_BLOCK,
     ATTR_HASSIO,
     ATTR_HASSOS,
     ATTR_HASSOS_CLI,
@@ -120,6 +122,8 @@ SCHEMA_HASSIO_CONFIG = vol.Schema(
         ): REPOSITORIES,
         vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,
         vol.Optional(ATTR_LOGGING, default="info"): LOG_LEVEL,
+        vol.Optional(ATTR_DEBUG, default=False): vol.Boolean(),
+        vol.Optional(ATTR_DEBUG_BLOCK, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )

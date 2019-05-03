@@ -44,6 +44,8 @@ The addons from `addons` are only installed one.
     "logging": "debug|info|warning|error|critical",
     "ip_address": "ip address",
     "wait_boot": "int",
+    "debug": "bool",
+    "debug_block": "bool",
     "addons": [
         {
             "name": "xy bla",
@@ -80,6 +82,8 @@ Optional:
     "channel": "stable|beta|dev",
     "timezone": "TIMEZONE",
     "wait_boot": "int",
+    "debug": "bool",
+    "debug_block": "bool",
     "logging": "debug|info|warning|error|critical",
     "addons_repositories": [
         "REPO_URL"
