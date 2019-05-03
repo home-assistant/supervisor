@@ -97,12 +97,12 @@ class CoreConfig(JsonConfig):
     @property
     def debug_block(self) -> bool:
         """Return True if ptvsd should waiting."""
-        return self._data[ATTR_DEBUG]
+        return self._data[ATTR_DEBUG_BLOCK]
 
     @debug_block.setter
     def debug_block(self, value: bool):
         """Set debug wait mode."""
-        self._data[ATTR_DEBUG] = value
+        self._data[ATTR_DEBUG_BLOCK] = value
 
     @property
     def logging(self) -> str:

@@ -45,6 +45,7 @@ from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER = logging.getLogger(__name__)
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_CHANNEL): CHANNELS,
