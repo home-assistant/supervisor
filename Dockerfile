@@ -16,12 +16,9 @@ RUN apk add --no-cache \
 
 # Install requirements
 COPY requirements.txt /usr/src/
-RUN apk add --no-cache --virtual .build-dependencies \
-    build-base \
-    && export MAKEFLAGS="-j$(nproc)" \
+RUN export MAKEFLAGS="-j$(nproc)" \
     && pip3 install --no-cache-dir --find-links https://wheels.hass.io/alpine-3.9/${BUILD_ARCH}/ \
     -r /usr/src/requirements.txt \
-    && apk del .build-dependencies \
     && rm -f /usr/src/requirements.txt
 
 # Install HassIO
