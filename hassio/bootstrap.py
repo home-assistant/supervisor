@@ -211,7 +211,7 @@ def reg_signal(loop):
 
 def supervisor_debugger(coresys: CoreSys) -> None:
     """Setup debugger if needed."""
-    if not coresys.config.debug:
+    if not coresys.config.debug or not coresys.dev:
         return
     import ptvsd
 
