@@ -78,7 +78,7 @@ class CoreSys:
         return None
 
     @property
-    def dev(self) -> str:
+    def dev(self) -> bool:
         """Return True if we run dev mode."""
         return self._updater.channel == CHANNEL_DEV
 
