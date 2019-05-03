@@ -14,6 +14,8 @@ from ..const import (
     ATTR_BLK_WRITE,
     ATTR_CHANNEL,
     ATTR_CPU_PERCENT,
+    ATTR_DEBUG,
+    ATTR_DEBUG_BLOCK,
     ATTR_DESCRIPTON,
     ATTR_ICON,
     ATTR_INSTALLED,
@@ -50,6 +52,8 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_TIMEZONE): validate_timezone,
         vol.Optional(ATTR_WAIT_BOOT): WAIT_BOOT,
         vol.Optional(ATTR_LOGGING): LOG_LEVEL,
+        vol.Optional(ATTR_DEBUG): vol.Boolean(),
+        vol.Optional(ATTR_DEBUG_BLOCK): vol.Boolean(),
     }
 )
 
@@ -110,6 +114,12 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_WAIT_BOOT in body:
             self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
+
+        if ATTR_DEBUG in body:
+            self.sys_config.debug = body[ATTR_DEBUG]
+
+        if ATTR_DEBUG_BLOCK in body:
+            self.sys_config.debug_block = body[ATTR_DEBUG_BLOCK]
 
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]

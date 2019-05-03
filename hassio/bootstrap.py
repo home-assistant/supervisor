@@ -67,7 +67,7 @@ async def initialize_coresys():
     return coresys
 
 
-def initialize_system_data(coresys):
+def initialize_system_data(coresys: CoreSys):
     """Set up the default configuration and create folders."""
     config = coresys.config
 
@@ -124,7 +124,7 @@ def initialize_system_data(coresys):
     coresys.config.modify_log_level()
 
 
-def migrate_system_env(coresys):
+def migrate_system_env(coresys: CoreSys):
     """Cleanup some stuff after update."""
     config = coresys.config
 
@@ -207,3 +207,16 @@ def reg_signal(loop):
         loop.add_signal_handler(signal.SIGINT, lambda: loop.call_soon(loop.stop))
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGINT")
+
+
+def supervisor_debugger(coresys: CoreSys) -> None:
+    """Setup debugger if needed."""
+    if not coresys.config.debug:
+        return
+    import ptvsd
+
+    _LOGGER.info("Initialize Hass.io debugger")
+
+    ptvsd.enable_attach(address=('0.0.0.0', 33333), redirect_output=True)
+    if coresys.config.debug_block:
+        ptvsd.wait_for_attach()

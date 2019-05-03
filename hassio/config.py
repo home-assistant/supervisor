@@ -2,19 +2,21 @@
 from datetime import datetime
 import logging
 import os
-import re
 from pathlib import Path, PurePath
+import re
 
 import pytz
 
 from .const import (
+    ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_DEBUG,
+    ATTR_DEBUG_BLOCK,
+    ATTR_LAST_BOOT,
+    ATTR_LOGGING,
+    ATTR_TIMEZONE,
+    ATTR_WAIT_BOOT,
     FILE_HASSIO_CONFIG,
     HASSIO_DATA,
-    ATTR_TIMEZONE,
-    ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_LAST_BOOT,
-    ATTR_WAIT_BOOT,
-    ATTR_LOGGING,
 )
 from .utils.dt import parse_datetime
 from .utils.json import JsonConfig
@@ -81,6 +83,26 @@ class CoreConfig(JsonConfig):
     def wait_boot(self, value: int):
         """Set wait boot time."""
         self._data[ATTR_WAIT_BOOT] = value
+
+    @property
+    def debug(self) -> bool:
+        """Return True if ptvsd is enabled."""
+        return self._data[ATTR_DEBUG]
+
+    @debug.setter
+    def debug(self, value: bool):
+        """Set debug mode."""
+        self._data[ATTR_DEBUG] = value
+
+    @property
+    def debug_block(self) -> bool:
+        """Return True if ptvsd should waiting."""
+        return self._data[ATTR_DEBUG]
+
+    @debug_block.setter
+    def debug_block(self, value: bool):
+        """Set debug wait mode."""
+        self._data[ATTR_DEBUG] = value
 
     @property
     def logging(self) -> str:
