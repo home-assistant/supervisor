@@ -62,6 +62,8 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from .validate import MACHINE_ALL, RE_SERVICE, RE_VOLUME, validate_options
 
+Data = Dict[str, Any]
+
 
 class AddonModel(CoreSysAttributes):
     """Add-on Data layout."""
@@ -69,19 +71,19 @@ class AddonModel(CoreSysAttributes):
     slug: str = None
 
     @property
-    def data(self) -> Dict[str, Any]:
+    def data(self) -> Data:
         """Return Add-on config/data."""
         raise NotImplementedError()
 
     @property
     def is_installed(self) -> bool:
         """Return True if an add-on is installed."""
-        return False
+        raise NotImplementedError()
 
     @property
     def is_detached(self) -> bool:
         """Return True if add-on is detached."""
-        return False
+        raise NotImplementedError()
 
     @property
     def available(self) -> bool:
@@ -445,6 +447,12 @@ class AddonModel(CoreSysAttributes):
         if isinstance(raw_schema, bool):
             return vol.Schema(dict)
         return vol.Schema(vol.All(dict, validate_options(raw_schema)))
+
+    def __eq__(self, other):
+        """Compaired add-on objects."""
+        if self.slug == other.slug:
+            return True
+        return False
 
     def _available(self, config) -> bool:
         """Return True if this add-on is available on this platform."""

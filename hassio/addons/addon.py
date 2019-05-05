@@ -51,7 +51,7 @@ from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from .utils import remove_data
 from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
-from .model import AddonModel
+from .model import AddonModel, Data
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ RE_WEBUI = re.compile(
     r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$")
 
 
-class Addon(AddonModel):
+class AddonLocal(AddonModel):
     """Hold data for add-on inside Hass.io."""
 
     def __init__(self, coresys: CoreSys, slug: str):
@@ -84,17 +84,17 @@ class Addon(AddonModel):
         return self.instance.ip_address
 
     @property
-    def data(self) -> Dict[str, Any]:
+    def data(self) -> Data:
         """Return add-on data/config."""
         return self.sys_addons.data.system[self.slug]
 
     @property
-    def data_store(self) -> Dict[str, Any]:
+    def data_store(self) -> Data:
         """Return add-on data from store."""
         return self.sys_store.data.addons.get(self.slug, self.data)
 
     @property
-    def data_user(self) -> Dict[str, Any]:
+    def data_user(self) -> Data:
         """Return add-on data/config."""
         return self.sys_addons.data.user[self.slug]
 
@@ -107,11 +107,6 @@ class Addon(AddonModel):
     def is_detached(self) -> bool:
         """Return True if add-on is detached."""
         return self.slug not in self.sys_store.data.addons
-
-    @property
-    def available(self) -> bool:
-        """Return True if this add-on is available on this platform."""
-        return self._available(self.data_store)
 
     @property
     def version_installed(self) -> Optional[str]:
@@ -311,14 +306,9 @@ class Addon(AddonModel):
         return self.data_user.get(ATTR_IMAGE)
 
     @property
-    def image_next(self):
-        """Return image name for install/update."""
-        return self._image(self.data_store)
-
-    @property
     def need_build(self):
         """Return True if this  add-on need a local build."""
-        return ATTR_IMAGE not in self.data_store
+        return ATTR_IMAGE not in self.data
 
     @property
     def path_data(self):
@@ -374,6 +364,14 @@ class Addon(AddonModel):
                 continue
             self.sys_discovery.remove(message)
 
+    async def remove_data(self):
+        """Remove add-on data."""
+        if not self.path_data.is_dir():
+            return
+
+        _LOGGER.info("Remove add-on data folder %s", self.path_data)
+        await remove_data(self.path_data)
+
     def write_asound(self):
         """Write asound config to file and return True on success."""
         asound_config = self.sys_host.alsa.asound(
@@ -388,7 +386,7 @@ class Addon(AddonModel):
 
         return True
 
-    async def _install_apparmor(self) -> None:
+    async def install_apparmor(self) -> None:
         """Install or Update AppArmor profile for Add-on."""
         exists_local = self.sys_host.apparmor.exists(self.slug)
         exists_addon = self.path_apparmor.exists()
@@ -408,6 +406,12 @@ class Addon(AddonModel):
 
             adjust_profile(self.slug, self.path_apparmor, profile_file)
             await self.sys_host.apparmor.load_profile(self.slug, profile_file)
+
+    async def uninstall_apparmor(self) -> None:
+        """Remove AppArmor profile for Add-on."""
+        if not self.sys_host.apparmor.exists(self.slug):
+            return
+        await self.sys_host.apparmor.remove_profile(self.slug)
 
     def test_update_schema(self) -> bool:
         """Check if the existing configuration is valid after update."""
@@ -436,59 +440,6 @@ class Addon(AddonModel):
             _LOGGER.warning("Add-on %s new schema is not compatible", self.slug)
             return False
         return True
-
-    async def install(self) -> None:
-        """Install an add-on."""
-        if not self.available:
-            _LOGGER.error(
-                "Add-on %s not supported on %s with %s architecture",
-                self.slug, self.sys_machine, self.sys_arch.supported)
-            raise AddonsNotSupportedError()
-
-        if self.is_installed:
-            _LOGGER.warning("Add-on %s is already installed", self.slug)
-            return
-
-        if not self.path_data.is_dir():
-            _LOGGER.info(
-                "Create Home Assistant add-on data folder %s", self.path_data)
-            self.path_data.mkdir()
-
-        # Setup/Fix AppArmor profile
-        await self._install_apparmor()
-
-        try:
-            await self.instance.install(self.latest_version, self.image_next)
-        except DockerAPIError:
-            raise AddonsError() from None
-        else:
-            self._set_install(self.image_next, self.latest_version)
-
-    async def uninstall(self) -> None:
-        """Remove an add-on."""
-        try:
-            await self.instance.remove()
-        except DockerAPIError:
-            raise AddonsError() from None
-
-        if self.path_data.is_dir():
-            _LOGGER.info(
-                "Remove Home Assistant add-on data folder %s", self.path_data)
-            await remove_data(self.path_data)
-
-        # Cleanup audio settings
-        if self.path_asound.exists():
-            with suppress(OSError):
-                self.path_asound.unlink()
-
-        # Cleanup AppArmor profile
-        if self.sys_host.apparmor.exists(self.slug):
-            with suppress(HostAppArmorError):
-                await self.sys_host.apparmor.remove_profile(self.slug)
-
-        # Cleanup internal data
-        self.remove_discovery()
-        self._set_uninstall()
 
     async def state(self) -> str:
         """Return running state of add-on."""
@@ -528,34 +479,6 @@ class Addon(AddonModel):
             return await self.instance.stop()
         except DockerAPIError:
             raise AddonsError() from None
-
-    async def update(self) -> None:
-        """Update add-on."""
-        if self.latest_version == self.version_installed:
-            _LOGGER.warning("No update available for add-on %s", self.slug)
-            return
-
-        # Check if available, Maybe something have changed
-        if not self.available:
-            _LOGGER.error(
-                "Add-on %s not supported on %s with %s architecture",
-                self.slug, self.sys_machine, self.sys_arch.supported)
-            raise AddonsNotSupportedError()
-
-        # Update instance
-        last_state = await self.state()
-        try:
-            await self.instance.update(self.latest_version, self.image_next)
-        except DockerAPIError:
-            raise AddonsError() from None
-        self._set_update(self.image_next, self.latest_version)
-
-        # Setup/Fix AppArmor profile
-        await self._install_apparmor()
-
-        # restore state
-        if last_state == STATE_STARTED:
-            await self.start()
 
     async def restart(self) -> None:
         """Restart add-on."""

@@ -1,14 +1,24 @@
 """Init file for Hass.io add-ons."""
 import asyncio
+from contextlib import suppress
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
-from .addon import Addon
-from .data import AddonsData
 from ..const import BOOT_AUTO, STATE_STARTED
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import (
+    AddonsError,
+    AddonsNotSupportedError,
+    DockerAPIError,
+    HostAppArmorError,
+)
+from ..store.addon import AddonStore
+from .addon import AddonLocal
+from .data import AddonsData
 
 _LOGGER = logging.getLogger(__name__)
+
+Addon = Union[AddonLocal, AddonStore]
 
 
 class AddonManager(CoreSysAttributes):
@@ -18,73 +28,59 @@ class AddonManager(CoreSysAttributes):
         """Initialize Docker base wrapper."""
         self.coresys: CoreSys = coresys
         self.data: AddonsData = AddonsData(coresys)
-        self.addons: Dict[str, Addon] = {}
+        self.local: Dict[str, AddonLocal] = {}
+        self.store: Dict[str, AddonStore] = {}
 
     @property
     def all(self) -> List[Addon]:
+        """Return a list of all add-ons."""
+        addons = {**self.store, **self.local}
+        return list(addons.values())
+
+    @property
+    def installed(self) -> List[AddonLocal]:
         """Return a list of all installed add-ons."""
-        return list(self.addons.values())
+        return list(self.local.values())
 
     def get(self, addon_slug: str) -> Optional[Addon]:
-        """Return an add-on from slug."""
-        return self.addons.get(addon_slug)
+        """Return an add-on from slug.
 
-    def from_token(self, token: str) -> Optional[Addon]:
+        Prio:
+          1 - Local
+          2 - Store
+        """
+        if addon_slug in self.local:
+            return self.local[addon_slug]
+        return self.store.get(addon_slug)
+
+    def from_token(self, token: str) -> Optional[AddonLocal]:
         """Return an add-on from Hass.io token."""
-        for addon in self.all:
-            if addon.is_installed and token == addon.hassio_token:
+        for addon in self.local:
+            if token == addon.hassio_token:
                 return addon
         return None
 
     async def load(self) -> None:
         """Start up add-on management."""
-        self.data.reload()
-
-        # Initialize and load add-ons
-        await self.load_addons()
-
-    async def reload(self) -> None:
-        """Update add-ons from repository and reload list."""
-        self.data.reload()
-
-        # update addons
-        await self.load_addons()
-
-    async def load_addons(self) -> None:
-        """Update/add internal add-on store."""
-        all_addons = set(self.data.system) | set(self.data.cache)
-
-        # calc diff
-        add_addons = all_addons - set(self.addons)
-        del_addons = set(self.addons) - all_addons
-
-        _LOGGER.info("Load add-ons: %d all - %d new - %d remove",
-                     len(all_addons), len(add_addons), len(del_addons))
-
-        # new addons
         tasks = []
-        for addon_slug in add_addons:
-            addon = Addon(self.coresys, addon_slug)
-
+        for slug in self.data.system:
+            addon = self.local[slug] = AddonLocal(self.coresys, slug)
             tasks.append(addon.load())
-            self.addons[addon_slug] = addon
 
+        # Run initial tasks
+        _LOGGER.info("Found %d installed add-ons", len(tasks))
         if tasks:
             await asyncio.wait(tasks)
-
-        # remove
-        for addon_slug in del_addons:
-            self.addons.pop(addon_slug)
 
     async def boot(self, stage: str) -> None:
         """Boot add-ons with mode auto."""
         tasks = []
-        for addon in self.addons.values():
-            if addon.is_installed and addon.boot == BOOT_AUTO and \
-                    addon.startup == stage:
-                tasks.append(addon.start())
+        for addon in self.installed:
+            if addon.boot != BOOT_AUTO or addon.startup != stage:
+                continue
+            tasks.append(addon.start())
 
-        _LOGGER.info("Startup %s run %d add-ons", stage, len(tasks))
+        _LOGGER.info("Phase '%s' start %d add-ons", stage, len(tasks))
         if tasks:
             await asyncio.wait(tasks)
             await asyncio.sleep(self.sys_config.wait_boot)
@@ -92,12 +88,112 @@ class AddonManager(CoreSysAttributes):
     async def shutdown(self, stage: str) -> None:
         """Shutdown addons."""
         tasks = []
-        for addon in self.addons.values():
-            if addon.is_installed and \
-                    await addon.state() == STATE_STARTED and \
-                    addon.startup == stage:
-                tasks.append(addon.stop())
+        for addon in self.installed:
+            if await addon.state() != STATE_STARTED or addon.startup != stage:
+                continue
+            tasks.append(addon.stop())
 
-        _LOGGER.info("Shutdown %s stop %d add-ons", stage, len(tasks))
+        _LOGGER.info("Phase '%s' stop %d add-ons", stage, len(tasks))
         if tasks:
             await asyncio.wait(tasks)
+
+    async def install(self, slug: str) -> None:
+        """Install an add-on."""
+        if slug in self.local:
+            _LOGGER.warning("Add-on %s is already installed", slug)
+            return
+        store = self.store.get(slug)
+
+        if not store:
+            _LOGGER.error("Add-on %s not exists", slug)
+            raise AddonsError()
+
+        if not store.available:
+            _LOGGER.error(
+                "Add-on %s not supported on that platform", slug)
+            raise AddonsNotSupportedError()
+
+        self.data.install(store)
+        addon = AddonLocal(self.coresys, slug)
+
+        if not addon.path_data.is_dir():
+            _LOGGER.info(
+                "Create Home Assistant add-on data folder %s", addon.path_data)
+            addon.path_data.mkdir()
+
+        # Setup/Fix AppArmor profile
+        await addon.install_apparmor()
+
+        try:
+            await addon.instance.install(store.version, store.image)
+        except DockerAPIError:
+            self.data.uninstall(addon)
+            raise AddonsError() from None
+        else:
+            self.local[slug] = addon
+
+    async def uninstall(self, slug: str) -> None:
+        """Remove an add-on."""
+        if slug not in self.local:
+            _LOGGER.warning("Add-on %s is not installed", slug)
+            return
+        addon = self.local.get(slug)
+
+        try:
+            await addon.instance.remove()
+        except DockerAPIError:
+            raise AddonsError() from None
+
+        await addon.remove_data()
+
+        # Cleanup audio settings
+        if addon.path_asound.exists():
+            with suppress(OSError):
+                addon.path_asound.unlink()
+
+        # Cleanup AppArmor profile
+        with suppress(HostAppArmorError):
+            await addon.uninstall_apparmor()
+
+        # Cleanup internal data
+        addon.remove_discovery()
+        self.data.uninstall(addon)
+        self.local.pop(slug)
+
+
+    async def update(self, slug: str) -> None:
+        """Update add-on."""
+        if slug not in self.local:
+            _LOGGER.error("Add-on %s is not installed", slug)
+            raise AddonsError()
+        addon = self.local.get(slug)
+
+        if addon.is_detached:
+            _LOGGER.error("Add-on %s is not available inside store", slug)
+            raise AddonsError()
+        store = self.store.get(slug)
+
+        if addon.version == store.version:
+            _LOGGER.warning("No update available for add-on %s", slug)
+            return
+
+        # Check if available, Maybe something have changed
+        if not store.available:
+            _LOGGER.error(
+                "Add-on %s not supported on that platform", slug)
+            raise AddonsNotSupportedError()
+
+        # Update instance
+        last_state = await addon.state()
+        try:
+            await addon.instance.update(store.version, store.image)
+        except DockerAPIError:
+            raise AddonsError() from None
+        self.data.update(store)
+
+        # Setup/Fix AppArmor profile
+        await addon.install_apparmor()
+
+        # restore state
+        if last_state == STATE_STARTED:
+            await addon.start()

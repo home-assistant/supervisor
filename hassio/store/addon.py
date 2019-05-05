@@ -3,12 +3,12 @@ import logging
 from typing import Any, Dict
 
 from ..coresys import CoreSys
-from ..addons.model import AddonModel
+from ..addons.model import AddonModel, Data
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Addon(AddonModel):
+class AddonStore(AddonModel):
     """Hold data for add-on inside Hass.io."""
 
     def __init__(self, coresys: CoreSys, slug: str):
@@ -17,6 +17,16 @@ class Addon(AddonModel):
         self.slug: str = slug
 
     @property
-    def data(self) -> Dict[str, Any]:
+    def data(self) -> Data:
         """Return add-on data/config."""
         return self.sys_store.data.addons[self.slug]
+
+    @property
+    def is_installed(self) -> bool:
+        """Return True if an add-on is installed."""
+        return False
+
+    @property
+    def is_detached(self) -> bool:
+        """Return True if add-on is detached."""
+        return False

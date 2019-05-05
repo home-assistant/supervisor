@@ -1,16 +1,25 @@
 """Init file for Hass.io add-on data."""
+from copy import deepcopy
 import logging
+from typing import Any, Dict
 
 from ..const import (
+    ATTR_IMAGE,
+    ATTR_OPTIONS,
     ATTR_SYSTEM,
     ATTR_USER,
+    ATTR_VERSION,
     FILE_HASSIO_ADDONS,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.json import JsonConfig
+from ..store.addon import AddonStore
+from .addon import AddonLocal
 from .validate import SCHEMA_ADDONS_FILE
 
 _LOGGER = logging.getLogger(__name__)
+
+Config = Dict[str, Any]
 
 
 class AddonsData(JsonConfig, CoreSysAttributes):
@@ -31,35 +40,35 @@ class AddonsData(JsonConfig, CoreSysAttributes):
         """Return local add-on data."""
         return self._data[ATTR_SYSTEM]
 
-    def _set_install(self, image: str, version: str) -> None:
+    def install(self, addon: AddonStore) -> None:
         """Set addon as installed."""
-        self._data.system[self._id] = deepcopy(self._data.cache[self._id])
-        self._data.user[self._id] = {
+        self.system[addon.slug] = deepcopy(addon.data)
+        self.user[addon.slug] = {
             ATTR_OPTIONS: {},
-            ATTR_VERSION: version,
-            ATTR_IMAGE: image,
+            ATTR_VERSION: addon.version,
+            ATTR_IMAGE: addon.image,
         }
         self.save_data()
 
-    def uninstall(self, addon) -> None:
+    def uninstall(self, addon: AddonLocal) -> None:
         """Set add-on as uninstalled."""
-        self._data.system.pop(addon.slug, None)
-        self._data.user.pop(addon.slug, None)
+        self.system.pop(addon.slug, None)
+        self.user.pop(addon.slug, None)
         self.save_data()
 
-    def set_update(self, image: str, version: str) -> None:
+    def update(self, addon: AddonStore) -> None:
         """Update version of add-on."""
-        self._data.system[self._id] = deepcopy(self._data.cache[self._id])
-        self._data.user[self._id].update({
-            ATTR_VERSION: version,
-            ATTR_IMAGE: image,
+        self.system[addon.slug] = deepcopy(addon.data)
+        self.user[addon.slug].update({
+            ATTR_VERSION: addon.version,
+            ATTR_IMAGE: addon.image,
         })
         self.save_data()
 
-    def restore_data(self, user: Dict[str, Any], system: Dict[str, Any], image: str) -> None:
+    def restore(self, slug: str, user: Config, system: Config, image: str) -> None:
         """Restore data to add-on."""
-        self._data.user[self._id] = deepcopy(user)
-        self._data.system[self._id] = deepcopy(system)
+        self.user[slug] = deepcopy(user)
+        self.system[slug] = deepcopy(system)
 
-        self._data.user[self._id][ATTR_IMAGE] = image
+        self.user[slug][ATTR_IMAGE] = image
         self.save_data()

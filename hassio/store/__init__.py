@@ -5,7 +5,7 @@ from typing import Dict, List
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
-from .addons import Addon
+from .addons import AddonStore
 from .data import StoreData
 from .repository import Repository
 
@@ -22,7 +22,6 @@ class StoreManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.data = StoreData(coresys)
         self.repositories: Dict[str, Repository] = {}
-        self.addons: Dict[str, Addon] = {}
 
     @property
     def list_repositories(self) -> List[Repository]:
@@ -49,7 +48,7 @@ class StoreManager(CoreSysAttributes):
 
         # read data from repositories
         self.data.update()
-        self.read_addons()
+        self._read_addons()
 
     async def update_repositories(self, list_repositories):
         """Add a new custom repository."""
@@ -80,10 +79,36 @@ class StoreManager(CoreSysAttributes):
 
         # update data
         self.data.update()
-        self.read_addons()
+        self._read_addons()
 
-    def read_addons(self) -> None:
+    def _read_addons(self) -> None:
         """Reload add-ons inside store."""
-        self.addons.clear()
+        self.sys_addons.store.clear()
         for slug in self.data.addons:
-            self.addons[slug] = Addon(self.coresys, slug)
+            self.sys_addons.store[slug] = AddonStore(self.coresys, slug)
+
+        async def _read_addons(self) -> None:
+        """Update/add internal add-on store."""
+        all_addons = set(self.data.system) | set(self.data.cache)
+
+        # calc diff
+        add_addons = all_addons - set(self.addons)
+        del_addons = set(self.addons) - all_addons
+
+        _LOGGER.info("Load add-ons: %d all - %d new - %d remove",
+                     len(all_addons), len(add_addons), len(del_addons))
+
+        # new addons
+        tasks = []
+        for addon_slug in add_addons:
+            addon = Addon(self.coresys, addon_slug)
+
+            tasks.append(addon.load())
+            self.addons[addon_slug] = addon
+
+        if tasks:
+            await asyncio.wait(tasks)
+
+        # remove
+        for addon_slug in del_addons:
+            self.addons.pop(addon_slug)
