@@ -41,7 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_BOOT): vol.Boolean(),
-        vol.Inclusive(ATTR_IMAGE, "custom_hass"): vol.Any(None, DOCKER_IMAGE),
+        vol.Inclusive(ATTR_IMAGE, "custom_hass"): vol.Maybe(DOCKER_IMAGE),
         vol.Inclusive(ATTR_LAST_VERSION, "custom_hass"): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_PORT): NETWORK_PORT,
         vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
