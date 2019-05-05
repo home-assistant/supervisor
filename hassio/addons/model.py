@@ -498,11 +498,3 @@ class AddonModel(CoreSysAttributes):
     def rebuild(self) -> Awaitable[None]:
         """Rebuild this add-on."""
         return self.sys_addons.rebuild(self.slug)
-
-    async def snapshot(self, tar_file: tarfile.TarFile) -> None:
-        """Create snapshot into tar file."""
-        raise NotImplementedError()
-
-    async def restore(self, tar_file: tarfile.TarFile) -> None:
-        """Restore a snapshot from tar file."""
-        raise NotImplementedError()
