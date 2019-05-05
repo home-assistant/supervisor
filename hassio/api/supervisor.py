@@ -127,7 +127,7 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
-            await asyncio.shield(self.sys_addons.load_repositories(new))
+            await asyncio.shield(self.sys_addons.update_repositories(new))
 
         self.sys_updater.save_data()
         self.sys_config.save_data()

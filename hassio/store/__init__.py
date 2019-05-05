@@ -5,6 +5,7 @@ from typing import Dict, List
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
+from .addons import Addon
 from .data import StoreData
 from .repository import Repository
 
@@ -21,6 +22,7 @@ class StoreManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.data = StoreData(coresys)
         self.repositories: Dict[str, Repository] = {}
+        self.addons: Dict[str, Addon] = {}
 
     @property
     def list_repositories(self) -> List[Repository]:
@@ -29,14 +31,14 @@ class StoreManager(CoreSysAttributes):
 
     async def load(self) -> None:
         """Start up add-on management."""
-        self.data.reload()
+        self.data.update()
 
         # Init Hass.io built-in repositories
         repositories = \
             set(self.sys_config.addons_repositories) | BUILTIN_REPOSITORIES
 
         # Init custom repositories and load add-ons
-        await self.load_repositories(repositories)
+        await self.update_repositories(repositories)
 
     async def reload(self) -> None:
         """Update add-ons from repository and reload list."""
@@ -46,9 +48,10 @@ class StoreManager(CoreSysAttributes):
             await asyncio.wait(tasks)
 
         # read data from repositories
-        self.data.reload()
+        self.data.update()
+        self.read_addons()
 
-    async def load_repositories(self, list_repositories):
+    async def update_repositories(self, list_repositories):
         """Add a new custom repository."""
         new_rep = set(list_repositories)
         old_rep = set(self.repositories)
@@ -76,4 +79,11 @@ class StoreManager(CoreSysAttributes):
             self.sys_config.drop_addon_repository(url)
 
         # update data
-        self.data.reload()
+        self.data.update()
+        self.read_addons()
+
+    def read_addons(self) -> None:
+        """Reload add-ons inside store."""
+        self.addons.clear()
+        for slug in self.data.addons:
+            self.addons[slug] = Addon(self.coresys, slug)

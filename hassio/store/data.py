@@ -32,9 +32,10 @@ class StoreData(CoreSysAttributes):
         self.repositories: Dict[str, Any] = {}
         self.addons: Dict[str, Any] = {}
 
-    def reload(self):
+    def update(self):
         """Read data from add-on repository."""
         self.repositories.clear()
+        self.addons.clear()
 
         # read core repository
         self._read_addons_folder(self.sys_config.path_addons_core, REPOSITORY_CORE)
