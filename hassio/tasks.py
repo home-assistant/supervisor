@@ -93,7 +93,7 @@ class Tasks(CoreSysAttributes):
             if not addon.is_installed or not addon.auto_update:
                 continue
 
-            if addon.version_installed == addon.latest_version:
+            if addon.version == addon.latest_version:
                 continue
 
             if addon.test_update_schema():

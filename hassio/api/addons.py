@@ -134,13 +134,13 @@ class APIAddons(CoreSysAttributes):
     async def list(self, request: web.Request) -> Dict[str, Any]:
         """Return all add-ons or repositories."""
         data_addons = []
-        for addon in self.sys_addons.list_addons:
+        for addon in self.sys_addons.all:
             data_addons.append({
                 ATTR_NAME: addon.name,
                 ATTR_SLUG: addon.slug,
                 ATTR_DESCRIPTON: addon.description,
                 ATTR_VERSION: addon.latest_version,
-                ATTR_INSTALLED: addon.version_installed,
+                ATTR_INSTALLED: addon.version,
                 ATTR_AVAILABLE: addon.available,
                 ATTR_DETACHED: addon.is_detached,
                 ATTR_REPOSITORY: addon.repository,
@@ -151,7 +151,7 @@ class APIAddons(CoreSysAttributes):
             })
 
         data_repositories = []
-        for repository in self.sys_addons.list_repositories:
+        for repository in self.sys_store.all:
             data_repositories.append({
                 ATTR_SLUG: repository.slug,
                 ATTR_NAME: repository.name,
@@ -180,7 +180,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_SLUG: addon.slug,
             ATTR_DESCRIPTON: addon.description,
             ATTR_LONG_DESCRIPTION: addon.long_description,
-            ATTR_VERSION: addon.version_installed,
+            ATTR_VERSION: addon.version,
             ATTR_AUTO_UPDATE: addon.auto_update,
             ATTR_REPOSITORY: addon.repository,
             ATTR_LAST_VERSION: addon.latest_version,
@@ -258,7 +258,7 @@ class APIAddons(CoreSysAttributes):
             addon.ingress_panel = body[ATTR_INGRESS_PANEL]
             await self.sys_ingress.update_hass_panel(addon)
 
-        addon.save_data()
+        addon.save_persist()
 
     @api_process
     async def security(self, request: web.Request) -> None:
@@ -325,7 +325,7 @@ class APIAddons(CoreSysAttributes):
         """Update add-on."""
         addon = self._extract_addon(request)
 
-        if addon.latest_version == addon.version_installed:
+        if addon.latest_version == addon.version:
             raise APIError("No update available!")
 
         return asyncio.shield(addon.update())

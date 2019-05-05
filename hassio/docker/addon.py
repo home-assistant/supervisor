@@ -76,7 +76,7 @@ class DockerAddon(DockerInterface):
     def version(self) -> str:
         """Return version of Docker image."""
         if self.addon.legacy:
-            return self.addon.version_installed
+            return self.addon.version
         return super().version
 
     @property

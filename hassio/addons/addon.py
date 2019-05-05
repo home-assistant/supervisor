@@ -94,7 +94,7 @@ class AddonLocal(AddonModel):
         return self.sys_store.data.addons.get(self.slug, self.data)
 
     @property
-    def data_user(self) -> Data:
+    def persist(self) -> Data:
         """Return add-on data/config."""
         return self.sys_addons.data.user[self.slug]
 
@@ -109,60 +109,60 @@ class AddonLocal(AddonModel):
         return self.slug not in self.sys_store.data.addons
 
     @property
-    def version_installed(self) -> Optional[str]:
+    def version(self) -> Optional[str]:
         """Return installed version."""
-        return self.data_user[ATTR_VERSION]
+        return self.persist[ATTR_VERSION]
 
     @property
     def options(self) -> Dict[str, Any]:
         """Return options with local changes."""
         return {
             **self.data[ATTR_OPTIONS],
-            **self.data_user[ATTR_OPTIONS]
+            **self.persist[ATTR_OPTIONS]
         }
 
     @options.setter
     def options(self, value: Optional[Dict[str, Any]]):
         """Store user add-on options."""
         if value is None:
-            self.data_user[ATTR_OPTIONS] = {}
+            self.persist[ATTR_OPTIONS] = {}
         else:
-            self.data_user[ATTR_OPTIONS] = deepcopy(value)
+            self.persist[ATTR_OPTIONS] = deepcopy(value)
 
     @property
     def boot(self) -> bool:
         """Return boot config with prio local settings."""
-        return self.data_user.get(ATTR_BOOT, super().boot)
+        return self.persist.get(ATTR_BOOT, super().boot)
 
     @boot.setter
     def boot(self, value: bool):
         """Store user boot options."""
-        self.data_user[ATTR_BOOT] = value
+        self.persist[ATTR_BOOT] = value
 
     @property
     def auto_update(self) -> bool:
         """Return if auto update is enable."""
-        return self.data_user.get(ATTR_AUTO_UPDATE, super().auto_update)
+        return self.persist.get(ATTR_AUTO_UPDATE, super().auto_update)
 
     @auto_update.setter
     def auto_update(self, value: bool):
         """Set auto update."""
-        self.data_user[ATTR_AUTO_UPDATE] = value
+        self.persist[ATTR_AUTO_UPDATE] = value
 
     @property
     def uuid(self) -> str:
         """Return an API token for this add-on."""
-        return self.data_user[ATTR_UUID]
+        return self.persist[ATTR_UUID]
 
     @property
     def hassio_token(self) -> Optional[str]:
         """Return access token for Hass.io API."""
-        return self.data_user.get(ATTR_ACCESS_TOKEN)
+        return self.persist.get(ATTR_ACCESS_TOKEN)
 
     @property
     def ingress_token(self) -> Optional[str]:
         """Return access token for Hass.io API."""
-        return self.data_user.get(ATTR_INGRESS_TOKEN)
+        return self.persist.get(ATTR_INGRESS_TOKEN)
 
     @property
     def ingress_entry(self) -> Optional[str]:
@@ -179,23 +179,23 @@ class AddonLocal(AddonModel):
     @property
     def protected(self) -> bool:
         """Return if add-on is in protected mode."""
-        return self.data_user[ATTR_PROTECTED]
+        return self.persist[ATTR_PROTECTED]
 
     @protected.setter
     def protected(self, value: bool):
         """Set add-on in protected mode."""
-        self.data_user[ATTR_PROTECTED] = value
+        self.persist[ATTR_PROTECTED] = value
 
     @property
     def ports(self) -> Optional[Dict[str, Optional[int]]]:
         """Return ports of add-on."""
-        return self.data_user.get(ATTR_NETWORK, super().ports)
+        return self.persist.get(ATTR_NETWORK, super().ports)
 
     @ports.setter
     def ports(self, value: Optional[Dict[str, Optional[int]]]):
         """Set custom ports of add-on."""
         if value is None:
-            self.data_user.pop(ATTR_NETWORK, None)
+            self.persist.pop(ATTR_NETWORK, None)
             return
 
         # Secure map ports to value
@@ -204,7 +204,7 @@ class AddonLocal(AddonModel):
             if container_port in self.data.get(ATTR_PORTS, {}):
                 new_ports[container_port] = host_port
 
-        self.data_user[ATTR_NETWORK] = new_ports
+        self.persist[ATTR_NETWORK] = new_ports
 
     @property
     def ingress_url(self) -> Optional[str]:
@@ -263,47 +263,47 @@ class AddonLocal(AddonModel):
     @property
     def ingress_panel(self) -> Optional[bool]:
         """Return True if the add-on access support ingress."""
-        return self.data_user[ATTR_INGRESS_PANEL]
+        return self.persist[ATTR_INGRESS_PANEL]
 
     @ingress_panel.setter
     def ingress_panel(self, value: bool):
         """Return True if the add-on access support ingress."""
-        self.data_user[ATTR_INGRESS_PANEL] = value
+        self.persist[ATTR_INGRESS_PANEL] = value
 
     @property
     def audio_output(self) -> Optional[str]:
         """Return ALSA config for output or None."""
         if not self.with_audio:
             return None
-        return self.data_user.get(ATTR_AUDIO_OUTPUT, self.sys_host.alsa.default.output)
+        return self.persist.get(ATTR_AUDIO_OUTPUT, self.sys_host.alsa.default.output)
 
     @audio_output.setter
     def audio_output(self, value: Optional[str]):
         """Set/reset audio output settings."""
         if value is None:
-            self.data_user.pop(ATTR_AUDIO_OUTPUT, None)
+            self.persist.pop(ATTR_AUDIO_OUTPUT, None)
         else:
-            self.data_user[ATTR_AUDIO_OUTPUT] = value
+            self.persist[ATTR_AUDIO_OUTPUT] = value
 
     @property
     def audio_input(self) -> Optional[str]:
         """Return ALSA config for input or None."""
         if not self.with_audio:
             return None
-        return self.data_user.get(ATTR_AUDIO_INPUT, self.sys_host.alsa.default.input)
+        return self.persist.get(ATTR_AUDIO_INPUT, self.sys_host.alsa.default.input)
 
     @audio_input.setter
     def audio_input(self, value: Optional[str]):
         """Set/reset audio input settings."""
         if value is None:
-            self.data_user.pop(ATTR_AUDIO_INPUT, None)
+            self.persist.pop(ATTR_AUDIO_INPUT, None)
         else:
-            self.data_user[ATTR_AUDIO_INPUT] = value
+            self.persist[ATTR_AUDIO_INPUT] = value
 
     @property
     def image(self):
         """Return image name of add-on."""
-        return self.data_user.get(ATTR_IMAGE)
+        return self.persist.get(ATTR_IMAGE)
 
     @property
     def need_build(self):
@@ -335,7 +335,7 @@ class AddonLocal(AddonModel):
         """Return path to asound config for Docker."""
         return Path(self.sys_config.path_extern_tmp, f"{self.slug}_asound")
 
-    def save_data(self):
+    def save_persist(self):
         """Save data of add-on."""
         self.sys_addons.data.save_data()
 
@@ -353,9 +353,10 @@ class AddonLocal(AddonModel):
         except JsonFileError:
             _LOGGER.error("Add-on %s can't write options", self.slug)
         else:
-            return True
+            _LOGGER.debug("Add-on %s write options: %s", self.slug, options)
+            return
 
-        return False
+        raise AddonsError()
 
     def remove_discovery(self):
         """Remove all discovery message from add-on."""
@@ -382,9 +383,9 @@ class AddonLocal(AddonModel):
                 config_file.write(asound_config)
         except OSError as err:
             _LOGGER.error("Add-on %s can't write asound: %s", self.slug, err)
-            return False
+            raise AddonsError()
 
-        return True
+        _LOGGER.debug("Add-on %s write asound: %s", self.slug, self.path_asound)
 
     async def install_apparmor(self) -> None:
         """Install or Update AppArmor profile for Add-on."""
@@ -425,7 +426,7 @@ class AddonLocal(AddonModel):
 
         # merge options
         options = {
-            **self.data_user[ATTR_OPTIONS],
+            **self.persist[ATTR_OPTIONS],
             **default_options,
         }
 
@@ -457,16 +458,15 @@ class AddonLocal(AddonModel):
             return
 
         # Access Token
-        self._data.user[self.slug][ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
-        self.save_data()
+        self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
+        self.save_persist()
 
         # Options
-        if not self.write_options():
-            raise AddonsError()
+        self.write_options()
 
         # Sound
-        if self.with_audio and not self.write_asound():
-            raise AddonsError()
+        if self.with_audio:
+            self.write_asound()
 
         try:
             await self.instance.run()
@@ -500,30 +500,6 @@ class AddonLocal(AddonModel):
         except DockerAPIError:
             raise AddonsError() from None
 
-    async def rebuild(self) -> None:
-        """Perform a rebuild of local build add-on."""
-        last_state = await self.state()
-
-        if not self.need_build:
-            _LOGGER.error("Can't rebuild a image based add-on")
-            raise AddonsNotSupportedError()
-        if self.version_installed != self.latest_version:
-            _LOGGER.error("Version changed, use Update instead Rebuild")
-            raise AddonsError()
-
-        # remove docker container but not addon config
-        try:
-            await self.instance.remove()
-            await self.instance.install(self.version_installed)
-        except DockerAPIError:
-            raise AddonsError() from None
-        else:
-            self._set_update(self.image, self.version_installed)
-
-        # restore state
-        if last_state == STATE_STARTED:
-            await self.start()
-
     async def write_stdin(self, data):
         """Write data to add-on stdin.
 
@@ -549,9 +525,9 @@ class AddonLocal(AddonModel):
                     raise AddonsError() from None
 
             data = {
-                ATTR_USER: self.data_user,
+                ATTR_USER: self.persist,
                 ATTR_SYSTEM: self.data,
-                ATTR_VERSION: self.version_installed,
+                ATTR_VERSION: self.version,
                 ATTR_STATE: await self.state(),
             }
 

@@ -197,3 +197,38 @@ class AddonManager(CoreSysAttributes):
         # restore state
         if last_state == STATE_STARTED:
             await addon.start()
+
+
+    async def rebuild(self, slug: str) -> None:
+        """Perform a rebuild of local build add-on."""
+        if slug not in self.local:
+            _LOGGER.error("Add-on %s is not installed", slug)
+            raise AddonsError()
+        addon = self.local.get(slug)
+
+        if addon.is_detached:
+            _LOGGER.error("Add-on %s is not available inside store", slug)
+            raise AddonsError()
+        store = self.store.get(slug)
+
+
+        if addon.version != store.version:
+            _LOGGER.error("Version changed, use Update instead Rebuild")
+            raise AddonsError()
+        elif not addon.need_build:
+            _LOGGER.error("Can't rebuild a image based add-on")
+            raise AddonsNotSupportedError()
+
+        # remove docker container but not addon config
+        last_state = await addon.state()
+        try:
+            await addon.instance.remove()
+            await addon.instance.install(addon.version)
+        except DockerAPIError:
+            raise AddonsError() from None
+        else:
+            self.data.update(store)
+
+        # restore state
+        if last_state == STATE_STARTED:
+            await addon.start()

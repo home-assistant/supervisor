@@ -300,7 +300,7 @@ class Snapshot(CoreSysAttributes):
             self._data[ATTR_ADDONS].append({
                 ATTR_SLUG: addon.slug,
                 ATTR_NAME: addon.name,
-                ATTR_VERSION: addon.version_installed,
+                ATTR_VERSION: addon.version,
                 ATTR_SIZE: addon_file.size,
             })
 

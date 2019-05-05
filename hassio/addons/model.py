@@ -2,7 +2,7 @@
 from distutils.version import StrictVersion
 from ipaddress import IPv4Address, ip_address
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Dict, List, Optional
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -481,3 +481,19 @@ class AddonModel(CoreSysAttributes):
 
         # local build
         return f"{config[ATTR_REPOSITORY]}/{self.sys_arch.default}-addon-{config[ATTR_SLUG]}"
+
+    def install(self) -> Awaitable[None]:
+        """Install this add-on."""
+        return self.sys_addons.install(self.slug)
+
+    def uninstall(self) -> Awaitable[None]:
+        """Uninstall this add-on."""
+        return self.sys_addons.uninstall(self.slug)
+
+    def update(self) -> Awaitable[None]:
+        """Update this add-on."""
+        return self.sys_addons.update(self.slug)
+
+    def rebuild(self) -> Awaitable[None]:
+        """Rebuild this add-on."""
+        return self.sys_addons.rebuild(self.slug)

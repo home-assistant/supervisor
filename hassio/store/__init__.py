@@ -24,7 +24,7 @@ class StoreManager(CoreSysAttributes):
         self.repositories: Dict[str, Repository] = {}
 
     @property
-    def list_repositories(self) -> List[Repository]:
+    def all(self) -> List[Repository]:
         """Return list of add-on repositories."""
         return list(self.repositories.values())
 
