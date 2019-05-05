@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import suppress
 import logging
+import tarfile
 from typing import Dict, List, Optional, Union
 
 from ..const import BOOT_AUTO, STATE_STARTED
@@ -160,7 +161,6 @@ class AddonManager(CoreSysAttributes):
         self.data.uninstall(addon)
         self.local.pop(slug)
 
-
     async def update(self, slug: str) -> None:
         """Update add-on."""
         if slug not in self.local:
@@ -232,3 +232,7 @@ class AddonManager(CoreSysAttributes):
         # restore state
         if last_state == STATE_STARTED:
             await addon.start()
+
+    async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:
+        """Restore state of an add-on."""
+        # FIXME: Init addon object or reuse exists

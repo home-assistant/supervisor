@@ -2,6 +2,7 @@
 from distutils.version import StrictVersion
 from ipaddress import IPv4Address, ip_address
 from pathlib import Path
+import tarfile
 from typing import Any, Awaitable, Dict, List, Optional
 
 import voluptuous as vol
@@ -497,3 +498,11 @@ class AddonModel(CoreSysAttributes):
     def rebuild(self) -> Awaitable[None]:
         """Rebuild this add-on."""
         return self.sys_addons.rebuild(self.slug)
+
+    async def snapshot(self, tar_file: tarfile.TarFile) -> None:
+        """Create snapshot into tar file."""
+        raise NotImplementedError()
+
+    async def restore(self, tar_file: tarfile.TarFile) -> None:
+        """Restore a snapshot from tar file."""
+        raise NotImplementedError()
