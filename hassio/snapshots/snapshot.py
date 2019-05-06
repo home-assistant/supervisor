@@ -281,7 +281,7 @@ class Snapshot(CoreSysAttributes):
 
     async def store_addons(self, addon_list=None):
         """Add a list of add-ons into snapshot."""
-        addon_list = addon_list or self.sys_addons.list_installed
+        addon_list = addon_list or self.sys_addons.installed
 
         async def _addon_save(addon):
             """Task to store an add-on into snapshot."""
@@ -311,32 +311,26 @@ class Snapshot(CoreSysAttributes):
 
     async def restore_addons(self, addon_list=None):
         """Restore a list add-on from snapshot."""
-        if not addon_list:
-            addon_list = []
-            for addon_slug in self.addon_list:
-                addon = self.sys_addons.get(addon_slug)
-                if addon:
-                    addon_list.append(addon)
+        addon_list = addon_list or self.addon_list
 
-        async def _addon_restore(addon):
+        async def _addon_restore(addon_slug):
             """Task to restore an add-on into snapshot."""
             addon_file = SecureTarFile(
-                Path(self._tmp.name, f"{addon.slug}.tar.gz"),
-                'r', key=self._key)
+                Path(self._tmp.name, f"{addon_slug}.tar.gz"), 'r', key=self._key)
 
             # If exists inside snapshot
             if not addon_file.path.exists():
-                _LOGGER.error("Can't find snapshot for %s", addon.slug)
+                _LOGGER.error("Can't find snapshot for %s", addon_slug)
                 return
 
             # Perform a restore
             try:
-                await addon.restore(addon_file)
+                await self.sys_addons.restore(addon_slug, addon_file)
             except AddonsError:
-                _LOGGER.error("Can't restore snapshot for %s", addon.slug)
+                _LOGGER.error("Can't restore snapshot for %s", addon_slug)
 
         # Run tasks
-        tasks = [_addon_restore(addon) for addon in addon_list]
+        tasks = [_addon_restore(slug) for slug in addon_list]
         if tasks:
             await asyncio.wait(tasks)
 

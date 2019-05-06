@@ -235,4 +235,18 @@ class AddonManager(CoreSysAttributes):
 
     async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
-        # FIXME: Init addon object or reuse exists
+        if slug not in self.local:
+            _LOGGER.debug("Add-on %s is not local available for restore")
+            addon = AddonLocal(self.coresys, slug)
+        else:
+            _LOGGER.debug("Add-on %s is local available for restore")
+            addon = self.local[slug]
+
+        await addon.restore(tar_file)
+
+        # Check if new
+        if slug in self.local:
+            return
+
+        _LOGGER.info("Detect new Add-on after restore %s", slug)
+        self.local[slug] = addon
