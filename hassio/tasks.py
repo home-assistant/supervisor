@@ -51,7 +51,7 @@ class Tasks(CoreSysAttributes):
 
         # Reload
         self.jobs.add(
-            self.sys_scheduler.register_task(self.sys_addons.reload, RUN_RELOAD_ADDONS)
+            self.sys_scheduler.register_task(self.sys_store.reload, RUN_RELOAD_ADDONS)
         )
         self.jobs.add(
             self.sys_scheduler.register_task(

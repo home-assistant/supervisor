@@ -167,8 +167,8 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     async def reload(self, request: web.Request) -> None:
-        """Reload all add-on data."""
-        await asyncio.shield(self.sys_addons.reload())
+        """Reload all add-on data from store."""
+        await asyncio.shield(self.sys_store.reload())
 
     @api_process
     async def info(self, request: web.Request) -> Dict[str, Any]:
