@@ -71,8 +71,6 @@ class AddonLocal(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
-        if not self.is_installed:
-            return
         with suppress(DockerAPIError):
             await self.instance.attach()
 

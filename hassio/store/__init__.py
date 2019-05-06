@@ -83,32 +83,19 @@ class StoreManager(CoreSysAttributes):
 
     def _read_addons(self) -> None:
         """Reload add-ons inside store."""
-        self.sys_addons.store.clear()
-        for slug in self.data.addons:
-            self.sys_addons.store[slug] = AddonStore(self.coresys, slug)
-
-        async def _read_addons(self) -> None:
-        """Update/add internal add-on store."""
-        all_addons = set(self.data.system) | set(self.data.cache)
+        all_addons = set(self.data.addons)
 
         # calc diff
-        add_addons = all_addons - set(self.addons)
-        del_addons = set(self.addons) - all_addons
+        add_addons = all_addons - set(self.sys_addons.store)
+        del_addons = set(self.sys_addons.store) - all_addons
 
-        _LOGGER.info("Load add-ons: %d all - %d new - %d remove",
+        _LOGGER.info("Load add-ons from store: %d all - %d new - %d remove",
                      len(all_addons), len(add_addons), len(del_addons))
 
         # new addons
-        tasks = []
-        for addon_slug in add_addons:
-            addon = Addon(self.coresys, addon_slug)
-
-            tasks.append(addon.load())
-            self.addons[addon_slug] = addon
-
-        if tasks:
-            await asyncio.wait(tasks)
+        for slug in add_addons:
+            self.sys_addons.store[slug] = AddonStore(self.coresys, slug)
 
         # remove
-        for addon_slug in del_addons:
-            self.addons.pop(addon_slug)
+        for slug in del_addons:
+            self.sys_addons.store.pop(slug)
