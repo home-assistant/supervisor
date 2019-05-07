@@ -165,6 +165,11 @@ class AddonModel(CoreSysAttributes):
 
     @property
     def latest_version(self) -> str:
+        """Return latest version of add-on."""
+        return self.data[ATTR_VERSION]
+
+    @property
+    def version(self) -> str:
         """Return version of add-on."""
         return self.data[ATTR_VERSION]
 
