@@ -175,7 +175,7 @@ class APIAddons(CoreSysAttributes):
         """Return add-on information."""
         addon = self._extract_addon(request, check_installed=False)
 
-        return {
+        data = {
             ATTR_NAME: addon.name,
             ATTR_SLUG: addon.slug,
             ATTR_DESCRIPTON: addon.description,
@@ -184,7 +184,6 @@ class APIAddons(CoreSysAttributes):
             ATTR_AUTO_UPDATE: addon.auto_update,
             ATTR_REPOSITORY: addon.repository,
             ATTR_LAST_VERSION: addon.latest_version,
-            ATTR_STATE: await addon.state(),
             ATTR_PROTECTED: addon.protected,
             ATTR_RATING: rating_security(addon),
             ATTR_BOOT: addon.boot,
@@ -193,6 +192,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_MACHINE: addon.supported_machine,
             ATTR_HOMEASSISTANT: addon.homeassistant_version,
             ATTR_URL: addon.url,
+            ATTR_STATE: None,
             ATTR_DETACHED: addon.is_detached,
             ATTR_AVAILABLE: addon.available,
             ATTR_BUILD: addon.need_build,
@@ -209,8 +209,8 @@ class APIAddons(CoreSysAttributes):
             ATTR_ICON: addon.with_icon,
             ATTR_LOGO: addon.with_logo,
             ATTR_CHANGELOG: addon.with_changelog,
-            ATTR_WEBUI: addon.webui,
             ATTR_STDIN: addon.with_stdin,
+            ATTR_WEBUI: None,
             ATTR_HASSIO_API: addon.access_hassio_api,
             ATTR_HASSIO_ROLE: addon.hassio_role,
             ATTR_AUTH_API: addon.access_auth_api,
@@ -226,11 +226,23 @@ class APIAddons(CoreSysAttributes):
             ATTR_DISCOVERY: addon.discovery,
             ATTR_IP_ADDRESS: str(addon.ip_address),
             ATTR_INGRESS: addon.with_ingress,
-            ATTR_INGRESS_ENTRY: addon.ingress_entry,
-            ATTR_INGRESS_URL: addon.ingress_url,
-            ATTR_INGRESS_PORT: addon.ingress_port,
-            ATTR_INGRESS_PANEL: addon.ingress_panel,
+            ATTR_INGRESS_ENTRY: None,
+            ATTR_INGRESS_URL: None,
+            ATTR_INGRESS_PORT: None,
+            ATTR_INGRESS_PANEL: None,
         }
+
+        if addon.is_installed:
+            data.update({
+                ATTR_STATE: await addon.state(),
+                ATTR_WEBUI: addon.webui,
+                ATTR_INGRESS_ENTRY: addon.ingress_entry,
+                ATTR_INGRESS_URL: addon.ingress_url,
+                ATTR_INGRESS_PORT: addon.ingress_port,
+                ATTR_INGRESS_PANEL: addon.ingress_panel,
+            })
+
+        return data
 
     @api_process
     async def options(self, request: web.Request) -> None:
