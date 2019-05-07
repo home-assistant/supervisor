@@ -73,21 +73,20 @@ class APISupervisor(CoreSysAttributes):
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return host information."""
         list_addons = []
-        for addon in self.sys_addons.list_addons:
-            if addon.is_installed:
-                list_addons.append(
-                    {
-                        ATTR_NAME: addon.name,
-                        ATTR_SLUG: addon.slug,
-                        ATTR_DESCRIPTON: addon.description,
-                        ATTR_STATE: await addon.state(),
-                        ATTR_VERSION: addon.latest_version,
-                        ATTR_INSTALLED: addon.version_installed,
-                        ATTR_REPOSITORY: addon.repository,
-                        ATTR_ICON: addon.with_icon,
-                        ATTR_LOGO: addon.with_logo,
-                    }
-                )
+        for addon in self.sys_addons.installed:
+            list_addons.append(
+                {
+                    ATTR_NAME: addon.name,
+                    ATTR_SLUG: addon.slug,
+                    ATTR_DESCRIPTON: addon.description,
+                    ATTR_STATE: await addon.state(),
+                    ATTR_VERSION: addon.latest_version,
+                    ATTR_INSTALLED: addon.version,
+                    ATTR_REPOSITORY: addon.repository,
+                    ATTR_ICON: addon.with_icon,
+                    ATTR_LOGO: addon.with_logo,
+                }
+            )
 
         return {
             ATTR_VERSION: HASSIO_VERSION,
@@ -127,7 +126,7 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
-            await asyncio.shield(self.sys_addons.load_repositories(new))
+            await asyncio.shield(self.sys_store.update_repositories(new))
 
         self.sys_updater.save_data()
         self.sys_config.save_data()

@@ -12,6 +12,8 @@ UNKNOWN = 'unknown'
 class Repository(CoreSysAttributes):
     """Repository in Hass.io."""
 
+    slug: str = None
+
     def __init__(self, coresys, repository):
         """Initialize repository object."""
         self.coresys = coresys
@@ -19,39 +21,34 @@ class Repository(CoreSysAttributes):
         self.git = None
 
         if repository == REPOSITORY_LOCAL:
-            self._id = repository
+            self.slug = repository
         elif repository == REPOSITORY_CORE:
-            self._id = repository
+            self.slug = repository
             self.git = GitRepoHassIO(coresys)
         else:
-            self._id = get_hash_from_repository(repository)
+            self.slug = get_hash_from_repository(repository)
             self.git = GitRepoCustom(coresys, repository)
             self.source = repository
 
     @property
-    def _mesh(self):
+    def data(self):
         """Return data struct repository."""
-        return self.sys_addons.data.repositories.get(self._id, {})
-
-    @property
-    def slug(self):
-        """Return slug of repository."""
-        return self._id
+        return self.sys_store.data.repositories[self.slug]
 
     @property
     def name(self):
         """Return name of repository."""
-        return self._mesh.get(ATTR_NAME, UNKNOWN)
+        return self.data.get(ATTR_NAME, UNKNOWN)
 
     @property
     def url(self):
         """Return URL of repository."""
-        return self._mesh.get(ATTR_URL, self.source)
+        return self.data.get(ATTR_URL, self.source)
 
     @property
     def maintainer(self):
         """Return url of repository."""
-        return self._mesh.get(ATTR_MAINTAINER, UNKNOWN)
+        return self.data.get(ATTR_MAINTAINER, UNKNOWN)
 
     async def load(self):
         """Load addon repository."""
@@ -67,7 +64,7 @@ class Repository(CoreSysAttributes):
 
     def remove(self):
         """Remove add-on repository."""
-        if self._id in (REPOSITORY_CORE, REPOSITORY_LOCAL):
+        if self.slug in (REPOSITORY_CORE, REPOSITORY_LOCAL):
             raise APIError("Can't remove built-in repositories!")
 
         self.git.remove()

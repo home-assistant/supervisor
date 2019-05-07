@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 from pathlib import Path
-import re
 from typing import TYPE_CHECKING
 
 from ..const import (
@@ -20,16 +18,14 @@ from ..const import (
     SECURITY_DISABLE,
     SECURITY_PROFILE,
 )
-from ..exceptions import AddonsNotSupportedError
 
 if TYPE_CHECKING:
-    from .addon import Addon
+    from .model import AddonModel
 
-RE_SHA1 = re.compile(r"[a-f0-9]{8}")
 _LOGGER = logging.getLogger(__name__)
 
 
-def rating_security(addon: Addon) -> int:
+def rating_security(addon: AddonModel) -> int:
     """Return 1-6 for security rating.
 
     1 = not secure
@@ -84,34 +80,6 @@ def rating_security(addon: Addon) -> int:
         rating = 1
 
     return max(min(6, rating), 1)
-
-
-def get_hash_from_repository(name: str) -> str:
-    """Generate a hash from repository."""
-    key = name.lower().encode()
-    return hashlib.sha1(key).hexdigest()[:8]
-
-
-def extract_hash_from_path(path: Path) -> str:
-    """Extract repo id from path."""
-    repository_dir = path.parts[-1]
-
-    if not RE_SHA1.match(repository_dir):
-        return get_hash_from_repository(repository_dir)
-    return repository_dir
-
-
-def check_installed(method):
-    """Wrap function with check if add-on is installed."""
-
-    async def wrap_check(addon, *args, **kwargs):
-        """Return False if not installed or the function."""
-        if not addon.is_installed:
-            _LOGGER.error("Addon %s is not installed", addon.slug)
-            raise AddonsNotSupportedError()
-        return await method(addon, *args, **kwargs)
-
-    return wrap_check
 
 
 async def remove_data(folder: Path) -> None:
