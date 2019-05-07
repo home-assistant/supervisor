@@ -180,9 +180,9 @@ class APIAddons(CoreSysAttributes):
             ATTR_SLUG: addon.slug,
             ATTR_DESCRIPTON: addon.description,
             ATTR_LONG_DESCRIPTION: addon.long_description,
-            ATTR_VERSION: addon.version,
-            ATTR_AUTO_UPDATE: addon.auto_update,
+            ATTR_AUTO_UPDATE: None,
             ATTR_REPOSITORY: addon.repository,
+            ATTR_VERSION: None,
             ATTR_LAST_VERSION: addon.latest_version,
             ATTR_PROTECTED: addon.protected,
             ATTR_RATING: rating_security(addon),
@@ -242,7 +242,9 @@ class APIAddons(CoreSysAttributes):
                 ATTR_INGRESS_PANEL: addon.ingress_panel,
                 ATTR_AUDIO_INPUT: addon.audio_input,
                 ATTR_AUDIO_OUTPUT: addon.audio_output,
+                ATTR_AUTO_UPDATE: addon.auto_update,
                 ATTR_IP_ADDRESS: str(addon.ip_address),
+                ATTR_VERSION: addon.version,
             })
 
         return data

@@ -108,6 +108,11 @@ class Addon(AddonModel):
         return self.slug not in self.sys_store.data.addons
 
     @property
+    def available(self) -> bool:
+        """Return True if this add-on is available on this platform."""
+        return self._available(self.data_store)
+
+    @property
     def version(self) -> Optional[str]:
         """Return installed version."""
         return self.persist[ATTR_VERSION]
@@ -590,6 +595,11 @@ class Addon(AddonModel):
                 _LOGGER.error("Can't validate %s, snapshot data: %s",
                               self.slug, humanize_error(data, err))
                 raise AddonsError() from None
+
+            # If available
+            if not self._available(data[ATTR_SYSTEM]):
+                _LOGGER.error("Add-on %s is not available for this Platform", self.slug)
+                raise AddonsNotSupportedError()
 
             # Restore local add-on informations
             _LOGGER.info("Restore config for addon %s", self.slug)
