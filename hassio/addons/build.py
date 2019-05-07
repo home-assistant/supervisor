@@ -9,27 +9,23 @@ from ..utils.json import JsonConfig
 from .validate import SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
-    from .addon import Addon
+    from . import AnyAddon
 
 
 class AddonBuild(JsonConfig, CoreSysAttributes):
     """Handle build options for add-ons."""
 
-    def __init__(self, coresys: CoreSys, slug: str) -> None:
+    def __init__(self, coresys: CoreSys, addon: AnyAddon) -> None:
         """Initialize Hass.io add-on builder."""
         self.coresys: CoreSys = coresys
-        self._id: str = slug
+        self.addon = addon
 
         super().__init__(
             Path(self.addon.path_location, 'build.json'), SCHEMA_BUILD_CONFIG)
 
     def save_data(self):
         """Ignore save function."""
-
-    @property
-    def addon(self) -> Addon:
-        """Return add-on of build data."""
-        return self.sys_addons.get(self._id)
+        raise RuntimeError()
 
     @property
     def base_image(self) -> str:

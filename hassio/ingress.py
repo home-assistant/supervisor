@@ -44,7 +44,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
     def addons(self) -> List[Addon]:
         """Return list of ingress Add-ons."""
         addons = []
-        for addon in self.sys_addons.list_installed:
+        for addon in self.sys_addons.installed:
             if not addon.with_ingress:
                 continue
             addons.append(addon)

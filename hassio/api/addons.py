@@ -7,7 +7,7 @@ from aiohttp import web
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons.addon import Addon
+from ..addons import AnyAddon
 from ..addons.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
@@ -44,9 +44,9 @@ from ..const import (
     ATTR_ICON,
     ATTR_INGRESS,
     ATTR_INGRESS_ENTRY,
+    ATTR_INGRESS_PANEL,
     ATTR_INGRESS_PORT,
     ATTR_INGRESS_URL,
-    ATTR_INGRESS_PANEL,
     ATTR_INSTALLED,
     ATTR_IP_ADDRESS,
     ATTR_KERNEL_MODULES,
@@ -82,6 +82,7 @@ from ..const import (
     CONTENT_TYPE_PNG,
     CONTENT_TYPE_TEXT,
     REQUEST_FROM,
+    STATE_NONE,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
@@ -113,7 +114,7 @@ SCHEMA_SECURITY = vol.Schema({
 class APIAddons(CoreSysAttributes):
     """Handle RESTful API for add-on functions."""
 
-    def _extract_addon(self, request: web.Request, check_installed: bool = True) -> Addon:
+    def _extract_addon(self, request: web.Request, check_installed: bool = True) -> AnyAddon:
         """Return addon, throw an exception it it doesn't exist."""
         addon_slug = request.match_info.get('addon')
 
@@ -134,13 +135,13 @@ class APIAddons(CoreSysAttributes):
     async def list(self, request: web.Request) -> Dict[str, Any]:
         """Return all add-ons or repositories."""
         data_addons = []
-        for addon in self.sys_addons.list_addons:
+        for addon in self.sys_addons.all:
             data_addons.append({
                 ATTR_NAME: addon.name,
                 ATTR_SLUG: addon.slug,
                 ATTR_DESCRIPTON: addon.description,
                 ATTR_VERSION: addon.latest_version,
-                ATTR_INSTALLED: addon.version_installed,
+                ATTR_INSTALLED: addon.version if addon.is_installed else None,
                 ATTR_AVAILABLE: addon.available,
                 ATTR_DETACHED: addon.is_detached,
                 ATTR_REPOSITORY: addon.repository,
@@ -151,7 +152,7 @@ class APIAddons(CoreSysAttributes):
             })
 
         data_repositories = []
-        for repository in self.sys_addons.list_repositories:
+        for repository in self.sys_store.all:
             data_repositories.append({
                 ATTR_SLUG: repository.slug,
                 ATTR_NAME: repository.name,
@@ -167,24 +168,23 @@ class APIAddons(CoreSysAttributes):
 
     @api_process
     async def reload(self, request: web.Request) -> None:
-        """Reload all add-on data."""
-        await asyncio.shield(self.sys_addons.reload())
+        """Reload all add-on data from store."""
+        await asyncio.shield(self.sys_store.reload())
 
     @api_process
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return add-on information."""
         addon = self._extract_addon(request, check_installed=False)
 
-        return {
+        data = {
             ATTR_NAME: addon.name,
             ATTR_SLUG: addon.slug,
             ATTR_DESCRIPTON: addon.description,
             ATTR_LONG_DESCRIPTION: addon.long_description,
-            ATTR_VERSION: addon.version_installed,
-            ATTR_AUTO_UPDATE: addon.auto_update,
+            ATTR_AUTO_UPDATE: None,
             ATTR_REPOSITORY: addon.repository,
+            ATTR_VERSION: None,
             ATTR_LAST_VERSION: addon.latest_version,
-            ATTR_STATE: await addon.state(),
             ATTR_PROTECTED: addon.protected,
             ATTR_RATING: rating_security(addon),
             ATTR_BOOT: addon.boot,
@@ -193,6 +193,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_MACHINE: addon.supported_machine,
             ATTR_HOMEASSISTANT: addon.homeassistant_version,
             ATTR_URL: addon.url,
+            ATTR_STATE: STATE_NONE,
             ATTR_DETACHED: addon.is_detached,
             ATTR_AVAILABLE: addon.available,
             ATTR_BUILD: addon.need_build,
@@ -209,8 +210,8 @@ class APIAddons(CoreSysAttributes):
             ATTR_ICON: addon.with_icon,
             ATTR_LOGO: addon.with_logo,
             ATTR_CHANGELOG: addon.with_changelog,
-            ATTR_WEBUI: addon.webui,
             ATTR_STDIN: addon.with_stdin,
+            ATTR_WEBUI: None,
             ATTR_HASSIO_API: addon.access_hassio_api,
             ATTR_HASSIO_ROLE: addon.hassio_role,
             ATTR_AUTH_API: addon.access_auth_api,
@@ -220,17 +221,34 @@ class APIAddons(CoreSysAttributes):
             ATTR_DEVICETREE: addon.with_devicetree,
             ATTR_DOCKER_API: addon.access_docker_api,
             ATTR_AUDIO: addon.with_audio,
-            ATTR_AUDIO_INPUT: addon.audio_input,
-            ATTR_AUDIO_OUTPUT: addon.audio_output,
+            ATTR_AUDIO_INPUT: None,
+            ATTR_AUDIO_OUTPUT: None,
             ATTR_SERVICES: _pretty_services(addon),
             ATTR_DISCOVERY: addon.discovery,
-            ATTR_IP_ADDRESS: str(addon.ip_address),
+            ATTR_IP_ADDRESS: None,
             ATTR_INGRESS: addon.with_ingress,
-            ATTR_INGRESS_ENTRY: addon.ingress_entry,
-            ATTR_INGRESS_URL: addon.ingress_url,
-            ATTR_INGRESS_PORT: addon.ingress_port,
-            ATTR_INGRESS_PANEL: addon.ingress_panel,
+            ATTR_INGRESS_ENTRY: None,
+            ATTR_INGRESS_URL: None,
+            ATTR_INGRESS_PORT: None,
+            ATTR_INGRESS_PANEL: None,
         }
+
+        if addon.is_installed:
+            data.update({
+                ATTR_STATE: await addon.state(),
+                ATTR_WEBUI: addon.webui,
+                ATTR_INGRESS_ENTRY: addon.ingress_entry,
+                ATTR_INGRESS_URL: addon.ingress_url,
+                ATTR_INGRESS_PORT: addon.ingress_port,
+                ATTR_INGRESS_PANEL: addon.ingress_panel,
+                ATTR_AUDIO_INPUT: addon.audio_input,
+                ATTR_AUDIO_OUTPUT: addon.audio_output,
+                ATTR_AUTO_UPDATE: addon.auto_update,
+                ATTR_IP_ADDRESS: str(addon.ip_address),
+                ATTR_VERSION: addon.version,
+            })
+
+        return data
 
     @api_process
     async def options(self, request: web.Request) -> None:
@@ -258,7 +276,7 @@ class APIAddons(CoreSysAttributes):
             addon.ingress_panel = body[ATTR_INGRESS_PANEL]
             await self.sys_ingress.update_hass_panel(addon)
 
-        addon.save_data()
+        addon.save_persist()
 
     @api_process
     async def security(self, request: web.Request) -> None:
@@ -325,7 +343,7 @@ class APIAddons(CoreSysAttributes):
         """Update add-on."""
         addon = self._extract_addon(request)
 
-        if addon.latest_version == addon.version_installed:
+        if addon.latest_version == addon.version:
             raise APIError("No update available!")
 
         return asyncio.shield(addon.update())
@@ -392,7 +410,7 @@ class APIAddons(CoreSysAttributes):
         await asyncio.shield(addon.write_stdin(data))
 
 
-def _pretty_devices(addon: Addon) -> List[str]:
+def _pretty_devices(addon: AnyAddon) -> List[str]:
     """Return a simplified device list."""
     dev_list = addon.devices
     if not dev_list:
@@ -400,7 +418,7 @@ def _pretty_devices(addon: Addon) -> List[str]:
     return [row.split(':')[0] for row in dev_list]
 
 
-def _pretty_services(addon: Addon) -> List[str]:
+def _pretty_services(addon: AnyAddon) -> List[str]:
     """Return a simplified services role list."""
     services = []
     for name, access in addon.services_role.items():

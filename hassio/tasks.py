@@ -51,7 +51,7 @@ class Tasks(CoreSysAttributes):
 
         # Reload
         self.jobs.add(
-            self.sys_scheduler.register_task(self.sys_addons.reload, RUN_RELOAD_ADDONS)
+            self.sys_scheduler.register_task(self.sys_store.reload, RUN_RELOAD_ADDONS)
         )
         self.jobs.add(
             self.sys_scheduler.register_task(
@@ -93,7 +93,7 @@ class Tasks(CoreSysAttributes):
             if not addon.is_installed or not addon.auto_update:
                 continue
 
-            if addon.version_installed == addon.latest_version:
+            if addon.version == addon.latest_version:
                 continue
 
             if addon.test_update_schema():
