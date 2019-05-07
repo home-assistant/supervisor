@@ -453,4 +453,4 @@ class Snapshot(CoreSysAttributes):
 
         Return a coroutine.
         """
-        return self.sys_addons.update_repositories(self.repositories)
+        return self.sys_store.update_repositories(self.repositories)
