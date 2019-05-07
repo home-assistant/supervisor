@@ -14,7 +14,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.json import JsonConfig
 from ..store.addon import AddonStore
-from .addon import AddonLocal
+from .addon import Addon
 from .validate import SCHEMA_ADDONS_FILE
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class AddonsData(JsonConfig, CoreSysAttributes):
         }
         self.save_data()
 
-    def uninstall(self, addon: AddonLocal) -> None:
+    def uninstall(self, addon: Addon) -> None:
         """Set add-on as uninstalled."""
         self.system.pop(addon.slug, None)
         self.user.pop(addon.slug, None)

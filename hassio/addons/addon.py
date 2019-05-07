@@ -22,11 +22,12 @@ from ..const import (
     ATTR_BOOT,
     ATTR_IMAGE,
     ATTR_INGRESS_ENTRY,
-    ATTR_INGRESS_TOKEN,
     ATTR_INGRESS_PANEL,
+    ATTR_INGRESS_TOKEN,
     ATTR_NETWORK,
     ATTR_OPTIONS,
     ATTR_PORTS,
+    ATTR_PROTECTED,
     ATTR_SCHEMA,
     ATTR_STATE,
     ATTR_SYSTEM,
@@ -49,9 +50,9 @@ from ..exceptions import (
 )
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
+from .model import AddonModel, Data
 from .utils import remove_data
 from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
-from .model import AddonModel, Data
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,13 +61,13 @@ RE_WEBUI = re.compile(
     r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$")
 
 
-class AddonLocal(AddonModel):
+class Addon(AddonModel):
     """Hold data for add-on inside Hass.io."""
 
     def __init__(self, coresys: CoreSys, slug: str):
         """Initialize data holder."""
         self.coresys: CoreSys = coresys
-        self.instance: DockerAddon = DockerAddon(coresys, slug)
+        self.instance: DockerAddon = DockerAddon(coresys, self)
         self.slug: str = slug
 
     async def load(self) -> None:
@@ -593,7 +594,7 @@ class AddonLocal(AddonModel):
             # Restore local add-on informations
             _LOGGER.info("Restore config for addon %s", self.slug)
             restore_image = self._image(data[ATTR_SYSTEM])
-            self._restore_data(data[ATTR_USER], data[ATTR_SYSTEM], restore_image)
+            self.sys_addons.data.restore(self.slug, data[ATTR_USER], data[ATTR_SYSTEM], restore_image)
 
             # Check version / restore image
             version = data[ATTR_VERSION]

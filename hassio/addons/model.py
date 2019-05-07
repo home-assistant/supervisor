@@ -2,11 +2,9 @@
 from distutils.version import StrictVersion
 from ipaddress import IPv4Address, ip_address
 from pathlib import Path
-import tarfile
 from typing import Any, Awaitable, Dict, List, Optional
 
 import voluptuous as vol
-from voluptuous.humanize import humanize_error
 
 from ..const import (
     ATTR_APPARMOR,
@@ -49,6 +47,7 @@ from ..const import (
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
     ATTR_SERVICES,
+    ATTR_SLUG,
     ATTR_STARTUP,
     ATTR_STDIN,
     ATTR_TIMEOUT,

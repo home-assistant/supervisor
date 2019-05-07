@@ -7,7 +7,7 @@ from aiohttp import web
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons.addon import Addon
+from ..addons import AnyAddon
 from ..addons.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
@@ -113,7 +113,7 @@ SCHEMA_SECURITY = vol.Schema({
 class APIAddons(CoreSysAttributes):
     """Handle RESTful API for add-on functions."""
 
-    def _extract_addon(self, request: web.Request, check_installed: bool = True) -> Addon:
+    def _extract_addon(self, request: web.Request, check_installed: bool = True) -> AnyAddon:
         """Return addon, throw an exception it it doesn't exist."""
         addon_slug = request.match_info.get('addon')
 
@@ -392,7 +392,7 @@ class APIAddons(CoreSysAttributes):
         await asyncio.shield(addon.write_stdin(data))
 
 
-def _pretty_devices(addon: Addon) -> List[str]:
+def _pretty_devices(addon: AnyAddon) -> List[str]:
     """Return a simplified device list."""
     dev_list = addon.devices
     if not dev_list:
@@ -400,7 +400,7 @@ def _pretty_devices(addon: Addon) -> List[str]:
     return [row.split(':')[0] for row in dev_list]
 
 
-def _pretty_services(addon: Addon) -> List[str]:
+def _pretty_services(addon: AnyAddon) -> List[str]:
     """Return a simplified services role list."""
     services = []
     for name, access in addon.services_role.items():

@@ -14,12 +14,12 @@ from ..exceptions import (
     HostAppArmorError,
 )
 from ..store.addon import AddonStore
-from .addon import AddonLocal
+from .addon import Addon
 from .data import AddonsData
 
 _LOGGER = logging.getLogger(__name__)
 
-Addon = Union[AddonLocal, AddonStore]
+AnyAddon = Union[Addon, AddonStore]
 
 
 class AddonManager(CoreSysAttributes):
@@ -29,21 +29,21 @@ class AddonManager(CoreSysAttributes):
         """Initialize Docker base wrapper."""
         self.coresys: CoreSys = coresys
         self.data: AddonsData = AddonsData(coresys)
-        self.local: Dict[str, AddonLocal] = {}
+        self.local: Dict[str, Addon] = {}
         self.store: Dict[str, AddonStore] = {}
 
     @property
-    def all(self) -> List[Addon]:
+    def all(self) -> List[AnyAddon]:
         """Return a list of all add-ons."""
         addons = {**self.store, **self.local}
         return list(addons.values())
 
     @property
-    def installed(self) -> List[AddonLocal]:
+    def installed(self) -> List[Addon]:
         """Return a list of all installed add-ons."""
         return list(self.local.values())
 
-    def get(self, addon_slug: str) -> Optional[Addon]:
+    def get(self, addon_slug: str) -> Optional[AnyAddon]:
         """Return an add-on from slug.
 
         Prio:
@@ -54,7 +54,7 @@ class AddonManager(CoreSysAttributes):
             return self.local[addon_slug]
         return self.store.get(addon_slug)
 
-    def from_token(self, token: str) -> Optional[AddonLocal]:
+    def from_token(self, token: str) -> Optional[Addon]:
         """Return an add-on from Hass.io token."""
         for addon in self.local:
             if token == addon.hassio_token:
@@ -65,7 +65,7 @@ class AddonManager(CoreSysAttributes):
         """Start up add-on management."""
         tasks = []
         for slug in self.data.system:
-            addon = self.local[slug] = AddonLocal(self.coresys, slug)
+            addon = self.local[slug] = Addon(self.coresys, slug)
             tasks.append(addon.load())
 
         # Run initial tasks
@@ -115,7 +115,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsNotSupportedError()
 
         self.data.install(store)
-        addon = AddonLocal(self.coresys, slug)
+        addon = Addon(self.coresys, slug)
 
         if not addon.path_data.is_dir():
             _LOGGER.info(
@@ -198,7 +198,6 @@ class AddonManager(CoreSysAttributes):
         if last_state == STATE_STARTED:
             await addon.start()
 
-
     async def rebuild(self, slug: str) -> None:
         """Perform a rebuild of local build add-on."""
         if slug not in self.local:
@@ -211,11 +210,11 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError()
         store = self.store.get(slug)
 
-
+        # Check if a rebuild is possible now
         if addon.version != store.version:
             _LOGGER.error("Version changed, use Update instead Rebuild")
             raise AddonsError()
-        elif not addon.need_build:
+        if not addon.need_build:
             _LOGGER.error("Can't rebuild a image based add-on")
             raise AddonsNotSupportedError()
 
@@ -237,7 +236,7 @@ class AddonManager(CoreSysAttributes):
         """Restore state of an add-on."""
         if slug not in self.local:
             _LOGGER.debug("Add-on %s is not local available for restore")
-            addon = AddonLocal(self.coresys, slug)
+            addon = Addon(self.coresys, slug)
         else:
             _LOGGER.debug("Add-on %s is local available for restore")
             addon = self.local[slug]

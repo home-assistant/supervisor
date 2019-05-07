@@ -1,6 +1,5 @@
 """Init file for Hass.io add-ons."""
 import logging
-from typing import Any, Dict
 
 from ..coresys import CoreSys
 from ..addons.model import AddonModel, Data
