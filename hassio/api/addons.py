@@ -44,9 +44,9 @@ from ..const import (
     ATTR_ICON,
     ATTR_INGRESS,
     ATTR_INGRESS_ENTRY,
+    ATTR_INGRESS_PANEL,
     ATTR_INGRESS_PORT,
     ATTR_INGRESS_URL,
-    ATTR_INGRESS_PANEL,
     ATTR_INSTALLED,
     ATTR_IP_ADDRESS,
     ATTR_KERNEL_MODULES,
@@ -82,6 +82,7 @@ from ..const import (
     CONTENT_TYPE_PNG,
     CONTENT_TYPE_TEXT,
     REQUEST_FROM,
+    STATE_NONE,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
@@ -192,7 +193,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_MACHINE: addon.supported_machine,
             ATTR_HOMEASSISTANT: addon.homeassistant_version,
             ATTR_URL: addon.url,
-            ATTR_STATE: None,
+            ATTR_STATE: STATE_NONE,
             ATTR_DETACHED: addon.is_detached,
             ATTR_AVAILABLE: addon.available,
             ATTR_BUILD: addon.need_build,

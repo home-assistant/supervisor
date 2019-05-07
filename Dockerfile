@@ -23,7 +23,6 @@ RUN export MAKEFLAGS="-j$(nproc)" \
 
 # Install HassIO
 COPY . /usr/src/hassio
-RUN pip3 install --no-cache-dir /usr/src/hassio \
-    && rm -rf /usr/src/hassio
+RUN pip3 install --no-cache-dir -e /usr/src/hassio
 
 CMD [ "python3", "-m", "hassio" ]
