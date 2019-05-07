@@ -141,7 +141,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_SLUG: addon.slug,
                 ATTR_DESCRIPTON: addon.description,
                 ATTR_VERSION: addon.latest_version,
-                ATTR_INSTALLED: addon.version,
+                ATTR_INSTALLED: addon.version if addon.is_installed else None,
                 ATTR_AVAILABLE: addon.available,
                 ATTR_DETACHED: addon.is_detached,
                 ATTR_REPOSITORY: addon.repository,
