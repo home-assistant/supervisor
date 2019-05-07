@@ -1,6 +1,5 @@
 """Init file for Hass.io add-ons."""
 from distutils.version import StrictVersion
-from ipaddress import IPv4Address, ip_address
 from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 

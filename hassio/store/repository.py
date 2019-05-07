@@ -14,7 +14,6 @@ class Repository(CoreSysAttributes):
 
     slug: str = None
 
-
     def __init__(self, coresys, repository):
         """Initialize repository object."""
         self.coresys = coresys
