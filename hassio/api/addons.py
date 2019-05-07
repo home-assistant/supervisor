@@ -220,11 +220,11 @@ class APIAddons(CoreSysAttributes):
             ATTR_DEVICETREE: addon.with_devicetree,
             ATTR_DOCKER_API: addon.access_docker_api,
             ATTR_AUDIO: addon.with_audio,
-            ATTR_AUDIO_INPUT: addon.audio_input,
-            ATTR_AUDIO_OUTPUT: addon.audio_output,
+            ATTR_AUDIO_INPUT: None,
+            ATTR_AUDIO_OUTPUT: None,
             ATTR_SERVICES: _pretty_services(addon),
             ATTR_DISCOVERY: addon.discovery,
-            ATTR_IP_ADDRESS: str(addon.ip_address),
+            ATTR_IP_ADDRESS: None,
             ATTR_INGRESS: addon.with_ingress,
             ATTR_INGRESS_ENTRY: None,
             ATTR_INGRESS_URL: None,
@@ -240,6 +240,9 @@ class APIAddons(CoreSysAttributes):
                 ATTR_INGRESS_URL: addon.ingress_url,
                 ATTR_INGRESS_PORT: addon.ingress_port,
                 ATTR_INGRESS_PANEL: addon.ingress_panel,
+                ATTR_AUDIO_INPUT: addon.audio_input,
+                ATTR_AUDIO_OUTPUT: addon.audio_output,
+                ATTR_IP_ADDRESS: str(addon.ip_address),
             })
 
         return data

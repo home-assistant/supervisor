@@ -91,11 +91,6 @@ class AddonModel(CoreSysAttributes):
         return self._available(self.data)
 
     @property
-    def ip_address(self) -> IPv4Address:
-        """Return IP of Add-on instance."""
-        return ip_address("0.0.0.0")
-
-    @property
     def options(self) -> Dict[str, Any]:
         """Return options with local changes."""
         return self.data[ATTR_OPTIONS]
