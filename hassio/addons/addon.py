@@ -23,6 +23,7 @@ from ..const import (
     ATTR_IMAGE,
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PANEL,
+    ATTR_INGRESS_PORT,
     ATTR_INGRESS_TOKEN,
     ATTR_NETWORK,
     ATTR_OPTIONS,
@@ -259,7 +260,7 @@ class Addon(AddonModel):
         if not self.with_ingress:
             return None
 
-        port = super().ingress_port
+        port = self.data[ATTR_INGRESS_PORT]
         if port == 0:
             return self.sys_ingress.get_dynamic_port(self.slug)
         return port
