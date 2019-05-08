@@ -89,7 +89,7 @@ class Tasks(CoreSysAttributes):
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
         tasks = []
-        for addon in self.sys_addons.list_addons:
+        for addon in self.sys_addons.all:
             if not addon.is_installed or not addon.auto_update:
                 continue
 
