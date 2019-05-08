@@ -240,7 +240,7 @@ class SnapshotManager(CoreSysAttributes):
 
                 # Delete delta add-ons
                 tasks.clear()
-                for addon in self.sys_addons.list_installed:
+                for addon in self.sys_addons.installed:
                     if addon.slug not in snapshot.addon_list:
                         tasks.append(addon.uninstall())
 
