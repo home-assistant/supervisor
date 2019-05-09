@@ -240,7 +240,7 @@ class SnapshotManager(CoreSysAttributes):
 
                 # Delete delta add-ons
                 tasks.clear()
-                for addon in self.sys_addons.list_installed:
+                for addon in self.sys_addons.installed:
                     if addon.slug not in snapshot.addon_list:
                         tasks.append(addon.uninstall())
 
@@ -309,18 +309,9 @@ class SnapshotManager(CoreSysAttributes):
                         self.sys_homeassistant.update(
                             snapshot.homeassistant_version))
 
-                # Process Add-ons
-                addon_list = []
-                for slug in addons:
-                    addon = self.sys_addons.get(slug)
-                    if addon:
-                        addon_list.append(addon)
-                        continue
-                    _LOGGER.warning("Can't restore addon %s", snapshot.slug)
-
-                if addon_list:
+                if addons:
                     _LOGGER.info("Restore %s old add-ons", snapshot.slug)
-                    await snapshot.restore_addons(addon_list)
+                    await snapshot.restore_addons(addons)
 
                 # Make sure homeassistant run agen
                 if task_hass:

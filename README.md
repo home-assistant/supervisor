@@ -1,4 +1,4 @@
-[![Build Status](https://dev.azure.com/home-assistant/Home%20Assistant/_apis/build/status/home-assistant.hassio?branchName=dev)](https://dev.azure.com/home-assistant/Home%20Assistant/_build/latest?definitionId=2&branchName=dev)
+[![Build Status](https://dev.azure.com/home-assistant/Hass.io/_apis/build/status/hassio?branchName=dev)](https://dev.azure.com/home-assistant/Hass.io/_build/latest?definitionId=2&branchName=dev)
 
 # Hass.io
 

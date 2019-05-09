@@ -36,6 +36,11 @@ class DockerHomeAssistant(DockerInterface):
         return HASS_DOCKER_NAME
 
     @property
+    def timeout(self) -> str:
+        """Return timeout for Docker actions."""
+        return 60
+
+    @property
     def devices(self):
         """Create list of special device to map into Docker."""
         devices = []

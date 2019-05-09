@@ -31,6 +31,7 @@ from .interface import DockerInterface
 if TYPE_CHECKING:
     from ..addons.addon import Addon
 
+
 _LOGGER = logging.getLogger(__name__)
 
 AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
@@ -39,15 +40,10 @@ AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 class DockerAddon(DockerInterface):
     """Docker Hass.io wrapper for Home Assistant."""
 
-    def __init__(self, coresys: CoreSys, slug: str):
+    def __init__(self, coresys: CoreSys, addon: Addon):
         """Initialize Docker Home Assistant wrapper."""
         super().__init__(coresys)
-        self._id: str = slug
-
-    @property
-    def addon(self) -> Addon:
-        """Return add-on of Docker image."""
-        return self.sys_addons.get(self._id)
+        self.addon = addon
 
     @property
     def image(self) -> str:
@@ -76,7 +72,7 @@ class DockerAddon(DockerInterface):
     def version(self) -> str:
         """Return version of Docker image."""
         if self.addon.legacy:
-            return self.addon.version_installed
+            return self.addon.version
         return super().version
 
     @property
@@ -130,7 +126,11 @@ class DockerAddon(DockerInterface):
     @property
     def devices(self) -> List[str]:
         """Return needed devices."""
-        devices = self.addon.devices or []
+        devices = []
+
+        # Extend add-on config
+        if self.addon.devices:
+            devices.extend(self.addon.devices)
 
         # Use audio devices
         if self.addon.with_audio and self.sys_hardware.support_audio:
@@ -363,7 +363,7 @@ class DockerAddon(DockerInterface):
 
         Need run inside executor.
         """
-        build_env = AddonBuild(self.coresys, self._id)
+        build_env = AddonBuild(self.coresys, self.addon)
 
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:

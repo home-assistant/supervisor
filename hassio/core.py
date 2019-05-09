@@ -44,6 +44,9 @@ class HassIO(CoreSysAttributes):
         # Load HassOS
         await self.sys_hassos.load()
 
+        # Load Stores
+        await self.sys_store.load()
+
         # Load Add-ons
         await self.sys_addons.load()
 

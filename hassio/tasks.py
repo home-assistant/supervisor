@@ -51,7 +51,7 @@ class Tasks(CoreSysAttributes):
 
         # Reload
         self.jobs.add(
-            self.sys_scheduler.register_task(self.sys_addons.reload, RUN_RELOAD_ADDONS)
+            self.sys_scheduler.register_task(self.sys_store.reload, RUN_RELOAD_ADDONS)
         )
         self.jobs.add(
             self.sys_scheduler.register_task(
@@ -89,11 +89,11 @@ class Tasks(CoreSysAttributes):
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
         tasks = []
-        for addon in self.sys_addons.list_addons:
+        for addon in self.sys_addons.all:
             if not addon.is_installed or not addon.auto_update:
                 continue
 
-            if addon.version_installed == addon.latest_version:
+            if addon.version == addon.latest_version:
                 continue
 
             if addon.test_update_schema():

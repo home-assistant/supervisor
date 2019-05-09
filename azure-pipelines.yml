@@ -14,8 +14,14 @@ pr:
 - dev
 
 variables:
-  versionHadolint: 'v1.16.3'
-  versionBuilder: '1.1'
+  - name: versionHadolint
+    value: 'v1.16.3'
+  - name: versionBuilder
+    value: '3.2'
+  - name: versionWheels
+    value: '0.3'
+  - group: docker
+  - group: wheels
 
 jobs:
 
@@ -58,16 +64,13 @@ jobs:
     displayName: 'Run Hadolint'
 
 
-- job: 'ReleaseDEV'
-  condition: and(eq(variables['Build.SourceBranchName'], 'dev'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'))
-  dependsOn:
-  - 'JQ'
-  - 'Tox'
-  - 'Hadolint'
+- job: 'Wheels'
+  condition: eq(variables['Build.SourceBranchName'], 'dev')
+  timeoutInMinutes: 360
   pool:
     vmImage: 'ubuntu-16.04'
   strategy:
-    maxParallel: 2
+    maxParallel: 3
     matrix:
       amd64:
         buildArch: 'amd64'
@@ -80,6 +83,44 @@ jobs:
       aarch64:
         buildArch: 'aarch64'
   steps:
+  - script: |
+      sudo apt-get install -y --no-install-recommends \
+        qemu-user-static \
+        binfmt-support
+      
+      sudo mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
+      sudo update-binfmts --enable qemu-arm
+      sudo update-binfmts --enable qemu-aarch64
+    displayName: 'Initial cross build'
+  - script: |
+      mkdir -p .ssh
+      echo -e "-----BEGIN RSA PRIVATE KEY-----\n$(wheelsSSH)\n-----END RSA PRIVATE KEY-----" >> .ssh/id_rsa
+      ssh-keyscan -H $(wheelsHost) >> .ssh/known_hosts
+      chmod 600 .ssh/*
+    displayName: 'Install ssh key'
+  - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)
+    displayName: 'Install wheels builder'
+  - script: |
+      sudo docker run --rm -v $(pwd):/data:ro -v $(pwd)/.ssh:/root/.ssh:rw \
+        homeassistant/$(buildArch)-wheels:$(versionWheels) \
+        --apk "build-base;libffi-dev;openssl-dev" \
+        --index https://wheels.hass.io \
+        --requirement requirements.txt \
+        --upload rsync \
+        --remote wheels@$(wheelsHost):/opt/wheels
+    displayName: 'Run wheels build'
+
+
+- job: 'ReleaseDEV'
+  condition: and(eq(variables['Build.SourceBranchName'], 'dev'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'), succeeded('Wheels'))
+  dependsOn:
+  - 'JQ'
+  - 'Tox'
+  - 'Hadolint'
+  - 'Wheels'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
   - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
@@ -89,8 +130,7 @@ jobs:
         -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
         homeassistant/amd64-builder:$(versionBuilder) \
-        --supervisor "--$(buildArch)" \
-        -t /data --version dev --docker-hub homeassistant
+        --supervisor --all -t /data --version dev --docker-hub homeassistant
     displayName: 'Build DEV'
 
 
@@ -102,19 +142,6 @@ jobs:
   - 'Hadolint'
   pool:
     vmImage: 'ubuntu-16.04'
-  strategy:
-    maxParallel: 5
-    matrix:
-      amd64:
-        buildArch: 'amd64'
-      i386:
-        buildArch: 'i386'
-      armhf:
-        buildArch: 'armhf'
-      armv7:
-        buildArch: 'armv7'
-      aarch64:
-        buildArch: 'aarch64'
   steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
@@ -125,6 +152,5 @@ jobs:
         -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
         homeassistant/amd64-builder:$(versionBuilder) \
-        --supervisor "--$(buildArch)" \
-        -t /data --docker-hub homeassistant
+        --supervisor --all -t /data --docker-hub homeassistant
     displayName: 'Build Release'

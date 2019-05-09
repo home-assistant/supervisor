@@ -463,7 +463,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             headers[hdrs.CONTENT_TYPE] = content_type
 
         # Set old API Password
-        if self.api_password:
+        if not self.refresh_token and self.api_password:
             headers[HEADER_HA_ACCESS] = self.api_password
 
         for _ in (1, 2):

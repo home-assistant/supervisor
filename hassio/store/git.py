@@ -25,17 +25,17 @@ class GitRepo(CoreSysAttributes):
         self.path = path
         self.lock = asyncio.Lock(loop=coresys.loop)
 
-        self._data = RE_REPOSITORY.match(url).groupdict()
+        self.data = RE_REPOSITORY.match(url).groupdict()
 
     @property
     def url(self):
         """Return repository URL."""
-        return self._data[ATTR_URL]
+        return self.data[ATTR_URL]
 
     @property
     def branch(self):
         """Return repository branch."""
-        return self._data[ATTR_BRANCH]
+        return self.data[ATTR_BRANCH]
 
     async def load(self):
         """Init Git add-on repository."""

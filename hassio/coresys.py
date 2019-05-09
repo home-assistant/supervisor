@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from .services import ServiceManager
     from .snapshots import SnapshotManager
     from .supervisor import Supervisor
+    from .store import StoreManager
     from .tasks import Tasks
     from .updater import Updater
 
@@ -68,6 +69,7 @@ class CoreSys:
         self._dbus: DBusManager = None
         self._hassos: HassOS = None
         self._services: ServiceManager = None
+        self._store: StoreManager = None
         self._discovery: Discovery = None
 
     @property
@@ -78,7 +80,7 @@ class CoreSys:
         return None
 
     @property
-    def dev(self) -> str:
+    def dev(self) -> bool:
         """Return True if we run dev mode."""
         return self._updater.channel == CHANNEL_DEV
 
@@ -222,6 +224,18 @@ class CoreSys:
         if self._addons:
             raise RuntimeError("AddonManager already set!")
         self._addons = value
+
+    @property
+    def store(self) -> StoreManager:
+        """Return StoreManager object."""
+        return self._store
+
+    @store.setter
+    def store(self, value: StoreManager):
+        """Set a StoreManager object."""
+        if self._store:
+            raise RuntimeError("StoreManager already set!")
+        self._store = value
 
     @property
     def snapshots(self) -> SnapshotManager:
@@ -424,6 +438,11 @@ class CoreSysAttributes:
     def sys_addons(self) -> AddonManager:
         """Return AddonManager object."""
         return self.coresys.addons
+
+    @property
+    def sys_store(self) -> StoreManager:
+        """Return StoreManager object."""
+        return self.coresys.store
 
     @property
     def sys_snapshots(self) -> SnapshotManager:

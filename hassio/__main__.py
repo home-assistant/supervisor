@@ -40,6 +40,7 @@ if __name__ == "__main__":
     coresys = loop.run_until_complete(bootstrap.initialize_coresys())
 
     bootstrap.migrate_system_env(coresys)
+    bootstrap.supervisor_debugger(coresys)
 
     _LOGGER.info("Setup HassIO")
     loop.run_until_complete(coresys.core.setup())

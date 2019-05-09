@@ -49,7 +49,6 @@ from ..const import (
     ATTR_LEGACY,
     ATTR_LOCATON,
     ATTR_MACHINE,
-    ATTR_MAINTAINER,
     ATTR_MAP,
     ATTR_NAME,
     ATTR_NETWORK,
@@ -208,14 +207,6 @@ SCHEMA_ADDON_CONFIG = vol.Schema({
         vol.Match(RE_DOCKER_IMAGE),
     vol.Optional(ATTR_TIMEOUT, default=10):
         vol.All(vol.Coerce(int), vol.Range(min=10, max=120)),
-}, extra=vol.REMOVE_EXTRA)
-
-
-# pylint: disable=no-value-for-parameter
-SCHEMA_REPOSITORY_CONFIG = vol.Schema({
-    vol.Required(ATTR_NAME): vol.Coerce(str),
-    vol.Optional(ATTR_URL): vol.Url(),
-    vol.Optional(ATTR_MAINTAINER): vol.Coerce(str),
 }, extra=vol.REMOVE_EXTRA)
 
 
