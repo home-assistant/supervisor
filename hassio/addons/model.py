@@ -257,7 +257,7 @@ class AddonModel(CoreSysAttributes):
     @property
     def devices(self) -> Optional[List[str]]:
         """Return devices of add-on."""
-        return self.data.get(ATTR_DEVICES)
+        return self.data.get(ATTR_DEVICES, [])
 
     @property
     def auto_uart(self) -> bool:

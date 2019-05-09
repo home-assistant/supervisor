@@ -126,7 +126,11 @@ class DockerAddon(DockerInterface):
     @property
     def devices(self) -> List[str]:
         """Return needed devices."""
-        devices = self.addon.devices or []
+        devices = []
+
+        # Extend add-on config
+        if self.addon.devices:
+            devices.extend(self.addon.devices)
 
         # Use audio devices
         if self.addon.with_audio and self.sys_hardware.support_audio:
