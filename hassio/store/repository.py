@@ -33,7 +33,7 @@ class Repository(CoreSysAttributes):
     @property
     def data(self):
         """Return data struct repository."""
-        return self.sys_store.data.repositories[self.slug]
+        return self.sys_store.data.repositories.get(self.slug, {})
 
     @property
     def name(self):
