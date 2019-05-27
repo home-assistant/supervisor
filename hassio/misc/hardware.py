@@ -35,8 +35,8 @@ class Hardware:
     def serial_devices(self):
         """Return all serial and connected devices."""
         dev_list = set()
-        for device in self.context.list_devices(subsystem='tty'):
-            if 'ID_VENDOR' in device or RE_TTY.search(device.device_node):
+        for device in self.context.list_devices(subsystem="tty"):
+            if "ID_VENDOR" in device or RE_TTY.search(device.device_node):
                 dev_list.add(device.device_node)
 
         return dev_list
@@ -45,9 +45,9 @@ class Hardware:
     def input_devices(self):
         """Return all input devices."""
         dev_list = set()
-        for device in self.context.list_devices(subsystem='input'):
-            if 'NAME' in device:
-                dev_list.add(device['NAME'].replace('"', ''))
+        for device in self.context.list_devices(subsystem="input"):
+            if "NAME" in device:
+                dev_list.add(device["NAME"].replace('"', ""))
 
         return dev_list
 
@@ -55,8 +55,8 @@ class Hardware:
     def disk_devices(self):
         """Return all disk devices."""
         dev_list = set()
-        for device in self.context.list_devices(subsystem='block'):
-            if device.device_node.startswith('/dev/sd'):
+        for device in self.context.list_devices(subsystem="block"):
+            if device.device_node.startswith("/dev/sd"):
                 dev_list.add(device.device_node)
 
         return dev_list
@@ -93,10 +93,9 @@ class Hardware:
         # parse devices
         for match in RE_DEVICES.finditer(devices):
             try:
-                audio_list[match.group(1)][ATTR_DEVICES].append({
-                    CHAN_ID: match.group(2),
-                    CHAN_TYPE: match.group(3)
-                })
+                audio_list[match.group(1)][ATTR_DEVICES].append(
+                    {CHAN_ID: match.group(2), CHAN_TYPE: match.group(3)}
+                )
             except KeyError:
                 _LOGGER.warning("Wrong audio device found %s", match.group(0))
                 continue

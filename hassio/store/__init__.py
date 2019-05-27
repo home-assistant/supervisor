@@ -33,16 +33,14 @@ class StoreManager(CoreSysAttributes):
         self.data.update()
 
         # Init Hass.io built-in repositories
-        repositories = \
-            set(self.sys_config.addons_repositories) | BUILTIN_REPOSITORIES
+        repositories = set(self.sys_config.addons_repositories) | BUILTIN_REPOSITORIES
 
         # Init custom repositories and load add-ons
         await self.update_repositories(repositories)
 
     async def reload(self) -> None:
         """Update add-ons from repository and reload list."""
-        tasks = [repository.update() for repository in
-                 self.repositories.values()]
+        tasks = [repository.update() for repository in self.repositories.values()]
         if tasks:
             await asyncio.wait(tasks)
 
@@ -89,8 +87,12 @@ class StoreManager(CoreSysAttributes):
         add_addons = all_addons - set(self.sys_addons.store)
         del_addons = set(self.sys_addons.store) - all_addons
 
-        _LOGGER.info("Load add-ons from store: %d all - %d new - %d remove",
-                     len(all_addons), len(add_addons), len(del_addons))
+        _LOGGER.info(
+            "Load add-ons from store: %d all - %d new - %d remove",
+            len(all_addons),
+            len(add_addons),
+            len(del_addons),
+        )
 
         # new addons
         for slug in add_addons:

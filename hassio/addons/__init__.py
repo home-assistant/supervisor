@@ -110,16 +110,14 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError()
 
         if not store.available:
-            _LOGGER.error(
-                "Add-on %s not supported on that platform", slug)
+            _LOGGER.error("Add-on %s not supported on that platform", slug)
             raise AddonsNotSupportedError()
 
         self.data.install(store)
         addon = Addon(self.coresys, slug)
 
         if not addon.path_data.is_dir():
-            _LOGGER.info(
-                "Create Home Assistant add-on data folder %s", addon.path_data)
+            _LOGGER.info("Create Home Assistant add-on data folder %s", addon.path_data)
             addon.path_data.mkdir()
 
         # Setup/Fix AppArmor profile
@@ -179,8 +177,7 @@ class AddonManager(CoreSysAttributes):
 
         # Check if available, Maybe something have changed
         if not store.available:
-            _LOGGER.error(
-                "Add-on %s not supported on that platform", slug)
+            _LOGGER.error("Add-on %s not supported on that platform", slug)
             raise AddonsNotSupportedError()
 
         # Update instance

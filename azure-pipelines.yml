@@ -39,6 +39,20 @@ jobs:
     displayName: 'Run Tox'
 
 
+- job: 'Black'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python $(python.version)'
+    inputs:
+      versionSpec: '3.7'
+  - script: pip install black
+    displayName: 'Install black'
+  - script: black --check hassio
+    displayName: 'Run Black'
+
+
 - job: 'JQ'
   pool:
     vmImage: 'ubuntu-16.04'
@@ -88,7 +102,7 @@ jobs:
       sudo apt-get install -y --no-install-recommends \
         qemu-user-static \
         binfmt-support
-      
+
       sudo mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
       sudo update-binfmts --enable qemu-arm
       sudo update-binfmts --enable qemu-aarch64

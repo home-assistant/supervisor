@@ -14,8 +14,8 @@ class DockerStats:
         self._blk_write = 0
 
         try:
-            self._memory_usage = stats['memory_stats']['usage']
-            self._memory_limit = stats['memory_stats']['limit']
+            self._memory_usage = stats["memory_stats"]["usage"]
+            self._memory_limit = stats["memory_stats"]["limit"]
         except KeyError:
             self._memory_usage = 0
             self._memory_limit = 0
@@ -24,35 +24,42 @@ class DockerStats:
             self._calc_cpu_percent(stats)
 
         with suppress(KeyError):
-            self._calc_network(stats['networks'])
+            self._calc_network(stats["networks"])
 
         with suppress(KeyError):
-            self._calc_block_io(stats['blkio_stats'])
+            self._calc_block_io(stats["blkio_stats"])
 
     def _calc_cpu_percent(self, stats):
         """Calculate CPU percent."""
-        cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
-            stats['precpu_stats']['cpu_usage']['total_usage']
-        system_delta = stats['cpu_stats']['system_cpu_usage'] - \
-            stats['precpu_stats']['system_cpu_usage']
+        cpu_delta = (
+            stats["cpu_stats"]["cpu_usage"]["total_usage"]
+            - stats["precpu_stats"]["cpu_usage"]["total_usage"]
+        )
+        system_delta = (
+            stats["cpu_stats"]["system_cpu_usage"]
+            - stats["precpu_stats"]["system_cpu_usage"]
+        )
 
         if system_delta > 0.0 and cpu_delta > 0.0:
-            self._cpu = (cpu_delta / system_delta) * \
-                len(stats['cpu_stats']['cpu_usage']['percpu_usage']) * 100.0
+            self._cpu = (
+                (cpu_delta / system_delta)
+                * len(stats["cpu_stats"]["cpu_usage"]["percpu_usage"])
+                * 100.0
+            )
 
     def _calc_network(self, networks):
         """Calculate Network IO stats."""
         for _, stats in networks.items():
-            self._network_rx += stats['rx_bytes']
-            self._network_tx += stats['tx_bytes']
+            self._network_rx += stats["rx_bytes"]
+            self._network_tx += stats["tx_bytes"]
 
     def _calc_block_io(self, blkio):
         """Calculate block IO stats."""
-        for stats in blkio['io_service_bytes_recursive']:
-            if stats['op'] == 'Read':
-                self._blk_read += stats['value']
-            elif stats['op'] == 'Write':
-                self._blk_write += stats['value']
+        for stats in blkio["io_service_bytes_recursive"]:
+            if stats["op"] == "Read":
+                self._blk_read += stats["value"]
+            elif stats["op"] == "Write":
+                self._blk_write += stats["value"]
 
     @property
     def cpu_percent(self):

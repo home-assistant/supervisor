@@ -5,10 +5,10 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-INTERVAL = 'interval'
-REPEAT = 'repeat'
-CALL = 'callback'
-TASK = 'task'
+INTERVAL = "interval"
+REPEAT = "repeat"
+CALL = "callback"
+TASK = "task"
 
 
 class Scheduler:
@@ -28,11 +28,7 @@ class Scheduler:
         task_id = hash(coro_callback)
 
         # Generate data
-        opts = {
-            CALL: coro_callback,
-            INTERVAL: interval,
-            REPEAT: repeat,
-        }
+        opts = {CALL: coro_callback, INTERVAL: interval, REPEAT: repeat}
 
         # Schedule task
         self._data[task_id] = opts
@@ -58,8 +54,7 @@ class Scheduler:
             job = self.loop.call_later(interval, self._run_task, task_id)
         elif isinstance(interval, time):
             today = datetime.combine(date.today(), interval)
-            tomorrow = datetime.combine(date.today() + timedelta(days=1),
-                                        interval)
+            tomorrow = datetime.combine(date.today() + timedelta(days=1), interval)
 
             # Check if we run it today or next day
             if today > datetime.today():
@@ -69,8 +64,12 @@ class Scheduler:
 
             job = self.loop.call_at(calc.timestamp(), self._run_task, task_id)
         else:
-            _LOGGER.fatal("Unknown interval %s (type: %s) for scheduler %s",
-                          interval, type(interval), task_id)
+            _LOGGER.fatal(
+                "Unknown interval %s (type: %s) for scheduler %s",
+                interval,
+                type(interval),
+                task_id,
+            )
 
         # Store job
         self._data[task_id][TASK] = job

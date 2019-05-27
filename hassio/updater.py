@@ -8,8 +8,14 @@ import logging
 import aiohttp
 
 from .const import (
-    URL_HASSIO_VERSION, FILE_HASSIO_UPDATER, ATTR_HOMEASSISTANT, ATTR_HASSIO,
-    ATTR_CHANNEL, ATTR_HASSOS, ATTR_HASSOS_CLI)
+    URL_HASSIO_VERSION,
+    FILE_HASSIO_UPDATER,
+    ATTR_HOMEASSISTANT,
+    ATTR_HASSIO,
+    ATTR_CHANNEL,
+    ATTR_HASSOS,
+    ATTR_HASSOS_CLI,
+)
 from .coresys import CoreSysAttributes
 from .utils import AsyncThrottle
 from .utils.json import JsonConfig
@@ -74,7 +80,7 @@ class Updater(JsonConfig, CoreSysAttributes):
         Is a coroutine.
         """
         url = URL_HASSIO_VERSION.format(channel=self.channel)
-        machine = self.sys_machine or 'default'
+        machine = self.sys_machine or "default"
         board = self.sys_hassos.board
 
         try:
@@ -97,15 +103,15 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         try:
             # update supervisor version
-            self._data[ATTR_HASSIO] = data['supervisor']
+            self._data[ATTR_HASSIO] = data["supervisor"]
 
             # update Home Assistant version
-            self._data[ATTR_HOMEASSISTANT] = data['homeassistant'][machine]
+            self._data[ATTR_HOMEASSISTANT] = data["homeassistant"][machine]
 
             # update hassos version
             if self.sys_hassos.available and board:
-                self._data[ATTR_HASSOS] = data['hassos'][board]
-                self._data[ATTR_HASSOS_CLI] = data['hassos-cli']
+                self._data[ATTR_HASSOS] = data["hassos"][board]
+                self._data[ATTR_HASSOS_CLI] = data["hassos-cli"]
 
         except KeyError as err:
             _LOGGER.warning("Can't process version data: %s", err)
