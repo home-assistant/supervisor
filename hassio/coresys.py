@@ -44,7 +44,8 @@ class CoreSys:
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
         self._websession: aiohttp.ClientSession = aiohttp.ClientSession()
         self._websession_ssl: aiohttp.ClientSession = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(ssl=False))
+            connector=aiohttp.TCPConnector(ssl=False)
+        )
 
         # Global objects
         self._config: CoreConfig = CoreConfig()

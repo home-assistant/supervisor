@@ -6,8 +6,8 @@ from ..exceptions import HostNotSupportedError
 
 _LOGGER = logging.getLogger(__name__)
 
-MANAGER = 'manager'
-HOSTNAME = 'hostname'
+MANAGER = "manager"
+HOSTNAME = "hostname"
 
 
 class SystemControl(CoreSysAttributes):

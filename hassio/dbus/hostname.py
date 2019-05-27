@@ -8,8 +8,8 @@ from ..utils.gdbus import DBus
 
 _LOGGER = logging.getLogger(__name__)
 
-DBUS_NAME = 'org.freedesktop.hostname1'
-DBUS_OBJECT = '/org/freedesktop/hostname1'
+DBUS_NAME = "org.freedesktop.hostname1"
+DBUS_OBJECT = "/org/freedesktop/hostname1"
 
 
 class Hostname(DBusInterface):

@@ -6,18 +6,25 @@ import voluptuous as vol
 
 from .utils import api_process, api_validate
 from ..const import (
-    ATTR_HOSTNAME, ATTR_FEATURES, ATTR_KERNEL, ATTR_OPERATING_SYSTEM,
-    ATTR_CHASSIS, ATTR_DEPLOYMENT, ATTR_STATE, ATTR_NAME, ATTR_DESCRIPTON,
-    ATTR_SERVICES, ATTR_CPE)
+    ATTR_HOSTNAME,
+    ATTR_FEATURES,
+    ATTR_KERNEL,
+    ATTR_OPERATING_SYSTEM,
+    ATTR_CHASSIS,
+    ATTR_DEPLOYMENT,
+    ATTR_STATE,
+    ATTR_NAME,
+    ATTR_DESCRIPTON,
+    ATTR_SERVICES,
+    ATTR_CPE,
+)
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
-SERVICE = 'service'
+SERVICE = "service"
 
-SCHEMA_OPTIONS = vol.Schema({
-    vol.Optional(ATTR_HOSTNAME): vol.Coerce(str),
-})
+SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): vol.Coerce(str)})
 
 
 class APIHost(CoreSysAttributes):
@@ -44,7 +51,8 @@ class APIHost(CoreSysAttributes):
         # hostname
         if ATTR_HOSTNAME in body:
             await asyncio.shield(
-                self.sys_host.control.set_hostname(body[ATTR_HOSTNAME]))
+                self.sys_host.control.set_hostname(body[ATTR_HOSTNAME])
+            )
 
     @api_process
     def reboot(self, request):
@@ -66,15 +74,15 @@ class APIHost(CoreSysAttributes):
         """Return list of available services."""
         services = []
         for unit in self.sys_host.services:
-            services.append({
-                ATTR_NAME: unit.name,
-                ATTR_DESCRIPTON: unit.description,
-                ATTR_STATE: unit.state,
-            })
+            services.append(
+                {
+                    ATTR_NAME: unit.name,
+                    ATTR_DESCRIPTON: unit.description,
+                    ATTR_STATE: unit.state,
+                }
+            )
 
-        return {
-            ATTR_SERVICES: services
-        }
+        return {ATTR_SERVICES: services}
 
     @api_process
     def service_start(self, request):

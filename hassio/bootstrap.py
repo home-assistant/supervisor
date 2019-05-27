@@ -219,6 +219,6 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
     _LOGGER.info("Initialize Hass.io debugger")
 
-    ptvsd.enable_attach(address=('0.0.0.0', 33333), redirect_output=True)
+    ptvsd.enable_attach(address=("0.0.0.0", 33333), redirect_output=True)
     if coresys.config.debug_block:
         ptvsd.wait_for_attach()

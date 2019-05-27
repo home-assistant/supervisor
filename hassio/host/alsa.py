@@ -6,14 +6,13 @@ from string import Template
 
 import attr
 
-from ..const import (
-    ATTR_INPUT, ATTR_OUTPUT, ATTR_DEVICES, ATTR_NAME, CHAN_ID, CHAN_TYPE)
+from ..const import ATTR_INPUT, ATTR_OUTPUT, ATTR_DEVICES, ATTR_NAME, CHAN_ID, CHAN_TYPE
 from ..coresys import CoreSysAttributes
 
 _LOGGER = logging.getLogger(__name__)
 
 # pylint: disable=invalid-name
-DefaultConfig = attr.make_class('DefaultConfig', ['input', 'output'])
+DefaultConfig = attr.make_class("DefaultConfig", ["input", "output"])
 
 
 class AlsaAudio(CoreSysAttributes):
@@ -22,10 +21,7 @@ class AlsaAudio(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize ALSA audio system."""
         self.coresys = coresys
-        self._data = {
-            ATTR_INPUT: {},
-            ATTR_OUTPUT: {},
-        }
+        self._data = {ATTR_INPUT: {}, ATTR_OUTPUT: {}}
         self._cache = 0
         self._default = None
 
@@ -66,18 +62,20 @@ class AlsaAudio(CoreSysAttributes):
                 dev_name = dev_data[ATTR_NAME]
 
                 # Lookup type
-                if chan_type.endswith('playback'):
+                if chan_type.endswith("playback"):
                     key = ATTR_OUTPUT
-                elif chan_type.endswith('capture'):
+                elif chan_type.endswith("capture"):
                     key = ATTR_INPUT
                 else:
                     _LOGGER.warning("Unknown channel type: %s", chan_type)
                     continue
 
                 # Use name from DB or a generic name
-                self._data[key][alsa_id] = database.get(
-                    self.sys_machine, {}).get(
-                        dev_name, {}).get(alsa_id, f"{dev_name}: {chan_id}")
+                self._data[key][alsa_id] = (
+                    database.get(self.sys_machine, {})
+                    .get(dev_name, {})
+                    .get(alsa_id, f"{dev_name}: {chan_id}")
+                )
 
         self._cache = current_id
 
@@ -88,7 +86,7 @@ class AlsaAudio(CoreSysAttributes):
 
         try:
             # pylint: disable=no-member
-            with json_file.open('r') as database:
+            with json_file.open("r") as database:
                 return json.loads(database.read())
         except (ValueError, OSError) as err:
             _LOGGER.warning("Can't read audio DB: %s", err)
@@ -127,7 +125,7 @@ class AlsaAudio(CoreSysAttributes):
         asound_file = Path(__file__).parent.joinpath("data/asound.tmpl")
         try:
             # pylint: disable=no-member
-            with asound_file.open('r') as asound:
+            with asound_file.open("r") as asound:
                 asound_data = asound.read()
         except OSError as err:
             _LOGGER.error("Can't read asound.tmpl: %s", err)
@@ -135,6 +133,4 @@ class AlsaAudio(CoreSysAttributes):
 
         # Process Template
         asound_template = Template(asound_data)
-        return asound_template.safe_substitute(
-            input=alsa_input, output=alsa_output
-        )
+        return asound_template.safe_substitute(input=alsa_input, output=alsa_output)

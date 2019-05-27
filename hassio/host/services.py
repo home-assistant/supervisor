@@ -8,7 +8,7 @@ from ..exceptions import HassioError, HostNotSupportedError, HostServiceError
 
 _LOGGER = logging.getLogger(__name__)
 
-MOD_REPLACE = 'replace'
+MOD_REPLACE = "replace"
 
 
 class ServiceManager(CoreSysAttributes):
@@ -77,8 +77,10 @@ class ServiceManager(CoreSysAttributes):
         try:
             systemd_units = await self.sys_dbus.systemd.list_units()
             for service_data in systemd_units[0]:
-                if not service_data[0].endswith(".service") or \
-                        service_data[2] != 'loaded':
+                if (
+                    not service_data[0].endswith(".service")
+                    or service_data[2] != "loaded"
+                ):
                     continue
                 self._services.add(ServiceInfo.read_from(service_data))
         except (HassioError, IndexError):
