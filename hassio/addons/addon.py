@@ -59,7 +59,8 @@ _LOGGER = logging.getLogger(__name__)
 
 RE_WEBUI = re.compile(
     r"^(?:(?P<s_prefix>https?)|\[PROTO:(?P<t_proto>\w+)\])"
-    r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$")
+    r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$"
+)
 
 
 class Addon(AddonModel):
@@ -121,10 +122,7 @@ class Addon(AddonModel):
     @property
     def options(self) -> Dict[str, Any]:
         """Return options with local changes."""
-        return {
-            **self.data[ATTR_OPTIONS],
-            **self.persist[ATTR_OPTIONS]
-        }
+        return {**self.data[ATTR_OPTIONS], **self.persist[ATTR_OPTIONS]}
 
     @options.setter
     def options(self, value: Optional[Dict[str, Any]]):
@@ -231,10 +229,10 @@ class Addon(AddonModel):
         webui = RE_WEBUI.match(url)
 
         # extract arguments
-        t_port = webui.group('t_port')
-        t_proto = webui.group('t_proto')
-        s_prefix = webui.group('s_prefix') or ""
-        s_suffix = webui.group('s_suffix') or ""
+        t_port = webui.group("t_port")
+        t_proto = webui.group("t_proto")
+        s_prefix = webui.group("s_prefix") or ""
+        s_suffix = webui.group("s_suffix") or ""
 
         # search host port for this docker port
         if self.ports is None:
@@ -248,7 +246,7 @@ class Addon(AddonModel):
 
         # lookup the correct protocol from config
         if t_proto:
-            proto = 'https' if self.options[t_proto] else 'http'
+            proto = "https" if self.options[t_proto] else "http"
         else:
             proto = s_prefix
 
@@ -353,8 +351,11 @@ class Addon(AddonModel):
             schema(options)
             write_json_file(self.path_options, options)
         except vol.Invalid as ex:
-            _LOGGER.error("Add-on %s have wrong options: %s", self.slug,
-                          humanize_error(options, ex))
+            _LOGGER.error(
+                "Add-on %s have wrong options: %s",
+                self.slug,
+                humanize_error(options, ex),
+            )
         except JsonFileError:
             _LOGGER.error("Add-on %s can't write options", self.slug)
         else:
@@ -381,10 +382,11 @@ class Addon(AddonModel):
     def write_asound(self):
         """Write asound config to file and return True on success."""
         asound_config = self.sys_host.alsa.asound(
-            alsa_input=self.audio_input, alsa_output=self.audio_output)
+            alsa_input=self.audio_input, alsa_output=self.audio_output
+        )
 
         try:
-            with self.path_asound.open('w') as config_file:
+            with self.path_asound.open("w") as config_file:
                 config_file.write(asound_config)
         except OSError as err:
             _LOGGER.error("Add-on %s can't write asound: %s", self.slug, err)
@@ -408,7 +410,7 @@ class Addon(AddonModel):
 
         # Need install/update
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_folder:
-            profile_file = Path(tmp_folder, 'apparmor.txt')
+            profile_file = Path(tmp_folder, "apparmor.txt")
 
             adjust_profile(self.slug, self.path_apparmor, profile_file)
             await self.sys_host.apparmor.load_profile(self.slug, profile_file)
@@ -430,14 +432,10 @@ class Addon(AddonModel):
             return True
 
         # merge options
-        options = {
-            **self.persist[ATTR_OPTIONS],
-            **default_options,
-        }
+        options = {**self.persist[ATTR_OPTIONS], **default_options}
 
         # create voluptuous
-        new_schema = \
-            vol.Schema(vol.All(dict, validate_options(new_raw_schema)))
+        new_schema = vol.Schema(vol.All(dict, validate_options(new_raw_schema)))
 
         # validate
         try:
@@ -525,7 +523,7 @@ class Addon(AddonModel):
             # store local image
             if self.need_build:
                 try:
-                    await self.instance.export_image(Path(temp, 'image.tar'))
+                    await self.instance.export_image(Path(temp, "image.tar"))
                 except DockerAPIError:
                     raise AddonsError() from None
 
@@ -538,14 +536,14 @@ class Addon(AddonModel):
 
             # Store local configs/state
             try:
-                write_json_file(Path(temp, 'addon.json'), data)
+                write_json_file(Path(temp, "addon.json"), data)
             except JsonFileError:
                 _LOGGER.error("Can't save meta for %s", self.slug)
                 raise AddonsError() from None
 
             # Store AppArmor Profile
             if self.sys_host.apparmor.exists(self.slug):
-                profile = Path(temp, 'apparmor.txt')
+                profile = Path(temp, "apparmor.txt")
                 try:
                     self.sys_host.apparmor.backup_profile(self.slug, profile)
                 except HostAppArmorError:
@@ -585,7 +583,7 @@ class Addon(AddonModel):
 
             # Read snapshot data
             try:
-                data = read_json_file(Path(temp, 'addon.json'))
+                data = read_json_file(Path(temp, "addon.json"))
             except JsonFileError:
                 raise AddonsError() from None
 
@@ -593,8 +591,11 @@ class Addon(AddonModel):
             try:
                 data = SCHEMA_ADDON_SNAPSHOT(data)
             except vol.Invalid as err:
-                _LOGGER.error("Can't validate %s, snapshot data: %s",
-                              self.slug, humanize_error(data, err))
+                _LOGGER.error(
+                    "Can't validate %s, snapshot data: %s",
+                    self.slug,
+                    humanize_error(data, err),
+                )
                 raise AddonsError() from None
 
             # If available
@@ -605,14 +606,16 @@ class Addon(AddonModel):
             # Restore local add-on informations
             _LOGGER.info("Restore config for addon %s", self.slug)
             restore_image = self._image(data[ATTR_SYSTEM])
-            self.sys_addons.data.restore(self.slug, data[ATTR_USER], data[ATTR_SYSTEM], restore_image)
+            self.sys_addons.data.restore(
+                self.slug, data[ATTR_USER], data[ATTR_SYSTEM], restore_image
+            )
 
             # Check version / restore image
             version = data[ATTR_VERSION]
             if not await self.instance.exists():
                 _LOGGER.info("Restore/Install image for addon %s", self.slug)
 
-                image_file = Path(temp, 'image.tar')
+                image_file = Path(temp, "image.tar")
                 if image_file.is_file():
                     with suppress(DockerAPIError):
                         await self.instance.import_image(image_file, version)
@@ -643,11 +646,10 @@ class Addon(AddonModel):
                 raise AddonsError() from None
 
             # Restore AppArmor
-            profile_file = Path(temp, 'apparmor.txt')
+            profile_file = Path(temp, "apparmor.txt")
             if profile_file.exists():
                 try:
-                    await self.sys_host.apparmor.load_profile(
-                        self.slug, profile_file)
+                    await self.sys_host.apparmor.load_profile(self.slug, profile_file)
                 except HostAppArmorError:
                     _LOGGER.error("Can't restore AppArmor profile")
                     raise AddonsError() from None

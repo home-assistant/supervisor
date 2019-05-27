@@ -7,8 +7,13 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
-    JSON_RESULT, JSON_DATA, JSON_MESSAGE, RESULT_OK, RESULT_ERROR,
-    CONTENT_TYPE_BINARY)
+    JSON_RESULT,
+    JSON_DATA,
+    JSON_MESSAGE,
+    RESULT_OK,
+    RESULT_ERROR,
+    CONTENT_TYPE_BINARY,
+)
 from ..exceptions import HassioError, APIError, APIForbidden
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,6 +31,7 @@ def json_loads(data):
 
 def api_process(method):
     """Wrap function with true/false calls to rest api."""
+
     async def wrap_api(api, *args, **kwargs):
         """Return API information."""
         try:
@@ -48,8 +54,10 @@ def api_process(method):
 
 def api_process_raw(content):
     """Wrap content_type into function."""
+
     def wrap_method(method):
         """Wrap function with raw output to rest api."""
+
         async def wrap_api(api, *args, **kwargs):
             """Return api information."""
             try:
@@ -59,29 +67,26 @@ def api_process_raw(content):
                 msg_data = str(err).encode()
                 msg_type = CONTENT_TYPE_BINARY
             except HassioError:
-                msg_data = b''
+                msg_data = b""
                 msg_type = CONTENT_TYPE_BINARY
 
             return web.Response(body=msg_data, content_type=msg_type)
 
         return wrap_api
+
     return wrap_method
 
 
 def api_return_error(message=None):
     """Return an API error message."""
-    return web.json_response({
-        JSON_RESULT: RESULT_ERROR,
-        JSON_MESSAGE: message,
-    }, status=400)
+    return web.json_response(
+        {JSON_RESULT: RESULT_ERROR, JSON_MESSAGE: message}, status=400
+    )
 
 
 def api_return_ok(data=None):
     """Return an API ok answer."""
-    return web.json_response({
-        JSON_RESULT: RESULT_OK,
-        JSON_DATA: data or {},
-    })
+    return web.json_response({JSON_RESULT: RESULT_OK, JSON_DATA: data or {}})
 
 
 async def api_validate(schema, request):

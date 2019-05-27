@@ -2,8 +2,13 @@
 
 from .utils import api_process, api_validate
 from ..const import (
-    ATTR_AVAILABLE, ATTR_PROVIDERS, ATTR_SLUG, ATTR_SERVICES, REQUEST_FROM,
-    PROVIDE_SERVICE)
+    ATTR_AVAILABLE,
+    ATTR_PROVIDERS,
+    ATTR_SLUG,
+    ATTR_SERVICES,
+    REQUEST_FROM,
+    PROVIDE_SERVICE,
+)
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
 
@@ -13,7 +18,7 @@ class APIServices(CoreSysAttributes):
 
     def _extract_service(self, request):
         """Return service, throw an exception if it doesn't exist."""
-        service = self.sys_services.get(request.match_info.get('service'))
+        service = self.sys_services.get(request.match_info.get("service"))
         if not service:
             raise APIError("Service does not exist")
 
@@ -24,11 +29,13 @@ class APIServices(CoreSysAttributes):
         """Show register services."""
         services = []
         for service in self.sys_services.list_services:
-            services.append({
-                ATTR_SLUG: service.slug,
-                ATTR_AVAILABLE: service.enabled,
-                ATTR_PROVIDERS: service.providers,
-            })
+            services.append(
+                {
+                    ATTR_SLUG: service.slug,
+                    ATTR_AVAILABLE: service.enabled,
+                    ATTR_PROVIDERS: service.providers,
+                }
+            )
 
         return {ATTR_SERVICES: services}
 

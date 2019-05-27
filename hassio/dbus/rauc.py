@@ -8,8 +8,8 @@ from ..utils.gdbus import DBus
 
 _LOGGER = logging.getLogger(__name__)
 
-DBUS_NAME = 'de.pengutronix.rauc'
-DBUS_OBJECT = '/'
+DBUS_NAME = "de.pengutronix.rauc"
+DBUS_OBJECT = "/"
 
 
 class Rauc(DBusInterface):
