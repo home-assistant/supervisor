@@ -170,7 +170,7 @@ jobs:
 
 
 - job: 'Release'
-  condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'), succeeded(VersionValidate))
+  condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'), succeeded('VersionValidate'))
   dependsOn:
   - 'JQ'
   - 'Tox'
