@@ -158,7 +158,8 @@ class APIIngress(CoreSysAttributes):
         source_header = _init_header(request, addon)
 
         async with self.sys_websession.request(
-            request.method, url, headers=source_header, params=request.query, data=data
+            request.method, url, headers=source_header, params=request.query,
+            allow_redirects=False, data=data
         ) as result:
             headers = _response_header(result)
 
