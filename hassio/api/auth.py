@@ -29,8 +29,8 @@ class APIAuth(CoreSysAttributes):
 
         Return a coroutine.
         """
-        username = data.get('username') or data.get('user')
-        password = data.get('password')
+        username = data.get("username") or data.get("user")
+        password = data.get("password")
 
         return self.sys_auth.check_login(addon, username, password)
 
@@ -56,6 +56,6 @@ class APIAuth(CoreSysAttributes):
             data = await request.post()
             return await self._process_dict(request, addon, data)
 
-        raise HTTPUnauthorized(headers={
-            WWW_AUTHENTICATE: "Basic realm=\"Hass.io Authentication\""
-        })
+        raise HTTPUnauthorized(
+            headers={WWW_AUTHENTICATE: 'Basic realm="Hass.io Authentication"'}
+        )

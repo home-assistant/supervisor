@@ -142,14 +142,14 @@ class AddonModel(CoreSysAttributes):
     @property
     def long_description(self) -> Optional[str]:
         """Return README.md as long_description."""
-        readme = Path(self.path_location, 'README.md')
+        readme = Path(self.path_location, "README.md")
 
         # If readme not exists
         if not readme.exists():
             return None
 
         # Return data
-        with readme.open('r') as readme_file:
+        with readme.open("r") as readme_file:
             return readme_file.read()
 
     @property
@@ -185,7 +185,7 @@ class AddonModel(CoreSysAttributes):
         services = {}
         for data in services_list:
             service = RE_SERVICE.match(data)
-            services[service.group('service')] = service.group('rights')
+            services[service.group("service")] = service.group("rights")
 
         return services
 
@@ -409,7 +409,7 @@ class AddonModel(CoreSysAttributes):
         volumes = {}
         for volume in self.data[ATTR_MAP]:
             result = RE_VOLUME.match(volume)
-            volumes[result.group(1)] = result.group(2) or 'ro'
+            volumes[result.group(1)] = result.group(2) or "ro"
 
         return volumes
 
@@ -421,22 +421,22 @@ class AddonModel(CoreSysAttributes):
     @property
     def path_icon(self) -> Path:
         """Return path to add-on icon."""
-        return Path(self.path_location, 'icon.png')
+        return Path(self.path_location, "icon.png")
 
     @property
     def path_logo(self) -> Path:
         """Return path to add-on logo."""
-        return Path(self.path_location, 'logo.png')
+        return Path(self.path_location, "logo.png")
 
     @property
     def path_changelog(self) -> Path:
         """Return path to add-on changelog."""
-        return Path(self.path_location, 'CHANGELOG.md')
+        return Path(self.path_location, "CHANGELOG.md")
 
     @property
     def path_apparmor(self) -> Path:
         """Return path to custom AppArmor profile."""
-        return Path(self.path_location, 'apparmor.txt')
+        return Path(self.path_location, "apparmor.txt")
 
     @property
     def schema(self) -> vol.Schema:
@@ -449,9 +449,9 @@ class AddonModel(CoreSysAttributes):
 
     def __eq__(self, other):
         """Compaired add-on objects."""
-        if self.slug == other.slug:
-            return True
-        return False
+        if not isinstance(other, AddonModel):
+            return False
+        return self.slug == other.slug
 
     def _available(self, config) -> bool:
         """Return True if this add-on is available on this platform."""

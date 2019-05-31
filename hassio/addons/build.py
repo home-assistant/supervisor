@@ -21,7 +21,8 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
         self.addon = addon
 
         super().__init__(
-            Path(self.addon.path_location, 'build.json'), SCHEMA_BUILD_CONFIG)
+            Path(self.addon.path_location, "build.json"), SCHEMA_BUILD_CONFIG
+        )
 
     def save_data(self):
         """Ignore save function."""
@@ -31,8 +32,8 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
     def base_image(self) -> str:
         """Base images for this add-on."""
         return self._data[ATTR_BUILD_FROM].get(
-            self.sys_arch.default,
-            f"homeassistant/{self.sys_arch.default}-base:latest")
+            self.sys_arch.default, f"homeassistant/{self.sys_arch.default}-base:latest"
+        )
 
     @property
     def squash(self) -> bool:
@@ -47,28 +48,28 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
     def get_docker_args(self, version):
         """Create a dict with Docker build arguments."""
         args = {
-            'path': str(self.addon.path_location),
-            'tag': f"{self.addon.image}:{version}",
-            'pull': True,
-            'forcerm': True,
-            'squash': self.squash,
-            'labels': {
-                'io.hass.version': version,
-                'io.hass.arch': self.sys_arch.default,
-                'io.hass.type': META_ADDON,
-                'io.hass.name': self._fix_label('name'),
-                'io.hass.description': self._fix_label('description'),
+            "path": str(self.addon.path_location),
+            "tag": f"{self.addon.image}:{version}",
+            "pull": True,
+            "forcerm": True,
+            "squash": self.squash,
+            "labels": {
+                "io.hass.version": version,
+                "io.hass.arch": self.sys_arch.default,
+                "io.hass.type": META_ADDON,
+                "io.hass.name": self._fix_label("name"),
+                "io.hass.description": self._fix_label("description"),
             },
-            'buildargs': {
-                'BUILD_FROM': self.base_image,
-                'BUILD_VERSION': version,
-                'BUILD_ARCH': self.sys_arch.default,
+            "buildargs": {
+                "BUILD_FROM": self.base_image,
+                "BUILD_VERSION": version,
+                "BUILD_ARCH": self.sys_arch.default,
                 **self.additional_args,
-            }
+            },
         }
 
         if self.addon.url:
-            args['labels']['io.hass.url'] = self.addon.url
+            args["labels"]["io.hass.url"] = self.addon.url
 
         return args
 

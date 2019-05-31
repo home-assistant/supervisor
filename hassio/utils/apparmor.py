@@ -14,7 +14,7 @@ def get_profile_name(profile_file):
     profiles = set()
 
     try:
-        with profile_file.open('r') as profile_data:
+        with profile_file.open("r") as profile_data:
             for line in profile_data:
                 match = RE_PROFILE.match(line)
                 if not match:
@@ -45,21 +45,20 @@ def adjust_profile(profile_name, profile_file, profile_new):
 
     # Process old data
     try:
-        with profile_file.open('r') as profile:
+        with profile_file.open("r") as profile:
             for line in profile:
                 match = RE_PROFILE.match(line)
                 if not match:
                     profile_data.append(line)
                 else:
-                    profile_data.append(
-                        line.replace(org_profile, profile_name))
+                    profile_data.append(line.replace(org_profile, profile_name))
     except OSError as err:
         _LOGGER.error("Can't adjust origin profile: %s", err)
         raise AppArmorFileError()
 
     # Write into new file
     try:
-        with profile_new.open('w') as profile:
+        with profile_new.open("w") as profile:
             profile.writelines(profile_data)
     except OSError as err:
         _LOGGER.error("Can't write new profile: %s", err)

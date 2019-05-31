@@ -54,6 +54,7 @@ RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 @attr.s(frozen=True)
 class ConfigResult:
     """Return object from config check."""
+
     valid = attr.ib()
     log = attr.ib()
 
@@ -135,8 +136,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def api_url(self) -> str:
         """Return API url to Home Assistant."""
-        return "{}://{}:{}".format('https' if self.api_ssl else 'http',
-                                   self.ip_address, self.api_port)
+        return "{}://{}:{}".format(
+            "https" if self.api_ssl else "http", self.ip_address, self.api_port
+        )
 
     @property
     def watchdog(self) -> bool:
@@ -183,7 +185,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Return image name of the Home Assistant container."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
-        return os.environ['HOMEASSISTANT_REPOSITORY']
+        return os.environ["HOMEASSISTANT_REPOSITORY"]
 
     @image.setter
     def image(self, value: str):
@@ -196,8 +198,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def is_custom_image(self) -> bool:
         """Return True if a custom image is used."""
-        return all(
-            attr in self._data for attr in (ATTR_IMAGE, ATTR_LAST_VERSION))
+        return all(attr in self._data for attr in (ATTR_IMAGE, ATTR_LAST_VERSION))
 
     @property
     def boot(self) -> bool:
@@ -235,7 +236,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Setup HomeAssistant landingpage")
         while True:
             with suppress(DockerAPIError):
-                await self.instance.install('landingpage')
+                await self.instance.install("landingpage")
                 return
             _LOGGER.warning("Fails install landingpage, retry after 30sec")
             await asyncio.sleep(30)
@@ -407,7 +408,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def check_config(self) -> ConfigResult:
         """Run Home Assistant config check."""
         result = await self.instance.execute_command(
-            "python3 -m homeassistant -c /config --script check_config")
+            "python3 -m homeassistant -c /config --script check_config"
+        )
 
         # if not valid
         if result.exit_code is None:
@@ -425,35 +427,42 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def ensure_access_token(self) -> None:
         """Ensures there is an access token."""
-        if self.access_token is not None and self._access_token_expires > datetime.utcnow():
+        if (
+            self.access_token is not None
+            and self._access_token_expires > datetime.utcnow()
+        ):
             return
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
             async with self.sys_websession_ssl.post(
-                    f"{self.api_url}/auth/token",
-                    timeout=30,
-                    data={
-                        "grant_type": "refresh_token",
-                        "refresh_token": self.refresh_token
-                    }) as resp:
+                f"{self.api_url}/auth/token",
+                timeout=30,
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": self.refresh_token,
+                },
+            ) as resp:
                 if resp.status != 200:
                     _LOGGER.error("Can't update Home Assistant access token!")
                     raise HomeAssistantAuthError()
 
                 _LOGGER.info("Updated Home Assistant API token")
                 tokens = await resp.json()
-                self.access_token = tokens['access_token']
-                self._access_token_expires = \
-                    datetime.utcnow() + timedelta(seconds=tokens['expires_in'])
+                self.access_token = tokens["access_token"]
+                self._access_token_expires = datetime.utcnow() + timedelta(
+                    seconds=tokens["expires_in"]
+                )
 
     @asynccontextmanager
-    async def make_request(self,
-                           method: str,
-                           path: str,
-                           json: Optional[Dict[str, Any]] = None,
-                           content_type: Optional[str] = None,
-                           data: Optional[bytes] = None,
-                           timeout=30) -> AsyncContextManager[aiohttp.ClientResponse]:
+    async def make_request(
+        self,
+        method: str,
+        path: str,
+        json: Optional[Dict[str, Any]] = None,
+        content_type: Optional[str] = None,
+        data: Optional[bytes] = None,
+        timeout=30,
+    ) -> AsyncContextManager[aiohttp.ClientResponse]:
         """Async context manager to make a request with right auth."""
         url = f"{self.api_url}/{path}"
         headers = {}
@@ -470,12 +479,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             # Prepare Access token
             if self.refresh_token:
                 await self.ensure_access_token()
-                headers[hdrs.AUTHORIZATION] = f'Bearer {self.access_token}'
+                headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
 
             try:
                 async with getattr(self.sys_websession_ssl, method)(
-                        url, data=data, timeout=timeout, json=json,
-                        headers=headers) as resp:
+                    url, data=data, timeout=timeout, json=json, headers=headers
+                ) as resp:
                     # Access token expired
                     if resp.status == 401 and self.refresh_token:
                         self.access_token = None
@@ -491,7 +500,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
         with suppress(HomeAssistantAPIError):
-            async with self.make_request('get', 'api/') as resp:
+            async with self.make_request("get", "api/") as resp:
                 if resp.status in (200, 201):
                     return True
                 status = resp.status
@@ -503,8 +512,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Block until Home-Assistant is booting up or startup timeout."""
         start_time = time.monotonic()
         migration_progress = False
-        migration_file = Path(self.sys_config.path_homeassistant,
-                              '.migration_progress')
+        migration_file = Path(self.sys_config.path_homeassistant, ".migration_progress")
 
         def check_port():
             """Check if port is mapped."""

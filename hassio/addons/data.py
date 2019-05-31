@@ -59,10 +59,9 @@ class AddonsData(JsonConfig, CoreSysAttributes):
     def update(self, addon: AddonStore) -> None:
         """Update version of add-on."""
         self.system[addon.slug] = deepcopy(addon.data)
-        self.user[addon.slug].update({
-            ATTR_VERSION: addon.version,
-            ATTR_IMAGE: addon.image,
-        })
+        self.user[addon.slug].update(
+            {ATTR_VERSION: addon.version, ATTR_IMAGE: addon.image}
+        )
         self.save_data()
 
     def restore(self, slug: str, user: Config, system: Config, image: str) -> None:

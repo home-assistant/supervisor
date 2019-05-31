@@ -11,8 +11,7 @@ trigger:
     exclude:
     - untagged*
 pr:
-- dev
-
+  - dev
 variables:
   - name: versionHadolint
     value: 'v1.16.3'
@@ -23,14 +22,15 @@ variables:
   - group: docker
   - group: wheels
 
+
 jobs:
 
 - job: 'Tox'
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-latest'
   steps:
   - task: UsePythonVersion@0
-    displayName: 'Use Python $(python.version)'
+    displayName: 'Use Python 3.7'
     inputs:
       versionSpec: '3.7'
   - script: pip install tox
@@ -39,9 +39,23 @@ jobs:
     displayName: 'Run Tox'
 
 
+- job: 'Black'
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python $(python.version)'
+    inputs:
+      versionSpec: '3.7'
+  - script: pip install black
+    displayName: 'Install black'
+  - script: black --check hassio
+    displayName: 'Run Black'
+
+
 - job: 'JQ'
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-latest'
   steps:
   - script: sudo apt-get install -y jq
     displayName: 'Install JQ'
@@ -53,7 +67,7 @@ jobs:
 
 - job: 'Hadolint'
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-latest'
   steps:
   - script: sudo docker pull hadolint/hadolint:$(versionHadolint)
     displayName: 'Install Hadolint'
@@ -68,7 +82,7 @@ jobs:
   condition: eq(variables['Build.SourceBranchName'], 'dev')
   timeoutInMinutes: 360
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-latest'
   strategy:
     maxParallel: 3
     matrix:
@@ -88,7 +102,7 @@ jobs:
       sudo apt-get install -y --no-install-recommends \
         qemu-user-static \
         binfmt-support
-      
+
       sudo mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
       sudo update-binfmts --enable qemu-arm
       sudo update-binfmts --enable qemu-aarch64
@@ -120,7 +134,7 @@ jobs:
   - 'Hadolint'
   - 'Wheels'
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-latest'
   steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
@@ -135,14 +149,35 @@ jobs:
     displayName: 'Build DEV'
 
 
+- job: 'VersionValidate'
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python 3.7'
+    inputs:
+      versionSpec: '3.7'
+  - script: |
+      setup_version="$(python setup.py -V)"
+      branch_version="$(Build.SourceBranchName)"
+
+      if [ "${setup_version}" != "${branch_version}" ]; then
+        echo "Version of tag ${branch_version} don't match with ${setup_version}!"
+        exit 1
+      fi
+    displayName: 'Check version of branch/tag'
+
+
 - job: 'Release'
-  condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'))
+  condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'), succeeded('VersionValidate'))
   dependsOn:
   - 'JQ'
   - 'Tox'
   - 'Hadolint'
+  - 'VersionValidate'
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-latest'
   steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'

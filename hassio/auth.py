@@ -2,8 +2,7 @@
 import logging
 import hashlib
 
-from .const import (
-    FILE_HASSIO_AUTH, ATTR_PASSWORD, ATTR_USERNAME, ATTR_ADDON)
+from .const import FILE_HASSIO_AUTH, ATTR_PASSWORD, ATTR_USERNAME, ATTR_ADDON
 from .coresys import CoreSysAttributes
 from .utils.json import JsonConfig
 from .validate import SCHEMA_AUTH_CONFIG
@@ -68,11 +67,14 @@ class Auth(JsonConfig, CoreSysAttributes):
 
         try:
             async with self.sys_homeassistant.make_request(
-                    'post', 'api/hassio_auth', json={
-                        ATTR_USERNAME: username,
-                        ATTR_PASSWORD: password,
-                        ATTR_ADDON: addon.slug,
-                    }) as req:
+                "post",
+                "api/hassio_auth",
+                json={
+                    ATTR_USERNAME: username,
+                    ATTR_PASSWORD: password,
+                    ATTR_ADDON: addon.slug,
+                },
+            ) as req:
 
                 if req.status == 200:
                     _LOGGER.info("Success login from %s", username)

@@ -18,32 +18,32 @@ class InfoCenter(CoreSysAttributes):
     @property
     def hostname(self):
         """Return local hostname."""
-        return self._data.get('StaticHostname') or None
+        return self._data.get("StaticHostname") or None
 
     @property
     def chassis(self):
         """Return local chassis type."""
-        return self._data.get('Chassis') or None
+        return self._data.get("Chassis") or None
 
     @property
     def deployment(self):
         """Return local deployment type."""
-        return self._data.get('Deployment') or None
+        return self._data.get("Deployment") or None
 
     @property
     def kernel(self):
         """Return local kernel version."""
-        return self._data.get('KernelRelease') or None
+        return self._data.get("KernelRelease") or None
 
     @property
     def operating_system(self):
         """Return local operating system."""
-        return self._data.get('OperatingSystemPrettyName') or None
+        return self._data.get("OperatingSystemPrettyName") or None
 
     @property
     def cpe(self):
         """Return local CPE."""
-        return self._data.get('OperatingSystemCPEName') or None
+        return self._data.get("OperatingSystemCPEName") or None
 
     async def update(self):
         """Update properties over dbus."""

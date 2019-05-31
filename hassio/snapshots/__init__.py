@@ -5,8 +5,7 @@ from pathlib import Path
 
 from .snapshot import Snapshot
 from .utils import create_slug
-from ..const import (
-    FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL)
+from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL
 from ..coresys import CoreSysAttributes
 from ..utils.dt import utcnow
 
@@ -64,8 +63,10 @@ class SnapshotManager(CoreSysAttributes):
             if await snapshot.load():
                 self.snapshots_obj[snapshot.slug] = snapshot
 
-        tasks = [_load_snapshot(tar_file) for tar_file in
-                 self.sys_config.path_backup.glob("*.tar")]
+        tasks = [
+            _load_snapshot(tar_file)
+            for tar_file in self.sys_config.path_backup.glob("*.tar")
+        ]
 
         _LOGGER.info("Found %d snapshot files", len(tasks))
         if tasks:
@@ -149,8 +150,9 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_scheduler.suspend = False
             self.lock.release()
 
-    async def do_snapshot_partial(self, name="", addons=None, folders=None,
-                                  password=None):
+    async def do_snapshot_partial(
+        self, name="", addons=None, folders=None, password=None
+    ):
         """Create a partial snapshot."""
         if self.lock.locked():
             _LOGGER.error("A snapshot/restore process is already running")
@@ -173,8 +175,7 @@ class SnapshotManager(CoreSysAttributes):
                     if addon and addon.is_installed:
                         addon_list.append(addon)
                         continue
-                    _LOGGER.warning(
-                        "Add-on %s not found/installed", addon_slug)
+                    _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
                 if addon_list:
                     _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
@@ -205,8 +206,7 @@ class SnapshotManager(CoreSysAttributes):
             return False
 
         if snapshot.sys_type != SNAPSHOT_FULL:
-            _LOGGER.error("Restore %s is only a partial snapshot!",
-                          snapshot.slug)
+            _LOGGER.error("Restore %s is only a partial snapshot!", snapshot.slug)
             return False
 
         if snapshot.protected and not snapshot.set_password(password):
@@ -231,8 +231,9 @@ class SnapshotManager(CoreSysAttributes):
                 # Start homeassistant restore
                 _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
-                task_hass = self.sys_create_task(self.sys_homeassistant.update(
-                    snapshot.homeassistant_version))
+                task_hass = self.sys_create_task(
+                    self.sys_homeassistant.update(snapshot.homeassistant_version)
+                )
 
                 # Restore repositories
                 _LOGGER.info("Restore %s run Repositories", snapshot.slug)
@@ -253,8 +254,7 @@ class SnapshotManager(CoreSysAttributes):
                 await snapshot.restore_addons()
 
                 # finish homeassistant task
-                _LOGGER.info("Restore %s wait until homeassistant ready",
-                             snapshot.slug)
+                _LOGGER.info("Restore %s wait until homeassistant ready", snapshot.slug)
                 await task_hass
                 await self.sys_homeassistant.start()
 
@@ -270,8 +270,9 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_scheduler.suspend = False
             self.lock.release()
 
-    async def do_restore_partial(self, snapshot, homeassistant=False,
-                                 addons=None, folders=None, password=None):
+    async def do_restore_partial(
+        self, snapshot, homeassistant=False, addons=None, folders=None, password=None
+    ):
         """Restore a snapshot."""
         if self.lock.locked():
             _LOGGER.error("A snapshot/restore process is already running")
@@ -303,11 +304,10 @@ class SnapshotManager(CoreSysAttributes):
                 # Process Home-Assistant
                 task_hass = None
                 if homeassistant:
-                    _LOGGER.info("Restore %s run Home-Assistant",
-                                 snapshot.slug)
+                    _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                     task_hass = self.sys_create_task(
-                        self.sys_homeassistant.update(
-                            snapshot.homeassistant_version))
+                        self.sys_homeassistant.update(snapshot.homeassistant_version)
+                    )
 
                 if addons:
                     _LOGGER.info("Restore %s old add-ons", snapshot.slug)
@@ -315,8 +315,7 @@ class SnapshotManager(CoreSysAttributes):
 
                 # Make sure homeassistant run agen
                 if task_hass:
-                    _LOGGER.info("Restore %s wait for Home-Assistant",
-                                 snapshot.slug)
+                    _LOGGER.info("Restore %s wait for Home-Assistant", snapshot.slug)
                     await task_hass
 
                 # Do we need start HomeAssistant?
