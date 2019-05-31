@@ -449,9 +449,9 @@ class AddonModel(CoreSysAttributes):
 
     def __eq__(self, other):
         """Compaired add-on objects."""
-        if self.slug == other.slug:
-            return True
-        return False
+        if not isinstance(other, AddonModel):
+            return False
+        return self.slug == other.slug
 
     def _available(self, config) -> bool:
         """Return True if this add-on is available on this platform."""
