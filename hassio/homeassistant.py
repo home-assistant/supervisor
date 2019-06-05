@@ -529,7 +529,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 break
 
             # 2: Check if API response
-            if await self.sys_run_in_executor(check_port, self.ip_address, self.api_port):
+            if await self.sys_run_in_executor(
+                check_port, self.ip_address, self.api_port
+            ):
                 _LOGGER.info("Detect a running Home Assistant instance")
                 self._error_state = False
                 return
