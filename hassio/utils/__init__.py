@@ -60,6 +60,7 @@ class AsyncThrottle:
 def check_port(address: IPv4Address, port: int) -> bool:
     """Check if port is mapped."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(0.5)
     try:
         result = sock.connect_ex((str(address), port))
         sock.close()
