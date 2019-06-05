@@ -1,13 +1,15 @@
 """Tools file for Hass.io."""
+from datetime import datetime
+from ipaddress import IPv4Address
 import logging
 import re
-from datetime import datetime
+import socket
 
 _LOGGER = logging.getLogger(__name__)
 RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 
 
-def convert_to_ascii(raw) -> str:
+def convert_to_ascii(raw: bytes) -> str:
     """Convert binary to ascii and remove colors."""
     return RE_STRING.sub("", raw.decode())
 
@@ -53,3 +55,18 @@ class AsyncThrottle:
                 return await method(*args, **kwargs)
 
         return wrapper
+
+
+def check_port(address: IPv4Address, port: int) -> bool:
+    """Check if port is mapped."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        result = sock.connect_ex((str(address), port))
+        sock.close()
+
+        # Check if the port is available
+        if result == 0:
+            return True
+    except OSError:
+        pass
+    return False
