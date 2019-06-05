@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 import re
 import secrets
-import socket
 import time
 from typing import Any, AsyncContextManager, Awaitable, Dict, Optional
 from uuid import UUID
@@ -42,7 +41,7 @@ from .exceptions import (
     HomeAssistantError,
     HomeAssistantUpdateError,
 )
-from .utils import convert_to_ascii, process_lock
+from .utils import convert_to_ascii, process_lock, check_port
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
@@ -511,22 +510,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def _block_till_run(self) -> None:
         """Block until Home-Assistant is booting up or startup timeout."""
         start_time = time.monotonic()
+
+        # Database migration
         migration_progress = False
         migration_file = Path(self.sys_config.path_homeassistant, ".migration_progress")
 
-        def check_port():
-            """Check if port is mapped."""
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            try:
-                result = sock.connect_ex((str(self.ip_address), self.api_port))
-                sock.close()
-
-                # Check if the port is available
-                if result == 0:
-                    return True
-            except OSError:
-                pass
-            return False
+        # PIP installation
+        pip_progress = False
+        pip_file = Path(self.sys_config.path_homeassistant, ".pip_progress")
 
         while True:
             await asyncio.sleep(5)
@@ -537,7 +528,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 break
 
             # 2: Check if API response
-            if await self.sys_run_in_executor(check_port):
+            if await self.sys_run_in_executor(
+                check_port, self.ip_address, self.api_port
+            ):
                 _LOGGER.info("Detect a running Home Assistant instance")
                 self._error_state = False
                 return
@@ -553,7 +546,18 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 start_time = time.monotonic()
                 _LOGGER.info("Home Assistant record migration done")
 
-            # 4: Timeout
+            # 4: Running PIP installation
+            if pip_file.exists():
+                if not pip_progress:
+                    pip_progress = True
+                    _LOGGER.info("Home Assistant pip installation in progress")
+                continue
+            elif pip_progress:
+                pip_progress = False  # Reset start time
+                start_time = time.monotonic()
+                _LOGGER.info("Home Assistant pip installation done")
+
+            # 5: Timeout
             if time.monotonic() - start_time > self.wait_boot:
                 _LOGGER.warning("Don't wait anymore of Home Assistant startup!")
                 break
