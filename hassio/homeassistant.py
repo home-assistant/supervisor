@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 import re
 import secrets
-import socket
 import time
 from typing import Any, AsyncContextManager, Awaitable, Dict, Optional
 from uuid import UUID
