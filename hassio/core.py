@@ -12,7 +12,7 @@ from .const import (
     STARTUP_APPLICATION,
     STARTUP_INITIALIZE,
 )
-from .exceptions import HassioError, HomeAssistantError
+from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,8 +77,12 @@ class HassIO(CoreSysAttributes):
         if self.sys_supervisor.need_update:
             if self.sys_dev:
                 _LOGGER.warning("Ignore Hass.io updates on dev!")
-            elif await self.sys_supervisor.update():
-                return
+            else:
+                try:
+                    await self.sys_supervisor.update():
+                except SupervisorUpdateError:
+                    _LOGGER.error(
+                        "Can't update supervisor this will break some Add-on updates or future version of Home Assistant need updates!")
 
         # start api
         await self.sys_api.start()
