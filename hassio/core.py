@@ -79,10 +79,12 @@ class HassIO(CoreSysAttributes):
                 if self.sys_dev:
                     _LOGGER.warning("Ignore Hass.io updates on dev!")
                 else:
-                    await self.sys_supervisor.update():
+                    await self.sys_supervisor.update()
             except SupervisorUpdateError:
                 _LOGGER.fatal(
-                    "Can't update supervisor! This will break some Add-ons or affect future version of Home Assistant!")
+                    "Can't update supervisor! This will break some Add-ons or affect "
+                    "future version of Home Assistant!"
+                )
 
         # start api
         await self.sys_api.start()
