@@ -75,14 +75,14 @@ class HassIO(CoreSysAttributes):
         """Start Hass.io orchestration."""
         # on release channel, try update itself
         if self.sys_supervisor.need_update:
-            if self.sys_dev:
-                _LOGGER.warning("Ignore Hass.io updates on dev!")
-            else:
-                try:
+            try:
+                if self.sys_dev:
+                    _LOGGER.warning("Ignore Hass.io updates on dev!")
+                else:
                     await self.sys_supervisor.update():
-                except SupervisorUpdateError:
-                    _LOGGER.error(
-                        "Can't update supervisor this will break some Add-on updates or future version of Home Assistant need updates!")
+            except SupervisorUpdateError:
+                _LOGGER.fatal(
+                    "Can't update supervisor! This will break some Add-ons or affect future version of Home Assistant!")
 
         # start api
         await self.sys_api.start()
