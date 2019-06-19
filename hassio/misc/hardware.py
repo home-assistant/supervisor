@@ -39,6 +39,10 @@ class Hardware:
             if "ID_VENDOR" in device or RE_TTY.search(device.device_node):
                 dev_list.add(device.device_node)
 
+                # Add devlinks for current device
+                if "DEVLINKS" in device and device["DEVLINKS"]:
+                    dev_list.update(device["DEVLINKS"].split(" "))
+
         return dev_list
 
     @property
