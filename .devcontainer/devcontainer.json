@@ -1,0 +1,18 @@
+// See https://aka.ms/vscode-remote/devcontainer.json for format details.
+{
+	"name": "Hass.io dev",
+	"context": "..",
+	"dockerFile": "Dockerfile",
+	"extensions": [
+		"ms-python.python"
+	],
+	"settings": {
+		"python.pythonPath": "/usr/local/bin/python",
+		"python.linting.pylintEnabled": true,
+		"python.linting.enabled": true,
+		"python.formatting.provider": "black",
+		"editor.formatOnPaste": false,
+		"editor.formatOnSave": true,
+		"editor.formatOnType": true
+	}
+}
