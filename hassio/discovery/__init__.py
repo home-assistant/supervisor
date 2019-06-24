@@ -90,8 +90,8 @@ class Discovery(CoreSysAttributes, JsonConfig):
                 continue
             if exists_msg.config == config:
                 _LOGGER.debug("Duplicate discovery message from %s", addon.slug)
-                return exists_message
-            message = exists_message
+                return exists_msg
+            message = exists_msg
             message.config = config
             break
 
