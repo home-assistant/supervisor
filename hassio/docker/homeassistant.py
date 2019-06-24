@@ -97,7 +97,6 @@ class DockerHomeAssistant(DockerInterface):
             command,
             privileged=True,
             init=True,
-            devices=self.devices,
             detach=True,
             stdout=True,
             stderr=True,
