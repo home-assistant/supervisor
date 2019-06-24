@@ -39,6 +39,15 @@ class Hardware:
             if "ID_VENDOR" in device or RE_TTY.search(device.device_node):
                 dev_list.add(device.device_node)
 
+                # Add /dev/serial/by-id devlink for current device
+                if "DEVLINKS" in device and device["DEVLINKS"]:
+                    devlinks = [
+                        symlink
+                        for symlink in device["DEVLINKS"].split(" ")
+                        if symlink.startswith("/dev/serial/by-id")
+                    ]
+                    dev_list.update(devlinks)
+
         return dev_list
 
     @property

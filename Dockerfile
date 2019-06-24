@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     socat \
     glib \
     libstdc++ \
+    eudev \
     eudev-libs
 
 # Install requirements
@@ -24,5 +25,9 @@ RUN export MAKEFLAGS="-j$(nproc)" \
 # Install HassIO
 COPY . /usr/src/hassio
 RUN pip3 install --no-cache-dir -e /usr/src/hassio
+
+# Initialize udev daemon, handle CMD
+COPY entry.sh /bin/
+ENTRYPOINT ["/bin/entry.sh"]
 
 CMD [ "python3", "-m", "hassio" ]
