@@ -14,12 +14,14 @@ trigger:
 pr:
   - dev
 variables:
+  - name: basePythonTag
+    value: '3.7-alpine3.10'
   - name: versionHadolint
     value: 'v1.16.3'
   - name: versionBuilder
-    value: '3.2'
+    value: '4.4'
   - name: versionWheels
-    value: '0.6'
+    value: '0.10'
   - group: docker
   - group: wheels
 
@@ -115,12 +117,12 @@ jobs:
       ssh-keyscan -H $(wheelsHost) >> .ssh/known_hosts
       chmod 600 .ssh/*
     displayName: 'Install ssh key'
-  - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)
+  - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)-$(basePythonTag)
     displayName: 'Install wheels builder'
   - script: |
       curl -s -o requirements_diff.txt https://raw.githubusercontent.com/home-assistant/hassio/master/requirements.txt
       sudo docker run --rm -v $(pwd):/data:ro -v $(pwd)/.ssh:/root/.ssh:rw \
-        homeassistant/$(buildArch)-wheels:$(versionWheels) \
+        homeassistant/$(buildArch)-wheels:$(versionWheels)-$(basePythonTag) \
         --apk "build-base;libffi-dev;openssl-dev" \
         --index $(wheelsIndex) \
         --requirement requirements.txt \
@@ -130,31 +132,8 @@ jobs:
     displayName: 'Run wheels build'
 
 
-- job: 'ReleaseDEV'
-  condition: and(eq(variables['Build.SourceBranchName'], 'dev'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'), succeeded('Wheels'))
-  dependsOn:
-  - 'JQ'
-  - 'Tox'
-  - 'Hadolint'
-  - 'Wheels'
-  pool:
-    vmImage: 'ubuntu-latest'
-  steps:
-  - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
-    displayName: 'Docker hub login'
-  - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
-    displayName: 'Install Builder'
-  - script: |
-      sudo docker run --rm --privileged \
-        -v ~/.docker:/root/.docker \
-        -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
-        homeassistant/amd64-builder:$(versionBuilder) \
-        --supervisor --all -t /data --version dev --docker-hub homeassistant
-    displayName: 'Build DEV'
-
-
 - job: 'VersionValidate'
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
+  condition: or(startsWith(variables['Build.SourceBranch'], 'refs/tags'), eq(variables['Build.SourceBranchName'], 'dev'))
   pool:
     vmImage: 'ubuntu-latest'
   steps:
@@ -166,7 +145,9 @@ jobs:
       setup_version="$(python setup.py -V)"
       branch_version="$(Build.SourceBranchName)"
 
-      if [ "${setup_version}" != "${branch_version}" ]; then
+      if [ "${branch_version}" == "dev" ]; then
+        exit 0
+      elif [ "${setup_version}" != "${branch_version}" ]; then
         echo "Version of tag ${branch_version} don't match with ${setup_version}!"
         exit 1
       fi
@@ -174,7 +155,6 @@ jobs:
 
 
 - job: 'Release'
-  condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags'), succeeded('JQ'), succeeded('Tox'), succeeded('Hadolint'), succeeded('VersionValidate'))
   dependsOn:
   - 'JQ'
   - 'Tox'
@@ -192,5 +172,6 @@ jobs:
         -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
         homeassistant/amd64-builder:$(versionBuilder) \
-        --supervisor --all -t /data --docker-hub homeassistant
+        --supervisor $(basePythonTag) --version $(Build.SourceBranchName) \
+        --all -t /data --docker-hub homeassistant
     displayName: 'Build Release'
