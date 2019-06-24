@@ -88,11 +88,12 @@ class Discovery(CoreSysAttributes, JsonConfig):
         for exists_msg in self.list_messages:
             if exists_msg != message:
                 continue
-            if exists_msg.config == config:
+            if exists_msg.config != config:
+                message = exists_msg
+                message.config = config
+            else:
                 _LOGGER.debug("Duplicate discovery message from %s", addon.slug)
                 return exists_msg
-            message = exists_msg
-            message.config = config
             break
 
         _LOGGER.info("Send discovery to Home Assistant %s from %s", service, addon.slug)
