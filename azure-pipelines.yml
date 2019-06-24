@@ -117,13 +117,11 @@ stages:
     - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)-$(basePythonTag)
       displayName: 'Install wheels builder'
     - script: |
-        curl -s -o requirements_diff.txt https://raw.githubusercontent.com/home-assistant/hassio/master/requirements.txt
         sudo docker run --rm -v $(pwd):/data:ro -v $(pwd)/.ssh:/root/.ssh:rw \
           homeassistant/$(buildArch)-wheels:$(versionWheels)-$(basePythonTag) \
           --apk "build-base;libffi-dev;openssl-dev" \
           --index $(wheelsIndex) \
           --requirement requirements.txt \
-          --requirement-diff requirements_diff.txt \
           --upload rsync \
           --remote wheels@$(wheelsHost):/opt/wheels
       displayName: 'Run wheels build'
