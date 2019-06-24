@@ -92,6 +92,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
                 _LOGGER.debug("Duplicate discovery message from %s", addon.slug)
                 return exists_message
             exists_message.config = config
+            message = exists_message
             break
 
         _LOGGER.info("Send discovery to Home Assistant %s from %s", service, addon.slug)
