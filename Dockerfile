@@ -25,7 +25,7 @@ RUN export MAKEFLAGS="-j$(nproc)" \
 # Install HassIO
 COPY . /usr/src/hassio
 RUN pip3 install --no-cache-dir -e /usr/src/hassio \
-    && python3 -m compileall /usr/src/hassio
+    && python3 -m compileall /usr/src/hassio/hassio
 
 # Initialize udev daemon, handle CMD
 COPY entry.sh /bin/
