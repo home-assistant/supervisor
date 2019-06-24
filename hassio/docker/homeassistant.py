@@ -41,14 +41,6 @@ class DockerHomeAssistant(DockerInterface):
         return 60
 
     @property
-    def devices(self):
-        """Create list of special device to map into Docker."""
-        devices = []
-        for device in self.sys_hardware.serial_devices:
-            devices.append(f"{device}:{device}:rwm")
-        return devices or None
-
-    @property
     def ip_address(self) -> IPv4Address:
         """Return IP address of this container."""
         return self.sys_docker.network.gateway
@@ -73,7 +65,6 @@ class DockerHomeAssistant(DockerInterface):
             detach=True,
             privileged=True,
             init=True,
-            devices=self.devices,
             network_mode="host",
             environment={
                 "HASSIO": self.sys_docker.network.supervisor,
