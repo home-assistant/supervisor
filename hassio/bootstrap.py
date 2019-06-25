@@ -22,10 +22,11 @@ from .host import HostManager
 from .ingress import Ingress
 from .services import ServiceManager
 from .snapshots import SnapshotManager
-from .supervisor import Supervisor
 from .store import StoreManager
+from .supervisor import Supervisor
 from .tasks import Tasks
 from .updater import Updater
+from .utils.dt import fetch_timezone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +66,10 @@ async def initialize_coresys():
     # Set Machine/Host ID
     if MACHINE_ID.exists():
         coresys.machine_id = MACHINE_ID.read_text().strip()
+
+    # Init TimeZone
+    if coresys.config.timezone == "UTC":
+        coresys.config.timezone = await fetch_timezone(coresys.websession)
 
     return coresys
 
