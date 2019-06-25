@@ -43,7 +43,7 @@ class Hardware:
                 for dev_link in device.device_links:
                     if not dev_link.startswith("/dev/serial/by-id"):
                         continue
-                    dev_list.update(dev_link)
+                    dev_list.add(dev_link)
 
         return dev_list
 
