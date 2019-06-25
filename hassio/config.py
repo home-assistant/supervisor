@@ -3,9 +3,6 @@ from datetime import datetime
 import logging
 import os
 from pathlib import Path, PurePath
-import re
-
-import pytz
 
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
@@ -40,8 +37,6 @@ APPARMOR_DATA = PurePath("apparmor")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
-RE_TIMEZONE = re.compile(r"time_zone: (?P<timezone>[\w/\-+]+)")
-
 
 class CoreConfig(JsonConfig):
     """Hold all core config data."""
@@ -53,21 +48,7 @@ class CoreConfig(JsonConfig):
     @property
     def timezone(self):
         """Return system timezone."""
-        config_file = Path(self.path_homeassistant, "configuration.yaml")
-        try:
-            assert config_file.exists()
-            configuration = config_file.read_text()
-
-            data = RE_TIMEZONE.search(configuration)
-            assert data
-
-            timezone = data.group("timezone")
-            pytz.timezone(timezone)
-        except (pytz.exceptions.UnknownTimeZoneError, OSError, AssertionError):
-            _LOGGER.debug("Can't parse Home Assistant timezone")
-            return self._data[ATTR_TIMEZONE]
-
-        return timezone
+        return self._data[ATTR_TIMEZONE]
 
     @timezone.setter
     def timezone(self, value):
