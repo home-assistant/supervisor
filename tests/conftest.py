@@ -5,6 +5,8 @@ import pytest
 
 from hassio.bootstrap import initialize_coresys
 
+from tests.common import mock_coro
+
 # pylint: disable=redefined-outer-name
 
 
@@ -18,7 +20,10 @@ def docker():
 @pytest.fixture
 async def coresys(loop, docker):
     """Create a CoreSys Mock."""
-    with patch("hassio.bootstrap.initialize_system_data"):
+    with patch("hassio.bootstrap.initialize_system_data"), patch(
+        "hassio.bootstrap.fetch_timezone",
+        return_value=mock_coro(return_value="Europe/Zurich"),
+    ):
         coresys_obj = await initialize_coresys()
 
     coresys_obj.ingress.save_data = MagicMock()
