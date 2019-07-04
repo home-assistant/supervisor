@@ -96,8 +96,6 @@ class Ingress(JsonConfig, CoreSysAttributes):
         valid = utcnow() + timedelta(minutes=15)
 
         self.sessions[session] = valid.timestamp()
-        self.save_data()
-
         return session
 
     def validate_session(self, session: str) -> bool:
