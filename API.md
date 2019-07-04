@@ -730,7 +730,8 @@ return:
     "arch": "arch",
     "supported_arch": ["arch1", "arch2"],
     "channel": "stable|beta|dev",
-    "logging": "debug|info|warning|error|critical"
+    "logging": "debug|info|warning|error|critical",
+    "timezone": "Europe/Zurich"
 }
 ```
 
