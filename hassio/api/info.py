@@ -14,6 +14,7 @@ from ..const import (
     ATTR_MACHINE,
     ATTR_SUPERVISOR,
     ATTR_SUPPORTED_ARCH,
+    ATTR_TIMEZONE,
 )
 from ..coresys import CoreSysAttributes
 from .utils import api_process
@@ -37,4 +38,5 @@ class APIInfo(CoreSysAttributes):
             ATTR_SUPPORTED_ARCH: self.sys_arch.supported,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_LOGGING: self.sys_config.logging,
+            ATTR_TIMEZONE: self.sys_timezone,
         }
