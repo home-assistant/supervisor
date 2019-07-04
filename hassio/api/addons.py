@@ -291,7 +291,7 @@ class APIAddons(CoreSysAttributes):
             _LOGGER.warning("Protected flag changing for %s!", addon.slug)
             addon.protected = body[ATTR_PROTECTED]
 
-        addon.save_data()
+        addon.save_persist()
 
     @api_process
     async def stats(self, request: web.Request) -> Dict[str, Any]:

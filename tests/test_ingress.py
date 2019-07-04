@@ -9,7 +9,6 @@ def test_session_handling(coresys):
     session = coresys.ingress.create_session()
     validate = coresys.ingress.sessions[session]
 
-    assert coresys.ingress.save_data.called
     assert session
     assert validate
 
@@ -20,6 +19,14 @@ def test_session_handling(coresys):
     coresys.ingress.sessions[session] = not_valid.timestamp()
     assert not coresys.ingress.validate_session(session)
     assert not coresys.ingress.validate_session("invalid session")
+
+
+async def test_save_on_unload(coresys):
+    """Test called save on unload."""
+    coresys.ingress.create_session()
+    await coresys.ingress.unload()
+
+    assert coresys.ingress.save_data.called
 
 
 def test_dynamic_ports(coresys):
