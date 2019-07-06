@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 class APIProxy(CoreSysAttributes):
     """API Proxy for Home Assistant."""
 
-    def _check_access(self, request):
+    def _check_access(self, request: web.Request):
         """Check the Hass.io token."""
         if AUTHORIZATION in request.headers:
             bearer = request.headers[AUTHORIZATION]
@@ -40,7 +40,7 @@ class APIProxy(CoreSysAttributes):
         raise HTTPUnauthorized()
 
     @asynccontextmanager
-    async def _api_client(self, request, path, timeout=300):
+    async def _api_client(self, request: web.Request, path: str, timeout: int = 300):
         """Return a client request with proxy origin for Home Assistant."""
         try:
             # read data
@@ -58,6 +58,7 @@ class APIProxy(CoreSysAttributes):
                 content_type=content_type,
                 data=data,
                 timeout=timeout,
+                params=request.query,
             ) as resp:
                 yield resp
                 return
@@ -73,7 +74,7 @@ class APIProxy(CoreSysAttributes):
 
         raise HTTPBadGateway()
 
-    async def stream(self, request):
+    async def stream(self, request: web.Request):
         """Proxy HomeAssistant EventStream Requests."""
         self._check_access(request)
 
@@ -92,7 +93,7 @@ class APIProxy(CoreSysAttributes):
             _LOGGER.info("Home Assistant EventStream close")
             return response
 
-    async def api(self, request):
+    async def api(self, request: web.Request):
         """Proxy Home Assistant API Requests."""
         self._check_access(request)
 
@@ -162,7 +163,7 @@ class APIProxy(CoreSysAttributes):
 
         raise APIError()
 
-    async def websocket(self, request):
+    async def websocket(self, request: web.Request):
         """Initialize a WebSocket API connection."""
         _LOGGER.info("Home Assistant WebSocket API request initialize")
 
