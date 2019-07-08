@@ -460,7 +460,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         json: Optional[Dict[str, Any]] = None,
         content_type: Optional[str] = None,
         data: Optional[bytes] = None,
-        timeout=30,
+        timeout: int = 30,
+        params: Optional[Dict[str, str]] = None,
     ) -> AsyncContextManager[aiohttp.ClientResponse]:
         """Async context manager to make a request with right auth."""
         url = f"{self.api_url}/{path}"
@@ -482,7 +483,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             try:
                 async with getattr(self.sys_websession_ssl, method)(
-                    url, data=data, timeout=timeout, json=json, headers=headers
+                    url,
+                    data=data,
+                    timeout=timeout,
+                    json=json,
+                    headers=headers,
+                    params=params,
                 ) as resp:
                     # Access token expired
                     if resp.status == 401 and self.refresh_token:
