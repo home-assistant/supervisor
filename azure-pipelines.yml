@@ -21,7 +21,7 @@ variables:
   - name: versionBuilder
     value: '4.4'
   - name: versionWheels
-    value: '0.11'
+    value: '1.0-3.7-alpine3.10'
   - group: docker
   - group: wheels
 
