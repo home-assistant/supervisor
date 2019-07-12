@@ -114,7 +114,7 @@ stages:
         ssh-keyscan -H $(wheelsHost) >> .ssh/known_hosts
         chmod 600 .ssh/*
       displayName: 'Install ssh key'
-    - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)-$(basePythonTag)
+    - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)
       displayName: 'Install wheels builder'
     - script: |
         sudo docker run --rm -v $(pwd):/data:ro -v $(pwd)/.ssh:/root/.ssh:rw \
