@@ -118,7 +118,7 @@ stages:
       displayName: 'Install wheels builder'
     - script: |
         sudo docker run --rm -v $(pwd):/data:ro -v $(pwd)/.ssh:/root/.ssh:rw \
-          homeassistant/$(buildArch)-wheels:$(versionWheels)-$(basePythonTag) \
+          homeassistant/$(buildArch)-wheels:$(versionWheels) \
           --apk "build-base;libffi-dev;openssl-dev" \
           --index $(wheelsIndex) \
           --requirement requirements.txt \
