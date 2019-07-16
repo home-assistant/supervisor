@@ -21,7 +21,7 @@ variables:
   - name: versionBuilder
     value: '4.4'
   - name: versionWheels
-    value: '0.11'
+    value: '1.0-3.7-alpine3.10'
   - group: docker
   - group: wheels
 
@@ -84,7 +84,7 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     strategy:
-      maxParallel: 3
+      maxParallel: 5
       matrix:
         amd64:
           buildArch: 'amd64'
@@ -114,11 +114,11 @@ stages:
         ssh-keyscan -H $(wheelsHost) >> .ssh/known_hosts
         chmod 600 .ssh/*
       displayName: 'Install ssh key'
-    - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)-$(basePythonTag)
+    - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)
       displayName: 'Install wheels builder'
     - script: |
         sudo docker run --rm -v $(pwd):/data:ro -v $(pwd)/.ssh:/root/.ssh:rw \
-          homeassistant/$(buildArch)-wheels:$(versionWheels)-$(basePythonTag) \
+          homeassistant/$(buildArch)-wheels:$(versionWheels) \
           --apk "build-base;libffi-dev;openssl-dev" \
           --index $(wheelsIndex) \
           --requirement requirements.txt \

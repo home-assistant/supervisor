@@ -83,6 +83,26 @@ async def test_raspberrypi3_64_arch(coresys, sys_machine, sys_supervisor):
     assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
 
 
+async def test_raspberrypi4_arch(coresys, sys_machine, sys_supervisor):
+    """Test arch for raspberrypi4."""
+    sys_machine.return_value = "raspberrypi4"
+    sys_supervisor.arch = "armv7"
+    await coresys.arch.load()
+
+    assert coresys.arch.default == "armv7"
+    assert coresys.arch.supported == ["armv7", "armhf"]
+
+
+async def test_raspberrypi4_64_arch(coresys, sys_machine, sys_supervisor):
+    """Test arch for raspberrypi4_64."""
+    sys_machine.return_value = "raspberrypi4-64"
+    sys_supervisor.arch = "aarch64"
+    await coresys.arch.load()
+
+    assert coresys.arch.default == "aarch64"
+    assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
+
+
 async def test_tinker_arch(coresys, sys_machine, sys_supervisor):
     """Test arch for tinker."""
     sys_machine.return_value = "tinker"
