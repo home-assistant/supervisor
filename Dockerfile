@@ -1,8 +1,6 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-ARG BUILD_ARCH
-
 # Install base
 RUN apk add --no-cache \
     openssl \
@@ -15,6 +13,7 @@ RUN apk add --no-cache \
     eudev \
     eudev-libs
 
+ARG BUILD_ARCH
 WORKDIR /usr/src
 
 # Install requirements
@@ -31,10 +30,9 @@ RUN pip3 install --no-cache-dir -e ./hassio \
     && python3 -m compileall ./hassio/hassio
 
 
-WORKDIR /
-
 # Initialize udev daemon, handle CMD
 COPY entry.sh /bin/
 ENTRYPOINT ["/bin/entry.sh"]
 
+WORKDIR /
 CMD [ "python3", "-m", "hassio" ]
