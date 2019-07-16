@@ -1,13 +1,20 @@
 # General files
 .git
 .github
+.devcontainer
+.vscode
 
 # Test related files
 .tox
 
 # Temporary files
 **/__pycache__
+.pytest_cache
 
 # virtualenv
 venv/
-ENV/
+
+# HA
+home-assistant-polymer/*
+misc/*
+script/*
