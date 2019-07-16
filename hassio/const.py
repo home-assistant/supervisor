@@ -6,8 +6,8 @@ from ipaddress import ip_network
 HASSIO_VERSION = "169"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
-URL_HASSIO_VERSION = "https://s3.amazonaws.com/hassio-version/{channel}.json"
-URL_HASSIO_APPARMOR = "https://s3.amazonaws.com/hassio-version/apparmor.txt"
+URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
+URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor.txt"
 
 URL_HASSOS_OTA = (
     "https://github.com/home-assistant/hassos/releases/download/"
