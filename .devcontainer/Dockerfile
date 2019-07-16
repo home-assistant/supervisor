@@ -2,6 +2,21 @@ FROM python:3.7
 
 WORKDIR /workspace
 
+# install Node/Yarn for Frontent
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        git \
+        apt-utils \
+        apt-transport-https \
+    && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
+    && echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        nodejs \
+        yarn \
+    && curl -o - https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash \
+    && rm -rf /var/lib/apt/lists/*
+ENV NVM_DIR /root/.nvm
+
 # Install Python dependencies from requirements.txt if it exists
 COPY requirements.txt requirements_tests.txt /workspace/
 RUN pip install -r requirements.txt \

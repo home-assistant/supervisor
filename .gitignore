@@ -92,4 +92,6 @@ ENV/
 .pylint.d/
 
 # VS Code
-.vscode/
+.vscode/*
+!.vscode/cSpell.json
+!.vscode/tasks.json
