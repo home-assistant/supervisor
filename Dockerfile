@@ -15,18 +15,23 @@ RUN apk add --no-cache \
     eudev \
     eudev-libs
 
+WORKDIR /usr/src
+
 # Install requirements
-COPY requirements.txt /usr/src/
+COPY requirements.txt .
 RUN export MAKEFLAGS="-j$(nproc)" \
     && pip3 install --no-cache-dir --no-index --only-binary=:all: --find-links \
         "https://wheels.home-assistant.io/alpine-$(cut -d '.' -f 1-2 < /etc/alpine-release)/${BUILD_ARCH}/" \
-        -r /usr/src/requirements.txt \
-    && rm -f /usr/src/requirements.txt
+        -r ./requirements.txt \
+    && rm -f requirements.txt
 
 # Install HassIO
-COPY . /usr/src/hassio
-RUN pip3 install --no-cache-dir -e /usr/src/hassio \
-    && python3 -m compileall /usr/src/hassio/hassio
+COPY . hassio
+RUN pip3 install --no-cache-dir -e ./hassio \
+    && python3 -m compileall ./hassio/hassio
+
+
+WORKDIR /
 
 # Initialize udev daemon, handle CMD
 COPY entry.sh /bin/
