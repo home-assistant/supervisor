@@ -59,7 +59,7 @@ from ..const import (
     SECURITY_PROFILE,
 )
 from ..coresys import CoreSysAttributes
-from .validate import MACHINE_ALL, RE_SERVICE, RE_VOLUME, validate_options
+from .validate import RE_SERVICE, RE_VOLUME, validate_options
 
 Data = Dict[str, Any]
 
@@ -391,7 +391,7 @@ class AddonModel(CoreSysAttributes):
     @property
     def supported_machine(self) -> List[str]:
         """Return list of supported machine."""
-        return self.data.get(ATTR_MACHINE, MACHINE_ALL)
+        return self.data.get(ATTR_MACHINE, [])
 
     @property
     def image(self) -> str:
@@ -460,8 +460,8 @@ class AddonModel(CoreSysAttributes):
             return False
 
         # Machine / Hardware
-        machine = config.get(ATTR_MACHINE) or MACHINE_ALL
-        if self.sys_machine not in machine:
+        machine = config.get(ATTR_MACHINE)
+        if machine and self.sys_machine not in machine:
             return False
 
         # Home Assistant

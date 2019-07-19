@@ -139,6 +139,8 @@ MACHINE_ALL = [
     "raspberrypi2",
     "raspberrypi3",
     "raspberrypi3-64",
+    "raspberrypi4",
+    "raspberrypi4-64",
     "tinker",
 ]
 
