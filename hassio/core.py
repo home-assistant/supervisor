@@ -170,3 +170,14 @@ class HassIO(CoreSysAttributes):
         """Update last boot time."""
         self.sys_config.last_boot = self.sys_hardware.last_boot
         self.sys_config.save_data()
+
+    async def repair(self):
+        """Repair system integrity."""
+        await self.sys_docker.repair()
+
+        # Restore core functionality
+        await self.sys_addons.repair()
+        await self.sys_homeassistant.repair()
+
+        if self.sys_hassos.available:
+            await self.sys_hassos.repair_cli()
