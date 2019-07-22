@@ -259,13 +259,13 @@ class AddonManager(CoreSysAttributes):
 
     async def repair(self) -> None:
         """Repair local add-ons."""
-        needs_repair: Set[Addon] = set()
+        needs_repair: List[Addon] = []
 
         # Evaluate Add-ons to repair
         for addon in self.installed:
             if await addon.instance.exists():
                 continue
-            needs_repair.add(addon)
+            needs_repair.append(addon)
 
         _LOGGER.info("Found %d add-ons to repair", len(needs_repair))
         if not needs_repair:
