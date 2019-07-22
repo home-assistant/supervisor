@@ -173,7 +173,7 @@ class HassIO(CoreSysAttributes):
 
     async def repair(self):
         """Repair system integrity."""
-        await self.sys_docker.repair()
+        await self.sys_run_in_executor(self.sys_docker.repair)
 
         # Restore core functionality
         await self.sys_addons.repair()
