@@ -3,7 +3,7 @@ import asyncio
 from contextlib import suppress
 import logging
 import tarfile
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Set, Union
 
 from ..const import BOOT_AUTO, STATE_STARTED
 from ..coresys import CoreSys, CoreSysAttributes
@@ -256,3 +256,38 @@ class AddonManager(CoreSysAttributes):
 
         _LOGGER.info("Detect new Add-on after restore %s", slug)
         self.local[slug] = addon
+
+    async def repair(self) -> None:
+        """Repair local add-ons."""
+        needs_repair: Set[Addon] = set()
+
+        # Evaluate Add-ons to repair
+        for addon in self.installed:
+            if await addon.instance.exists():
+                continue
+            needs_repair.add(addon)
+
+        _LOGGER.info("Found %d add-ons to repair", len(needs_repair))
+        if not needs_repair:
+            return
+
+        for addon in needs_repair:
+            _LOGGER.info("Start repair for add-on: %s", addon.slug)
+
+            with suppress(DockerAPIError, KeyError):
+                # Need pull a image again
+                if not addon.need_build:
+                    await addon.instance.install(addon.version, addon.image)
+                    continue
+
+                # Need local lookup
+                elif addon.need_build and not addon.is_detached:
+                    store = self.store[addon.slug]
+                    # If this add-on is available for rebuild
+                    if addon.version == store.version:
+                        await addon.instance.install(addon.version, addon.image)
+                        continue
+
+            _LOGGER.error("Can't repair %s", addon.slug)
+            with suppress(AddonsError):
+                await self.uninstall(addon.slug)
