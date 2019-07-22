@@ -152,7 +152,7 @@ class DockerAPI:
 
         _LOGGER.info("Prune stale images")
         try:
-            output = self.docker.api.prune_images()
+            output = self.docker.api.prune_images(filters={"dangling": False})
             _LOGGER.debug("Images prune: %s", output)
         except docker.errors.APIError as err:
             _LOGGER.warning("Error for images prune: %s", err)
