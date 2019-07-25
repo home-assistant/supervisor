@@ -2,7 +2,7 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
-from typing import Awaitable
+from typing import Awaitable, Optional
 
 import docker
 
@@ -19,24 +19,29 @@ class DockerHomeAssistant(DockerInterface):
     """Docker Hass.io wrapper for Home Assistant."""
 
     @property
-    def machine(self):
+    def machine(self) -> Optional[str]:
         """Return machine of Home Assistant Docker image."""
         if self._meta and LABEL_MACHINE in self._meta["Config"]["Labels"]:
             return self._meta["Config"]["Labels"][LABEL_MACHINE]
         return None
 
     @property
-    def image(self):
+    def image(self) -> str:
         """Return name of Docker image."""
         return self.sys_homeassistant.image
 
     @property
-    def name(self):
+    def version(self) -> Optional[str]:
+        """Return version of Docker image."""
+        return self.sys_homeassistant.version
+
+    @property
+    def name(self) -> str:
         """Return name of Docker container."""
         return HASS_DOCKER_NAME
 
     @property
-    def timeout(self) -> str:
+    def timeout(self) -> int:
         """Return timeout for Docker actions."""
         return 60
 
@@ -60,6 +65,7 @@ class DockerHomeAssistant(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
+            version=self.version,
             name=self.name,
             hostname=self.name,
             detach=True,
@@ -94,7 +100,8 @@ class DockerHomeAssistant(DockerInterface):
         """
         return self.sys_docker.run_command(
             self.image,
-            command,
+            version=self.sys_homeassistant.version,
+            command=command,
             privileged=True,
             init=True,
             detach=True,

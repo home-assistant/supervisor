@@ -72,9 +72,7 @@ class DockerAddon(DockerInterface):
     @property
     def version(self) -> str:
         """Return version of Docker image."""
-        if self.addon.legacy:
-            return self.addon.version
-        return super().version
+        return self.addon.version
 
     @property
     def arch(self) -> str:
@@ -327,7 +325,7 @@ class DockerAddon(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.addon.version,
+            version=self.version,
             name=self.name,
             hostname=self.hostname,
             detach=True,
@@ -350,7 +348,9 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
         self._meta = docker_container.attrs
 
-    def _install(self, tag: str, image: Optional[str] = None) -> None:
+    def _install(
+        self, tag: str, image: Optional[str] = None, latest: bool = False
+    ) -> None:
         """Pull Docker image or build it.
 
         Need run inside executor.
@@ -358,7 +358,7 @@ class DockerAddon(DockerInterface):
         if self.addon.need_build:
             self._build(tag)
         else:
-            super()._install(tag, image)
+            super()._install(tag, image, latest)
 
     def _build(self, tag: str) -> None:
         """Build a Docker container.
@@ -374,7 +374,6 @@ class DockerAddon(DockerInterface):
             )
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)
-            image.tag(self.image, tag="latest")
 
             # Update meta data
             self._meta = image.attrs

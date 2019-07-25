@@ -68,11 +68,13 @@ class DockerInterface(CoreSysAttributes):
         return self.lock.locked()
 
     @process_lock
-    def install(self, tag: str, image: Optional[str] = None):
+    def install(self, tag: str, image: Optional[str] = None, latest: bool = False):
         """Pull docker image."""
-        return self.sys_run_in_executor(self._install, tag, image)
+        return self.sys_run_in_executor(self._install, tag, image, latest)
 
-    def _install(self, tag: str, image: Optional[str] = None) -> None:
+    def _install(
+        self, tag: str, image: Optional[str] = None, latest: bool = False
+    ) -> None:
         """Pull Docker image.
 
         Need run inside executor.
@@ -80,9 +82,11 @@ class DockerInterface(CoreSysAttributes):
         image = image or self.image
         image = image.partition(":")[0]  # remove potential tag
 
+        _LOGGER.info("Pull image %s tag %s.", image, tag)
         try:
-            _LOGGER.info("Pull image %s tag %s.", image, tag)
             docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
+            if not latest:
+                return
 
             _LOGGER.info("Tag image %s with version %s as latest", image, tag)
             docker_image.tag(image, tag="latest")
@@ -149,7 +153,9 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             if self.image:
-                self._meta = self.sys_docker.images.get(self.image).attrs
+                self._meta = self.sys_docker.images.get(
+                    f"{self.image}:{self.version}"
+                ).attrs
             self._meta = self.sys_docker.containers.get(self.name).attrs
         except docker.errors.DockerException:
             pass
@@ -250,11 +256,15 @@ class DockerInterface(CoreSysAttributes):
         self._meta = None
 
     @process_lock
-    def update(self, tag: str, image: Optional[str] = None) -> Awaitable[None]:
+    def update(
+        self, tag: str, image: Optional[str] = None, latest: bool = False
+    ) -> Awaitable[None]:
         """Update a Docker image."""
         return self.sys_run_in_executor(self._update, tag, image)
 
-    def _update(self, tag: str, image: Optional[str] = None) -> None:
+    def _update(
+        self, tag: str, image: Optional[str] = None, latest: bool = False
+    ) -> None:
         """Update a docker image.
 
         Need run inside executor.
@@ -266,7 +276,7 @@ class DockerInterface(CoreSysAttributes):
         )
 
         # Update docker image
-        self._install(tag, image)
+        self._install(tag, image, latest)
 
         # Stop container & cleanup
         with suppress(DockerAPIError):
@@ -308,13 +318,13 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            latest = self.sys_docker.images.get(self.image)
+            origin = self.sys_docker.images.get(f"{self.image}:{self.version}")
         except docker.errors.DockerException:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
             raise DockerAPIError() from None
 
         for image in self.sys_docker.images.list(name=self.image):
-            if latest.id == image.id:
+            if origin.id == image.id:
                 continue
 
             with suppress(docker.errors.DockerException):

@@ -187,7 +187,7 @@ class HassOS(CoreSysAttributes):
             return
 
         try:
-            await self.instance.update(version)
+            await self.instance.update(version, latest=True)
         except DockerAPIError:
             _LOGGER.error("HassOS CLI update fails")
             raise HassOSUpdateError() from None
