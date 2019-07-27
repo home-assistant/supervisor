@@ -49,7 +49,9 @@
         "armhf"
     ],
     "qemuarm-64": [
-        "aarch64"
+        "aarch64",
+        "armv7",
+        "armhf"
     ],
     "intel-nuc": [
         "amd64",
