@@ -6,7 +6,7 @@ colorlog==4.0.2
 cpe==1.2.1
 cryptography==2.7
 docker==4.0.2
-gitpython==2.1.12
+gitpython==2.1.13
 pytz==2019.1
 pyudev==0.21.0
 uvloop==0.12.2
