@@ -75,7 +75,7 @@ class Addon(AddonModel):
     async def load(self) -> None:
         """Async initialize of object."""
         with suppress(DockerAPIError):
-            await self.instance.attach()
+            await self.instance.attach(tag=self.version)
 
     @property
     def ip_address(self) -> IPv4Address:

@@ -25,7 +25,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         """Return IP address of this container."""
         return self.sys_docker.network.supervisor
 
-    def _attach(self) -> None:
+    def _attach(self, tag: str) -> None:
         """Attach to running docker container.
 
         Need run inside executor.

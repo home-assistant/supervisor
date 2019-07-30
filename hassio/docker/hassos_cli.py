@@ -21,12 +21,12 @@ class DockerHassOSCli(DockerInterface, CoreSysAttributes):
         """Don't need stop."""
         return True
 
-    def _attach(self):
+    def _attach(self, tag: str):
         """Attach to running Docker container.
         Need run inside executor.
         """
         try:
-            image = self.sys_docker.images.get(self.image)
+            image = self.sys_docker.images.get(f"{self.image}:{tag}")
 
         except docker.errors.DockerException:
             _LOGGER.warning("Can't find a HassOS CLI %s", self.image)

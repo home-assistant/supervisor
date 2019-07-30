@@ -130,7 +130,7 @@ class HassOS(CoreSysAttributes):
 
         _LOGGER.info("Detect HassOS %s on host system", self.version)
         with suppress(DockerAPIError):
-            await self.instance.attach()
+            await self.instance.attach(tag="latest")
 
     def config_sync(self) -> Awaitable[None]:
         """Trigger a host config reload from usb.

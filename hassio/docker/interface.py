@@ -142,20 +142,18 @@ class DockerInterface(CoreSysAttributes):
         return True
 
     @process_lock
-    def attach(self):
+    def attach(self, tag: str):
         """Attach to running Docker container."""
-        return self.sys_run_in_executor(self._attach)
+        return self.sys_run_in_executor(self._attach, tag)
 
-    def _attach(self) -> None:
+    def _attach(self, tag: str) -> None:
         """Attach to running docker container.
 
         Need run inside executor.
         """
         try:
             if self.image:
-                self._meta = self.sys_docker.images.get(
-                    f"{self.image}:{self.version}"
-                ).attrs
+                self._meta = self.sys_docker.images.get(f"{self.image}:{tag}").attrs
             self._meta = self.sys_docker.containers.get(self.name).attrs
         except docker.errors.DockerException:
             pass
