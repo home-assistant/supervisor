@@ -77,7 +77,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def load(self) -> None:
         """Prepare Home Assistant object."""
         with suppress(DockerAPIError):
-            await self.instance.attach()
+            if not self.version:
+                self.version = await self.instance.get_latest_version()
+
+            await self.instance.attach(tag=self.version)
             return
 
         _LOGGER.info("No Home Assistant Docker image %s found.", self.image)
@@ -161,11 +164,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._data[ATTR_WAIT_BOOT] = value
 
     @property
-    def version(self) -> str:
-        """Return version of running Home Assistant."""
-        return self.instance.version
-
-    @property
     def latest_version(self) -> str:
         """Return last available version of Home Assistant."""
         if self.is_custom_image:
@@ -199,6 +197,16 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def is_custom_image(self) -> bool:
         """Return True if a custom image is used."""
         return all(attr in self._data for attr in (ATTR_IMAGE, ATTR_LAST_VERSION))
+
+    @property
+    def version(self) -> Optional[str]:
+        """Return version of local version."""
+        return self._data.get(ATTR_VERSION)
+
+    @version.setter
+    def version(self, value: str) -> None:
+        """Set installed version."""
+        self._data[ATTR_VERSION] = value
 
     @property
     def boot(self) -> bool:
@@ -237,6 +245,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         while True:
             with suppress(DockerAPIError):
                 await self.instance.install("landingpage")
+                self.version = self.instance.version
                 return
             _LOGGER.warning("Fails install landingpage, retry after 30sec")
             await asyncio.sleep(30)
@@ -259,20 +268,19 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await asyncio.sleep(30)
 
         _LOGGER.info("Home Assistant docker now installed")
-        self._data[ATTR_VERSION] = self.instance.version
+        self.version = self.instance.version
         self.save_data()
 
         # finishing
         try:
-            if not self.boot:
-                return
             _LOGGER.info("Start Home Assistant")
             await self._start()
         except HomeAssistantError:
             _LOGGER.error("Can't start Home Assistant!")
-        finally:
-            with suppress(DockerAPIError):
-                await self.instance.cleanup()
+
+        # Cleanup
+        with suppress(DockerAPIError):
+            await self.instance.cleanup()
 
     @process_lock
     async def update(self, version=None) -> None:
@@ -300,7 +308,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 await self._start()
 
             _LOGGER.info("Successful run Home Assistant %s", to_version)
-            self._data[ATTR_VERSION] = self.instance.version
+            self.version = self.instance.version
             self.save_data()
 
         # Update Home Assistant
