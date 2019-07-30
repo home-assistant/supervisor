@@ -26,6 +26,7 @@ from .const import (
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
     ATTR_UUID,
+    ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     FILE_HASSIO_HOMEASSISTANT,
@@ -41,7 +42,7 @@ from .exceptions import (
     HomeAssistantError,
     HomeAssistantUpdateError,
 )
-from .utils import convert_to_ascii, process_lock, check_port
+from .utils import check_port, convert_to_ascii, process_lock
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASS_CONFIG
 
@@ -257,8 +258,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             _LOGGER.warning("Error on install Home Assistant. Retry in 30sec")
             await asyncio.sleep(30)
 
-        # finishing
         _LOGGER.info("Home Assistant docker now installed")
+        self._data[ATTR_VERSION] = self.instance.version
+        self.save_data()
+
+        # finishing
         try:
             if not self.boot:
                 return
@@ -294,7 +298,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             if running:
                 await self._start()
+
             _LOGGER.info("Successful run Home Assistant %s", to_version)
+            self._data[ATTR_VERSION] = self.instance.version
+            self.save_data()
 
         # Update Home Assistant
         with suppress(HomeAssistantError):

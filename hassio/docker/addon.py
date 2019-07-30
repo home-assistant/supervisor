@@ -72,7 +72,9 @@ class DockerAddon(DockerInterface):
     @property
     def version(self) -> str:
         """Return version of Docker image."""
-        return self.addon.version
+        if self.addon.legacy:
+            return self.addon.version
+        return super().version
 
     @property
     def arch(self) -> str:
@@ -325,7 +327,7 @@ class DockerAddon(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.version,
+            version=self.addon.version,
             name=self.name,
             hostname=self.hostname,
             detach=True,

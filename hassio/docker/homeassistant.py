@@ -31,11 +31,6 @@ class DockerHomeAssistant(DockerInterface):
         return self.sys_homeassistant.image
 
     @property
-    def version(self) -> Optional[str]:
-        """Return version of Docker image."""
-        return self.sys_homeassistant.version
-
-    @property
     def name(self) -> str:
         """Return name of Docker container."""
         return HASS_DOCKER_NAME
@@ -65,7 +60,7 @@ class DockerHomeAssistant(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.version,
+            version=self.sys_homeassistant.version,
             name=self.name,
             hostname=self.name,
             detach=True,
