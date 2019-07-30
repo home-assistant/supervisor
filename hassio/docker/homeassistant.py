@@ -142,7 +142,7 @@ class DockerHomeAssistant(DockerInterface):
 
     def get_latest_version(self) -> Awaitable[str]:
         """Return latest version of local Home Asssistant image."""
-        return self.sys_run_in_executor(self._get_latest_tag)
+        return self.sys_run_in_executor(self._get_latest_version)
 
     def _get_latest_version(self) -> str:
         """Return latest version of local Home Asssistant image.
