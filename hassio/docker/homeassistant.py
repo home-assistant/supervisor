@@ -152,7 +152,7 @@ class DockerHomeAssistant(DockerInterface):
         available_version: List[str] = []
         breakpoint()
         try:
-            for image in self.sys_docker.images.list(self.name):
+            for image in self.sys_docker.images.list(self.image):
                 for tag in image.tags:
                     match = RE_VERSION.match(tag)
                     if not match:
