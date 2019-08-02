@@ -150,6 +150,7 @@ class DockerHomeAssistant(DockerInterface):
         Need run inside executor.
         """
         available_version: List[str] = []
+        breakpoint()
         try:
             for image in self.sys_docker.images.list(self.name):
                 for tag in image.tags:

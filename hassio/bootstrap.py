@@ -226,4 +226,5 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
     ptvsd.enable_attach(address=("0.0.0.0", 33333), redirect_output=True)
     if coresys.config.debug_block:
+        _LOGGER.info("")
         ptvsd.wait_for_attach()
