@@ -88,8 +88,8 @@ class DockerHomeAssistant(DockerInterface):
             },
         )
 
-        _LOGGER.info("Start homeassistant %s with version %s", self.image, self.version)
         self._meta = docker_container.attrs
+        _LOGGER.info("Start homeassistant %s with version %s", self.image, self.version)
 
     def _execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command.
@@ -150,7 +150,6 @@ class DockerHomeAssistant(DockerInterface):
         Need run inside executor.
         """
         available_version: List[str] = []
-        breakpoint()
         try:
             for image in self.sys_docker.images.list(self.image):
                 for tag in image.tags:

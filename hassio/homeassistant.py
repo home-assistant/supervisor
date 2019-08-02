@@ -283,7 +283,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await self.instance.cleanup()
 
     @process_lock
-    async def update(self, version=None) -> None:
+    async def update(self, version: Optional[str] = None) -> None:
         """Update HomeAssistant version."""
         version = version or self.latest_version
         rollback = self.version if not self.error_state else None
@@ -295,7 +295,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return
 
         # process an update
-        async def _update(to_version):
+        async def _update(to_version: str) -> None:
             """Run Home Assistant update."""
             _LOGGER.info("Update Home Assistant to version %s", to_version)
             try:
@@ -303,12 +303,13 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             except DockerAPIError:
                 _LOGGER.warning("Update Home Assistant image fails")
                 raise HomeAssistantUpdateError() from None
+            else:
+                self.version = self.instance.version
 
             if running:
                 await self._start()
 
             _LOGGER.info("Successful run Home Assistant %s", to_version)
-            self.version = self.instance.version
             self.save_data()
 
         # Update Home Assistant

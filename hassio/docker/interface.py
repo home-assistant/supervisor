@@ -85,11 +85,9 @@ class DockerInterface(CoreSysAttributes):
         _LOGGER.info("Pull image %s tag %s.", image, tag)
         try:
             docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
-            if not latest:
-                return
-
-            _LOGGER.info("Tag image %s with version %s as latest", image, tag)
-            docker_image.tag(image, tag="latest")
+            if latest:
+                _LOGGER.info("Tag image %s with version %s as latest", image, tag)
+                docker_image.tag(image, tag="latest")
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
             raise DockerAPIError() from None
