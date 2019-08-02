@@ -24,11 +24,12 @@ class HassIO(CoreSysAttributes):
         """Initialize Hass.io object."""
         self.coresys = coresys
 
-    async def setup(self):
-        """Setup HassIO orchestration."""
-        # Load Supervisor
+    async def connect(self):
+        """Connect Supervisor container."""
         await self.sys_supervisor.load()
 
+    async def setup(self):
+        """Setup HassIO orchestration."""
         # Load DBus
         await self.sys_dbus.load()
 
