@@ -154,7 +154,7 @@ class DockerHomeAssistant(DockerInterface):
         try:
             for image in self.sys_docker.images.list(self.image):
                 for tag in image.tags:
-                    match = RE_VERSION.match(tag)
+                    match = RE_VERSION.search(tag)
                     if not match:
                         continue
                     available_version.append(match.group("version"))
