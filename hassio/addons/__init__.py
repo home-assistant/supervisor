@@ -130,6 +130,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError() from None
         else:
             self.local[slug] = addon
+            _LOGGER.info("Add-on '%s' successfully installed", slug)
 
     async def uninstall(self, slug: str) -> None:
         """Remove an add-on."""
@@ -159,6 +160,8 @@ class AddonManager(CoreSysAttributes):
         self.data.uninstall(addon)
         self.local.pop(slug)
 
+        _LOGGER.info("Add-on '%s' successfully removed", slug)
+
     async def update(self, slug: str) -> None:
         """Update add-on."""
         if slug not in self.local:
@@ -186,7 +189,9 @@ class AddonManager(CoreSysAttributes):
             await addon.instance.update(store.version, store.image)
         except DockerAPIError:
             raise AddonsError() from None
-        self.data.update(store)
+        else:
+            self.data.update(store)
+            _LOGGER.info("Add-on '%s' successfully updated", slug)
 
         # Setup/Fix AppArmor profile
         await addon.install_apparmor()
@@ -224,6 +229,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError() from None
         else:
             self.data.update(store)
+            _LOGGER.info("Add-on '%s' successfully rebuilded", slug)
 
         # restore state
         if last_state == STATE_STARTED:

@@ -347,8 +347,8 @@ class DockerAddon(DockerInterface):
             tmpfs=self.tmpfs,
         )
 
-        _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
         self._meta = docker_container.attrs
+        _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
 
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
