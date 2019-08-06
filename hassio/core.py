@@ -115,7 +115,7 @@ class HassIO(CoreSysAttributes):
             # start addon mark as application
             await self.sys_addons.boot(STARTUP_APPLICATION)
 
-            # store new latest boot
+            # store new last boot
             self._update_last_boot()
 
         finally:
@@ -133,7 +133,7 @@ class HassIO(CoreSysAttributes):
         # don't process scheduler anymore
         self.sys_scheduler.suspend = True
 
-        # store new latest boot / prevent time adjustments
+        # store new last boot / prevent time adjustments
         self._update_last_boot()
 
         # process async stop tasks
@@ -166,6 +166,6 @@ class HassIO(CoreSysAttributes):
         await self.sys_addons.shutdown(STARTUP_INITIALIZE)
 
     def _update_last_boot(self):
-        """Update latest boot time."""
+        """Update last boot time."""
         self.sys_config.last_boot = self.sys_hardware.last_boot
         self.sys_config.save_data()
