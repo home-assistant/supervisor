@@ -125,16 +125,11 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-            docker_image = self.sys_docker.images.get(f"{self.image}:{self.version}")
         except docker.errors.DockerException:
             return False
 
         # container is not running
         if docker_container.status != "running":
-            return False
-
-        # we run on an old image, stop and start it
-        if docker_container.image.id != docker_image.id:
             return False
 
         return True
