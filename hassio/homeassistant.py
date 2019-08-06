@@ -79,6 +79,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         with suppress(DockerAPIError):
             if not self.version:
                 self.version = await self.instance.get_latest_version()
+                self.save_data()
 
             await self.instance.attach(tag=self.version)
             return
@@ -243,12 +244,16 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Install a landing page."""
         _LOGGER.info("Setup HomeAssistant landingpage")
         while True:
-            with suppress(DockerAPIError):
+            try:
                 await self.instance.install("landingpage")
-                self.version = self.instance.version
-                return
-            _LOGGER.warning("Fails install landingpage, retry after 30sec")
-            await asyncio.sleep(30)
+            except DockerAPIError:
+                _LOGGER.warning("Fails install landingpage, retry after 30sec")
+                await asyncio.sleep(30)
+            else:
+                break
+
+        self.version = self.instance.version
+        self.save_data()
 
     @process_lock
     async def install(self) -> None:
@@ -311,6 +316,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             _LOGGER.info("Successful run Home Assistant %s", to_version)
             self.save_data()
+            with suppress(DockerAPIError):
+                await self.instance.cleanup()
 
         # Update Home Assistant
         with suppress(HomeAssistantError):

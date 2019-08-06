@@ -187,6 +187,10 @@ class AddonManager(CoreSysAttributes):
         last_state = await addon.state()
         try:
             await addon.instance.update(store.version, store.image)
+
+            # Cleanup
+            with suppress(DockerAPIError):
+                await addon.instance.cleanup()
         except DockerAPIError:
             raise AddonsError() from None
         else:

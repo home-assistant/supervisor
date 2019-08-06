@@ -188,6 +188,10 @@ class HassOS(CoreSysAttributes):
 
         try:
             await self.instance.update(version, latest=True)
+
+            # Cleanup
+            with suppress(DockerAPIError):
+                await addon.instance.cleanup()
         except DockerAPIError:
             _LOGGER.error("HassOS CLI update fails")
             raise HassOSUpdateError() from None

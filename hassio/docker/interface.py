@@ -276,10 +276,7 @@ class DockerInterface(CoreSysAttributes):
 
         # Stop container & cleanup
         with suppress(DockerAPIError):
-            try:
-                self._stop()
-            finally:
-                self._cleanup()
+            self._stop()
 
     def logs(self) -> Awaitable[bytes]:
         """Return Docker logs of container.
