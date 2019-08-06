@@ -115,9 +115,8 @@ class HassIO(CoreSysAttributes):
             # start addon mark as application
             await self.sys_addons.boot(STARTUP_APPLICATION)
 
-            # store new last boot
-            self.sys_config.last_boot = self.sys_hardware.last_boot
-            self.sys_config.save_data()
+            # store new latest boot
+            self._update_last_boot()
 
         finally:
             # Add core tasks into scheduler
@@ -133,6 +132,9 @@ class HassIO(CoreSysAttributes):
         """Stop a running orchestration."""
         # don't process scheduler anymore
         self.sys_scheduler.suspend = True
+
+        # store new latest boot / prevent time adjustments
+        self._update_last_boot()
 
         # process async stop tasks
         try:
@@ -162,3 +164,8 @@ class HassIO(CoreSysAttributes):
         await self.sys_addons.shutdown(STARTUP_SERVICES)
         await self.sys_addons.shutdown(STARTUP_SYSTEM)
         await self.sys_addons.shutdown(STARTUP_INITIALIZE)
+
+    def _update_last_boot(self):
+        """Update latest boot time."""
+        self.sys_config.last_boot = self.sys_hardware.last_boot
+        self.sys_config.save_data()
