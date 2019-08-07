@@ -203,6 +203,6 @@ class HassOS(CoreSysAttributes):
 
         _LOGGER.info("Repair HassOS CLI %s", self.version_cli)
         try:
-            await self.instance.install(self.version_cli)
+            await self.instance.install(self.version_cli, latest=True)
         except DockerAPIError:
             _LOGGER.error("Repairing of HassOS CLI fails")
