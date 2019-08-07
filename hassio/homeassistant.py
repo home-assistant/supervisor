@@ -77,8 +77,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def load(self) -> None:
         """Prepare Home Assistant object."""
         with suppress(DockerAPIError):
+            # Evaluate Version if we lost this information
             if not self.version:
-                self.version = await self.instance.get_latest_version()
+                if await self.instance.is_running():
+                    self.version = self.instance.version
+                else:
+                    self.version = await self.instance.get_latest_version()
                 self.save_data()
 
             await self.instance.attach(tag=self.version)
