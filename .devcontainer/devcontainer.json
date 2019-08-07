@@ -4,7 +4,8 @@
 	"context": "..",
 	"dockerFile": "Dockerfile",
 	"runArgs": [
-		"-e", "GIT_EDTIOR='code --wait'"
+		"-e",
+		"GIT_EDTIOR='code --wait'"
 	],
 	"extensions": [
 		"ms-python.python"
@@ -14,6 +15,10 @@
 		"python.linting.pylintEnabled": true,
 		"python.linting.enabled": true,
 		"python.formatting.provider": "black",
+		"python.formatting.blackArgs": [
+			"--target--version",
+			"py37"
+		],
 		"editor.formatOnPaste": false,
 		"editor.formatOnSave": true,
 		"editor.formatOnType": true,

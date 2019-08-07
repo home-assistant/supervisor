@@ -52,7 +52,7 @@ stages:
         versionSpec: '3.7'
     - script: pip install black
       displayName: 'Install black'
-    - script: black --check hassio tests
+    - script: black --target-version py37 --check hassio tests
       displayName: 'Run Black'
   - job: 'JQ'
     pool:
