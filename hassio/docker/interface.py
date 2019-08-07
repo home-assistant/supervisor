@@ -144,12 +144,12 @@ class DockerInterface(CoreSysAttributes):
 
         Need run inside executor.
         """
-        try:
-            if self.image:
-                self._meta = self.sys_docker.images.get(f"{self.image}:{tag}").attrs
+        with suppress(docker.errors.DockerException):
             self._meta = self.sys_docker.containers.get(self.name).attrs
-        except docker.errors.DockerException:
-            pass
+
+        with suppress(docker.errors.DockerException):
+            if not self._meta and self.image:
+                self._meta = self.sys_docker.images.get(f"{self.image}:{tag}").attrs
 
         # Successfull?
         if not self._meta:
