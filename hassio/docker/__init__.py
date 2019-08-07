@@ -50,15 +50,15 @@ class DockerAPI:
         return self.docker.api
 
     def run(
-        self, image: str, **kwargs: Dict[str, Any]
+        self, image: str, version: str = "latest", **kwargs: Dict[str, Any]
     ) -> docker.models.containers.Container:
         """"Create a Docker container and run it.
 
         Need run inside executor.
         """
-        name = kwargs.get("name", image)
-        network_mode = kwargs.get("network_mode")
-        hostname = kwargs.get("hostname")
+        name: str = kwargs.get("name", image)
+        network_mode: str = kwargs.get("network_mode")
+        hostname: str = kwargs.get("hostname")
 
         # Setup network
         kwargs["dns_search"] = ["."]
@@ -71,7 +71,7 @@ class DockerAPI:
         # Create container
         try:
             container = self.docker.containers.create(
-                image, use_config_proxy=False, **kwargs
+                f"{image}:{version}", use_config_proxy=False, **kwargs
             )
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't create container from %s: %s", name, err)
@@ -102,7 +102,11 @@ class DockerAPI:
         return container
 
     def run_command(
-        self, image: str, command: Optional[str] = None, **kwargs: Dict[str, Any]
+        self,
+        image: str,
+        version: str = "latest",
+        command: Optional[str] = None,
+        **kwargs: Dict[str, Any],
     ) -> CommandReturn:
         """Create a temporary container and run command.
 
@@ -114,11 +118,11 @@ class DockerAPI:
         _LOGGER.info("Run command '%s' on %s", command, image)
         try:
             container = self.docker.containers.run(
-                image,
+                f"{image}:{version}",
                 command=command,
                 network=self.network.name,
                 use_config_proxy=False,
-                **kwargs
+                **kwargs,
             )
 
             # wait until command is done

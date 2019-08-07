@@ -27,6 +27,7 @@ from .const import (
     ATTR_SSL,
     ATTR_TIMEZONE,
     ATTR_UUID,
+    ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     CHANNEL_BETA,
@@ -82,6 +83,7 @@ DOCKER_PORTS_DESCRIPTION = vol.Schema(
 SCHEMA_HASS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
+        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_ACCESS_TOKEN): TOKEN,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
         vol.Inclusive(ATTR_IMAGE, "custom_hass"): DOCKER_IMAGE,
