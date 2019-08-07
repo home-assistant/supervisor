@@ -144,6 +144,6 @@ class Supervisor(CoreSysAttributes):
 
         _LOGGER.info("Repair Supervisor %s", self.version)
         try:
-            await self.instance.install(self.version)
+            await self.instance.retag()
         except DockerAPIError:
             _LOGGER.error("Repairing of Supervisor fails")
