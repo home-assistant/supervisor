@@ -61,8 +61,10 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            docker_image = self.sys_docker.images.get(f"{self.image}:latest")
-            docker_image.tag(self.image, tag=self.version)
+            docker_container = self.sys_docker.containers.get(self.name)
+
+            docker_container.image.tag(self.image, tag=self.version)
+            docker_container.image.tag(self.image, tag="latest")
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't retag supervisor version: %s", err)
             raise DockerAPIError() from None
