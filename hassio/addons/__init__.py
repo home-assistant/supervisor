@@ -3,7 +3,7 @@ import asyncio
 from contextlib import suppress
 import logging
 import tarfile
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Optional, Union
 
 from ..const import BOOT_AUTO, STATE_STARTED
 from ..coresys import CoreSys, CoreSysAttributes
