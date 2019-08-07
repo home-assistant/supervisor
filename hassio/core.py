@@ -24,11 +24,12 @@ class HassIO(CoreSysAttributes):
         """Initialize Hass.io object."""
         self.coresys = coresys
 
-    async def setup(self):
-        """Setup HassIO orchestration."""
-        # Load Supervisor
+    async def connect(self):
+        """Connect Supervisor container."""
         await self.sys_supervisor.load()
 
+    async def setup(self):
+        """Setup HassIO orchestration."""
         # Load DBus
         await self.sys_dbus.load()
 
@@ -73,6 +74,8 @@ class HassIO(CoreSysAttributes):
 
     async def start(self):
         """Start Hass.io orchestration."""
+        await self.sys_api.start()
+
         # on release channel, try update itself
         if self.sys_supervisor.need_update:
             try:
@@ -85,9 +88,6 @@ class HassIO(CoreSysAttributes):
                     "Can't update supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )
-
-        # start api
-        await self.sys_api.start()
 
         # start addon mark as initialize
         await self.sys_addons.boot(STARTUP_INITIALIZE)
@@ -116,8 +116,7 @@ class HassIO(CoreSysAttributes):
             await self.sys_addons.boot(STARTUP_APPLICATION)
 
             # store new last boot
-            self.sys_config.last_boot = self.sys_hardware.last_boot
-            self.sys_config.save_data()
+            self._update_last_boot()
 
         finally:
             # Add core tasks into scheduler
@@ -133,6 +132,9 @@ class HassIO(CoreSysAttributes):
         """Stop a running orchestration."""
         # don't process scheduler anymore
         self.sys_scheduler.suspend = True
+
+        # store new last boot / prevent time adjustments
+        self._update_last_boot()
 
         # process async stop tasks
         try:
@@ -162,3 +164,23 @@ class HassIO(CoreSysAttributes):
         await self.sys_addons.shutdown(STARTUP_SERVICES)
         await self.sys_addons.shutdown(STARTUP_SYSTEM)
         await self.sys_addons.shutdown(STARTUP_INITIALIZE)
+
+    def _update_last_boot(self):
+        """Update last boot time."""
+        self.sys_config.last_boot = self.sys_hardware.last_boot
+        self.sys_config.save_data()
+
+    async def repair(self):
+        """Repair system integrity."""
+        await self.sys_run_in_executor(self.sys_docker.repair)
+
+        # Restore core functionality
+        await self.sys_addons.repair()
+        await self.sys_homeassistant.repair()
+
+        # Fix HassOS specific
+        if self.sys_hassos.available:
+            await self.sys_hassos.repair_cli()
+
+        # Tag version for latest
+        await self.sys_supervisor.repair()

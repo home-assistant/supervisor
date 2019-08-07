@@ -130,7 +130,7 @@ class HassOS(CoreSysAttributes):
 
         _LOGGER.info("Detect HassOS %s on host system", self.version)
         with suppress(DockerAPIError):
-            await self.instance.attach()
+            await self.instance.attach(tag="latest")
 
     def config_sync(self) -> Awaitable[None]:
         """Trigger a host config reload from usb.
@@ -187,7 +187,22 @@ class HassOS(CoreSysAttributes):
             return
 
         try:
-            await self.instance.update(version)
+            await self.instance.update(version, latest=True)
+
+            # Cleanup
+            with suppress(DockerAPIError):
+                await self.instance.cleanup()
         except DockerAPIError:
             _LOGGER.error("HassOS CLI update fails")
             raise HassOSUpdateError() from None
+
+    async def repair_cli(self) -> None:
+        """Repair CLI container."""
+        if await self.instance.exists():
+            return
+
+        _LOGGER.info("Repair HassOS CLI %s", self.version_cli)
+        try:
+            await self.instance.install(self.version_cli, latest=True)
+        except DockerAPIError:
+            _LOGGER.error("Repairing of HassOS CLI fails")

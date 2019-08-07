@@ -112,6 +112,10 @@ Output is the raw docker log.
 }
 ```
 
+- GET `/supervisor/repair`
+
+Repair overlayfs issue and restore lost images
+
 ### Snapshot
 
 - GET `/snapshots`

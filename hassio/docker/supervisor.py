@@ -2,6 +2,7 @@
 from ipaddress import IPv4Address
 import logging
 import os
+from typing import Awaitable
 
 import docker
 
@@ -25,7 +26,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         """Return IP address of this container."""
         return self.sys_docker.network.supervisor
 
-    def _attach(self) -> None:
+    def _attach(self, tag: str) -> None:
         """Attach to running docker container.
 
         Need run inside executor.
@@ -49,3 +50,21 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         self.sys_docker.network.attach_container(
             docker_container, alias=["hassio"], ipv4=self.sys_docker.network.supervisor
         )
+
+    def retag(self) -> Awaitable[None]:
+        """Retag latest image to version."""
+        return self.sys_run_in_executor(self._retag)
+
+    def _retag(self) -> None:
+        """Retag latest image to version.
+
+        Need run inside executor.
+        """
+        try:
+            docker_container = self.sys_docker.containers.get(self.name)
+
+            docker_container.image.tag(self.image, tag=self.version)
+            docker_container.image.tag(self.image, tag="latest")
+        except docker.errors.DockerException as err:
+            _LOGGER.error("Can't retag supervisor version: %s", err)
+            raise DockerAPIError() from None

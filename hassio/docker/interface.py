@@ -68,11 +68,13 @@ class DockerInterface(CoreSysAttributes):
         return self.lock.locked()
 
     @process_lock
-    def install(self, tag: str, image: Optional[str] = None):
+    def install(self, tag: str, image: Optional[str] = None, latest: bool = False):
         """Pull docker image."""
-        return self.sys_run_in_executor(self._install, tag, image)
+        return self.sys_run_in_executor(self._install, tag, image, latest)
 
-    def _install(self, tag: str, image: Optional[str] = None) -> None:
+    def _install(
+        self, tag: str, image: Optional[str] = None, latest: bool = False
+    ) -> None:
         """Pull Docker image.
 
         Need run inside executor.
@@ -80,12 +82,12 @@ class DockerInterface(CoreSysAttributes):
         image = image or self.image
         image = image.partition(":")[0]  # remove potential tag
 
+        _LOGGER.info("Pull image %s tag %s.", image, tag)
         try:
-            _LOGGER.info("Pull image %s tag %s.", image, tag)
             docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
-
-            _LOGGER.info("Tag image %s with version %s as latest", image, tag)
-            docker_image.tag(image, tag="latest")
+            if latest:
+                _LOGGER.info("Tag image %s with version %s as latest", image, tag)
+                docker_image.tag(image, tag="latest")
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
             raise DockerAPIError() from None
@@ -101,13 +103,10 @@ class DockerInterface(CoreSysAttributes):
 
         Need run inside executor.
         """
-        try:
-            docker_image = self.sys_docker.images.get(self.image)
-            assert f"{self.image}:{self.version}" in docker_image.tags
-        except (docker.errors.DockerException, AssertionError):
-            return False
-
-        return True
+        with suppress(docker.errors.DockerException):
+            self.sys_docker.images.get(f"{self.image}:{self.version}")
+            return True
+        return False
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker is running.
@@ -123,7 +122,6 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-            docker_image = self.sys_docker.images.get(self.image)
         except docker.errors.DockerException:
             return False
 
@@ -131,28 +129,24 @@ class DockerInterface(CoreSysAttributes):
         if docker_container.status != "running":
             return False
 
-        # we run on an old image, stop and start it
-        if docker_container.image.id != docker_image.id:
-            return False
-
         return True
 
     @process_lock
-    def attach(self):
+    def attach(self, tag: str):
         """Attach to running Docker container."""
-        return self.sys_run_in_executor(self._attach)
+        return self.sys_run_in_executor(self._attach, tag)
 
-    def _attach(self) -> None:
+    def _attach(self, tag: str) -> None:
         """Attach to running docker container.
 
         Need run inside executor.
         """
-        try:
-            if self.image:
-                self._meta = self.sys_docker.images.get(self.image).attrs
+        with suppress(docker.errors.DockerException):
             self._meta = self.sys_docker.containers.get(self.name).attrs
-        except docker.errors.DockerException:
-            pass
+
+        with suppress(docker.errors.DockerException):
+            if not self._meta and self.image:
+                self._meta = self.sys_docker.images.get(f"{self.image}:{tag}").attrs
 
         # Successfull?
         if not self._meta:
@@ -250,11 +244,15 @@ class DockerInterface(CoreSysAttributes):
         self._meta = None
 
     @process_lock
-    def update(self, tag: str, image: Optional[str] = None) -> Awaitable[None]:
+    def update(
+        self, tag: str, image: Optional[str] = None, latest: bool = False
+    ) -> Awaitable[None]:
         """Update a Docker image."""
         return self.sys_run_in_executor(self._update, tag, image)
 
-    def _update(self, tag: str, image: Optional[str] = None) -> None:
+    def _update(
+        self, tag: str, image: Optional[str] = None, latest: bool = False
+    ) -> None:
         """Update a docker image.
 
         Need run inside executor.
@@ -266,14 +264,11 @@ class DockerInterface(CoreSysAttributes):
         )
 
         # Update docker image
-        self._install(tag, image)
+        self._install(tag, image, latest)
 
         # Stop container & cleanup
         with suppress(DockerAPIError):
-            try:
-                self._stop()
-            finally:
-                self._cleanup()
+            self._stop()
 
     def logs(self) -> Awaitable[bytes]:
         """Return Docker logs of container.
@@ -308,13 +303,13 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            latest = self.sys_docker.images.get(self.image)
+            origin = self.sys_docker.images.get(f"{self.image}:{self.version}")
         except docker.errors.DockerException:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
             raise DockerAPIError() from None
 
         for image in self.sys_docker.images.list(name=self.image):
-            if latest.id == image.id:
+            if origin.id == image.id:
                 continue
 
             with suppress(docker.errors.DockerException):

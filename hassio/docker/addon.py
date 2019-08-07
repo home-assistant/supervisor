@@ -327,6 +327,7 @@ class DockerAddon(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
+            version=self.addon.version,
             name=self.name,
             hostname=self.hostname,
             detach=True,
@@ -346,10 +347,12 @@ class DockerAddon(DockerInterface):
             tmpfs=self.tmpfs,
         )
 
-        _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
         self._meta = docker_container.attrs
+        _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
 
-    def _install(self, tag: str, image: Optional[str] = None) -> None:
+    def _install(
+        self, tag: str, image: Optional[str] = None, latest: bool = False
+    ) -> None:
         """Pull Docker image or build it.
 
         Need run inside executor.
@@ -357,7 +360,7 @@ class DockerAddon(DockerInterface):
         if self.addon.need_build:
             self._build(tag)
         else:
-            super()._install(tag, image)
+            super()._install(tag, image, latest)
 
     def _build(self, tag: str) -> None:
         """Build a Docker container.
@@ -373,7 +376,6 @@ class DockerAddon(DockerInterface):
             )
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)
-            image.tag(self.image, tag="latest")
 
             # Update meta data
             self._meta = image.attrs
@@ -395,7 +397,7 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         try:
-            image = self.sys_docker.api.get_image(self.image)
+            image = self.sys_docker.api.get_image(f"{self.image}:{self.version}")
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't fetch image %s: %s", self.image, err)
             raise DockerAPIError() from None
@@ -412,11 +414,11 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Export image %s done", self.image)
 
     @process_lock
-    def import_image(self, tar_file: Path, tag: str) -> Awaitable[None]:
+    def import_image(self, tar_file: Path) -> Awaitable[None]:
         """Import a tar file as image."""
-        return self.sys_run_in_executor(self._import_image, tar_file, tag)
+        return self.sys_run_in_executor(self._import_image, tar_file)
 
-    def _import_image(self, tar_file: Path, tag: str) -> None:
+    def _import_image(self, tar_file: Path) -> None:
         """Import a tar file as image.
 
         Need run inside executor.
@@ -425,14 +427,13 @@ class DockerAddon(DockerInterface):
             with tar_file.open("rb") as read_tar:
                 self.sys_docker.api.load_image(read_tar, quiet=True)
 
-            docker_image = self.sys_docker.images.get(self.image)
-            docker_image.tag(self.image, tag=tag)
+            docker_image = self.sys_docker.images.get(f"{self.image}:{self.version}")
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s: %s", self.image, err)
             raise DockerAPIError() from None
 
-        _LOGGER.info("Import image %s and tag %s", tar_file, tag)
         self._meta = docker_image.attrs
+        _LOGGER.info("Import image %s and version %s", tar_file, self.version)
 
         with suppress(DockerAPIError):
             self._cleanup()

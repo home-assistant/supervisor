@@ -24,7 +24,7 @@ class DNSForward:
                 *shlex.split(COMMAND),
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL
+                stderr=asyncio.subprocess.DEVNULL,
             )
         except OSError as err:
             _LOGGER.error("Can't start DNS forwarding: %s", err)
