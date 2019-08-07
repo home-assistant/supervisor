@@ -74,6 +74,8 @@ class HassIO(CoreSysAttributes):
 
     async def start(self):
         """Start Hass.io orchestration."""
+        await self.sys_api.start()
+
         # on release channel, try update itself
         if self.sys_supervisor.need_update:
             try:
@@ -86,9 +88,6 @@ class HassIO(CoreSysAttributes):
                     "Can't update supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )
-
-        # start api
-        await self.sys_api.start()
 
         # start addon mark as initialize
         await self.sys_addons.boot(STARTUP_INITIALIZE)
