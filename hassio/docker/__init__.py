@@ -139,3 +139,34 @@ class DockerAPI:
                 container.remove(force=True)
 
         return CommandReturn(result.get("StatusCode"), output)
+
+    def repair(self) -> None:
+        """Repair local docker overlayfs2 issues."""
+
+        _LOGGER.info("Prune stale containers")
+        try:
+            output = self.docker.api.prune_containers()
+            _LOGGER.debug("Containers prune: %s", output)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for containers prune: %s", err)
+
+        _LOGGER.info("Prune stale images")
+        try:
+            output = self.docker.api.prune_images(filters={"dangling": False})
+            _LOGGER.debug("Images prune: %s", output)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for images prune: %s", err)
+
+        _LOGGER.info("Prune stale builds")
+        try:
+            output = self.docker.api.prune_builds()
+            _LOGGER.debug("Builds prune: %s", output)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for builds prune: %s", err)
+
+        _LOGGER.info("Prune stale volumes")
+        try:
+            output = self.docker.api.prune_builds()
+            _LOGGER.debug("Volumes prune: %s", output)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for volumes prune: %s", err)

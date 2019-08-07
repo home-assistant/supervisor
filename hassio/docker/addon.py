@@ -397,7 +397,7 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         try:
-            image = self.sys_docker.api.get_image(self.image)
+            image = self.sys_docker.api.get_image(f"{self.image}:{self.version}")
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't fetch image %s: %s", self.image, err)
             raise DockerAPIError() from None
@@ -414,11 +414,11 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Export image %s done", self.image)
 
     @process_lock
-    def import_image(self, tar_file: Path, tag: str) -> Awaitable[None]:
+    def import_image(self, tar_file: Path) -> Awaitable[None]:
         """Import a tar file as image."""
-        return self.sys_run_in_executor(self._import_image, tar_file, tag)
+        return self.sys_run_in_executor(self._import_image, tar_file)
 
-    def _import_image(self, tar_file: Path, tag: str) -> None:
+    def _import_image(self, tar_file: Path) -> None:
         """Import a tar file as image.
 
         Need run inside executor.
@@ -427,14 +427,13 @@ class DockerAddon(DockerInterface):
             with tar_file.open("rb") as read_tar:
                 self.sys_docker.api.load_image(read_tar, quiet=True)
 
-            docker_image = self.sys_docker.images.get(self.image)
-            docker_image.tag(self.image, tag=tag)
+            docker_image = self.sys_docker.images.get(f"{self.image}:{self.version}")
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s: %s", self.image, err)
             raise DockerAPIError() from None
 
-        _LOGGER.info("Import image %s and tag %s", tar_file, tag)
         self._meta = docker_image.attrs
+        _LOGGER.info("Import image %s and version %s", tar_file, self.version)
 
         with suppress(DockerAPIError):
             self._cleanup()
