@@ -618,7 +618,7 @@ class Addon(AddonModel):
                 image_file = Path(temp, "image.tar")
                 if image_file.is_file():
                     with suppress(DockerAPIError):
-                        await self.instance.import_image(image_file, version)
+                        await self.instance.import_image(image_file)
                 else:
                     with suppress(DockerAPIError):
                         await self.instance.install(version, restore_image)
