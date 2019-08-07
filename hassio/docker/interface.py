@@ -103,13 +103,10 @@ class DockerInterface(CoreSysAttributes):
 
         Need run inside executor.
         """
-        try:
-            docker_image = self.sys_docker.images.get(self.image)
-            assert f"{self.image}:{self.version}" in docker_image.tags
-        except (docker.errors.DockerException, AssertionError):
-            return False
-
-        return True
+        with suppress(docker.errors.DockerException):
+            self.sys_docker.images.get(f"{self.image}:{self.version}")
+            return True
+        return False
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker is running.

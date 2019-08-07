@@ -161,6 +161,11 @@ class APISupervisor(CoreSysAttributes):
         """Reload add-ons, configuration, etc."""
         return asyncio.shield(self.sys_updater.reload())
 
+    @api_process
+    def repair(self, request: web.Request) -> Awaitable[None]:
+        """Try to repair the local setup / overlayfs."""
+        return asyncio.shield(self.sys_core.repair())
+
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return supervisor Docker logs."""

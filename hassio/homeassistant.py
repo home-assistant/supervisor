@@ -597,3 +597,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         self._error_state = True
         raise HomeAssistantError()
+
+    async def repair(self):
+        """Repair local Home Assistant data."""
+        if await self.instance.exists():
+            return
+
+        _LOGGER.info("Repair Home Assistant %s", self.version)
+        try:
+            await self.instance.install(self.version)
+        except DockerAPIError:
+            _LOGGER.error("Repairing of Home Assistant fails")

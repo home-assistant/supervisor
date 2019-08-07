@@ -9,7 +9,7 @@ from typing import Awaitable, Optional
 
 import aiohttp
 
-from .const import URL_HASSIO_APPARMOR
+from .const import URL_HASSIO_APPARMOR, HASSIO_VERSION
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
@@ -54,7 +54,7 @@ class Supervisor(CoreSysAttributes):
     @property
     def version(self) -> str:
         """Return version of running Home Assistant."""
-        return self.instance.version
+        return HASSIO_VERSION
 
     @property
     def latest_version(self) -> str:
@@ -136,3 +136,14 @@ class Supervisor(CoreSysAttributes):
             return await self.instance.stats()
         except DockerAPIError:
             raise SupervisorError() from None
+
+    async def repair(self):
+        """Repair local Supervisor data."""
+        if await self.instance.exists():
+            return
+
+        _LOGGER.info("Repair Supervisor %s", self.version)
+        try:
+            await self.instance.retag()
+        except DockerAPIError:
+            _LOGGER.error("Repairing of Supervisor fails")
