@@ -16,7 +16,7 @@
 		"python.linting.enabled": true,
 		"python.formatting.provider": "black",
 		"python.formatting.blackArgs": [
-			"--target--version",
+			"--target-version",
 			"py37"
 		],
 		"editor.formatOnPaste": false,
