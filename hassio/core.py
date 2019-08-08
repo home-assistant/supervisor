@@ -172,6 +172,7 @@ class HassIO(CoreSysAttributes):
 
     async def repair(self):
         """Repair system integrity."""
+        _LOGGER.info("Start repairing of Hass.io Environment")
         await self.sys_run_in_executor(self.sys_docker.repair)
 
         # Restore core functionality
@@ -184,3 +185,4 @@ class HassIO(CoreSysAttributes):
 
         # Tag version for latest
         await self.sys_supervisor.repair()
+        _LOGGER.info("Finished repairing of Hass.io Environment")
