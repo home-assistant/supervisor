@@ -76,20 +76,18 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
-        with suppress(DockerAPIError):
+        try:
             # Evaluate Version if we lost this information
             if not self.version:
-                if await self.instance.is_running():
-                    self.version = self.instance.version
-                else:
-                    self.version = await self.instance.get_latest_version()
-                self.save_data()
+                self.version = await self.instance.get_latest_version()
 
             await self.instance.attach(tag=self.version)
-            return
-
-        _LOGGER.info("No Home Assistant Docker image %s found.", self.image)
-        await self.install_landingpage()
+        except DockerAPIError:
+            _LOGGER.info("No Home Assistant Docker image %s found.", self.image)
+            await self.install_landingpage()
+        else:
+            self.version = self.instance.version
+            self.save_data()
 
     @property
     def machine(self) -> str:
