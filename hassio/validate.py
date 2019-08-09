@@ -34,7 +34,7 @@ from .const import (
     CHANNEL_BETA,
     CHANNEL_DEV,
     CHANNEL_STABLE,
-    DNS_SERVERS
+    DNS_SERVERS,
 )
 from .utils.validate import validate_timezone
 
@@ -150,7 +150,10 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_DNS_CONFIG = vol.Schema({
-    vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-    vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): [vol.Url()],
-}, extra=vol.REMOVE_EXTRA)
+SCHEMA_DNS_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): [vol.Url()],
+    },
+    extra=vol.REMOVE_EXTRA,
+)

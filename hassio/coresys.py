@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .core import HassIO
     from .dbus import DBusManager
     from .discovery import Discovery
+    from .dns import CoreDNS
     from .hassos import HassOS
     from .homeassistant import HomeAssistant
     from .host import HostManager
@@ -58,6 +59,7 @@ class CoreSys:
         self._core: HassIO = None
         self._arch: CpuArch = None
         self._auth: Auth = None
+        self._dns: CoreDNS = None
         self._homeassistant: HomeAssistant = None
         self._supervisor: Supervisor = None
         self._addons: AddonManager = None
@@ -299,6 +301,18 @@ class CoreSys:
         self._dbus = value
 
     @property
+    def dns(self) -> CoreDNS:
+        """Return CoreDNS object."""
+        return self._dbus
+
+    @dns.setter
+    def dns(self, value: CoreDNS):
+        """Set a CoreDNS object."""
+        if self._dns:
+            raise RuntimeError("CoreDNS already set!")
+        self._dbus = value
+
+    @property
     def host(self) -> HostManager:
         """Return HostManager object."""
         return self._host
@@ -469,6 +483,11 @@ class CoreSysAttributes:
     def sys_dbus(self) -> DBusManager:
         """Return DBusManager object."""
         return self.coresys.dbus
+
+    @property
+    def sys_dns(self) -> CoreDNS:
+        """Return CoreDNS object."""
+        return self.coresys.dns
 
     @property
     def sys_host(self) -> HostManager:

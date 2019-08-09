@@ -16,6 +16,7 @@ from .core import HassIO
 from .coresys import CoreSys
 from .dbus import DBusManager
 from .discovery import Discovery
+from .dns import CoreDNS
 from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
@@ -43,6 +44,7 @@ async def initialize_coresys():
 
     # Initialize core objects
     coresys.core = HassIO(coresys)
+    coresys.dns = CoreDNS(coresys)
     coresys.arch = CpuArch(coresys)
     coresys.auth = Auth(coresys)
     coresys.updater = Updater(coresys)
