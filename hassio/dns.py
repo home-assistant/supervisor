@@ -15,6 +15,7 @@ from .const import (
     DNS_SERVERS,
 )
 from .coresys import CoreSys, CoreSysAttributes
+from .misc.forwarder import DNSForward
 from .docker.stats import DockerStats
 from .docker.dns import DockerDNS
 from .exceptions import (
@@ -35,6 +36,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_DNS, SCHEMA_DNS_CONFIG)
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
+        self.forwarder: DNSForward = DNSForward()
 
     @property
     def servers(self) -> List[str]:
@@ -79,7 +81,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.save_data()
 
         # Start DNS forwarder
-        self.sys_create_task(self.sys_forwarder.start())
+        self.sys_create_task(self.forwarder.start())
+
+    async def unload(self) -> None:
+        """Unload DNS forwarder."""
+        await self.forwarder.stop()
 
     async def install(self) -> None:
         """Install CoreDNS."""

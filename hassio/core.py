@@ -142,10 +142,10 @@ class HassIO(CoreSysAttributes):
                 await asyncio.wait(
                     [
                         self.sys_api.stop(),
-                        self.sys_forwarder.stop(),
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
+                        self.sys_dns.unload(),
                     ]
                 )
         except asyncio.TimeoutError:

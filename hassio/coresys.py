@@ -8,7 +8,6 @@ import aiohttp
 from .config import CoreConfig
 from .const import CHANNEL_DEV
 from .docker import DockerAPI
-from .misc.forwarder import DNSForward
 from .misc.hardware import Hardware
 from .misc.scheduler import Scheduler
 
@@ -53,7 +52,6 @@ class CoreSys:
         self._hardware: Hardware = Hardware()
         self._docker: DockerAPI = DockerAPI()
         self._scheduler: Scheduler = Scheduler()
-        self._forwarder: DNSForward = DNSForward()
 
         # Internal objects pointers
         self._core: HassIO = None
@@ -126,11 +124,6 @@ class CoreSys:
     def scheduler(self) -> Scheduler:
         """Return Scheduler object."""
         return self._scheduler
-
-    @property
-    def forwarder(self) -> DNSForward:
-        """Return DNSForward object."""
-        return self._forwarder
 
     @property
     def core(self) -> HassIO:
@@ -408,11 +401,6 @@ class CoreSysAttributes:
     def sys_scheduler(self) -> Scheduler:
         """Return Scheduler object."""
         return self.coresys.scheduler
-
-    @property
-    def sys_forwarder(self) -> DNSForward:
-        """Return DNSForward object."""
-        return self.coresys.forwarder
 
     @property
     def sys_core(self) -> HassIO:
