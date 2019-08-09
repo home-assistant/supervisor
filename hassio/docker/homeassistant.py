@@ -1,10 +1,8 @@
 """Init file for Hass.io Docker object."""
-from distutils.version import StrictVersion
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
-import re
-from typing import Awaitable, List, Optional
+from typing import Awaitable, Optional
 
 import docker
 
@@ -15,7 +13,6 @@ from .interface import CommandReturn, DockerInterface
 _LOGGER = logging.getLogger(__name__)
 
 HASS_DOCKER_NAME = "homeassistant"
-RE_VERSION = re.compile(r"(?P<version>\d+\.\d+\.\d+(?:b\d+|d\d+)?)")
 
 
 class DockerHomeAssistant(DockerInterface):
@@ -139,33 +136,3 @@ class DockerHomeAssistant(DockerInterface):
             return False
 
         return True
-
-    def get_latest_version(self) -> Awaitable[str]:
-        """Return latest version of local Home Asssistant image."""
-        return self.sys_run_in_executor(self._get_latest_version)
-
-    def _get_latest_version(self) -> str:
-        """Return latest version of local Home Asssistant image.
-
-        Need run inside executor.
-        """
-        available_version: List[str] = []
-        try:
-            for image in self.sys_docker.images.list(self.image):
-                for tag in image.tags:
-                    match = RE_VERSION.search(tag)
-                    if not match:
-                        continue
-                    available_version.append(match.group("version"))
-
-            assert available_version
-
-        except (docker.errors.DockerException, AssertionError):
-            _LOGGER.warning("No local HA version found")
-            raise DockerAPIError()
-        else:
-            _LOGGER.debug("Found HA versions: %s", available_version)
-
-        # Sort version and return latest version
-        available_version.sort(key=StrictVersion, reverse=True)
-        return available_version[0]
