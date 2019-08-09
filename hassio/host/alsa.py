@@ -82,7 +82,7 @@ class AlsaAudio(CoreSysAttributes):
     @staticmethod
     def _audio_database():
         """Read local json audio data into dict."""
-        json_file = Path(__file__).parent.joinpath("data/audiodb.json")
+        json_file = Path(__file__).parents[1].joinpath("data/audiodb.json")
 
         try:
             # pylint: disable=no-member
@@ -122,7 +122,7 @@ class AlsaAudio(CoreSysAttributes):
         alsa_output = alsa_output or self.default.output
 
         # Read Template
-        asound_file = Path(__file__).parent.joinpath("data/asound.tmpl")
+        asound_file = Path(__file__).parents[1].joinpath("data/asound.tmpl")
         try:
             # pylint: disable=no-member
             with asound_file.open("r") as asound:

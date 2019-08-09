@@ -210,6 +210,8 @@ ATTR_ADMIN = "admin"
 ATTR_PANELS = "panels"
 ATTR_DEBUG = "debug"
 ATTR_DEBUG_BLOCK = "debug_block"
+ATTR_DNS = "dns"
+ATTR_SERVERS = "servers"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

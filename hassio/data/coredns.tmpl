@@ -1,0 +1,9 @@
+.:53 {
+    log
+    hosts /data/hosts {
+        fallthrough
+    }
+    forward . $dnsservers {
+        health_check 10s
+    }
+}

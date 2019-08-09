@@ -47,7 +47,7 @@ class CpuArch(CoreSysAttributes):
     async def load(self) -> None:
         """Load data and initialize default arch."""
         try:
-            arch_data = read_json_file(Path(__file__).parent.joinpath("arch.json"))
+            arch_data = read_json_file(Path(__file__).parent.joinpath("data/arch.json"))
         except JsonFileError:
             _LOGGER.warning("Can't read arch json")
             return

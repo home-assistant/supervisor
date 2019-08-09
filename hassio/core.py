@@ -28,6 +28,9 @@ class HassIO(CoreSysAttributes):
         """Connect Supervisor container."""
         await self.sys_supervisor.load()
 
+        # start dns forwarding
+        self.sys_create_task(self.sys_forwarder.start())
+
     async def setup(self):
         """Setup HassIO orchestration."""
         # Load DBus
@@ -68,9 +71,6 @@ class HassIO(CoreSysAttributes):
 
         # Load ingress
         await self.sys_ingress.load()
-
-        # start dns forwarding
-        self.sys_create_task(self.sys_dns.start())
 
     async def start(self):
         """Start Hass.io orchestration."""
@@ -142,7 +142,7 @@ class HassIO(CoreSysAttributes):
                 await asyncio.wait(
                     [
                         self.sys_api.stop(),
-                        self.sys_dns.stop(),
+                        self.sys_forwarder.stop(),
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),

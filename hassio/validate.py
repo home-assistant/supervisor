@@ -23,6 +23,7 @@ from .const import (
     ATTR_PORT,
     ATTR_PORTS,
     ATTR_REFRESH_TOKEN,
+    ATTR_SERVERS,
     ATTR_SESSION,
     ATTR_SSL,
     ATTR_TIMEZONE,
@@ -145,3 +146,9 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
     },
     extra=vol.REMOVE_EXTRA,
 )
+
+
+SCHEMA_DNS_CONFIG = vol.Schema({
+    vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+
+}, extra=vol.REMOVE_EXTRA)
