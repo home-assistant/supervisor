@@ -28,11 +28,11 @@ class HassIO(CoreSysAttributes):
         """Connect Supervisor container."""
         await self.sys_supervisor.load()
 
-        # start dns forwarding
-        self.sys_create_task(self.sys_forwarder.start())
-
     async def setup(self):
         """Setup HassIO orchestration."""
+        # Load CoreDNS
+        await self.sys_dns.load()
+
         # Load DBus
         await self.sys_dbus.load()
 

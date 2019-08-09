@@ -4,6 +4,7 @@ from contextlib import suppress
 from datetime import timedelta
 import json
 import logging
+from typing import Optional
 
 import aiohttp
 
@@ -34,48 +35,48 @@ class Updater(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
         self.coresys = coresys
 
-    async def load(self):
+    async def load(self) -> None:
         """Update internal data."""
         with suppress(HassioUpdaterError):
             await self.fetch_data()
 
-    async def reload(self):
+    async def reload(self) -> None:
         """Update internal data."""
         with suppress(HassioUpdaterError):
             await self.fetch_data()
 
     @property
-    def version_homeassistant(self):
+    def version_homeassistant(self) -> Optional[str]:
         """Return latest version of Home Assistant."""
         return self._data.get(ATTR_HOMEASSISTANT)
 
     @property
-    def version_hassio(self):
+    def version_hassio(self) -> Optional[str]:
         """Return latest version of Hass.io."""
         return self._data.get(ATTR_HASSIO)
 
     @property
-    def version_hassos(self):
+    def version_hassos(self) -> Optional[str]:
         """Return latest version of HassOS."""
         return self._data.get(ATTR_HASSOS)
 
     @property
-    def version_hassos_cli(self):
+    def version_hassos_cli(self) -> Optional[str]:
         """Return latest version of HassOS cli."""
         return self._data.get(ATTR_HASSOS_CLI)
 
     @property
-    def version_dns(self):
+    def version_dns(self) -> Optional[str]:
         """Return latest version of Hass.io DNS."""
         return self._data.get(ATTR_DNS)
 
     @property
-    def channel(self):
+    def channel(self) -> str:
         """Return upstream channel of Hass.io instance."""
         return self._data[ATTR_CHANNEL]
 
     @channel.setter
-    def channel(self, value):
+    def channel(self, value: str):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
 

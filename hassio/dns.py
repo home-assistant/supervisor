@@ -1,8 +1,9 @@
 """Home Assistant control object."""
 import asyncio
+from contextlib import suppress
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from .utils.json import JsonConfig
 from .validate import SCHEMA_DNS_CONFIG
@@ -46,7 +47,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self._data[ATTR_SERVERS] = value
 
     @property
-    def version(self) -> str:
+    def version(self) -> Optional[str]:
         """Return current version of DNS."""
         return self._data[ATTR_VERSION]
 
@@ -55,5 +56,47 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """Return current version of DNS."""
         self._data[ATTR_VERSION] = value
 
+    @property
+    def latest_version(self) -> Optional[str]:
+        """Return latest version of CoreDNS."""
+        return self.sys_updater.version_dns
+
     async def load(self) -> None:
         """Load DNS setup."""
+        try:
+            # Evaluate Version if we lost this information
+            if not self.version:
+                self.version = await self.instance.get_latest_version(key=int)
+
+            await self.instance.attach(tag=self.version)
+        except DockerAPIError:
+            _LOGGER.info(
+                "No CoreDNS plugin Docker image %s found.", self.instance.image
+            )
+            await self.install()
+        else:
+            self.version = self.instance.version
+            self.save_data()
+
+        # Start DNS forwarder
+        self.sys_create_task(self.sys_forwarder.start())
+
+    async def install(self) -> None:
+        """Install CoreDNS."""
+        _LOGGER.info("Setup CoreDNS plugin")
+        while True:
+            # read homeassistant tag and install it
+            if not self.latest_version:
+                await self.sys_updater.reload()
+
+            tag = self.latest_version
+            if tag:
+                with suppress(DockerAPIError):
+                    await self.instance.install(tag)
+                    break
+            _LOGGER.warning("Error on install CoreDNS plugin. Retry in 30sec")
+            await asyncio.sleep(30)
+
+        _LOGGER.info("CoreDNS plugin now installed")
+        self.version = self.instance.version
+        self.save_data()
