@@ -33,6 +33,7 @@ DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
 
 DNS_SERVERS = ["dns://8.8.8.8", "dns://1.1.1.1"]
+DNS_SUFFIX = "local.hass.io"
 
 LABEL_VERSION = "io.hass.version"
 LABEL_ARCH = "io.hass.arch"

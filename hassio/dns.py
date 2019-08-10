@@ -1,18 +1,13 @@
 """Home Assistant control object."""
 import asyncio
-from contextlib import suppress
 import logging
+from contextlib import suppress
+from ipaddress import IPv4Address, AddressValueError
 from pathlib import Path
-from typing import Awaitable, List, Optional
 from string import Template
+from typing import Awaitable, Dict, List, Optional
 
-from .const import (
-    ATTR_SERVERS,
-    ATTR_VERSION,
-    DNS_SERVERS,
-    FILE_HASSIO_DNS,
-    HASSIO_VERSION,
-)
+from .const import ATTR_SERVERS, ATTR_VERSION, DNS_SERVERS, FILE_HASSIO_DNS, DNS_SUFFIX
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.dns import DockerDNS
 from .docker.stats import DockerStats
@@ -24,7 +19,6 @@ from .validate import SCHEMA_DNS_CONFIG
 _LOGGER = logging.getLogger(__name__)
 
 COREDNS_TMPL: Path = Path(__file__).parents[1].joinpath("data/coredns.tmpl")
-HOSTS_TMPL: Path = Path(__file__).parents[1].joinpath("data/hosts.tmpl")
 
 
 class CoreDNS(JsonConfig, CoreSysAttributes):
@@ -36,6 +30,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
         self.forwarder: DNSForward = DNSForward()
+
+        self._hosts: Dict[IPv4Address, List[str]] = {}
 
     @property
     def corefile(self) -> Path:
@@ -74,6 +70,10 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Load DNS setup."""
+        with suppress(CoreDNSError):
+            self._import_hosts()
+
+        # Check CoreDNS state
         try:
             # Evaluate Version if we lost this information
             if not self.version:
@@ -144,9 +144,23 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         await self._start()
 
+    async def restart(self) -> None:
+        """Restart CoreDNS plugin."""
+        with suppress(DockerAPIError):
+            await self.instance.stop()
+
+        await self._start()
+
     async def _start(self) -> None:
         """Run CoreDNS."""
         self._write_corefile()
+
+        # Start Instance
+        try:
+            await self.instance.run()
+        except DockerAPIError:
+            _LOGGER.error("Can't start CoreDNS plugin")
+            raise CoreDNSError() from None
 
     def _write_corefile(self) -> None:
         """Write CoreDNS config."""
@@ -156,6 +170,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't read coredns template file: %s", err)
             raise CoreDNSError() from None
 
+        # Generate config file
         dns_servers = set(self.servers) + set(DNS_SERVERS)
         data = corefile_template.safe_substitute(servers=" ".join(dns_servers))
 
@@ -164,6 +179,73 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         except OSError as err:
             _LOGGER.error("Can't update corefile: %s", err)
             raise CoreDNSError() from None
+
+    def _import_hosts(self) -> None:
+        """Import hosts entry."""
+        # Generate Default
+        if not self.hosts.exists():
+            self.add_host(self.sys_docker.network.supervisor, ["hassio", "supervisor"])
+            self.add_host(
+                self.sys_docker.network.gateway, ["homeassistant", "home-assistant"]
+            )
+            return
+
+        # Import Exists host table
+        try:
+            with self.hosts.open("r") as hosts:
+                for line in hosts.readlines():
+                    try:
+                        data = line.split(" ")
+                        self._hosts[IPv4Address(data[0])] = data[1:]
+                    except AddressValueError:
+                        _LOGGER.warning("Fails to read %s", line)
+
+        except OSError as err:
+            _LOGGER.error("Can't read hosts file: %s", err)
+            raise CoreDNSError() from None
+
+    def _write_hosts(self) -> None:
+        """Write hosts from memory to file."""
+        try:
+            with self.hosts.open("w") as hosts:
+                for address, hostnames in self._hosts.items():
+                    host = " ".join(hostnames)
+                    hosts.writeline(f"{address!s} {host}")
+        except OSError as err:
+            _LOGGER.error("Can't write hosts file: %s", err)
+            raise CoreDNSError() from None
+
+    def add_host(self, ipv4: IPv4Address, names: List[str]) -> None:
+        """Add a new host entry."""
+        hostnames: List[str] = []
+        for name in names:
+            hostnames.append(name)
+            hostnames.append(f"{name}.{DNS_SUFFIX}")
+
+        self._hosts[ipv4] = hostnames
+        _LOGGER.debug("Add Host entry %s -> %s", ipv4, hostnames)
+
+        self._write_hosts()
+
+    def delete_host(
+        self, ipv4: Optional[IPv4Address] = None, host: Optional[str] = None
+    ) -> None:
+        """Remove a entry from hosts."""
+        if host:
+            for address, hostnames in self._hosts.items():
+                if host not in hostnames:
+                    continue
+                ipv4 = address
+                break
+
+        # Remove entry
+        if ipv4:
+            _LOGGER.debug("Remove Host entry %s", ipv4)
+            self._hosts.pop(ipv4, None)
+
+            self._write_hosts()
+        else:
+            _LOGGER.warning("Can't remove Host entry: %s/%s", ipv4, host)
 
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.

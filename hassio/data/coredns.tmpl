@@ -1,9 +1,9 @@
 .:53 {
     log
-    hosts /data/hosts {
+    hosts /config/hosts {
         fallthrough
     }
-    forward . $dnsservers {
+    forward . $servers {
         health_check 10s
     }
 }
