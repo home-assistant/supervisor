@@ -1,12 +1,15 @@
 #!/bin/bash
 set -e
 
+DOCKER_TIMEOUT=30
+
+
 function start_docker() {
     local starttime
     local endtime
 
     echo "Starting docker."
-    dockerd &
+    dockerd 2> /dev/null &
     DOCKER_PID=$!
 
     echo "Waiting for docker to initialize..."
@@ -30,5 +33,13 @@ function install_builder() {
     docker pull homeassistant/amd64-builder:latest
 }
 
+
+function setup_test_env() {
+
+    mkdir -p data
+}
+
+
 start_docker
 install_builder
+setup_test_env

@@ -95,3 +95,6 @@ ENV/
 .vscode/*
 !.vscode/cSpell.json
 !.vscode/tasks.json
+
+# Test Env
+data/
