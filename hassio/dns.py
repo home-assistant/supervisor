@@ -102,6 +102,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.version = self.instance.version
         self.save_data()
 
+        await self._start()
+
     async def update(self, version: Optional[str] = None) -> None:
         """Update CoreDNS plugin."""
         version = version or self.latest_version
@@ -119,6 +121,14 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             # Cleanup
             with suppress(DockerAPIError):
                 await self.instance.cleanup()
+
+        self.version = version
+        self.save_data()
+
+        await self._start()
+
+    async def _start(self) -> None:
+        """Run CoreDNS."""
 
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.
