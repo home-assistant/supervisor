@@ -3,27 +3,22 @@ import asyncio
 from contextlib import suppress
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import Awaitable, List, Optional
 
-from .utils.json import JsonConfig
-from .validate import SCHEMA_DNS_CONFIG
 from .const import (
-    FILE_HASSIO_DNS,
-    HASSIO_VERSION,
     ATTR_SERVERS,
     ATTR_VERSION,
     DNS_SERVERS,
+    FILE_HASSIO_DNS,
+    HASSIO_VERSION,
 )
 from .coresys import CoreSys, CoreSysAttributes
-from .misc.forwarder import DNSForward
-from .docker.stats import DockerStats
 from .docker.dns import DockerDNS
-from .exceptions import (
-    DockerAPIError,
-    HostAppArmorError,
-    SupervisorError,
-    SupervisorUpdateError,
-)
+from .docker.stats import DockerStats
+from .exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
+from .misc.forwarder import DNSForward
+from .utils.json import JsonConfig
+from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -106,3 +101,35 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("CoreDNS plugin now installed")
         self.version = self.instance.version
         self.save_data()
+
+    async def update(self, version: Optional[str] = None) -> None:
+        """Update CoreDNS plugin."""
+        version = version or self.latest_version
+
+        if version == self.version:
+            _LOGGER.warning("Version %s is already installed for CoreDNS", version)
+            return
+
+        try:
+            await self.instance.update(version)
+        except DockerAPIError:
+            _LOGGER.error("CoreDNS update fails")
+            raise CoreDNSUpdateError() from None
+        else:
+            # Cleanup
+            with suppress(DockerAPIError):
+                await self.instance.cleanup()
+
+    def logs(self) -> Awaitable[bytes]:
+        """Get CoreDNS docker logs.
+
+        Return Coroutine.
+        """
+        return self.instance.logs()
+
+    async def stats(self) -> DockerStats:
+        """Return stats of CoreDNS."""
+        try:
+            return await self.instance.stats()
+        except DockerAPIError:
+            raise CoreDNSError() from None
