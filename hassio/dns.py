@@ -4,6 +4,7 @@ from contextlib import suppress
 import logging
 from pathlib import Path
 from typing import Awaitable, List, Optional
+from string import Template
 
 from .const import (
     ATTR_SERVERS,
@@ -22,6 +23,9 @@ from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
+COREDNS_TMPL: Path = Path(__file__).parents[1].joinpath("data/coredns.tmpl")
+HOSTS_TMPL: Path = Path(__file__).parents[1].joinpath("data/hosts.tmpl")
+
 
 class CoreDNS(JsonConfig, CoreSysAttributes):
     """Home Assistant core object for handle it."""
@@ -32,6 +36,16 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
         self.forwarder: DNSForward = DNSForward()
+
+    @property
+    def corefile(self) -> Path:
+        """Return Path to corefile."""
+        return Path(self.sys_config.path_dns, "corefile")
+
+    @property
+    def hosts(self) -> Path:
+        """Return Path to corefile."""
+        return Path(self.sys_config.path_dns, "hosts")
 
     @property
     def servers(self) -> List[str]:
@@ -70,13 +84,16 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.info(
                 "No CoreDNS plugin Docker image %s found.", self.instance.image
             )
-            await self.install()
+
+            # Install CoreDNS
+            with suppress(CoreDNSError):
+                await self.install()
         else:
             self.version = self.instance.version
             self.save_data()
 
         # Start DNS forwarder
-        self.sys_create_task(self.forwarder.start())
+        self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
 
     async def unload(self) -> None:
         """Unload DNS forwarder."""
@@ -129,6 +146,24 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def _start(self) -> None:
         """Run CoreDNS."""
+        self._write_corefile()
+
+    def _write_corefile(self) -> None:
+        """Write CoreDNS config."""
+        try:
+            corefile_template: Template = Template(COREDNS_TMPL.read_text())
+        except OSError as err:
+            _LOGGER.error("Can't read coredns template file: %s", err)
+            raise CoreDNSError() from None
+
+        dns_servers = set(self.servers) + set(DNS_SERVERS)
+        data = corefile_template.safe_substitute(servers=" ".join(dns_servers))
+
+        try:
+            self.corefile.write_text(data)
+        except OSError as err:
+            _LOGGER.error("Can't update corefile: %s", err)
+            raise CoreDNSError() from None
 
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.

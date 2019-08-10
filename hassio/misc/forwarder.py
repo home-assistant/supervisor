@@ -2,12 +2,13 @@
 import asyncio
 import logging
 import shlex
+from typing import Optional
 
 import async_timeout
 
 _LOGGER = logging.getLogger(__name__)
 
-COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:127.0.0.11:53"
+COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:{}"
 
 
 class DNSForward:
@@ -15,13 +16,13 @@ class DNSForward:
 
     def __init__(self):
         """Initialize DNS forwarding."""
-        self.proc = None
+        self.proc: Optional[asyncio.Process] = None
 
-    async def start(self):
+    async def start(self, dns_server: str) -> None:
         """Start DNS forwarding."""
         try:
             self.proc = await asyncio.create_subprocess_exec(
-                *shlex.split(COMMAND),
+                *shlex.split(COMMAND.format(dns_server)),
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
@@ -31,7 +32,7 @@ class DNSForward:
         else:
             _LOGGER.info("Start DNS port forwarding for host add-ons")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop DNS forwarding."""
         if not self.proc:
             _LOGGER.warning("DNS forwarding is not running!")

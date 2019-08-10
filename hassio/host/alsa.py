@@ -15,6 +15,10 @@ _LOGGER = logging.getLogger(__name__)
 DefaultConfig = attr.make_class("DefaultConfig", ["input", "output"])
 
 
+AUDIODB_JSON: Path = Path(__file__).parents[1].joinpath("data/audiodb.json")
+ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
+
+
 class AlsaAudio(CoreSysAttributes):
     """Handle Audio ALSA host data."""
 
@@ -82,12 +86,8 @@ class AlsaAudio(CoreSysAttributes):
     @staticmethod
     def _audio_database():
         """Read local json audio data into dict."""
-        json_file = Path(__file__).parents[1].joinpath("data/audiodb.json")
-
         try:
-            # pylint: disable=no-member
-            with json_file.open("r") as database:
-                return json.loads(database.read())
+            return json.loads(AUDIODB_JSON.read_text())
         except (ValueError, OSError) as err:
             _LOGGER.warning("Can't read audio DB: %s", err)
 
@@ -122,11 +122,8 @@ class AlsaAudio(CoreSysAttributes):
         alsa_output = alsa_output or self.default.output
 
         # Read Template
-        asound_file = Path(__file__).parents[1].joinpath("data/asound.tmpl")
         try:
-            # pylint: disable=no-member
-            with asound_file.open("r") as asound:
-                asound_data = asound.read()
+            asound_data = ASOUND_TMPL.read_text()
         except OSError as err:
             _LOGGER.error("Can't read asound.tmpl: %s", err)
             return ""
