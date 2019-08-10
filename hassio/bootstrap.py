@@ -129,6 +129,11 @@ def initialize_system_data(coresys: CoreSys):
         _LOGGER.info("Create Hass.io Apparmor folder %s", config.path_apparmor)
         config.path_apparmor.mkdir()
 
+    # dns folder
+    if not config.path_dns.is_dir():
+        _LOGGER.info("Create Hass.io DNS folder %s", config.path_dns)
+        config.path_dns.mkdir()
+
     # Update log level
     coresys.config.modify_log_level()
 

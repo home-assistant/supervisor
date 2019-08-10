@@ -34,6 +34,7 @@ BACKUP_DATA = PurePath("backup")
 SHARE_DATA = PurePath("share")
 TMP_DATA = PurePath("tmp")
 APPARMOR_DATA = PurePath("apparmor")
+DNS_DATA = PurePath("dns")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
@@ -210,6 +211,16 @@ class CoreConfig(JsonConfig):
     def path_extern_share(self):
         """Return root share data folder external for Docker."""
         return PurePath(self.path_extern_hassio, SHARE_DATA)
+
+    @property
+    def path_extern_dns(self):
+        """Return dns path external for Docker."""
+        return str(PurePath(self.path_extern_hassio, DNS_DATA))
+
+    @property
+    def path_dns(self):
+        """Return dns path inside supervisor."""
+        return Path(HASSIO_DATA, DNS_DATA)
 
     @property
     def addons_repositories(self):
