@@ -25,18 +25,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         software-properties-common \
         gpg-agent \
-    && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
     && add-apt-repository "deb https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
+    && apt-get update && apt-get install -y --no-install-recommends \
         docker-ce \
         docker-ce-cli \
         containerd.io \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies from requirements.txt if it exists
-COPY requirements.txt requirements_tests.txt .
+COPY requirements.txt requirements_tests.txt /workspaces/
 RUN pip install -r requirements.txt \
     && pip3 install -r requirements_tests.txt \
     && pip install black tox
