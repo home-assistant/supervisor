@@ -260,3 +260,17 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             return await self.instance.stats()
         except DockerAPIError:
             raise CoreDNSError() from None
+
+    def is_running(self) -> Awaitable[bool]:
+        """Return True if Docker container is running.
+
+        Return a coroutine.
+        """
+        return self.instance.is_running()
+
+    def is_fails(self) -> Awaitable[bool]:
+        """Return True if a Docker container is fails state.
+
+        Return a coroutine.
+        """
+        return self.instance.is_fails()

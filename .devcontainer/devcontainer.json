@@ -3,7 +3,7 @@
 	"name": "Hass.io dev",
 	"context": "..",
 	"dockerFile": "Dockerfile",
-	"appPort": 8123,
+	"appPort": 8124,
 	"runArgs": [
 		"-e",
 		"GIT_EDTIOR='code --wait'",

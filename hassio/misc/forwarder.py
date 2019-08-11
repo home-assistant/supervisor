@@ -2,13 +2,14 @@
 import asyncio
 import logging
 import shlex
+from ipaddress import IPv4Address
 from typing import Optional
 
 import async_timeout
 
 _LOGGER = logging.getLogger(__name__)
 
-COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:{}"
+COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:{!s}"
 
 
 class DNSForward:
@@ -18,7 +19,7 @@ class DNSForward:
         """Initialize DNS forwarding."""
         self.proc: Optional[asyncio.Process] = None
 
-    async def start(self, dns_server: str) -> None:
+    async def start(self, dns_server: IPv4Address) -> None:
         """Start DNS forwarding."""
         try:
             self.proc = await asyncio.create_subprocess_exec(
