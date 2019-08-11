@@ -112,10 +112,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             if not self.latest_version:
                 await self.sys_updater.reload()
 
-            tag = self.latest_version
-            if tag:
+            if self.latest_version:
                 with suppress(DockerAPIError):
-                    await self.instance.install(tag)
+                    await self.instance.install(self.latest_version)
                     break
             _LOGGER.warning("Error on install CoreDNS plugin. Retry in 30sec")
             await asyncio.sleep(30)

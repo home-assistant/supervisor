@@ -11,6 +11,7 @@ from .const import (
     ATTR_CHANNEL,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
+    ATTR_DNS,
     ATTR_HASSIO,
     ATTR_HASSOS,
     ATTR_HASSOS_CLI,
@@ -110,6 +111,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_HASSIO): vol.Coerce(str),
         vol.Optional(ATTR_HASSOS): vol.Coerce(str),
         vol.Optional(ATTR_HASSOS_CLI): vol.Coerce(str),
+        vol.Optional(ATTR_DNS): vol.Coerce(str),
     },
     extra=vol.REMOVE_EXTRA,
 )
