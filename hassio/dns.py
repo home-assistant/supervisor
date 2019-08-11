@@ -68,6 +68,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """Return latest version of CoreDNS."""
         return self.sys_updater.version_dns
 
+    @property
+    def in_progress(self) -> bool:
+        """Return True if a task is in progress."""
+        return self.instance.in_progress
+
     async def load(self) -> None:
         """Load DNS setup."""
         with suppress(CoreDNSError):
@@ -119,7 +124,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.version = self.instance.version
         self.save_data()
 
-        await self._start()
+        await self.start()
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update CoreDNS plugin."""
@@ -142,16 +147,16 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.version = version
         self.save_data()
 
-        await self._start()
+        # Start CoreDNS
+        await self.start()
 
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""
         with suppress(DockerAPIError):
             await self.instance.stop()
+        await self.start()
 
-        await self._start()
-
-    async def _start(self) -> None:
+    async def start(self) -> None:
         """Run CoreDNS."""
         self._write_corefile()
 
