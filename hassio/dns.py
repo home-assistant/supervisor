@@ -56,7 +56,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     @property
     def version(self) -> Optional[str]:
         """Return current version of DNS."""
-        return self._data[ATTR_VERSION]
+        return self._data.get(ATTR_VERSION)
 
     @version.setter
     def version(self, value: str) -> None:
