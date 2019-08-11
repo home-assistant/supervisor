@@ -28,18 +28,33 @@ function start_docker() {
 }
 
 
-function install_builder() {
-
+function build_supervisor() {
     docker pull homeassistant/amd64-builder:latest
+
+    docker run --rm --privileged -v /run/docker.sock:/run/docker.sock -v "$(pwd):/data" \
+        homeassistant/amd64-builder:latest \
+            --supervisor 3.7-alpine3.10 --version dev \
+            -t /data --test --amd64 --docker-hub homeassistant
 }
 
 
 function setup_test_env() {
+    mkdir -p test_data
 
-    mkdir -p data
+    docker run --rm --privileged \
+        --name hassio_supervisor \
+        --security-opt seccomp=unconfined \
+        --security-opt apparmor:unconfined \
+        -v /run/docker.sock:/run/docker.sock \
+        -v /run/dbus:/run/dbus \
+        -v "$(pwd)/test_data":/data \
+        -e SUPERVISOR_SHARE="$(pwd)/test_data" \
+        -e SUPERVISOR_NAME=hassio_supervisor \
+        -e HOMEASSISTANT_REPOSITORY="homeassistant/qemux86-64" \
+        homeassistant/amd64-hassio-supervisor:latest
 }
 
 
 start_docker
-install_builder
+build_supervisor
 setup_test_env

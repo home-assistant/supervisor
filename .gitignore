@@ -97,4 +97,4 @@ ENV/
 !.vscode/tasks.json
 
 # Test Env
-data/
+test_data/

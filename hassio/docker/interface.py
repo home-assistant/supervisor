@@ -50,7 +50,10 @@ class DockerInterface(CoreSysAttributes):
     @property
     def image(self) -> Optional[str]:
         """Return name of Docker image."""
-        return self.meta_config.get("Image")
+        try:
+            return self.meta_config["Image"].partition(":")[0]
+        except KeyError:
+            return None
 
     @property
     def version(self) -> Optional[str]:
@@ -80,7 +83,6 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         image = image or self.image
-        image = image.partition(":")[0]  # remove potential tag
 
         _LOGGER.info("Pull image %s tag %s.", image, tag)
         try:
