@@ -270,7 +270,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             tag = self.latest_version
             if tag:
                 with suppress(DockerAPIError):
-                    await self.instance.install(tag)
+                    await self.instance.update(tag)
                     break
             _LOGGER.warning("Error on install Home Assistant. Retry in 30sec")
             await asyncio.sleep(30)
