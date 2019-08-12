@@ -140,7 +140,7 @@ def initialize_system_data(coresys: CoreSys):
     # Check if ENV is in development mode
     if bool(os.environ.get("SUPERVISOR_DEV", 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
-        coresys.sys_updater.channel = CHANNEL_DEV
+        coresys.updater.channel = CHANNEL_DEV
 
 
 def migrate_system_env(coresys: CoreSys):
