@@ -739,6 +739,34 @@ return:
 }
 ```
 
+### DNS
+
+- GET `/dns/info`
+```json
+{
+    "host": "ip-address",
+    "version": "1",
+    "latest_version": "2",
+    "servers": ["dns://8.8.8.8"]
+}
+```
+
+- POST `/dns/options`
+```json
+{
+    "servers": ["dns://8.8.8.8"]
+}
+```
+
+- POST `/dns/update`
+```json
+{
+    "version": "VERSION"
+}
+```
+
+- GET `/dns/logs`
+
 ### Auth / SSO API
 
 You can use the user system on homeassistant. We handle this auth system on
