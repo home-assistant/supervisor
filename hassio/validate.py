@@ -41,6 +41,7 @@ from .utils.validate import validate_timezone
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 
+# pylint: disable=no-value-for-parameter
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
@@ -50,6 +51,7 @@ UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
 SHA256 = vol.Match(r"^[0-9a-f]{64}$")
 TOKEN = vol.Match(r"^[0-9a-f]{32,256}$")
 LOG_LEVEL = vol.In(["debug", "info", "warning", "error", "critical"])
+DNS_SERVER_LIST = vol.All([vol.Url()], vol.Length(max=8))
 
 
 def validate_repository(repository):
@@ -151,13 +153,10 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
 )
 
 
-# pylint: disable=no-value-for-parameter
 SCHEMA_DNS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): vol.All(
-            [vol.Url()], vol.Length(max=10)
-        ),
+        vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): DNS_SERVER_LIST,
     },
     extra=vol.REMOVE_EXTRA,
 )

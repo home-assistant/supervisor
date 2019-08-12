@@ -9,6 +9,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from .addons import APIAddons
 from .auth import APIAuth
 from .discovery import APIDiscovery
+from .dns import APICoreDNS
 from .hardware import APIHardware
 from .hassos import APIHassOS
 from .homeassistant import APIHomeAssistant
@@ -55,6 +56,7 @@ class RestAPI(CoreSysAttributes):
         self._register_services()
         self._register_info()
         self._register_auth()
+        self._register_dns()
 
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
@@ -261,6 +263,21 @@ class RestAPI(CoreSysAttributes):
                 web.get("/discovery/{uuid}", api_discovery.get_discovery),
                 web.delete("/discovery/{uuid}", api_discovery.del_discovery),
                 web.post("/discovery", api_discovery.set_discovery),
+            ]
+        )
+
+    def _register_dns(self) -> None:
+        """Register DNS functions."""
+        api_dns = APICoreDNS()
+        api_dns.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/dns/info", api_dns.info),
+                web.get("/dns/stats", api_dns.stats),
+                web.get("/dns/logs", api_dns.logs),
+                web.post("/dns/update", api_dns.update),
+                web.post("/dns/options", api_dns.options),
             ]
         )
 
