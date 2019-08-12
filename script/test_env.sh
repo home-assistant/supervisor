@@ -1,7 +1,8 @@
 #!/bin/bash
-set -e
+set -eE
 
 DOCKER_TIMEOUT=30
+DOCKER_PID=0
 
 
 function start_docker() {
@@ -25,6 +26,32 @@ function start_docker() {
         fi
     done
     echo "Docker was initialized"
+}
+
+
+function stop_docker() {
+    local starttime
+    local endtime
+
+    echo "Stopping in container docker..."
+    if [ "$DOCKER_PID" -gt 0 ] && kill -0 "$DOCKER_PID" 2> /dev/null; then
+        starttime="$(date +%s)"
+        endtime="$(date +%s)"
+
+        # Now wait for it to die
+        kill "$DOCKER_PID"
+        while kill -0 "$DOCKER_PID" 2> /dev/null; do
+            if [ $((endtime - starttime)) -le $DOCKER_TIMEOUT ]; then
+                sleep 1
+                endtime=$(date +%s)
+            else
+                echo "Timeout while waiting for container docker to die"
+                exit 1
+            fi
+        done
+    else
+        echo "Your host might have been left with unreleased resources"
+    fi
 }
 
 
@@ -52,11 +79,16 @@ function setup_test_env() {
         -v "$(pwd)/test_data":/data \
         -e SUPERVISOR_SHARE="$(pwd)/test_data" \
         -e SUPERVISOR_NAME=hassio_supervisor \
-        -e HOMEASSISTANT_REPOSITORY="homeassistant/qemux86-64" \
+        -e HOMEASSISTANT_REPOSITORY="homeassistant/qemux86-64-homeassistant" \
         homeassistant/amd64-hassio-supervisor:latest
 }
 
+echo "Start Test-Env"
 
 start_docker
+trap "stop_docker" ERR
+
+
 build_supervisor
 setup_test_env
+stop_docker

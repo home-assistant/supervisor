@@ -423,7 +423,7 @@ class DockerInterface(CoreSysAttributes):
             assert available_version
 
         except (docker.errors.DockerException, AssertionError):
-            _LOGGER.info("No version found for %s", self.image)
+            _LOGGER.debug("No version found for %s", self.image)
             raise DockerAPIError()
         else:
             _LOGGER.debug("Found HA versions: %s", available_version)

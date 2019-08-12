@@ -18,7 +18,7 @@ from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
-COREDNS_TMPL: Path = Path(__file__).parents[1].joinpath("data/coredns.tmpl")
+COREDNS_TMPL: Path = Path(__file__).parents[0].joinpath("data/coredns.tmpl")
 
 
 class CoreDNS(JsonConfig, CoreSysAttributes):
