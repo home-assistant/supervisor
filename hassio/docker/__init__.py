@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 import attr
 import docker
 
-from ..const import SOCKET_DOCKER
+from ..const import SOCKET_DOCKER, DNS_SUFFIX
 from ..exceptions import DockerAPIError
 from .network import DockerNetwork
 
@@ -67,8 +67,7 @@ class DockerAPI:
 
         # Setup DNS
         kwargs["dns"] = [str(self.network.dns)]
-        kwargs["dns_opt"] = ["ndots:0"]
-        kwargs["dns_search"] = ["."]
+        kwargs["domainname"] = DNS_SUFFIX
 
         # Setup network
         if not network_mode:

@@ -79,6 +79,7 @@ function setup_test_env() {
         -v "$(pwd)/test_data":/data \
         -e SUPERVISOR_SHARE="$(pwd)/test_data" \
         -e SUPERVISOR_NAME=hassio_supervisor \
+        -e SUPERVISOR_DEV=1 \
         -e HOMEASSISTANT_REPOSITORY="homeassistant/qemux86-64-homeassistant" \
         homeassistant/amd64-hassio-supervisor:latest
 }
