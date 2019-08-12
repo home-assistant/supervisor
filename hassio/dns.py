@@ -183,7 +183,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             raise CoreDNSError() from None
 
         # Generate config file
-        dns_servers = set(self.servers) + set(DNS_SERVERS)
+        dns_servers = self.servers + list(set(DNS_SERVERS) - set(self.servers))
         data = corefile_template.safe_substitute(servers=" ".join(dns_servers))
 
         try:
