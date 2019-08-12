@@ -166,6 +166,14 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't start CoreDNS plugin")
             raise CoreDNSError() from None
 
+    def reset(self) -> None:
+        """Reset Config / Hosts."""
+        self.servers = DNS_SERVERS
+
+        with suppress(OSError):
+            self.hosts.unlink()
+        self._import_hosts()
+
     def _write_corefile(self) -> None:
         """Write CoreDNS config."""
         try:
