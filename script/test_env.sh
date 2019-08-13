@@ -33,8 +33,8 @@ function stop_docker() {
     local starttime
     local endtime
 
-    echo "Shutdown running containers"
-    docker stop $(docker ps -aq)
+    echo "Shutdown Home Assistant"
+    docker container stop homeassistant || true
 
     echo "Stopping in container docker..."
     if [ "$DOCKER_PID" -gt 0 ] && kill -0 "$DOCKER_PID" 2> /dev/null; then
