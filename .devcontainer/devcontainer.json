@@ -3,9 +3,11 @@
 	"name": "Hass.io dev",
 	"context": "..",
 	"dockerFile": "Dockerfile",
+	"appPort": "9123:8123",
 	"runArgs": [
 		"-e",
-		"GIT_EDTIOR='code --wait'"
+		"GIT_EDITOR='code --wait'",
+		"--privileged"
 	],
 	"extensions": [
 		"ms-python.python"

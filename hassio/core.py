@@ -30,6 +30,9 @@ class HassIO(CoreSysAttributes):
 
     async def setup(self):
         """Setup HassIO orchestration."""
+        # Load CoreDNS
+        await self.sys_dns.load()
+
         # Load DBus
         await self.sys_dbus.load()
 
@@ -68,9 +71,6 @@ class HassIO(CoreSysAttributes):
 
         # Load ingress
         await self.sys_ingress.load()
-
-        # start dns forwarding
-        self.sys_create_task(self.sys_dns.start())
 
     async def start(self):
         """Start Hass.io orchestration."""
@@ -142,10 +142,10 @@ class HassIO(CoreSysAttributes):
                 await asyncio.wait(
                     [
                         self.sys_api.stop(),
-                        self.sys_dns.stop(),
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
+                        self.sys_dns.unload(),
                     ]
                 )
         except asyncio.TimeoutError:
@@ -176,6 +176,7 @@ class HassIO(CoreSysAttributes):
         await self.sys_run_in_executor(self.sys_docker.repair)
 
         # Restore core functionality
+        await self.sys_dns.repair()
         await self.sys_addons.repair()
         await self.sys_homeassistant.repair()
 

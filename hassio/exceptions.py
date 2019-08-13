@@ -54,6 +54,17 @@ class HassOSNotSupportedError(HassioNotSupportedError):
     """Function not supported by HassOS."""
 
 
+# DNS
+
+
+class CoreDNSError(HassioError):
+    """CoreDNS exception."""
+
+
+class CoreDNSUpdateError(CoreDNSError):
+    """Error on update of a CoreDNS."""
+
+
 # Addons
 
 

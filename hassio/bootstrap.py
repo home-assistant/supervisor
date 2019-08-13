@@ -11,11 +11,12 @@ from .addons import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
-from .const import SOCKET_DOCKER
+from .const import CHANNEL_DEV, SOCKET_DOCKER
 from .core import HassIO
 from .coresys import CoreSys
 from .dbus import DBusManager
 from .discovery import Discovery
+from .dns import CoreDNS
 from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
@@ -43,6 +44,7 @@ async def initialize_coresys():
 
     # Initialize core objects
     coresys.core = HassIO(coresys)
+    coresys.dns = CoreDNS(coresys)
     coresys.arch = CpuArch(coresys)
     coresys.auth = Auth(coresys)
     coresys.updater = Updater(coresys)
@@ -127,8 +129,18 @@ def initialize_system_data(coresys: CoreSys):
         _LOGGER.info("Create Hass.io Apparmor folder %s", config.path_apparmor)
         config.path_apparmor.mkdir()
 
+    # dns folder
+    if not config.path_dns.is_dir():
+        _LOGGER.info("Create Hass.io DNS folder %s", config.path_dns)
+        config.path_dns.mkdir()
+
     # Update log level
     coresys.config.modify_log_level()
+
+    # Check if ENV is in development mode
+    if bool(os.environ.get("SUPERVISOR_DEV", 0)):
+        _LOGGER.warning("SUPERVISOR_DEV is set")
+        coresys.updater.channel = CHANNEL_DEV
 
 
 def migrate_system_env(coresys: CoreSys):

@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from .coresys import CoreSysAttributes
-from .exceptions import HomeAssistantError
+from .exceptions import HomeAssistantError, CoreDNSError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +21,8 @@ RUN_RELOAD_INGRESS = 930
 
 RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
 RUN_WATCHDOG_HOMEASSISTANT_API = 300
+
+RUN_WATCHDOG_DNS_DOCKER = 20
 
 
 class Tasks(CoreSysAttributes):
@@ -81,6 +83,11 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(
             self.sys_scheduler.register_task(
                 self._watchdog_homeassistant_api, RUN_WATCHDOG_HOMEASSISTANT_API
+            )
+        )
+        self.jobs.add(
+            self.sys_scheduler.register_task(
+                self._watchdog_dns_docker, RUN_WATCHDOG_DNS_DOCKER
             )
         )
 
@@ -194,3 +201,19 @@ class Tasks(CoreSysAttributes):
 
         _LOGGER.info("Found new HassOS CLI version")
         await self.sys_hassos.update_cli()
+
+    async def _watchdog_dns_docker(self):
+        """Check running state of Docker and start if they is close."""
+        # if Home Assistant is active
+        if await self.sys_dns.is_running():
+            return
+        _LOGGER.warning("Watchdog found a problem with CoreDNS plugin!")
+
+        if await self.sys_dns.is_fails():
+            _LOGGER.warning("CoreDNS plugin is in fails state / Reset config")
+            self.sys_dns.reset()
+
+        try:
+            await self.sys_dns.start()
+        except CoreDNSError:
+            _LOGGER.error("Watchdog CoreDNS reanimation fails!")

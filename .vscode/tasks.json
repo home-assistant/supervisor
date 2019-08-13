@@ -2,12 +2,85 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Run Testenv",
+            "type": "shell",
+            "command": "./script/test_env.sh",
+            "group": {
+                "kind": "test",
+                "isDefault": true,
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Testenv CLI",
+            "type": "shell",
+            "command": "docker run --rm -ti -v /etc/machine-id:/etc/machine-id --network=hassio --add-host hassio:172.30.32.2 homeassistant/amd64-hassio-cli:dev",
+            "group": {
+                "kind": "test",
+                "isDefault": true,
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Update UI",
             "type": "shell",
             "command": "./script/update-frontend.sh",
             "group": {
                 "kind": "build",
                 "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Pytest",
+            "type": "shell",
+            "command": "pytest --timeout=10 tests",
+            "group": {
+                "kind": "test",
+                "isDefault": true,
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Flake8",
+            "type": "shell",
+            "command": "flake8 homeassistant tests",
+            "group": {
+                "kind": "test",
+                "isDefault": true,
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Pylint",
+            "type": "shell",
+            "command": "pylint homeassistant",
+            "dependsOn": [
+                "Install all Requirements"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true,
             },
             "presentation": {
                 "reveal": "always",

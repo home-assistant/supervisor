@@ -10,6 +10,8 @@ from .utils.json import read_json_file
 
 _LOGGER = logging.getLogger(__name__)
 
+ARCH_JSON: Path = Path(__file__).parent.joinpath("data/arch.json")
+
 MAP_CPU = {
     "armv7": "armv7",
     "armv6": "armhf",
@@ -47,7 +49,7 @@ class CpuArch(CoreSysAttributes):
     async def load(self) -> None:
         """Load data and initialize default arch."""
         try:
-            arch_data = read_json_file(Path(__file__).parent.joinpath("arch.json"))
+            arch_data = read_json_file(ARCH_JSON)
         except JsonFileError:
             _LOGGER.warning("Can't read arch json")
             return

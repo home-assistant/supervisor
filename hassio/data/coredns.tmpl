@@ -1,0 +1,9 @@
+.:53 {
+    log
+    hosts /config/hosts {
+        fallthrough
+    }
+    forward . $servers {
+        health_check 10s
+    }
+}

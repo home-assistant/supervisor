@@ -11,6 +11,7 @@ from .const import (
     ATTR_CHANNEL,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
+    ATTR_DNS,
     ATTR_HASSIO,
     ATTR_HASSOS,
     ATTR_HASSOS_CLI,
@@ -23,6 +24,7 @@ from .const import (
     ATTR_PORT,
     ATTR_PORTS,
     ATTR_REFRESH_TOKEN,
+    ATTR_SERVERS,
     ATTR_SESSION,
     ATTR_SSL,
     ATTR_TIMEZONE,
@@ -33,11 +35,13 @@ from .const import (
     CHANNEL_BETA,
     CHANNEL_DEV,
     CHANNEL_STABLE,
+    DNS_SERVERS,
 )
 from .utils.validate import validate_timezone
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 
+# pylint: disable=no-value-for-parameter
 NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
@@ -47,6 +51,7 @@ UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
 SHA256 = vol.Match(r"^[0-9a-f]{64}$")
 TOKEN = vol.Match(r"^[0-9a-f]{32,256}$")
 LOG_LEVEL = vol.In(["debug", "info", "warning", "error", "critical"])
+DNS_SERVER_LIST = vol.All([vol.Url()], vol.Length(max=8))
 
 
 def validate_repository(repository):
@@ -108,6 +113,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_HASSIO): vol.Coerce(str),
         vol.Optional(ATTR_HASSOS): vol.Coerce(str),
         vol.Optional(ATTR_HASSOS_CLI): vol.Coerce(str),
+        vol.Optional(ATTR_DNS): vol.Coerce(str),
     },
     extra=vol.REMOVE_EXTRA,
 )
@@ -142,6 +148,15 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
         vol.Required(ATTR_PORTS, default=dict): vol.Schema(
             {vol.Coerce(str): NETWORK_PORT}
         ),
+    },
+    extra=vol.REMOVE_EXTRA,
+)
+
+
+SCHEMA_DNS_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): DNS_SERVER_LIST,
     },
     extra=vol.REMOVE_EXTRA,
 )
