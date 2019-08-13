@@ -160,6 +160,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self._write_corefile()
 
         # Start Instance
+        _LOGGER.info("Start CoreDNS plugin")
         try:
             await self.instance.run()
         except DockerAPIError:

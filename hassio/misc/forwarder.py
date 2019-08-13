@@ -31,7 +31,7 @@ class DNSForward:
         except OSError as err:
             _LOGGER.error("Can't start DNS forwarding: %s", err)
         else:
-            _LOGGER.info("Start DNS port forwarding for host add-ons")
+            _LOGGER.info("Start DNS port forwarding to %s", dns_server)
 
     async def stop(self) -> None:
         """Stop DNS forwarding."""

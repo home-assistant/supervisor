@@ -473,6 +473,7 @@ Get all available addons.
 {
     "name": "xy bla",
     "slug": "xdssd_xybla",
+    "hostname": "xdssd-xybla",
     "description": "description",
     "long_description": "null|markdown",
     "auto_update": "bool",

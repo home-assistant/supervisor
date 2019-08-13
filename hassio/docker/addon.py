@@ -101,11 +101,6 @@ class DockerAddon(DockerInterface):
         return not self.addon.protected and self.addon.with_full_access
 
     @property
-    def hostname(self) -> str:
-        """Return slug/id of add-on."""
-        return self.addon.slug.replace("_", "-")
-
-    @property
     def environment(self) -> Dict[str, str]:
         """Return environment for Docker add-on."""
         addon_env = self.addon.environment or {}
@@ -329,7 +324,7 @@ class DockerAddon(DockerInterface):
             self.image,
             version=self.addon.version,
             name=self.name,
-            hostname=self.hostname,
+            hostname=self.addon.hostname,
             detach=True,
             init=True,
             privileged=self.full_access,

@@ -41,6 +41,7 @@ from ..const import (
     ATTR_HOST_IPC,
     ATTR_HOST_NETWORK,
     ATTR_HOST_PID,
+    ATTR_HOSTNAME,
     ATTR_ICON,
     ATTR_INGRESS,
     ATTR_INGRESS_ENTRY,
@@ -180,6 +181,7 @@ class APIAddons(CoreSysAttributes):
         data = {
             ATTR_NAME: addon.name,
             ATTR_SLUG: addon.slug,
+            ATTR_HOSTNAME: addon.hostname,
             ATTR_DESCRIPTON: addon.description,
             ATTR_LONG_DESCRIPTION: addon.long_description,
             ATTR_AUTO_UPDATE: None,
