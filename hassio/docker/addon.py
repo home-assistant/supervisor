@@ -182,10 +182,7 @@ class DockerAddon(DockerInterface):
     @property
     def network_mapping(self) -> Dict[str, str]:
         """Return hosts mapping."""
-        return {
-            "homeassistant": self.sys_docker.network.gateway,
-            "hassio": self.sys_docker.network.supervisor,
-        }
+        return {"hassio": self.sys_docker.network.supervisor}
 
     @property
     def network_mode(self) -> Optional[str]:
