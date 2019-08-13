@@ -223,7 +223,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             with self.hosts.open("w") as hosts:
                 for address, hostnames in self._hosts.items():
                     host = " ".join(hostnames)
-                    hosts.write(f"{address!s} {host}\n")
+                    hosts.write(f"{address!s} {host}")
         except OSError as err:
             _LOGGER.error("Can't write hosts file: %s", err)
             raise CoreDNSError() from None
