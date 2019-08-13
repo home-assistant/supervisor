@@ -67,7 +67,6 @@ class DockerAPI:
 
         # Setup DNS
         kwargs["dns"] = [str(self.network.dns)]
-        kwargs["dns_opt"] = ["ndots:0"]
         kwargs["dns_search"] = [DNS_SUFFIX]
         kwargs["domainname"] = DNS_SUFFIX
 
