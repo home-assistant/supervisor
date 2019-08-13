@@ -176,6 +176,7 @@ class HassIO(CoreSysAttributes):
         await self.sys_run_in_executor(self.sys_docker.repair)
 
         # Restore core functionality
+        await self.sys_dns.repair()
         await self.sys_addons.repair()
         await self.sys_homeassistant.repair()
 

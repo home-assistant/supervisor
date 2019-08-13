@@ -287,3 +287,14 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         Return a coroutine.
         """
         return self.instance.is_fails()
+
+    async def repair(self):
+        """Repair CoreDNS plugin."""
+        if await self.instance.exists():
+            return
+
+        _LOGGER.info("Repair CoreDNS %s", self.version)
+        try:
+            await self.instance.install(self.version)
+        except DockerAPIError:
+            _LOGGER.error("Repairing of CoreDNS fails")
