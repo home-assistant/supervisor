@@ -1,14 +1,13 @@
 """Handle core shared data."""
 from __future__ import annotations
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import aiohttp
 
 from .config import CoreConfig
 from .const import CHANNEL_DEV
 from .docker import DockerAPI
-from .misc.dns import DNSForward
 from .misc.hardware import Hardware
 from .misc.scheduler import Scheduler
 
@@ -20,6 +19,7 @@ if TYPE_CHECKING:
     from .core import HassIO
     from .dbus import DBusManager
     from .discovery import Discovery
+    from .dns import CoreDNS
     from .hassos import HassOS
     from .homeassistant import HomeAssistant
     from .host import HostManager
@@ -52,26 +52,26 @@ class CoreSys:
         self._hardware: Hardware = Hardware()
         self._docker: DockerAPI = DockerAPI()
         self._scheduler: Scheduler = Scheduler()
-        self._dns: DNSForward = DNSForward()
 
         # Internal objects pointers
-        self._core: HassIO = None
-        self._arch: CpuArch = None
-        self._auth: Auth = None
-        self._homeassistant: HomeAssistant = None
-        self._supervisor: Supervisor = None
-        self._addons: AddonManager = None
-        self._api: RestAPI = None
-        self._updater: Updater = None
-        self._snapshots: SnapshotManager = None
-        self._tasks: Tasks = None
-        self._host: HostManager = None
-        self._ingress: Ingress = None
-        self._dbus: DBusManager = None
-        self._hassos: HassOS = None
-        self._services: ServiceManager = None
-        self._store: StoreManager = None
-        self._discovery: Discovery = None
+        self._core: Optional[HassIO] = None
+        self._arch: Optional[CpuArch] = None
+        self._auth: Optional[Auth] = None
+        self._dns: Optional[CoreDNS] = None
+        self._homeassistant: Optional[HomeAssistant] = None
+        self._supervisor: Optional[Supervisor] = None
+        self._addons: Optional[AddonManager] = None
+        self._api: Optional[RestAPI] = None
+        self._updater: Optional[Updater] = None
+        self._snapshots: Optional[SnapshotManager] = None
+        self._tasks: Optional[Tasks] = None
+        self._host: Optional[HostManager] = None
+        self._ingress: Optional[Ingress] = None
+        self._dbus: Optional[DBusManager] = None
+        self._hassos: Optional[HassOS] = None
+        self._services: Optional[ServiceManager] = None
+        self._store: Optional[StoreManager] = None
+        self._discovery: Optional[Discovery] = None
 
     @property
     def machine(self) -> str:
@@ -124,11 +124,6 @@ class CoreSys:
     def scheduler(self) -> Scheduler:
         """Return Scheduler object."""
         return self._scheduler
-
-    @property
-    def dns(self) -> DNSForward:
-        """Return DNSForward object."""
-        return self._dns
 
     @property
     def core(self) -> HassIO:
@@ -299,6 +294,18 @@ class CoreSys:
         self._dbus = value
 
     @property
+    def dns(self) -> CoreDNS:
+        """Return CoreDNS object."""
+        return self._dns
+
+    @dns.setter
+    def dns(self, value: CoreDNS):
+        """Set a CoreDNS object."""
+        if self._dns:
+            raise RuntimeError("CoreDNS already set!")
+        self._dns = value
+
+    @property
     def host(self) -> HostManager:
         """Return HostManager object."""
         return self._host
@@ -396,11 +403,6 @@ class CoreSysAttributes:
         return self.coresys.scheduler
 
     @property
-    def sys_dns(self) -> DNSForward:
-        """Return DNSForward object."""
-        return self.coresys.dns
-
-    @property
     def sys_core(self) -> HassIO:
         """Return HassIO object."""
         return self.coresys.core
@@ -469,6 +471,11 @@ class CoreSysAttributes:
     def sys_dbus(self) -> DBusManager:
         """Return DBusManager object."""
         return self.coresys.dbus
+
+    @property
+    def sys_dns(self) -> CoreDNS:
+        """Return CoreDNS object."""
+        return self.coresys.dns
 
     @property
     def sys_host(self) -> HostManager:

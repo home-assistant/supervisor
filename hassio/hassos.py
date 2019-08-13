@@ -188,13 +188,13 @@ class HassOS(CoreSysAttributes):
 
         try:
             await self.instance.update(version, latest=True)
-
-            # Cleanup
-            with suppress(DockerAPIError):
-                await self.instance.cleanup()
         except DockerAPIError:
             _LOGGER.error("HassOS CLI update fails")
             raise HassOSUpdateError() from None
+        else:
+            # Cleanup
+            with suppress(DockerAPIError):
+                await self.instance.cleanup()
 
     async def repair_cli(self) -> None:
         """Repair CLI container."""

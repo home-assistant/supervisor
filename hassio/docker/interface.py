@@ -2,16 +2,16 @@
 import asyncio
 from contextlib import suppress
 import logging
-from typing import Any, Dict, Optional, Awaitable
+from typing import Any, Awaitable, Dict, List, Optional
 
 import docker
 
+from . import CommandReturn
 from ..const import LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DockerAPIError
 from ..utils import process_lock
 from .stats import DockerStats
-from . import CommandReturn
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,7 +50,10 @@ class DockerInterface(CoreSysAttributes):
     @property
     def image(self) -> Optional[str]:
         """Return name of Docker image."""
-        return self.meta_config.get("Image")
+        try:
+            return self.meta_config["Image"].partition(":")[0]
+        except KeyError:
+            return None
 
     @property
     def version(self) -> Optional[str]:
@@ -80,7 +83,6 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         image = image or self.image
-        image = image.partition(":")[0]  # remove potential tag
 
         _LOGGER.info("Pull image %s tag %s.", image, tag)
         try:
@@ -397,3 +399,35 @@ class DockerInterface(CoreSysAttributes):
             return True
 
         return False
+
+    def get_latest_version(self, key: Any = int) -> Awaitable[str]:
+        """Return latest version of local Home Asssistant image."""
+        return self.sys_run_in_executor(self._get_latest_version, key)
+
+    def _get_latest_version(self, key: Any = int) -> str:
+        """Return latest version of local Home Asssistant image.
+
+        Need run inside executor.
+        """
+        available_version: List[str] = []
+        try:
+            for image in self.sys_docker.images.list(self.image):
+                for tag in image.tags:
+                    version = tag.partition(":")[2]
+                    try:
+                        key(version)
+                    except (AttributeError, ValueError):
+                        continue
+                    available_version.append(version)
+
+            assert available_version
+
+        except (docker.errors.DockerException, AssertionError):
+            _LOGGER.debug("No version found for %s", self.image)
+            raise DockerAPIError()
+        else:
+            _LOGGER.debug("Found HA versions: %s", available_version)
+
+        # Sort version and return latest version
+        available_version.sort(key=key, reverse=True)
+        return available_version[0]

@@ -473,6 +473,7 @@ Get all available addons.
 {
     "name": "xy bla",
     "slug": "xdssd_xybla",
+    "hostname": "xdssd-xybla",
     "description": "description",
     "long_description": "null|markdown",
     "auto_update": "bool",
@@ -736,6 +737,47 @@ return:
     "channel": "stable|beta|dev",
     "logging": "debug|info|warning|error|critical",
     "timezone": "Europe/Zurich"
+}
+```
+
+### DNS
+
+- GET `/dns/info`
+```json
+{
+    "host": "ip-address",
+    "version": "1",
+    "latest_version": "2",
+    "servers": ["dns://8.8.8.8"]
+}
+```
+
+- POST `/dns/options`
+```json
+{
+    "servers": ["dns://8.8.8.8"]
+}
+```
+
+- POST `/dns/update`
+```json
+{
+    "version": "VERSION"
+}
+```
+
+- GET `/dns/logs`
+
+- GET `/dns/stats`
+```json
+{
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
 }
 ```
 

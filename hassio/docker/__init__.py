@@ -1,12 +1,13 @@
 """Init file for Hass.io Docker object."""
-import logging
 from contextlib import suppress
+from ipaddress import IPv4Address
+import logging
 from typing import Any, Dict, Optional
 
 import attr
 import docker
 
-from ..const import SOCKET_DOCKER
+from ..const import SOCKET_DOCKER, DNS_SUFFIX
 from ..exceptions import DockerAPIError
 from .network import DockerNetwork
 
@@ -50,7 +51,11 @@ class DockerAPI:
         return self.docker.api
 
     def run(
-        self, image: str, version: str = "latest", **kwargs: Dict[str, Any]
+        self,
+        image: str,
+        version: str = "latest",
+        ipv4: Optional[IPv4Address] = None,
+        **kwargs: Dict[str, Any],
     ) -> docker.models.containers.Container:
         """"Create a Docker container and run it.
 
@@ -60,12 +65,13 @@ class DockerAPI:
         network_mode: str = kwargs.get("network_mode")
         hostname: str = kwargs.get("hostname")
 
+        # Setup DNS
+        kwargs["dns"] = [str(self.network.dns)]
+        kwargs["dns_search"] = [DNS_SUFFIX]
+        kwargs["domainname"] = DNS_SUFFIX
+
         # Setup network
-        kwargs["dns_search"] = ["."]
-        if network_mode:
-            kwargs["dns"] = [str(self.network.supervisor)]
-            kwargs["dns_opt"] = ["ndots:0"]
-        else:
+        if not network_mode:
             kwargs["network"] = None
 
         # Create container
@@ -81,7 +87,7 @@ class DockerAPI:
         if not network_mode:
             alias = [hostname] if hostname else None
             try:
-                self.network.attach_container(container, alias=alias)
+                self.network.attach_container(container, alias=alias, ipv4=ipv4)
             except DockerAPIError:
                 _LOGGER.warning("Can't attach %s to hassio-net!", name)
             else:

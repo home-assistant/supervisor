@@ -110,6 +110,11 @@ class AddonModel(CoreSysAttributes):
         return self.data[ATTR_NAME]
 
     @property
+    def hostname(self) -> str:
+        """Return slug/id of add-on."""
+        return self.slug.replace("_", "-")
+
+    @property
     def timeout(self) -> int:
         """Return timeout of addon for docker stop."""
         return self.data[ATTR_TIMEOUT]

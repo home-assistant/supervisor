@@ -4,23 +4,25 @@ from contextlib import suppress
 from datetime import timedelta
 import json
 import logging
+from typing import Optional
 
 import aiohttp
 
 from .const import (
-    URL_HASSIO_VERSION,
-    FILE_HASSIO_UPDATER,
-    ATTR_HOMEASSISTANT,
-    ATTR_HASSIO,
     ATTR_CHANNEL,
+    ATTR_DNS,
+    ATTR_HASSIO,
     ATTR_HASSOS,
     ATTR_HASSOS_CLI,
+    ATTR_HOMEASSISTANT,
+    FILE_HASSIO_UPDATER,
+    URL_HASSIO_VERSION,
 )
 from .coresys import CoreSysAttributes
+from .exceptions import HassioUpdaterError
 from .utils import AsyncThrottle
 from .utils.json import JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG
-from .exceptions import HassioUpdaterError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,43 +35,48 @@ class Updater(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
         self.coresys = coresys
 
-    async def load(self):
+    async def load(self) -> None:
         """Update internal data."""
         with suppress(HassioUpdaterError):
             await self.fetch_data()
 
-    async def reload(self):
+    async def reload(self) -> None:
         """Update internal data."""
         with suppress(HassioUpdaterError):
             await self.fetch_data()
 
     @property
-    def version_homeassistant(self):
-        """Return last version of Home Assistant."""
+    def version_homeassistant(self) -> Optional[str]:
+        """Return latest version of Home Assistant."""
         return self._data.get(ATTR_HOMEASSISTANT)
 
     @property
-    def version_hassio(self):
-        """Return last version of Hass.io."""
+    def version_hassio(self) -> Optional[str]:
+        """Return latest version of Hass.io."""
         return self._data.get(ATTR_HASSIO)
 
     @property
-    def version_hassos(self):
-        """Return last version of HassOS."""
+    def version_hassos(self) -> Optional[str]:
+        """Return latest version of HassOS."""
         return self._data.get(ATTR_HASSOS)
 
     @property
-    def version_hassos_cli(self):
-        """Return last version of HassOS cli."""
+    def version_hassos_cli(self) -> Optional[str]:
+        """Return latest version of HassOS cli."""
         return self._data.get(ATTR_HASSOS_CLI)
 
     @property
-    def channel(self):
+    def version_dns(self) -> Optional[str]:
+        """Return latest version of Hass.io DNS."""
+        return self._data.get(ATTR_DNS)
+
+    @property
+    def channel(self) -> str:
         """Return upstream channel of Hass.io instance."""
         return self._data[ATTR_CHANNEL]
 
     @channel.setter
-    def channel(self, value):
+    def channel(self, value: str):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
 
@@ -104,6 +111,7 @@ class Updater(JsonConfig, CoreSysAttributes):
         try:
             # update supervisor version
             self._data[ATTR_HASSIO] = data["supervisor"]
+            self._data[ATTR_DNS] = data["dns"]
 
             # update Home Assistant version
             self._data[ATTR_HOMEASSISTANT] = data["homeassistant"][machine]
