@@ -10,5 +10,5 @@ gitpython==2.1.13
 pytz==2019.2
 pyudev==0.21.0
 uvloop==0.12.2
-voluptuous==0.11.5
+voluptuous==0.11.7
 ptvsd==4.3.0
