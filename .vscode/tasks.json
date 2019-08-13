@@ -4,7 +4,7 @@
         {
             "label": "Run Testenv",
             "type": "shell",
-            "command": "./script/test_env.sh",
+            "command": "./scripts/test_env.sh",
             "group": {
                 "kind": "test",
                 "isDefault": true,
@@ -32,7 +32,7 @@
         {
             "label": "Update UI",
             "type": "shell",
-            "command": "./script/update-frontend.sh",
+            "command": "./scripts/update-frontend.sh",
             "group": {
                 "kind": "build",
                 "isDefault": true
