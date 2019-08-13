@@ -100,6 +100,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
 
+        # Start is not Running
+        if await self.instance.is_running():
+            return
+        await self.start()
+
     async def unload(self) -> None:
         """Unload DNS forwarder."""
         await self.forwarder.stop()
