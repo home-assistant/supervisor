@@ -56,14 +56,19 @@ function stop_docker() {
 
 
 function build_supervisor() {
-    docker pull homeassistant/amd64-builder:latest
+    docker pull homeassistant/amd64-builder:dev
 
     docker run --rm --privileged \
         -v /run/docker.sock:/run/docker.sock -v "$(pwd):/data" \
-        homeassistant/amd64-builder:latest \
+        homeassistant/amd64-builder:dev \
             --supervisor 3.7-alpine3.10 --version dev \
             -t /data --test --amd64 \
             --no-cache --docker-hub homeassistant
+}
+
+
+function install_cli() {
+    docker pull homeassistant/amd64-hassio-cli:dev
 }
 
 
@@ -77,6 +82,7 @@ function setup_test_env() {
         -v /run/docker.sock:/run/docker.sock \
         -v /run/dbus:/run/dbus \
         -v "$(pwd)/test_data":/data \
+        -v /etc/machine-id:/etc/machine-id:ro \
         -e SUPERVISOR_SHARE="$(pwd)/test_data" \
         -e SUPERVISOR_NAME=hassio_supervisor \
         -e SUPERVISOR_DEV=1 \
@@ -91,5 +97,6 @@ trap "stop_docker" ERR
 
 
 build_supervisor
+install_cli
 setup_test_env
 stop_docker

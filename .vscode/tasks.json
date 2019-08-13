@@ -2,9 +2,23 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Preview",
+            "label": "Run Testenv",
             "type": "shell",
             "command": "./script/test_env.sh",
+            "group": {
+                "kind": "test",
+                "isDefault": true,
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Testenv CLI",
+            "type": "shell",
+            "command": "docker run --rm -ti -v /etc/machine-id:/etc/machine-id --network=hassio --add-host hassio:172.30.32.2 homeassistant/amd64-hassio-cli:dev",
             "group": {
                 "kind": "test",
                 "isDefault": true,
