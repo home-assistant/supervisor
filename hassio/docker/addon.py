@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
+NO_ADDDRESS = ip_address("0.0.0.0")
 
 
 class DockerAddon(DockerInterface):
@@ -62,7 +63,7 @@ class DockerAddon(DockerInterface):
                 self._meta["NetworkSettings"]["Networks"]["hassio"]["IPAddress"]
             )
         except (KeyError, TypeError, ValueError):
-            return ip_address("0.0.0.0")
+            return NO_ADDDRESS
 
     @property
     def timeout(self) -> int:
@@ -345,6 +346,9 @@ class DockerAddon(DockerInterface):
         self._meta = docker_container.attrs
         _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
 
+        # Write data to DNS server
+        self.sys_dns.add_host(ipv4=self.ip_address, names=[self.addon.hostname])
+
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
     ) -> None:
@@ -462,3 +466,12 @@ class DockerAddon(DockerInterface):
         except OSError as err:
             _LOGGER.error("Can't write to %s stdin: %s", self.name, err)
             raise DockerAPIError() from None
+
+    def _stop(self, remove_container=True) -> None:
+        """Stop/remove Docker container.
+
+        Need run inside executor.
+        """
+        if self.ip_address != NO_ADDDRESS:
+            self.sys_dns.remove_host(ipv4=self.ip_address)
+        super()._stop(remove_container)
