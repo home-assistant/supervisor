@@ -9,7 +9,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Dict, Optional
+from typing import Any, Awaitable, Dict, List, Optional
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -35,6 +35,7 @@ from ..const import (
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
+    DNS_SUFFIX,
     STATE_NONE,
     STATE_STARTED,
     STATE_STOPPED,
@@ -118,6 +119,11 @@ class Addon(AddonModel):
     def version(self) -> Optional[str]:
         """Return installed version."""
         return self.persist[ATTR_VERSION]
+
+    @property
+    def dns(self) -> List[str]:
+        """Return list of DNS name for that add-on."""
+        return [f"{self.hostname}.{DNS_SUFFIX}"]
 
     @property
     def options(self) -> Dict[str, Any]:

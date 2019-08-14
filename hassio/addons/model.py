@@ -115,6 +115,11 @@ class AddonModel(CoreSysAttributes):
         return self.slug.replace("_", "-")
 
     @property
+    def dns(self) -> List[str]:
+        """Return list of DNS name for that add-on."""
+        return []
+
+    @property
     def timeout(self) -> int:
         """Return timeout of addon for docker stop."""
         return self.data[ATTR_TIMEOUT]
