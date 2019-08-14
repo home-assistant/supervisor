@@ -69,7 +69,7 @@ class DockerStats:
     @property
     def cpu_percent(self):
         """Return CPU percent."""
-        return self._cpu
+        return round(self._cpu, 2)
 
     @property
     def memory_usage(self):
@@ -84,7 +84,7 @@ class DockerStats:
     @property
     def memory_percent(self):
         """Return memory usage in percent."""
-        return self._memory_percent
+        return round(self._memory_percent, 2)
 
     @property
     def network_rx(self):
