@@ -73,7 +73,7 @@ function install_cli() {
 
 
 function setup_test_env() {
-    mkdir -p test_data
+    mkdir -p /workspaces/test_hassio
 
     docker run --rm --privileged \
         --name hassio_supervisor \
@@ -81,9 +81,9 @@ function setup_test_env() {
         --security-opt apparmor:unconfined \
         -v /run/docker.sock:/run/docker.sock \
         -v /run/dbus:/run/dbus \
-        -v "$(pwd)/test_data":/data \
+        -v "/workspaces/test_hassio":/data \
         -v /etc/machine-id:/etc/machine-id:ro \
-        -e SUPERVISOR_SHARE="$(pwd)/test_data" \
+        -e SUPERVISOR_SHARE="/workspaces/test_hassio" \
         -e SUPERVISOR_NAME=hassio_supervisor \
         -e SUPERVISOR_DEV=1 \
         -e HOMEASSISTANT_REPOSITORY="homeassistant/qemux86-64-homeassistant" \
