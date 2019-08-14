@@ -15,7 +15,7 @@ class DBusManager(CoreSysAttributes):
 
         self._systemd = Systemd()
         self._hostname = Hostname()
-        self._rauc = Rauc()
+        self._rauc = Rauc(coresys)
 
     @property
     def systemd(self):
