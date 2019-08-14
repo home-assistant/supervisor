@@ -142,6 +142,7 @@ class DBus:
         data = await self._send(command)
 
         # Parse and return data
+        _LOGGER.debug("Receive from %s: %s", method, data)
         return self.parse_gvariant(data)
 
     async def get_properties(self, interface):

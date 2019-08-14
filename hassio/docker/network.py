@@ -42,6 +42,11 @@ class DockerNetwork:
         """Return supervisor of the network."""
         return DOCKER_NETWORK_MASK[2]
 
+    @property
+    def dns(self) -> IPv4Address:
+        """Return dns of the network."""
+        return DOCKER_NETWORK_MASK[3]
+
     def _get_network(self) -> docker.models.networks.Network:
         """Get HassIO network."""
         try:

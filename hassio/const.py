@@ -3,7 +3,7 @@ from pathlib import Path
 from ipaddress import ip_network
 
 
-HASSIO_VERSION = "173"
+HASSIO_VERSION = "174"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
@@ -24,12 +24,16 @@ FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
 FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
 FILE_HASSIO_DISCOVERY = Path(HASSIO_DATA, "discovery.json")
 FILE_HASSIO_INGRESS = Path(HASSIO_DATA, "ingress.json")
+FILE_HASSIO_DNS = Path(HASSIO_DATA, "dns.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
+
+DNS_SERVERS = ["dns://8.8.8.8", "dns://1.1.1.1"]
+DNS_SUFFIX = "local.hass.io"
 
 LABEL_VERSION = "io.hass.version"
 LABEL_ARCH = "io.hass.arch"
@@ -86,6 +90,7 @@ ATTR_VERSION_LATEST = "version_latest"
 ATTR_AUTO_UART = "auto_uart"
 ATTR_LAST_BOOT = "last_boot"
 ATTR_LAST_VERSION = "last_version"
+ATTR_LATEST_VERSION = "latest_version"
 ATTR_CHANNEL = "channel"
 ATTR_NAME = "name"
 ATTR_SLUG = "slug"
@@ -159,6 +164,7 @@ ATTR_NETWORK_RX = "network_rx"
 ATTR_NETWORK_TX = "network_tx"
 ATTR_MEMORY_LIMIT = "memory_limit"
 ATTR_MEMORY_USAGE = "memory_usage"
+ATTR_MEMORY_PERCENT = "memory_percent"
 ATTR_BLK_READ = "blk_read"
 ATTR_BLK_WRITE = "blk_write"
 ATTR_ADDON = "addon"
@@ -210,6 +216,9 @@ ATTR_ADMIN = "admin"
 ATTR_PANELS = "panels"
 ATTR_DEBUG = "debug"
 ATTR_DEBUG_BLOCK = "debug_block"
+ATTR_DNS = "dns"
+ATTR_SERVERS = "servers"
+ATTR_UDEV = "udev"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

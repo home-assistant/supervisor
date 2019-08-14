@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
+NO_ADDDRESS = ip_address("0.0.0.0")
 
 
 class DockerAddon(DockerInterface):
@@ -62,7 +63,7 @@ class DockerAddon(DockerInterface):
                 self._meta["NetworkSettings"]["Networks"]["hassio"]["IPAddress"]
             )
         except (KeyError, TypeError, ValueError):
-            return ip_address("0.0.0.0")
+            return NO_ADDDRESS
 
     @property
     def timeout(self) -> int:
@@ -101,11 +102,6 @@ class DockerAddon(DockerInterface):
         return not self.addon.protected and self.addon.with_full_access
 
     @property
-    def hostname(self) -> str:
-        """Return slug/id of add-on."""
-        return self.addon.slug.replace("_", "-")
-
-    @property
     def environment(self) -> Dict[str, str]:
         """Return environment for Docker add-on."""
         addon_env = self.addon.environment or {}
@@ -139,7 +135,14 @@ class DockerAddon(DockerInterface):
 
         # Auto mapping UART devices
         if self.addon.auto_uart:
-            for device in self.sys_hardware.serial_devices:
+            if self.addon.with_udev:
+                serial_devs = self.sys_hardware.serial_devices
+            else:
+                serial_devs = (
+                    self.sys_hardware.serial_devices | self.sys_hardware.serial_by_id
+                )
+
+            for device in serial_devs:
                 devices.append(f"{device}:{device}:rwm")
 
         # Return None if no devices is present
@@ -186,10 +189,7 @@ class DockerAddon(DockerInterface):
     @property
     def network_mapping(self) -> Dict[str, str]:
         """Return hosts mapping."""
-        return {
-            "homeassistant": self.sys_docker.network.gateway,
-            "hassio": self.sys_docker.network.supervisor,
-        }
+        return {"hassio": self.sys_docker.network.supervisor}
 
     @property
     def network_mode(self) -> Optional[str]:
@@ -329,7 +329,7 @@ class DockerAddon(DockerInterface):
             self.image,
             version=self.addon.version,
             name=self.name,
-            hostname=self.hostname,
+            hostname=self.addon.hostname,
             detach=True,
             init=True,
             privileged=self.full_access,
@@ -349,6 +349,9 @@ class DockerAddon(DockerInterface):
 
         self._meta = docker_container.attrs
         _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
+
+        # Write data to DNS server
+        self.sys_dns.add_host(ipv4=self.ip_address, names=[self.addon.hostname])
 
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
@@ -467,3 +470,12 @@ class DockerAddon(DockerInterface):
         except OSError as err:
             _LOGGER.error("Can't write to %s stdin: %s", self.name, err)
             raise DockerAPIError() from None
+
+    def _stop(self, remove_container=True) -> None:
+        """Stop/remove Docker container.
+
+        Need run inside executor.
+        """
+        if self.ip_address != NO_ADDDRESS:
+            self.sys_dns.delete_host(ipv4=self.ip_address)
+        super()._stop(remove_container)

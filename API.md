@@ -105,6 +105,7 @@ Output is the raw docker log.
     "cpu_percent": 0.0,
     "memory_usage": 283123,
     "memory_limit": 329392,
+    "memory_percent": 1.4,
     "network_tx": 0,
     "network_rx": 0,
     "blk_read": 0,
@@ -421,6 +422,7 @@ Proxy to real websocket instance.
     "cpu_percent": 0.0,
     "memory_usage": 283123,
     "memory_limit": 329392,
+    "memory_percent": 1.4,
     "network_tx": 0,
     "network_rx": 0,
     "blk_read": 0,
@@ -473,6 +475,8 @@ Get all available addons.
 {
     "name": "xy bla",
     "slug": "xdssd_xybla",
+    "hostname": "xdssd-xybla",
+    "dns": [],
     "description": "description",
     "long_description": "null|markdown",
     "auto_update": "bool",
@@ -498,6 +502,7 @@ Get all available addons.
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "apparmor": "disable|default|profile",
     "devices": ["/dev/xy"],
+    "udev": "bool",
     "auto_uart": "bool",
     "icon": "bool",
     "logo": "bool",
@@ -593,6 +598,7 @@ Write data to add-on stdin
     "cpu_percent": 0.0,
     "memory_usage": 283123,
     "memory_limit": 329392,
+    "memory_percent": 1.4,
     "network_tx": 0,
     "network_rx": 0,
     "blk_read": 0,
@@ -736,6 +742,48 @@ return:
     "channel": "stable|beta|dev",
     "logging": "debug|info|warning|error|critical",
     "timezone": "Europe/Zurich"
+}
+```
+
+### DNS
+
+- GET `/dns/info`
+```json
+{
+    "host": "ip-address",
+    "version": "1",
+    "latest_version": "2",
+    "servers": ["dns://8.8.8.8"]
+}
+```
+
+- POST `/dns/options`
+```json
+{
+    "servers": ["dns://8.8.8.8"]
+}
+```
+
+- POST `/dns/update`
+```json
+{
+    "version": "VERSION"
+}
+```
+
+- GET `/dns/logs`
+
+- GET `/dns/stats`
+```json
+{
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "memory_percent": 1.4,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
 }
 ```
 

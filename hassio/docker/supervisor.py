@@ -38,7 +38,9 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
 
         self._meta = docker_container.attrs
         _LOGGER.info(
-            "Attach to Supervisor %s with version %s", self.image, self.version
+            "Attach to Supervisor %s with version %s",
+            self.image,
+            self.sys_supervisor.version,
         )
 
         # If already attach

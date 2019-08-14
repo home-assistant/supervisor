@@ -51,6 +51,7 @@ from ..const import (
     ATTR_STDIN,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
+    ATTR_UDEV,
     ATTR_URL,
     ATTR_VERSION,
     ATTR_WEBUI,
@@ -108,6 +109,16 @@ class AddonModel(CoreSysAttributes):
     def name(self) -> str:
         """Return name of add-on."""
         return self.data[ATTR_NAME]
+
+    @property
+    def hostname(self) -> str:
+        """Return slug/id of add-on."""
+        return self.slug.replace("_", "-")
+
+    @property
+    def dns(self) -> List[str]:
+        """Return list of DNS name for that add-on."""
+        return []
 
     @property
     def timeout(self) -> int:
@@ -332,6 +343,11 @@ class AddonModel(CoreSysAttributes):
     def with_gpio(self) -> bool:
         """Return True if the add-on access to GPIO interface."""
         return self.data[ATTR_GPIO]
+
+    @property
+    def with_udev(self) -> bool:
+        """Return True if the add-on have his own udev."""
+        return self.data[ATTR_UDEV]
 
     @property
     def with_kernel_modules(self) -> bool:
