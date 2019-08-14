@@ -135,7 +135,14 @@ class DockerAddon(DockerInterface):
 
         # Auto mapping UART devices
         if self.addon.auto_uart:
-            for device in self.sys_hardware.serial_devices:
+            if self.addon.with_udev:
+                serial_devs = self.sys_hardware.serial_devices
+            else:
+                serial_devs = (
+                    self.sys_hardware.serial_devices | self.sys_hardware.serial_by_id
+                )
+
+            for device in serial_devs:
                 devices.append(f"{device}:{device}:rwm")
 
         # Return None if no devices is present

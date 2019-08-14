@@ -3,25 +3,26 @@ from datetime import datetime
 import logging
 from pathlib import Path
 import re
+from typing import Any, Dict, Optional, Set
 
 import pyudev
 
-from ..const import ATTR_NAME, ATTR_TYPE, ATTR_DEVICES, CHAN_ID, CHAN_TYPE
+from ..const import ATTR_DEVICES, ATTR_NAME, ATTR_TYPE, CHAN_ID, CHAN_TYPE
 
 _LOGGER = logging.getLogger(__name__)
 
-ASOUND_CARDS = Path("/proc/asound/cards")
-RE_CARDS = re.compile(r"(\d+) \[(\w*) *\]: (.*\w)")
+ASOUND_CARDS: Path = Path("/proc/asound/cards")
+RE_CARDS: re.Pattern = re.compile(r"(\d+) \[(\w*) *\]: (.*\w)")
 
-ASOUND_DEVICES = Path("/proc/asound/devices")
-RE_DEVICES = re.compile(r"\[.*(\d+)- (\d+).*\]: ([\w ]*)")
+ASOUND_DEVICES: Path = Path("/proc/asound/devices")
+RE_DEVICES: re.Pattern = re.compile(r"\[.*(\d+)- (\d+).*\]: ([\w ]*)")
 
-PROC_STAT = Path("/proc/stat")
-RE_BOOT_TIME = re.compile(r"btime (\d+)")
+PROC_STAT: Path = Path("/proc/stat")
+RE_BOOT_TIME: re.Pattern = re.compile(r"btime (\d+)")
 
-GPIO_DEVICES = Path("/sys/class/gpio")
-SOC_DEVICES = Path("/sys/devices/platform/soc")
-RE_TTY = re.compile(r"tty[A-Z]+")
+GPIO_DEVICES: Path = Path("/sys/class/gpio")
+SOC_DEVICES: Path = Path("/sys/devices/platform/soc")
+RE_TTY: re.Pattern = re.compile(r"tty[A-Z]+")
 
 
 class Hardware:
@@ -32,13 +33,21 @@ class Hardware:
         self.context = pyudev.Context()
 
     @property
-    def serial_devices(self):
+    def serial_devices(self) -> Set[str]:
         """Return all serial and connected devices."""
-        dev_list = set()
+        dev_list: Set[str] = set()
         for device in self.context.list_devices(subsystem="tty"):
             if "ID_VENDOR" in device.properties or RE_TTY.search(device.device_node):
                 dev_list.add(device.device_node)
 
+        return dev_list
+
+    @property
+    def serial_by_id(self) -> Set[str]:
+        """Return all /dev/serial/by-id for serial devices."""
+        dev_list: Set[str] = set()
+        for device in self.context.list_devices(subsystem="tty"):
+            if "ID_VENDOR" in device.properties or RE_TTY.search(device.device_node):
                 # Add /dev/serial/by-id devlink for current device
                 for dev_link in device.device_links:
                     if not dev_link.startswith("/dev/serial/by-id"):
@@ -48,9 +57,9 @@ class Hardware:
         return dev_list
 
     @property
-    def input_devices(self):
+    def input_devices(self) -> Set[str]:
         """Return all input devices."""
-        dev_list = set()
+        dev_list: Set[str] = set()
         for device in self.context.list_devices(subsystem="input"):
             if "NAME" in device.properties:
                 dev_list.add(device.properties["NAME"].replace('"', ""))
@@ -58,9 +67,9 @@ class Hardware:
         return dev_list
 
     @property
-    def disk_devices(self):
+    def disk_devices(self) -> Set[str]:
         """Return all disk devices."""
-        dev_list = set()
+        dev_list: Set[str] = set()
         for device in self.context.list_devices(subsystem="block"):
             if "ID_NAME" in device.properties:
                 dev_list.add(device.device_node)
@@ -68,12 +77,12 @@ class Hardware:
         return dev_list
 
     @property
-    def support_audio(self):
+    def support_audio(self) -> bool:
         """Return True if the system have audio support."""
         return bool(self.audio_devices)
 
     @property
-    def audio_devices(self):
+    def audio_devices(self) -> Dict[str, Any]:
         """Return all available audio interfaces."""
         if not ASOUND_CARDS.exists():
             _LOGGER.debug("No audio devices found")
@@ -86,7 +95,7 @@ class Hardware:
             _LOGGER.error("Can't read asound data: %s", err)
             return {}
 
-        audio_list = {}
+        audio_list: Dict[str, Any] = {}
 
         # parse cards
         for match in RE_CARDS.finditer(cards):
@@ -109,31 +118,31 @@ class Hardware:
         return audio_list
 
     @property
-    def support_gpio(self):
+    def support_gpio(self) -> bool:
         """Return True if device support GPIOs."""
         return SOC_DEVICES.exists() and GPIO_DEVICES.exists()
 
     @property
-    def gpio_devices(self):
+    def gpio_devices(self) -> Set[str]:
         """Return list of GPIO interface on device."""
-        dev_list = set()
+        dev_list: Set[str] = set()
         for interface in GPIO_DEVICES.glob("gpio*"):
             dev_list.add(interface.name)
 
         return dev_list
 
     @property
-    def last_boot(self):
+    def last_boot(self) -> Optional[str]:
         """Return last boot time."""
         try:
             with PROC_STAT.open("r") as stat_file:
-                stats = stat_file.read()
+                stats: str = stat_file.read()
         except OSError as err:
             _LOGGER.error("Can't read stat data: %s", err)
             return None
 
         # parse stat file
-        found = RE_BOOT_TIME.search(stats)
+        found: Optional[re.Match] = RE_BOOT_TIME.search(stats)
         if not found:
             _LOGGER.error("Can't found last boot time!")
             return None
