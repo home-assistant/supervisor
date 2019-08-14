@@ -218,6 +218,7 @@ ATTR_DEBUG = "debug"
 ATTR_DEBUG_BLOCK = "debug_block"
 ATTR_DNS = "dns"
 ATTR_SERVERS = "servers"
+ATTR_UDEV = "udev"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

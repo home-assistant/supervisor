@@ -51,6 +51,7 @@ from ..const import (
     ATTR_STDIN,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
+    ATTR_UDEV,
     ATTR_URL,
     ATTR_VERSION,
     ATTR_WEBUI,
@@ -342,6 +343,11 @@ class AddonModel(CoreSysAttributes):
     def with_gpio(self) -> bool:
         """Return True if the add-on access to GPIO interface."""
         return self.data[ATTR_GPIO]
+
+    @property
+    def with_udev(self) -> bool:
+        """Return True if the add-on have his own udev."""
+        return self.data[ATTR_UDEV]
 
     @property
     def with_kernel_modules(self) -> bool:
