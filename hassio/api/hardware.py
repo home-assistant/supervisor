@@ -22,7 +22,9 @@ class APIHardware(CoreSysAttributes):
     async def info(self, request):
         """Show hardware info."""
         return {
-            ATTR_SERIAL: list(self.sys_hardware.serial_devices),
+            ATTR_SERIAL: list(
+                self.sys_hardware.serial_devices | self.sys_hardware.serial_by_id
+            ),
             ATTR_INPUT: list(self.sys_hardware.input_devices),
             ATTR_DISK: list(self.sys_hardware.disk_devices),
             ATTR_GPIO: list(self.sys_hardware.gpio_devices),

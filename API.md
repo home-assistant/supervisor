@@ -502,6 +502,7 @@ Get all available addons.
     "privileged": ["NET_ADMIN", "SYS_ADMIN"],
     "apparmor": "disable|default|profile",
     "devices": ["/dev/xy"],
+    "udev": "bool",
     "auto_uart": "bool",
     "icon": "bool",
     "logo": "bool",
