@@ -141,6 +141,8 @@ def initialize_system_data(coresys: CoreSys):
     if bool(os.environ.get("SUPERVISOR_DEV", 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
         coresys.updater.channel = CHANNEL_DEV
+        coresys.config.logging = "debug"
+        coresys.config.debug = True
 
 
 def migrate_system_env(coresys: CoreSys):

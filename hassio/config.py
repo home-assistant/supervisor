@@ -100,7 +100,7 @@ class CoreConfig(JsonConfig):
     def modify_log_level(self) -> None:
         """Change log level."""
         lvl = getattr(logging, self.logging.upper())
-        logging.basicConfig(level=lvl)
+        logging.getLogger("hassio").setLevel(lvl)
 
     @property
     def last_boot(self):
