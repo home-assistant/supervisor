@@ -60,7 +60,7 @@
         {
             "label": "Flake8",
             "type": "shell",
-            "command": "flake8 homeassistant tests",
+            "command": "flake8 hassio tests",
             "group": {
                 "kind": "test",
                 "isDefault": true,
@@ -74,7 +74,7 @@
         {
             "label": "Pylint",
             "type": "shell",
-            "command": "pylint homeassistant",
+            "command": "pylint hassio",
             "dependsOn": [
                 "Install all Requirements"
             ],

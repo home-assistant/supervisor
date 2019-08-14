@@ -20,6 +20,12 @@ class DockerStats:
             self._memory_usage = 0
             self._memory_limit = 0
 
+        # Calculate percent usage
+        if self._memory_limit != 0:
+            self._memory_percent = self._memory_usage / self._memory_limit * 100.0
+        else:
+            self._memory_percent = 0
+
         with suppress(KeyError):
             self._calc_cpu_percent(stats)
 
@@ -39,13 +45,12 @@ class DockerStats:
             stats["cpu_stats"]["system_cpu_usage"]
             - stats["precpu_stats"]["system_cpu_usage"]
         )
+        online_cpu = stats["cpu_stats"]["online_cpus"]
 
+        if online_cpu == 0.0:
+            online_cpu = len(stats["cpu_stats"]["cpu_usage"]["percpu_usage"])
         if system_delta > 0.0 and cpu_delta > 0.0:
-            self._cpu = (
-                (cpu_delta / system_delta)
-                * len(stats["cpu_stats"]["cpu_usage"]["percpu_usage"])
-                * 100.0
-            )
+            self._cpu = (cpu_delta / system_delta) * online_cpu * 100.0
 
     def _calc_network(self, networks):
         """Calculate Network IO stats."""
@@ -64,7 +69,7 @@ class DockerStats:
     @property
     def cpu_percent(self):
         """Return CPU percent."""
-        return self._cpu
+        return round(self._cpu, 2)
 
     @property
     def memory_usage(self):
@@ -75,6 +80,11 @@ class DockerStats:
     def memory_limit(self):
         """Return memory limit."""
         return self._memory_limit
+
+    @property
+    def memory_percent(self):
+        """Return memory usage in percent."""
+        return round(self._memory_percent, 2)
 
     @property
     def network_rx(self):
