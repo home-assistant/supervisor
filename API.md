@@ -474,6 +474,7 @@ Get all available addons.
     "name": "xy bla",
     "slug": "xdssd_xybla",
     "hostname": "xdssd-xybla",
+    "dns": [],
     "description": "description",
     "long_description": "null|markdown",
     "auto_update": "bool",
