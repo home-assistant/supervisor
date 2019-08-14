@@ -85,7 +85,7 @@ class Hardware:
     def audio_devices(self) -> Dict[str, Any]:
         """Return all available audio interfaces."""
         if not ASOUND_CARDS.exists():
-            _LOGGER.debug("No audio devices found")
+            _LOGGER.info("No audio devices found")
             return {}
 
         try:
