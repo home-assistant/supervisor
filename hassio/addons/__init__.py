@@ -11,6 +11,7 @@ from ..exceptions import (
     AddonsError,
     AddonsNotSupportedError,
     DockerAPIError,
+    HomeAssistantAPIError,
     HostAppArmorError,
 )
 from ..store.addon import AddonStore
@@ -155,8 +156,15 @@ class AddonManager(CoreSysAttributes):
         with suppress(HostAppArmorError):
             await addon.uninstall_apparmor()
 
+        # Cleanup Ingress panel from sidebar
+        if addon.ingress_panel:
+            addon.ingress_panel = False
+            with suppress(HomeAssistantAPIError):
+                await self.sys_ingress.update_hass_panel(addon)
+
         # Cleanup internal data
         addon.remove_discovery()
+
         self.data.uninstall(addon)
         self.local.pop(slug)
 
