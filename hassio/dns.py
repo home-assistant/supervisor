@@ -324,7 +324,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 for line in resolv.readlines():
                     resolv_lines.append(line)
         except OSError as err:
-            _LOGGER.error("Can't read local resolve: %s", err)
+            _LOGGER.error("Can't read local resolv: %s", err)
             raise CoreDNSError() from None
 
         if nameserver in resolv_lines:
@@ -338,5 +338,5 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 for line in resolv_lines:
                     resolv.write(line)
         except OSError as err:
-            _LOGGER.error("Can't write local resolve: %s", err)
+            _LOGGER.error("Can't write local resolv: %s", err)
             raise CoreDNSError() from None
