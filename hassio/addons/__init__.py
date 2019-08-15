@@ -156,20 +156,17 @@ class AddonManager(CoreSysAttributes):
         with suppress(HostAppArmorError):
             await addon.uninstall_apparmor()
 
-        # Cleanup internal data
-        addon.remove_discovery()
-        self.data.uninstall(addon)
-        self.local.pop(slug)
-
         # Cleanup Ingress panel from sidebar
         if addon.ingress_panel:
-            try:
-                addon.ingress_panel = False
+            addon.ingress_panel = False
+            with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
-            except HomeAssistantAPIError:
-                _LOGGER.warning(
-                    "Sidebar panel for add-on '%s' could not be removed", slug
-                )
+
+        # Cleanup internal data
+        addon.remove_discovery()
+
+        self.data.uninstall(addon)
+        self.local.pop(slug)
 
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
