@@ -266,7 +266,7 @@ class DockerInterface(CoreSysAttributes):
         )
 
         # Update docker image
-        self._install(tag, image, latest)
+        self._install(tag, image=image, latest=latest)
 
         # Stop container & cleanup
         with suppress(DockerAPIError):
