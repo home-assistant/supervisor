@@ -11,6 +11,7 @@ from ..exceptions import (
     AddonsError,
     AddonsNotSupportedError,
     DockerAPIError,
+    HomeAssistantAPIError,
     HostAppArmorError,
 )
 from ..store.addon import AddonStore
@@ -159,6 +160,16 @@ class AddonManager(CoreSysAttributes):
         addon.remove_discovery()
         self.data.uninstall(addon)
         self.local.pop(slug)
+
+        # Cleanup Ingress panel from sidebar
+        if addon.ingress_panel:
+            try:
+                addon.ingress_panel = False
+                await self.sys_ingress.update_hass_panel(addon)
+            except HomeAssistantAPIError:
+                _LOGGER.warning(
+                    "Sidebar panel for add-on '%s' could not be removed", slug
+                )
 
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
