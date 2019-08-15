@@ -74,6 +74,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """Return True if a task is in progress."""
         return self.instance.in_progress
 
+    @property
+    def need_update(self) -> bool:
+        """Return True if an update is available."""
+        return self.version != self.latest_version
+
     async def load(self) -> None:
         """Load DNS setup."""
         with suppress(CoreDNSError):
