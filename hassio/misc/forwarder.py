@@ -9,7 +9,7 @@ import async_timeout
 
 _LOGGER = logging.getLogger(__name__)
 
-COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:{!s}"
+COMMAND = "socat UDP-RECVFROM:53,fork UDP-SENDTO:{!s}:53"
 
 
 class DNSForward:

@@ -19,6 +19,7 @@ from .validate import SCHEMA_DNS_CONFIG
 _LOGGER = logging.getLogger(__name__)
 
 COREDNS_TMPL: Path = Path(__file__).parents[0].joinpath("data/coredns.tmpl")
+RESOLV_CONF: Path = Path("/etc/resolv.conf")
 
 
 class CoreDNS(JsonConfig, CoreSysAttributes):
@@ -73,6 +74,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """Return True if a task is in progress."""
         return self.instance.in_progress
 
+    @property
+    def need_update(self) -> bool:
+        """Return True if an update is available."""
+        return self.version != self.latest_version
+
     async def load(self) -> None:
         """Load DNS setup."""
         with suppress(CoreDNSError):
@@ -99,6 +105,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
+
+        with suppress(CoreDNSError):
+            self._update_local_resolv()
 
         # Start is not Running
         if await self.instance.is_running():
@@ -293,7 +302,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """
         return self.instance.is_fails()
 
-    async def repair(self):
+    async def repair(self) -> None:
         """Repair CoreDNS plugin."""
         if await self.instance.exists():
             return
@@ -303,3 +312,31 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.install(self.version)
         except DockerAPIError:
             _LOGGER.error("Repairing of CoreDNS fails")
+
+    def _update_local_resolv(self) -> None:
+        """Update local resolv file."""
+        resolv_lines: List[str] = []
+        nameserver = f"nameserver {self.sys_docker.network.dns!s}"
+
+        # Read resolv config
+        try:
+            with RESOLV_CONF.open("r") as resolv:
+                for line in resolv.readlines():
+                    resolv_lines.append(line)
+        except OSError as err:
+            _LOGGER.error("Can't read local resolve: %s", err)
+            raise CoreDNSError() from None
+
+        if nameserver in resolv_lines:
+            return
+        _LOGGER.info("Update resolv from Supervisor")
+
+        # Write config back to resolv
+        resolv_lines.append(nameserver)
+        try:
+            with RESOLV_CONF.open("w") as resolv:
+                for line in resolv_lines:
+                    resolv.write(line)
+        except OSError as err:
+            _LOGGER.error("Can't write local resolve: %s", err)
+            raise CoreDNSError() from None
