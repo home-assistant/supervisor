@@ -67,6 +67,7 @@ ADDONS_ROLE_ACCESS = {
     ),
     ROLE_MANAGER: re.compile(
         r"^(?:"
+        r"|/dns/.*"
         r"|/homeassistant/.+"
         r"|/host/.+"
         r"|/hardware/.+"
