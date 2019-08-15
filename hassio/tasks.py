@@ -11,12 +11,13 @@ HASS_WATCHDOG_API = "HASS_WATCHDOG_API"
 
 RUN_UPDATE_SUPERVISOR = 29100
 RUN_UPDATE_ADDONS = 57600
-RUN_UPDATE_HASSOSCLI = 29100
+RUN_UPDATE_HASSOSCLI = 28100
+RUN_UPDATE_DNS = 30100
 
-RUN_RELOAD_ADDONS = 21600
+RUN_RELOAD_ADDONS = 10800
 RUN_RELOAD_SNAPSHOTS = 72000
 RUN_RELOAD_HOST = 72000
-RUN_RELOAD_UPDATER = 21600
+RUN_RELOAD_UPDATER = 7200
 RUN_RELOAD_INGRESS = 930
 
 RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
@@ -49,6 +50,9 @@ class Tasks(CoreSysAttributes):
             self.sys_scheduler.register_task(
                 self._update_hassos_cli, RUN_UPDATE_HASSOSCLI
             )
+        )
+        self.jobs.add(
+            self.sys_scheduler.register_task(self._update_dns, RUN_UPDATE_DNS)
         )
 
         # Reload
@@ -201,6 +205,19 @@ class Tasks(CoreSysAttributes):
 
         _LOGGER.info("Found new HassOS CLI version")
         await self.sys_hassos.update_cli()
+
+    async def _update_dns(self):
+        """Check and run update of CoreDNS plugin."""
+        if not self.sys_dns.need_update:
+            return
+
+        # don't perform an update on dev channel
+        if self.sys_dev:
+            _LOGGER.warning("Ignore CoreDNS update on dev channel!")
+            return
+
+        _LOGGER.info("Found new CoreDNS plugin version")
+        await self.sys_dns.update()
 
     async def _watchdog_dns_docker(self):
         """Check running state of Docker and start if they is close."""
