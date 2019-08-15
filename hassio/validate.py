@@ -51,7 +51,8 @@ UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
 SHA256 = vol.Match(r"^[0-9a-f]{64}$")
 TOKEN = vol.Match(r"^[0-9a-f]{32,256}$")
 LOG_LEVEL = vol.In(["debug", "info", "warning", "error", "critical"])
-DNS_SERVER_LIST = vol.All([vol.Url()], vol.Length(max=8))
+DNS_URL = vol.Match(r"^dns://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+DNS_SERVER_LIST = vol.All([DNS_URL], vol.Length(max=8))
 
 
 def validate_repository(repository):
