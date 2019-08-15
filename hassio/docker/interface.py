@@ -250,7 +250,7 @@ class DockerInterface(CoreSysAttributes):
         self, tag: str, image: Optional[str] = None, latest: bool = False
     ) -> Awaitable[None]:
         """Update a Docker image."""
-        return self.sys_run_in_executor(self._update, tag, image)
+        return self.sys_run_in_executor(self._update, tag, image, latest)
 
     def _update(
         self, tag: str, image: Optional[str] = None, latest: bool = False
@@ -266,7 +266,7 @@ class DockerInterface(CoreSysAttributes):
         )
 
         # Update docker image
-        self._install(tag, image, latest)
+        self._install(tag, image=image, latest=latest)
 
         # Stop container & cleanup
         with suppress(DockerAPIError):
