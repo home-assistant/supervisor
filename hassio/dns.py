@@ -106,8 +106,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
 
-        # Can't execute after start
-        self.sys_loop.call_later(60, self._update_local_resolv)
+        with suppress(CoreDNSError):
+            self._update_local_resolv()
 
         # Start is not Running
         if await self.instance.is_running():
@@ -324,7 +324,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 for line in resolv.readlines():
                     resolv_lines.append(line)
         except OSError as err:
-            _LOGGER.error("Can't read local resolv: %s", err)
+            _LOGGER.error("Can't read local resolve: %s", err)
             raise CoreDNSError() from None
 
         if nameserver in resolv_lines:
@@ -338,5 +338,5 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 for line in resolv_lines:
                     resolv.write(line)
         except OSError as err:
-            _LOGGER.error("Can't write local resolv: %s", err)
+            _LOGGER.error("Can't write local resolve: %s", err)
             raise CoreDNSError() from None
