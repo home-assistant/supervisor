@@ -2,7 +2,7 @@
 import asyncio
 import logging
 from contextlib import suppress
-from ipaddress import IPv4Address, AddressValueError
+from ipaddress import IPv4Address
 from pathlib import Path
 from string import Template
 from typing import Awaitable, Dict, List, Optional
@@ -81,8 +81,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Load DNS setup."""
-        with suppress(CoreDNSError):
-            self._import_hosts()
+        self._init_hosts()
 
         # Check CoreDNS state
         try:
@@ -181,13 +180,15 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't start CoreDNS plugin")
             raise CoreDNSError() from None
 
-    def reset(self) -> None:
+    async def reset(self) -> None:
         """Reset Config / Hosts."""
         self.servers = DNS_SERVERS
 
         with suppress(OSError):
             self.hosts.unlink()
-        self._import_hosts()
+        self._init_hosts()
+
+        await self.sys_addons.sync_dns()
 
     def _write_corefile(self) -> None:
         """Write CoreDNS config."""
@@ -207,43 +208,34 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't update corefile: %s", err)
             raise CoreDNSError() from None
 
-    def _import_hosts(self) -> None:
+    def _init_hosts(self) -> None:
         """Import hosts entry."""
         # Generate Default
-        if not self.hosts.exists():
-            self.add_host(self.sys_docker.network.supervisor, ["hassio", "supervisor"])
-            self.add_host(
-                self.sys_docker.network.gateway, ["homeassistant", "home-assistant"]
-            )
-            return
+        self.add_host(
+            self.sys_docker.network.supervisor, ["hassio", "supervisor"], write=False
+        )
+        self.add_host(
+            self.sys_docker.network.gateway,
+            ["homeassistant", "home-assistant"],
+            write=False,
+        )
 
-        # Import Exists host table
-        try:
-            with self.hosts.open("r") as hosts:
-                for line in hosts.readlines():
-                    try:
-                        data = line.split(" ")
-                        self._hosts[IPv4Address(data[0])] = data[1:]
-                    except AddressValueError:
-                        _LOGGER.warning("Fails to read %s", line)
-
-        except OSError as err:
-            _LOGGER.error("Can't read hosts file: %s", err)
-            raise CoreDNSError() from None
-
-    def _write_hosts(self) -> None:
+    def write_hosts(self) -> None:
         """Write hosts from memory to file."""
         try:
             with self.hosts.open("w") as hosts:
                 for address, hostnames in self._hosts.items():
                     host = " ".join(hostnames)
-                    hosts.write(f"{address!s} {host}")
+                    hosts.write(f"{address!s} {host}\n")
         except OSError as err:
             _LOGGER.error("Can't write hosts file: %s", err)
             raise CoreDNSError() from None
 
-    def add_host(self, ipv4: IPv4Address, names: List[str]) -> None:
+    def add_host(self, ipv4: IPv4Address, names: List[str], write: bool = True) -> None:
         """Add a new host entry."""
+        if not ipv4 or ipv4 == IPv4Address("0.0.0.0"):
+            return
+
         hostnames: List[str] = []
         for name in names:
             hostnames.append(name)
@@ -252,10 +244,14 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self._hosts[ipv4] = hostnames
         _LOGGER.debug("Add Host entry %s -> %s", ipv4, hostnames)
 
-        self._write_hosts()
+        if write:
+            self.write_hosts()
 
     def delete_host(
-        self, ipv4: Optional[IPv4Address] = None, host: Optional[str] = None
+        self,
+        ipv4: Optional[IPv4Address] = None,
+        host: Optional[str] = None,
+        write: bool = True,
     ) -> None:
         """Remove a entry from hosts."""
         if host:
@@ -270,7 +266,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.debug("Remove Host entry %s", ipv4)
             self._hosts.pop(ipv4, None)
 
-            self._write_hosts()
+            if write:
+                self.write_hosts()
         else:
             _LOGGER.warning("Can't remove Host entry: %s/%s", ipv4, host)
 
@@ -336,7 +333,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         try:
             with RESOLV_CONF.open("w") as resolv:
                 for line in resolv_lines:
-                    resolv.write(line)
+                    resolv.write(f"{line}\n")
         except OSError as err:
             _LOGGER.error("Can't write local resolv: %s", err)
             raise CoreDNSError() from None
