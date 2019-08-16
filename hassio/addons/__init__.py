@@ -10,6 +10,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     AddonsError,
     AddonsNotSupportedError,
+    CoreDNSError,
     DockerAPIError,
     HomeAssistantAPIError,
     HostAppArmorError,
@@ -73,6 +74,9 @@ class AddonManager(CoreSysAttributes):
         _LOGGER.info("Found %d installed add-ons", len(tasks))
         if tasks:
             await asyncio.wait(tasks)
+
+        # Sync DNS
+        await self.sync_dns()
 
     async def boot(self, stage: str) -> None:
         """Boot add-ons with mode auto."""
@@ -299,3 +303,17 @@ class AddonManager(CoreSysAttributes):
             _LOGGER.error("Can't repair %s", addon.slug)
             with suppress(AddonsError):
                 await self.uninstall(addon.slug)
+
+    async def sync_dns(self) -> None:
+        """Sync add-ons DNS names."""
+        # Update hosts
+        for addon in self.installed:
+            if not await addon.is_running():
+                continue
+            self.sys_dns.add_host(
+                ipv4=addon.ip_address, names=[addon.hostname], write=False
+            )
+
+        # Write hosts files
+        with suppress(CoreDNSError):
+            self.sys_dns.write_hosts()
