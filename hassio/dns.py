@@ -257,7 +257,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         if old:
             _LOGGER.debug("Update Host entry %s -> %s", ipv4, hostnames)
-            self._hosts.pop(old, None)
+            self._hosts.remove(old)
         else:
             _LOGGER.debug("Add Host entry %s -> %s", ipv4, hostnames)
         self._hosts.append(entry)
@@ -276,7 +276,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             return
 
         _LOGGER.debug("Remove Host entry %s - %s", entry.ip_address, entry.names)
-        self._hosts.pop(entry, None)
+        self._hosts.remove(entry)
 
         # Update hosts file
         if write:
