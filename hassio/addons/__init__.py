@@ -308,7 +308,7 @@ class AddonManager(CoreSysAttributes):
         """Sync add-ons DNS names."""
         # Update hosts
         for addon in self.installed:
-            if not await addon.is_running():
+            if not await addon.instance.is_running():
                 continue
             self.sys_dns.add_host(
                 ipv4=addon.ip_address, names=[addon.hostname], write=False
