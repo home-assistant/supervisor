@@ -104,6 +104,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.info(
                 "No CoreDNS plugin Docker image %s found.", self.instance.image
             )
+            with suppress(CoreDNSError):
+                self.write_hosts()
 
             # Install CoreDNS
             with suppress(CoreDNSError):
@@ -235,8 +237,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         try:
             with self.hosts.open("w") as hosts:
                 for entry in self._hosts:
-                    host = " ".join(entry.names)
-                    hosts.write(f"{entry.ip_address!s} {host}\n")
+                    hosts.write(f"{entry.ip_address!s} {' '.join(entry.names)}\n")
         except OSError as err:
             _LOGGER.error("Can't write hosts file: %s", err)
             raise CoreDNSError() from None
