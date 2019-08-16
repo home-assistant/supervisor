@@ -319,7 +319,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         try:
             with RESOLV_CONF.open("r") as resolv:
                 for line in resolv.readlines():
-                    resolv_lines.append(line)
+                    if not line:
+                        continue
+                    resolv_lines.append(line.strip())
         except OSError as err:
             _LOGGER.error("Can't read local resolv: %s", err)
             raise CoreDNSError() from None
