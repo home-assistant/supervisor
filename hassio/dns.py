@@ -5,7 +5,9 @@ from contextlib import suppress
 from ipaddress import IPv4Address
 from pathlib import Path
 from string import Template
-from typing import Awaitable, Dict, List, Optional
+from typing import Awaitable, List, Optional
+
+import attr
 
 from .const import ATTR_SERVERS, ATTR_VERSION, DNS_SERVERS, FILE_HASSIO_DNS, DNS_SUFFIX
 from .coresys import CoreSys, CoreSysAttributes
@@ -22,6 +24,14 @@ COREDNS_TMPL: Path = Path(__file__).parents[0].joinpath("data/coredns.tmpl")
 RESOLV_CONF: Path = Path("/etc/resolv.conf")
 
 
+@attr.s
+class HostEntry:
+    """Single entry in hosts."""
+
+    ip_address: IPv4Address = attr.ib()
+    names: List[str] = attr.ib()
+
+
 class CoreDNS(JsonConfig, CoreSysAttributes):
     """Home Assistant core object for handle it."""
 
@@ -32,7 +42,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.instance: DockerDNS = DockerDNS(coresys)
         self.forwarder: DNSForward = DNSForward()
 
-        self._hosts: Dict[IPv4Address, List[str]] = {}
+        self._hosts: List[HostEntry] = []
 
     @property
     def corefile(self) -> Path:
@@ -224,9 +234,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """Write hosts from memory to file."""
         try:
             with self.hosts.open("w") as hosts:
-                for address, hostnames in self._hosts.items():
-                    host = " ".join(hostnames)
-                    hosts.write(f"{address!s} {host}\n")
+                for entry in self._hosts:
+                    host = " ".join(entry.names)
+                    hosts.write(f"{entry.ip_address!s} {host}\n")
         except OSError as err:
             _LOGGER.error("Can't write hosts file: %s", err)
             raise CoreDNSError() from None
@@ -241,35 +251,44 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             hostnames.append(name)
             hostnames.append(f"{name}.{DNS_SUFFIX}")
 
-        self._hosts[ipv4] = hostnames
-        _LOGGER.debug("Add Host entry %s -> %s", ipv4, hostnames)
+        # Generate host entry
+        entry = HostEntry(ipv4, hostnames)
+        old = self._search_host(hostnames)
 
+        if old:
+            _LOGGER.debug("Update Host entry %s -> %s", ipv4, hostnames)
+            self._hosts.pop(old, None)
+        else:
+            _LOGGER.debug("Add Host entry %s -> %s", ipv4, hostnames)
+        self._hosts.append(entry)
+
+        # Update hosts file
         if write:
             self.write_hosts()
 
-    def delete_host(
-        self,
-        ipv4: Optional[IPv4Address] = None,
-        host: Optional[str] = None,
-        write: bool = True,
-    ) -> None:
+    def delete_host(self, host: str, write: bool = True) -> None:
         """Remove a entry from hosts."""
-        if host:
-            for address, hostnames in self._hosts.items():
-                if host not in hostnames:
+        entry = self._search_host([host])
+
+        # No match on hosts
+        if not entry:
+            _LOGGER.warning("Can't remove Host entry: %s", host)
+            return
+
+        _LOGGER.debug("Remove Host entry %s - %s", entry.ip_address, entry.names)
+        self._hosts.pop(entry, None)
+
+        # Update hosts file
+        if write:
+            self.write_hosts()
+
+    def _search_host(self, names: List[str]) -> Optional[HostEntry]:
+        """Search a host entry."""
+        for entry in self._hosts:
+            for name in names:
+                if name not in entry.names:
                     continue
-                ipv4 = address
-                break
-
-        # Remove entry
-        if ipv4:
-            _LOGGER.debug("Remove Host entry %s", ipv4)
-            self._hosts.pop(ipv4, None)
-
-            if write:
-                self.write_hosts()
-        else:
-            _LOGGER.warning("Can't remove Host entry: %s/%s", ipv4, host)
+                return entry
 
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.

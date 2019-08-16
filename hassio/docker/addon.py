@@ -477,5 +477,5 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         if self.ip_address != NO_ADDDRESS:
-            self.sys_dns.delete_host(ipv4=self.ip_address)
+            self.sys_dns.delete_host(self.addon.hostname)
         super()._stop(remove_container)
