@@ -228,7 +228,7 @@ class Tasks(CoreSysAttributes):
 
         if await self.sys_dns.is_fails():
             _LOGGER.warning("CoreDNS plugin is in fails state / Reset config")
-            self.sys_dns.reset()
+            await self.sys_dns.reset()
 
         try:
             await self.sys_dns.start()

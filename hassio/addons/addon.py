@@ -1,7 +1,7 @@
 """Init file for Hass.io add-ons."""
 from contextlib import suppress
 from copy import deepcopy
-from ipaddress import IPv4Address, ip_address
+from ipaddress import IPv4Address
 import logging
 from pathlib import Path, PurePath
 import re
@@ -36,7 +36,6 @@ from ..const import (
     ATTR_UUID,
     ATTR_VERSION,
     DNS_SUFFIX,
-    STATE_NONE,
     STATE_STARTED,
     STATE_STOPPED,
 )
@@ -81,8 +80,6 @@ class Addon(AddonModel):
     @property
     def ip_address(self) -> IPv4Address:
         """Return IP of Add-on instance."""
-        if not self.is_installed:
-            return ip_address("0.0.0.0")
         return self.instance.ip_address
 
     @property
@@ -453,9 +450,6 @@ class Addon(AddonModel):
 
     async def state(self) -> str:
         """Return running state of add-on."""
-        if not self.is_installed:
-            return STATE_NONE
-
         if await self.instance.is_running():
             return STATE_STARTED
         return STATE_STOPPED
