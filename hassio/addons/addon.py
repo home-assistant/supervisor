@@ -36,7 +36,6 @@ from ..const import (
     ATTR_UUID,
     ATTR_VERSION,
     DNS_SUFFIX,
-    STATE_NONE,
     STATE_STARTED,
     STATE_STOPPED,
 )
@@ -451,9 +450,6 @@ class Addon(AddonModel):
 
     async def state(self) -> str:
         """Return running state of add-on."""
-        if not self.is_installed:
-            return STATE_NONE
-
         if await self.instance.is_running():
             return STATE_STARTED
         return STATE_STOPPED
