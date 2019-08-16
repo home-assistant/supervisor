@@ -272,7 +272,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # No match on hosts
         if not entry:
-            _LOGGER.warning("Can't remove Host entry: %s", host)
+            _LOGGER.debug("Can't remove Host entry: %s", host)
             return
 
         _LOGGER.debug("Remove Host entry %s - %s", entry.ip_address, entry.names)
