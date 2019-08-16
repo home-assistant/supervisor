@@ -1,7 +1,7 @@
 """Init file for Hass.io add-ons."""
 from contextlib import suppress
 from copy import deepcopy
-from ipaddress import IPv4Address, ip_address
+from ipaddress import IPv4Address
 import logging
 from pathlib import Path, PurePath
 import re
@@ -81,8 +81,6 @@ class Addon(AddonModel):
     @property
     def ip_address(self) -> IPv4Address:
         """Return IP of Add-on instance."""
-        if not self.is_installed:
-            return ip_address("0.0.0.0")
         return self.instance.ip_address
 
     @property
