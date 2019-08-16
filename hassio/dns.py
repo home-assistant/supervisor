@@ -104,8 +104,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.info(
                 "No CoreDNS plugin Docker image %s found.", self.instance.image
             )
-            with suppress(CoreDNSError):
-                self.write_hosts()
 
             # Install CoreDNS
             with suppress(CoreDNSError):
@@ -183,6 +181,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     async def start(self) -> None:
         """Run CoreDNS."""
         self._write_corefile()
+        self.write_hosts()
 
         # Start Instance
         _LOGGER.info("Start CoreDNS plugin")
