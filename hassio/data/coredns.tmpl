@@ -4,6 +4,7 @@
         fallthrough
     }
     forward . $servers {
+        policy sequential
         health_check 10s
     }
 }
