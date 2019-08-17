@@ -63,6 +63,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     def servers(self, value: List[str]) -> None:
         """Return list of DNS servers."""
         self._data[ATTR_SERVERS] = value
+        self.sys_create_task(self.restart())
 
     @property
     def version(self) -> Optional[str]:
