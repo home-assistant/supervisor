@@ -54,6 +54,7 @@ class APICoreDNS(CoreSysAttributes):
 
         if ATTR_SERVERS in body:
             self.sys_dns.servers = body[ATTR_SERVERS]
+            self.sys_create_task(self.sys_dns.restart())
 
         self.sys_dns.save_data()
 
@@ -87,3 +88,8 @@ class APICoreDNS(CoreSysAttributes):
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return DNS Docker logs."""
         return self.sys_dns.logs()
+
+    @api_process
+    def restart(self, request: web.Request) -> Awaitable[None]:
+        """Restart CoreDNS plugin."""
+        return asyncio.shield(self.sys_dns.restart())
