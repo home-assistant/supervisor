@@ -198,7 +198,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     async def reset(self) -> None:
         """Reset Config / Hosts."""
         self.servers = DNS_SERVERS
-        self.save_data()
 
         # Resets hosts
         with suppress(OSError):
@@ -349,7 +348,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                         continue
                     resolv_lines.append(line.strip())
         except OSError as err:
-            _LOGGER.error("Can't read local resolv: %s", err)
+            _LOGGER.warning("Can't read local resolv: %s", err)
             raise CoreDNSError() from None
 
         if nameserver in resolv_lines:
@@ -363,5 +362,5 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 for line in resolv_lines:
                     resolv.write(f"{line}\n")
         except OSError as err:
-            _LOGGER.error("Can't write local resolv: %s", err)
+            _LOGGER.warning("Can't write local resolv: %s", err)
             raise CoreDNSError() from None
