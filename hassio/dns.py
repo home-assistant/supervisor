@@ -148,7 +148,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.save_data()
 
         # Init Hosts
-        with suppress(CoreDNS):
+        with suppress(CoreDNSError):
             self.write_hosts()
 
         await self.start()
