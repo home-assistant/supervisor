@@ -4,6 +4,7 @@
         fallthrough
     }
     forward . $servers {
+        except local.hass.io
         policy sequential
         health_check 10s
     }
