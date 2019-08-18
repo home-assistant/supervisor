@@ -278,6 +278,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/dns/logs", api_dns.logs),
                 web.post("/dns/update", api_dns.update),
                 web.post("/dns/options", api_dns.options),
+                web.post("/dns/restart", api_dns.restart),
             ]
         )
 
