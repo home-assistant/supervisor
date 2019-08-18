@@ -120,8 +120,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Start is not Running
         if await self.instance.is_running():
-            return
-        await self.start()
+            await self.restart()
+        else:
+            await self.start()
 
     async def unload(self) -> None:
         """Unload DNS forwarder."""
@@ -145,6 +146,10 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("CoreDNS plugin now installed")
         self.version = self.instance.version
         self.save_data()
+
+        # Init Hosts
+        with suppress(CoreDNS):
+            self.write_hosts()
 
         await self.start()
 
@@ -174,14 +179,13 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""
+        self._write_corefile()
         with suppress(DockerAPIError):
-            await self.instance.stop()
-        await self.start()
+            await self.instance.restart()
 
     async def start(self) -> None:
         """Run CoreDNS."""
         self._write_corefile()
-        self.write_hosts()
 
         # Start Instance
         _LOGGER.info("Start CoreDNS plugin")
@@ -194,7 +198,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     async def reset(self) -> None:
         """Reset Config / Hosts."""
         self.servers = DNS_SERVERS
+        self.save_data()
 
+        # Resets hosts
         with suppress(OSError):
             self.hosts.unlink()
         self._init_hosts()
