@@ -771,6 +771,8 @@ return:
 }
 ```
 
+- POST `/dns/restart`
+
 - GET `/dns/logs`
 
 - GET `/dns/stats`
