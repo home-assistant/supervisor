@@ -4,6 +4,9 @@
     hosts /config/hosts {
         fallthrough
     }
+    template ANY AAAA local.hass.io hassio {
+        rcode NOERROR
+    }
     forward . $servers {
         except local.hass.io
         policy sequential
