@@ -147,10 +147,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.version = self.instance.version
         self.save_data()
 
-        # Init Hosts
-        with suppress(CoreDNSError):
-            self.write_hosts()
-
+        # Init Hosts / Run server
+        self.write_hosts()
         await self.start()
 
     async def update(self, version: Optional[str] = None) -> None:
