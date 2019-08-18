@@ -234,6 +234,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             ["homeassistant", "home-assistant"],
             write=False,
         )
+        self.add_host(self.sys_docker.network.dns, ["dns"], write=False)
 
     def write_hosts(self) -> None:
         """Write hosts from memory to file."""
