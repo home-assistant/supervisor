@@ -222,6 +222,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     def _init_hosts(self) -> None:
         """Import hosts entry."""
         # Generate Default
+        self.add_host(IPv4Address("127.0.0.1"), ["localhost"], write=False)
         self.add_host(
             self.sys_docker.network.supervisor, ["hassio", "supervisor"], write=False
         )
