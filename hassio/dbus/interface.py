@@ -41,7 +41,7 @@ class DBusInterface:
             )
             self.interface = self.object.get_interface(self.bus_interface)
         except TypeError:
-            _LOGGER.warnung("Can't connect to %s", self.bus_name)
+            _LOGGER.warning("Can't connect to %s", self.bus_name)
 
     async def get_property(self):
         """Return list of values."""
