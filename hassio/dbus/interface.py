@@ -2,6 +2,7 @@
 import logging
 from typing import Dict, Optional, List
 
+from dbus_next import errors
 from dbus_next.aio import MessageBus, ProxyInterface, ProxyObject
 from dbus_next.introspection import Node
 
@@ -40,8 +41,8 @@ class DBusInterface:
                 self.bus_name, self.bus_path, self.introspection
             )
             self.interface = self.object.get_interface(self.bus_interface)
-        except TypeError:
-            _LOGGER.warning("Can't connect to %s", self.bus_name)
+        except (TypeError, OSError) as err:
+            _LOGGER.warning("Can't connect to %s: %s", self.bus_name, err)
 
     async def get_property(self):
         """Return list of values."""
@@ -58,5 +59,8 @@ class DBusInterface:
         # Get data
         # pylint: disable=not-an-iterable
         for prop in self.interface_property:
-            property_coro = getattr(self.interface, f"get_{prop.lower()}")
-            data[prop] = await property_coro()
+            try:
+                property_coro = getattr(self.interface, f"get_{prop.lower()}")
+                data[prop] = await property_coro()
+            except (errors.DBusError, AttributeError) as err:
+                _LOGGER.warning("Can't read %s from %s: %s", prop, self.bus_name, err)

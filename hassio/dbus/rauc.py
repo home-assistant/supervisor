@@ -1,10 +1,9 @@
 """D-Bus interface for rauc."""
 import logging
+from pathlib import PurePath
 
 from .interface import DBusInterface
 from .utils import dbus_connected
-from ..exceptions import DBusError
-from ..utils.gdbus import DBus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,41 +14,21 @@ DBUS_OBJECT = "/"
 class Rauc(DBusInterface):
     """Handle D-Bus interface for rauc."""
 
-    async def connect(self):
-        """Connect to D-Bus."""
-        try:
-            self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
-        except DBusError:
-            _LOGGER.warning("Can't connect to rauc")
+    dbus_name = "de.pengutronix.rauc"
+    dbus_path = "/"
+    dbus_interface = "de.pengutronix.rauc.Install"
 
     @dbus_connected
-    def install(self, raucb_file):
-        """Install rauc bundle file.
-
-        Return a coroutine.
-        """
-        return self.dbus.Installer.Install(raucb_file)
+    def install(self, raucb_file: PurePath):
+        """Install rauc bundle file."""
+        return self.interface.call_install(str(raucb_file))
 
     @dbus_connected
     def get_slot_status(self):
-        """Get slot status.
-
-        Return a coroutine.
-        """
-        return self.dbus.Installer.GetSlotStatus()
-
-    @dbus_connected
-    def get_properties(self):
-        """Return rauc informations.
-
-        Return a coroutine.
-        """
-        return self.dbus.get_properties(f"{DBUS_NAME}.Installer")
+        """Get slot status."""
+        return self.interface.call_getslotstatus()
 
     @dbus_connected
     def signal_completed(self):
-        """Return a signal wrapper for completed signal.
-
-        Return a coroutine.
-        """
+        """Return a signal wrapper for completed signal."""
         return self.dbus.wait_signal(f"{DBUS_NAME}.Installer.Completed")

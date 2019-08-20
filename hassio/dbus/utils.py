@@ -1,15 +1,25 @@
 """Utils for D-Bus."""
+import logging
 
-from ..exceptions import DBusNotConnectedError
+from dbus_next import errors
+
+from ..exceptions import DBusNotConnectedError, DBusError
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def dbus_connected(method):
     """Wrapper for check if D-Bus is connected."""
 
-    def wrap_dbus(api, *args, **kwargs):
+    async def wrap_dbus(api, *args, **kwargs):
         """Check if D-Bus is connected before call a method."""
-        if api.dbus is None:
+        if not api.is_connected:
             raise DBusNotConnectedError()
-        return method(api, *args, **kwargs)
+        try:
+            return await method(api, *args, **kwargs)
+        except errors.DBusError as err:
+            _LOGGER.error("Error on dbus call: %s", err)
+            raise DBusError() from None
 
     return wrap_dbus

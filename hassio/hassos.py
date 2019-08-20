@@ -2,7 +2,7 @@
 import asyncio
 from contextlib import suppress
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Awaitable, Optional
 
 import aiohttp
@@ -154,7 +154,7 @@ class HassOS(CoreSysAttributes):
 
         # Fetch files from internet
         int_ota = await self._download_raucb(version)
-        ext_ota = Path(self.sys_config.path_extern_tmp, int_ota.name)
+        ext_ota = PurePath(self.sys_config.path_extern_tmp, int_ota.name)
 
         try:
             await self.sys_dbus.rauc.install(ext_ota)
