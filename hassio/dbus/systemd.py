@@ -3,7 +3,7 @@ import logging
 
 from .interface import DBusInterface
 from .utils import dbus_connected
-from ..exceptions import DBusError
+from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,6 +21,8 @@ class Systemd(DBusInterface):
             self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd")
+        except DBusInterfaceError:
+            _LOGGER.warning("No systemd support on host. Disable any Host control!")
 
     @dbus_connected
     def reboot(self):

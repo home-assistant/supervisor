@@ -5,9 +5,10 @@ import json
 import shlex
 import re
 from signal import SIGINT
+from typing import List, Set
 import xml.etree.ElementTree as ET
 
-from ..exceptions import DBusFatalError, DBusParseError
+from ..exceptions import DBusFatalError, DBusParseError, DBusInterfaceError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +26,11 @@ RE_GVARIANT_TUPLE_C = re.compile(r"\"[^\"]*?\"|(,?\))")
 
 RE_MONITOR_OUTPUT = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
 
+# Map GDBus to errors
+MAP_GDBUS_ERROR = {
+    "GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown": DBusInterfaceError
+}
+
 # Commands for dbus
 INTROSPECT = "gdbus introspect --system --dest {bus} " "--object-path {object} --xml"
 CALL = (
@@ -39,18 +45,20 @@ DBUS_METHOD_GETALL = "org.freedesktop.DBus.Properties.GetAll"
 class DBus:
     """DBus handler."""
 
-    def __init__(self, bus_name, object_path):
+    def __init__(self, bus_name: str, object_path: str):
         """Initialize dbus object."""
-        self.bus_name = bus_name
-        self.object_path = object_path
-        self.methods = set()
-        self.signals = set()
+        self.bus_name: str = bus_name
+        self.object_path: str = object_path
+        self.methods: Set[str] = set()
+        self.signals: Set[str] = set()
 
     @staticmethod
-    async def connect(bus_name, object_path):
+    async def connect(bus_name: str, object_path: str):
         """Read object data."""
         self = DBus(bus_name, object_path)
-        await self._init_proxy()  # pylint: disable=protected-access
+
+        # pylint: disable=protected-access
+        await self._init_proxy()
 
         _LOGGER.info("Connect to dbus: %s - %s", bus_name, object_path)
         return self
@@ -153,7 +161,7 @@ class DBus:
             _LOGGER.error("No attributes returned for %s", interface)
             raise DBusFatalError from None
 
-    async def _send(self, command):
+    async def _send(self, command: List[str]) -> str:
         """Send command over dbus."""
         # Run command
         _LOGGER.debug("Send dbus command: %s", command)
@@ -171,12 +179,19 @@ class DBus:
             raise DBusFatalError() from None
 
         # Success?
-        if proc.returncode != 0:
-            _LOGGER.error("DBus return error: %s", error)
-            raise DBusFatalError()
+        if proc.returncode == 0:
+            return data.decode()
 
-        # End
-        return data.decode()
+        # Filter error
+        error = error.decode()
+        for msg, exception in MAP_GDBUS_ERROR.items():
+            if msg not in error:
+                continue
+            raise exception()
+
+        # General
+        _LOGGER.error("DBus return error: %s", error)
+        raise DBusFatalError()
 
     def attach_signals(self, filters=None):
         """Generate a signals wrapper."""
