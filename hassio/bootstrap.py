@@ -204,11 +204,6 @@ def check_environment():
         _LOGGER.fatal("Can't find socat!")
         return False
 
-    # check socat exec
-    if not shutil.which("gdbus"):
-        _LOGGER.fatal("Can't find gdbus!")
-        return False
-
     return True
 
 

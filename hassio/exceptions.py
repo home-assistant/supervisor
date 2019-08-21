@@ -138,7 +138,7 @@ class ServicesError(HassioError):
     """Services Errors."""
 
 
-# utils/gdbus
+# Dbus
 
 
 class DBusError(HassioError):
@@ -147,14 +147,6 @@ class DBusError(HassioError):
 
 class DBusNotConnectedError(HostNotSupportedError):
     """DBus is not connected and call a method."""
-
-
-class DBusFatalError(DBusError):
-    """DBus call going wrong."""
-
-
-class DBusParseError(DBusError):
-    """DBus parse error."""
 
 
 # util/apparmor
