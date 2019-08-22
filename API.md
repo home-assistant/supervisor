@@ -753,7 +753,8 @@ return:
     "host": "ip-address",
     "version": "1",
     "latest_version": "2",
-    "servers": ["dns://8.8.8.8"]
+    "servers": ["dns://8.8.8.8"],
+    "locals": ["dns://xy"]
 }
 ```
 
