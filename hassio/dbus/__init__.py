@@ -45,5 +45,5 @@ class DBusManager(CoreSysAttributes):
             await self.rauc.connect()
         except DBusNotConnectedError:
             _LOGGER.error(
-                "No DBus support from Host. Disable any kind of Host control!"
+                "No DBus support from Host. Disabled any kind of host control!"
             )
