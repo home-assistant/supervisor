@@ -22,7 +22,9 @@ class Hostname(DBusInterface):
         except DBusError:
             _LOGGER.warning("Can't connect to hostname")
         except DBusInterfaceError:
-            _LOGGER.warning("No hostname support on the host. Hostname functions have been disabled.")
+            _LOGGER.warning(
+                "No hostname support on the host. Hostname functions have been disabled."
+            )
 
     @dbus_connected
     def set_static_hostname(self, hostname):
