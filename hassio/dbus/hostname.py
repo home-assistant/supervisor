@@ -77,7 +77,7 @@ class Hostname(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        data = self.dbus.get_properties(DBUS_NAME)
+        data = await self.dbus.get_properties(DBUS_NAME)
         if not data:
             _LOGGER.warning("Can't get properties for Hostname")
             return

@@ -64,7 +64,7 @@ class NMIDnsManager(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        data = self.dbus.get_properties(f"{DBUS_NAME}.DnsManager")
+        data = await self.dbus.get_properties(f"{DBUS_NAME}.DnsManager")
         if not data:
             _LOGGER.warning("Can't get properties for NMI DnsManager")
             return
