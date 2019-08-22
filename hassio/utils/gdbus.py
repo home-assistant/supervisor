@@ -31,8 +31,8 @@ RE_GVARIANT_STRING_ESC: re.Match = re.compile(
     r"(?<=(?: |{|\[|\())'[^']*?\"[^']*?'(?=(?:|]|}|,|\)))"
 )
 RE_GVARIANT_STRING: re.Match = re.compile(r"(?<=(?: |{|\[|\())'(.*?)'(?=(?:|]|}|,|\)))")
-RE_GVARIANT_TUPLE_O: re.Match = re.compile(r"\"[^\"]*?\"|(\()")
-RE_GVARIANT_TUPLE_C: re.Match = re.compile(r"\"[^\"]*?\"|(,?\))")
+RE_GVARIANT_TUPLE_O: re.Match = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(\()")
+RE_GVARIANT_TUPLE_C: re.Match = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(,?\))")
 
 RE_MONITOR_OUTPUT: re.Match = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
 
