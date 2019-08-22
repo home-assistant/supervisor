@@ -1,5 +1,8 @@
 """D-Bus interface for hostname."""
 import logging
+from typing import Optional, List
+
+import attr
 
 from .interface import DBusInterface
 from .utils import dbus_connected
@@ -12,8 +15,40 @@ DBUS_NAME = "org.freedesktop.NetworkManager"
 DBUS_OBJECT = "/org/freedesktop/NetworkManager/DnsManager"
 
 
+@attr.s
+class DNSConfiguration:
+    """NMI DnsManager configuration Object."""
+
+    nameservers: List[str] = attr.ib()
+    domains: List[str] = attr.ib()
+    interface: str = attr.ib()
+    priority: int = attr.ib()
+    vpn: bool = attr.ib()
+
+
 class NMIDnsManager(DBusInterface):
     """Handle D-Bus interface for NMI DnsManager."""
+
+    def __init__(self) -> None:
+        """Initialize Properties."""
+        self._mode: Optional[str] = None
+        self._rc_manager: Optional[str] = None
+        self._configuration: List[DNSConfiguration] = []
+
+    @property
+    def mode(self) -> Optional[str]:
+        """Return Propertie mode."""
+        return self._mode
+
+    @property
+    def rc_manager(self) -> Optional[str]:
+        """Return Propertie RcManager."""
+        return self._rc_manager
+
+    @property
+    def configuration(self) -> List[DNSConfiguration]:
+        """Return Propertie configuraton."""
+        return self._configuration
 
     async def connect(self) -> None:
         """Connect to system's D-Bus."""
@@ -27,9 +62,24 @@ class NMIDnsManager(DBusInterface):
             )
 
     @dbus_connected
-    def get_properties(self):
-        """Return local host informations.
+    async def update(self):
+        """Update Properties."""
+        data = self.dbus.get_properties(f"{DBUS_NAME}.DnsManager")
+        if not data:
+            _LOGGER.warning("Can't get properties for NMI DnsManager")
+            return
 
-        Return a coroutine.
-        """
-        return self.dbus.get_properties(f"{DBUS_NAME}.DnsManager")
+        self._mode = data.get("Mode")
+        self._rc_manager = data.get("RcManager")
+
+        # Parse configuraton
+        self._configuration.clear()
+        for config in data.get("Configuration", []):
+            dns = DNSConfiguration(
+                config.get("nameservers"),
+                config.get("domains"),
+                config.get("interface"),
+                config.get("priority"),
+                config.get("vpn"),
+            )
+            self._configuration.append(dns)
