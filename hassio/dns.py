@@ -66,18 +66,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self._data[ATTR_SERVERS] = value
 
     @property
-    def local_servers(self) -> List[str]:
-        """Return a list of local DNS servers."""
-        # Read all local dns servers
-        servers: Set[str] = set()
-        for config in self.sys_dbus.nmi_dns.configuration:
-            if config.vpn:
-                continue
-            servers |= set(config.servers)
-
-        return [f"dns://{server}" for server in servers]
-
-    @property
     def version(self) -> Optional[str]:
         """Return current version of DNS."""
         return self._data.get(ATTR_VERSION)
@@ -227,7 +215,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
         dns_servers = []
-        for server in self.servers + self.local_servers + DNS_SERVERS:
+        for server in self.servers + self.sys_host.network.dns_servers + DNS_SERVERS:
             try:
                 DNS_URL(server)
                 if server not in dns_servers:

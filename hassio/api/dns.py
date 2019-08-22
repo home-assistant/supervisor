@@ -46,7 +46,7 @@ class APICoreDNS(CoreSysAttributes):
             ATTR_LATEST_VERSION: self.sys_dns.latest_version,
             ATTR_HOST: str(self.sys_docker.network.dns),
             ATTR_SERVERS: self.sys_dns.servers,
-            ATTR_LOCALS: self.sys_dns.local_servers,
+            ATTR_LOCALS: self.sys_host.network.dns_servers,
         }
 
     @api_process
