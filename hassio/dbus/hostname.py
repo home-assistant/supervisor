@@ -3,10 +3,10 @@ import logging
 
 from .interface import DBusInterface
 from .utils import dbus_connected
-from ..exceptions import DBusError
+from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DBUS_NAME = "org.freedesktop.hostname1"
 DBUS_OBJECT = "/org/freedesktop/hostname1"
@@ -21,6 +21,10 @@ class Hostname(DBusInterface):
             self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
         except DBusError:
             _LOGGER.warning("Can't connect to hostname")
+        except DBusInterfaceError:
+            _LOGGER.warning(
+                "No hostname support on the host. Hostname functions have been disabled."
+            )
 
     @dbus_connected
     def set_static_hostname(self, hostname):

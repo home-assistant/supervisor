@@ -29,7 +29,7 @@ from .tasks import Tasks
 from .updater import Updater
 from .utils.dt import fetch_timezone
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 ENV_SHARE = "SUPERVISOR_SHARE"
 ENV_NAME = "SUPERVISOR_NAME"

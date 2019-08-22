@@ -149,6 +149,10 @@ class DBusNotConnectedError(HostNotSupportedError):
     """DBus is not connected and call a method."""
 
 
+class DBusInterfaceError(HassioNotSupportedError):
+    """DBus interface not connected."""
+
+
 class DBusFatalError(DBusError):
     """DBus call going wrong."""
 

@@ -17,7 +17,7 @@ from ..store.addon import AddonStore
 from .addon import Addon
 from .validate import SCHEMA_ADDONS_FILE
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 Config = Dict[str, Any]
 

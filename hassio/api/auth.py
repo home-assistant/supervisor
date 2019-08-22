@@ -10,7 +10,7 @@ from ..const import REQUEST_FROM, CONTENT_TYPE_JSON, CONTENT_TYPE_URL
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIForbidden
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class APIAuth(CoreSysAttributes):

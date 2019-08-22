@@ -12,7 +12,7 @@ from ..const import URL_HASSIO_ADDONS, ATTR_URL, ATTR_BRANCH
 from ..coresys import CoreSysAttributes
 from ..validate import RE_REPOSITORY
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class GitRepo(CoreSysAttributes):

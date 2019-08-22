@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from ..addons.addon import Addon
 
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 NO_ADDDRESS = ip_address("0.0.0.0")

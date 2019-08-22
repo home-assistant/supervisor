@@ -26,7 +26,7 @@ from ..exceptions import APIError
 from ..validate import DNS_SERVER_LIST
 from .utils import api_process, api_process_raw, api_validate
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_SERVERS): DNS_SERVER_LIST})

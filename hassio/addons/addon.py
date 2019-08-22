@@ -55,7 +55,7 @@ from .model import AddonModel, Data
 from .utils import remove_data
 from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_WEBUI = re.compile(
     r"^(?:(?P<s_prefix>https?)|\[PROTO:(?P<t_proto>\w+)\])"

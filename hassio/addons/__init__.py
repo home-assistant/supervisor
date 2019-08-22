@@ -19,7 +19,7 @@ from ..store.addon import AddonStore
 from .addon import Addon
 from .data import AddonsData
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 AnyAddon = Union[Addon, AddonStore]
 

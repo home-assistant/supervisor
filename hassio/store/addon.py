@@ -4,7 +4,7 @@ import logging
 from ..coresys import CoreSys
 from ..addons.model import AddonModel, Data
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class AddonStore(AddonModel):
