@@ -23,7 +23,7 @@ class NetworkManager(CoreSysAttributes):
         for config in self.sys_dbus.nmi_dns.configuration:
             if config.vpn:
                 continue
-            servers |= set(config.servers)
+            servers |= set(config.nameservers)
 
         return [f"dns://{server}" for server in servers]
 
