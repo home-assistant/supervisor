@@ -22,7 +22,7 @@ class Systemd(DBusInterface):
         except DBusError:
             _LOGGER.warning("Can't connect to systemd")
         except DBusInterfaceError:
-            _LOGGER.warning("No systemd support on host. Disable any Host control!")
+            _LOGGER.warning("No systemd support on the host. Host control has been disabled.")
 
     @dbus_connected
     def reboot(self):
