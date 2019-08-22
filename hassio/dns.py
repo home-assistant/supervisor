@@ -5,7 +5,7 @@ from ipaddress import IPv4Address
 import logging
 from pathlib import Path
 from string import Template
-from typing import Awaitable, List, Optional, Set
+from typing import Awaitable, List, Optional
 
 import attr
 import voluptuous as vol
