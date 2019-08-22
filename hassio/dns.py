@@ -1,22 +1,23 @@
 """Home Assistant control object."""
 import asyncio
-import logging
 from contextlib import suppress
 from ipaddress import IPv4Address
+import logging
 from pathlib import Path
 from string import Template
-from typing import Awaitable, List, Optional
+from typing import Awaitable, List, Optional, Set
 
 import attr
+import voluptuous as vol
 
-from .const import ATTR_SERVERS, ATTR_VERSION, DNS_SERVERS, FILE_HASSIO_DNS, DNS_SUFFIX
+from .const import ATTR_SERVERS, ATTR_VERSION, DNS_SERVERS, DNS_SUFFIX, FILE_HASSIO_DNS
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.dns import DockerDNS
 from .docker.stats import DockerStats
 from .exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
 from .misc.forwarder import DNSForward
 from .utils.json import JsonConfig
-from .validate import SCHEMA_DNS_CONFIG
+from .validate import DNS_URL, SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -63,6 +64,18 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     def servers(self, value: List[str]) -> None:
         """Return list of DNS servers."""
         self._data[ATTR_SERVERS] = value
+
+    @property
+    def local_servers(self) -> List[str]:
+        """Return a list of local DNS servers."""
+        # Read all local dns servers
+        servers: Set[str] = set()
+        for config in self.sys_dbus.nmi_dns.configuration:
+            if config.vpn:
+                continue
+            servers |= set(config.servers)
+
+        return [f"dns://{server}" for server in servers]
 
     @property
     def version(self) -> Optional[str]:
@@ -212,8 +225,18 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't read coredns template file: %s", err)
             raise CoreDNSError() from None
 
+        # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
+        dns_servers = []
+        for server in self.servers + self.local_servers + DNS_SERVERS:
+            try:
+                DNS_URL(server)
+                if server not in dns_servers:
+                    dns_servers.append(server)
+            except vol.Invalid:
+                _LOGGER.warning("Ignore invalid DNS Server: %s", server)
+                continue
+
         # Generate config file
-        dns_servers = self.servers + list(set(DNS_SERVERS) - set(self.servers))
         data = corefile_template.safe_substitute(servers=" ".join(dns_servers))
 
         try:
