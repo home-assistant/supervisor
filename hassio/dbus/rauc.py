@@ -22,7 +22,7 @@ class Rauc(DBusInterface):
         except DBusError:
             _LOGGER.warning("Can't connect to rauc")
         except DBusInterfaceError:
-            _LOGGER.warning("Host have no rauc support. Disable OTA updates!")
+            _LOGGER.warning("Host has no rauc support. OTA updates have been disabled.")
 
     @dbus_connected
     def install(self, raucb_file):
