@@ -17,7 +17,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import HassioError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class HostManager(CoreSysAttributes):

@@ -13,7 +13,7 @@ from ..exceptions import DockerAPIError
 from ..utils import process_lock
 from .stats import DockerStats
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class DockerInterface(CoreSysAttributes):

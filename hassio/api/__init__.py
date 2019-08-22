@@ -22,7 +22,7 @@ from .services import APIServices
 from .snapshots import APISnapshots
 from .supervisor import APISupervisor
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class RestAPI(CoreSysAttributes):

@@ -18,7 +18,7 @@ from .misc.forwarder import DNSForward
 from .utils.json import JsonConfig
 from .validate import SCHEMA_DNS_CONFIG
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 COREDNS_TMPL: Path = Path(__file__).parents[0].joinpath("data/coredns.tmpl")
 RESOLV_CONF: Path = Path("/etc/resolv.conf")

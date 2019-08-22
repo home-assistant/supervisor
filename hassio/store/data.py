@@ -20,7 +20,7 @@ from ..utils.json import read_json_file
 from .utils import extract_hash_from_path
 from .validate import SCHEMA_REPOSITORY_CONFIG
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class StoreData(CoreSysAttributes):

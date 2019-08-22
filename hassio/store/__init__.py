@@ -9,7 +9,7 @@ from .addon import AddonStore
 from .data import StoreData
 from .repository import Repository
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 BUILTIN_REPOSITORIES = set((REPOSITORY_CORE, REPOSITORY_LOCAL))
 

@@ -14,7 +14,7 @@ from .const import (
 )
 from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class HassIO(CoreSysAttributes):

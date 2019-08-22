@@ -8,7 +8,7 @@ from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import HassioArchNotFound, JsonFileError
 from .utils.json import read_json_file
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 ARCH_JSON: Path = Path(__file__).parent.joinpath("data/arch.json")
 

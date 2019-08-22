@@ -8,7 +8,7 @@ from .utils.json import JsonConfig
 from .validate import SCHEMA_AUTH_CONFIG
 from .exceptions import AuthError, HomeAssistantAPIError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class Auth(JsonConfig, CoreSysAttributes):

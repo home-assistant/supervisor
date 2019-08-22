@@ -14,7 +14,7 @@ from ..const import HEADER_HA_ACCESS
 from ..coresys import CoreSysAttributes
 from ..exceptions import HomeAssistantAuthError, HomeAssistantAPIError, APIError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class APIProxy(CoreSysAttributes):

@@ -19,7 +19,7 @@ from .validate import SCHEMA_DISCOVERY_CONFIG, valid_discovery_config
 if TYPE_CHECKING:
     from ..addons.addon import Addon
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 CMD_NEW = "post"
 CMD_DEL = "delete"

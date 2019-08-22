@@ -7,7 +7,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import DBusError, HostAppArmorError
 from ..utils.apparmor import validate_profile
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SYSTEMD_SERVICES = {"hassos-apparmor.service", "hassio-apparmor.service"}
 

@@ -9,7 +9,7 @@ from voluptuous.humanize import humanize_error
 
 from ..exceptions import JsonFileError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def write_json_file(jsonfile: Path, data: Any) -> None:

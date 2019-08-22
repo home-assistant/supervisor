@@ -3,7 +3,7 @@ import asyncio
 from datetime import date, datetime, time, timedelta
 import logging
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 INTERVAL = "interval"
 REPEAT = "repeat"
