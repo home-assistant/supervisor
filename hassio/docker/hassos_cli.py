@@ -6,7 +6,7 @@ import docker
 from ..coresys import CoreSysAttributes
 from .interface import DockerInterface
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class DockerHassOSCli(DockerInterface, CoreSysAttributes):

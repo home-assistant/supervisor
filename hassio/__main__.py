@@ -6,7 +6,7 @@ import sys
 
 from hassio import bootstrap
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def initialize_event_loop():

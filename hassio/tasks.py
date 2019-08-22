@@ -5,7 +5,7 @@ import logging
 from .coresys import CoreSysAttributes
 from .exceptions import HomeAssistantError, CoreDNSError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 HASS_WATCHDOG_API = "HASS_WATCHDOG_API"
 

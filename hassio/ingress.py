@@ -12,7 +12,7 @@ from .utils.dt import utc_from_timestamp, utcnow
 from .utils.json import JsonConfig
 from .validate import SCHEMA_INGRESS_CONFIG
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class Ingress(JsonConfig, CoreSysAttributes):

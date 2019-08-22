@@ -22,7 +22,7 @@ from ..const import (
 if TYPE_CHECKING:
     from .model import AddonModel
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def rating_security(addon: AddonModel) -> int:

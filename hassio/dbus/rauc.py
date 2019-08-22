@@ -6,7 +6,7 @@ from .utils import dbus_connected
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DBUS_NAME = "de.pengutronix.rauc"
 DBUS_OBJECT = "/"

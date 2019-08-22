@@ -1,51 +1,53 @@
 """DBus implementation with glib."""
+from __future__ import annotations
+
 import asyncio
 import logging
 import json
 import shlex
 import re
 from signal import SIGINT
-from typing import List, Set
+from typing import Any, Dict, List, Optional, Set
 import xml.etree.ElementTree as ET
 
 from ..exceptions import DBusFatalError, DBusParseError, DBusInterfaceError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # Use to convert GVariant into json
-RE_GVARIANT_TYPE = re.compile(
+RE_GVARIANT_TYPE: re.Match = re.compile(
     r"(?:boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
     r"string|objectpath|signature) "
 )
-RE_GVARIANT_VARIANT = re.compile(
+RE_GVARIANT_VARIANT: re.Match = re.compile(
     r"(?<=(?: |{|\[))<((?:'|\").*?(?:'|\")|\d+(?:\.\d+)?)>(?=(?:|]|}|,))"
 )
-RE_GVARIANT_STRING = re.compile(r"(?<=(?: |{|\[|\())'(.*?)'(?=(?:|]|}|,|\)))")
-RE_GVARIANT_TUPLE_O = re.compile(r"\"[^\"]*?\"|(\()")
-RE_GVARIANT_TUPLE_C = re.compile(r"\"[^\"]*?\"|(,?\))")
+RE_GVARIANT_STRING: re.Match = re.compile(r"(?<=(?: |{|\[|\())'(.*?)'(?=(?:|]|}|,|\)))")
+RE_GVARIANT_TUPLE_O: re.Match = re.compile(r"\"[^\"]*?\"|(\()")
+RE_GVARIANT_TUPLE_C: re.Match = re.compile(r"\"[^\"]*?\"|(,?\))")
 
-RE_MONITOR_OUTPUT = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
+RE_MONITOR_OUTPUT: re.Match = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
 
 # Map GDBus to errors
-MAP_GDBUS_ERROR = {
+MAP_GDBUS_ERROR: Dict[str, Any] = {
     "GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown": DBusInterfaceError
 }
 
 # Commands for dbus
-INTROSPECT = "gdbus introspect --system --dest {bus} " "--object-path {object} --xml"
-CALL = (
+INTROSPECT: str = "gdbus introspect --system --dest {bus} " "--object-path {object} --xml"
+CALL: str = (
     "gdbus call --system --dest {bus} --object-path {object} "
     "--method {method} {args}"
 )
-MONITOR = "gdbus monitor --system --dest {bus}"
+MONITOR: str = "gdbus monitor --system --dest {bus}"
 
-DBUS_METHOD_GETALL = "org.freedesktop.DBus.Properties.GetAll"
+DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
 
 
 class DBus:
     """DBus handler."""
 
-    def __init__(self, bus_name: str, object_path: str):
+    def __init__(self, bus_name: str, object_path: str) -> None:
         """Initialize dbus object."""
         self.bus_name: str = bus_name
         self.object_path: str = object_path
@@ -53,7 +55,7 @@ class DBus:
         self.signals: Set[str] = set()
 
     @staticmethod
-    async def connect(bus_name: str, object_path: str):
+    async def connect(bus_name: str, object_path: str) -> DBus:
         """Read object data."""
         self = DBus(bus_name, object_path)
 
@@ -63,14 +65,14 @@ class DBus:
         _LOGGER.info("Connect to dbus: %s - %s", bus_name, object_path)
         return self
 
-    async def _init_proxy(self):
+    async def _init_proxy(self) -> None:
         """Read interface data."""
         command = shlex.split(
             INTROSPECT.format(bus=self.bus_name, object=self.object_path)
         )
 
         # Ask data
-        _LOGGER.info("Introspect %s on %s", self.bus_name, self.object_path)
+        _LOGGER.debug("Introspect %s on %s", self.bus_name, self.object_path)
         data = await self._send(command)
 
         # Parse XML
@@ -81,7 +83,7 @@ class DBus:
             raise DBusParseError() from None
 
         # Read available methods
-        _LOGGER.debug("data: %s", data)
+        _LOGGER.debug("Introspect XML: %s", data)
         for interface in xml.findall("./interface"):
             interface_name = interface.get("name")
 
@@ -96,30 +98,31 @@ class DBus:
                 self.signals.add(f"{interface_name}.{signal_name}")
 
     @staticmethod
-    def parse_gvariant(raw):
+    def parse_gvariant(raw: str) -> Any:
         """Parse GVariant input to python."""
-        raw = RE_GVARIANT_TYPE.sub("", raw)
-        raw = RE_GVARIANT_VARIANT.sub(r"\1", raw)
-        raw = RE_GVARIANT_STRING.sub(r'"\1"', raw)
-        raw = RE_GVARIANT_TUPLE_O.sub(
-            lambda x: x.group(0) if not x.group(1) else "[", raw
+        json_raw: str = RE_GVARIANT_TYPE.sub("", raw)
+        json_raw = RE_GVARIANT_VARIANT.sub(r"\1", json_raw)
+        json_raw = RE_GVARIANT_STRING.sub(r'"\1"', json_raw)
+        json_raw = RE_GVARIANT_TUPLE_O.sub(
+            lambda x: x.group(0) if not x.group(1) else "[", json_raw
         )
-        raw = RE_GVARIANT_TUPLE_C.sub(
-            lambda x: x.group(0) if not x.group(1) else "]", raw
+        json_raw = RE_GVARIANT_TUPLE_C.sub(
+            lambda x: x.group(0) if not x.group(1) else "]", json_raw
         )
 
         # No data
-        if raw.startswith("[]"):
+        if json_raw.startswith("[]"):
             return []
 
         try:
-            return json.loads(raw)
+            return json.loads(json_raw)
         except json.JSONDecodeError as err:
-            _LOGGER.error("Can't parse '%s': %s", raw, err)
+            _LOGGER.error("Can't parse '%s': %s", json_raw, err)
+            _LOGGER.debug("GVariant data: '%s'", raw)
             raise DBusParseError() from None
 
     @staticmethod
-    def gvariant_args(args):
+    def gvariant_args(args: List[Any]) -> str:
         """Convert args into gvariant."""
         gvariant = ""
         for arg in args:
@@ -130,11 +133,11 @@ class DBus:
             elif isinstance(arg, str):
                 gvariant += f' "{arg}"'
             else:
-                gvariant += " {}".format(str(arg))
+                gvariant += f" {arg!s}"
 
         return gvariant.lstrip()
 
-    async def call_dbus(self, method, *args):
+    async def call_dbus(self, method: str, *args: List[Any]) -> str:
         """Call a dbus method."""
         command = shlex.split(
             CALL.format(
@@ -150,10 +153,9 @@ class DBus:
         data = await self._send(command)
 
         # Parse and return data
-        _LOGGER.debug("Receive from %s: %s", method, data)
         return self.parse_gvariant(data)
 
-    async def get_properties(self, interface):
+    async def get_properties(self, interface: str) -> Dict[str, Any]:
         """Read all properties from interface."""
         try:
             return (await self.call_dbus(DBUS_METHOD_GETALL, interface))[0]
@@ -204,7 +206,7 @@ class DBus:
             async for signal in signals:
                 return signal
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> DBusCallWrapper:
         """Mapping to dbus method."""
         return getattr(DBusCallWrapper(self, self.bus_name), name)
 
@@ -212,17 +214,17 @@ class DBus:
 class DBusCallWrapper:
     """Wrapper a DBus interface for a call."""
 
-    def __init__(self, dbus, interface):
+    def __init__(self, dbus: DBus, interface: str) -> None:
         """Initialize wrapper."""
-        self.dbus = dbus
-        self.interface = interface
+        self.dbus: DBus = dbus
+        self.interface: str = interface
 
-    def __call__(self):
+    def __call__(self) -> None:
         """Should never be called."""
         _LOGGER.error("DBus method %s not exists!", self.interface)
         raise DBusFatalError()
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         """Mapping to dbus method."""
         interface = f"{self.interface}.{name}"
 
@@ -242,11 +244,11 @@ class DBusCallWrapper:
 class DBusSignalWrapper:
     """Process Signals."""
 
-    def __init__(self, dbus, signals=None):
+    def __init__(self, dbus: DBus, signals: Optional[str] = None):
         """Initialize dbus signal wrapper."""
-        self.dbus = dbus
-        self._signals = signals
-        self._proc = None
+        self.dbus: DBus = dbus
+        self._signals: Optional[str] = signals
+        self._proc: Optional[asyncio.Process] = None
 
     async def __aenter__(self):
         """Start monitor events."""

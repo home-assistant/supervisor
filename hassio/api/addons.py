@@ -94,7 +94,7 @@ from ..exceptions import APIError
 from ..validate import ALSA_DEVICE, DOCKER_PORTS
 from .utils import api_process, api_process_raw, api_validate
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 

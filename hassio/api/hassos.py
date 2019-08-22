@@ -16,7 +16,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_validate
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 

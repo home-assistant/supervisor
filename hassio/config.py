@@ -19,7 +19,7 @@ from .utils.dt import parse_datetime
 from .utils.json import JsonConfig
 from .validate import SCHEMA_HASSIO_CONFIG
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 

@@ -9,7 +9,7 @@ from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL
 from ..coresys import CoreSysAttributes
 from ..utils.dt import utcnow
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class SnapshotManager(CoreSysAttributes):
