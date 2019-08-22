@@ -80,15 +80,13 @@ class DBus:
             INTROSPECT.format(bus=self.bus_name, object=self.object_path)
         )
 
-        # Ask data
-        _LOGGER.debug("Introspect %s on %s", self.bus_name, self.object_path)
-        data = await self._send(command)
-
         # Parse XML
+        data = await self._send(command)
         try:
             xml = ET.fromstring(data)
         except ET.ParseError as err:
             _LOGGER.error("Can't parse introspect data: %s", err)
+            _LOGGER.debug("Introspect %s on %s", self.bus_name, self.object_path)
             raise DBusParseError() from None
 
         # Read available methods
