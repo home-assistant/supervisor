@@ -276,3 +276,27 @@ def test_systemd_unitlist_complex():
             ],
         ]
     ]
+
+
+def test_networkmanager_dns_properties():
+    """Test NetworkManager DNS properties."""
+    raw = "({'Mode': <'default'>, 'RcManager': <'file'>, 'Configuration': <[{'nameservers': <['192.168.23.30']>, 'domains': <['syshack.local']>, 'interface': <'eth0'>, 'priority': <100>, 'vpn': <false>}]>},)"
+
+    # parse data
+    data = DBus.parse_gvariant(raw)
+
+    assert data == [
+        {
+            "Mode": "default",
+            "RcManager": "file",
+            "Configuration": [
+                {
+                    "nameservers": ["192.168.23.30"],
+                    "domains": ["syshack.local"],
+                    "interface": "eth0",
+                    "priority": 100,
+                    "vpn": False,
+                }
+            ],
+        }
+    ]
