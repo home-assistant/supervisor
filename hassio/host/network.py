@@ -21,7 +21,7 @@ class NetworkManager(CoreSysAttributes):
         # Read all local dns servers
         servers: Set[str] = set()
         for config in self.sys_dbus.nmi_dns.configuration:
-            if config.vpn:
+            if config.vpn or not config.nameservers:
                 continue
             servers |= set(config.nameservers)
 
