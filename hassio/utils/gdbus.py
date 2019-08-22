@@ -10,7 +10,12 @@ from signal import SIGINT
 from typing import Any, Dict, List, Optional, Set
 import xml.etree.ElementTree as ET
 
-from ..exceptions import DBusFatalError, DBusParseError, DBusInterfaceError
+from ..exceptions import (
+    DBusFatalError,
+    DBusParseError,
+    DBusInterfaceError,
+    DBusNotConnectedError,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -22,6 +27,9 @@ RE_GVARIANT_TYPE: re.Match = re.compile(
 RE_GVARIANT_VARIANT: re.Match = re.compile(
     r"(?<=(?: |{|\[))<((?:'|\").*?(?:'|\")|\d+(?:\.\d+)?)>(?=(?:|]|}|,))"
 )
+RE_GVARIANT_STRING_ESC: re.Match = re.compile(
+    r"(?<=(?: |{|\[|\())'[^']*?\"[^']*?'(?=(?:|]|}|,|\)))"
+)
 RE_GVARIANT_STRING: re.Match = re.compile(r"(?<=(?: |{|\[|\())'(.*?)'(?=(?:|]|}|,|\)))")
 RE_GVARIANT_TUPLE_O: re.Match = re.compile(r"\"[^\"]*?\"|(\()")
 RE_GVARIANT_TUPLE_C: re.Match = re.compile(r"\"[^\"]*?\"|(,?\))")
@@ -30,7 +38,8 @@ RE_MONITOR_OUTPUT: re.Match = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)"
 
 # Map GDBus to errors
 MAP_GDBUS_ERROR: Dict[str, Any] = {
-    "GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown": DBusInterfaceError
+    "GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown": DBusInterfaceError,
+    "No such file or directory": DBusNotConnectedError,
 }
 
 # Commands for dbus
@@ -102,6 +111,9 @@ class DBus:
         """Parse GVariant input to python."""
         json_raw: str = RE_GVARIANT_TYPE.sub("", raw)
         json_raw = RE_GVARIANT_VARIANT.sub(r"\1", json_raw)
+        json_raw = RE_GVARIANT_STRING_ESC.sub(
+            lambda x: x.group(0).replace('"', '\\"'), json_raw
+        )
         json_raw = RE_GVARIANT_STRING.sub(r'"\1"', json_raw)
         json_raw = RE_GVARIANT_TUPLE_O.sub(
             lambda x: x.group(0) if not x.group(1) else "[", json_raw
