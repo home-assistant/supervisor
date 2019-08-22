@@ -222,7 +222,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                     dns_servers.append(server)
             except vol.Invalid:
                 _LOGGER.warning("Ignore invalid DNS Server: %s", server)
-                continue
 
         # Generate config file
         data = corefile_template.safe_substitute(servers=" ".join(dns_servers))
