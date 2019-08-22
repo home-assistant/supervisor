@@ -7,7 +7,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import DockerAPIError
 from .interface import DockerInterface
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DNS_DOCKER_NAME: str = "hassio_dns"
 

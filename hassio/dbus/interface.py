@@ -1,12 +1,13 @@
 """Interface class for D-Bus wrappers."""
+from typing import Optional
+
+from ..utils.gdbus import DBus
 
 
 class DBusInterface:
     """Handle D-Bus interface for hostname/system."""
 
-    def __init__(self):
-        """Initialize systemd."""
-        self.dbus = None
+    dbus: Optional[DBus] = None
 
     @property
     def is_connected(self):

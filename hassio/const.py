@@ -3,7 +3,7 @@ from pathlib import Path
 from ipaddress import ip_network
 
 
-HASSIO_VERSION = "181"
+HASSIO_VERSION = "182"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
@@ -218,6 +218,7 @@ ATTR_DEBUG = "debug"
 ATTR_DEBUG_BLOCK = "debug_block"
 ATTR_DNS = "dns"
 ATTR_SERVERS = "servers"
+ATTR_LOCALS = "locals"
 ATTR_UDEV = "udev"
 
 PROVIDE_SERVICE = "provide"

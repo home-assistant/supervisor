@@ -4,7 +4,7 @@ import logging
 from ..coresys import CoreSysAttributes
 from ..exceptions import HostNotSupportedError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 MANAGER = "manager"
 HOSTNAME = "hostname"

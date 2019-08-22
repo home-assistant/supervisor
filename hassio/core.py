@@ -14,7 +14,7 @@ from .const import (
 )
 from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class HassIO(CoreSysAttributes):
@@ -30,14 +30,14 @@ class HassIO(CoreSysAttributes):
 
     async def setup(self):
         """Setup HassIO orchestration."""
-        # Load CoreDNS
-        await self.sys_dns.load()
-
         # Load DBus
         await self.sys_dbus.load()
 
         # Load Host
         await self.sys_host.load()
+
+        # Load CoreDNS
+        await self.sys_dns.load()
 
         # Load Home Assistant
         await self.sys_homeassistant.load()

@@ -6,7 +6,7 @@ import attr
 from ..coresys import CoreSysAttributes
 from ..exceptions import HassioError, HostNotSupportedError, HostServiceError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 MOD_REPLACE = "replace"
 

@@ -7,6 +7,7 @@ from .apparmor import AppArmorControl
 from .control import SystemControl
 from .info import InfoCenter
 from .services import ServiceManager
+from .network import NetworkManager
 from ..const import (
     FEATURES_REBOOT,
     FEATURES_SHUTDOWN,
@@ -14,48 +15,55 @@ from ..const import (
     FEATURES_SERVICES,
     FEATURES_HASSOS,
 )
-from ..coresys import CoreSysAttributes
+from ..coresys import CoreSysAttributes, CoreSys
 from ..exceptions import HassioError
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class HostManager(CoreSysAttributes):
     """Manage supported function from host."""
 
-    def __init__(self, coresys):
+    def __init__(self, coresys: CoreSys):
         """Initialize Host manager."""
-        self.coresys = coresys
-        self._alsa = AlsaAudio(coresys)
-        self._apparmor = AppArmorControl(coresys)
-        self._control = SystemControl(coresys)
-        self._info = InfoCenter(coresys)
-        self._services = ServiceManager(coresys)
+        self.coresys: CoreSys = coresys
+
+        self._alsa: AlsaAudio = AlsaAudio(coresys)
+        self._apparmor: AppArmorControl = AppArmorControl(coresys)
+        self._control: SystemControl = SystemControl(coresys)
+        self._info: InfoCenter = InfoCenter(coresys)
+        self._services: ServiceManager = ServiceManager(coresys)
+        self._network: NetworkManager = NetworkManager(coresys)
 
     @property
-    def alsa(self):
+    def alsa(self) -> AlsaAudio:
         """Return host ALSA handler."""
         return self._alsa
 
     @property
-    def apparmor(self):
+    def apparmor(self) -> AppArmorControl:
         """Return host AppArmor handler."""
         return self._apparmor
 
     @property
-    def control(self):
+    def control(self) -> SystemControl:
         """Return host control handler."""
         return self._control
 
     @property
-    def info(self):
+    def info(self) -> InfoCenter:
         """Return host info handler."""
         return self._info
 
     @property
-    def services(self):
+    def services(self) -> ServiceManager:
         """Return host services handler."""
         return self._services
+
+    @property
+    def network(self) -> NetworkManager:
+        """Return host NetworkManager handler."""
+        return self._network
 
     @property
     def supperted_features(self):
@@ -80,6 +88,9 @@ class HostManager(CoreSysAttributes):
 
         if self.sys_dbus.systemd.is_connected:
             await self.services.update()
+
+        if self.sys_dbus.nmi_dns.is_connected:
+            await self.network.update()
 
     async def load(self):
         """Load host information."""

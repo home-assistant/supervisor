@@ -10,7 +10,7 @@ from ..const import ENV_TIME, ENV_TOKEN, LABEL_MACHINE
 from ..exceptions import DockerAPIError
 from .interface import CommandReturn, DockerInterface
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 HASS_DOCKER_NAME = "homeassistant"
 

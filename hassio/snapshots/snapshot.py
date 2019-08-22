@@ -45,7 +45,7 @@ from ..utils.tar import SecureTarFile
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
 from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class Snapshot(CoreSysAttributes):

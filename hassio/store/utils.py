@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 RE_SHA1 = re.compile(r"[a-f0-9]{8}")
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def get_hash_from_repository(name: str) -> str:

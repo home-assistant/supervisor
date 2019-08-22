@@ -12,7 +12,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class APIHardware(CoreSysAttributes):

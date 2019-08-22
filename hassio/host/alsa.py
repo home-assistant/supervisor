@@ -9,7 +9,7 @@ import attr
 from ..const import ATTR_INPUT, ATTR_OUTPUT, ATTR_DEVICES, ATTR_NAME, CHAN_ID, CHAN_TYPE
 from ..coresys import CoreSysAttributes
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # pylint: disable=invalid-name
 DefaultConfig = attr.make_class("DefaultConfig", ["input", "output"])

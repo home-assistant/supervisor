@@ -3,10 +3,10 @@ import logging
 
 from .interface import DBusInterface
 from .utils import dbus_connected
-from ..exceptions import DBusError
+from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DBUS_NAME = "de.pengutronix.rauc"
 DBUS_OBJECT = "/"
@@ -21,6 +21,8 @@ class Rauc(DBusInterface):
             self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
         except DBusError:
             _LOGGER.warning("Can't connect to rauc")
+        except DBusInterfaceError:
+            _LOGGER.warning("Host has no rauc support. OTA updates have been disabled.")
 
     @dbus_connected
     def install(self, raucb_file):

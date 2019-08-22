@@ -12,7 +12,7 @@ UTC = pytz.utc
 
 GEOIP_URL = "http://ip-api.com/json/"
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 # Copyright (c) Django Software Foundation and individual contributors.

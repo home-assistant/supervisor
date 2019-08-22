@@ -11,7 +11,7 @@ from ..const import SOCKET_DOCKER, DNS_SUFFIX
 from ..exceptions import DockerAPIError
 from .network import DockerNetwork
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 @attr.s(frozen=True)
