@@ -21,8 +21,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # Use to convert GVariant into json
 RE_GVARIANT_TYPE: re.Match = re.compile(
-    r"(?:boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
-    r"string|objectpath|signature) "
+    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
+    r"string|objectpath|signature|@[asviumodf\{\}]+) "
 )
 RE_GVARIANT_VARIANT: re.Match = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(<|>)")
 RE_GVARIANT_STRING_ESC: re.Match = re.compile(
@@ -107,11 +107,16 @@ class DBus:
     @staticmethod
     def parse_gvariant(raw: str) -> Any:
         """Parse GVariant input to python."""
-        json_raw: str = RE_GVARIANT_TYPE.sub("", raw)
+        # Process first string
         json_raw = RE_GVARIANT_STRING_ESC.sub(
-            lambda x: x.group(0).replace('"', '\\"'), json_raw
+            lambda x: x.group(0).replace('"', '\\"'), raw
         )
         json_raw = RE_GVARIANT_STRING.sub(r'"\1"', json_raw)
+
+        # Remove complex type handling
+        json_raw: str = RE_GVARIANT_TYPE.sub(
+            lambda x: x.group(0) if not x.group(1) else "", json_raw
+        )
         json_raw = RE_GVARIANT_VARIANT.sub(
             lambda x: x.group(0) if not x.group(1) else "", json_raw
         )
