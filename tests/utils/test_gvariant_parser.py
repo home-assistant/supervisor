@@ -300,3 +300,13 @@ def test_networkmanager_dns_properties():
             ],
         }
     ]
+
+
+def test_networkmanager_dns_properties_empty():
+    """Test NetworkManager DNS properties."""
+    raw = "({'Mode': <'default'>, 'RcManager': <'resolvconf'>, 'Configuration': <@aa{sv} []>},)"
+
+    # parse data
+    data = DBus.parse_gvariant(raw)
+
+    assert data == [{"Mode": "default", "RcManager": "resolvconf", "Configuration": []}]
