@@ -223,9 +223,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         #
         # 3. if there are no manual and no local defined use the default
         # servers.
-        if len(self.servers) > 0:
+        if self.servers:
             possible_dns_servers = self.servers
-        elif len(self.sys_host.network.dns_servers) > 0:
+        elif self.sys_host.network.dns_servers:
             possible_dns_servers = self.sys_host.network.dns_servers
         else:
             possible_dns_servers = DNS_SERVERS
