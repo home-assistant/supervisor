@@ -213,9 +213,25 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't read coredns template file: %s", err)
             raise CoreDNSError() from None
 
-        # Prepare DNS serverlist: Prio 1 Local, Prio 2 Manual, Prio 3 Fallback
+        # Prepare DNS server list:
+        # Logic for this should be
+        # 1. if there are manually defined servers use those.
+        #
+        # 2. if there are no manually defined use the local host defined
+        # (Not all os types use NetworkManager and dbus so this can show up
+        # empty)
+        #
+        # 3. if there are no manual and no local defined use the default
+        # servers.
+        if len(self.servers) > 0:
+            possible_dns_servers = self.servers
+        elif len(self.sys_host.network.dns_servers) > 0:
+            possible_dns_servers = self.sys_host.network.dns_servers
+        else:
+            possible_dns_servers = DNS_SERVERS
+
         dns_servers = []
-        for server in self.sys_host.network.dns_servers + self.servers + DNS_SERVERS:
+        for server in possible_dns_servers:
             try:
                 DNS_URL(server)
                 if server not in dns_servers:
