@@ -1,6 +1,6 @@
 """Info control for host."""
 import logging
-from typing import List, Set
+from typing import List
 
 from ..coresys import CoreSysAttributes, CoreSys
 from ..exceptions import HostNotSupportedError, DBusNotConnectedError, DBusError
