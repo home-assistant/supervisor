@@ -1,6 +1,6 @@
 """Info control for host."""
 import logging
-from typing import List, Set
+from typing import List
 
 from ..coresys import CoreSysAttributes, CoreSys
 from ..exceptions import HostNotSupportedError, DBusNotConnectedError, DBusError
@@ -19,13 +19,13 @@ class NetworkManager(CoreSysAttributes):
     def dns_servers(self) -> List[str]:
         """Return a list of local DNS servers."""
         # Read all local dns servers
-        servers: Set[str] = set()
+        servers: List[str] = []
         for config in self.sys_dbus.nmi_dns.configuration:
             if config.vpn or not config.nameservers:
                 continue
-            servers |= set(config.nameservers)
+            servers.extend(config.nameservers)
 
-        return [f"dns://{server}" for server in servers]
+        return [f"dns://{server}" for server in list(dict.fromkeys(servers))]
 
     async def update(self):
         """Update properties over dbus."""
