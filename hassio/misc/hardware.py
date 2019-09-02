@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional, Set
 import pyudev
 
 from ..const import ATTR_DEVICES, ATTR_NAME, ATTR_TYPE, CHAN_ID, CHAN_TYPE
+from ..exceptions import HardwareNotSupportedError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -155,5 +156,8 @@ class Hardware:
         proc = await asyncio.create_subprocess_exec("udevadm", "trigger")
 
         await proc.wait()
-        if proc.returncode != 0:
-            _LOGGER.waring("udevadm device triggering fails!")
+        if proc.returncode == 0:
+            return
+
+        _LOGGER.waring("udevadm device triggering fails!")
+        raise HardwareNotSupportedError()

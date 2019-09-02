@@ -188,3 +188,10 @@ class JsonFileError(HassioError):
 
 class DockerAPIError(HassioError):
     """Docker API error."""
+
+
+# Hardware
+
+
+class HardwareNotSupportedError(HassioNotSupportedError):
+    """Raise if hardware function is not supported."""
