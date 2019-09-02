@@ -1,5 +1,9 @@
 """Init file for Hass.io hardware RESTful API."""
+import asyncio
 import logging
+from typing import Any, Dict
+
+from aiohttp import web
 
 from .utils import api_process
 from ..const import (
@@ -19,7 +23,7 @@ class APIHardware(CoreSysAttributes):
     """Handle RESTful API for hardware functions."""
 
     @api_process
-    async def info(self, request):
+    async def info(self, request: web.Request) -> Dict[str, Any]:
         """Show hardware info."""
         return {
             ATTR_SERIAL: list(
@@ -32,7 +36,7 @@ class APIHardware(CoreSysAttributes):
         }
 
     @api_process
-    async def audio(self, request):
+    async def audio(self, request: web.Request) -> Dict[str, Any]:
         """Show ALSA audio devices."""
         return {
             ATTR_AUDIO: {
@@ -40,3 +44,8 @@ class APIHardware(CoreSysAttributes):
                 ATTR_OUTPUT: self.sys_host.alsa.output_devices,
             }
         }
+
+    @api_process
+    def trigger(self, request: web.Request) -> None:
+        """Trigger a udev device reload."""
+        return asyncio.shield(self.sys_hardware.udev_trigger())

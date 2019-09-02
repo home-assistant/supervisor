@@ -471,6 +471,7 @@ class Addon(AddonModel):
         if self.with_audio:
             self.write_asound()
 
+        # Start Add-on
         try:
             await self.instance.run()
         except DockerAPIError:

@@ -101,6 +101,7 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/hardware/info", api_hardware.info),
                 web.get("/hardware/audio", api_hardware.audio),
+                web.post("/hardware/trigger", api_hardware.trigger),
             ]
         )
 

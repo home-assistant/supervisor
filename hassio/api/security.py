@@ -41,6 +41,7 @@ ADDONS_API_BYPASS = re.compile(
     r"^(?:"
     r"|/addons/self/(?!security|update)[^/]+"
     r"|/info"
+    r"|/hardware/.+"
     r"|/services.*"
     r"|/discovery.*"
     r"|/auth"

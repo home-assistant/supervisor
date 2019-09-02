@@ -1,4 +1,5 @@
 """Read hardware info from system."""
+import asyncio
 from datetime import datetime
 import logging
 from pathlib import Path
@@ -148,3 +149,11 @@ class Hardware:
             return None
 
         return datetime.utcfromtimestamp(int(found.group(1)))
+
+    async def udev_trigger(self) -> None:
+        """Trigger a udev reload."""
+        proc = await asyncio.create_subprocess_exec("udevadm", "trigger")
+
+        await proc.wait()
+        if proc.returncode != 0:
+            _LOGGER.waring("udevadm device triggering fails!")
