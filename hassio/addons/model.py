@@ -1,8 +1,8 @@
 """Init file for Hass.io add-ons."""
-from distutils.version import StrictVersion
 from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
+from packaging import version
 import voluptuous as vol
 
 from ..const import (
@@ -482,7 +482,7 @@ class AddonModel(CoreSysAttributes):
 
         # Home Assistant
         version = config.get(ATTR_HOMEASSISTANT) or self.sys_homeassistant.version
-        if StrictVersion(self.sys_homeassistant.version) < StrictVersion(version):
+        if version.parse(self.sys_homeassistant.version) < version.parse(version):
             return False
 
         return True
