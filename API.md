@@ -350,6 +350,10 @@ Load host configs from a USB stick.
 }
 ```
 
+- POST `/hardware/trigger`
+
+Trigger an udev reload
+
 ### Home Assistant
 
 - GET `/homeassistant/info`
