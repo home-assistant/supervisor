@@ -1,4 +1,5 @@
 """Read hardware info from system."""
+import asyncio
 from datetime import datetime
 import logging
 from pathlib import Path
@@ -8,6 +9,7 @@ from typing import Any, Dict, Optional, Set
 import pyudev
 
 from ..const import ATTR_DEVICES, ATTR_NAME, ATTR_TYPE, CHAN_ID, CHAN_TYPE
+from ..exceptions import HardwareNotSupportedError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -148,3 +150,14 @@ class Hardware:
             return None
 
         return datetime.utcfromtimestamp(int(found.group(1)))
+
+    async def udev_trigger(self) -> None:
+        """Trigger a udev reload."""
+        proc = await asyncio.create_subprocess_exec("udevadm", "trigger")
+
+        await proc.wait()
+        if proc.returncode == 0:
+            return
+
+        _LOGGER.waring("udevadm device triggering fails!")
+        raise HardwareNotSupportedError()

@@ -2,7 +2,7 @@
 from pathlib import Path
 from ipaddress import ip_network
 
-HASSIO_VERSION = "184"
+HASSIO_VERSION = "185"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
