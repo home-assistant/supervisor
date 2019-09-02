@@ -7,6 +7,7 @@ cpe==1.2.1
 cryptography==2.7
 docker==4.0.2
 gitpython==3.0.2
+packaging==19.1
 pytz==2019.2
 pyudev==0.21.0
 uvloop==0.12.2

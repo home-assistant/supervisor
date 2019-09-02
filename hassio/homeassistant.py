@@ -2,7 +2,6 @@
 import asyncio
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
-from distutils.version import StrictVersion
 from ipaddress import IPv4Address
 import logging
 import os
@@ -16,6 +15,7 @@ from uuid import UUID
 import aiohttp
 from aiohttp import hdrs
 import attr
+from packaging import version as pkg_version
 
 from .const import (
     ATTR_ACCESS_TOKEN,
@@ -80,7 +80,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         try:
             # Evaluate Version if we lost this information
             if not self.version:
-                self.version = await self.instance.get_latest_version(key=StrictVersion)
+                self.version = await self.instance.get_latest_version(
+                    key=pkg_version.parse
+                )
 
             await self.instance.attach(tag=self.version)
         except DockerAPIError:
