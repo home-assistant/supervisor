@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies from requirements.txt if it exists
-COPY requirements.txt requirements_tests.txt .
+COPY requirements.txt requirements_tests.txt ./
 RUN pip3 install -r requirements_tests.txt -r requirements_tests.txt \
     && pip3 install black tox \
     && rm -f requirements.txt requirements_tests.txt
