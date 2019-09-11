@@ -1,6 +1,7 @@
 """Init file for Hass.io util for RESTful API."""
 import json
 import logging
+from typing import Optional, List
 
 from aiohttp import web
 import voluptuous as vol
@@ -89,12 +90,22 @@ def api_return_ok(data=None):
     return web.json_response({JSON_RESULT: RESULT_OK, JSON_DATA: data or {}})
 
 
-async def api_validate(schema, request):
+async def api_validate(
+    schema: vol.Schema, request: web.Request, origin: Optional[List[str]] = None
+):
     """Validate request data with schema."""
     data = await request.json(loads=json_loads)
     try:
-        data = schema(data)
+        data_validated = schema(data)
     except vol.Invalid as ex:
         raise APIError(humanize_error(data, ex)) from None
 
-    return data
+    if not origin:
+        return data_validated
+
+    for origin_value in origin:
+        if origin_value not in data_validated:
+            continue
+        data_validated[origin_value] = data[origin_value]
+
+    return data_validated

@@ -269,7 +269,9 @@ class APIAddons(CoreSysAttributes):
         addon_schema = SCHEMA_OPTIONS.extend(
             {vol.Optional(ATTR_OPTIONS): vol.Any(None, addon.schema)}
         )
-        body: Dict[str, Any] = await api_validate(addon_schema, request)
+        body: Dict[str, Any] = await api_validate(
+            addon_schema, request, origin=[ATTR_OPTIONS]
+        )
 
         if ATTR_OPTIONS in body:
             addon.options = body[ATTR_OPTIONS]
