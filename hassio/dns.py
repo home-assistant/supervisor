@@ -117,11 +117,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
         self._update_local_resolv()
 
-        # Start is not Running
+        # Reset container configuration
         if await self.instance.is_running():
             with suppress(DockerAPIError):
                 await self.instance.stop()
 
+        # Run CoreDNS
         with suppress(CoreDNSError):
             await self.start()
 
@@ -148,9 +149,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.version = self.instance.version
         self.save_data()
 
-        # Init Hosts / Run server
+        # Init Hosts
         self.write_hosts()
-        await self.start()
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update CoreDNS plugin."""
