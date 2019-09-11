@@ -54,6 +54,7 @@ class DockerAPI:
         self,
         image: str,
         version: str = "latest",
+        dns: bool = True,
         ipv4: Optional[IPv4Address] = None,
         **kwargs: Dict[str, Any],
     ) -> docker.models.containers.Container:
@@ -61,14 +62,15 @@ class DockerAPI:
 
         Need run inside executor.
         """
-        name: str = kwargs.get("name", image)
+        name: str = kwargs.get("name")
         network_mode: str = kwargs.get("network_mode")
         hostname: str = kwargs.get("hostname")
 
         # Setup DNS
-        kwargs["dns"] = [str(self.network.dns)]
-        kwargs["dns_search"] = [DNS_SUFFIX]
-        kwargs["domainname"] = DNS_SUFFIX
+        if dns:
+            kwargs["dns"] = [str(self.network.dns)]
+            kwargs["dns_search"] = [DNS_SUFFIX]
+            kwargs["domainname"] = DNS_SUFFIX
 
         # Setup network
         if not network_mode:
