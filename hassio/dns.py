@@ -121,9 +121,10 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Start is not Running
         if await self.instance.is_running():
-            await self.restart()
-        else:
-            await self.start()
+            # await self.restart()
+            await self.instance.stop()
+
+        await self.start()
 
     async def unload(self) -> None:
         """Unload DNS forwarder."""
@@ -207,6 +208,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     def _write_corefile(self) -> None:
         """Write CoreDNS config."""
+        dns_servers: List[str] = []
+
+        # Load Template
         try:
             corefile_template: Template = Template(COREDNS_TMPL.read_text())
         except OSError as err:
@@ -214,8 +218,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             raise CoreDNSError() from None
 
         # Prepare DNS serverlist: Prio 1 Local, Prio 2 Manual, Prio 3 Fallback
-        dns_servers = []
-        for server in self.sys_host.network.dns_servers + self.servers + DNS_SERVERS:
+        local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
+        for server in local_dns + self.servers + DNS_SERVERS:
             try:
                 DNS_URL(server)
                 if server not in dns_servers:
