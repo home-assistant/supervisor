@@ -351,7 +351,7 @@ class Addon(AddonModel):
         options = self.options
 
         try:
-            schema(options)
+            options = schema(options)
             write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error(
