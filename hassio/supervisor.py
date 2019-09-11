@@ -41,6 +41,12 @@ class Supervisor(CoreSysAttributes):
         with suppress(DockerAPIError):
             await self.instance.cleanup()
 
+        # Check privileged mode
+        if not self.instance.privileged:
+            _LOGGER.error(
+                "Supervisor does not run in Privileged mode. Hassio runs with limited functionality!"
+            )
+
     @property
     def ip_address(self) -> IPv4Address:
         """Return IP of Supervisor instance."""
