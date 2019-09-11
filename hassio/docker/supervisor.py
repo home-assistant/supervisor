@@ -26,6 +26,11 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         """Return IP address of this container."""
         return self.sys_docker.network.supervisor
 
+    @property
+    def privileged(self) -> bool:
+        """Return True if the container run with Privileged."""
+        return self.meta_host.get("Privileged", False)
+
     def _attach(self, tag: str) -> None:
         """Attach to running docker container.
 

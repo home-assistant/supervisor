@@ -43,6 +43,13 @@ class DockerInterface(CoreSysAttributes):
         return self._meta.get("Config", {})
 
     @property
+    def meta_host(self) -> Dict[str, Any]:
+        """Return meta data of configuration for host."""
+        if not self._meta:
+            return {}
+        return self._meta.get("HostConfig", {})
+
+    @property
     def meta_labels(self) -> Dict[str, str]:
         """Return meta data of labels for container/image."""
         return self.meta_config.get("Labels") or {}
