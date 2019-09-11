@@ -115,16 +115,15 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
-
-        with suppress(CoreDNSError):
-            self._update_local_resolv()
+        self._update_local_resolv()
 
         # Start is not Running
         if await self.instance.is_running():
-            # await self.restart()
-            await self.instance.stop()
+            with suppress(DockerAPIError):
+                await self.instance.stop()
 
-        await self.start()
+        with suppress(CoreDNSError):
+            await self.start()
 
     async def unload(self) -> None:
         """Unload DNS forwarder."""
@@ -362,7 +361,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                     resolv_lines.append(line.strip())
         except OSError as err:
             _LOGGER.warning("Can't read local resolv: %s", err)
-            raise CoreDNSError() from None
+            return
 
         if nameserver in resolv_lines:
             return
@@ -376,4 +375,4 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                     resolv.write(f"{line}\n")
         except OSError as err:
             _LOGGER.warning("Can't write local resolv: %s", err)
-            raise CoreDNSError() from None
+            return
