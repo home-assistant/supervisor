@@ -220,6 +220,7 @@ ATTR_DNS = "dns"
 ATTR_SERVERS = "servers"
 ATTR_LOCALS = "locals"
 ATTR_UDEV = "udev"
+ATTR_VALUE = "value"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

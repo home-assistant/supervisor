@@ -438,7 +438,9 @@ class Addon(AddonModel):
         options = {**self.persist[ATTR_OPTIONS], **default_options}
 
         # create voluptuous
-        new_schema = vol.Schema(vol.All(dict, validate_options(new_raw_schema)))
+        new_schema = vol.Schema(
+            vol.All(dict, validate_options(self.coresys, new_raw_schema))
+        )
 
         # validate
         try:
