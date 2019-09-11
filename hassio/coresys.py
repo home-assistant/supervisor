@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .homeassistant import HomeAssistant
     from .host import HostManager
     from .ingress import Ingress
+    from .secrets import SecretsManager
     from .services import ServiceManager
     from .snapshots import SnapshotManager
     from .supervisor import Supervisor
@@ -70,6 +71,7 @@ class CoreSys:
         self._dbus: Optional[DBusManager] = None
         self._hassos: Optional[HassOS] = None
         self._services: Optional[ServiceManager] = None
+        self._secrets: Optional[SecretsManager] = None
         self._store: Optional[StoreManager] = None
         self._discovery: Optional[Discovery] = None
 
@@ -208,6 +210,18 @@ class CoreSys:
         if self._updater:
             raise RuntimeError("Updater already set!")
         self._updater = value
+
+    @property
+    def secrets(self) -> SecretsManager:
+        """Return SecretsManager object."""
+        return self._secrets
+
+    @secrets.setter
+    def secrets(self, value: SecretsManager):
+        """Set a Updater object."""
+        if self._secrets:
+            raise RuntimeError("SecretsManager already set!")
+        self._secrets = value
 
     @property
     def addons(self) -> AddonManager:
@@ -436,6 +450,11 @@ class CoreSysAttributes:
     def sys_updater(self) -> Updater:
         """Return Updater object."""
         return self.coresys.updater
+
+    @property
+    def sys_secrets(self) -> SecretsManager:
+        """Return SecretsManager object."""
+        return self.coresys.secrets
 
     @property
     def sys_addons(self) -> AddonManager:

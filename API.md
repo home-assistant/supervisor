@@ -434,6 +434,18 @@ Proxy to real websocket instance.
 }
 ```
 
+### Secrets
+
+- POST `/secrets/reload`
+
+- GET `/secrets/{secret}`
+```json
+{
+    "name": "secret",
+    "value": "___"
+}
+```
+
 ### RESTful for API addons
 
 If an add-on will call itself, you can use `/addons/self/...`.
