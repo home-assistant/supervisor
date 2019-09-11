@@ -72,6 +72,9 @@ class HassIO(CoreSysAttributes):
         # Load ingress
         await self.sys_ingress.load()
 
+        # Load secrets
+        await self.sys_secrets.load()
+
     async def start(self):
         """Start Hass.io orchestration."""
         await self.sys_api.start()

@@ -115,14 +115,15 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
+        self._update_local_resolv()
 
-        with suppress(CoreDNSError):
-            self._update_local_resolv()
-
-        # Start is not Running
+        # Reset container configuration
         if await self.instance.is_running():
-            await self.restart()
-        else:
+            with suppress(DockerAPIError):
+                await self.instance.stop()
+
+        # Run CoreDNS
+        with suppress(CoreDNSError):
             await self.start()
 
     async def unload(self) -> None:
@@ -148,9 +149,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.version = self.instance.version
         self.save_data()
 
-        # Init Hosts / Run server
+        # Init Hosts
         self.write_hosts()
-        await self.start()
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update CoreDNS plugin."""
@@ -207,6 +207,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     def _write_corefile(self) -> None:
         """Write CoreDNS config."""
+        dns_servers: List[str] = []
+
+        # Load Template
         try:
             corefile_template: Template = Template(COREDNS_TMPL.read_text())
         except OSError as err:
@@ -214,8 +217,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             raise CoreDNSError() from None
 
         # Prepare DNS serverlist: Prio 1 Local, Prio 2 Manual, Prio 3 Fallback
-        dns_servers = []
-        for server in self.sys_host.network.dns_servers + self.servers + DNS_SERVERS:
+        local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
+        for server in local_dns + self.servers + DNS_SERVERS:
             try:
                 DNS_URL(server)
                 if server not in dns_servers:
@@ -358,7 +361,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                     resolv_lines.append(line.strip())
         except OSError as err:
             _LOGGER.warning("Can't read local resolv: %s", err)
-            raise CoreDNSError() from None
+            return
 
         if nameserver in resolv_lines:
             return
@@ -372,4 +375,4 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                     resolv.write(f"{line}\n")
         except OSError as err:
             _LOGGER.warning("Can't write local resolv: %s", err)
-            raise CoreDNSError() from None
+            return

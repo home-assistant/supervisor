@@ -461,7 +461,7 @@ class AddonModel(CoreSysAttributes):
 
         if isinstance(raw_schema, bool):
             return vol.Schema(dict)
-        return vol.Schema(vol.All(dict, validate_options(raw_schema)))
+        return vol.Schema(vol.All(dict, validate_options(self.coresys, raw_schema)))
 
     def __eq__(self, other):
         """Compaired add-on objects."""

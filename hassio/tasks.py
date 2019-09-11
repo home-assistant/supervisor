@@ -19,6 +19,7 @@ RUN_RELOAD_SNAPSHOTS = 72000
 RUN_RELOAD_HOST = 72000
 RUN_RELOAD_UPDATER = 7200
 RUN_RELOAD_INGRESS = 930
+RUN_RELOAD_SECRETS = 940
 
 RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
 RUN_WATCHDOG_HOMEASSISTANT_API = 300
@@ -75,6 +76,11 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(
             self.sys_scheduler.register_task(
                 self.sys_ingress.reload, RUN_RELOAD_INGRESS
+            )
+        )
+        self.jobs.add(
+            self.sys_scheduler.register_task(
+                self.sys_secrets.reload, RUN_RELOAD_SECRETS
             )
         )
 

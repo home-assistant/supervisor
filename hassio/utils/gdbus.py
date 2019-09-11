@@ -90,7 +90,6 @@ class DBus:
             raise DBusParseError() from None
 
         # Read available methods
-        _LOGGER.debug("Introspect XML: %s", data)
         for interface in xml.findall("./interface"):
             interface_name = interface.get("name")
 
