@@ -44,7 +44,7 @@ class Supervisor(CoreSysAttributes):
         # Check privileged mode
         if not self.instance.privileged:
             _LOGGER.error(
-                "Supervisor did not run in Privileged mode. Run with limited functionality!"
+                "Supervisor does not run in Privileged mode. Hassio runs with limited functionality!"
             )
 
     @property
