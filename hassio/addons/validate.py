@@ -356,6 +356,8 @@ def _single_validate(coresys, typ, value, key):
     if str(value).startswith("!secret "):
         secret: str = value.partition(" ")[2]
         value = coresys.secrets.get(secret)
+        if value is None:
+            raise vol.Invalid(f"Unknown secret {secret}")
 
     # parse extend data from type
     match = RE_SCHEMA_ELEMENT.match(typ)
