@@ -27,6 +27,7 @@ from .store import StoreManager
 from .supervisor import Supervisor
 from .tasks import Tasks
 from .updater import Updater
+from .secrets import SecretsManager
 from .utils.dt import fetch_timezone
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ async def initialize_coresys():
     coresys.discovery = Discovery(coresys)
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
+    coresys.secrets = SecretsManager(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
