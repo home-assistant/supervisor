@@ -21,7 +21,6 @@ from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots
 from .supervisor import APISupervisor
-from .secrets import APISecrets
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -58,7 +57,6 @@ class RestAPI(CoreSysAttributes):
         self._register_info()
         self._register_auth()
         self._register_dns()
-        self._register_secrets()
 
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
@@ -104,18 +102,6 @@ class RestAPI(CoreSysAttributes):
                 web.get("/hardware/info", api_hardware.info),
                 web.get("/hardware/audio", api_hardware.audio),
                 web.post("/hardware/trigger", api_hardware.trigger),
-            ]
-        )
-
-    def _register_secrets(self) -> None:
-        """Register secrets functions."""
-        api_secrets = APISecrets()
-        api_secrets.coresys = self.coresys
-
-        self.webapp.add_routes(
-            [
-                web.get("/secrets/{secret}", api_secrets.secret),
-                web.post("/secrets/reload", api_secrets.reload),
             ]
         )
 
