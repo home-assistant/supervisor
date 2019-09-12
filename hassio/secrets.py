@@ -1,11 +1,13 @@
 """Handle Home Assistant secrets to add-ons."""
-from typing import Dict
-from pathlib import Path
+from datetime import timedelta
 import logging
+from pathlib import Path
+from typing import Dict
 
 from ruamel.yaml import YAML, YAMLError
 
 from .coresys import CoreSys, CoreSysAttributes
+from .utils import AsyncThrottle
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -38,6 +40,7 @@ class SecretsManager(CoreSysAttributes):
         """Reload secrets."""
         await self._read_secrets()
 
+    @AsyncThrottle(timedelta(seconds=60))
     async def _read_secrets(self):
         """Read secrets.yaml into memory."""
         if not self.path_secrets.exists():
