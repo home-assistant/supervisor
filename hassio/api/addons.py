@@ -339,14 +339,6 @@ class APIAddons(CoreSysAttributes):
     def start(self, request: web.Request) -> Awaitable[None]:
         """Start add-on."""
         addon: AnyAddon = self._extract_addon(request)
-
-        # check options
-        options = addon.options
-        try:
-            addon.schema(options)
-        except vol.Invalid as ex:
-            raise APIError(humanize_error(options, ex)) from None
-
         return asyncio.shield(addon.start())
 
     @api_process
