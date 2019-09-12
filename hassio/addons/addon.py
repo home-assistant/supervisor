@@ -345,10 +345,13 @@ class Addon(AddonModel):
         """Save data of add-on."""
         self.sys_addons.data.save_data()
 
-    def write_options(self):
+    async def write_options(self):
         """Return True if add-on options is written to data."""
         schema = self.schema
         options = self.options
+
+        # Update secrets for validation
+        await self.sys_secrets.reload()
 
         try:
             options = schema(options)
@@ -467,7 +470,7 @@ class Addon(AddonModel):
         self.save_persist()
 
         # Options
-        self.write_options()
+        await self.write_options()
 
         # Sound
         if self.with_audio:
