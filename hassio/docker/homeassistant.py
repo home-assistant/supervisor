@@ -127,7 +127,9 @@ class DockerHomeAssistant(DockerInterface):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-            docker_image = self.sys_docker.images.get(self.image)
+            docker_image = self.sys_docker.images.get(
+                f"{self.image}:{self.sys_homeassistant.version}"
+            )
         except docker.errors.DockerException:
             return False
 
