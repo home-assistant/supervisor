@@ -1,26 +1,26 @@
 """Init file for Hass.io util for RESTful API."""
 import json
 import logging
-from typing import Optional, List
+from typing import Any, Dict, List, Optional
 
 from aiohttp import web
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
-    JSON_RESULT,
+    CONTENT_TYPE_BINARY,
     JSON_DATA,
     JSON_MESSAGE,
-    RESULT_OK,
+    JSON_RESULT,
     RESULT_ERROR,
-    CONTENT_TYPE_BINARY,
+    RESULT_OK,
 )
-from ..exceptions import HassioError, APIError, APIForbidden
+from ..exceptions import APIError, APIForbidden, HassioError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def json_loads(data):
+def json_loads(data: Any) -> Dict[str, Any]:
     """Extract json from string with support for '' and None."""
     if not data:
         return {}
@@ -78,23 +78,23 @@ def api_process_raw(content):
     return wrap_method
 
 
-def api_return_error(message=None):
+def api_return_error(message: Optional[str] = None) -> web.Response:
     """Return an API error message."""
     return web.json_response(
         {JSON_RESULT: RESULT_ERROR, JSON_MESSAGE: message}, status=400
     )
 
 
-def api_return_ok(data=None):
+def api_return_ok(data: Optional[Dict[str, Any]] = None) -> web.Response:
     """Return an API ok answer."""
     return web.json_response({JSON_RESULT: RESULT_OK, JSON_DATA: data or {}})
 
 
 async def api_validate(
     schema: vol.Schema, request: web.Request, origin: Optional[List[str]] = None
-):
+) -> Dict[str, Any]:
     """Validate request data with schema."""
-    data = await request.json(loads=json_loads)
+    data: Dict[str, Any] = await request.json(loads=json_loads)
     try:
         data_validated = schema(data)
     except vol.Invalid as ex:
