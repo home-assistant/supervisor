@@ -266,13 +266,16 @@ class APIAddons(CoreSysAttributes):
         """Store user options for add-on."""
         addon: AnyAddon = self._extract_addon(request)
 
+        # Update secrets for validation
+        await self.sys_secrets.reload()
+
+        # Extend schema with add-on specific validation
         addon_schema = SCHEMA_OPTIONS.extend(
             {vol.Optional(ATTR_OPTIONS): vol.Any(None, addon.schema)}
         )
-        body: Dict[str, Any] = await api_validate(
-            addon_schema, request, origin=[ATTR_OPTIONS]
-        )
 
+        # Validate/Process Body
+        body = await api_validate(addon_schema, request, origin=[ATTR_OPTIONS])
         if ATTR_OPTIONS in body:
             addon.options = body[ATTR_OPTIONS]
         if ATTR_BOOT in body:
