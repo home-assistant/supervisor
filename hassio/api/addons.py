@@ -5,7 +5,6 @@ from typing import Any, Awaitable, Dict, List
 
 from aiohttp import web
 import voluptuous as vol
-from voluptuous.humanize import humanize_error
 
 from ..addons import AnyAddon
 from ..docker.stats import DockerStats
