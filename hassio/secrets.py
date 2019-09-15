@@ -53,7 +53,7 @@ class SecretsManager(CoreSysAttributes):
         # Read secrets
         try:
             yaml = YAML()
-            data = await self.sys_run_in_executor(yaml.load, self.path_secrets)
+            data = await self.sys_run_in_executor(yaml.load, self.path_secrets) or {}
 
             self.secrets = SECRETS_SCHEMA(data)
         except YAMLError as err:
