@@ -5,11 +5,14 @@ from pathlib import Path
 from typing import Dict
 
 from ruamel.yaml import YAML, YAMLError
+import voluptuous as vol
 
 from .coresys import CoreSys, CoreSysAttributes
 from .utils import AsyncThrottle
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+SECRETS_SCHEMA = vol.Schema({str: vol.Any(str, int, None, float)})
 
 
 class SecretsManager(CoreSysAttributes):
@@ -50,8 +53,12 @@ class SecretsManager(CoreSysAttributes):
         # Read secrets
         try:
             yaml = YAML()
-            self.secrets = await self.sys_run_in_executor(yaml.load, self.path_secrets)
+            data = await self.sys_run_in_executor(yaml.load, self.path_secrets) or {}
+
+            self.secrets = SECRETS_SCHEMA(data)
         except YAMLError as err:
             _LOGGER.error("Can't process Home Assistant secrets: %s", err)
+        except vol.Invalid:
+            _LOGGER.warning("Home Assistant secrets have a invalid format")
         else:
             _LOGGER.debug("Reload Home Assistant secrets: %s", len(self.secrets))
