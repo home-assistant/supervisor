@@ -2,6 +2,7 @@
 import logging
 import re
 import secrets
+from typing import Any, Dict
 import uuid
 
 import voluptuous as vol
@@ -85,6 +86,7 @@ from ..const import (
     STATE_STARTED,
     STATE_STOPPED,
 )
+from ..coresys import CoreSys
 from ..discovery.validate import valid_discovery_service
 from ..validate import (
     ALSA_DEVICE,
@@ -310,7 +312,7 @@ SCHEMA_ADDON_SNAPSHOT = vol.Schema(
 )
 
 
-def validate_options(coresys, raw_schema):
+def validate_options(coresys: CoreSys, raw_schema: Dict[str, Any]):
     """Validate schema."""
 
     def validate(struct):
@@ -346,7 +348,7 @@ def validate_options(coresys, raw_schema):
 
 # pylint: disable=no-value-for-parameter
 # pylint: disable=inconsistent-return-statements
-def _single_validate(coresys, typ, value, key):
+def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     """Validate a single element."""
     # if required argument
     if value is None:
@@ -385,7 +387,7 @@ def _single_validate(coresys, typ, value, key):
         return NETWORK_PORT(value)
     elif typ.startswith(V_MATCH):
         return vol.Match(match.group("match"))(str(value))
-    elif typ.strartswith(V_LIST):
+    elif typ.startswith(V_LIST):
         return vol.In(match.group("list").split("|"))(str(value))
 
     raise vol.Invalid(f"Fatal error for {key} type {typ}")
