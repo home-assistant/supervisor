@@ -346,7 +346,7 @@ def validate_options(coresys, raw_schema):
 
 # pylint: disable=no-value-for-parameter
 # pylint: disable=inconsistent-return-statements
-def _single_validate(coresys, typ, value, key):
+def _single_validate(coresys, typ: str, value: Any, key: str):
     """Validate a single element."""
     # if required argument
     if value is None:
@@ -385,7 +385,7 @@ def _single_validate(coresys, typ, value, key):
         return NETWORK_PORT(value)
     elif typ.startswith(V_MATCH):
         return vol.Match(match.group("match"))(str(value))
-    elif typ.strartswith(V_LIST):
+    elif typ.startswith(V_LIST):
         return vol.In(match.group("list").split("|"))(str(value))
 
     raise vol.Invalid(f"Fatal error for {key} type {typ}")
