@@ -2,8 +2,8 @@
 import logging
 import re
 import secrets
+from typing import Any, Dict
 import uuid
-from typing import Any
 
 import voluptuous as vol
 
@@ -86,6 +86,7 @@ from ..const import (
     STATE_STARTED,
     STATE_STOPPED,
 )
+from ..coresys import CoreSys
 from ..discovery.validate import valid_discovery_service
 from ..validate import (
     ALSA_DEVICE,
@@ -311,7 +312,7 @@ SCHEMA_ADDON_SNAPSHOT = vol.Schema(
 )
 
 
-def validate_options(coresys, raw_schema):
+def validate_options(coresys: CoreSys, raw_schema: Dict[str, Any]):
     """Validate schema."""
 
     def validate(struct):
@@ -347,7 +348,7 @@ def validate_options(coresys, raw_schema):
 
 # pylint: disable=no-value-for-parameter
 # pylint: disable=inconsistent-return-statements
-def _single_validate(coresys, typ: str, value: Any, key: str):
+def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     """Validate a single element."""
     # if required argument
     if value is None:
