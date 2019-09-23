@@ -19,7 +19,7 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
-        "Topic :: Home Automation"
+        "Topic :: Home Automation",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Scientific/Engineering :: Atmospheric Science",
         "Development Status :: 5 - Production/Stable",
