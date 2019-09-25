@@ -236,6 +236,7 @@ def supervisor_debugger(coresys: CoreSys) -> None:
     """Setup debugger if needed."""
     if not coresys.config.debug:
         return
+    # pylint: disable=import-outside-toplevel
     import ptvsd
 
     _LOGGER.info("Initialize Hass.io debugger")
