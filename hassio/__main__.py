@@ -12,6 +12,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 def initialize_event_loop():
     """Attempt to use uvloop."""
     try:
+        # pylint: disable=import-outside-toplevel
         import uvloop
 
         uvloop.install()

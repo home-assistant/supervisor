@@ -293,7 +293,7 @@ class AddonManager(CoreSysAttributes):
                     continue
 
                 # Need local lookup
-                elif addon.need_build and not addon.is_detached:
+                if addon.need_build and not addon.is_detached:
                     store = self.store[addon.slug]
                     # If this add-on is available for rebuild
                     if addon.version == store.version:

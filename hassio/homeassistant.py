@@ -575,7 +575,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                     migration_progress = True
                     _LOGGER.info("Home Assistant record migration in progress")
                 continue
-            elif migration_progress:
+            if migration_progress:
                 migration_progress = False  # Reset start time
                 start_time = time.monotonic()
                 _LOGGER.info("Home Assistant record migration done")
@@ -586,7 +586,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                     pip_progress = True
                     _LOGGER.info("Home Assistant pip installation in progress")
                 continue
-            elif pip_progress:
+            if pip_progress:
                 pip_progress = False  # Reset start time
                 start_time = time.monotonic()
                 _LOGGER.info("Home Assistant pip installation done")
