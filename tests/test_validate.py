@@ -24,41 +24,41 @@ BAD = [
 async def test_dns_url_v4_good():
     """ tests the DNS validator with known-good ipv6 DNS URLs """
     for url in GOOD_V4:
-        assert hassio.validate.DNS_URL(url)
+        assert hassio.validate.dns_url(url)
 
 async def test_dns_url_v6_good():
     """ tests the DNS validator with known-good ipv6 DNS URLs """
     for url in GOOD_V6:
-        assert hassio.validate.DNS_URL(url)
+        assert hassio.validate.dns_url(url)
 
 async def test_dns_server_list_v4():
     """ test a list with v4 addresses """
-    assert hassio.validate.DNS_SERVER_LIST(GOOD_V4)
-    assert hassio.validate.DNS_SERVER_LIST(GOOD_V4, max_length=len(GOOD_V4))
+    assert hassio.validate.dns_server_list(GOOD_V4)
+    assert hassio.validate.dns_server_list(GOOD_V4, max_length=len(GOOD_V4))
 
 async def test_dns_server_list_v6():
     """ test a list with v6 addresses """
-    assert hassio.validate.DNS_SERVER_LIST(GOOD_V6)
-    assert hassio.validate.DNS_SERVER_LIST(GOOD_V6, max_length=len(GOOD_V6))
+    assert hassio.validate.dns_server_list(GOOD_V6)
+    assert hassio.validate.dns_server_list(GOOD_V6, max_length=len(GOOD_V6))
 
 async def test_dns_server_list_combined():
     """ test a list with both v4 and v6 addresses """
     combined = GOOD_V4 + GOOD_V6
     # test the matches
-    assert hassio.validate.DNS_SERVER_LIST(combined)
+    assert hassio.validate.dns_server_list(combined)
     # test max_length is OK still
-    assert hassio.validate.DNS_SERVER_LIST(combined, max_length=len(combined))
+    assert hassio.validate.dns_server_list(combined, max_length=len(combined))
     # test that it fails when the list is too long
     with pytest.raises(voluptuous.error.Invalid):
-        hassio.validate.DNS_SERVER_LIST(combined, max_length=len(combined)-2)
+        hassio.validate.dns_server_list(combined, max_length=len(combined)-2)
 
 async def test_dns_server_list_bad():
     """ test the bad list """
     # test the matches
     with pytest.raises(voluptuous.error.Invalid):
-        assert hassio.validate.DNS_SERVER_LIST(BAD)
+        assert hassio.validate.dns_server_list(BAD)
         # test that it fails when the list is too long
-        assert hassio.validate.DNS_SERVER_LIST(BAD, max_length=len(BAD)-2)
+        assert hassio.validate.dns_server_list(BAD, max_length=len(BAD)-2)
 
 async def test_dns_server_list_bad_combined():
     """ test the bad list, combined with the good """
@@ -66,6 +66,6 @@ async def test_dns_server_list_bad_combined():
 
     with pytest.raises(voluptuous.error.Invalid):
         # list too long, bad list
-        assert hassio.validate.DNS_SERVER_LIST(combined, max_length=len(combined)-2)
+        assert hassio.validate.dns_server_list(combined, max_length=len(combined)-2)
         # list length OK, bad list
-        assert hassio.validate.DNS_SERVER_LIST(combined, max_length=len(combined))
+        assert hassio.validate.dns_server_list(combined, max_length=len(combined))
