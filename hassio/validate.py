@@ -1,6 +1,7 @@
 """Validate functions."""
 import re
 import uuid
+import ipaddress
 
 import voluptuous as vol
 
@@ -51,8 +52,38 @@ UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
 SHA256 = vol.Match(r"^[0-9a-f]{64}$")
 TOKEN = vol.Match(r"^[0-9a-f]{32,256}$")
 LOG_LEVEL = vol.In(["debug", "info", "warning", "error", "critical"])
-DNS_URL = vol.Match(r"^dns://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-DNS_SERVER_LIST = vol.All([DNS_URL], vol.Length(max=8))
+
+
+def dns_url(url):
+    """ takes a DNS url (str) and validates that it matches the scheme dns://<ip address>.
+    Acts like a voluptuous.Match object.
+    """
+    if not url.lower().startswith("dns://"):
+        raise vol.error.Invalid("Doesn't start with dns://")
+    address = url[6:]  # strip the dns:// off
+    try:
+        ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
+        return True
+    except ValueError:
+        raise vol.error.Invalid("Invalid DNS URL: {}".format(url))
+
+
+def dns_server_list(url_list: list, max_length: int = 8):
+    """ validates a list of DNS urls, acts like a Voluptuous Match object
+        If any are misshapen, return False.
+        If the list is over max_length entries, return False
+        """
+    if len(url_list) > max_length:
+        raise vol.error.Invalid(
+            "DNS SERVER List over max_length({}): {}".format(
+                max_length, ",".join(url_list)
+            )
+        )
+    if vol.error.Invalid in [dns_url(url) for url in url_list]:
+        raise vol.error.Invalid(
+            "DNS SERVER List invalid: {}".format(",".join(url_list))
+        )
+    return True
 
 
 def validate_repository(repository):
@@ -157,7 +188,7 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
 SCHEMA_DNS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): DNS_SERVER_LIST,
+        vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): dns_server_list,
     },
     extra=vol.REMOVE_EXTRA,
 )
