@@ -10,7 +10,8 @@
 		"--privileged"
 	],
 	"extensions": [
-		"ms-python.python"
+		"ms-python.python",
+		"visualstudioexptteam.vscodeintellicode"
 	],
 	"settings": {
 		"python.pythonPath": "/usr/local/bin/python",
