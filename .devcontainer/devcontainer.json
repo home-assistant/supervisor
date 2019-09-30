@@ -11,7 +11,8 @@
 	],
 	"extensions": [
 		"ms-python.python",
-		"visualstudioexptteam.vscodeintellicode"
+		"visualstudioexptteam.vscodeintellicode",
+		"esbenp.prettier-vscode"
 	],
 	"settings": {
 		"python.pythonPath": "/usr/local/bin/python",
