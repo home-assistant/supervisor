@@ -218,6 +218,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Prepare DNS serverlist: Prio 1 Local, Prio 2 Manual, Prio 3 Fallback
         local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
+        _LOGGER.info(f"local_dns = {local_dns}")
+        _LOGGER.info(f"self.servers = {self.servers}")
+        _LOGGER.info(f"DNS_SERVERS = {DNS_SERVERS}")
         for server in local_dns + self.servers + DNS_SERVERS:
             try:
                 dns_url(server)

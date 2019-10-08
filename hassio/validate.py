@@ -63,9 +63,10 @@ def dns_url(url):
     address = url[6:]  # strip the dns:// off
     try:
         ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
-        return True
+        # return True
     except ValueError:
         raise vol.error.Invalid("Invalid DNS URL: {}".format(url))
+    return dns_url
 
 
 def dns_server_list(url_list: list, max_length: int = 8):
@@ -73,17 +74,20 @@ def dns_server_list(url_list: list, max_length: int = 8):
         If any are misshapen, return False.
         If the list is over max_length entries, return False
         """
-    if len(url_list) > max_length:
-        raise vol.error.Invalid(
-            "DNS SERVER List over max_length({}): {}".format(
-                max_length, ",".join(url_list)
+    if type(url_list) == list:
+        if len(url_list) > max_length:
+            raise vol.error.Invalid(
+                "DNS SERVER List over max_length({}): {}".format(
+                    max_length, ",".join(url_list)
+                )
             )
-        )
-    if vol.error.Invalid in [dns_url(url) for url in url_list]:
-        raise vol.error.Invalid(
-            "DNS SERVER List invalid: {}".format(",".join(url_list))
-        )
-    return True
+        if vol.error.Invalid in [dns_url(url) for url in url_list]:
+            raise vol.error.Invalid(
+                "DNS SERVER List invalid: {}".format(",".join(url_list))
+            )
+    else:
+        raise ValueError(f"Type of url_list ({type(url_list)}) isn't list")
+    return url_list
 
 
 def validate_repository(repository):
