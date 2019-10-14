@@ -5,7 +5,7 @@ cchardet==2.1.4
 colorlog==4.0.2
 cpe==1.2.1
 cryptography==2.7
-docker==4.0.2
+docker==4.1.0
 gitpython==3.0.3
 packaging==19.2
 pytz==2019.2
