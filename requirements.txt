@@ -8,7 +8,7 @@ cryptography==2.7
 docker==4.1.0
 gitpython==3.0.3
 packaging==19.2
-pytz==2019.2
+pytz==2019.3
 pyudev==0.21.0
 ruamel.yaml==0.15.100
 uvloop==0.13.0
