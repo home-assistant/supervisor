@@ -11,8 +11,13 @@ from ..coresys import CoreSysAttributes
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-# pylint: disable=invalid-name
-DefaultConfig = attr.make_class("DefaultConfig", ["input", "output"])
+
+@attr.s()
+class DefaultConfig:
+    """Default config input/output ALSA channel."""
+
+    input: str = attr.ib()
+    output: str = attr.ib()
 
 
 AUDIODB_JSON: Path = Path(__file__).parents[1].joinpath("data/audiodb.json")

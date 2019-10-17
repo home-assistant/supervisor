@@ -31,8 +31,8 @@ class Message:
 
     addon: str = attr.ib()
     service: str = attr.ib()
-    config: Dict[str, Any] = attr.ib(cmp=False)
-    uuid: UUID = attr.ib(factory=lambda: uuid4().hex, cmp=False)
+    config: Dict[str, Any] = attr.ib(eq=False)
+    uuid: UUID = attr.ib(factory=lambda: uuid4().hex, eq=False)
 
 
 class Discovery(CoreSysAttributes, JsonConfig):
