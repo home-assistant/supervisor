@@ -114,16 +114,16 @@ def _generate_iv(key: bytes, salt: bytes) -> bytes:
 
 
 def secure_path(tar: tarfile.TarFile) -> Generator[tarfile.TarInfo, None, None]:
-    """Security safe check of path."""
+    """Security safe check of path.
+
+    Prevent ../ or absolut paths
+    """
     for member in tar:
-        # Prevent / paths
-        if Path(member.name).is_absolute:
-            continue
-
-        # Prevent ../ paths
+        file_path = Path(member.name)
         try:
-            Path("/fake", member.name).resolve().relative_to("/fake")
-        except (ValueError, RuntimeError):
+            assert not file_path.is_absolute
+            Path("/fake", file_path).resolve().relative_to("/fake")
+        except (ValueError, RuntimeError, AssertionError):
             continue
-
-        yield member
+        else:
+            yield member
