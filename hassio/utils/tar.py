@@ -3,7 +3,7 @@ import hashlib
 import os
 from pathlib import Path
 import tarfile
-from typing import IO, Optional
+from typing import IO, Optional, Generator
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
@@ -111,3 +111,19 @@ def _generate_iv(key: bytes, salt: bytes) -> bytes:
     for _ in range(100):
         temp_iv = hashlib.sha256(temp_iv).digest()
     return temp_iv[:16]
+
+
+def secure_path(tar: tarfile.TarFile) -> Generator[tarfile.TarInfo, None, None]:
+    """Security safe check of path."""
+    for member in tar:
+        # Prevent / paths
+        if Path(member.name).is_absolute:
+            continue
+
+        # Prevent ../ paths
+        try:
+            Path("/fake", member.name).resolve().relative_to("/fake")
+        except (ValueError, RuntimeError):
+            continue
+
+        yield member
