@@ -588,7 +588,7 @@ class Addon(AddonModel):
             def _extract_tarfile():
                 """Extract tar snapshot."""
                 with tar_file as snapshot:
-                    snapshot.extractall(path=Path(temp), member=secure_path(snapshot))
+                    snapshot.extractall(path=Path(temp), members=secure_path(snapshot))
 
             try:
                 await self.sys_run_in_executor(_extract_tarfile)
