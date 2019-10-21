@@ -221,6 +221,7 @@ ATTR_SERVERS = "servers"
 ATTR_LOCALS = "locals"
 ATTR_UDEV = "udev"
 ATTR_VALUE = "value"
+ATTR_SNAPSHOT_EXCLUDE = "snapshot_exclude"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

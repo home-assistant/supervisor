@@ -51,7 +51,7 @@ from ..exceptions import (
 )
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
-from ..utils.tar import secure_path
+from ..utils.tar import exclude_filter, secure_path
 from .model import AddonModel, Data
 from .utils import remove_data
 from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
@@ -561,8 +561,16 @@ class Addon(AddonModel):
             def _write_tarfile():
                 """Write tar inside loop."""
                 with tar_file as snapshot:
+                    # Snapshot system
                     snapshot.add(temp, arcname=".")
-                    snapshot.add(self.path_data, arcname="data")
+
+                    # Snapshot data
+                    if self.snapshot_exclude:
+                        filter_funct = exclude_filter(self.snapshot_exclude)
+                    else:
+                        filter_funct = None
+
+                    snapshot.add(self.path_data, arcname="data", filter=filter_funct)
 
             try:
                 _LOGGER.info("Build snapshot for add-on %s", self.slug)

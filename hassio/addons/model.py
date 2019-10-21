@@ -47,6 +47,7 @@ from ..const import (
     ATTR_SCHEMA,
     ATTR_SERVICES,
     ATTR_SLUG,
+    ATTR_SNAPSHOT_EXCLUDE,
     ATTR_STARTUP,
     ATTR_STDIN,
     ATTR_TIMEOUT,
@@ -323,6 +324,11 @@ class AddonModel(CoreSysAttributes):
     def hassio_role(self) -> str:
         """Return Hass.io role for API."""
         return self.data[ATTR_HASSIO_ROLE]
+
+    @property
+    def snapshot_exclude(self) -> Optional[List[str]]:
+        """Return Exclude list for snapshot."""
+        return self.data.get(ATTR_SNAPSHOT_EXCLUDE)
 
     @property
     def with_stdin(self) -> bool:
