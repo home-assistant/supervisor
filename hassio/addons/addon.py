@@ -51,6 +51,7 @@ from ..exceptions import (
 )
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
+from ..utils.tar import secure_path
 from .model import AddonModel, Data
 from .utils import remove_data
 from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
@@ -579,7 +580,7 @@ class Addon(AddonModel):
             def _extract_tarfile():
                 """Extract tar snapshot."""
                 with tar_file as snapshot:
-                    snapshot.extractall(path=Path(temp))
+                    snapshot.extractall(path=Path(temp), member=secure_path(snapshot))
 
             try:
                 await self.sys_run_in_executor(_extract_tarfile)

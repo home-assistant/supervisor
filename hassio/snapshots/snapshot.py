@@ -41,7 +41,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils.json import write_json_file
-from ..utils.tar import SecureTarFile
+from ..utils.tar import SecureTarFile, secure_path
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
 from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
 
@@ -248,7 +248,7 @@ class Snapshot(CoreSysAttributes):
         def _extract_snapshot():
             """Extract a snapshot."""
             with tarfile.open(self.tarfile, "r:") as tar:
-                tar.extractall(path=self._tmp.name)
+                tar.extractall(path=self._tmp.name, members=secure_path(tar))
 
         await self.sys_run_in_executor(_extract_snapshot)
 
@@ -396,7 +396,7 @@ class Snapshot(CoreSysAttributes):
             try:
                 _LOGGER.info("Restore folder %s", name)
                 with SecureTarFile(tar_name, "r", key=self._key) as tar_file:
-                    tar_file.extractall(path=origin_dir)
+                    tar_file.extractall(path=origin_dir, members=tar_file)
                 _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't restore folder %s: %s", name, err)

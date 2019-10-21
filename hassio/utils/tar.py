@@ -1,18 +1,21 @@
 """Tarfile fileobject handler for encrypted files."""
 import hashlib
+import logging
 import os
-from pathlib import Path
 import tarfile
-from typing import IO, Optional
+from pathlib import Path
+from typing import IO, Generator, Optional
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import (
-    CipherContext,
     Cipher,
+    CipherContext,
     algorithms,
     modes,
 )
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 BLOCK_SIZE = 16
 BLOCK_SIZE_BITS = 128
@@ -111,3 +114,20 @@ def _generate_iv(key: bytes, salt: bytes) -> bytes:
     for _ in range(100):
         temp_iv = hashlib.sha256(temp_iv).digest()
     return temp_iv[:16]
+
+
+def secure_path(tar: tarfile.TarFile) -> Generator[tarfile.TarInfo, None, None]:
+    """Security safe check of path.
+
+    Prevent ../ or absolut paths
+    """
+    for member in tar:
+        file_path = Path(member.name)
+        try:
+            assert not file_path.is_absolute()
+            Path("/fake", file_path).resolve().relative_to("/fake")
+        except (ValueError, RuntimeError, AssertionError):
+            _LOGGER.warning("Issue with file %s", file_path)
+            continue
+        else:
+            yield member
