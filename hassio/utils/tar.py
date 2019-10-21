@@ -2,9 +2,9 @@
 import hashlib
 import logging
 import os
-import tarfile
 from pathlib import Path
-from typing import IO, Generator, Optional
+import tarfile
+from typing import IO, Callable, Generator, List, Optional
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
@@ -131,3 +131,22 @@ def secure_path(tar: tarfile.TarFile) -> Generator[tarfile.TarInfo, None, None]:
             continue
         else:
             yield member
+
+
+def exclude_filter(
+    exclude_list: List[str]
+) -> Callable[[tarfile.TarInfo], Optional[tarfile.TarInfo]]:
+    """Create callable filter function to check TarInfo for add."""
+
+    def my_filter(tar: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
+        """Custom exclude filter."""
+        file_path = Path(tar.name)
+        for exclude in exclude_list:
+            if not file_path.match(exclude):
+                continue
+            _LOGGER.debug("Ignore %s because of %s", file_path, exclude)
+            return None
+
+        return tar
+
+    return my_filter
