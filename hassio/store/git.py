@@ -137,7 +137,7 @@ class GitRepo(CoreSysAttributes):
             """Log error."""
             _LOGGER.warning("Can't remove %s", path)
 
-        shutil.rmtree(str(self.path), onerror=log_err)
+        shutil.rmtree(self.path, onerror=log_err)
 
 
 class GitRepoHassIO(GitRepo):
