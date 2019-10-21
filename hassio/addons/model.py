@@ -326,9 +326,9 @@ class AddonModel(CoreSysAttributes):
         return self.data[ATTR_HASSIO_ROLE]
 
     @property
-    def snapshot_exclude(self) -> Optional[List[str]]:
+    def snapshot_exclude(self) -> List[str]:
         """Return Exclude list for snapshot."""
-        return self.data.get(ATTR_SNAPSHOT_EXCLUDE)
+        return self.data.get(ATTR_SNAPSHOT_EXCLUDE, [])
 
     @property
     def with_stdin(self) -> bool:

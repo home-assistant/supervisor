@@ -526,7 +526,7 @@ class Addon(AddonModel):
 
     async def snapshot(self, tar_file: tarfile.TarFile) -> None:
         """Snapshot state of an add-on."""
-        with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
             # store local image
             if self.need_build:
                 try:
@@ -565,12 +565,11 @@ class Addon(AddonModel):
                     snapshot.add(temp, arcname=".")
 
                     # Snapshot data
-                    if self.snapshot_exclude:
-                        filter_funct = exclude_filter(self.snapshot_exclude)
-                    else:
-                        filter_funct = None
-
-                    snapshot.add(self.path_data, arcname="data", filter=filter_funct)
+                    snapshot.add(
+                        self.path_data,
+                        arcname="data",
+                        filter=exclude_filter(self.snapshot_exclude),
+                    )
 
             try:
                 _LOGGER.info("Build snapshot for add-on %s", self.slug)
@@ -583,7 +582,7 @@ class Addon(AddonModel):
 
     async def restore(self, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
-        with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
             # extract snapshot
             def _extract_tarfile():
                 """Extract tar snapshot."""
@@ -649,7 +648,7 @@ class Addon(AddonModel):
             # Restore data
             def _restore_data():
                 """Restore data."""
-                shutil.copytree(str(Path(temp, "data")), str(self.path_data))
+                shutil.copytree(Path(temp, "data"), self.path_data)
 
             _LOGGER.info("Restore data for addon %s", self.slug)
             if self.path_data.is_dir():
