@@ -1,4 +1,5 @@
 """Internal network manager for Hass.io."""
+from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
 from typing import List, Optional
@@ -107,3 +108,11 @@ class DockerNetwork:
         except docker.errors.APIError as err:
             _LOGGER.warning("Can't disconnect container from default: %s", err)
             raise DockerAPIError() from None
+
+    def stale_cleanup(self, container_name: str):
+        """Remove force a container from Network.
+
+        Fix: https://github.com/moby/moby/issues/23302
+        """
+        with suppress(docker.errors.APIError):
+            self.network.disconnect(container_name, force=True)
