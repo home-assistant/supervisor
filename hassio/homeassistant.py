@@ -605,6 +605,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             return
 
         _LOGGER.info("Repair Home Assistant %s", self.version)
+        await self.sys_run_in_executor(
+            self.sys_docker.network.stale_cleanup, self.instance.name
+        )
+
+        # Pull image
         try:
             await self.instance.install(self.version)
         except DockerAPIError:
