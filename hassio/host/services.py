@@ -91,9 +91,9 @@ class ServiceManager(CoreSysAttributes):
 class ServiceInfo:
     """Represent a single Service."""
 
-    name = attr.ib(type=str)
-    description = attr.ib(type=str)
-    state = attr.ib(type=str)
+    name: str = attr.ib()
+    description: str = attr.ib()
+    state: str = attr.ib()
 
     @staticmethod
     def read_from(unit):

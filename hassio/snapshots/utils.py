@@ -42,7 +42,7 @@ def remove_folder(folder):
     for obj in folder.iterdir():
         try:
             if obj.is_dir():
-                shutil.rmtree(str(obj), ignore_errors=True)
+                shutil.rmtree(obj, ignore_errors=True)
             else:
                 obj.unlink()
         except (OSError, shutil.Error):

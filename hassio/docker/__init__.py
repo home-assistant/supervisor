@@ -178,3 +178,10 @@ class DockerAPI:
             _LOGGER.debug("Volumes prune: %s", output)
         except docker.errors.APIError as err:
             _LOGGER.warning("Error for volumes prune: %s", err)
+
+        _LOGGER.info("Prune stale networks")
+        try:
+            output = self.docker.api.prune_networks()
+            _LOGGER.debug("Networks prune: %s", output)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for networks prune: %s", err)

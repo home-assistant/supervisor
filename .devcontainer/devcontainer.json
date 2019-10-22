@@ -6,11 +6,13 @@
 	"appPort": "9123:8123",
 	"runArgs": [
 		"-e",
-		"GIT_EDITOR=\"code --wait\"",
+		"GIT_EDITOR=code --wait",
 		"--privileged"
 	],
 	"extensions": [
-		"ms-python.python"
+		"ms-python.python",
+		"visualstudioexptteam.vscodeintellicode",
+		"esbenp.prettier-vscode"
 	],
 	"settings": {
 		"python.pythonPath": "/usr/local/bin/python",

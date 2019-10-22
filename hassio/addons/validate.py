@@ -62,6 +62,7 @@ from ..const import (
     ATTR_SCHEMA,
     ATTR_SERVICES,
     ATTR_SLUG,
+    ATTR_SNAPSHOT_EXCLUDE,
     ATTR_SQUASH,
     ATTR_STARTUP,
     ATTR_STATE,
@@ -214,6 +215,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_AUTH_API, default=False): vol.Boolean(),
         vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
         vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
+        vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [vol.Coerce(str)],
         vol.Required(ATTR_OPTIONS): dict,
         vol.Required(ATTR_SCHEMA): vol.Any(
             vol.Schema(

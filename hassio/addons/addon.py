@@ -51,6 +51,7 @@ from ..exceptions import (
 )
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
+from ..utils.tar import exclude_filter, secure_path
 from .model import AddonModel, Data
 from .utils import remove_data
 from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
@@ -525,7 +526,7 @@ class Addon(AddonModel):
 
     async def snapshot(self, tar_file: tarfile.TarFile) -> None:
         """Snapshot state of an add-on."""
-        with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
             # store local image
             if self.need_build:
                 try:
@@ -560,8 +561,15 @@ class Addon(AddonModel):
             def _write_tarfile():
                 """Write tar inside loop."""
                 with tar_file as snapshot:
+                    # Snapshot system
                     snapshot.add(temp, arcname=".")
-                    snapshot.add(self.path_data, arcname="data")
+
+                    # Snapshot data
+                    snapshot.add(
+                        self.path_data,
+                        arcname="data",
+                        filter=exclude_filter(self.snapshot_exclude),
+                    )
 
             try:
                 _LOGGER.info("Build snapshot for add-on %s", self.slug)
@@ -574,12 +582,12 @@ class Addon(AddonModel):
 
     async def restore(self, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
-        with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp:
+        with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
             # extract snapshot
             def _extract_tarfile():
                 """Extract tar snapshot."""
                 with tar_file as snapshot:
-                    snapshot.extractall(path=Path(temp))
+                    snapshot.extractall(path=Path(temp), members=secure_path(snapshot))
 
             try:
                 await self.sys_run_in_executor(_extract_tarfile)
@@ -640,7 +648,7 @@ class Addon(AddonModel):
             # Restore data
             def _restore_data():
                 """Restore data."""
-                shutil.copytree(str(Path(temp, "data")), str(self.path_data))
+                shutil.copytree(Path(temp, "data"), self.path_data)
 
             _LOGGER.info("Restore data for addon %s", self.slug)
             if self.path_data.is_dir():

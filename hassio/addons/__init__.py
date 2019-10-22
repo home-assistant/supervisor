@@ -285,6 +285,9 @@ class AddonManager(CoreSysAttributes):
 
         for addon in needs_repair:
             _LOGGER.info("Start repair for add-on: %s", addon.slug)
+            await self.sys_run_in_executor(
+                self.sys_docker.network.stale_cleanup, addon.instance.name
+            )
 
             with suppress(DockerAPIError, KeyError):
                 # Need pull a image again
@@ -293,7 +296,7 @@ class AddonManager(CoreSysAttributes):
                     continue
 
                 # Need local lookup
-                elif addon.need_build and not addon.is_detached:
+                if addon.need_build and not addon.is_detached:
                     store = self.store[addon.slug]
                     # If this add-on is available for rebuild
                     if addon.version == store.version:
