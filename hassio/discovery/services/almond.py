@@ -1,4 +1,4 @@
-"""Discovery service for Home Panel."""
+"""Discovery service for Almond."""
 import voluptuous as vol
 
 from hassio.validate import NETWORK_PORT
