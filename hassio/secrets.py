@@ -12,7 +12,7 @@ from .utils import AsyncThrottle
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-SECRETS_SCHEMA = vol.Schema({str: vol.Any(str, int, None, float)})
+SECRETS_SCHEMA = vol.Schema({str: vol.Any(str, int, float)})
 
 
 class SecretsManager(CoreSysAttributes):
@@ -54,6 +54,12 @@ class SecretsManager(CoreSysAttributes):
         try:
             yaml = YAML()
             data = await self.sys_run_in_executor(yaml.load, self.path_secrets) or {}
+
+            # Filter to only get supported values
+            # pylint: disable=unidiomatic-typecheck
+            data = {
+                k: v for k, v in data.items() if type(v) in (int, float, str)
+            }
 
             self.secrets = SECRETS_SCHEMA(data)
         except YAMLError as err:
