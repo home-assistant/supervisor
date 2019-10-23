@@ -57,9 +57,7 @@ class SecretsManager(CoreSysAttributes):
 
             # Filter to only get supported values
             # pylint: disable=unidiomatic-typecheck
-            data = {
-                k: v for k, v in data.items() if type(v) in (int, float, str)
-            }
+            data = {k: v for k, v in data.items() if type(v) in (int, float, str)}
 
             self.secrets = SECRETS_SCHEMA(data)
         except YAMLError as err:
