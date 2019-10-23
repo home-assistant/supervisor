@@ -9,7 +9,6 @@ RUN apk add --no-cache \
     git \
     socat \
     glib \
-    libstdc++ \
     eudev \
     eudev-libs
 
