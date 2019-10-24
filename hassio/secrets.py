@@ -2,17 +2,14 @@
 from datetime import timedelta
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Union
 
 from ruamel.yaml import YAML, YAMLError
-import voluptuous as vol
 
 from .coresys import CoreSys, CoreSysAttributes
 from .utils import AsyncThrottle
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-SECRETS_SCHEMA = vol.Schema({str: vol.Any(str, int, float)})
 
 
 class SecretsManager(CoreSysAttributes):
@@ -21,14 +18,14 @@ class SecretsManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize secret manager."""
         self.coresys: CoreSys = coresys
-        self.secrets: Dict[str, str] = {}
+        self.secrets: Dict[str, Union[bool, float, int, str]] = {}
 
     @property
     def path_secrets(self) -> Path:
         """Return path to secret file."""
         return Path(self.sys_config.path_homeassistant, "secrets.yaml")
 
-    def get(self, secret: str) -> str:
+    def get(self, secret: str) -> Union[bool, float, int, str]:
         """Get secret from store."""
         _LOGGER.info("Request secret %s", secret)
         return self.secrets.get(secret)
@@ -56,13 +53,11 @@ class SecretsManager(CoreSysAttributes):
             data = await self.sys_run_in_executor(yaml.load, self.path_secrets) or {}
 
             # Filter to only get supported values
-            # pylint: disable=unidiomatic-typecheck
-            data = {k: v for k, v in data.items() if type(v) in (int, float, str)}
+            self.secrets = {
+                k: v for k, v in data.items() if isinstance(v, (bool, float, int, str))
+            }
 
-            self.secrets = SECRETS_SCHEMA(data)
         except YAMLError as err:
             _LOGGER.error("Can't process Home Assistant secrets: %s", err)
-        except vol.Invalid:
-            _LOGGER.warning("Home Assistant secrets have a invalid format")
         else:
             _LOGGER.debug("Reload Home Assistant secrets: %s", len(self.secrets))
