@@ -50,6 +50,7 @@ class SecretsManager(CoreSysAttributes):
         # Read secrets
         try:
             yaml = YAML()
+            yaml.allow_duplicate_keys = True
             data = await self.sys_run_in_executor(yaml.load, self.path_secrets) or {}
 
             # Filter to only get supported values
