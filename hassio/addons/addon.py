@@ -35,6 +35,7 @@ from ..const import (
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
+    ATTR_BUILD_ARGS,
     DNS_SUFFIX,
     STATE_STARTED,
     STATE_STOPPED,
