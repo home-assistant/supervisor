@@ -119,9 +119,9 @@ class Addon(AddonModel):
         return self.persist[ATTR_VERSION]
 
     @property
-    def buildargs(self) -> Optional[Dict[str, Any]]:
+    def build_args(self) -> Optional[Dict[str, Any]]:
         """Return build args."""
-        return self.persist[ATTR_BUILDARGS]
+        return self.persist[ATTR_BUILD_ARGS]
 
     @property
     def dns(self) -> List[str]:

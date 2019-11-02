@@ -372,7 +372,7 @@ class DockerAddon(DockerInterface):
         """
         build_env = AddonBuild(self.coresys, self.addon)
         docker_args = build_env.get_docker_args(tag)
-        docker_args["buildargs"].update(self.addon.buildargs)
+        docker_args["buildargs"].update(self.addon.build_args)
 
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:
