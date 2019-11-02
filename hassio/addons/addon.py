@@ -119,6 +119,11 @@ class Addon(AddonModel):
         return self.persist[ATTR_VERSION]
 
     @property
+    def buildargs(self) -> Optional[Dict[str, Any]]:
+        """Return build args."""
+        return self.persist[ATTR_BUILDARGS]
+
+    @property
     def dns(self) -> List[str]:
         """Return list of DNS name for that add-on."""
         return [f"{self.hostname}.{DNS_SUFFIX}"]

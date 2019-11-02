@@ -371,11 +371,13 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         build_env = AddonBuild(self.coresys, self.addon)
+        docker_args = build_env.get_docker_args(tag)
+        docker_args["buildargs"].update(self.addon.buildargs)
 
         _LOGGER.info("Start build %s:%s", self.image, tag)
         try:
             image, log = self.sys_docker.images.build(
-                use_config_proxy=False, **build_env.get_docker_args(tag)
+                use_config_proxy=False, **docker_args
             )
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)
