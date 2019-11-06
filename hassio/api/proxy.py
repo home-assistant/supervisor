@@ -8,13 +8,15 @@ from aiohttp import web
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
-import async_timeout
 
 from ..const import HEADER_HA_ACCESS
 from ..coresys import CoreSysAttributes
 from ..exceptions import HomeAssistantAuthError, HomeAssistantAPIError, APIError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+LEGACY_HEADER = ("X-Speech-Content",)
 
 
 class APIProxy(CoreSysAttributes):
@@ -43,20 +45,16 @@ class APIProxy(CoreSysAttributes):
     async def _api_client(self, request: web.Request, path: str, timeout: int = 300):
         """Return a client request with proxy origin for Home Assistant."""
         try:
-            # read data
-            with async_timeout.timeout(30):
-                data = await request.read()
-
-            if data:
-                content_type = request.content_type
-            else:
-                content_type = None
-
             async with self.sys_homeassistant.make_request(
                 request.method.lower(),
                 f"api/{path}",
-                content_type=content_type,
-                data=data,
+                headers={
+                    name: value
+                    for name, value in request.headers.items()
+                    if name in LEGACY_HEADER
+                },
+                content_type=request.content_type,
+                data=request.content,
                 timeout=timeout,
                 params=request.query,
             ) as resp:
