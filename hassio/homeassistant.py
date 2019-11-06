@@ -487,13 +487,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         path: str,
         json: Optional[Dict[str, Any]] = None,
         content_type: Optional[str] = None,
-        data: Optional[bytes] = None,
+        data: Any = None,
         timeout: int = 30,
         params: Optional[Dict[str, str]] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> AsyncContextManager[aiohttp.ClientResponse]:
         """Async context manager to make a request with right auth."""
         url = f"{self.api_url}/{path}"
-        headers = {}
+        headers = headers or {}
 
         # Passthrough content type
         if content_type is not None:
