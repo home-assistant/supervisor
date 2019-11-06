@@ -487,7 +487,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         path: str,
         json: Optional[Dict[str, Any]] = None,
         content_type: Optional[str] = None,
-        data: Optional[bytes] = None,
+        data: Any = None,
         timeout: int = 30,
         params: Optional[Dict[str, str]] = None,
         headers: Optional[Dict[str, str]] = None,
