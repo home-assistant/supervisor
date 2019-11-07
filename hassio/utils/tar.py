@@ -134,7 +134,7 @@ def secure_path(tar: tarfile.TarFile) -> Generator[tarfile.TarInfo, None, None]:
 
 
 def exclude_filter(
-    exclude_list: List[str]
+    exclude_list: List[str],
 ) -> Callable[[tarfile.TarInfo], Optional[tarfile.TarInfo]]:
     """Create callable filter function to check TarInfo for add."""
 
