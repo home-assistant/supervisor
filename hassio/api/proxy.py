@@ -16,7 +16,7 @@ from ..exceptions import HomeAssistantAuthError, HomeAssistantAPIError, APIError
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-LEGACY_HEADER = ("X-Speech-Content",)
+FORWARD_HEADERS = ("X-Speech-Content",)
 
 
 class APIProxy(CoreSysAttributes):
@@ -51,7 +51,7 @@ class APIProxy(CoreSysAttributes):
                 headers={
                     name: value
                     for name, value in request.headers.items()
-                    if name in LEGACY_HEADER
+                    if name in FORWARD_HEADERS
                 },
                 content_type=request.content_type,
                 data=request.content,
