@@ -52,12 +52,11 @@ UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
 SHA256 = vol.Match(r"^[0-9a-f]{64}$")
 TOKEN = vol.Match(r"^[0-9a-f]{32,256}$")
 LOG_LEVEL = vol.In(["debug", "info", "warning", "error", "critical"])
+DNS_SERVER_LIST = vol.All(vol.Length(max=8), [dns_url])
 
 
-def dns_url(url: str):
-    """ takes a DNS url (str) and validates that it matches the scheme dns://<ip address>.
-    Acts like a voluptuous.Match object.
-    """
+def dns_url(url: str) -> str:
+    """ takes a DNS url (str) and validates that it matches the scheme dns://<ip address>."""
     if not url.lower().startswith("dns://"):
         raise vol.error.Invalid("Doesn't start with dns://")
     address = url[6:]  # strip the dns:// off
@@ -68,23 +67,7 @@ def dns_url(url: str):
     return dns_url
 
 
-def dns_server_list(url_list: list, max_length: int = 8):
-    """ validates a list of DNS urls, acts like a Voluptuous Match object
-        If any are misshapen, return False.
-        If the list is over max_length entries, return False
-        """
-    if isinstance(url_list, list):
-        vol.Length(max=max_length)(url_list)
-        if vol.error.Invalid in [dns_url(url) for url in url_list]:
-            raise vol.error.Invalid(
-                "DNS SERVER List invalid: {}".format(",".join(url_list))
-            )
-    else:
-        raise ValueError(f"Type of url_list ({type(url_list)}) isn't list")
-    return url_list
-
-
-def validate_repository(repository):
+def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
     data = RE_REPOSITORY.match(repository)
     if not data:
