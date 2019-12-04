@@ -2,7 +2,7 @@
 from datetime import timedelta
 import logging
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 from ruamel.yaml import YAML, YAMLError
 
@@ -18,7 +18,7 @@ class SecretsManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize secret manager."""
         self.coresys: CoreSys = coresys
-        self.secrets: Dict[str, Union[bool, float, int, str]] = {}
+        self.secrets: Dict[str, Union[bool, float, int, str, List[int]] = {}
 
     @property
     def path_secrets(self) -> Path:
@@ -55,7 +55,7 @@ class SecretsManager(CoreSysAttributes):
 
             # Filter to only get supported values
             self.secrets = {
-                k: v for k, v in data.items() if isinstance(v, (bool, float, int, str))
+                k: v for k, v in data.items() if isinstance(v, (bool, float, int, str, list))
             }
 
         except YAMLError as err:
