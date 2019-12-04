@@ -59,12 +59,12 @@ def dns_url(url: str) -> str:
     """ takes a DNS url (str) and validates that it matches the scheme dns://<ip address>."""
     if not url.lower().startswith("dns://"):
         raise vol.error.Invalid("Doesn't start with dns://")
-    address = url[6:]  # strip the dns:// off
+    address: str = url[6:]  # strip the dns:// off
     try:
         ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
     except ValueError:
         raise vol.error.Invalid("Invalid DNS URL: {}".format(url))
-    return dns_url
+    return url
 
 
 def validate_repository(repository: str) -> str:
