@@ -169,7 +169,7 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
 SCHEMA_DNS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): dns_server_list,
+        vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): DNS_SERVER_LIST,
     },
     extra=vol.REMOVE_EXTRA,
 )
