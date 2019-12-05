@@ -17,7 +17,7 @@ from .docker.stats import DockerStats
 from .exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
 from .misc.forwarder import DNSForward
 from .utils.json import JsonConfig
-from .validate import DNS_URL, SCHEMA_DNS_CONFIG
+from .validate import dns_url, SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -218,9 +218,15 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Prepare DNS serverlist: Prio 1 Local, Prio 2 Manual, Prio 3 Fallback
         local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
+        _LOGGER.debug(
+            "local_dns = %s, self.servers = %s, DNS_SERVERS = %s",
+            local_dns,
+            self.servers,
+            DNS_SERVERS,
+        )
         for server in local_dns + self.servers + DNS_SERVERS:
             try:
-                DNS_URL(server)
+                dns_url(server)
                 if server not in dns_servers:
                     dns_servers.append(server)
             except vol.Invalid:

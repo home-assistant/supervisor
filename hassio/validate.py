@@ -1,6 +1,7 @@
 """Validate functions."""
 import re
 import uuid
+import ipaddress
 
 import voluptuous as vol
 
@@ -51,11 +52,22 @@ UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
 SHA256 = vol.Match(r"^[0-9a-f]{64}$")
 TOKEN = vol.Match(r"^[0-9a-f]{32,256}$")
 LOG_LEVEL = vol.In(["debug", "info", "warning", "error", "critical"])
-DNS_URL = vol.Match(r"^dns://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-DNS_SERVER_LIST = vol.All([DNS_URL], vol.Length(max=8))
+DNS_SERVER_LIST = vol.All(vol.Length(max=8), [dns_url])
 
 
-def validate_repository(repository):
+def dns_url(url: str) -> str:
+    """ takes a DNS url (str) and validates that it matches the scheme dns://<ip address>."""
+    if not url.lower().startswith("dns://"):
+        raise vol.error.Invalid("Doesn't start with dns://")
+    address: str = url[6:]  # strip the dns:// off
+    try:
+        ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
+    except ValueError:
+        raise vol.error.Invalid("Invalid DNS URL: {}".format(url))
+    return url
+
+
+def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
     data = RE_REPOSITORY.match(repository)
     if not data:
