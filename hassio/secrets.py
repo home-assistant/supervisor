@@ -18,7 +18,8 @@ class SecretsManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize secret manager."""
         self.coresys: CoreSys = coresys
-        self.secrets: Dict[str, Union[bool, float, int, str, List[int]] = {}
+        self.secrets: Dict[str, Union[bool, float, int, str, List[float],
+                                      List[int], List[str]]] = {}
 
     @property
     def path_secrets(self) -> Path:

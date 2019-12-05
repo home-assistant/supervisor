@@ -328,6 +328,13 @@ def validate_options(coresys: CoreSys, raw_schema: Dict[str, Any]):
                 _LOGGER.warning("Unknown options %s", key)
                 continue
 
+            # Lookup secret
+            if str(value).startswith("!secret "):
+                secret: str = value.partition(" ")[2]
+                value = coresys.secrets.get(secret)
+                if value is None:
+                    raise vol.Invalid(f"Unknown secret {secret}")
+
             typ = raw_schema[key]
             try:
                 if isinstance(typ, list):
@@ -355,13 +362,6 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     # if required argument
     if value is None:
         raise vol.Invalid(f"Missing required option '{key}'")
-
-    # Lookup secret
-    if str(value).startswith("!secret "):
-        secret: str = value.partition(" ")[2]
-        value = coresys.secrets.get(secret)
-        if value is None:
-            raise vol.Invalid(f"Unknown secret {secret}")
 
     # parse extend data from type
     match = RE_SCHEMA_ELEMENT.match(typ)
