@@ -115,7 +115,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
-        self._update_local_resolv()
 
         # Reset container configuration
         if await self.instance.is_running():
@@ -219,7 +218,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         # Prepare DNS serverlist: Prio 1 Local, Prio 2 Manual, Prio 3 Fallback
         local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
         _LOGGER.debug(
-            "local_dns = %s, self.servers = %s, DNS_SERVERS = %s",
+            "local-dns = %s, config-dns = %s, backup-dns = %s",
             local_dns,
             self.servers,
             DNS_SERVERS,
@@ -352,33 +351,3 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.install(self.version)
         except DockerAPIError:
             _LOGGER.error("Repairing of CoreDNS fails")
-
-    def _update_local_resolv(self) -> None:
-        """Update local resolv file."""
-        resolv_lines: List[str] = []
-        nameserver = f"nameserver {self.sys_docker.network.dns!s}"
-
-        # Read resolv config
-        try:
-            with RESOLV_CONF.open("r") as resolv:
-                for line in resolv.readlines():
-                    if not line:
-                        continue
-                    resolv_lines.append(line.strip())
-        except OSError as err:
-            _LOGGER.warning("Can't read local resolv: %s", err)
-            return
-
-        if nameserver in resolv_lines:
-            return
-        _LOGGER.info("Update resolv from Supervisor")
-
-        # Write config back to resolv
-        resolv_lines.append(nameserver)
-        try:
-            with RESOLV_CONF.open("w") as resolv:
-                for line in resolv_lines:
-                    resolv.write(f"{line}\n")
-        except OSError as err:
-            _LOGGER.warning("Can't write local resolv: %s", err)
-            return
