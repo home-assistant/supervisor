@@ -18,8 +18,9 @@ class SecretsManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize secret manager."""
         self.coresys: CoreSys = coresys
-        self.secrets: Dict[str, Union[bool, float, int, str, List[float],
-                                      List[int], List[str]]] = {}
+        self.secrets: Dict[
+            str, Union[bool, float, int, str, List[float], List[int], List[str]]
+        ] = {}
 
     @property
     def path_secrets(self) -> Path:
@@ -56,7 +57,9 @@ class SecretsManager(CoreSysAttributes):
 
             # Filter to only get supported values
             self.secrets = {
-                k: v for k, v in data.items() if isinstance(v, (bool, float, int, str, list))
+                k: v
+                for k, v in data.items()
+                if isinstance(v, (bool, float, int, str, list))
             }
 
         except YAMLError as err:
