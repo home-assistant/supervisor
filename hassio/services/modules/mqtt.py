@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from hassio.addons.addon import Addon
 from hassio.exceptions import ServicesError
-from hassio.validate import NETWORK_PORT
+from hassio.validate import network_port
 import voluptuous as vol
 
 from ..const import (
@@ -26,7 +26,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 SCHEMA_SERVICE_MQTT = vol.Schema(
     {
         vol.Required(ATTR_HOST): vol.Coerce(str),
-        vol.Required(ATTR_PORT): NETWORK_PORT,
+        vol.Required(ATTR_PORT): network_port,
         vol.Optional(ATTR_USERNAME): vol.Coerce(str),
         vol.Optional(ATTR_PASSWORD): vol.Coerce(str),
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),

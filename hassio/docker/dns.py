@@ -58,5 +58,5 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
             "Start DNS %s with version %s - %s",
             self.image,
             self.version,
-            self.sys_docker.network.dns
+            self.sys_docker.network.dns,
         )

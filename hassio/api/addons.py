@@ -90,7 +90,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..validate import ALSA_DEVICE, DOCKER_PORTS
+from ..validate import alsa_device, DOCKER_PORTS
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -103,8 +103,8 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
         vol.Optional(ATTR_NETWORK): vol.Any(None, DOCKER_PORTS),
         vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
-        vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
-        vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
+        vol.Optional(ATTR_AUDIO_OUTPUT): alsa_device,
+        vol.Optional(ATTR_AUDIO_INPUT): alsa_device,
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
     }
 )

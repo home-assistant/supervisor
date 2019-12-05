@@ -33,7 +33,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..validate import DOCKER_IMAGE, NETWORK_PORT
+from ..validate import docker_image, network_port
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -42,9 +42,9 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_BOOT): vol.Boolean(),
-        vol.Inclusive(ATTR_IMAGE, "custom_hass"): vol.Maybe(DOCKER_IMAGE),
+        vol.Inclusive(ATTR_IMAGE, "custom_hass"): vol.Maybe(docker_image),
         vol.Inclusive(ATTR_LAST_VERSION, "custom_hass"): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_PORT): NETWORK_PORT,
+        vol.Optional(ATTR_PORT): network_port,
         vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_SSL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),

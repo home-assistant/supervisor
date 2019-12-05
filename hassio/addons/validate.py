@@ -90,12 +90,12 @@ from ..const import (
 from ..coresys import CoreSys
 from ..discovery.validate import valid_discovery_service
 from ..validate import (
-    ALSA_DEVICE,
+    alsa_device,
     DOCKER_PORTS,
     DOCKER_PORTS_DESCRIPTION,
-    NETWORK_PORT,
-    TOKEN,
-    UUID_MATCH,
+    network_port,
+    token,
+    uuid_match,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -182,7 +182,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         ),
         vol.Optional(ATTR_INGRESS, default=False): vol.Boolean(),
         vol.Optional(ATTR_INGRESS_PORT, default=8099): vol.Any(
-            NETWORK_PORT, vol.Equal(0)
+            network_port, vol.Equal(0)
         ),
         vol.Optional(ATTR_INGRESS_ENTRY): vol.Coerce(str),
         vol.Optional(ATTR_PANEL_ICON, default="mdi:puzzle"): vol.Coerce(str),
@@ -269,8 +269,8 @@ SCHEMA_ADDON_USER = vol.Schema(
     {
         vol.Required(ATTR_VERSION): vol.Coerce(str),
         vol.Optional(ATTR_IMAGE): vol.Coerce(str),
-        vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
-        vol.Optional(ATTR_ACCESS_TOKEN): TOKEN,
+        vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
+        vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_INGRESS_TOKEN, default=secrets.token_urlsafe): vol.Coerce(
             str
         ),
@@ -278,8 +278,8 @@ SCHEMA_ADDON_USER = vol.Schema(
         vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
         vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
         vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
-        vol.Optional(ATTR_AUDIO_OUTPUT): ALSA_DEVICE,
-        vol.Optional(ATTR_AUDIO_INPUT): ALSA_DEVICE,
+        vol.Optional(ATTR_AUDIO_OUTPUT): alsa_device,
+        vol.Optional(ATTR_AUDIO_INPUT): alsa_device,
         vol.Optional(ATTR_PROTECTED, default=True): vol.Boolean(),
         vol.Optional(ATTR_INGRESS_PANEL, default=False): vol.Boolean(),
     },
@@ -386,7 +386,7 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     elif typ.startswith(V_URL):
         return vol.Url()(value)
     elif typ.startswith(V_PORT):
-        return NETWORK_PORT(value)
+        return network_port(value)
     elif typ.startswith(V_MATCH):
         return vol.Match(match.group("match"))(str(value))
     elif typ.startswith(V_LIST):

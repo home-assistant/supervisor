@@ -1,7 +1,7 @@
 """Discovery service for MQTT."""
 import voluptuous as vol
 
-from hassio.validate import NETWORK_PORT
+from hassio.validate import network_port
 
 from ..const import (
     ATTR_HOST,
@@ -16,7 +16,7 @@ from ..const import (
 SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_HOST): vol.Coerce(str),
-        vol.Required(ATTR_PORT): NETWORK_PORT,
+        vol.Required(ATTR_PORT): network_port,
         vol.Optional(ATTR_USERNAME): vol.Coerce(str),
         vol.Optional(ATTR_PASSWORD): vol.Coerce(str),
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
