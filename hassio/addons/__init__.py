@@ -245,7 +245,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError() from None
         else:
             self.data.update(store)
-            _LOGGER.info("Add-on '%s' successfully rebuilded", slug)
+            _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
 
         # restore state
         if last_state == STATE_STARTED:
