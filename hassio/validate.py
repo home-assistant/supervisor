@@ -36,7 +36,6 @@ from .const import (
     CHANNEL_BETA,
     CHANNEL_DEV,
     CHANNEL_STABLE,
-    DNS_SERVERS,
 )
 from .utils.validate import validate_timezone
 
