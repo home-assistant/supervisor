@@ -40,7 +40,10 @@ def api_process(method):
         except (APIError, APIForbidden) as err:
             return api_return_error(message=str(err))
         except HassioError:
-            return api_return_error(message="Unknown Error, see logs")
+            return api_return_error(message=(
+                "Unknown Error, see the logs, either by using `hassio su logs` or"
+                " access the System tab via the Hassio tab in the web interface."
+            )
 
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
