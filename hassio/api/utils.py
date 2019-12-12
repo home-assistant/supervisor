@@ -42,7 +42,7 @@ def api_process(method):
         except HassioError:
             return api_return_error(message=(
                 "Unknown Error, see the logs, either by using `hassio su logs` or"
-                " access the System tab via the Hassio tab in the web interface."
+                " by accessing the System tab via the Hassio tab in the web interface."
             )
 
         if isinstance(answer, dict):
