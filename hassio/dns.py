@@ -215,12 +215,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't read coredns template file: %s", err)
             raise CoreDNSError() from None
 
-        # Prepare DNS serverlist: Prio 1 Local, Prio 2 Manual, Prio 3 Fallback
+        # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
         local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
         _LOGGER.debug(
-            "local-dns = %s, config-dns = %s, backup-dns = %s",
-            local_dns,
+            "config-dns = %s, local-dns = %s , backup-dns = %s",
             self.servers,
+            local_dns,
             DNS_SERVERS,
         )
         for server in self.servers + local_dns + DNS_SERVERS:
