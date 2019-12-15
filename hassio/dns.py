@@ -223,7 +223,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.servers,
             DNS_SERVERS,
         )
-        for server in self.servers + local_dns  + DNS_SERVERS:
+        for server in self.servers + local_dns + DNS_SERVERS:
             try:
                 dns_url(server)
                 if server not in dns_servers:
