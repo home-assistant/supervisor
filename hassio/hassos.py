@@ -174,7 +174,7 @@ class HassOS(CoreSysAttributes):
             return
 
         # Update fails
-        rauc_status = await self.sys_dbus.get_properties()
+        rauc_status = await self.sys_dbus.rauc.get_properties()
         _LOGGER.error("HassOS update fails with: %s", rauc_status.get("LastError"))
         raise HassOSUpdateError()
 
