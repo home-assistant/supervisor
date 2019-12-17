@@ -128,7 +128,11 @@ class HassOS(CoreSysAttributes):
         self._version = cpe.get_version()[0]
         self._board = cpe.get_target_hardware()[0]
 
-        _LOGGER.info("Detect HassOS %s on host system", self.version)
+        await self.sys_dbus.rauc.update()
+
+        _LOGGER.info(
+            "Detect HassOS %s / BootSlot %s", self.version, self.sys_dbus.rauc.boot_slot
+        )
         with suppress(DockerAPIError):
             await self.instance.attach(tag="latest")
 
@@ -174,8 +178,8 @@ class HassOS(CoreSysAttributes):
             return
 
         # Update fails
-        rauc_status = await self.sys_dbus.rauc.get_properties()
-        _LOGGER.error("HassOS update fails with: %s", rauc_status.get("LastError"))
+        await self.sys_dbus.rauc.update()
+        _LOGGER.error("HassOS update fails with: %s", self.sys_dbus.rauc.last_error)
         raise HassOSUpdateError()
 
     async def update_cli(self, version: Optional[str] = None) -> None:
