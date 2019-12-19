@@ -211,7 +211,7 @@ class HassOS(CoreSysAttributes):
         except DockerAPIError:
             _LOGGER.error("Repairing of HassOS CLI fails")
 
-    async def mark_healty(self):
+    async def mark_healthy(self):
         """Set booted partition as good for rauc."""
         try:
             response = await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")

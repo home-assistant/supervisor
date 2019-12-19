@@ -79,9 +79,9 @@ class HassIO(CoreSysAttributes):
         """Start Hass.io orchestration."""
         await self.sys_api.start()
 
-        # Mark booted partition as healty
+        # Mark booted partition as healthy
         if self.sys_hassos.available:
-            await self.sys_hassos.mark_healty()
+            await self.sys_hassos.mark_healthy()
 
         # On release channel, try update itself
         if self.sys_supervisor.need_update:
