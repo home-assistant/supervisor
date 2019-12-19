@@ -1,6 +1,7 @@
 """D-Bus interface for rauc."""
 import logging
 from typing import Optional
+from enum import Enum
 
 from .interface import DBusInterface
 from .utils import dbus_connected
@@ -11,6 +12,14 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DBUS_NAME = "de.pengutronix.rauc"
 DBUS_OBJECT = "/"
+
+
+class RaucState(str, Enum):
+    """Rauc slot states."""
+
+    GOOD = "good"
+    BAD = "bad"
+    ACTIVE = "active"
 
 
 class Rauc(DBusInterface):
@@ -81,6 +90,14 @@ class Rauc(DBusInterface):
         Return a coroutine.
         """
         return self.dbus.wait_signal(f"{DBUS_NAME}.Installer.Completed")
+
+    @dbus_connected
+    def mark(self, state: RaucState, slot_identifier: str):
+        """Get slot status.
+
+        Return a coroutine.
+        """
+        return self.dbus.Installer.Mark(state, slot_identifier)
 
     @dbus_connected
     async def update(self):

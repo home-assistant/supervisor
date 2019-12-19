@@ -124,9 +124,10 @@ def secure_path(tar: tarfile.TarFile) -> Generator[tarfile.TarInfo, None, None]:
     for member in tar:
         file_path = Path(member.name)
         try:
-            assert not file_path.is_absolute()
+            if file_path.is_absolute():
+                raise ValueError()
             Path("/fake", file_path).resolve().relative_to("/fake")
-        except (ValueError, RuntimeError, AssertionError):
+        except (ValueError, RuntimeError):
             _LOGGER.warning("Issue with file %s", file_path)
             continue
         else:
