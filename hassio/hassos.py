@@ -218,4 +218,4 @@ class HassOS(CoreSysAttributes):
         except DBusError:
             _LOGGER.error("Can't mark booted partition as healty!")
         else:
-            _LOGGER.info("Rauc: %s - %s", *response)
+            _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])

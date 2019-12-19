@@ -3,11 +3,12 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Dict
 
-import voluptuous as vol
 from aiohttp import web
+import voluptuous as vol
 
 from ..const import (
     ATTR_BOARD,
+    ATTR_BOOT,
     ATTR_VERSION,
     ATTR_VERSION_CLI,
     ATTR_VERSION_CLI_LATEST,
@@ -33,6 +34,7 @@ class APIHassOS(CoreSysAttributes):
             ATTR_VERSION_LATEST: self.sys_hassos.version_latest,
             ATTR_VERSION_CLI_LATEST: self.sys_hassos.version_cli_latest,
             ATTR_BOARD: self.sys_hassos.board,
+            ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
         }
 
     @api_process
