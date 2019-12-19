@@ -116,7 +116,7 @@ class HassOS(CoreSysAttributes):
                 raise TypeError()
             cpe = CPE(self.sys_host.info.cpe)
 
-            if cpe.get_product()[0] == "hassos":
+            if cpe.get_product()[0] != "hassos":
                 raise TypeError()
         except TypeError:
             _LOGGER.debug("Found no HassOS")
