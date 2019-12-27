@@ -79,7 +79,11 @@ class HassIO(CoreSysAttributes):
         """Start Hass.io orchestration."""
         await self.sys_api.start()
 
-        # on release channel, try update itself
+        # Mark booted partition as healthy
+        if self.sys_hassos.available:
+            await self.sys_hassos.mark_healthy()
+
+        # On release channel, try update itself
         if self.sys_supervisor.need_update:
             try:
                 if self.sys_dev:
@@ -92,7 +96,7 @@ class HassIO(CoreSysAttributes):
                     "future version of Home Assistant!"
                 )
 
-        # start addon mark as initialize
+        # Start addon mark as initialize
         await self.sys_addons.boot(STARTUP_INITIALIZE)
 
         try:
