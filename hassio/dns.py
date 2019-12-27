@@ -216,14 +216,27 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             raise CoreDNSError() from None
 
         # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
+        # If Manual servers are identical to Fallback (was default before 194), then ignore manual
         local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
+        if DNS_SERVERS == self.servers:
+            _LOGGER.debug(
+                "Manually defined DNS servers are identical to fallback. Ignoring manually defined DNS."
+            )
+            servers: List[str] = local_dns + DNS_SERVERS
+        else:
+            _LOGGER.debug(
+                "Manually defined DNS servers are set. Preferring manually defined DNS."
+            )
+            servers: List[str] = self.servers + local_dns + DNS_SERVERS
+
         _LOGGER.debug(
             "config-dns = %s, local-dns = %s , backup-dns = %s",
             self.servers,
             local_dns,
             DNS_SERVERS,
         )
-        for server in self.servers + local_dns + DNS_SERVERS:
+
+        for server in servers:
             try:
                 dns_url(server)
                 if server not in dns_servers:
