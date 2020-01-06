@@ -113,6 +113,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.version = self.instance.version
             self.save_data()
 
+        # Fix dns server handling before 194 / Cleanup with version 200
+        if DNS_SERVERS == self.servers:
+            self.servers.clear()
+            self.save_data()
+
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
 
@@ -194,8 +199,10 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             raise CoreDNSError() from None
 
     async def reset(self) -> None:
-        """Reset Config / Hosts."""
-        self.servers = DNS_SERVERS
+        """Reset DNS and hosts."""
+        # Reset manually defined DNS
+        self.servers.clear()
+        self.save_data()
 
         # Resets hosts
         with suppress(OSError):
@@ -215,15 +222,18 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't read coredns template file: %s", err)
             raise CoreDNSError() from None
 
-        # Prepare DNS serverlist: Prio 1 Local, Prio 2 Manual, Prio 3 Fallback
+        # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
         local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
+        servers: List[str] = self.servers + local_dns + DNS_SERVERS
+
         _LOGGER.debug(
-            "local-dns = %s, config-dns = %s, backup-dns = %s",
-            local_dns,
+            "config-dns = %s, local-dns = %s , backup-dns = %s",
             self.servers,
+            local_dns,
             DNS_SERVERS,
         )
-        for server in local_dns + self.servers + DNS_SERVERS:
+
+        for server in servers:
             try:
                 dns_url(server)
                 if server not in dns_servers:
