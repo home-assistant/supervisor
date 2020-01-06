@@ -195,7 +195,10 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def reset(self) -> None:
         """Reset Config / Hosts."""
+        # TODO: After v200 reset will remove manually defined DNS, rather than setting to fallback
+        _LOGGER.info("In v200 this will remove any manually defined servers, for now we set them to %s", DNS_SERVERS)
         self.servers = DNS_SERVERS
+        # self.servers = []
 
         # Resets hosts
         with suppress(OSError):
