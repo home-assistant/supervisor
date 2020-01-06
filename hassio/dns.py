@@ -113,6 +113,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.version = self.instance.version
             self.save_data()
 
+        # Fix dns server handling before 194 / Cleanup with version 200
+        if DNS_SERVERS == self.servers:
+            self.servers.clear()
+            self.save_data()
+
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
 
@@ -194,14 +199,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             raise CoreDNSError() from None
 
     async def reset(self) -> None:
-        """Reset Config / Hosts."""
-        # After v200 reset will remove manually defined DNS, rather than setting to fallback
-        _LOGGER.info(
-            "In v200 this will remove any manually defined servers, for now we set them to %s",
-            DNS_SERVERS,
-        )
-        self.servers = DNS_SERVERS
-        # self.servers = []
+        # Reset manually defined DNS
+        self.servers.clear()
+        self.save_data()
 
         # Resets hosts
         with suppress(OSError):
