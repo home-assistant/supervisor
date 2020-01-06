@@ -199,7 +199,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             raise CoreDNSError() from None
 
     async def reset(self) -> None:
-        """Reset DNS and hosts"""
+        """Reset DNS and hosts."""
         # Reset manually defined DNS
         self.servers.clear()
         self.save_data()
