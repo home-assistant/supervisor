@@ -1,58 +1,17 @@
 {
-    "raspberrypi": [
-        "armhf"
-    ],
-    "raspberrypi2": [
-        "armv7",
-        "armhf"
-    ],
-    "raspberrypi3": [
-        "armv7",
-        "armhf"
-    ],
-    "raspberrypi3-64": [
-        "aarch64",
-        "armv7",
-        "armhf"
-    ],
-    "raspberrypi4": [
-        "armv7",
-        "armhf"
-    ],
-    "raspberrypi4-64": [
-        "aarch64",
-        "armv7",
-        "armhf"
-    ],
-    "tinker": [
-        "armv7",
-        "armhf"
-    ],
-    "odroid-c2": [
-        "aarch64"
-    ],
-    "odroid-xu": [
-        "armv7",
-        "armhf"
-    ],
-    "orangepi-prime": [
-        "aarch64"
-    ],
-    "qemux86": [
-        "i386"
-    ],
-    "qemux86-64": [
-        "amd64",
-        "i386"
-    ],
-    "qemuarm": [
-        "armhf"
-    ],
-    "qemuarm-64": [
-        "aarch64"
-    ],
-    "intel-nuc": [
-        "amd64",
-        "i386"
-    ]
+  "raspberrypi": ["armhf"],
+  "raspberrypi2": ["armv7", "armhf"],
+  "raspberrypi3": ["armv7", "armhf"],
+  "raspberrypi3-64": ["aarch64", "armv7", "armhf"],
+  "raspberrypi4": ["armv7", "armhf"],
+  "raspberrypi4-64": ["aarch64", "armv7", "armhf"],
+  "tinker": ["armv7", "armhf"],
+  "odroid-c2": ["aarch64", "armv7", "armhf"],
+  "odroid-n2": ["aarch64", "armv7", "armhf"],
+  "odroid-xu": ["armv7", "armhf"],
+  "qemux86": ["i386"],
+  "qemux86-64": ["amd64", "i386"],
+  "qemuarm": ["armhf"],
+  "qemuarm-64": ["aarch64"],
+  "intel-nuc": ["amd64", "i386"]
 }
