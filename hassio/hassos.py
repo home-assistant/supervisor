@@ -17,6 +17,7 @@ from .exceptions import (
     HassOSUpdateError,
     DockerAPIError,
 )
+from .dbus.rauc import RaucState
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -111,24 +112,27 @@ class HassOS(CoreSysAttributes):
     async def load(self) -> None:
         """Load HassOS data."""
         try:
-            # Check needed host functions
-            assert self.sys_dbus.rauc.is_connected
-            assert self.sys_dbus.systemd.is_connected
-            assert self.sys_dbus.hostname.is_connected
-
-            assert self.sys_host.info.cpe is not None
+            if self.sys_host.info.cpe is None:
+                raise TypeError()
             cpe = CPE(self.sys_host.info.cpe)
-            assert cpe.get_product()[0] == "hassos"
-        except (AssertionError, NotImplementedError):
+
+            if cpe.get_product()[0] != "hassos":
+                raise TypeError()
+        except TypeError:
             _LOGGER.debug("Found no HassOS")
             return
+        else:
+            self._available = True
 
         # Store meta data
-        self._available = True
         self._version = cpe.get_version()[0]
         self._board = cpe.get_target_hardware()[0]
 
-        _LOGGER.info("Detect HassOS %s on host system", self.version)
+        await self.sys_dbus.rauc.update()
+
+        _LOGGER.info(
+            "Detect HassOS %s / BootSlot %s", self.version, self.sys_dbus.rauc.boot_slot
+        )
         with suppress(DockerAPIError):
             await self.instance.attach(tag="latest")
 
@@ -174,8 +178,8 @@ class HassOS(CoreSysAttributes):
             return
 
         # Update fails
-        rauc_status = await self.sys_dbus.get_properties()
-        _LOGGER.error("HassOS update fails with: %s", rauc_status.get("LastError"))
+        await self.sys_dbus.rauc.update()
+        _LOGGER.error("HassOS update fails with: %s", self.sys_dbus.rauc.last_error)
         raise HassOSUpdateError()
 
     async def update_cli(self, version: Optional[str] = None) -> None:
@@ -206,3 +210,12 @@ class HassOS(CoreSysAttributes):
             await self.instance.install(self.version_cli, latest=True)
         except DockerAPIError:
             _LOGGER.error("Repairing of HassOS CLI fails")
+
+    async def mark_healthy(self):
+        """Set booted partition as good for rauc."""
+        try:
+            response = await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")
+        except DBusError:
+            _LOGGER.error("Can't mark booted partition as healty!")
+        else:
+            _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])

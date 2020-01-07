@@ -427,9 +427,10 @@ class DockerInterface(CoreSysAttributes):
                         continue
                     available_version.append(version)
 
-            assert available_version
+            if not available_version:
+                raise ValueError()
 
-        except (docker.errors.DockerException, AssertionError):
+        except (docker.errors.DockerException, ValueError):
             _LOGGER.debug("No version found for %s", self.image)
             raise DockerAPIError()
         else:

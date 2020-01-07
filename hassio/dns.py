@@ -17,7 +17,7 @@ from .docker.stats import DockerStats
 from .exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
 from .misc.forwarder import DNSForward
 from .utils.json import JsonConfig
-from .validate import DNS_URL, SCHEMA_DNS_CONFIG
+from .validate import dns_url, SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -113,18 +113,20 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.version = self.instance.version
             self.save_data()
 
+        # Fix dns server handling before 194 / Cleanup with version 200
+        if DNS_SERVERS == self.servers:
+            self.servers.clear()
+            self.save_data()
+
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
-        self._update_local_resolv()
-
-        # Reset container configuration
-        if await self.instance.is_running():
-            with suppress(DockerAPIError):
-                await self.instance.stop()
 
         # Run CoreDNS
         with suppress(CoreDNSError):
-            await self.start()
+            if await self.instance.is_running():
+                await self.restart()
+            else:
+                await self.start()
 
     async def unload(self) -> None:
         """Unload DNS forwarder."""
@@ -195,8 +197,10 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             raise CoreDNSError() from None
 
     async def reset(self) -> None:
-        """Reset Config / Hosts."""
-        self.servers = DNS_SERVERS
+        """Reset DNS and hosts."""
+        # Reset manually defined DNS
+        self.servers.clear()
+        self.save_data()
 
         # Resets hosts
         with suppress(OSError):
@@ -216,11 +220,20 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't read coredns template file: %s", err)
             raise CoreDNSError() from None
 
-        # Prepare DNS serverlist: Prio 1 Local, Prio 2 Manual, Prio 3 Fallback
+        # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
         local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
-        for server in local_dns + self.servers + DNS_SERVERS:
+        servers: List[str] = self.servers + local_dns + DNS_SERVERS
+
+        _LOGGER.debug(
+            "config-dns = %s, local-dns = %s , backup-dns = %s",
+            self.servers,
+            local_dns,
+            DNS_SERVERS,
+        )
+
+        for server in servers:
             try:
-                DNS_URL(server)
+                dns_url(server)
                 if server not in dns_servers:
                     dns_servers.append(server)
             except vol.Invalid:
@@ -346,33 +359,3 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.install(self.version)
         except DockerAPIError:
             _LOGGER.error("Repairing of CoreDNS fails")
-
-    def _update_local_resolv(self) -> None:
-        """Update local resolv file."""
-        resolv_lines: List[str] = []
-        nameserver = f"nameserver {self.sys_docker.network.dns!s}"
-
-        # Read resolv config
-        try:
-            with RESOLV_CONF.open("r") as resolv:
-                for line in resolv.readlines():
-                    if not line:
-                        continue
-                    resolv_lines.append(line.strip())
-        except OSError as err:
-            _LOGGER.warning("Can't read local resolv: %s", err)
-            return
-
-        if nameserver in resolv_lines:
-            return
-        _LOGGER.info("Update resolv from Supervisor")
-
-        # Write config back to resolv
-        resolv_lines.append(nameserver)
-        try:
-            with RESOLV_CONF.open("w") as resolv:
-                for line in resolv_lines:
-                    resolv.write(f"{line}\n")
-        except OSError as err:
-            _LOGGER.warning("Can't write local resolv: %s", err)
-            return

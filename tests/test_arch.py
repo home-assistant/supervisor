@@ -120,7 +120,17 @@ async def test_odroid_c2_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == ["aarch64"]
+    assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
+
+
+async def test_odroid_n2_arch(coresys, sys_machine, sys_supervisor):
+    """Test arch for odroid-n2."""
+    sys_machine.return_value = "odroid-n2"
+    sys_supervisor.arch = "aarch64"
+    await coresys.arch.load()
+
+    assert coresys.arch.default == "aarch64"
+    assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
 
 
 async def test_odroid_xu_arch(coresys, sys_machine, sys_supervisor):
@@ -131,16 +141,6 @@ async def test_odroid_xu_arch(coresys, sys_machine, sys_supervisor):
 
     assert coresys.arch.default == "armv7"
     assert coresys.arch.supported == ["armv7", "armhf"]
-
-
-async def test_orangepi_prime_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for orangepi_prime."""
-    sys_machine.return_value = "orangepi-prime"
-    sys_supervisor.arch = "aarch64"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == ["aarch64"]
 
 
 async def test_intel_nuc_arch(coresys, sys_machine, sys_supervisor):

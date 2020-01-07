@@ -31,7 +31,7 @@ from ..const import (
     SNAPSHOT_FULL,
     SNAPSHOT_PARTIAL,
 )
-from ..validate import DOCKER_IMAGE, NETWORK_PORT, REPOSITORIES
+from ..validate import docker_image, network_port, repositories
 
 ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
@@ -59,11 +59,11 @@ SCHEMA_SNAPSHOT = vol.Schema(
         vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema(
             {
                 vol.Optional(ATTR_VERSION): vol.Coerce(str),
-                vol.Inclusive(ATTR_IMAGE, "custom_hass"): DOCKER_IMAGE,
+                vol.Inclusive(ATTR_IMAGE, "custom_hass"): docker_image,
                 vol.Inclusive(ATTR_LAST_VERSION, "custom_hass"): vol.Coerce(str),
                 vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
                 vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
-                vol.Optional(ATTR_PORT, default=8123): NETWORK_PORT,
+                vol.Optional(ATTR_PORT, default=8123): network_port,
                 vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
                 vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
                 vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
@@ -90,7 +90,7 @@ SCHEMA_SNAPSHOT = vol.Schema(
             ],
             unique_addons,
         ),
-        vol.Optional(ATTR_REPOSITORIES, default=list): REPOSITORIES,
+        vol.Optional(ATTR_REPOSITORIES, default=list): repositories,
     },
     extra=vol.ALLOW_EXTRA,
 )

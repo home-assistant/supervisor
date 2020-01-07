@@ -1,6 +1,7 @@
 """Validate functions."""
 import re
 import uuid
+import ipaddress
 
 import voluptuous as vol
 
@@ -35,27 +36,41 @@ from .const import (
     CHANNEL_BETA,
     CHANNEL_DEV,
     CHANNEL_STABLE,
-    DNS_SERVERS,
 )
 from .utils.validate import validate_timezone
+
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 
 # pylint: disable=no-value-for-parameter
-NETWORK_PORT = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
-WAIT_BOOT = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
-DOCKER_IMAGE = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
-ALSA_DEVICE = vol.Maybe(vol.Match(r"\d+,\d+"))
-CHANNELS = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
-UUID_MATCH = vol.Match(r"^[0-9a-f]{32}$")
-SHA256 = vol.Match(r"^[0-9a-f]{64}$")
-TOKEN = vol.Match(r"^[0-9a-f]{32,256}$")
-LOG_LEVEL = vol.In(["debug", "info", "warning", "error", "critical"])
-DNS_URL = vol.Match(r"^dns://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-DNS_SERVER_LIST = vol.All([DNS_URL], vol.Length(max=8))
+# pylint: disable=invalid-name
+network_port = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
+wait_boot = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
+docker_image = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
+alsa_device = vol.Maybe(vol.Match(r"\d+,\d+"))
+channels = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
+uuid_match = vol.Match(r"^[0-9a-f]{32}$")
+sha256 = vol.Match(r"^[0-9a-f]{64}$")
+token = vol.Match(r"^[0-9a-f]{32,256}$")
+log_level = vol.In(["debug", "info", "warning", "error", "critical"])
 
 
-def validate_repository(repository):
+def dns_url(url: str) -> str:
+    """ takes a DNS url (str) and validates that it matches the scheme dns://<ip address>."""
+    if not url.lower().startswith("dns://"):
+        raise vol.Invalid("Doesn't start with dns://")
+    address: str = url[6:]  # strip the dns:// off
+    try:
+        ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
+    except ValueError:
+        raise vol.Invalid("Invalid DNS URL: {}".format(url))
+    return url
+
+
+dns_server_list = vol.All(vol.Length(max=8), [dns_url])
+
+
+def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
     data = RE_REPOSITORY.match(repository)
     if not data:
@@ -69,13 +84,13 @@ def validate_repository(repository):
 
 
 # pylint: disable=no-value-for-parameter
-REPOSITORIES = vol.All([validate_repository], vol.Unique())
+repositories = vol.All([validate_repository], vol.Unique())
 
 
 DOCKER_PORTS = vol.Schema(
     {
         vol.All(vol.Coerce(str), vol.Match(r"^\d+(?:/tcp|/udp)?$")): vol.Maybe(
-            NETWORK_PORT
+            network_port
         )
     }
 )
@@ -88,13 +103,13 @@ DOCKER_PORTS_DESCRIPTION = vol.Schema(
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASS_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): UUID_MATCH,
+        vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
         vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_ACCESS_TOKEN): TOKEN,
+        vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
-        vol.Inclusive(ATTR_IMAGE, "custom_hass"): DOCKER_IMAGE,
+        vol.Inclusive(ATTR_IMAGE, "custom_hass"): docker_image,
         vol.Inclusive(ATTR_LAST_VERSION, "custom_hass"): vol.Coerce(str),
-        vol.Optional(ATTR_PORT, default=8123): NETWORK_PORT,
+        vol.Optional(ATTR_PORT, default=8123): network_port,
         vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
@@ -109,7 +124,7 @@ SCHEMA_HASS_CONFIG = vol.Schema(
 
 SCHEMA_UPDATER_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_CHANNEL, default=CHANNEL_STABLE): CHANNELS,
+        vol.Optional(ATTR_CHANNEL, default=CHANNEL_STABLE): channels,
         vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
         vol.Optional(ATTR_HASSIO): vol.Coerce(str),
         vol.Optional(ATTR_HASSOS): vol.Coerce(str),
@@ -128,9 +143,9 @@ SCHEMA_HASSIO_CONFIG = vol.Schema(
         vol.Optional(
             ATTR_ADDONS_CUSTOM_LIST,
             default=["https://github.com/hassio-addons/repository"],
-        ): REPOSITORIES,
-        vol.Optional(ATTR_WAIT_BOOT, default=5): WAIT_BOOT,
-        vol.Optional(ATTR_LOGGING, default="info"): LOG_LEVEL,
+        ): repositories,
+        vol.Optional(ATTR_WAIT_BOOT, default=5): wait_boot,
+        vol.Optional(ATTR_LOGGING, default="info"): log_level,
         vol.Optional(ATTR_DEBUG, default=False): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK, default=False): vol.Boolean(),
     },
@@ -138,16 +153,16 @@ SCHEMA_HASSIO_CONFIG = vol.Schema(
 )
 
 
-SCHEMA_AUTH_CONFIG = vol.Schema({SHA256: SHA256})
+SCHEMA_AUTH_CONFIG = vol.Schema({sha256: sha256})
 
 
 SCHEMA_INGRESS_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_SESSION, default=dict): vol.Schema(
-            {TOKEN: vol.Coerce(float)}
+            {token: vol.Coerce(float)}
         ),
         vol.Required(ATTR_PORTS, default=dict): vol.Schema(
-            {vol.Coerce(str): NETWORK_PORT}
+            {vol.Coerce(str): network_port}
         ),
     },
     extra=vol.REMOVE_EXTRA,
@@ -157,7 +172,7 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
 SCHEMA_DNS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_SERVERS, default=DNS_SERVERS): DNS_SERVER_LIST,
+        vol.Optional(ATTR_SERVERS, default=list): dns_server_list,
     },
     extra=vol.REMOVE_EXTRA,
 )

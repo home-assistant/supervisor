@@ -6,7 +6,7 @@ import voluptuous as vol
 
 from ..const import ATTR_ADDON, ATTR_CONFIG, ATTR_DISCOVERY, ATTR_SERVICE, ATTR_UUID
 from ..utils.validate import schema_or
-from ..validate import UUID_MATCH
+from ..validate import uuid_match
 
 
 def valid_discovery_service(service):
@@ -31,7 +31,7 @@ SCHEMA_DISCOVERY = vol.Schema(
     [
         vol.Schema(
             {
-                vol.Required(ATTR_UUID): UUID_MATCH,
+                vol.Required(ATTR_UUID): uuid_match,
                 vol.Required(ATTR_ADDON): vol.Coerce(str),
                 vol.Required(ATTR_SERVICE): valid_discovery_service,
                 vol.Required(ATTR_CONFIG): vol.Maybe(dict),
