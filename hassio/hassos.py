@@ -114,8 +114,8 @@ class HassOS(CoreSysAttributes):
         try:
             if not self.sys_host.info.cpe:
                 raise NotImplementedError()
-            cpe = CPE(self.sys_host.info.cpe)
 
+            cpe = CPE(self.sys_host.info.cpe)
             if cpe.get_product()[0] != "hassos":
                 raise NotImplementedError()
         except NotImplementedError:
