@@ -92,13 +92,14 @@ class APIIngress(CoreSysAttributes):
         # Process requests
         addon = self._extract_addon(request)
         path = request.match_info.get("path")
+        request_clone = request.clone(max_client_size=1024**3)
         try:
             # Websocket
             if _is_websocket(request):
-                return await self._handle_websocket(request, addon, path)
+                return await self._handle_websocket(request_clone, addon, path)
 
             # Request
-            return await self._handle_request(request, addon, path)
+            return await self._handle_request(request_clone, addon, path)
 
         except aiohttp.ClientError as err:
             _LOGGER.error("Ingress error: %s", err)
@@ -154,7 +155,6 @@ class APIIngress(CoreSysAttributes):
     ) -> Union[web.Response, web.StreamResponse]:
         """Ingress route for request."""
         url = self._create_url(addon, path)
-        data = await request.read()
         source_header = _init_header(request, addon)
 
         async with self.sys_websession.request(
@@ -163,7 +163,7 @@ class APIIngress(CoreSysAttributes):
             headers=source_header,
             params=request.query,
             allow_redirects=False,
-            data=data,
+            data=request.content,
         ) as result:
             headers = _response_header(result)
 
