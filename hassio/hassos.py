@@ -112,13 +112,13 @@ class HassOS(CoreSysAttributes):
     async def load(self) -> None:
         """Load HassOS data."""
         try:
-            if self.sys_host.info.cpe is None:
-                raise TypeError()
+            if not self.sys_host.info.cpe:
+                raise NotImplementedError()
             cpe = CPE(self.sys_host.info.cpe)
 
             if cpe.get_product()[0] != "hassos":
-                raise TypeError()
-        except TypeError:
+                raise NotImplementedError()
+        except NotImplementedError:
             _LOGGER.debug("Found no HassOS")
             return
         else:
