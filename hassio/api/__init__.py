@@ -284,6 +284,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/dns/update", api_dns.update),
                 web.post("/dns/options", api_dns.options),
                 web.post("/dns/restart", api_dns.restart),
+                web.post("/dns/reset", api_dns.reset),
             ]
         )
 

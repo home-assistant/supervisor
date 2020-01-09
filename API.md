@@ -797,6 +797,8 @@ return:
 
 - POST `/dns/restart`
 
+- POST `/dns/reset`
+
 - GET `/dns/logs`
 
 - GET `/dns/stats`

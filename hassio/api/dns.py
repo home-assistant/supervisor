@@ -95,3 +95,8 @@ class APICoreDNS(CoreSysAttributes):
     def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart CoreDNS plugin."""
         return asyncio.shield(self.sys_dns.restart())
+
+    @api_process
+    def reset(self, request: web.Request) -> Awaitable[None]:
+        """Reset CoreDNS plugin."""
+        return asyncio.shield(self.sys_dns.reset())
