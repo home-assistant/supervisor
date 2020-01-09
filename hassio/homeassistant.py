@@ -489,10 +489,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         if content_type is not None:
             headers[hdrs.CONTENT_TYPE] = content_type
 
-        # Set old API Password
-        if not self.refresh_token and self.api_password:
-            headers[HEADER_HA_ACCESS] = self.api_password
-
         for _ in (1, 2):
             # Prepare Access token
             if self.refresh_token:
