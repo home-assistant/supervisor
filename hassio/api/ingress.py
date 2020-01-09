@@ -154,6 +154,7 @@ class APIIngress(CoreSysAttributes):
     ) -> Union[web.Response, web.StreamResponse]:
         """Ingress route for request."""
         url = self._create_url(addon, path)
+        data = await request.read()
         source_header = _init_header(request, addon)
 
         async with self.sys_websession.request(
@@ -162,7 +163,7 @@ class APIIngress(CoreSysAttributes):
             headers=source_header,
             params=request.query,
             allow_redirects=False,
-            data=request.content,
+            data=data,
         ) as result:
             headers = _response_header(result)
 
