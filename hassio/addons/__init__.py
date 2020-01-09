@@ -254,10 +254,10 @@ class AddonManager(CoreSysAttributes):
     async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
         if slug not in self.local:
-            _LOGGER.debug("Add-on %s is not local available for restore")
+            _LOGGER.debug("Add-on %s is not local available for restore", slug)
             addon = Addon(self.coresys, slug)
         else:
-            _LOGGER.debug("Add-on %s is local available for restore")
+            _LOGGER.debug("Add-on %s is local available for restore", slug)
             addon = self.local[slug]
 
         await addon.restore(tar_file)

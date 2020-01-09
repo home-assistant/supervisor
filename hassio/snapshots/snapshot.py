@@ -24,7 +24,6 @@ from ..const import (
     ATTR_IMAGE,
     ATTR_LAST_VERSION,
     ATTR_NAME,
-    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PROTECTED,
     ATTR_REFRESH_TOKEN,
@@ -37,15 +36,26 @@ from ..const import (
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     CRYPTO_AES128,
+    FOLDER_HOMEASSISTANT,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils.json import write_json_file
-from ..utils.tar import SecureTarFile, secure_path
+from ..utils.tar import SecureTarFile, exclude_filter, secure_path
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
 from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+MAP_FOLDER_EXCLUDE = {
+    FOLDER_HOMEASSISTANT: [
+        "*.db-wal",
+        "*.db-shm",
+        "__pycache__/*",
+        "*.log",
+        "OZW_Log.txt",
+    ]
+}
 
 
 class Snapshot(CoreSysAttributes):
@@ -359,7 +369,11 @@ class Snapshot(CoreSysAttributes):
             try:
                 _LOGGER.info("Snapshot folder %s", name)
                 with SecureTarFile(tar_name, "w", key=self._key) as tar_file:
-                    tar_file.add(origin_dir, arcname=".")
+                    tar_file.add(
+                        origin_dir,
+                        arcname=".",
+                        filter=exclude_filter(MAP_FOLDER_EXCLUDE.get(name, [])),
+                    )
 
                 _LOGGER.info("Snapshot folder %s done", name)
                 self._data[ATTR_FOLDERS].append(name)
@@ -428,9 +442,6 @@ class Snapshot(CoreSysAttributes):
         self.homeassistant[ATTR_REFRESH_TOKEN] = self._encrypt_data(
             self.sys_homeassistant.refresh_token
         )
-        self.homeassistant[ATTR_PASSWORD] = self._encrypt_data(
-            self.sys_homeassistant.api_password
-        )
 
     def restore_homeassistant(self):
         """Write all data to the Home Assistant object."""
@@ -450,9 +461,6 @@ class Snapshot(CoreSysAttributes):
         self.sys_homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
         self.sys_homeassistant.refresh_token = self._decrypt_data(
             self.homeassistant[ATTR_REFRESH_TOKEN]
-        )
-        self.sys_homeassistant.api_password = self._decrypt_data(
-            self.homeassistant[ATTR_PASSWORD]
         )
 
         # save

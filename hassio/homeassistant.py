@@ -22,7 +22,6 @@ from .const import (
     ATTR_BOOT,
     ATTR_IMAGE,
     ATTR_LAST_VERSION,
-    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
@@ -31,7 +30,6 @@ from .const import (
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     FILE_HASSIO_HOMEASSISTANT,
-    HEADER_HA_ACCESS,
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
@@ -121,16 +119,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def api_port(self, value: int) -> None:
         """Set network port for Home Assistant instance."""
         self._data[ATTR_PORT] = value
-
-    @property
-    def api_password(self) -> str:
-        """Return password for Home Assistant instance."""
-        return self._data.get(ATTR_PASSWORD)
-
-    @api_password.setter
-    def api_password(self, value: str):
-        """Set password for Home Assistant instance."""
-        self._data[ATTR_PASSWORD] = value
 
     @property
     def api_ssl(self) -> bool:
@@ -499,10 +487,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         # Passthrough content type
         if content_type is not None:
             headers[hdrs.CONTENT_TYPE] = content_type
-
-        # Set old API Password
-        if not self.refresh_token and self.api_password:
-            headers[HEADER_HA_ACCESS] = self.api_password
 
         for _ in (1, 2):
             # Prepare Access token
