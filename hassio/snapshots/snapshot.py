@@ -24,7 +24,6 @@ from ..const import (
     ATTR_IMAGE,
     ATTR_LAST_VERSION,
     ATTR_NAME,
-    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PROTECTED,
     ATTR_REFRESH_TOKEN,

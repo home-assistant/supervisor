@@ -21,7 +21,6 @@ from .const import (
     ATTR_LAST_BOOT,
     ATTR_LAST_VERSION,
     ATTR_LOGGING,
-    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PORTS,
     ATTR_REFRESH_TOKEN,

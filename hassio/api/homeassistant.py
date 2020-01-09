@@ -21,7 +21,6 @@ from ..const import (
     ATTR_MEMORY_PERCENT,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
-    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
