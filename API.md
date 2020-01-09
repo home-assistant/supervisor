@@ -410,7 +410,6 @@ Output is the raw Docker log.
   "last_version": "Optional for custom image|null",
   "port": "port for access hass",
   "ssl": "bool",
-  "password": "",
   "refresh_token": "",
   "watchdog": "bool",
   "wait_boot": 600
