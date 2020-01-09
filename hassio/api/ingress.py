@@ -156,9 +156,6 @@ class APIIngress(CoreSysAttributes):
         url = self._create_url(addon, path)
         source_header = _init_header(request, addon)
 
-        if request.method == "POST":
-            request = request.clone(max_client_size=1024 ** 3)
-
         async with self.sys_websession.request(
             request.method,
             url,
