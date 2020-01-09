@@ -30,7 +30,6 @@ from .const import (
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     FILE_HASSIO_HOMEASSISTANT,
-    HEADER_HA_ACCESS,
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.homeassistant import DockerHomeAssistant
