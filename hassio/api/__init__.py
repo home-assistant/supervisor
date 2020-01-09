@@ -25,6 +25,9 @@ from .supervisor import APISupervisor
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+MAX_CLIENT_SIZE: int = 1024 ** 2 * 16
+
+
 class RestAPI(CoreSysAttributes):
     """Handle RESTful API for Hass.io."""
 
@@ -33,7 +36,8 @@ class RestAPI(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.security: SecurityMiddleware = SecurityMiddleware(coresys)
         self.webapp: web.Application = web.Application(
-            middlewares=[self.security.token_validation]
+            client_max_size=MAX_CLIENT_SIZE,
+            middlewares=[self.security.token_validation],
         )
 
         # service stuff

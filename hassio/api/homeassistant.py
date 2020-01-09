@@ -21,7 +21,6 @@ from ..const import (
     ATTR_MEMORY_PERCENT,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
-    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
@@ -45,7 +44,6 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Inclusive(ATTR_IMAGE, "custom_hass"): vol.Maybe(docker_image),
         vol.Inclusive(ATTR_LAST_VERSION, "custom_hass"): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_PORT): network_port,
-        vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_SSL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
         vol.Optional(ATTR_WAIT_BOOT): vol.All(vol.Coerce(int), vol.Range(min=60)),
@@ -92,10 +90,6 @@ class APIHomeAssistant(CoreSysAttributes):
         if ATTR_PORT in body:
             self.sys_homeassistant.api_port = body[ATTR_PORT]
 
-        if ATTR_PASSWORD in body:
-            self.sys_homeassistant.api_password = body[ATTR_PASSWORD]
-            self.sys_homeassistant.refresh_token = None
-
         if ATTR_SSL in body:
             self.sys_homeassistant.api_ssl = body[ATTR_SSL]
 
@@ -107,7 +101,6 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_REFRESH_TOKEN in body:
             self.sys_homeassistant.refresh_token = body[ATTR_REFRESH_TOKEN]
-            self.sys_homeassistant.api_password = None
 
         self.sys_homeassistant.save_data()
 

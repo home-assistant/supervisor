@@ -11,7 +11,6 @@ from ..const import (
     ATTR_IMAGE,
     ATTR_LAST_VERSION,
     ATTR_NAME,
-    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PROTECTED,
     ATTR_REFRESH_TOKEN,
@@ -64,7 +63,6 @@ SCHEMA_SNAPSHOT = vol.Schema(
                 vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
                 vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
                 vol.Optional(ATTR_PORT, default=8123): network_port,
-                vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
                 vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
                 vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
                 vol.Optional(ATTR_WAIT_BOOT, default=600): vol.All(
