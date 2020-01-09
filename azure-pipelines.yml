@@ -4,153 +4,151 @@ trigger:
   batch: true
   branches:
     include:
-    - master
-    - dev
+      - master
+      - dev
   tags:
     include:
-    - '*'
+      - "*"
     exclude:
-    - untagged*
+      - untagged*
 pr:
   - dev
 variables:
   - name: basePythonTag
-    value: '3.7-alpine3.10'
+    value: "3.7-alpine3.11"
   - name: versionHadolint
-    value: 'v1.16.3'
+    value: "v1.16.3"
   - name: versionBuilder
-    value: '4.4'
+    value: "4.4"
   - name: versionWheels
-    value: '1.0-3.7-alpine3.10'
+    value: "1.6-3.7-alpine3.11"
   - group: docker
   - group: wheels
 
-
 stages:
+  - stage: "Test"
+    jobs:
+      - job: "Tox"
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - task: UsePythonVersion@0
+            displayName: "Use Python 3.7"
+            inputs:
+              versionSpec: "3.7"
+          - script: pip install tox
+            displayName: "Install Tox"
+          - script: tox
+            displayName: "Run Tox"
+      - job: "JQ"
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - script: sudo apt-get install -y jq
+            displayName: "Install JQ"
+          - bash: |
+              shopt -s globstar
+              cat **/*.json | jq '.'
+            displayName: "Run JQ"
+      - job: "Hadolint"
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - script: sudo docker pull hadolint/hadolint:$(versionHadolint)
+            displayName: "Install Hadolint"
+          - script: |
+              sudo docker run --rm -i \
+                -v $(pwd)/.hadolint.yaml:/.hadolint.yaml:ro \
+                hadolint/hadolint:$(versionHadolint) < Dockerfile
+            displayName: "Run Hadolint"
 
-- stage: 'Test'
-  jobs:
-  - job: 'Tox'
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    - task: UsePythonVersion@0
-      displayName: 'Use Python 3.7'
-      inputs:
-        versionSpec: '3.7'
-    - script: pip install tox
-      displayName: 'Install Tox'
-    - script: tox
-      displayName: 'Run Tox'
-  - job: 'JQ'
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    - script: sudo apt-get install -y jq
-      displayName: 'Install JQ'
-    - bash: |
-        shopt -s globstar
-        cat **/*.json | jq '.'
-      displayName: 'Run JQ'
-  - job: 'Hadolint'
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    - script: sudo docker pull hadolint/hadolint:$(versionHadolint)
-      displayName: 'Install Hadolint'
-    - script: |
-        sudo docker run --rm -i \
-          -v $(pwd)/.hadolint.yaml:/.hadolint.yaml:ro \
-          hadolint/hadolint:$(versionHadolint) < Dockerfile
-      displayName: 'Run Hadolint'
+  - stage: "Wheels"
+    jobs:
+      - job: "Wheels"
+        condition: eq(variables['Build.SourceBranchName'], 'dev')
+        timeoutInMinutes: 360
+        pool:
+          vmImage: "ubuntu-latest"
+        strategy:
+          maxParallel: 5
+          matrix:
+            amd64:
+              buildArch: "amd64"
+            i386:
+              buildArch: "i386"
+            armhf:
+              buildArch: "armhf"
+            armv7:
+              buildArch: "armv7"
+            aarch64:
+              buildArch: "aarch64"
+        steps:
+          - script: |
+              sudo apt-get update
+              sudo apt-get install -y --no-install-recommends \
+                qemu-user-static \
+                binfmt-support \
+                curl
 
-- stage: 'Wheels'
-  jobs:
-  - job: 'Wheels'
-    condition: eq(variables['Build.SourceBranchName'], 'dev')
-    timeoutInMinutes: 360
-    pool:
-      vmImage: 'ubuntu-latest'
-    strategy:
-      maxParallel: 5
-      matrix:
-        amd64:
-          buildArch: 'amd64'
-        i386:
-          buildArch: 'i386'
-        armhf:
-          buildArch: 'armhf'
-        armv7:
-          buildArch: 'armv7'
-        aarch64:
-          buildArch: 'aarch64'
-    steps:
-    - script: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          qemu-user-static \
-          binfmt-support \
-          curl
+              sudo mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
+              sudo update-binfmts --enable qemu-arm
+              sudo update-binfmts --enable qemu-aarch64
+            displayName: "Initial cross build"
+          - script: |
+              mkdir -p .ssh
+              echo -e "-----BEGIN RSA PRIVATE KEY-----\n$(wheelsSSH)\n-----END RSA PRIVATE KEY-----" >> .ssh/id_rsa
+              ssh-keyscan -H $(wheelsHost) >> .ssh/known_hosts
+              chmod 600 .ssh/*
+            displayName: "Install ssh key"
+          - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)
+            displayName: "Install wheels builder"
+          - script: |
+              sudo docker run --rm -v $(pwd):/data:ro -v $(pwd)/.ssh:/root/.ssh:rw \
+                homeassistant/$(buildArch)-wheels:$(versionWheels) \
+                --apk "build-base;libffi-dev;openssl-dev" \
+                --index $(wheelsIndex) \
+                --requirement requirements.txt \
+                --upload rsync \
+                --remote wheels@$(wheelsHost):/opt/wheels
+            displayName: "Run wheels build"
 
-        sudo mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
-        sudo update-binfmts --enable qemu-arm
-        sudo update-binfmts --enable qemu-aarch64
-      displayName: 'Initial cross build'
-    - script: |
-        mkdir -p .ssh
-        echo -e "-----BEGIN RSA PRIVATE KEY-----\n$(wheelsSSH)\n-----END RSA PRIVATE KEY-----" >> .ssh/id_rsa
-        ssh-keyscan -H $(wheelsHost) >> .ssh/known_hosts
-        chmod 600 .ssh/*
-      displayName: 'Install ssh key'
-    - script: sudo docker pull homeassistant/$(buildArch)-wheels:$(versionWheels)
-      displayName: 'Install wheels builder'
-    - script: |
-        sudo docker run --rm -v $(pwd):/data:ro -v $(pwd)/.ssh:/root/.ssh:rw \
-          homeassistant/$(buildArch)-wheels:$(versionWheels) \
-          --apk "build-base;libffi-dev;openssl-dev" \
-          --index $(wheelsIndex) \
-          --requirement requirements.txt \
-          --upload rsync \
-          --remote wheels@$(wheelsHost):/opt/wheels
-      displayName: 'Run wheels build'
+  - stage: "Deploy"
+    jobs:
+      - job: "VersionValidate"
+        condition: or(startsWith(variables['Build.SourceBranch'], 'refs/tags'), eq(variables['Build.SourceBranchName'], 'dev'))
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - task: UsePythonVersion@0
+            displayName: "Use Python 3.7"
+            inputs:
+              versionSpec: "3.7"
+          - script: |
+              setup_version="$(python setup.py -V)"
+              branch_version="$(Build.SourceBranchName)"
 
-- stage: 'Deploy'
-  jobs:
-  - job: 'VersionValidate'
-    condition: or(startsWith(variables['Build.SourceBranch'], 'refs/tags'), eq(variables['Build.SourceBranchName'], 'dev'))
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    - task: UsePythonVersion@0
-      displayName: 'Use Python 3.7'
-      inputs:
-        versionSpec: '3.7'
-    - script: |
-        setup_version="$(python setup.py -V)"
-        branch_version="$(Build.SourceBranchName)"
-
-        if [ "${branch_version}" == "dev" ]; then
-          exit 0
-        elif [ "${setup_version}" != "${branch_version}" ]; then
-          echo "Version of tag ${branch_version} don't match with ${setup_version}!"
-          exit 1
-        fi
-      displayName: 'Check version of branch/tag'
-  - job: 'Release'
-    dependsOn:
-    - 'VersionValidate'
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
-      displayName: 'Docker hub login'
-    - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
-      displayName: 'Install Builder'
-    - script: |
-        sudo docker run --rm --privileged \
-          -v ~/.docker:/root/.docker \
-          -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
-          homeassistant/amd64-builder:$(versionBuilder) \
-          --supervisor $(basePythonTag) --version $(Build.SourceBranchName) \
-          --all -t /data --docker-hub homeassistant
-      displayName: 'Build Release'
+              if [ "${branch_version}" == "dev" ]; then
+                exit 0
+              elif [ "${setup_version}" != "${branch_version}" ]; then
+                echo "Version of tag ${branch_version} don't match with ${setup_version}!"
+                exit 1
+              fi
+            displayName: "Check version of branch/tag"
+      - job: "Release"
+        dependsOn:
+          - "VersionValidate"
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
+            displayName: "Docker hub login"
+          - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
+            displayName: "Install Builder"
+          - script: |
+              sudo docker run --rm --privileged \
+                -v ~/.docker:/root/.docker \
+                -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
+                homeassistant/amd64-builder:$(versionBuilder) \
+                --supervisor $(basePythonTag) --version $(Build.SourceBranchName) \
+                --all -t /data --docker-hub homeassistant
+            displayName: "Build Release"
