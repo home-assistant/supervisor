@@ -110,7 +110,6 @@ SCHEMA_HASS_CONFIG = vol.Schema(
         vol.Inclusive(ATTR_IMAGE, "custom_hass"): docker_image,
         vol.Inclusive(ATTR_LAST_VERSION, "custom_hass"): vol.Coerce(str),
         vol.Optional(ATTR_PORT, default=8123): network_port,
-        vol.Optional(ATTR_PASSWORD): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),

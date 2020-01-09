@@ -123,16 +123,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._data[ATTR_PORT] = value
 
     @property
-    def api_password(self) -> str:
-        """Return password for Home Assistant instance."""
-        return self._data.get(ATTR_PASSWORD)
-
-    @api_password.setter
-    def api_password(self, value: str):
-        """Set password for Home Assistant instance."""
-        self._data[ATTR_PASSWORD] = value
-
-    @property
     def api_ssl(self) -> bool:
         """Return if we need ssl to Home Assistant instance."""
         return self._data[ATTR_SSL]
