@@ -1,16 +1,32 @@
 """Init file for Hass.io auth/SSO RESTful API."""
+import asyncio
 import logging
+from typing import Dict
 
 from aiohttp import BasicAuth
 from aiohttp.web_exceptions import HTTPUnauthorized
 from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION, WWW_AUTHENTICATE
+import voluptuous as vol
 
-from .utils import api_process
-from ..const import REQUEST_FROM, CONTENT_TYPE_JSON, CONTENT_TYPE_URL
+from .utils import api_process, api_validate
+from ..const import (
+    REQUEST_FROM,
+    CONTENT_TYPE_JSON,
+    CONTENT_TYPE_URL,
+    ATTR_PASSWORD,
+    ATTR_USERNAME,
+)
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIForbidden
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+SCHEMA_PASSWORD_RESET = vol.Schema(
+    {
+        vol.Required(ATTR_USERNAME): vol.Coerce(str),
+        vol.Required(ATTR_PASSWORD): vol.Coerce(str),
+    }
+)
 
 
 class APIAuth(CoreSysAttributes):
@@ -59,3 +75,9 @@ class APIAuth(CoreSysAttributes):
         raise HTTPUnauthorized(
             headers={WWW_AUTHENTICATE: 'Basic realm="Hass.io Authentication"'}
         )
+
+    @api_process
+    async def reset(self, request):
+        """Process reset password request."""
+        body: Dict[str, str] = await api_validate(SCHEMA_PASSWORD_RESET, request)
+        return asyncio.shield(self.sys_auth.change_password(body[ATTR_USERNAME], body[ATTR_PASSWORD]))
