@@ -83,6 +83,6 @@ class APIAuth(CoreSysAttributes):
     async def reset(self, request: web.Request) -> None:
         """Process reset password request."""
         body: Dict[str, str] = await api_validate(SCHEMA_PASSWORD_RESET, request)
-        return asyncio.shield(
+        await asyncio.shield(
             self.sys_auth.change_password(body[ATTR_USERNAME], body[ATTR_PASSWORD])
         )
