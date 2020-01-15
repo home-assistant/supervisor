@@ -96,7 +96,7 @@ class Auth(JsonConfig, CoreSysAttributes):
             async with self.sys_homeassistant.make_request(
                 "post",
                 "api/hassio_auth/password_reset",
-                json={ATTR_USERNAME: username, ATTR_PASSWORD: password,},
+                json={ATTR_USERNAME: username, ATTR_PASSWORD: password},
             ) as req:
                 if req.status == 200:
                     _LOGGER.info("Success password reset %s", username)
