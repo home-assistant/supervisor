@@ -5,7 +5,7 @@ import logging
 from .addons.addon import Addon
 from .const import ATTR_ADDON, ATTR_PASSWORD, ATTR_USERNAME, FILE_HASSIO_AUTH
 from .coresys import CoreSys, CoreSysAttributes
-from .exceptions import AuthError, HomeAssistantAPIError
+from .exceptions import AuthError, AuthPasswordResetError, HomeAssistantAPIError
 from .utils.json import JsonConfig
 from .validate import SCHEMA_AUTH_CONFIG
 
@@ -102,11 +102,11 @@ class Auth(JsonConfig, CoreSysAttributes):
                     _LOGGER.info("Success password reset %s", username)
                     return
 
-                _LOGGER.warning("Wrong password reset %s", username)
+                _LOGGER.warning("Unknown user %s for password reset", username)
         except HomeAssistantAPIError:
             _LOGGER.error("Can't request password reset on Home Assistant!")
 
-        raise AuthError()
+        raise AuthPasswordResetError()
 
     @staticmethod
     def _rehash(value: str, salt2: str = "") -> str:
