@@ -97,6 +97,10 @@ class AuthError(HassioError):
     """Auth errors."""
 
 
+class AuthPasswordResetError(HassioError):
+    """Auth error if password reset fails."""
+
+
 # Host
 
 

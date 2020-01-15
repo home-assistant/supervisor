@@ -828,3 +828,12 @@ We support:
 - Json `{ "user|name": "...", "password": "..." }`
 - application/x-www-form-urlencoded `user|name=...&password=...`
 - BasicAuth
+
+* POST `/auth/reset`
+
+```json
+{
+  "username": "xy",
+  "password": "new-password"
+}
+```
