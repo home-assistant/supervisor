@@ -479,9 +479,9 @@ def _single_ui_option(
     """Validate a single element."""
     ui_node = {"name": key}
 
-    # If multible
+    # If multiple
     if multiple:
-        ui_node["mutliple"] = True
+        ui_node["multiple"] = True
 
     # Parse extend data from type
     match = RE_SCHEMA_ELEMENT.match(value)
