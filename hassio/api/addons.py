@@ -10,6 +10,7 @@ from ..addons import AnyAddon
 from ..addons.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
+    ATTR_ADVANCED,
     ATTR_APPARMOR,
     ATTR_ARCH,
     ATTR_AUDIO,
@@ -146,6 +147,7 @@ class APIAddons(CoreSysAttributes):
                     ATTR_NAME: addon.name,
                     ATTR_SLUG: addon.slug,
                     ATTR_DESCRIPTON: addon.description,
+                    ATTR_ADVANCED: addon.advanced,
                     ATTR_VERSION: addon.latest_version,
                     ATTR_INSTALLED: addon.version if addon.is_installed else None,
                     ATTR_AVAILABLE: addon.available,
@@ -189,6 +191,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_DNS: addon.dns,
             ATTR_DESCRIPTON: addon.description,
             ATTR_LONG_DESCRIPTION: addon.long_description,
+            ATTR_ADVANCED: addon.advanced,
             ATTR_AUTO_UPDATE: None,
             ATTR_REPOSITORY: addon.repository,
             ATTR_VERSION: None,

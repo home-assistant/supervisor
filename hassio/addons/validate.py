@@ -10,6 +10,7 @@ import voluptuous as vol
 from ..const import (
     ARCH_ALL,
     ATTR_ACCESS_TOKEN,
+    ATTR_ADVANCED,
     ATTR_APPARMOR,
     ATTR_ARCH,
     ATTR_ARGS,
@@ -90,9 +91,9 @@ from ..const import (
 from ..coresys import CoreSys
 from ..discovery.validate import valid_discovery_service
 from ..validate import (
-    alsa_device,
     DOCKER_PORTS,
     DOCKER_PORTS_DESCRIPTION,
+    alsa_device,
     network_port,
     token,
     uuid_match,
@@ -175,6 +176,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_URL): vol.Url(),
         vol.Required(ATTR_STARTUP): vol.All(_simple_startup, vol.In(STARTUP_ALL)),
         vol.Required(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
+        vol.Optional(ATTR_ADVANCED, default=False): vol.Boolean(),
         vol.Optional(ATTR_PORTS): DOCKER_PORTS,
         vol.Optional(ATTR_PORTS_DESCRIPTION): DOCKER_PORTS_DESCRIPTION,
         vol.Optional(ATTR_WEBUI): vol.Match(

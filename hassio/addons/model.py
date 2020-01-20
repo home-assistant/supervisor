@@ -6,6 +6,7 @@ from packaging import version as pkg_version
 import voluptuous as vol
 
 from ..const import (
+    ATTR_ADVANCED,
     ATTR_APPARMOR,
     ATTR_ARCH,
     ATTR_AUDIO,
@@ -188,6 +189,11 @@ class AddonModel(CoreSysAttributes):
     def startup(self) -> Optional[str]:
         """Return startup type of add-on."""
         return self.data.get(ATTR_STARTUP)
+
+    @property
+    def advanced(self) -> bool:
+        """Return advanced mode of add-on."""
+        return self.data[ATTR_ADVANCED]
 
     @property
     def services_role(self) -> Dict[str, str]:
