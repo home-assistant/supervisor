@@ -19,7 +19,7 @@ variables:
   - name: versionHadolint
     value: "v1.16.3"
   - name: versionBuilder
-    value: "4.9"
+    value: "6.9"
   - name: versionWheels
     value: "1.6-3.7-alpine3.11"
   - group: docker
