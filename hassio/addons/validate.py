@@ -128,7 +128,16 @@ RE_SCHEMA_ELEMENT = re.compile(
     r")\??$"
 )
 
-_SCHEMA_LENGTH_PARTS = ("i_min", "i_max", "f_min", "f_max", "s_min", "s_max", "p_min", "p_max")
+_SCHEMA_LENGTH_PARTS = (
+    "i_min",
+    "i_max",
+    "f_min",
+    "f_max",
+    "s_min",
+    "s_max",
+    "p_min",
+    "p_max",
+)
 
 RE_DOCKER_IMAGE = re.compile(r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$")
 RE_DOCKER_IMAGE_BUILD = re.compile(
@@ -463,46 +472,61 @@ def schema_ui_options(raw_schema: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     return ui_schema
 
-def _single_ui_option(ui_schema: List[Dict[str, Any]], value: str, key: str, multible: bool=False) -> None:
+
+def _single_ui_option(
+    ui_schema: List[Dict[str, Any]], value: str, key: str, multiple: bool = False
+) -> None:
     """Validate a single element."""
     ui_node = {"name": key}
 
     # if multible
-    if multible:
-        ui_node["mutlible"] = True
+    if multiple:
+        ui_node["mutliple"] = True
 
     # parse extend data from type
     match = RE_SCHEMA_ELEMENT.match(value)
 
     # prepare range
-    range_args = {}
     for group_name in _SCHEMA_LENGTH_PARTS:
         group_value = match.group(group_name)
-        if group_value:
-            range_args[group_name[2:]] = float(group_value)
+        if not group_value:
+            continue
+        if group_name[2:] == "min":
+            ui_node["lengthMin"] = float(group_value)
+        elif group_name[2:] == "max":
+            ui_node["lengthMax"] = float(group_value)
 
-    if value.startswith(V_STR) or value.startswith(V_PASSWORD):
-        return vol.All(str(value), vol.Range(**range_args))(value)
+    if value.startswith(V_STR):
+        ui_node["type"] = "string"
+    elif value.startswith(V_PASSWORD):
+        ui_node["type"] = "string"
+        ui_node["format"] = "password"
     elif value.startswith(V_INT):
-        return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
+        ui_node["type"] = "integer"
     elif value.startswith(V_FLOAT):
-        return vol.All(vol.Coerce(float), vol.Range(**range_args))(value)
+        ui_node["type"] = "float"
     elif value.startswith(V_BOOL):
-        return vol.Boolean()(value)
+        ui_node["type"] = "boolean"
     elif value.startswith(V_EMAIL):
-        return vol.Email()(value)
+        ui_node["type"] = "string"
+        ui_node["format"] = "email"
     elif value.startswith(V_URL):
-        return vol.Url()(value)
+        ui_node["type"] = "string"
+        ui_node["format"] = "url"
     elif value.startswith(V_PORT):
-        return network_port(value)
+        ui_node["type"] = "integer"
     elif value.startswith(V_MATCH):
-        return vol.Match(match.group("match"))(str(value))
+        ui_node["type"] = "string"
     elif value.startswith(V_LIST):
-        return vol.In(match.group("list").split("|"))(str(value))
+        ui_node["type"] = "select"
+        ui_node["options"] = match.group("list").split("|")
 
     ui_schema.append(ui_node)
 
-def _nested_ui_list(ui_schema: List[Dict[str, Any]], option_list: List[Any], key: str) -> None:
+
+def _nested_ui_list(
+    ui_schema: List[Dict[str, Any]], option_list: List[Any], key: str
+) -> None:
     """UI nested list items."""
     try:
         element = option_list[0]
@@ -511,14 +535,19 @@ def _nested_ui_list(ui_schema: List[Dict[str, Any]], option_list: List[Any], key
         return
 
     if isinstance(element, dict):
-        _nested_ui_dict(ui_schema, key, element, multible=True)
+        _nested_ui_dict(ui_schema, key, element, multiple=True)
     else:
-        _single_ui_option(ui_schema, key, element, multible=True)
+        _single_ui_option(ui_schema, key, element, multiple=True)
 
 
-def _nested_ui_dict(ui_schema: List[Dict[str, Any]], option_dict: Dict[str, Any], key: str, multible: bool = False) -> None:
+def _nested_ui_dict(
+    ui_schema: List[Dict[str, Any]],
+    option_dict: Dict[str, Any],
+    key: str,
+    multiple: bool = False,
+) -> None:
     """UI nested dict items."""
-    ui_node = {"name": key, "type": "schema", "multible": multible}
+    ui_node = {"name": key, "type": "schema", "multiple": multiple}
 
     nested_schema = []
     for c_key, c_value in option_dict.items():
