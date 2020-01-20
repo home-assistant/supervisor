@@ -554,7 +554,7 @@ def _nested_ui_dict(
     multiple: bool = False,
 ) -> None:
     """UI nested dict items."""
-    ui_node = {"name": key, "type": "schema", "multiple": multiple}
+    ui_node = {"name": key, "type": "schema", "optional": True, "multiple": multiple}
 
     nested_schema = []
     for c_key, c_value in option_dict.items():

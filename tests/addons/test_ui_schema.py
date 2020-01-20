@@ -33,6 +33,7 @@ def test_group_schema():
         {
             "multiple": False,
             "name": "extended",
+            "optional": True,
             "schema": [
                 {"name": "name", "required": True, "type": "string"},
                 {"mutliple": True, "name": "data", "required": True, "type": "string"},
@@ -61,6 +62,7 @@ def test_group_list():
         {
             "multiple": True,
             "name": "extended",
+            "optional": True,
             "schema": [
                 {"name": "name", "required": True, "type": "string"},
                 {"mutliple": True, "name": "data", "optional": True, "type": "string"},
