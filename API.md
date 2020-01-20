@@ -518,6 +518,7 @@ Get all available addons.
   "icon": "bool",
   "logo": "bool",
   "changelog": "bool",
+  "documentation": "bool",
   "hassio_api": "bool",
   "hassio_role": "default|homeassistant|manager|admin",
   "homeassistant_api": "bool",
@@ -550,6 +551,8 @@ Get all available addons.
 - GET `/addons/{addon}/logo`
 
 - GET `/addons/{addon}/changelog`
+
+- GET `/addons/{addon}/documentation`
 
 - POST `/addons/{addon}/options`
 

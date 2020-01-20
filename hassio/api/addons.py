@@ -7,7 +7,6 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..addons import AnyAddon
-from ..docker.stats import DockerStats
 from ..addons.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
@@ -32,6 +31,7 @@ from ..const import (
     ATTR_DISCOVERY,
     ATTR_DNS,
     ATTR_DOCKER_API,
+    ATTR_DOCUMENTATION,
     ATTR_FULL_ACCESS,
     ATTR_GPIO,
     ATTR_HASSIO_API,
@@ -89,8 +89,9 @@ from ..const import (
     STATE_NONE,
 )
 from ..coresys import CoreSysAttributes
+from ..docker.stats import DockerStats
 from ..exceptions import APIError
-from ..validate import alsa_device, DOCKER_PORTS
+from ..validate import DOCKER_PORTS, alsa_device
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -217,6 +218,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_ICON: addon.with_icon,
             ATTR_LOGO: addon.with_logo,
             ATTR_CHANGELOG: addon.with_changelog,
+            ATTR_DOCUMENTATION: addon.with_documentation,
             ATTR_STDIN: addon.with_stdin,
             ATTR_WEBUI: None,
             ATTR_HASSIO_API: addon.access_hassio_api,
@@ -406,6 +408,16 @@ class APIAddons(CoreSysAttributes):
 
         with addon.path_changelog.open("r") as changelog:
             return changelog.read()
+
+    @api_process_raw(CONTENT_TYPE_TEXT)
+    async def documentation(self, request: web.Request) -> str:
+        """Return documentation from add-on."""
+        addon: AnyAddon = self._extract_addon(request, check_installed=False)
+        if not addon.with_changelog:
+            raise APIError("No documentation found!")
+
+        with addon.path_documentation.open("r") as documentation:
+            return documentation.read()
 
     @api_process
     async def stdin(self, request: web.Request) -> None:
