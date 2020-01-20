@@ -413,7 +413,7 @@ class APIAddons(CoreSysAttributes):
     async def documentation(self, request: web.Request) -> str:
         """Return documentation from add-on."""
         addon: AnyAddon = self._extract_addon(request, check_installed=False)
-        if not addon.with_changelog:
+        if not addon.with_documentation:
             raise APIError("No documentation found!")
 
         with addon.path_documentation.open("r") as documentation:
