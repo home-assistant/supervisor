@@ -479,14 +479,14 @@ def _single_ui_option(
     """Validate a single element."""
     ui_node = {"name": key}
 
-    # if multible
+    # If multible
     if multiple:
         ui_node["mutliple"] = True
 
-    # parse extend data from type
+    # Parse extend data from type
     match = RE_SCHEMA_ELEMENT.match(value)
 
-    # prepare range
+    # Prepare range
     for group_name in _SCHEMA_LENGTH_PARTS:
         group_value = match.group(group_name)
         if not group_value:
@@ -496,6 +496,13 @@ def _single_ui_option(
         elif group_name[2:] == "max":
             ui_node["lengthMax"] = float(group_value)
 
+    # If required
+    if value.endswith("?"):
+        ui_node["optional"] = True
+    else:
+        ui_node["required"] = True
+
+    # Data types
     if value.startswith(V_STR):
         ui_node["type"] = "string"
     elif value.startswith(V_PASSWORD):
@@ -535,9 +542,9 @@ def _nested_ui_list(
         return
 
     if isinstance(element, dict):
-        _nested_ui_dict(ui_schema, key, element, multiple=True)
+        _nested_ui_dict(ui_schema, element, key, multiple=True)
     else:
-        _single_ui_option(ui_schema, key, element, multiple=True)
+        _single_ui_option(ui_schema, element, key, multiple=True)
 
 
 def _nested_ui_dict(
@@ -553,9 +560,9 @@ def _nested_ui_dict(
     for c_key, c_value in option_dict.items():
         # Nested?
         if isinstance(c_value, list):
-            _nested_ui_list(nested_schema, c_key, c_value)
+            _nested_ui_list(nested_schema, c_value, c_key)
         else:
-            _single_ui_option(nested_schema, c_key, c_value)
+            _single_ui_option(nested_schema, c_value, c_key)
 
     ui_node["schema"] = nested_schema
     ui_schema.append(ui_node)
