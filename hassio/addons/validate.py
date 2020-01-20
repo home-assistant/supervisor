@@ -2,7 +2,7 @@
 import logging
 import re
 import secrets
-from typing import Any, Dict
+from typing import Any, Dict, List
 import uuid
 
 import voluptuous as vol
@@ -109,6 +109,7 @@ V_STR = "str"
 V_INT = "int"
 V_FLOAT = "float"
 V_BOOL = "bool"
+V_PASSWORD = "password"
 V_EMAIL = "email"
 V_URL = "url"
 V_PORT = "port"
@@ -119,6 +120,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"^(?:"
     r"|bool|email|url|port"
     r"|str(?:\((?P<s_min>\d+)?,(?P<s_max>\d+)?\))?"
+    r"|password(?:\((?P<p_min>\d+)?,(?P<p_max>\d+)?\))?"
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
     r"|float(?:\((?P<f_min>[\d\.]+)?,(?P<f_max>[\d\.]+)?\))?"
     r"|match\((?P<match>.*)\)"
@@ -126,7 +128,16 @@ RE_SCHEMA_ELEMENT = re.compile(
     r")\??$"
 )
 
-_SCHEMA_LENGTH_PARTS = ("i_min", "i_max", "f_min", "f_max", "s_min", "s_max")
+_SCHEMA_LENGTH_PARTS = (
+    "i_min",
+    "i_max",
+    "f_min",
+    "f_max",
+    "s_min",
+    "s_max",
+    "p_min",
+    "p_max",
+)
 
 RE_DOCKER_IMAGE = re.compile(r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$")
 RE_DOCKER_IMAGE_BUILD = re.compile(
@@ -375,7 +386,7 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
         if group_value:
             range_args[group_name[2:]] = float(group_value)
 
-    if typ.startswith(V_STR):
+    if typ.startswith(V_STR) or typ.startswith(V_PASSWORD):
         return vol.All(str(value), vol.Range(**range_args))(value)
     elif typ.startswith(V_INT):
         return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
@@ -441,3 +452,117 @@ def _check_missing_options(origin, exists, root):
         if isinstance(origin[miss_opt], str) and origin[miss_opt].endswith("?"):
             continue
         raise vol.Invalid(f"Missing option {miss_opt} in {root}")
+
+
+def schema_ui_options(raw_schema: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Generate UI schema."""
+    ui_schema = []
+
+    # read options
+    for key, value in raw_schema.items():
+        if isinstance(value, list):
+            # nested value list
+            _nested_ui_list(ui_schema, value, key)
+        elif isinstance(value, dict):
+            # nested value dict
+            _nested_ui_dict(ui_schema, value, key)
+        else:
+            # normal value
+            _single_ui_option(ui_schema, value, key)
+
+    return ui_schema
+
+
+def _single_ui_option(
+    ui_schema: List[Dict[str, Any]], value: str, key: str, multiple: bool = False
+) -> None:
+    """Validate a single element."""
+    ui_node = {"name": key}
+
+    # If multible
+    if multiple:
+        ui_node["mutliple"] = True
+
+    # Parse extend data from type
+    match = RE_SCHEMA_ELEMENT.match(value)
+
+    # Prepare range
+    for group_name in _SCHEMA_LENGTH_PARTS:
+        group_value = match.group(group_name)
+        if not group_value:
+            continue
+        if group_name[2:] == "min":
+            ui_node["lengthMin"] = float(group_value)
+        elif group_name[2:] == "max":
+            ui_node["lengthMax"] = float(group_value)
+
+    # If required
+    if value.endswith("?"):
+        ui_node["optional"] = True
+    else:
+        ui_node["required"] = True
+
+    # Data types
+    if value.startswith(V_STR):
+        ui_node["type"] = "string"
+    elif value.startswith(V_PASSWORD):
+        ui_node["type"] = "string"
+        ui_node["format"] = "password"
+    elif value.startswith(V_INT):
+        ui_node["type"] = "integer"
+    elif value.startswith(V_FLOAT):
+        ui_node["type"] = "float"
+    elif value.startswith(V_BOOL):
+        ui_node["type"] = "boolean"
+    elif value.startswith(V_EMAIL):
+        ui_node["type"] = "string"
+        ui_node["format"] = "email"
+    elif value.startswith(V_URL):
+        ui_node["type"] = "string"
+        ui_node["format"] = "url"
+    elif value.startswith(V_PORT):
+        ui_node["type"] = "integer"
+    elif value.startswith(V_MATCH):
+        ui_node["type"] = "string"
+    elif value.startswith(V_LIST):
+        ui_node["type"] = "select"
+        ui_node["options"] = match.group("list").split("|")
+
+    ui_schema.append(ui_node)
+
+
+def _nested_ui_list(
+    ui_schema: List[Dict[str, Any]], option_list: List[Any], key: str
+) -> None:
+    """UI nested list items."""
+    try:
+        element = option_list[0]
+    except IndexError:
+        _LOGGER.error("Invalid schema %s", key)
+        return
+
+    if isinstance(element, dict):
+        _nested_ui_dict(ui_schema, element, key, multiple=True)
+    else:
+        _single_ui_option(ui_schema, element, key, multiple=True)
+
+
+def _nested_ui_dict(
+    ui_schema: List[Dict[str, Any]],
+    option_dict: Dict[str, Any],
+    key: str,
+    multiple: bool = False,
+) -> None:
+    """UI nested dict items."""
+    ui_node = {"name": key, "type": "schema", "optional": True, "multiple": multiple}
+
+    nested_schema = []
+    for c_key, c_value in option_dict.items():
+        # Nested?
+        if isinstance(c_value, list):
+            _nested_ui_list(nested_schema, c_value, c_key)
+        else:
+            _single_ui_option(nested_schema, c_value, c_key)
+
+    ui_node["schema"] = nested_schema
+    ui_schema.append(ui_node)

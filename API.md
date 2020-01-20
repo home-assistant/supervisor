@@ -506,6 +506,7 @@ Get all available addons.
   "boot": "auto|manual",
   "build": "bool",
   "options": "{}",
+  "schema": "{}|null",
   "network": "{}|null",
   "network_description": "{}|null",
   "host_network": "bool",
