@@ -222,6 +222,7 @@ ATTR_LOCALS = "locals"
 ATTR_UDEV = "udev"
 ATTR_VALUE = "value"
 ATTR_SNAPSHOT_EXCLUDE = "snapshot_exclude"
+ATTR_DOCUMENTATION = "documentation"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

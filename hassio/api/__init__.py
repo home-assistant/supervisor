@@ -201,6 +201,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/addons/{addon}/icon", api_addons.icon),
                 web.get("/addons/{addon}/logo", api_addons.logo),
                 web.get("/addons/{addon}/changelog", api_addons.changelog),
+                web.get("/addons/{addon}/documentation", api_addons.documentation),
                 web.post("/addons/{addon}/stdin", api_addons.stdin),
                 web.post("/addons/{addon}/security", api_addons.security),
                 web.get("/addons/{addon}/stats", api_addons.stats),

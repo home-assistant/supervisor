@@ -406,6 +406,11 @@ class AddonModel(CoreSysAttributes):
         return self.path_changelog.exists()
 
     @property
+    def with_documentation(self) -> bool:
+        """Return True if a documentation exists."""
+        return self.path_documentation.exists()
+
+    @property
     def supported_arch(self) -> List[str]:
         """Return list of supported arch."""
         return self.data[ATTR_ARCH]
@@ -454,6 +459,11 @@ class AddonModel(CoreSysAttributes):
     def path_changelog(self) -> Path:
         """Return path to add-on changelog."""
         return Path(self.path_location, "CHANGELOG.md")
+
+    @property
+    def path_documentation(self) -> Path:
+        """Return path to add-on changelog."""
+        return Path(self.path_location, "DOCS.md")
 
     @property
     def path_apparmor(self) -> Path:
