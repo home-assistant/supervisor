@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 from ..const import FILE_HASSIO_SERVICES
 from ..utils.json import JsonConfig
-from .const import SERVICE_MQTT
+from .const import SERVICE_MQTT, SERVICE_MYSQL
 from .validate import SCHEMA_SERVICES_CONFIG
 
 
@@ -18,3 +18,8 @@ class ServicesData(JsonConfig):
     def mqtt(self) -> Dict[str, Any]:
         """Return settings for MQTT service."""
         return self._data[SERVICE_MQTT]
+
+    @property
+    def mysql(self) -> Dict[str, Any]:
+        """Return settings for MySQL service."""
+        return self._data[SERVICE_MYSQL]

@@ -103,7 +103,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share)(?::(rw|ro))?$")
-RE_SERVICE = re.compile(r"^(?P<service>mqtt):(?P<rights>provide|want|need)$")
+RE_SERVICE = re.compile(r"^(?P<service>mqtt|mysql):(?P<rights>provide|want|need)$")
 
 V_STR = "str"
 V_INT = "int"

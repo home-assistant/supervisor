@@ -9,3 +9,4 @@ ATTR_SSL = "ssl"
 ATTR_USERNAME = "username"
 
 SERVICE_MQTT = "mqtt"
+SERVICE_MYSQL = "mysql"
