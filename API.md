@@ -752,6 +752,33 @@ return:
 
 - DEL `/services/mqtt`
 
+#### MySQL
+
+- GET `/services/mysql`
+
+```json
+{
+  "addon": "name",
+  "host": "xy",
+  "port": "8883",
+  "username": "optional",
+  "password": "optional"
+}
+```
+
+- POST `/services/mysql`
+
+```json
+{
+  "host": "xy",
+  "port": "8883",
+  "username": "optional",
+  "password": "optional"
+}
+```
+
+- DEL `/services/mysql`
+
 ### Misc
 
 - GET `/info`
