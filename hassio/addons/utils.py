@@ -43,6 +43,10 @@ def rating_security(addon: AddonModel) -> int:
     if addon.access_auth_api:
         rating += 1
 
+    # Home Assistant Protect WebUI
+    if addon.with_ingress:
+        rating += 1
+
     # Privileged options
     if any(
         privilege in addon.privileged
