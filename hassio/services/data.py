@@ -1,5 +1,5 @@
 """Handle service data for persistent supervisor reboot."""
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from ..const import FILE_HASSIO_SERVICES
 from ..utils.json import JsonConfig
@@ -15,11 +15,11 @@ class ServicesData(JsonConfig):
         super().__init__(FILE_HASSIO_SERVICES, SCHEMA_SERVICES_CONFIG)
 
     @property
-    def mqtt(self) -> Dict[str, Any]:
+    def mqtt(self) -> Optional[Dict[str, Any]]:
         """Return settings for MQTT service."""
-        return self._data[SERVICE_MQTT]
+        return self._data.get(SERVICE_MQTT)
 
     @property
-    def mysql(self) -> Dict[str, Any]:
+    def mysql(self) -> Optional[Dict[str, Any]]:
         """Return settings for MySQL service."""
-        return self._data[SERVICE_MYSQL]
+        return self._data.get(SERVICE_MYSQL)
