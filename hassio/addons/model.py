@@ -6,6 +6,7 @@ from packaging import version as pkg_version
 import voluptuous as vol
 
 from ..const import (
+    ATTR_ADVANCED,
     ATTR_APPARMOR,
     ATTR_ARCH,
     ATTR_AUDIO,
@@ -61,7 +62,7 @@ from ..const import (
     SECURITY_PROFILE,
 )
 from ..coresys import CoreSysAttributes
-from .validate import RE_SERVICE, RE_VOLUME, validate_options
+from .validate import RE_SERVICE, RE_VOLUME, validate_options, schema_ui_options
 
 Data = Dict[str, Any]
 
@@ -188,6 +189,11 @@ class AddonModel(CoreSysAttributes):
     def startup(self) -> Optional[str]:
         """Return startup type of add-on."""
         return self.data.get(ATTR_STARTUP)
+
+    @property
+    def advanced(self) -> bool:
+        """Return advanced mode of add-on."""
+        return self.data[ATTR_ADVANCED]
 
     @property
     def services_role(self) -> Dict[str, str]:
@@ -406,6 +412,11 @@ class AddonModel(CoreSysAttributes):
         return self.path_changelog.exists()
 
     @property
+    def with_documentation(self) -> bool:
+        """Return True if a documentation exists."""
+        return self.path_documentation.exists()
+
+    @property
     def supported_arch(self) -> List[str]:
         """Return list of supported arch."""
         return self.data[ATTR_ARCH]
@@ -456,6 +467,11 @@ class AddonModel(CoreSysAttributes):
         return Path(self.path_location, "CHANGELOG.md")
 
     @property
+    def path_documentation(self) -> Path:
+        """Return path to add-on changelog."""
+        return Path(self.path_location, "DOCS.md")
+
+    @property
     def path_apparmor(self) -> Path:
         """Return path to custom AppArmor profile."""
         return Path(self.path_location, "apparmor.txt")
@@ -468,6 +484,15 @@ class AddonModel(CoreSysAttributes):
         if isinstance(raw_schema, bool):
             return vol.Schema(dict)
         return vol.Schema(vol.All(dict, validate_options(self.coresys, raw_schema)))
+
+    @property
+    def schema_ui(self) -> Optional[List[Dict[str, Any]]]:
+        """Create a UI schema for add-on options."""
+        raw_schema = self.data[ATTR_SCHEMA]
+
+        if isinstance(raw_schema, bool):
+            return None
+        return schema_ui_options(raw_schema)
 
     def __eq__(self, other):
         """Compaired add-on objects."""

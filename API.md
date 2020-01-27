@@ -456,6 +456,7 @@ Get all available addons.
       "name": "xy bla",
       "slug": "xy",
       "description": "description",
+      "advanced": "bool",
       "repository": "core|local|REP_ID",
       "version": "LAST_VERSION",
       "installed": "none|INSTALL_VERSION",
@@ -494,6 +495,7 @@ Get all available addons.
   "url": "null|url of addon",
   "detached": "bool",
   "available": "bool",
+  "advanced": "bool",
   "arch": ["armhf", "aarch64", "i386", "amd64"],
   "machine": "[raspberrypi2, tinker]",
   "homeassistant": "null|min Home Assistant version",
@@ -504,6 +506,7 @@ Get all available addons.
   "boot": "auto|manual",
   "build": "bool",
   "options": "{}",
+  "schema": "{}|null",
   "network": "{}|null",
   "network_description": "{}|null",
   "host_network": "bool",
@@ -518,6 +521,7 @@ Get all available addons.
   "icon": "bool",
   "logo": "bool",
   "changelog": "bool",
+  "documentation": "bool",
   "hassio_api": "bool",
   "hassio_role": "default|homeassistant|manager|admin",
   "homeassistant_api": "bool",
@@ -550,6 +554,8 @@ Get all available addons.
 - GET `/addons/{addon}/logo`
 
 - GET `/addons/{addon}/changelog`
+
+- GET `/addons/{addon}/documentation`
 
 - POST `/addons/{addon}/options`
 
@@ -746,6 +752,33 @@ return:
 
 - DEL `/services/mqtt`
 
+#### MySQL
+
+- GET `/services/mysql`
+
+```json
+{
+  "addon": "name",
+  "host": "xy",
+  "port": "8883",
+  "username": "optional",
+  "password": "optional"
+}
+```
+
+- POST `/services/mysql`
+
+```json
+{
+  "host": "xy",
+  "port": "8883",
+  "username": "optional",
+  "password": "optional"
+}
+```
+
+- DEL `/services/mysql`
+
 ### Misc
 
 - GET `/info`
@@ -797,6 +830,8 @@ return:
 
 - POST `/dns/restart`
 
+- POST `/dns/reset`
+
 - GET `/dns/logs`
 
 - GET `/dns/stats`
@@ -826,3 +861,12 @@ We support:
 - Json `{ "user|name": "...", "password": "..." }`
 - application/x-www-form-urlencoded `user|name=...&password=...`
 - BasicAuth
+
+* POST `/auth/reset`
+
+```json
+{
+  "username": "xy",
+  "password": "new-password"
+}
+```

@@ -1,12 +1,13 @@
 """Manage SSO for Add-ons with Home Assistant user."""
-import logging
 import hashlib
+import logging
 
-from .const import FILE_HASSIO_AUTH, ATTR_PASSWORD, ATTR_USERNAME, ATTR_ADDON
-from .coresys import CoreSysAttributes
+from .addons.addon import Addon
+from .const import ATTR_ADDON, ATTR_PASSWORD, ATTR_USERNAME, FILE_HASSIO_AUTH
+from .coresys import CoreSys, CoreSysAttributes
+from .exceptions import AuthError, AuthPasswordResetError, HomeAssistantAPIError
 from .utils.json import JsonConfig
 from .validate import SCHEMA_AUTH_CONFIG
-from .exceptions import AuthError, HomeAssistantAPIError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -14,15 +15,15 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class Auth(JsonConfig, CoreSysAttributes):
     """Manage SSO for Add-ons with Home Assistant user."""
 
-    def __init__(self, coresys):
+    def __init__(self, coresys: CoreSys) -> None:
         """Initialize updater."""
         super().__init__(FILE_HASSIO_AUTH, SCHEMA_AUTH_CONFIG)
-        self.coresys = coresys
+        self.coresys: CoreSys = coresys
 
-    def _check_cache(self, username, password):
+    def _check_cache(self, username: str, password: str) -> bool:
         """Check password in cache."""
-        username_h = _rehash(username)
-        password_h = _rehash(password, username)
+        username_h = self._rehash(username)
+        password_h = self._rehash(password, username)
 
         if self._data.get(username_h) == password_h:
             _LOGGER.info("Cache hit for %s", username)
@@ -31,10 +32,10 @@ class Auth(JsonConfig, CoreSysAttributes):
         _LOGGER.warning("No cache hit for %s", username)
         return False
 
-    def _update_cache(self, username, password):
+    def _update_cache(self, username: str, password: str) -> None:
         """Cache a username, password."""
-        username_h = _rehash(username)
-        password_h = _rehash(password, username)
+        username_h = self._rehash(username)
+        password_h = self._rehash(password, username)
 
         if self._data.get(username_h) == password_h:
             return
@@ -42,10 +43,10 @@ class Auth(JsonConfig, CoreSysAttributes):
         self._data[username_h] = password_h
         self.save_data()
 
-    def _dismatch_cache(self, username, password):
+    def _dismatch_cache(self, username: str, password: str) -> None:
         """Remove user from cache."""
-        username_h = _rehash(username)
-        password_h = _rehash(password, username)
+        username_h = self._rehash(username)
+        password_h = self._rehash(password, username)
 
         if self._data.get(username_h) != password_h:
             return
@@ -53,7 +54,7 @@ class Auth(JsonConfig, CoreSysAttributes):
         self._data.pop(username_h, None)
         self.save_data()
 
-    async def check_login(self, addon, username, password):
+    async def check_login(self, addon: Addon, username: str, password: str) -> bool:
         """Check username login."""
         if password is None:
             _LOGGER.error("None as password is not supported!")
@@ -89,9 +90,27 @@ class Auth(JsonConfig, CoreSysAttributes):
 
         raise AuthError()
 
+    async def change_password(self, username: str, password: str) -> None:
+        """Change user password login."""
+        try:
+            async with self.sys_homeassistant.make_request(
+                "post",
+                "api/hassio_auth/password_reset",
+                json={ATTR_USERNAME: username, ATTR_PASSWORD: password},
+            ) as req:
+                if req.status == 200:
+                    _LOGGER.info("Success password reset %s", username)
+                    return
 
-def _rehash(value, salt2=""):
-    """Rehash a value."""
-    for idx in range(1, 20):
-        value = hashlib.sha256(f"{value}{idx}{salt2}".encode()).hexdigest()
-    return value
+                _LOGGER.warning("Unknown user %s for password reset", username)
+        except HomeAssistantAPIError:
+            _LOGGER.error("Can't request password reset on Home Assistant!")
+
+        raise AuthPasswordResetError()
+
+    @staticmethod
+    def _rehash(value: str, salt2: str = "") -> str:
+        """Rehash a value."""
+        for idx in range(1, 20):
+            value = hashlib.sha256(f"{value}{idx}{salt2}".encode()).hexdigest()
+        return value

@@ -121,7 +121,9 @@ class RestAPI(CoreSysAttributes):
         api_auth = APIAuth()
         api_auth.coresys = self.coresys
 
-        self.webapp.add_routes([web.post("/auth", api_auth.auth)])
+        self.webapp.add_routes(
+            [web.post("/auth", api_auth.auth), web.post("/auth/reset", api_auth.reset)]
+        )
 
     def _register_supervisor(self) -> None:
         """Register Supervisor functions."""
@@ -199,6 +201,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/addons/{addon}/icon", api_addons.icon),
                 web.get("/addons/{addon}/logo", api_addons.logo),
                 web.get("/addons/{addon}/changelog", api_addons.changelog),
+                web.get("/addons/{addon}/documentation", api_addons.documentation),
                 web.post("/addons/{addon}/stdin", api_addons.stdin),
                 web.post("/addons/{addon}/security", api_addons.security),
                 web.get("/addons/{addon}/stats", api_addons.stats),
@@ -284,6 +287,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/dns/update", api_dns.update),
                 web.post("/dns/options", api_dns.options),
                 web.post("/dns/restart", api_dns.restart),
+                web.post("/dns/reset", api_dns.reset),
             ]
         )
 

@@ -39,8 +39,10 @@ def rating_security(addon: AddonModel) -> int:
     elif addon.apparmor == SECURITY_PROFILE:
         rating += 1
 
-    # Home Assistant Login
-    if addon.access_auth_api:
+    # Home Assistant Login & Ingress
+    if addon.with_ingress:
+        rating += 2
+    elif addon.access_auth_api:
         rating += 1
 
     # Privileged options
