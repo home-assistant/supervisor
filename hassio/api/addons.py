@@ -90,8 +90,6 @@ from ..const import (
     CONTENT_TYPE_TEXT,
     REQUEST_FROM,
     STATE_NONE,
-    AddonStages,
-    UpdateChannels,
 )
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
