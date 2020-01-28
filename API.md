@@ -496,6 +496,7 @@ Get all available addons.
   "detached": "bool",
   "available": "bool",
   "advanced": "bool",
+  "stage": "stable|experimental|deprecated",
   "arch": ["armhf", "aarch64", "i386", "amd64"],
   "machine": "[raspberrypi2, tinker]",
   "homeassistant": "null|min Home Assistant version",

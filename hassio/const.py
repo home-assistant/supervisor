@@ -1,6 +1,7 @@
 """Constants file for Hass.io."""
-from pathlib import Path
+from enum import Enum
 from ipaddress import ip_network
+from pathlib import Path
 
 HASSIO_VERSION = "197"
 
@@ -224,6 +225,7 @@ ATTR_VALUE = "value"
 ATTR_SNAPSHOT_EXCLUDE = "snapshot_exclude"
 ATTR_DOCUMENTATION = "documentation"
 ATTR_ADVANCED = "advanced"
+ATTR_STAGE = "stage"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
@@ -325,3 +327,11 @@ ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_AD
 
 CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
+
+
+class AddonStages(str, Enum):
+    """Stage types of add-on."""
+
+    STABLE = "stable"
+    EXPERIMENTAL = "experimental"
+    DEPRECATED = "deprecated"
