@@ -146,27 +146,13 @@ class APIAddons(CoreSysAttributes):
         """Return all add-ons or repositories."""
         data_addons = []
         for addon in self.sys_addons.all:
-
-            # Filter Addons from list
-            if addon.is_installed:
-                pass
-            elif addon.stage == AddonStages.STABLE:
-                pass
-            elif (
-                addon.stage == AddonStages.EXPERIMENTAL
-                and self.sys_updater.channel
-                in (UpdateChannels.BETA, UpdateChannels.DEV,)
-            ):
-                pass
-            else:
-                continue
-
             data_addons.append(
                 {
                     ATTR_NAME: addon.name,
                     ATTR_SLUG: addon.slug,
                     ATTR_DESCRIPTON: addon.description,
                     ATTR_ADVANCED: addon.advanced,
+                    ATTR_STAGE: addon.stage,
                     ATTR_VERSION: addon.latest_version,
                     ATTR_INSTALLED: addon.version if addon.is_installed else None,
                     ATTR_AVAILABLE: addon.available,

@@ -457,6 +457,7 @@ Get all available addons.
       "slug": "xy",
       "description": "description",
       "advanced": "bool",
+      "stage": "stable|experimental|deprecated",
       "repository": "core|local|REP_ID",
       "version": "LAST_VERSION",
       "installed": "none|INSTALL_VERSION",
