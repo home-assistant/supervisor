@@ -37,11 +37,12 @@ from ..const import (
     ATTR_WAIT_BOOT,
     CONTENT_TYPE_BINARY,
     HASSIO_VERSION,
+    UpdateChannels,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
-from ..validate import channels, log_level, repositories, wait_boot
+from ..validate import log_level, repositories, wait_boot
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
     {
-        vol.Optional(ATTR_CHANNEL): channels,
+        vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannels),
         vol.Optional(ATTR_ADDONS_REPOSITORIES): repositories,
         vol.Optional(ATTR_TIMEZONE): validate_timezone,
         vol.Optional(ATTR_WAIT_BOOT): wait_boot,

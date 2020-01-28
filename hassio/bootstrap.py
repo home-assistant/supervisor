@@ -11,7 +11,7 @@ from .addons import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
-from .const import CHANNEL_DEV, SOCKET_DOCKER
+from .const import SOCKET_DOCKER, UpdateChannels
 from .core import HassIO
 from .coresys import CoreSys
 from .dbus import DBusManager
@@ -142,7 +142,7 @@ def initialize_system_data(coresys: CoreSys):
     # Check if ENV is in development mode
     if bool(os.environ.get("SUPERVISOR_DEV", 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
-        coresys.updater.channel = CHANNEL_DEV
+        coresys.updater.channel = UpdateChannels.DEV
         coresys.config.logging = "debug"
         coresys.config.debug = True
 

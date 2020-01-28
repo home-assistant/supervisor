@@ -65,6 +65,7 @@ from ..const import (
     ATTR_SLUG,
     ATTR_SNAPSHOT_EXCLUDE,
     ATTR_SQUASH,
+    ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STATE,
     ATTR_STDIN,
@@ -87,6 +88,7 @@ from ..const import (
     STARTUP_SERVICES,
     STATE_STARTED,
     STATE_STOPPED,
+    AddonStages,
 )
 from ..coresys import CoreSys
 from ..discovery.validate import valid_discovery_service
@@ -188,6 +190,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Required(ATTR_STARTUP): vol.All(_simple_startup, vol.In(STARTUP_ALL)),
         vol.Required(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
         vol.Optional(ATTR_ADVANCED, default=False): vol.Boolean(),
+        vol.Optional(ATTR_STAGE, default=AddonStages.STABLE): vol.Coerce(AddonStages),
         vol.Optional(ATTR_PORTS): DOCKER_PORTS,
         vol.Optional(ATTR_PORTS_DESCRIPTION): DOCKER_PORTS_DESCRIPTION,
         vol.Optional(ATTR_WEBUI): vol.Match(
