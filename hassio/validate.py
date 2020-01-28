@@ -32,9 +32,7 @@ from .const import (
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
-    CHANNEL_BETA,
-    CHANNEL_DEV,
-    CHANNEL_STABLE,
+    UpdateChannels,
 )
 from .utils.validate import validate_timezone
 
@@ -47,7 +45,6 @@ network_port = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 wait_boot = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 docker_image = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 alsa_device = vol.Maybe(vol.Match(r"\d+,\d+"))
-channels = vol.In([CHANNEL_STABLE, CHANNEL_BETA, CHANNEL_DEV])
 uuid_match = vol.Match(r"^[0-9a-f]{32}$")
 sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
@@ -122,7 +119,9 @@ SCHEMA_HASS_CONFIG = vol.Schema(
 
 SCHEMA_UPDATER_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_CHANNEL, default=CHANNEL_STABLE): channels,
+        vol.Optional(ATTR_CHANNEL, default=UpdateChannels.STABLE): vol.Coerce(
+            UpdateChannels
+        ),
         vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
         vol.Optional(ATTR_HASSIO): vol.Coerce(str),
         vol.Optional(ATTR_HASSOS): vol.Coerce(str),

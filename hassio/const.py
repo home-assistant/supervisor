@@ -266,10 +266,6 @@ ARCH_I386 = "i386"
 
 ARCH_ALL = [ARCH_ARMHF, ARCH_ARMV7, ARCH_AARCH64, ARCH_AMD64, ARCH_I386]
 
-CHANNEL_STABLE = "stable"
-CHANNEL_BETA = "beta"
-CHANNEL_DEV = "dev"
-
 REPOSITORY_CORE = "core"
 REPOSITORY_LOCAL = "local"
 
@@ -335,3 +331,11 @@ class AddonStages(str, Enum):
     STABLE = "stable"
     EXPERIMENTAL = "experimental"
     DEPRECATED = "deprecated"
+
+
+class UpdateChannels(str, Enum):
+    """Core supported update channels."""
+
+    STABLE = "stable"
+    BETA = "beta"
+    DEV = "dev"
