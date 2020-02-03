@@ -177,7 +177,7 @@ def initialize_logging():
             reset=True,
             log_colors={
                 "DEBUG": "cyan",
-                "INFO": "black",
+                "INFO": "green",
                 "WARNING": "yellow",
                 "ERROR": "red",
                 "CRITICAL": "red",
