@@ -1,4 +1,5 @@
 """Interface for single service."""
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 import voluptuous as vol
@@ -8,7 +9,7 @@ from ..const import PROVIDE_SERVICE
 from ..coresys import CoreSys, CoreSysAttributes
 
 
-class ServiceInterface(CoreSysAttributes):
+class ServiceInterface(CoreSysAttributes, ABC):
     """Interface class for service integration."""
 
     def __init__(self, coresys: CoreSys):
@@ -16,19 +17,19 @@ class ServiceInterface(CoreSysAttributes):
         self.coresys: CoreSys = coresys
 
     @property
+    @abstractmethod
     def slug(self) -> str:
         """Return slug of this service."""
-        raise NotImplementedError()
 
     @property
+    @abstractmethod
     def _data(self) -> Dict[str, Any]:
         """Return data of this service."""
-        raise NotImplementedError()
 
     @property
+    @abstractmethod
     def schema(self) -> vol.Schema:
         """Return data schema of this service."""
-        raise NotImplementedError()
 
     @property
     def providers(self) -> List[str]:
@@ -38,6 +39,11 @@ class ServiceInterface(CoreSysAttributes):
             if addon.services_role.get(self.slug) == PROVIDE_SERVICE:
                 addons.append(addon.slug)
         return addons
+
+    @property
+    @abstractmethod
+    def active(self) -> List[str]:
+        """Return list of addon slug they have enable that."""
 
     @property
     def enabled(self) -> bool:
@@ -54,10 +60,10 @@ class ServiceInterface(CoreSysAttributes):
             return self._data
         return None
 
+    @abstractmethod
     def set_service_data(self, addon: Addon, data: Dict[str, Any]) -> None:
         """Write the data into service object."""
-        raise NotImplementedError()
 
+    @abstractmethod
     def del_service_data(self, addon: Addon) -> None:
         """Remove the data from service object."""
-        raise NotImplementedError()

@@ -1,6 +1,6 @@
 """Provide the MQTT Service."""
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from hassio.addons.addon import Addon
 from hassio.exceptions import ServicesError
@@ -58,6 +58,13 @@ class MQTTService(ServiceInterface):
     def schema(self) -> vol.Schema:
         """Return data schema of this service."""
         return SCHEMA_SERVICE_MQTT
+
+    @property
+    def active(self) -> List[str]:
+        """Return list of addon slug they have enable that."""
+        if not self.enabled:
+            return []
+        return [self._data[ATTR_ADDON]]
 
     def set_service_data(self, addon: Addon, data: Dict[str, Any]) -> None:
         """Write the data into service object."""
