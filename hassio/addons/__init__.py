@@ -174,7 +174,7 @@ class AddonManager(CoreSysAttributes):
 
         # Cleanup services data
         for service in self.sys_services.list_services:
-            if addon.slug not in service.providers:
+            if addon.slug not in service.active:
                 continue
             service.del_service_data(addon)
 
