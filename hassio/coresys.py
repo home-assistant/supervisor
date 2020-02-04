@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 import aiohttp
 
 from .config import CoreConfig
-from .const import CHANNEL_DEV
+from .const import UpdateChannels
 from .docker import DockerAPI
 from .misc.hardware import Hardware
 from .misc.scheduler import Scheduler
@@ -85,7 +85,7 @@ class CoreSys:
     @property
     def dev(self) -> bool:
         """Return True if we run dev mode."""
-        return self._updater.channel == CHANNEL_DEV
+        return self._updater.channel == UpdateChannels.DEV
 
     @property
     def timezone(self) -> str:

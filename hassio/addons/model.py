@@ -49,6 +49,7 @@ from ..const import (
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_SNAPSHOT_EXCLUDE,
+    ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STDIN,
     ATTR_TIMEOUT,
@@ -60,9 +61,10 @@ from ..const import (
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
+    AddonStages,
 )
 from ..coresys import CoreSysAttributes
-from .validate import RE_SERVICE, RE_VOLUME, validate_options, schema_ui_options
+from .validate import RE_SERVICE, RE_VOLUME, schema_ui_options, validate_options
 
 Data = Dict[str, Any]
 
@@ -194,6 +196,11 @@ class AddonModel(CoreSysAttributes):
     def advanced(self) -> bool:
         """Return advanced mode of add-on."""
         return self.data[ATTR_ADVANCED]
+
+    @property
+    def stage(self) -> AddonStages:
+        """Return stage mode of add-on."""
+        return self.data[ATTR_STAGE]
 
     @property
     def services_role(self) -> Dict[str, str]:

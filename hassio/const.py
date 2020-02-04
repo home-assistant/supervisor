@@ -1,8 +1,9 @@
 """Constants file for Hass.io."""
-from pathlib import Path
+from enum import Enum
 from ipaddress import ip_network
+from pathlib import Path
 
-HASSIO_VERSION = "196"
+HASSIO_VERSION = "197"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -224,6 +225,7 @@ ATTR_VALUE = "value"
 ATTR_SNAPSHOT_EXCLUDE = "snapshot_exclude"
 ATTR_DOCUMENTATION = "documentation"
 ATTR_ADVANCED = "advanced"
+ATTR_STAGE = "stage"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
@@ -263,10 +265,6 @@ ARCH_AMD64 = "amd64"
 ARCH_I386 = "i386"
 
 ARCH_ALL = [ARCH_ARMHF, ARCH_ARMV7, ARCH_AARCH64, ARCH_AMD64, ARCH_I386]
-
-CHANNEL_STABLE = "stable"
-CHANNEL_BETA = "beta"
-CHANNEL_DEV = "dev"
 
 REPOSITORY_CORE = "core"
 REPOSITORY_LOCAL = "local"
@@ -325,3 +323,19 @@ ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_AD
 
 CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
+
+
+class AddonStages(str, Enum):
+    """Stage types of add-on."""
+
+    STABLE = "stable"
+    EXPERIMENTAL = "experimental"
+    DEPRECATED = "deprecated"
+
+
+class UpdateChannels(str, Enum):
+    """Core supported update channels."""
+
+    STABLE = "stable"
+    BETA = "beta"
+    DEV = "dev"

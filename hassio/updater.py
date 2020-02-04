@@ -17,6 +17,7 @@ from .const import (
     ATTR_HOMEASSISTANT,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
+    UpdateChannels,
 )
 from .coresys import CoreSysAttributes
 from .exceptions import HassioUpdaterError
@@ -71,12 +72,12 @@ class Updater(JsonConfig, CoreSysAttributes):
         return self._data.get(ATTR_DNS)
 
     @property
-    def channel(self) -> str:
+    def channel(self) -> UpdateChannels:
         """Return upstream channel of Hass.io instance."""
         return self._data[ATTR_CHANNEL]
 
     @channel.setter
-    def channel(self, value: str):
+    def channel(self, value: UpdateChannels):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
 

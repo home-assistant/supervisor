@@ -371,13 +371,6 @@ class Addon(AddonModel):
 
         raise AddonsError()
 
-    def remove_discovery(self):
-        """Remove all discovery message from add-on."""
-        for message in self.sys_discovery.list_messages:
-            if message.addon != self.slug:
-                continue
-            self.sys_discovery.remove(message)
-
     async def remove_data(self):
         """Remove add-on data."""
         if not self.path_data.is_dir():

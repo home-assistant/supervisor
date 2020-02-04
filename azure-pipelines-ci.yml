@@ -1,0 +1,48 @@
+# https://dev.azure.com/home-assistant
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - master
+      - dev
+pr:
+  - dev
+variables:
+  - name: versionHadolint
+    value: "v1.16.3"
+
+jobs:
+  - job: "Tox"
+    pool:
+      vmImage: "ubuntu-latest"
+    steps:
+      - task: UsePythonVersion@0
+        displayName: "Use Python 3.7"
+        inputs:
+          versionSpec: "3.7"
+      - script: pip install tox
+        displayName: "Install Tox"
+      - script: tox
+        displayName: "Run Tox"
+  - job: "JQ"
+    pool:
+      vmImage: "ubuntu-latest"
+    steps:
+      - script: sudo apt-get install -y jq
+        displayName: "Install JQ"
+      - bash: |
+          shopt -s globstar
+          cat **/*.json | jq '.'
+        displayName: "Run JQ"
+  - job: "Hadolint"
+    pool:
+      vmImage: "ubuntu-latest"
+    steps:
+      - script: sudo docker pull hadolint/hadolint:$(versionHadolint)
+        displayName: "Install Hadolint"
+      - script: |
+          sudo docker run --rm -i \
+            -v $(pwd)/.hadolint.yaml:/.hadolint.yaml:ro \
+            hadolint/hadolint:$(versionHadolint) < Dockerfile
+        displayName: "Run Hadolint"
