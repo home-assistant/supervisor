@@ -166,8 +166,17 @@ class AddonManager(CoreSysAttributes):
             with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
 
-        # Cleanup internal data
-        addon.remove_discovery()
+        # Cleanup discovery data
+        for message in self.sys_discovery.list_messages:
+            if message.addon != addon.slug:
+                continue
+            self.sys_discovery.remove(message)
+
+        # Cleanup services data
+        for service in self.sys_services.list_services:
+            if addon.slug not in service.providers:
+                continue
+            service.del_service_data(addon)
 
         self.data.uninstall(addon)
         self.local.pop(slug)
