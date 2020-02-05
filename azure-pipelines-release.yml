@@ -3,8 +3,8 @@
 trigger:
   batch: true
   branches:
-    exclude:
-      - "*"
+    include:
+      - dev
   tags:
     include:
       - "*"
