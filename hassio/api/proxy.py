@@ -17,6 +17,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 FORWARD_HEADERS = ("X-Speech-Content",)
+HEADER_HA_ACCESS = "X-Ha-Access"
 
 
 class APIProxy(CoreSysAttributes):

@@ -3,16 +3,16 @@ import logging
 import re
 
 from aiohttp.web import middleware
-from aiohttp.web_exceptions import HTTPUnauthorized, HTTPForbidden
+from aiohttp.web_exceptions import HTTPForbidden, HTTPUnauthorized
 
+from .utils import excract_supervisor_token
 from ..const import (
-    HEADER_TOKEN,
     REQUEST_FROM,
     ROLE_ADMIN,
+    ROLE_BACKUP,
     ROLE_DEFAULT,
     ROLE_HOMEASSISTANT,
     ROLE_MANAGER,
-    ROLE_BACKUP,
 )
 from ..coresys import CoreSysAttributes
 
@@ -98,7 +98,7 @@ class SecurityMiddleware(CoreSysAttributes):
     async def token_validation(self, request, handler):
         """Check security access of this layer."""
         request_from = None
-        hassio_token = request.headers.get(HEADER_TOKEN)
+        supervisor_token = excract_supervisor_token(request)
 
         # Blacklist
         if BLACKLIST.match(request.path):
@@ -111,24 +111,24 @@ class SecurityMiddleware(CoreSysAttributes):
             return await handler(request)
 
         # Not token
-        if not hassio_token:
+        if not supervisor_token:
             _LOGGER.warning("No API token provided for %s", request.path)
             raise HTTPUnauthorized()
 
         # Home-Assistant
-        if hassio_token == self.sys_homeassistant.hassio_token:
+        if supervisor_token == self.sys_homeassistant.hassio_token:
             _LOGGER.debug("%s access from Home Assistant", request.path)
             request_from = self.sys_homeassistant
 
         # Host
-        if hassio_token == self.sys_machine_id:
+        if supervisor_token == self.sys_machine_id:
             _LOGGER.debug("%s access from Host", request.path)
             request_from = self.sys_host
 
         # Add-on
         addon = None
-        if hassio_token and not request_from:
-            addon = self.sys_addons.from_token(hassio_token)
+        if supervisor_token and not request_from:
+            addon = self.sys_addons.from_token(supervisor_token)
 
         # Check Add-on API access
         if addon and ADDONS_API_BYPASS.match(request.path):

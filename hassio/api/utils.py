@@ -4,11 +4,14 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from aiohttp import web
+from aiohttp.hdrs import AUTHORIZATION
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
     CONTENT_TYPE_BINARY,
+    HEADER_TOKEN,
+    HEADER_TOKEN_OLD,
     JSON_DATA,
     JSON_MESSAGE,
     JSON_RESULT,
@@ -18,6 +21,22 @@ from ..const import (
 from ..exceptions import APIError, APIForbidden, HassioError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def excract_supervisor_token(request: web.Request) -> Optional[str]:
+    """Extract Supervisor token from request."""
+    supervisor_token = request.headers.get(AUTHORIZATION)
+    if supervisor_token:
+        return supervisor_token.split(" ")[-1]
+
+    # Header token handling
+    supervisor_token = request.headers.get(HEADER_TOKEN)
+
+    # Remove with old Hass.io fallback
+    if not supervisor_token:
+        supervisor_token = request.headers.get(HEADER_TOKEN_OLD)
+
+    return supervisor_token
 
 
 def json_loads(data: Any) -> Dict[str, Any]:

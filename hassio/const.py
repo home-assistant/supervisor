@@ -58,11 +58,13 @@ CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_TEXT = "text/plain"
 CONTENT_TYPE_TAR = "application/tar"
 CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
-HEADER_HA_ACCESS = "X-Ha-Access"
-HEADER_TOKEN = "X-Hassio-Key"
 COOKIE_INGRESS = "ingress_session"
 
-ENV_TOKEN = "HASSIO_TOKEN"
+HEADER_TOKEN = "X-Supervisor-Token"
+HEADER_TOKEN_OLD = "X-Hassio-Key"
+
+ENV_TOKEN_OLD = "HASSIO_TOKEN"
+ENV_TOKEN = "SYSTEM_TOKEN"
 ENV_TIME = "TZ"
 
 REQUEST_FROM = "HASSIO_FROM"
