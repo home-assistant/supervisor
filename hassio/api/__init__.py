@@ -89,6 +89,11 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                web.get("/os/info", api_hassos.info),
+                web.post("/os/update", api_hassos.update),
+                web.post("/os/update/cli", api_hassos.update_cli),
+                web.post("/os/config/sync", api_hassos.config_sync),
+                # Remove with old Hass.io fallback
                 web.get("/hassos/info", api_hassos.info),
                 web.post("/hassos/update", api_hassos.update),
                 web.post("/hassos/update/cli", api_hassos.update_cli),

@@ -24,6 +24,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 BLACKLIST = re.compile(
     r"^(?:"
     r"|/homeassistant/api/hassio/.*"
+    r"|/core/api/hassio/.*"
     r")$"
 )
 
@@ -32,6 +33,8 @@ NO_SECURITY_CHECK = re.compile(
     r"^(?:"
     r"|/homeassistant/api/.*"
     r"|/homeassistant/websocket"
+    r"|/core/api/.*"
+    r"|/core/websocket"
     r"|/supervisor/ping"
     r")$"
 )
@@ -59,6 +62,7 @@ ADDONS_ROLE_ACCESS = {
     ),
     ROLE_HOMEASSISTANT: re.compile(
         r"^(?:"
+        r"|/core/.+"
         r"|/homeassistant/.+"
         r")$"
     ),
@@ -70,9 +74,11 @@ ADDONS_ROLE_ACCESS = {
     ROLE_MANAGER: re.compile(
         r"^(?:"
         r"|/dns/.*"
+        r"|/core/.+"
         r"|/homeassistant/.+"
         r"|/host/.+"
         r"|/hardware/.+"
+        r"|/os/.+"
         r"|/hassos/.+"
         r"|/supervisor/.+"
         r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
