@@ -89,6 +89,11 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                web.get("/os/info", api_hassos.info),
+                web.post("/os/update", api_hassos.update),
+                web.post("/os/update/cli", api_hassos.update_cli),
+                web.post("/os/config/sync", api_hassos.config_sync),
+                # Remove with old Hass.io fallback
                 web.get("/hassos/info", api_hassos.info),
                 web.post("/hassos/update", api_hassos.update),
                 web.post("/hassos/update/cli", api_hassos.update_cli),
@@ -150,6 +155,17 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                web.get("/core/info", api_hass.info),
+                web.get("/core/logs", api_hass.logs),
+                web.get("/core/stats", api_hass.stats),
+                web.post("/core/options", api_hass.options),
+                web.post("/core/update", api_hass.update),
+                web.post("/core/restart", api_hass.restart),
+                web.post("/core/stop", api_hass.stop),
+                web.post("/core/start", api_hass.start),
+                web.post("/core/check", api_hass.check),
+                web.post("/core/rebuild", api_hass.rebuild),
+                # Remove with old Hass.io fallback
                 web.get("/homeassistant/info", api_hass.info),
                 web.get("/homeassistant/logs", api_hass.logs),
                 web.get("/homeassistant/stats", api_hass.stats),
@@ -170,6 +186,13 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                web.get("/core/api/websocket", api_proxy.websocket),
+                web.get("/core/websocket", api_proxy.websocket),
+                web.get("/core/api/stream", api_proxy.stream),
+                web.post("/core/api/{path:.+}", api_proxy.api),
+                web.get("/core/api/{path:.+}", api_proxy.api),
+                web.get("/core/api/", api_proxy.api),
+                # Remove with old Hass.io fallback
                 web.get("/homeassistant/api/websocket", api_proxy.websocket),
                 web.get("/homeassistant/websocket", api_proxy.websocket),
                 web.get("/homeassistant/api/stream", api_proxy.stream),

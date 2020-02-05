@@ -6,7 +6,7 @@ from ipaddress import IPv4Address, ip_address
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, Awaitable
+from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, Union
 
 import docker
 import requests
@@ -15,6 +15,7 @@ from ..addons.build import AddonBuild
 from ..const import (
     ENV_TIME,
     ENV_TOKEN,
+    ENV_TOKEN_OLD,
     MAP_ADDONS,
     MAP_BACKUP,
     MAP_CONFIG,
@@ -118,6 +119,7 @@ class DockerAddon(DockerInterface):
             **addon_env,
             ENV_TIME: self.sys_timezone,
             ENV_TOKEN: self.addon.hassio_token,
+            ENV_TOKEN_OLD: self.addon.hassio_token,
         }
 
     @property
@@ -189,7 +191,10 @@ class DockerAddon(DockerInterface):
     @property
     def network_mapping(self) -> Dict[str, str]:
         """Return hosts mapping."""
-        return {"hassio": self.sys_docker.network.supervisor}
+        return {
+            "supervisor": self.sys_docker.network.supervisor,
+            "hassio": self.sys_docker.network.supervisor,
+        }
 
     @property
     def network_mode(self) -> Optional[str]:

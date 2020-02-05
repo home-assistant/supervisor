@@ -9,7 +9,6 @@ from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
 
-from ..const import HEADER_HA_ACCESS
 from ..coresys import CoreSysAttributes
 from ..exceptions import HomeAssistantAuthError, HomeAssistantAPIError, APIError
 
@@ -17,6 +16,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 FORWARD_HEADERS = ("X-Speech-Content",)
+HEADER_HA_ACCESS = "X-Ha-Access"
 
 
 class APIProxy(CoreSysAttributes):

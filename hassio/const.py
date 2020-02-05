@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-HASSIO_VERSION = "197"
+HASSIO_VERSION = "198"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -58,11 +58,13 @@ CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_TEXT = "text/plain"
 CONTENT_TYPE_TAR = "application/tar"
 CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
-HEADER_HA_ACCESS = "X-Ha-Access"
-HEADER_TOKEN = "X-Hassio-Key"
 COOKIE_INGRESS = "ingress_session"
 
-ENV_TOKEN = "HASSIO_TOKEN"
+HEADER_TOKEN = "X-Supervisor-Token"
+HEADER_TOKEN_OLD = "X-Hassio-Key"
+
+ENV_TOKEN_OLD = "HASSIO_TOKEN"
+ENV_TOKEN = "SUPERVISOR_TOKEN"
 ENV_TIME = "TZ"
 
 REQUEST_FROM = "HASSIO_FROM"
