@@ -6,7 +6,7 @@ from typing import Awaitable, Optional
 
 import docker
 
-from ..const import ENV_TIME, ENV_TOKEN, LABEL_MACHINE
+from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_OLD, LABEL_MACHINE
 from ..exceptions import DockerAPIError
 from .interface import CommandReturn, DockerInterface
 
@@ -69,8 +69,10 @@ class DockerHomeAssistant(DockerInterface):
             network_mode="host",
             environment={
                 "HASSIO": self.sys_docker.network.supervisor,
+                "SUPERVISOR": self.sys_docker.network.supervisor,
                 ENV_TIME: self.sys_timezone,
                 ENV_TOKEN: self.sys_homeassistant.hassio_token,
+                ENV_TOKEN_OLD: self.sys_homeassistant.hassio_token,
             },
             volumes={
                 str(self.sys_config.path_extern_homeassistant): {

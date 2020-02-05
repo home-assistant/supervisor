@@ -23,6 +23,7 @@ from ..const import (
     ATTR_ENABLE,
     COOKIE_INGRESS,
     HEADER_TOKEN,
+    HEADER_TOKEN_OLD,
     REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
@@ -212,6 +213,7 @@ def _init_header(
             hdrs.SEC_WEBSOCKET_VERSION,
             hdrs.SEC_WEBSOCKET_KEY,
             istr(HEADER_TOKEN),
+            istr(HEADER_TOKEN_OLD),
         ):
             continue
         headers[name] = value
