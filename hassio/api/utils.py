@@ -25,18 +25,21 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 def excract_supervisor_token(request: web.Request) -> Optional[str]:
     """Extract Supervisor token from request."""
+    supervisor_token = request.headers.get(HEADER_TOKEN)
+    if supervisor_token:
+        return supervisor_token
+
+    # Remove with old Hass.io fallback
+    supervisor_token = request.headers.get(HEADER_TOKEN_OLD)
+    if supervisor_token:
+        return supervisor_token
+
+    # API access only
     supervisor_token = request.headers.get(AUTHORIZATION)
     if supervisor_token:
         return supervisor_token.split(" ")[-1]
 
-    # Header token handling
-    supervisor_token = request.headers.get(HEADER_TOKEN)
-
-    # Remove with old Hass.io fallback
-    if not supervisor_token:
-        supervisor_token = request.headers.get(HEADER_TOKEN_OLD)
-
-    return supervisor_token
+    return None
 
 
 def json_loads(data: Any) -> Dict[str, Any]:
