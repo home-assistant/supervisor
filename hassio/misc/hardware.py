@@ -28,7 +28,7 @@ GPIO_DEVICES: Path = Path("/sys/class/gpio")
 SOC_DEVICES: Path = Path("/sys/devices/platform/soc")
 RE_TTY: re.Pattern = re.compile(r"tty[A-Z]+")
 
-RE_VIDEO_DEVICES = re.compile(r"$(?:vchiq|cec)")
+RE_VIDEO_DEVICES = re.compile(r"^(?:vchiq|cec)")
 
 
 @attr.s(frozen=True)
