@@ -75,6 +75,7 @@ function install_cli() {
 function setup_test_env() {
     mkdir -p /workspaces/test_hassio
 
+    echo "Start Supervisor"
     docker run --rm --privileged \
         --name hassio_supervisor \
         --security-opt seccomp=unconfined \
@@ -88,6 +89,10 @@ function setup_test_env() {
         -e SUPERVISOR_DEV=1 \
         -e HOMEASSISTANT_REPOSITORY="homeassistant/qemux86-64-homeassistant" \
         homeassistant/amd64-hassio-supervisor:latest
+
+    if docker rm homeassistant 2> /dev/null; then
+        echo "Cleanup HomeAssistant instance"
+    fi
 }
 
 echo "Start Test-Env"
