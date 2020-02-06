@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-HASSIO_VERSION = "198"
+HASSIO_VERSION = "199"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -149,6 +149,7 @@ ATTR_TYPE = "type"
 ATTR_TIMEOUT = "timeout"
 ATTR_AUTO_UPDATE = "auto_update"
 ATTR_CUSTOM = "custom"
+ATTR_VIDEO = "video"
 ATTR_AUDIO = "audio"
 ATTR_AUDIO_INPUT = "audio_input"
 ATTR_AUDIO_OUTPUT = "audio_output"

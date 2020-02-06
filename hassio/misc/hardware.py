@@ -4,12 +4,14 @@ from datetime import datetime
 import logging
 from pathlib import Path
 import re
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
+import attr
 import pyudev
 
 from ..const import ATTR_DEVICES, ATTR_NAME, ATTR_TYPE, CHAN_ID, CHAN_TYPE
 from ..exceptions import HardwareNotSupportedError
+
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -26,6 +28,17 @@ GPIO_DEVICES: Path = Path("/sys/class/gpio")
 SOC_DEVICES: Path = Path("/sys/devices/platform/soc")
 RE_TTY: re.Pattern = re.compile(r"tty[A-Z]+")
 
+RE_VIDEO_DEVICES = re.compile(r"^(?:vchiq|cec)")
+
+
+@attr.s(frozen=True)
+class Device:
+    """Represent a device."""
+
+    name: str = attr.ib()
+    path: Path = attr.ib()
+    links: List[Path] = attr.ib()
+
 
 class Hardware:
     """Representation of an interface to procfs, sysfs and udev."""
@@ -33,6 +46,33 @@ class Hardware:
     def __init__(self):
         """Init hardware object."""
         self.context = pyudev.Context()
+
+    @property
+    def devices(self) -> List[Device]:
+        """Return a list of all available devices."""
+        dev_list: List[Device] = []
+
+        # Exctract all devices
+        for device in self.context.list_devices():
+            dev_list.append(
+                Device(device.sys_name),
+                Path(device.device_node),
+                [Path(node) for node in device.device_links],
+            )
+
+        return dev_list
+
+    @property
+    def video_devices(self) -> List[Device]:
+        """Return all available video devices."""
+        dev_list: List[Device] = []
+
+        for device in self.devices:
+            if not RE_VIDEO_DEVICES.match(device.name):
+                continue
+            dev_list.append(device)
+
+        return dev_list
 
     @property
     def serial_devices(self) -> Set[str]:
