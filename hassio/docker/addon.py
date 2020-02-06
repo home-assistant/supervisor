@@ -147,6 +147,11 @@ class DockerAddon(DockerInterface):
             for device in serial_devs:
                 devices.append(f"{device}:{device}:rwm")
 
+        # Use video devices
+        if self.addon.with_video:
+            for device in self.sys_hardware.video_devices:
+                devices.append(f"{device.path!s}:{device.path!s}:rwm")
+
         # Return None if no devices is present
         return devices or None
 
