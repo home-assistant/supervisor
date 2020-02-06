@@ -57,6 +57,7 @@ from ..const import (
     ATTR_UDEV,
     ATTR_URL,
     ATTR_VERSION,
+    ATTR_VIDEO,
     ATTR_WEBUI,
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
@@ -392,6 +393,11 @@ class AddonModel(CoreSysAttributes):
     def with_audio(self) -> bool:
         """Return True if the add-on access to audio."""
         return self.data[ATTR_AUDIO]
+
+    @property
+    def with_video(self) -> bool:
+        """Return True if the add-on access to video."""
+        return self.data[ATTR_VIDEO]
 
     @property
     def homeassistant_version(self) -> Optional[str]:
