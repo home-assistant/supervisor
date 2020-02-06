@@ -243,10 +243,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 _LOGGER.warning("Fails install landingpage, retry after 30sec")
                 await asyncio.sleep(30)
             else:
+                self.version = self.instance.version
+                self.save_data()
                 break
 
-        self.version = self.instance.version
-        self.save_data()
+        # Start landingpage
+        _LOGGER.info("Start HomeAssistant landingpage")
+        with suppress(HomeAssistantError):
+            await self._start()
 
     @process_lock
     async def install(self) -> None:
