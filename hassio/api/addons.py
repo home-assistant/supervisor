@@ -7,6 +7,7 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..addons import AnyAddon
+from ..addons.addon import Addon
 from ..addons.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
@@ -129,7 +130,10 @@ class APIAddons(CoreSysAttributes):
 
         # Lookup itself
         if addon_slug == "self":
-            return request.get(REQUEST_FROM)
+            addon = request.get(REQUEST_FROM)
+            if not isinstance(addon, Addon):
+                raise APIError("Self is not an Addon")
+            return addon
 
         addon = self.sys_addons.get(addon_slug)
         if not addon:
