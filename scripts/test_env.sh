@@ -90,9 +90,6 @@ function setup_test_env() {
         -e HOMEASSISTANT_REPOSITORY="homeassistant/qemux86-64-homeassistant" \
         homeassistant/amd64-hassio-supervisor:latest
 
-    if docker rm homeassistant 2> /dev/null; then
-        echo "Cleanup HomeAssistant instance"
-    fi
 }
 
 echo "Start Test-Env"
@@ -100,6 +97,10 @@ echo "Start Test-Env"
 start_docker
 trap "stop_docker" ERR
 
+# Clean homeassistant instance
+if docker rm -f homeassistant 2> /dev/null; then
+    echo "Cleanup HomeAssistant instance"
+fi
 
 build_supervisor
 install_cli

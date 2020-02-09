@@ -54,10 +54,16 @@ class Hardware:
 
         # Exctract all devices
         for device in self.context.list_devices():
+            # Skip devices without mapping
+            if not device.device_node:
+                continue
+
             dev_list.append(
-                Device(device.sys_name),
-                Path(device.device_node),
-                [Path(node) for node in device.device_links],
+                Device(
+                    device.sys_name,
+                    Path(device.device_node),
+                    [Path(node) for node in device.device_links],
+                )
             )
 
         return dev_list
