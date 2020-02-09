@@ -115,7 +115,10 @@ class HassIO(CoreSysAttributes):
             await self.sys_addons.boot(STARTUP_SERVICES)
 
             # run HomeAssistant
-            if self.sys_homeassistant.boot:
+            if (
+                self.sys_homeassistant.boot
+                and not await self.sys_homeassistant.is_running()
+            ):
                 with suppress(HomeAssistantError):
                     await self.sys_homeassistant.start()
 
