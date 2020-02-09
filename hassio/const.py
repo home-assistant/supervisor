@@ -11,7 +11,7 @@ URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor.txt"
 
 URL_HASSOS_OTA = (
-    "https://github.com/home-assistant/hassos/releases/download/"
+    "https://github.com/home-assistant/operating-system/releases/download/"
     "{version}/hassos_{board}-{version}.raucb"
 )
 
