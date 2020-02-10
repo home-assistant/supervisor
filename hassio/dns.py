@@ -113,11 +113,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.version = self.instance.version
             self.save_data()
 
-        # Fix dns server handling before 194 / Cleanup with version 200
-        if DNS_SERVERS == self.servers:
-            self.servers.clear()
-            self.save_data()
-
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
 
