@@ -84,9 +84,10 @@ class HassOS(CoreSysAttributes):
         url = URL_HASSOS_OTA.format(version=version, board=self.board)
         raucb = Path(self.sys_config.path_tmp, f"hassos-{version}.raucb")
 
+        _LOGGER.info("Fetch OTA update from %s", url)
         try:
-            _LOGGER.info("Fetch OTA update from %s", url)
-            async with self.sys_websession.get(url) as request:
+            timeout = aiohttp.ClientTimeout(total=600)
+            async with self.sys_websession.get(url, timeout=timeout) as request:
                 if request.status != 200:
                     raise HassOSUpdateError()
 
