@@ -278,7 +278,8 @@ class AddonManager(CoreSysAttributes):
 
         # Update ingress
         if addon.with_ingress:
-            await self.sys_ingress.update_hass_panel(addon)
+            with suppress(HomeAssistantAPIError):
+                await self.sys_ingress.update_hass_panel(addon)
 
     async def repair(self) -> None:
         """Repair local add-ons."""
