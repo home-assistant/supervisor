@@ -330,10 +330,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def _start(self) -> None:
         """Start Home Assistant Docker & wait."""
-        if await self.instance.is_running():
-            _LOGGER.warning("Home Assistant is already running!")
-            return
-
         # Create new API token
         self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
         self.save_data()
@@ -347,18 +343,21 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @process_lock
     async def start(self) -> None:
         """Run Home Assistant docker."""
-        try:
-            if await self.instance.is_running():
-                await self.instance.restart()
-            elif await self.instance.is_initialize():
+        if await self.instance.is_running():
+            _LOGGER.warning("Home Assistant is already running!")
+            return
+
+        # Instance/Container exists, simple start
+        if await self.instance.is_initialize():
+            try:
                 await self.instance.start()
-            else:
-                await self._start()
-                return
+            except DockerAPIError:
+                raise HomeAssistantError() from None
 
             await self._block_till_run()
-        except DockerAPIError:
-            raise HomeAssistantError() from None
+        # No Instance/Container found, extended start
+        else:
+            await self._start()
 
     @process_lock
     async def stop(self) -> None:
