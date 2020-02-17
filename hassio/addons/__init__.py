@@ -272,11 +272,14 @@ class AddonManager(CoreSysAttributes):
         await addon.restore(tar_file)
 
         # Check if new
-        if slug in self.local:
-            return
+        if slug not in self.local:
+            _LOGGER.info("Detect new Add-on after restore %s", slug)
+            self.local[slug] = addon
 
-        _LOGGER.info("Detect new Add-on after restore %s", slug)
-        self.local[slug] = addon
+        # Update ingress
+        if addon.with_ingress:
+            with suppress(HomeAssistantAPIError):
+                await self.sys_ingress.update_hass_panel(addon)
 
     async def repair(self) -> None:
         """Repair local add-ons."""

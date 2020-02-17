@@ -121,6 +121,8 @@ class HassIO(CoreSysAttributes):
             ):
                 with suppress(HomeAssistantError):
                     await self.sys_homeassistant.start()
+            else:
+                _LOGGER.info("Skip start of Home Assistant")
 
             # start addon mark as application
             await self.sys_addons.boot(STARTUP_APPLICATION)

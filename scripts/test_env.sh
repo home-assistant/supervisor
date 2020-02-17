@@ -67,13 +67,29 @@ function build_supervisor() {
 }
 
 
+function cleanup_lastboot() {
+    if [[ -f /workspaces/test_supervisor/config.json ]]; then
+        echo "Cleaning up last boot"
+        cp /workspaces/test_supervisor/config.json /tmp/config.json
+        jq -rM 'del(.last_boot)' /tmp/config.json > /workspaces/test_supervisor/config.json
+        rm /tmp/config.json
+    fi
+}
+
+
+function cleanup_docker() {
+    echo "Cleaning up stopped containers..."
+    docker rm $(docker ps -a -q)
+}
+
+
 function install_cli() {
     docker pull homeassistant/amd64-hassio-cli:dev
 }
 
 
 function setup_test_env() {
-    mkdir -p /workspaces/test_hassio
+    mkdir -p /workspaces/test_supervisor
 
     echo "Start Supervisor"
     docker run --rm --privileged \
@@ -82,9 +98,9 @@ function setup_test_env() {
         --security-opt apparmor:unconfined \
         -v /run/docker.sock:/run/docker.sock \
         -v /run/dbus:/run/dbus \
-        -v "/workspaces/test_hassio":/data \
+        -v "/workspaces/test_supervisor":/data \
         -v /etc/machine-id:/etc/machine-id:ro \
-        -e SUPERVISOR_SHARE="/workspaces/test_hassio" \
+        -e SUPERVISOR_SHARE="/workspaces/test_supervisor" \
         -e SUPERVISOR_NAME=hassio_supervisor \
         -e SUPERVISOR_DEV=1 \
         -e HOMEASSISTANT_REPOSITORY="homeassistant/qemux86-64-homeassistant" \
@@ -97,12 +113,9 @@ echo "Start Test-Env"
 start_docker
 trap "stop_docker" ERR
 
-# Clean homeassistant instance
-if docker rm -f homeassistant 2> /dev/null; then
-    echo "Cleanup HomeAssistant instance"
-fi
-
 build_supervisor
 install_cli
+cleanup_lastboot
+cleanup_docker
 setup_test_env
 stop_docker

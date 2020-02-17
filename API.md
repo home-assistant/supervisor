@@ -1,6 +1,6 @@
-# Hass.io
+# Supervisor
 
-## Hass.io RESTful API
+## Supervisor RESTful API
 
 Interface for Home Assistant to control things from supervisor.
 
@@ -22,9 +22,10 @@ On success / Code 200:
 }
 ```
 
-For access to API you need set the `X-HASSIO-KEY` they will be available for Add-ons/HomeAssistant with environment `HASSIO_TOKEN`.
+For access to API you need use a authorization header with a `Bearer` token.
+They are available for Add-ons and the Home Assistant using the `SUPERVISOR_TOKEN` environment variable.
 
-### Hass.io
+### Supervisor
 
 - GET `/supervisor/ping`
 
@@ -285,7 +286,7 @@ return:
 
 ### HassOS
 
-- GET `/hassos/info`
+- GET `/os/info`
 
 ```json
 {
@@ -298,7 +299,7 @@ return:
 }
 ```
 
-- POST `/hassos/update`
+- POST `/os/update`
 
 ```json
 {
@@ -306,7 +307,7 @@ return:
 }
 ```
 
-- POST `/hassos/update/cli`
+- POST `/os/update/cli`
 
 ```json
 {
@@ -314,7 +315,7 @@ return:
 }
 ```
 
-- POST `/hassos/config/sync`
+- POST `/os/config/sync`
 
 Load host configs from a USB stick.
 
@@ -363,7 +364,7 @@ Trigger an udev reload
 
 ### Home Assistant
 
-- GET `/homeassistant/info`
+- GET `/core/info`
 
 ```json
 {
@@ -382,7 +383,7 @@ Trigger an udev reload
 }
 ```
 
-- POST `/homeassistant/update`
+- POST `/core/update`
 
 Optional:
 
@@ -392,23 +393,23 @@ Optional:
 }
 ```
 
-- GET `/homeassistant/logs`
+- GET `/core/logs`
 
 Output is the raw Docker log.
 
-- POST `/homeassistant/restart`
-- POST `/homeassistant/check`
-- POST `/homeassistant/start`
-- POST `/homeassistant/stop`
-- POST `/homeassistant/rebuild`
+- POST `/core/restart`
+- POST `/core/check`
+- POST `/core/start`
+- POST `/core/stop`
+- POST `/core/rebuild`
 
-- POST `/homeassistant/options`
+- POST `/core/options`
 
 ```json
 {
   "image": "Optional|null",
   "last_version": "Optional for custom image|null",
-  "port": "port for access hass",
+  "port": "port for access core",
   "ssl": "bool",
   "refresh_token": "",
   "watchdog": "bool",
@@ -418,15 +419,15 @@ Output is the raw Docker log.
 
 Image with `null` and last_version with `null` reset this options.
 
-- POST/GET `/homeassistant/api`
+- POST/GET `/core/api`
 
-Proxy to real home-assistant instance.
+Proxy to the Home Assistant Core instance.
 
-- GET `/homeassistant/websocket`
+- GET `/core/websocket`
 
-Proxy to real websocket instance.
+Proxy to Home Assistant Core websocket.
 
-- GET `/homeassistant/stats`
+- GET `/core/stats`
 
 ```json
 {
@@ -441,13 +442,13 @@ Proxy to real websocket instance.
 }
 ```
 
-### RESTful for API addons
+### RESTful for API add-ons
 
 If an add-on will call itself, you can use `/addons/self/...`.
 
 - GET `/addons`
 
-Get all available addons.
+Get all available add-ons.
 
 ```json
 {
@@ -500,7 +501,7 @@ Get all available addons.
   "stage": "stable|experimental|deprecated",
   "arch": ["armhf", "aarch64", "i386", "amd64"],
   "machine": "[raspberrypi2, tinker]",
-  "homeassistant": "null|min Home Assistant version",
+  "homeassistant": "null|min Home Assistant Core version",
   "repository": "12345678|null",
   "version": "null|VERSION_INSTALLED",
   "last_version": "LAST_VERSION",
