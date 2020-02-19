@@ -18,9 +18,9 @@ jobs:
       vmImage: "ubuntu-latest"
     steps:
       - task: UsePythonVersion@0
-        displayName: "Use Python 3.7"
+        displayName: "Use Python 3.8"
         inputs:
-          versionSpec: "3.7"
+          versionSpec: "3.8"
       - script: pip install tox
         displayName: "Install Tox"
       - script: tox

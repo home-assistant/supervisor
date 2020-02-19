@@ -11,7 +11,7 @@ trigger:
 pr: none
 variables:
   - name: basePythonTag
-    value: "3.7-alpine3.11"
+    value: "3.8-alpine3.11"
   - name: versionBuilder
     value: "6.9"
   - group: docker
@@ -22,9 +22,9 @@ jobs:
       vmImage: "ubuntu-latest"
     steps:
       - task: UsePythonVersion@0
-        displayName: "Use Python 3.7"
+        displayName: "Use Python 3.8"
         inputs:
-          versionSpec: "3.7"
+          versionSpec: "3.8"
       - script: |
           setup_version="$(python setup.py -V)"
           branch_version="$(Build.SourceBranchName)"
