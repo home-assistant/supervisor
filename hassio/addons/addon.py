@@ -250,7 +250,7 @@ class Addon(AddonModel):
 
         # lookup the correct protocol from config
         if t_proto:
-            proto = "https" if self.options[t_proto] else "http"
+            proto = "https" if self.options.get(t_proto) else "http"
         else:
             proto = s_prefix
 
