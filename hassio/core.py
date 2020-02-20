@@ -1,17 +1,18 @@
 """Main file for Hass.io."""
-from contextlib import suppress
 import asyncio
+from contextlib import suppress
 import logging
 
 import async_timeout
 
-from .coresys import CoreSysAttributes
 from .const import (
-    STARTUP_SYSTEM,
-    STARTUP_SERVICES,
     STARTUP_APPLICATION,
     STARTUP_INITIALIZE,
+    STARTUP_SERVICES,
+    STARTUP_SYSTEM,
+    CoreState,
 )
+from .coresys import CoreSysAttributes
 from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -26,10 +27,13 @@ class HassIO(CoreSysAttributes):
 
     async def connect(self):
         """Connect Supervisor container."""
+        self.coresys.state = CoreState.INITIALIZE
         await self.sys_supervisor.load()
 
     async def setup(self):
         """Setup HassIO orchestration."""
+        self.coresys.state = CoreState.STARTUP
+
         # Load DBus
         await self.sys_dbus.load()
 
@@ -138,7 +142,8 @@ class HassIO(CoreSysAttributes):
             if self.sys_homeassistant.version == "landingpage":
                 self.sys_create_task(self.sys_homeassistant.install())
 
-            _LOGGER.info("Hass.io is up and running")
+            _LOGGER.info("Supervisor is up and running")
+            self.coresys.state = CoreState.RUNNING
 
     async def stop(self):
         """Stop a running orchestration."""
@@ -146,7 +151,8 @@ class HassIO(CoreSysAttributes):
         self.sys_scheduler.suspend = True
 
         # store new last boot / prevent time adjustments
-        self._update_last_boot()
+        if self.coresys.state == CoreState.RUNNING:
+            self._update_last_boot()
 
         # process async stop tasks
         try:

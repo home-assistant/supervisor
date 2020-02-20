@@ -342,3 +342,12 @@ class UpdateChannels(str, Enum):
     STABLE = "stable"
     BETA = "beta"
     DEV = "dev"
+
+
+class CoreState(str, Enum):
+    """Represent current loading state."""
+
+    INITIALIZE = "initialize"
+    STARTUP = "startup"
+    RUNNING = "running"
+    FREEZE = "freeze"
