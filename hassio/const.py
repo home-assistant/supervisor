@@ -344,7 +344,7 @@ class UpdateChannels(str, Enum):
     DEV = "dev"
 
 
-class CoreState(str, Enum):
+class CoreStates(str, Enum):
     """Represent current loading state."""
 
     INITIALIZE = "initialize"
