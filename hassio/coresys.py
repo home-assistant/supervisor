@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 import aiohttp
 
 from .config import CoreConfig
-from .const import UpdateChannels
+from .const import UpdateChannels, CoreStates
 from .docker import DockerAPI
 from .misc.hardware import Hardware
 from .misc.scheduler import Scheduler
@@ -39,7 +39,8 @@ class CoreSys:
     def __init__(self):
         """Initialize coresys."""
         # Static attributes
-        self.machine_id: str = None
+        self.machine_id: Optional[str] = None
+        self.state: Optional[CoreStates] = None
 
         # External objects
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()

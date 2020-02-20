@@ -1,35 +1,39 @@
-"""Main file for Hass.io."""
-from contextlib import suppress
+"""Main file for Supervisor."""
 import asyncio
+from contextlib import suppress
 import logging
 
 import async_timeout
 
-from .coresys import CoreSysAttributes
 from .const import (
-    STARTUP_SYSTEM,
-    STARTUP_SERVICES,
     STARTUP_APPLICATION,
     STARTUP_INITIALIZE,
+    STARTUP_SERVICES,
+    STARTUP_SYSTEM,
+    CoreStates,
 )
+from .coresys import CoreSysAttributes
 from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class HassIO(CoreSysAttributes):
-    """Main object of Hass.io."""
+    """Main object of Supervisor."""
 
     def __init__(self, coresys):
-        """Initialize Hass.io object."""
+        """Initialize Supervisor object."""
         self.coresys = coresys
 
     async def connect(self):
         """Connect Supervisor container."""
+        self.coresys.state = CoreStates.INITIALIZE
         await self.sys_supervisor.load()
 
     async def setup(self):
         """Setup HassIO orchestration."""
+        self.coresys.state = CoreStates.STARTUP
+
         # Load DBus
         await self.sys_dbus.load()
 
@@ -76,7 +80,7 @@ class HassIO(CoreSysAttributes):
         await self.sys_secrets.load()
 
     async def start(self):
-        """Start Hass.io orchestration."""
+        """Start Supervisor orchestration."""
         await self.sys_api.start()
 
         # Mark booted partition as healthy
@@ -87,7 +91,7 @@ class HassIO(CoreSysAttributes):
         if self.sys_supervisor.need_update:
             try:
                 if self.sys_dev:
-                    _LOGGER.warning("Ignore Hass.io updates on dev!")
+                    _LOGGER.warning("Ignore Supervisor updates on dev!")
                 else:
                     await self.sys_supervisor.update()
             except SupervisorUpdateError:
@@ -102,7 +106,7 @@ class HassIO(CoreSysAttributes):
         try:
             # HomeAssistant is already running / supervisor have only reboot
             if self.sys_hardware.last_boot == self.sys_config.last_boot:
-                _LOGGER.info("Hass.io reboot detected")
+                _LOGGER.info("Supervisor reboot detected")
                 return
 
             # reset register services / discovery
@@ -138,7 +142,8 @@ class HassIO(CoreSysAttributes):
             if self.sys_homeassistant.version == "landingpage":
                 self.sys_create_task(self.sys_homeassistant.install())
 
-            _LOGGER.info("Hass.io is up and running")
+            _LOGGER.info("Supervisor is up and running")
+            self.coresys.state = CoreStates.RUNNING
 
     async def stop(self):
         """Stop a running orchestration."""
@@ -146,7 +151,8 @@ class HassIO(CoreSysAttributes):
         self.sys_scheduler.suspend = True
 
         # store new last boot / prevent time adjustments
-        self._update_last_boot()
+        if self.coresys.state == CoreStates.RUNNING:
+            self._update_last_boot()
 
         # process async stop tasks
         try:
@@ -163,7 +169,7 @@ class HassIO(CoreSysAttributes):
         except asyncio.TimeoutError:
             _LOGGER.warning("Force Shutdown!")
 
-        _LOGGER.info("Hass.io is down")
+        _LOGGER.info("Supervisor is down")
 
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
@@ -184,7 +190,7 @@ class HassIO(CoreSysAttributes):
 
     async def repair(self):
         """Repair system integrity."""
-        _LOGGER.info("Start repairing of Hass.io Environment")
+        _LOGGER.info("Start repairing of Supervisor Environment")
         await self.sys_run_in_executor(self.sys_docker.repair)
 
         # Restore core functionality
@@ -198,4 +204,4 @@ class HassIO(CoreSysAttributes):
 
         # Tag version for latest
         await self.sys_supervisor.repair()
-        _LOGGER.info("Finished repairing of Hass.io Environment")
+        _LOGGER.info("Finished repairing of Supervisor Environment")
