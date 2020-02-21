@@ -1,4 +1,4 @@
-"""Init file for Hass.io network RESTful API."""
+"""Init file for Supervisor network RESTful API."""
 import voluptuous as vol
 
 from .utils import api_process, api_validate

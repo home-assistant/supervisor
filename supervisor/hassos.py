@@ -23,7 +23,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class HassOS(CoreSysAttributes):
-    """HassOS interface inside HassIO."""
+    """HassOS interface inside supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize HassOS handler."""

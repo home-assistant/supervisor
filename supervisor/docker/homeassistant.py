@@ -1,4 +1,4 @@
-"""Init file for Hass.io Docker object."""
+"""Init file for Supervisor Docker object."""
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
@@ -16,7 +16,7 @@ HASS_DOCKER_NAME = "homeassistant"
 
 
 class DockerHomeAssistant(DockerInterface):
-    """Docker Hass.io wrapper for Home Assistant."""
+    """Docker Supervisor wrapper for Home Assistant."""
 
     @property
     def machine(self) -> Optional[str]:

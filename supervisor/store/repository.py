@@ -1,4 +1,4 @@
-"""Represent a Hass.io repository."""
+"""Represent a Supervisor repository."""
 from .git import GitRepoHassIO, GitRepoCustom
 from .utils import get_hash_from_repository
 from ..const import (
@@ -15,7 +15,7 @@ UNKNOWN = "unknown"
 
 
 class Repository(CoreSysAttributes):
-    """Repository in Hass.io."""
+    """Repository in Supervisor."""
 
     slug: str = None
 

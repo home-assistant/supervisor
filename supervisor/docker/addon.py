@@ -1,4 +1,4 @@
-"""Init file for Hass.io add-on Docker object."""
+"""Init file for Supervisor add-on Docker object."""
 from __future__ import annotations
 
 from contextlib import suppress
@@ -40,7 +40,7 @@ NO_ADDDRESS = ip_address("0.0.0.0")
 
 
 class DockerAddon(DockerInterface):
-    """Docker Hass.io wrapper for Home Assistant."""
+    """Docker Supervisor wrapper for Home Assistant."""
 
     def __init__(self, coresys: CoreSys, addon: Addon):
         """Initialize Docker Home Assistant wrapper."""

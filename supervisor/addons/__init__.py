@@ -1,4 +1,4 @@
-"""Init file for Hass.io add-ons."""
+"""Init file for Supervisor add-ons."""
 import asyncio
 from contextlib import suppress
 import logging
@@ -25,7 +25,7 @@ AnyAddon = Union[Addon, AddonStore]
 
 
 class AddonManager(CoreSysAttributes):
-    """Manage add-ons inside Hass.io."""
+    """Manage add-ons inside Supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
@@ -57,7 +57,7 @@ class AddonManager(CoreSysAttributes):
         return self.store.get(addon_slug)
 
     def from_token(self, token: str) -> Optional[Addon]:
-        """Return an add-on from Hass.io token."""
+        """Return an add-on from Supervisor token."""
         for addon in self.installed:
             if token == addon.hassio_token:
                 return addon

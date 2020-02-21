@@ -3,7 +3,7 @@
 import attr
 import pytest
 
-from hassio.utils.tar import secure_path, exclude_filter
+from supervisor.utils.tar import secure_path, exclude_filter
 
 
 @attr.s

@@ -53,7 +53,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def version_hassio(self) -> Optional[str]:
-        """Return latest version of Hass.io."""
+        """Return latest version of Supervisor."""
         return self._data.get(ATTR_HASSIO)
 
     @property
@@ -68,12 +68,12 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def version_dns(self) -> Optional[str]:
-        """Return latest version of Hass.io DNS."""
+        """Return latest version of Supervisor DNS."""
         return self._data.get(ATTR_DNS)
 
     @property
     def channel(self) -> UpdateChannels:
-        """Return upstream channel of Hass.io instance."""
+        """Return upstream channel of Supervisor instance."""
         return self._data[ATTR_CHANNEL]
 
     @channel.setter

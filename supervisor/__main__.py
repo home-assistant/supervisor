@@ -1,10 +1,10 @@
-"""Main file for Hass.io."""
+"""Main file for Supervisor."""
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import sys
 
-from hassio import bootstrap
+from supervisor import bootstrap
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # Init async event loop
     loop = initialize_event_loop()
 
-    # Check if all information are available to setup Hass.io
+    # Check if all information are available to setup Supervisor
     if not bootstrap.check_environment():
         sys.exit(1)
 
@@ -37,27 +37,27 @@ if __name__ == "__main__":
     executor = ThreadPoolExecutor(thread_name_prefix="SyncWorker")
     loop.set_default_executor(executor)
 
-    _LOGGER.info("Initialize Hass.io setup")
+    _LOGGER.info("Initialize Supervisor setup")
     coresys = loop.run_until_complete(bootstrap.initialize_coresys())
     loop.run_until_complete(coresys.core.connect())
 
     bootstrap.supervisor_debugger(coresys)
     bootstrap.migrate_system_env(coresys)
 
-    _LOGGER.info("Setup HassIO")
+    _LOGGER.info("Setup Supervisor")
     loop.run_until_complete(coresys.core.setup())
 
     loop.call_soon_threadsafe(loop.create_task, coresys.core.start())
     loop.call_soon_threadsafe(bootstrap.reg_signal, loop)
 
     try:
-        _LOGGER.info("Run Hass.io")
+        _LOGGER.info("Run Supervisor")
         loop.run_forever()
     finally:
-        _LOGGER.info("Stopping Hass.io")
+        _LOGGER.info("Stopping Supervisor")
         loop.run_until_complete(coresys.core.stop())
         executor.shutdown(wait=False)
         loop.close()
 
-    _LOGGER.info("Close Hass.io")
+    _LOGGER.info("Close Supervisor")
     sys.exit(0)

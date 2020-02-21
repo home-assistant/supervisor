@@ -1,4 +1,4 @@
-"""Init file for Hass.io snapshot RESTful API."""
+"""Init file for Supervisor snapshot RESTful API."""
 import asyncio
 import logging
 from pathlib import Path

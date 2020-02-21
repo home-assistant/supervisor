@@ -1,4 +1,4 @@
-"""Tools file for Hass.io."""
+"""Tools file for Supervisor."""
 import asyncio
 from datetime import datetime, timedelta, timezone, tzinfo
 import logging

@@ -1,1 +1,1 @@
-"""Init file for Hass.io."""
+"""Init file for Supervisor."""

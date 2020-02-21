@@ -1,1 +1,1 @@
-"""Special object and tools for Hass.io."""
+"""Special object and tools for Supervisor."""

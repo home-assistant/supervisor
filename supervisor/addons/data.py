@@ -1,4 +1,4 @@
-"""Init file for Hass.io add-on data."""
+"""Init file for Supervisor add-on data."""
 from copy import deepcopy
 import logging
 from typing import Any, Dict
@@ -23,7 +23,7 @@ Config = Dict[str, Any]
 
 
 class AddonsData(JsonConfig, CoreSysAttributes):
-    """Hold data for installed Add-ons inside Hass.io."""
+    """Hold data for installed Add-ons inside Supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize data holder."""

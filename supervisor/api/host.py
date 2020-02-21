@@ -1,4 +1,4 @@
-"""Init file for Hass.io host RESTful API."""
+"""Init file for Supervisor host RESTful API."""
 import asyncio
 import logging
 

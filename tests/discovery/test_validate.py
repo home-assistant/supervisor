@@ -3,7 +3,7 @@
 import voluptuous as vol
 import pytest
 
-from hassio.discovery import validate
+from supervisor.discovery import validate
 
 
 def test_valid_services():

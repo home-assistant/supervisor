@@ -1,4 +1,4 @@
-"""Init file for Hass.io add-ons."""
+"""Init file for Supervisor add-ons."""
 from contextlib import suppress
 from copy import deepcopy
 from ipaddress import IPv4Address
@@ -65,7 +65,7 @@ RE_WEBUI = re.compile(
 
 
 class Addon(AddonModel):
-    """Hold data for add-on inside Hass.io."""
+    """Hold data for add-on inside Supervisor."""
 
     def __init__(self, coresys: CoreSys, slug: str):
         """Initialize data holder."""
@@ -163,12 +163,12 @@ class Addon(AddonModel):
 
     @property
     def hassio_token(self) -> Optional[str]:
-        """Return access token for Hass.io API."""
+        """Return access token for Supervisor API."""
         return self.persist.get(ATTR_ACCESS_TOKEN)
 
     @property
     def ingress_token(self) -> Optional[str]:
-        """Return access token for Hass.io API."""
+        """Return access token for Supervisor API."""
         return self.persist.get(ATTR_INGRESS_TOKEN)
 
     @property

@@ -1,4 +1,4 @@
-"""Hass.io add-on build environment."""
+"""Supervisor add-on build environment."""
 from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict
@@ -16,7 +16,7 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
     """Handle build options for add-ons."""
 
     def __init__(self, coresys: CoreSys, addon: AnyAddon) -> None:
-        """Initialize Hass.io add-on builder."""
+        """Initialize Supervisor add-on builder."""
         self.coresys: CoreSys = coresys
         self.addon = addon
 

@@ -1,4 +1,4 @@
-"""Tools file for Hass.io."""
+"""Tools file for Supervisor."""
 import json
 import logging
 from pathlib import Path

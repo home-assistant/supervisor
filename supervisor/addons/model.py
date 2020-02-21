@@ -1,4 +1,4 @@
-"""Init file for Hass.io add-ons."""
+"""Init file for Supervisor add-ons."""
 from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
@@ -137,12 +137,12 @@ class AddonModel(CoreSysAttributes):
 
     @property
     def hassio_token(self) -> Optional[str]:
-        """Return access token for Hass.io API."""
+        """Return access token for Supervisor API."""
         return None
 
     @property
     def ingress_token(self) -> Optional[str]:
-        """Return access token for Hass.io API."""
+        """Return access token for Supervisor API."""
         return None
 
     @property
@@ -326,7 +326,7 @@ class AddonModel(CoreSysAttributes):
 
     @property
     def access_hassio_api(self) -> bool:
-        """Return True if the add-on access to Hass.io REASTful API."""
+        """Return True if the add-on access to Supervisor REASTful API."""
         return self.data[ATTR_HASSIO_API]
 
     @property
@@ -336,7 +336,7 @@ class AddonModel(CoreSysAttributes):
 
     @property
     def hassio_role(self) -> str:
-        """Return Hass.io role for API."""
+        """Return Supervisor role for API."""
         return self.data[ATTR_HASSIO_ROLE]
 
     @property

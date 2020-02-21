@@ -1,4 +1,4 @@
-"""Init file for Hass.io info RESTful API."""
+"""Init file for Supervisor info RESTful API."""
 import logging
 from typing import Any, Dict
 

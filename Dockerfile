@@ -34,4 +34,4 @@ COPY entry.sh /bin/
 ENTRYPOINT ["/bin/entry.sh"]
 
 WORKDIR /
-CMD [ "python3", "-m", "hassio" ]
+CMD [ "python3", "-m", "supervisor" ]

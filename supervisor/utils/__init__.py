@@ -1,4 +1,4 @@
-"""Tools file for Hass.io."""
+"""Tools file for Supervisor."""
 from datetime import datetime
 from ipaddress import IPv4Address
 import logging

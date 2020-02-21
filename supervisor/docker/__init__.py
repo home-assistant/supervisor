@@ -1,4 +1,4 @@
-"""Init file for Hass.io Docker object."""
+"""Init file for Supervisor Docker object."""
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
@@ -23,7 +23,7 @@ class CommandReturn:
 
 
 class DockerAPI:
-    """Docker Hass.io wrapper.
+    """Docker Supervisor wrapper.
 
     This class is not AsyncIO safe!
     """

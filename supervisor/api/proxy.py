@@ -23,7 +23,7 @@ class APIProxy(CoreSysAttributes):
     """API Proxy for Home Assistant."""
 
     def _check_access(self, request: web.Request):
-        """Check the Hass.io token."""
+        """Check the Supervisor token."""
         if AUTHORIZATION in request.headers:
             bearer = request.headers[AUTHORIZATION]
             hassio_token = bearer.split(" ")[-1]

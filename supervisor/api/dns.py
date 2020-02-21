@@ -1,4 +1,4 @@
-"""Init file for Hass.io DNS RESTful API."""
+"""Init file for Supervisor DNS RESTful API."""
 import asyncio
 import logging
 from typing import Any, Awaitable, Dict

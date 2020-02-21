@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 import aiohttp
 
 from .config import CoreConfig
-from .const import UpdateChannels, CoreStates
+from .const import UpdateChannels
 from .docker import DockerAPI
 from .misc.hardware import Hardware
 from .misc.scheduler import Scheduler
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from .api import RestAPI
     from .arch import CpuArch
     from .auth import Auth
-    from .core import HassIO
+    from .core import Core
     from .dbus import DBusManager
     from .discovery import Discovery
     from .dns import CoreDNS
@@ -40,7 +40,6 @@ class CoreSys:
         """Initialize coresys."""
         # Static attributes
         self.machine_id: Optional[str] = None
-        self.state: Optional[CoreStates] = None
 
         # External objects
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
@@ -56,7 +55,7 @@ class CoreSys:
         self._scheduler: Scheduler = Scheduler()
 
         # Internal objects pointers
-        self._core: Optional[HassIO] = None
+        self._core: Optional[Core] = None
         self._arch: Optional[CpuArch] = None
         self._auth: Optional[Auth] = None
         self._dns: Optional[CoreDNS] = None
@@ -78,7 +77,7 @@ class CoreSys:
 
     @property
     def machine(self) -> str:
-        """Return running machine type of the Hass.io system."""
+        """Return running machine type of the Supervisor system."""
         if self._homeassistant:
             return self._homeassistant.machine
         return None
@@ -129,15 +128,15 @@ class CoreSys:
         return self._scheduler
 
     @property
-    def core(self) -> HassIO:
-        """Return HassIO object."""
+    def core(self) -> Core:
+        """Return core object."""
         return self._core
 
     @core.setter
-    def core(self, value: HassIO):
-        """Set a Hass.io object."""
+    def core(self, value: Core):
+        """Set a Core object."""
         if self._core:
-            raise RuntimeError("Hass.io already set!")
+            raise RuntimeError("Core already set!")
         self._core = value
 
     @property
@@ -364,7 +363,7 @@ class CoreSysAttributes:
 
     @property
     def sys_machine(self) -> str:
-        """Return running machine type of the Hass.io system."""
+        """Return running machine type of the Supervisor system."""
         return self.coresys.machine
 
     @property
@@ -418,8 +417,8 @@ class CoreSysAttributes:
         return self.coresys.scheduler
 
     @property
-    def sys_core(self) -> HassIO:
-        """Return HassIO object."""
+    def sys_core(self) -> core:
+        """Return core object."""
         return self.coresys.core
 
     @property

@@ -1,4 +1,4 @@
-"""Bootstrap Hass.io."""
+"""Bootstrap Supervisor."""
 from datetime import datetime
 import logging
 import os
@@ -100,7 +100,7 @@ class CoreConfig(JsonConfig):
     def modify_log_level(self) -> None:
         """Change log level."""
         lvl = getattr(logging, self.logging.upper())
-        logging.getLogger("hassio").setLevel(lvl)
+        logging.getLogger("supervisor").setLevel(lvl)
 
     @property
     def last_boot(self):
@@ -119,12 +119,12 @@ class CoreConfig(JsonConfig):
 
     @property
     def path_hassio(self):
-        """Return Hass.io data path."""
+        """Return Supervisor data path."""
         return HASSIO_DATA
 
     @property
     def path_extern_hassio(self):
-        """Return Hass.io data path external for Docker."""
+        """Return Supervisor data path external for Docker."""
         return PurePath(os.environ["SUPERVISOR_SHARE"])
 
     @property
@@ -179,12 +179,12 @@ class CoreConfig(JsonConfig):
 
     @property
     def path_tmp(self):
-        """Return Hass.io temp folder."""
+        """Return Supervisor temp folder."""
         return Path(HASSIO_DATA, TMP_DATA)
 
     @property
     def path_extern_tmp(self):
-        """Return Hass.io temp folder for Docker."""
+        """Return Supervisor temp folder for Docker."""
         return PurePath(self.path_extern_hassio, TMP_DATA)
 
     @property

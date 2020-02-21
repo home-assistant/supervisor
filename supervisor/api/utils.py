@@ -1,4 +1,4 @@
-"""Init file for Hass.io util for RESTful API."""
+"""Init file for Supervisor util for RESTful API."""
 import json
 import logging
 from typing import Any, Dict, List, Optional
@@ -29,7 +29,7 @@ def excract_supervisor_token(request: web.Request) -> Optional[str]:
     if supervisor_token:
         return supervisor_token
 
-    # Remove with old Hass.io fallback
+    # Remove with old Supervisor fallback
     supervisor_token = request.headers.get(HEADER_TOKEN_OLD)
     if supervisor_token:
         return supervisor_token

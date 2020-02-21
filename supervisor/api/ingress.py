@@ -1,4 +1,4 @@
-"""Hass.io Add-on ingress service."""
+"""Supervisor Add-on ingress service."""
 import asyncio
 from ipaddress import ip_address
 import logging
@@ -81,7 +81,7 @@ class APIIngress(CoreSysAttributes):
     async def handler(
         self, request: web.Request
     ) -> Union[web.Response, web.StreamResponse, web.WebSocketResponse]:
-        """Route data to Hass.io ingress service."""
+        """Route data to Supervisor ingress service."""
         self._check_ha_access(request)
 
         # Check Ingress Session

@@ -15,7 +15,7 @@ BUILTIN_REPOSITORIES = set((REPOSITORY_CORE, REPOSITORY_LOCAL))
 
 
 class StoreManager(CoreSysAttributes):
-    """Manage add-ons inside Hass.io."""
+    """Manage add-ons inside Supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
@@ -32,7 +32,7 @@ class StoreManager(CoreSysAttributes):
         """Start up add-on management."""
         self.data.update()
 
-        # Init Hass.io built-in repositories
+        # Init Supervisor built-in repositories
         repositories = set(self.sys_config.addons_repositories) | BUILTIN_REPOSITORIES
 
         # Init custom repositories and load add-ons

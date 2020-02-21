@@ -1,4 +1,4 @@
-"""Init file for Hass.io Supervisor RESTful API."""
+"""Init file for Supervisor Supervisor RESTful API."""
 import asyncio
 import logging
 from typing import Any, Awaitable, Dict
@@ -36,7 +36,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     CONTENT_TYPE_BINARY,
-    HASSIO_VERSION,
+    SUPERVISOR_VERSION,
     UpdateChannels,
 )
 from ..coresys import CoreSysAttributes
@@ -91,7 +91,7 @@ class APISupervisor(CoreSysAttributes):
             )
 
         return {
-            ATTR_VERSION: HASSIO_VERSION,
+            ATTR_VERSION: SUPERVISOR_VERSION,
             ATTR_LAST_VERSION: self.sys_updater.version_hassio,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_ARCH: self.sys_supervisor.arch,

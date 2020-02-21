@@ -27,7 +27,7 @@ RUN_WATCHDOG_DNS_DOCKER = 20
 
 
 class Tasks(CoreSysAttributes):
-    """Handle Tasks inside Hass.io."""
+    """Handle Tasks inside Supervisor."""
 
     def __init__(self, coresys):
         """Initialize Tasks."""
@@ -119,16 +119,16 @@ class Tasks(CoreSysAttributes):
             await asyncio.wait(tasks)
 
     async def _update_supervisor(self):
-        """Check and run update of Supervisor Hass.io."""
+        """Check and run update of Supervisor Supervisor."""
         if not self.sys_supervisor.need_update:
             return
 
         # don't perform an update on dev channel
         if self.sys_dev:
-            _LOGGER.warning("Ignore Hass.io update on dev channel!")
+            _LOGGER.warning("Ignore Supervisor update on dev channel!")
             return
 
-        _LOGGER.info("Found new Hass.io version")
+        _LOGGER.info("Found new Supervisor version")
         await self.sys_supervisor.update()
 
     async def _watchdog_homeassistant_docker(self):

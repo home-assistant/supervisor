@@ -1,4 +1,4 @@
-"""Init file for Hass.io hardware RESTful API."""
+"""Init file for Supervisor hardware RESTful API."""
 import asyncio
 import logging
 from typing import Any, Dict

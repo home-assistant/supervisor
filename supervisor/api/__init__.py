@@ -1,4 +1,4 @@
-"""Init file for Hass.io RESTful API."""
+"""Init file for Supervisor RESTful API."""
 import logging
 from pathlib import Path
 from typing import Optional
@@ -29,7 +29,7 @@ MAX_CLIENT_SIZE: int = 1024 ** 2 * 16
 
 
 class RestAPI(CoreSysAttributes):
-    """Handle RESTful API for Hass.io."""
+    """Handle RESTful API for Supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
@@ -93,7 +93,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/os/update", api_hassos.update),
                 web.post("/os/update/cli", api_hassos.update_cli),
                 web.post("/os/config/sync", api_hassos.config_sync),
-                # Remove with old Hass.io fallback
+                # Remove with old Supervisor fallback
                 web.get("/hassos/info", api_hassos.info),
                 web.post("/hassos/update", api_hassos.update),
                 web.post("/hassos/update/cli", api_hassos.update_cli),
@@ -165,7 +165,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/core/start", api_hass.start),
                 web.post("/core/check", api_hass.check),
                 web.post("/core/rebuild", api_hass.rebuild),
-                # Remove with old Hass.io fallback
+                # Remove with old Supervisor fallback
                 web.get("/homeassistant/info", api_hass.info),
                 web.get("/homeassistant/logs", api_hass.logs),
                 web.get("/homeassistant/stats", api_hass.stats),
@@ -192,7 +192,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/", api_proxy.api),
-                # Remove with old Hass.io fallback
+                # Remove with old Supervisor fallback
                 web.get("/homeassistant/api/websocket", api_proxy.websocket),
                 web.get("/homeassistant/websocket", api_proxy.websocket),
                 web.get("/homeassistant/api/stream", api_proxy.stream),

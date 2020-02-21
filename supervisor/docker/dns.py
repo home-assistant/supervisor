@@ -13,11 +13,11 @@ DNS_DOCKER_NAME: str = "hassio_dns"
 
 
 class DockerDNS(DockerInterface, CoreSysAttributes):
-    """Docker Hass.io wrapper for Hass.io DNS."""
+    """Docker Supervisor wrapper for Supervisor DNS."""
 
     @property
     def image(self) -> str:
-        """Return name of Hass.io DNS image."""
+        """Return name of Supervisor DNS image."""
         return f"homeassistant/{self.sys_arch.supervisor}-hassio-dns"
 
     @property

@@ -59,7 +59,7 @@ MAP_FOLDER_EXCLUDE = {
 
 
 class Snapshot(CoreSysAttributes):
-    """A single Hass.io snapshot."""
+    """A single Supervisor snapshot."""
 
     def __init__(self, coresys: CoreSys, tar_file: Path):
         """Initialize a snapshot."""
@@ -351,7 +351,7 @@ class Snapshot(CoreSysAttributes):
             await asyncio.wait(tasks)
 
     async def store_folders(self, folder_list=None):
-        """Backup Hass.io data into snapshot."""
+        """Backup Supervisor data into snapshot."""
         folder_list = set(folder_list or ALL_FOLDERS)
 
         def _folder_save(name):
@@ -388,7 +388,7 @@ class Snapshot(CoreSysAttributes):
             await asyncio.wait(tasks)
 
     async def restore_folders(self, folder_list=None):
-        """Backup Hass.io data into snapshot."""
+        """Backup Supervisor data into snapshot."""
         folder_list = set(folder_list or self.folders)
 
         def _folder_restore(name):

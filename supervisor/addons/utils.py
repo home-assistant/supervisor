@@ -59,7 +59,7 @@ def rating_security(addon: AddonModel) -> int:
     ):
         rating += -1
 
-    # API Hass.io role
+    # API Supervisor role
     if addon.hassio_role == ROLE_MANAGER:
         rating += -1
     elif addon.hassio_role == ROLE_ADMIN:

@@ -1,4 +1,4 @@
-"""Bootstrap Hass.io."""
+"""Bootstrap Supervisor."""
 import logging
 import os
 from pathlib import Path
@@ -12,7 +12,7 @@ from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
 from .const import SOCKET_DOCKER, UpdateChannels
-from .core import HassIO
+from .core import supervisor
 from .coresys import CoreSys
 from .dbus import DBusManager
 from .discovery import Discovery
@@ -40,11 +40,11 @@ MACHINE_ID = Path("/etc/machine-id")
 
 
 async def initialize_coresys():
-    """Initialize HassIO coresys/objects."""
+    """Initialize supervisor coresys/objects."""
     coresys = CoreSys()
 
     # Initialize core objects
-    coresys.core = HassIO(coresys)
+    coresys.core = supervisor(coresys)
     coresys.dns = CoreDNS(coresys)
     coresys.arch = CpuArch(coresys)
     coresys.auth = Auth(coresys)
@@ -89,51 +89,53 @@ def initialize_system_data(coresys: CoreSys):
         )
         config.path_homeassistant.mkdir()
 
-    # hassio ssl folder
+    # supervisor ssl folder
     if not config.path_ssl.is_dir():
-        _LOGGER.info("Create Hass.io SSL/TLS folder %s", config.path_ssl)
+        _LOGGER.info("Create Supervisor SSL/TLS folder %s", config.path_ssl)
         config.path_ssl.mkdir()
 
-    # hassio addon data folder
+    # supervisor addon data folder
     if not config.path_addons_data.is_dir():
-        _LOGGER.info("Create Hass.io Add-on data folder %s", config.path_addons_data)
+        _LOGGER.info("Create Supervisor Add-on data folder %s", config.path_addons_data)
         config.path_addons_data.mkdir(parents=True)
 
     if not config.path_addons_local.is_dir():
         _LOGGER.info(
-            "Create Hass.io Add-on local repository folder %s", config.path_addons_local
+            "Create Supervisor Add-on local repository folder %s",
+            config.path_addons_local,
         )
         config.path_addons_local.mkdir(parents=True)
 
     if not config.path_addons_git.is_dir():
         _LOGGER.info(
-            "Create Hass.io Add-on git repositories folder %s", config.path_addons_git
+            "Create Supervisor Add-on git repositories folder %s",
+            config.path_addons_git,
         )
         config.path_addons_git.mkdir(parents=True)
 
-    # hassio tmp folder
+    # supervisor tmp folder
     if not config.path_tmp.is_dir():
-        _LOGGER.info("Create Hass.io temp folder %s", config.path_tmp)
+        _LOGGER.info("Create Supervisor temp folder %s", config.path_tmp)
         config.path_tmp.mkdir(parents=True)
 
-    # hassio backup folder
+    # supervisor backup folder
     if not config.path_backup.is_dir():
-        _LOGGER.info("Create Hass.io backup folder %s", config.path_backup)
+        _LOGGER.info("Create Supervisor backup folder %s", config.path_backup)
         config.path_backup.mkdir()
 
     # share folder
     if not config.path_share.is_dir():
-        _LOGGER.info("Create Hass.io share folder %s", config.path_share)
+        _LOGGER.info("Create Supervisor share folder %s", config.path_share)
         config.path_share.mkdir()
 
     # apparmor folder
     if not config.path_apparmor.is_dir():
-        _LOGGER.info("Create Hass.io Apparmor folder %s", config.path_apparmor)
+        _LOGGER.info("Create Supervisor Apparmor folder %s", config.path_apparmor)
         config.path_apparmor.mkdir()
 
     # dns folder
     if not config.path_dns.is_dir():
-        _LOGGER.info("Create Hass.io DNS folder %s", config.path_dns)
+        _LOGGER.info("Create Supervisor DNS folder %s", config.path_dns)
         config.path_dns.mkdir()
 
     # Update log level
@@ -239,7 +241,7 @@ def supervisor_debugger(coresys: CoreSys) -> None:
     # pylint: disable=import-outside-toplevel
     import ptvsd
 
-    _LOGGER.info("Initialize Hass.io debugger")
+    _LOGGER.info("Initialize Supervisor debugger")
 
     ptvsd.enable_attach(address=("0.0.0.0", 33333), redirect_output=True)
     if coresys.config.debug_block:

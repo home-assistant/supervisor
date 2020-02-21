@@ -1,4 +1,4 @@
-"""Internal network manager for Hass.io."""
+"""Internal network manager for Supervisor."""
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
@@ -13,13 +13,13 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class DockerNetwork:
-    """Internal Hass.io Network.
+    """Internal Supervisor Network.
 
     This class is not AsyncIO safe!
     """
 
     def __init__(self, docker_client: docker.DockerClient):
-        """Initialize internal Hass.io network."""
+        """Initialize internal Supervisor network."""
         self.docker: docker.DockerClient = docker_client
         self.network: docker.models.networks.Network = self._get_network()
 
@@ -49,11 +49,11 @@ class DockerNetwork:
         return DOCKER_NETWORK_MASK[3]
 
     def _get_network(self) -> docker.models.networks.Network:
-        """Get HassIO network."""
+        """Get supervisor network."""
         try:
             return self.docker.networks.get(DOCKER_NETWORK)
         except docker.errors.NotFound:
-            _LOGGER.info("Can't find Hass.io network, create new network")
+            _LOGGER.info("Can't find Supervisor network, create new network")
 
         ipam_pool = docker.types.IPAMPool(
             subnet=str(DOCKER_NETWORK_MASK),
@@ -77,7 +77,7 @@ class DockerNetwork:
         alias: Optional[List[str]] = None,
         ipv4: Optional[IPv4Address] = None,
     ) -> None:
-        """Attach container to Hass.io network.
+        """Attach container to Supervisor network.
 
         Need run inside executor.
         """

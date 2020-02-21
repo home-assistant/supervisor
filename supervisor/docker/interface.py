@@ -1,4 +1,4 @@
-"""Interface class for Hass.io Docker object."""
+"""Interface class for Supervisor Docker object."""
 import asyncio
 from contextlib import suppress
 import logging
@@ -17,7 +17,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class DockerInterface(CoreSysAttributes):
-    """Docker Hass.io interface."""
+    """Docker Supervisor interface."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""

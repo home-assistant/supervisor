@@ -1,4 +1,4 @@
-"""Init file for Hass.io add-on Git."""
+"""Init file for Supervisor add-on Git."""
 import asyncio
 import logging
 import functools as ft
@@ -141,10 +141,10 @@ class GitRepo(CoreSysAttributes):
 
 
 class GitRepoHassIO(GitRepo):
-    """Hass.io add-ons repository."""
+    """Supervisor add-ons repository."""
 
     def __init__(self, coresys):
-        """Initialize Git Hass.io add-on repository."""
+        """Initialize Git Supervisor add-on repository."""
         super().__init__(coresys, coresys.config.path_addons_core, URL_HASSIO_ADDONS)
 
 
@@ -152,7 +152,7 @@ class GitRepoCustom(GitRepo):
     """Custom add-ons repository."""
 
     def __init__(self, coresys, url):
-        """Initialize custom Git Hass.io addo-n repository."""
+        """Initialize custom Git Supervisor addo-n repository."""
         path = Path(coresys.config.path_addons_git, get_hash_from_repository(url))
 
         super().__init__(coresys, path, url)

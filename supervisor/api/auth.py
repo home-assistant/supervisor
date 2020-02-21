@@ -1,4 +1,4 @@
-"""Init file for Hass.io auth/SSO RESTful API."""
+"""Init file for Supervisor auth/SSO RESTful API."""
 import asyncio
 import logging
 from typing import Dict
@@ -76,7 +76,7 @@ class APIAuth(CoreSysAttributes):
             return await self._process_dict(request, addon, data)
 
         raise HTTPUnauthorized(
-            headers={WWW_AUTHENTICATE: 'Basic realm="Hass.io Authentication"'}
+            headers={WWW_AUTHENTICATE: 'Basic realm="Supervisor Authentication"'}
         )
 
     @api_process

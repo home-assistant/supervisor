@@ -1,1 +1,1 @@
-"""Hass.io Testframework."""
+"""Supervisor Testframework."""

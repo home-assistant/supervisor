@@ -1,7 +1,7 @@
 """Discovery service for MQTT."""
 import voluptuous as vol
 
-from hassio.validate import network_port
+from supervisor.validate import network_port
 
 from ..const import ATTR_HOST, ATTR_PORT, ATTR_API_KEY, ATTR_SERIAL
 

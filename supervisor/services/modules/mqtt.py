@@ -2,9 +2,9 @@
 import logging
 from typing import Any, Dict, List
 
-from hassio.addons.addon import Addon
-from hassio.exceptions import ServicesError
-from hassio.validate import network_port
+from supervisor.addons.addon import Addon
+from supervisor.exceptions import ServicesError
+from supervisor.validate import network_port
 import voluptuous as vol
 
 from ..const import (

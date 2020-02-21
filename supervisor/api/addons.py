@@ -1,4 +1,4 @@
-"""Init file for Hass.io Home Assistant RESTful API."""
+"""Init file for Supervisor Home Assistant RESTful API."""
 import asyncio
 import logging
 from typing import Any, Awaitable, Dict, List

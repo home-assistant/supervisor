@@ -20,7 +20,7 @@ def valid_discovery_service(service):
 def valid_discovery_config(service, config):
     """Validate service name."""
     try:
-        service_mod = import_module(f".services.{service}", "hassio.discovery")
+        service_mod = import_module(f".services.{service}", "supervisor.discovery")
     except ImportError:
         raise vol.Invalid(f"Service {service} not found")
 

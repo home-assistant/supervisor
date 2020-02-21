@@ -1,4 +1,4 @@
-"""Init file for Hass.io add-ons."""
+"""Init file for Supervisor add-ons."""
 import logging
 
 from ..coresys import CoreSys
@@ -8,7 +8,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class AddonStore(AddonModel):
-    """Hold data for add-on inside Hass.io."""
+    """Hold data for add-on inside Supervisor."""
 
     def __init__(self, coresys: CoreSys, slug: str):
         """Initialize data holder."""

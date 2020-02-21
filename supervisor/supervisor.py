@@ -9,7 +9,7 @@ from typing import Awaitable, Optional
 
 import aiohttp
 
-from .const import URL_HASSIO_APPARMOR, HASSIO_VERSION
+from .const import URL_HASSIO_APPARMOR, SUPERVISOR_VERSION
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
@@ -60,7 +60,7 @@ class Supervisor(CoreSysAttributes):
     @property
     def version(self) -> str:
         """Return version of running Home Assistant."""
-        return HASSIO_VERSION
+        return SUPERVISOR_VERSION
 
     @property
     def latest_version(self) -> str:
@@ -74,7 +74,7 @@ class Supervisor(CoreSysAttributes):
 
     @property
     def arch(self) -> str:
-        """Return arch of the Hass.io container."""
+        """Return arch of the Supervisor container."""
         return self.instance.arch
 
     async def update_apparmor(self) -> None:
@@ -117,7 +117,7 @@ class Supervisor(CoreSysAttributes):
         try:
             await self.instance.update(version, latest=True)
         except DockerAPIError:
-            _LOGGER.error("Update of Hass.io fails!")
+            _LOGGER.error("Update of Supervisor fails!")
             raise SupervisorUpdateError() from None
 
         with suppress(SupervisorError):

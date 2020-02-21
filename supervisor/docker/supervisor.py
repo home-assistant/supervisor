@@ -1,4 +1,4 @@
-"""Init file for Hass.io Docker object."""
+"""Init file for Supervisor Docker object."""
 from ipaddress import IPv4Address
 import logging
 import os
@@ -14,7 +14,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class DockerSupervisor(DockerInterface, CoreSysAttributes):
-    """Docker Hass.io wrapper for Supervisor."""
+    """Docker Supervisor wrapper for Supervisor."""
 
     @property
     def name(self) -> str:
@@ -53,9 +53,11 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             return
 
         # Attach to network
-        _LOGGER.info("Connect Supervisor to Hass.io Network")
+        _LOGGER.info("Connect Supervisor to hassio Network")
         self.sys_docker.network.attach_container(
-            docker_container, alias=["hassio"], ipv4=self.sys_docker.network.supervisor
+            docker_container,
+            alias=["supervisor"],
+            ipv4=self.sys_docker.network.supervisor,
         )
 
     def retag(self) -> Awaitable[None]:

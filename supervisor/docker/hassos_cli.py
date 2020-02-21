@@ -10,7 +10,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class DockerHassOSCli(DockerInterface, CoreSysAttributes):
-    """Docker Hass.io wrapper for HassOS Cli."""
+    """Docker Supervisor wrapper for HassOS Cli."""
 
     @property
     def image(self):

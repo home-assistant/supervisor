@@ -1,9 +1,9 @@
-"""Constants file for Hass.io."""
+"""Constants file for Supervisor."""
 from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-HASSIO_VERSION = "202"
+SUPERVISOR_VERSION = "202"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"

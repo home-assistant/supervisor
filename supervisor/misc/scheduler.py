@@ -1,4 +1,4 @@
-"""Schedule for Hass.io."""
+"""Schedule for Supervisor."""
 import asyncio
 from datetime import date, datetime, time, timedelta
 import logging
@@ -12,7 +12,7 @@ TASK = "task"
 
 
 class Scheduler:
-    """Schedule task inside Hass.io."""
+    """Schedule task inside Supervisor."""
 
     def __init__(self):
         """Initialize task schedule."""

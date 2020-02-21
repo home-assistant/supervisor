@@ -1,4 +1,4 @@
-"""Init file for Hass.io add-on data."""
+"""Init file for Supervisor add-on data."""
 import logging
 from pathlib import Path
 from typing import Any, Dict
@@ -24,7 +24,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class StoreData(CoreSysAttributes):
-    """Hold data for Add-ons inside Hass.io."""
+    """Hold data for Add-ons inside Supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize data holder."""

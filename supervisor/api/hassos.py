@@ -1,4 +1,4 @@
-"""Init file for Hass.io HassOS RESTful API."""
+"""Init file for Supervisor HassOS RESTful API."""
 import asyncio
 import logging
 from typing import Any, Awaitable, Dict
