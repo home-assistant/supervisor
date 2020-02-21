@@ -1,7 +1,7 @@
 """Test ingress."""
 from datetime import timedelta
 
-from hassio.utils.dt import utc_from_timestamp
+from supervisor.utils.dt import utc_from_timestamp
 
 
 def test_session_handling(coresys):

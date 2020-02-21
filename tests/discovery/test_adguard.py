@@ -3,7 +3,7 @@
 import voluptuous as vol
 import pytest
 
-from hassio.discovery.validate import valid_discovery_config
+from supervisor.discovery.validate import valid_discovery_config
 
 
 def test_good_config():

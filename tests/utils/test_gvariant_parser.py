@@ -1,5 +1,5 @@
 """Test gdbus gvariant parser."""
-from hassio.utils.gdbus import DBus
+from supervisor.utils.gdbus import DBus
 
 
 def test_simple_return():

@@ -1,7 +1,7 @@
 """Check ports."""
 from ipaddress import ip_address
 
-from hassio.utils import check_port
+from supervisor.utils import check_port
 
 
 def test_exists_open_port():

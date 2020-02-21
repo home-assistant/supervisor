@@ -2,7 +2,7 @@
 from unittest.mock import patch, PropertyMock
 from pathlib import Path
 
-from hassio.misc.hardware import Hardware, Device
+from supervisor.misc.hardware import Hardware, Device
 
 
 def test_read_all_devices():
@@ -23,7 +23,7 @@ def test_video_devices():
     ]
 
     with patch(
-        "hassio.misc.hardware.Hardware.devices", new_callable=PropertyMock
+        "supervisor.misc.hardware.Hardware.devices", new_callable=PropertyMock
     ) as mock_device:
         mock_device.return_value = device_list
 

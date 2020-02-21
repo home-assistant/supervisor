@@ -1,31 +1,24 @@
 // See https://aka.ms/vscode-remote/devcontainer.json for format details.
 {
-	"name": "Hass.io dev",
-	"context": "..",
-	"dockerFile": "Dockerfile",
-	"appPort": "9123:8123",
-	"runArgs": [
-		"-e",
-		"GIT_EDITOR=code --wait",
-		"--privileged"
-	],
-	"extensions": [
-		"ms-python.python",
-		"visualstudioexptteam.vscodeintellicode",
-		"esbenp.prettier-vscode"
-	],
-	"settings": {
-		"python.pythonPath": "/usr/local/bin/python",
-		"python.linting.pylintEnabled": true,
-		"python.linting.enabled": true,
-		"python.formatting.provider": "black",
-		"python.formatting.blackArgs": [
-			"--target-version",
-			"py37"
-		],
-		"editor.formatOnPaste": false,
-		"editor.formatOnSave": true,
-		"editor.formatOnType": true,
-		"files.trimTrailingWhitespace": true
-	}
+  "name": "Supervisor dev",
+  "context": "..",
+  "dockerFile": "Dockerfile",
+  "appPort": "9123:8123",
+  "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
+  "extensions": [
+    "ms-python.python",
+    "visualstudioexptteam.vscodeintellicode",
+    "esbenp.prettier-vscode"
+  ],
+  "settings": {
+    "python.pythonPath": "/usr/local/bin/python",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": ["--target-version", "py37"],
+    "editor.formatOnPaste": false,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "files.trimTrailingWhitespace": true
+  }
 }
