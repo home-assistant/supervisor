@@ -76,7 +76,7 @@ class APIAuth(CoreSysAttributes):
             return await self._process_dict(request, addon, data)
 
         raise HTTPUnauthorized(
-            headers={WWW_AUTHENTICATE: 'Basic realm="Supervisor Authentication"'}
+            headers={WWW_AUTHENTICATE: 'Basic realm="Home Assistant Authentication"'}
         )
 
     @api_process
