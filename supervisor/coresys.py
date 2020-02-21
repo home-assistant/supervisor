@@ -417,7 +417,7 @@ class CoreSysAttributes:
         return self.coresys.scheduler
 
     @property
-    def sys_core(self) -> core:
+    def sys_core(self) -> Core:
         """Return core object."""
         return self.coresys.core
 

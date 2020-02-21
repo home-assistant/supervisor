@@ -12,7 +12,7 @@ from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
 from .const import SOCKET_DOCKER, UpdateChannels
-from .core import supervisor
+from .core import Core
 from .coresys import CoreSys
 from .dbus import DBusManager
 from .discovery import Discovery
@@ -44,7 +44,7 @@ async def initialize_coresys():
     coresys = CoreSys()
 
     # Initialize core objects
-    coresys.core = supervisor(coresys)
+    coresys.core = Core(coresys)
     coresys.dns = CoreDNS(coresys)
     coresys.arch = CpuArch(coresys)
     coresys.auth = Auth(coresys)
