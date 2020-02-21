@@ -1,18 +1,46 @@
 {
-    "raspberrypi3": {
-        "bcm2835 - bcm2835 ALSA": {
-            "0,0": "Raspberry Jack",
-            "0,1": "Raspberry HDMI"
-        },
-        "output": "0,0",
-        "input": null
+  "odroid-n2": {
+    "output": "0,0",
+    "input": null,
+    "patch": "amlogic"
+  },
+  "odroid-c2": {
+    "output": "0,0",
+    "input": null,
+    "patch": "amlogic"
+  },
+  "raspberrypi4": {
+    "output": "0,1",
+    "input": null,
+    "patch": "rpi"
+  },
+  "raspberrypi4-64": {
+    "output": "0,1",
+    "input": null,
+    "patch": "rpi"
+  },
+  "raspberrypi3": {
+    "bcm2835 - bcm2835 ALSA": {
+      "0,0": "Raspberry Jack",
+      "0,1": "Raspberry HDMI"
     },
-    "raspberrypi2": {
-        "output": "0,0",
-        "input": null
-    },
-    "raspberrypi": {
-        "output": "0,0",
-        "input": null
-    }
+    "output": "0,1",
+    "input": null,
+    "patch": "rpi"
+  },
+  "raspberrypi3-64": {
+    "output": "0,1",
+    "input": null,
+    "patch": "rpi"
+  },
+  "raspberrypi2": {
+    "output": "0,1",
+    "input": null,
+    "patch": "rpi"
+  },
+  "raspberrypi": {
+    "output": "0,0",
+    "input": null,
+    "patch": null
+  }
 }
