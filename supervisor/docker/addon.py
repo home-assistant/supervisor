@@ -312,7 +312,11 @@ class DockerAddon(DockerInterface):
                     str(self.addon.path_extern_asound): {
                         "bind": "/etc/asound.conf",
                         "mode": "ro",
-                    }
+                    },
+                    str(self.sys_config.path_extern_alsa): {
+                        "bind": "/usr/share/alsa",
+                        "mode": "ro",
+                    },
                 }
             )
 

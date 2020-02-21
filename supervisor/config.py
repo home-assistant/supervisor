@@ -179,13 +179,13 @@ class CoreConfig(JsonConfig):
         return PurePath(self.path_extern_hassio, ADDONS_DATA)
 
     @property
-    def path_alsa_data(self):
-        """Return root ALSA share data folder."""
+    def path_alsa(self):
+        """Return root ALSA share folder."""
         return Path(SUPERVISOR_DATA, ALSA_DATA)
 
     @property
-    def path_extern_alsa_data(self):
-        """Return root ALSA share data folder external for Docker."""
+    def path_extern_alsa(self):
+        """Return root ALSA share folder external for Docker."""
         return PurePath(self.path_extern_hassio, ALSA_DATA)
 
     @property
