@@ -15,17 +15,17 @@ URL_HASSOS_OTA = (
     "{version}/hassos_{board}-{version}.raucb"
 )
 
-HASSIO_DATA = Path("/data")
+SUPERVISOR_DATA = Path("/data")
 
-FILE_HASSIO_AUTH = Path(HASSIO_DATA, "auth.json")
-FILE_HASSIO_ADDONS = Path(HASSIO_DATA, "addons.json")
-FILE_HASSIO_CONFIG = Path(HASSIO_DATA, "config.json")
-FILE_HASSIO_HOMEASSISTANT = Path(HASSIO_DATA, "homeassistant.json")
-FILE_HASSIO_UPDATER = Path(HASSIO_DATA, "updater.json")
-FILE_HASSIO_SERVICES = Path(HASSIO_DATA, "services.json")
-FILE_HASSIO_DISCOVERY = Path(HASSIO_DATA, "discovery.json")
-FILE_HASSIO_INGRESS = Path(HASSIO_DATA, "ingress.json")
-FILE_HASSIO_DNS = Path(HASSIO_DATA, "dns.json")
+FILE_HASSIO_AUTH = Path(SUPERVISOR_DATA, "auth.json")
+FILE_HASSIO_ADDONS = Path(SUPERVISOR_DATA, "addons.json")
+FILE_HASSIO_CONFIG = Path(SUPERVISOR_DATA, "config.json")
+FILE_HASSIO_HOMEASSISTANT = Path(SUPERVISOR_DATA, "homeassistant.json")
+FILE_HASSIO_UPDATER = Path(SUPERVISOR_DATA, "updater.json")
+FILE_HASSIO_SERVICES = Path(SUPERVISOR_DATA, "services.json")
+FILE_HASSIO_DISCOVERY = Path(SUPERVISOR_DATA, "discovery.json")
+FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
+FILE_HASSIO_DNS = Path(SUPERVISOR_DATA, "dns.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 

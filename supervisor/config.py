@@ -13,7 +13,7 @@ from .const import (
     ATTR_TIMEZONE,
     ATTR_WAIT_BOOT,
     FILE_HASSIO_CONFIG,
-    HASSIO_DATA,
+    SUPERVISOR_DATA,
 )
 from .utils.dt import parse_datetime
 from .utils.json import JsonConfig
@@ -35,6 +35,7 @@ SHARE_DATA = PurePath("share")
 TMP_DATA = PurePath("tmp")
 APPARMOR_DATA = PurePath("apparmor")
 DNS_DATA = PurePath("dns")
+ALSA_DATA = PurePath("alsa")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
@@ -120,7 +121,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_hassio(self):
         """Return Supervisor data path."""
-        return HASSIO_DATA
+        return SUPERVISOR_DATA
 
     @property
     def path_extern_hassio(self):
@@ -135,7 +136,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_homeassistant(self):
         """Return config path inside supervisor."""
-        return Path(HASSIO_DATA, HOMEASSISTANT_CONFIG)
+        return Path(SUPERVISOR_DATA, HOMEASSISTANT_CONFIG)
 
     @property
     def path_extern_ssl(self):
@@ -145,22 +146,22 @@ class CoreConfig(JsonConfig):
     @property
     def path_ssl(self):
         """Return SSL path inside supervisor."""
-        return Path(HASSIO_DATA, HASSIO_SSL)
+        return Path(SUPERVISOR_DATA, HASSIO_SSL)
 
     @property
     def path_addons_core(self):
         """Return git path for core Add-ons."""
-        return Path(HASSIO_DATA, ADDONS_CORE)
+        return Path(SUPERVISOR_DATA, ADDONS_CORE)
 
     @property
     def path_addons_git(self):
         """Return path for Git Add-on."""
-        return Path(HASSIO_DATA, ADDONS_GIT)
+        return Path(SUPERVISOR_DATA, ADDONS_GIT)
 
     @property
     def path_addons_local(self):
         """Return path for custom Add-ons."""
-        return Path(HASSIO_DATA, ADDONS_LOCAL)
+        return Path(SUPERVISOR_DATA, ADDONS_LOCAL)
 
     @property
     def path_extern_addons_local(self):
@@ -170,7 +171,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_addons_data(self):
         """Return root Add-on data folder."""
-        return Path(HASSIO_DATA, ADDONS_DATA)
+        return Path(SUPERVISOR_DATA, ADDONS_DATA)
 
     @property
     def path_extern_addons_data(self):
@@ -178,9 +179,19 @@ class CoreConfig(JsonConfig):
         return PurePath(self.path_extern_hassio, ADDONS_DATA)
 
     @property
+    def path_alsa_data(self):
+        """Return root ALSA share data folder."""
+        return Path(SUPERVISOR_DATA, ALSA_DATA)
+
+    @property
+    def path_extern_alsa_data(self):
+        """Return root ALSA share data folder external for Docker."""
+        return PurePath(self.path_extern_hassio, ALSA_DATA)
+
+    @property
     def path_tmp(self):
         """Return Supervisor temp folder."""
-        return Path(HASSIO_DATA, TMP_DATA)
+        return Path(SUPERVISOR_DATA, TMP_DATA)
 
     @property
     def path_extern_tmp(self):
@@ -190,7 +201,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_backup(self):
         """Return root backup data folder."""
-        return Path(HASSIO_DATA, BACKUP_DATA)
+        return Path(SUPERVISOR_DATA, BACKUP_DATA)
 
     @property
     def path_extern_backup(self):
@@ -200,12 +211,12 @@ class CoreConfig(JsonConfig):
     @property
     def path_share(self):
         """Return root share data folder."""
-        return Path(HASSIO_DATA, SHARE_DATA)
+        return Path(SUPERVISOR_DATA, SHARE_DATA)
 
     @property
     def path_apparmor(self):
         """Return root Apparmor profile folder."""
-        return Path(HASSIO_DATA, APPARMOR_DATA)
+        return Path(SUPERVISOR_DATA, APPARMOR_DATA)
 
     @property
     def path_extern_share(self):
@@ -220,7 +231,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_dns(self):
         """Return dns path inside supervisor."""
-        return Path(HASSIO_DATA, DNS_DATA)
+        return Path(SUPERVISOR_DATA, DNS_DATA)
 
     @property
     def addons_repositories(self):

@@ -138,6 +138,11 @@ def initialize_system_data(coresys: CoreSys):
         _LOGGER.info("Create Supervisor DNS folder %s", config.path_dns)
         config.path_dns.mkdir()
 
+    # alsa folder
+    if not config.path_alsa.is_dir():
+        _LOGGER.info("Create Supervisor ALSA folder %s", config.path_alsa)
+        config.path_alsa.mkdir()
+
     # Update log level
     coresys.config.modify_log_level()
 
