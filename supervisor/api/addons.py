@@ -96,7 +96,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
 from ..exceptions import APIError
-from ..validate import DOCKER_PORTS, alsa_device
+from ..validate import DOCKER_PORTS
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -107,10 +107,10 @@ SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
-        vol.Optional(ATTR_NETWORK): vol.Any(None, DOCKER_PORTS),
+        vol.Optional(ATTR_NETWORK): vol.Maybe(DOCKER_PORTS),
         vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
-        vol.Optional(ATTR_AUDIO_OUTPUT): alsa_device,
-        vol.Optional(ATTR_AUDIO_INPUT): alsa_device,
+        vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
     }
 )

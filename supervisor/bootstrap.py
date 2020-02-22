@@ -11,6 +11,7 @@ from .addons import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
+from .audio import Audio
 from .const import SOCKET_DOCKER, UpdateChannels
 from .core import Core
 from .coresys import CoreSys
@@ -47,6 +48,7 @@ async def initialize_coresys():
     coresys.core = Core(coresys)
     coresys.dns = CoreDNS(coresys)
     coresys.arch = CpuArch(coresys)
+    coresys.audio = Audio(coresys)
     coresys.auth = Auth(coresys)
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
