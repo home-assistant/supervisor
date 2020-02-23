@@ -49,7 +49,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             environment={ENV_TIME: self.sys_timezone},
             volumes={
                 str(self.sys_config.path_extern_audio): {
-                    "bind": "/data",
+                    "bind": "/var/lib/pulse",
                     "mode": "rw",
                 },
                 "/dev/snd": {"bind": "/dev/snd", "mode": "rw"},
