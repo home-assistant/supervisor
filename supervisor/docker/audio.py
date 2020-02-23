@@ -1,4 +1,4 @@
-"""DNS docker object."""
+"""Audio docker object."""
 from contextlib import suppress
 import logging
 
@@ -9,21 +9,21 @@ from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-DNS_DOCKER_NAME: str = "hassio_dns"
+AUDIO_DOCKER_NAME: str = "hassio_audio"
 
 
-class DockerDNS(DockerInterface, CoreSysAttributes):
-    """Docker Supervisor wrapper for Supervisor DNS."""
+class DockerAudio(DockerInterface, CoreSysAttributes):
+    """Docker Supervisor wrapper for Supervisor Audio."""
 
     @property
     def image(self) -> str:
-        """Return name of Supervisor DNS image."""
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-dns"
+        """Return name of Supervisor Audio image."""
+        return f"homeassistant/{self.sys_arch.supervisor}-hassio-audio"
 
     @property
     def name(self) -> str:
         """Return name of Docker container."""
-        return DNS_DOCKER_NAME
+        return AUDIO_DOCKER_NAME
 
     def _run(self) -> None:
         """Run Docker image.
@@ -41,21 +41,25 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
         docker_container = self.sys_docker.run(
             self.image,
             version=self.sys_dns.version,
-            dns=False,
-            ipv4=self.sys_docker.network.dns,
+            ipv4=self.sys_docker.network.audio,
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
+            privileged=True,
             environment={ENV_TIME: self.sys_timezone},
             volumes={
-                str(self.sys_config.path_extern_dns): {"bind": "/config", "mode": "ro"}
+                str(self.sys_config.path_extern_audio): {
+                    "bind": "/audio",
+                    "mode": "rw",
+                },
+                "/dev/snd": {"bind": "/dev/snd", "mode": "rw"},
             },
         )
 
         self._meta = docker_container.attrs
         _LOGGER.info(
-            "Start DNS %s with version %s - %s",
+            "Start Audio %s with version %s - %s",
             self.image,
             self.version,
-            self.sys_docker.network.dns,
+            self.sys_docker.network.audio,
         )

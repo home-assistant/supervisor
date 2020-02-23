@@ -305,8 +305,8 @@ class DockerAddon(DockerInterface):
         if self.addon.host_dbus:
             volumes.update({"/var/run/dbus": {"bind": "/var/run/dbus", "mode": "rw"}})
 
-        # ALSA configuration
-        if self.addon.with_audio:
+        # ALSA configuration / Audio
+        if self.addon.with_audio and self.sys_hardware.support_audio:
             volumes.update(
                 {
                     str(self.addon.path_extern_asound): {

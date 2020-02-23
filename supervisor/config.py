@@ -35,7 +35,7 @@ SHARE_DATA = PurePath("share")
 TMP_DATA = PurePath("tmp")
 APPARMOR_DATA = PurePath("apparmor")
 DNS_DATA = PurePath("dns")
-ALSA_DATA = PurePath("alsa")
+AUDIO_DATA = PurePath("audio")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
@@ -179,14 +179,14 @@ class CoreConfig(JsonConfig):
         return PurePath(self.path_extern_hassio, ADDONS_DATA)
 
     @property
-    def path_alsa(self):
-        """Return root ALSA share folder."""
-        return Path(SUPERVISOR_DATA, ALSA_DATA)
+    def path_audio(self):
+        """Return root audio data folder."""
+        return Path(SUPERVISOR_DATA, AUDIO_DATA)
 
     @property
-    def path_extern_alsa(self):
-        """Return root ALSA share folder external for Docker."""
-        return PurePath(self.path_extern_hassio, ALSA_DATA)
+    def path_extern_audio(self):
+        """Return root audio data folder external for Docker."""
+        return PurePath(self.path_extern_hassio, AUDIO_DATA)
 
     @property
     def path_tmp(self):

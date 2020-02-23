@@ -229,6 +229,7 @@ ATTR_SNAPSHOT_EXCLUDE = "snapshot_exclude"
 ATTR_DOCUMENTATION = "documentation"
 ATTR_ADVANCED = "advanced"
 ATTR_STAGE = "stage"
+ATTR_CLI = "cli"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

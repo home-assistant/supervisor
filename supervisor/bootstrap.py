@@ -89,12 +89,12 @@ def initialize_system_data(coresys: CoreSys):
         )
         config.path_homeassistant.mkdir()
 
-    # supervisor ssl folder
+    # Supervisor ssl folder
     if not config.path_ssl.is_dir():
         _LOGGER.info("Create Supervisor SSL/TLS folder %s", config.path_ssl)
         config.path_ssl.mkdir()
 
-    # supervisor addon data folder
+    # Supervisor addon data folder
     if not config.path_addons_data.is_dir():
         _LOGGER.info("Create Supervisor Add-on data folder %s", config.path_addons_data)
         config.path_addons_data.mkdir(parents=True)
@@ -113,35 +113,35 @@ def initialize_system_data(coresys: CoreSys):
         )
         config.path_addons_git.mkdir(parents=True)
 
-    # supervisor tmp folder
+    # Supervisor tmp folder
     if not config.path_tmp.is_dir():
         _LOGGER.info("Create Supervisor temp folder %s", config.path_tmp)
         config.path_tmp.mkdir(parents=True)
 
-    # supervisor backup folder
+    # Supervisor backup folder
     if not config.path_backup.is_dir():
         _LOGGER.info("Create Supervisor backup folder %s", config.path_backup)
         config.path_backup.mkdir()
 
-    # share folder
+    # Share folder
     if not config.path_share.is_dir():
         _LOGGER.info("Create Supervisor share folder %s", config.path_share)
         config.path_share.mkdir()
 
-    # apparmor folder
+    # Apparmor folder
     if not config.path_apparmor.is_dir():
         _LOGGER.info("Create Supervisor Apparmor folder %s", config.path_apparmor)
         config.path_apparmor.mkdir()
 
-    # dns folder
+    # DNS folder
     if not config.path_dns.is_dir():
         _LOGGER.info("Create Supervisor DNS folder %s", config.path_dns)
         config.path_dns.mkdir()
 
-    # alsa folder
-    if not config.path_alsa.is_dir():
-        _LOGGER.info("Create Supervisor ALSA folder %s", config.path_alsa)
-        config.path_alsa.mkdir()
+    # Audio folder
+    if not config.path_audio.is_dir():
+        _LOGGER.info("Create Supervisor audio folder %s", config.path_audio)
+        config.path_audio.mkdir()
 
     # Update log level
     coresys.config.modify_log_level()

@@ -13,7 +13,8 @@ from .const import (
     ATTR_DNS,
     ATTR_HASSIO,
     ATTR_HASSOS,
-    ATTR_HASSOS_CLI,
+    ATTR_CLI,
+    ATTR_AUDIO,
     ATTR_HOMEASSISTANT,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
@@ -62,13 +63,13 @@ class Updater(JsonConfig, CoreSysAttributes):
         return self._data.get(ATTR_HASSOS)
 
     @property
-    def version_hassos_cli(self) -> Optional[str]:
-        """Return latest version of HassOS cli."""
-        return self._data.get(ATTR_HASSOS_CLI)
+    def version_cli(self) -> Optional[str]:
+        """Return latest version of CLI."""
+        return self._data.get(ATTR_CLI)
 
     @property
     def version_dns(self) -> Optional[str]:
-        """Return latest version of Supervisor DNS."""
+        """Return latest version of DNS."""
         return self._data.get(ATTR_DNS)
 
     @property
@@ -110,17 +111,20 @@ class Updater(JsonConfig, CoreSysAttributes):
             raise HassioUpdaterError() from None
 
         try:
-            # update supervisor version
+            # Update supervisor version
             self._data[ATTR_HASSIO] = data["supervisor"]
-            self._data[ATTR_DNS] = data["dns"]
 
-            # update Home Assistant version
+            # Update Home Assistant core version
             self._data[ATTR_HOMEASSISTANT] = data["homeassistant"][machine]
 
-            # update hassos version
+            # Update HassOS version
             if self.sys_hassos.available and board:
                 self._data[ATTR_HASSOS] = data["hassos"][board]
-                self._data[ATTR_HASSOS_CLI] = data["hassos-cli"]
+
+            # Update Home Assistant services
+            self._data[ATTR_CLI] = data["cli"]
+            self._data[ATTR_DNS] = data["dns"]
+            self._data[ATTR_AUDIO] = data["audio"]
 
         except KeyError as err:
             _LOGGER.warning("Can't process version data: %s", err)

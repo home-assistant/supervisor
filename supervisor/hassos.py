@@ -56,7 +56,7 @@ class HassOS(CoreSysAttributes):
     @property
     def version_cli_latest(self) -> str:
         """Return version of HassOS."""
-        return self.sys_updater.version_hassos_cli
+        return self.sys_updater.version_cli
 
     @property
     def need_update(self) -> bool:
