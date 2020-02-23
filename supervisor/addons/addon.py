@@ -279,14 +279,14 @@ class Addon(AddonModel):
 
     @property
     def audio_output(self) -> Optional[str]:
-        """Return ALSA config for output or None."""
+        """Return a pulse profile for output or None."""
         if not self.with_audio:
             return None
-        return self.persist.get(ATTR_AUDIO_OUTPUT, self.sys_host.alsa.default.output)
+        return self.persist.get(ATTR_AUDIO_OUTPUT)
 
     @audio_output.setter
     def audio_output(self, value: Optional[str]):
-        """Set/reset audio output settings."""
+        """Set/reset audio output profile settings."""
         if value is None:
             self.persist.pop(ATTR_AUDIO_OUTPUT, None)
         else:
@@ -294,10 +294,10 @@ class Addon(AddonModel):
 
     @property
     def audio_input(self) -> Optional[str]:
-        """Return ALSA config for input or None."""
+        """Return pulse profile for input or None."""
         if not self.with_audio:
             return None
-        return self.persist.get(ATTR_AUDIO_INPUT, self.sys_host.alsa.default.input)
+        return self.persist.get(ATTR_AUDIO_INPUT)
 
     @audio_input.setter
     def audio_input(self, value: Optional[str]):
@@ -333,14 +333,14 @@ class Addon(AddonModel):
         return Path(self.path_data, "options.json")
 
     @property
-    def path_asound(self):
+    def path_pulse(self):
         """Return path to asound config."""
-        return Path(self.sys_config.path_tmp, f"{self.slug}_asound")
+        return Path(self.sys_config.path_tmp, f"{self.slug}_pulse")
 
     @property
-    def path_extern_asound(self):
+    def path_extern_pulse(self):
         """Return path to asound config for Docker."""
-        return Path(self.sys_config.path_extern_tmp, f"{self.slug}_asound")
+        return Path(self.sys_config.path_extern_tmp, f"{self.slug}_pulse")
 
     def save_persist(self):
         """Save data of add-on."""
@@ -379,20 +379,24 @@ class Addon(AddonModel):
         _LOGGER.info("Remove add-on data folder %s", self.path_data)
         await remove_data(self.path_data)
 
-    def write_asound(self):
+    def write_pulse(self):
         """Write asound config to file and return True on success."""
-        asound_config = self.sys_host.alsa.asound(
-            alsa_input=self.audio_input, alsa_output=self.audio_output
+        pulse_config = self.sys_audio.pulse_client(
+            input_profile=self.audio_input, output_profile=self.audio_output
         )
 
         try:
-            with self.path_asound.open("w") as config_file:
-                config_file.write(asound_config)
+            with self.path_pulse.open("w") as config_file:
+                config_file.write(pulse_config)
         except OSError as err:
-            _LOGGER.error("Add-on %s can't write asound: %s", self.slug, err)
+            _LOGGER.error(
+                "Add-on %s can't write pulse/client.config: %s", self.slug, err
+            )
             raise AddonsError()
 
-        _LOGGER.debug("Add-on %s write asound: %s", self.slug, self.path_asound)
+        _LOGGER.debug(
+            "Add-on %s write pulse/client.config: %s", self.slug, self.path_pulse
+        )
 
     async def install_apparmor(self) -> None:
         """Install or Update AppArmor profile for Add-on."""
@@ -468,7 +472,7 @@ class Addon(AddonModel):
 
         # Sound
         if self.with_audio:
-            self.write_asound()
+            self.write_pulse()
 
         # Start Add-on
         try:

@@ -152,9 +152,9 @@ class AddonManager(CoreSysAttributes):
         await addon.remove_data()
 
         # Cleanup audio settings
-        if addon.path_asound.exists():
+        if addon.path_pulse.exists():
             with suppress(OSError):
-                addon.path_asound.unlink()
+                addon.path_pulse.unlink()
 
         # Cleanup AppArmor profile
         with suppress(HostAppArmorError):

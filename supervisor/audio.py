@@ -181,3 +181,19 @@ class Audio(JsonConfig, CoreSysAttributes):
             await self.instance.install(self.version)
         except DockerAPIError:
             _LOGGER.error("Repairing of Audio fails")
+
+    def pulse_client(self, input_profile=None, output_profile=None) -> str:
+        """Generate an /etc/pulse/client.conf data."""
+
+        # Read Template
+        try:
+            config_data = PULSE_CLIENT_TMPL.read_text()
+        except OSError as err:
+            _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
+            return ""
+
+        # Process Template
+        config_template = Template(config_data)
+        return config_template.safe_substitute(
+            audio_address=self.sys_docker.network.audio
+        )
