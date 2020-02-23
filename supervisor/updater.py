@@ -73,6 +73,11 @@ class Updater(JsonConfig, CoreSysAttributes):
         return self._data.get(ATTR_DNS)
 
     @property
+    def version_audio(self) -> Optional[str]:
+        """Return latest version of Audio."""
+        return self._data.get(ATTR_AUDIO)
+
+    @property
     def channel(self) -> UpdateChannels:
         """Return upstream channel of Supervisor instance."""
         return self._data[ATTR_CHANNEL]

@@ -61,9 +61,7 @@ function build_supervisor() {
     docker run --rm --privileged \
         -v /run/docker.sock:/run/docker.sock -v "$(pwd):/data" \
         homeassistant/amd64-builder:dev \
-            --supervisor 3.7-alpine3.11 --version dev \
-            -t /data --test --amd64 \
-            --no-cache --docker-hub homeassistant
+            --generic dev -t /data --test --amd64 --no-cache
 }
 
 
@@ -79,7 +77,7 @@ function cleanup_lastboot() {
 
 function cleanup_docker() {
     echo "Cleaning up stopped containers..."
-    docker rm $(docker ps -a -q)
+    docker rm $(docker ps -a -q) || true
 }
 
 

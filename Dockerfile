@@ -24,15 +24,11 @@ RUN export MAKEFLAGS="-j$(nproc)" \
         -r ./requirements.txt \
     && rm -f requirements.txt
 
-# Install Home Assistant supervisor
+# Install Home Assistant Supervisor
 COPY . supervisor
 RUN pip3 install --no-cache-dir -e ./supervisor \
     && python3 -m compileall ./supervisor/supervisor
 
 
-# Initialize udev daemon, handle CMD
-COPY entry.sh /bin/
-ENTRYPOINT ["/bin/entry.sh"]
-
 WORKDIR /
-CMD [ "python3", "-m", "supervisor" ]
+COPY rootfs /
