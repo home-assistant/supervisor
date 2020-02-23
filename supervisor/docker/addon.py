@@ -293,12 +293,12 @@ class DockerAddon(DockerInterface):
         # Docker API support
         if not self.addon.protected and self.addon.access_docker_api:
             volumes.update(
-                {"/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "ro"}}
+                {"/run/docker.sock": {"bind": "/run/docker.sock", "mode": "ro"}}
             )
 
         # Host D-Bus system
         if self.addon.host_dbus:
-            volumes.update({"/var/run/dbus": {"bind": "/var/run/dbus", "mode": "rw"}})
+            volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "rw"}})
 
         # Configuration Audio
         if self.addon.with_audio:
