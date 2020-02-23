@@ -4,7 +4,7 @@ from contextlib import suppress
 import logging
 from pathlib import Path
 from string import Template
-from typing import Awaitable, List, Optional
+from typing import Awaitable, Optional
 
 from .const import ATTR_VERSION, FILE_HASSIO_AUDIO
 from .coresys import CoreSys, CoreSysAttributes

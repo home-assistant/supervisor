@@ -170,7 +170,7 @@ class CoreSys:
         """Return Audio object."""
         return self._audio
 
-    @auth.setter
+    @audio.setter
     def audio(self, value: Audio):
         """Set a Audio object."""
         if self._audio:
