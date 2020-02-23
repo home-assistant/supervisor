@@ -26,6 +26,7 @@ FILE_HASSIO_SERVICES = Path(SUPERVISOR_DATA, "services.json")
 FILE_HASSIO_DISCOVERY = Path(SUPERVISOR_DATA, "discovery.json")
 FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
 FILE_HASSIO_DNS = Path(SUPERVISOR_DATA, "dns.json")
+FILE_HASSIO_AUDIO = Path(SUPERVISOR_DATA, "audio.json")
 
 SOCKET_DOCKER = Path("/var/run/docker.sock")
 

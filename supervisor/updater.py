@@ -9,12 +9,12 @@ from typing import Optional
 import aiohttp
 
 from .const import (
+    ATTR_AUDIO,
     ATTR_CHANNEL,
+    ATTR_CLI,
     ATTR_DNS,
     ATTR_HASSIO,
     ATTR_HASSOS,
-    ATTR_CLI,
-    ATTR_AUDIO,
     ATTR_HOMEASSISTANT,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,

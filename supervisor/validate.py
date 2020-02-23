@@ -1,22 +1,22 @@
 """Validate functions."""
+import ipaddress
 import re
 import uuid
-import ipaddress
 
 import voluptuous as vol
 
 from .const import (
     ATTR_ACCESS_TOKEN,
     ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_AUDIO,
     ATTR_BOOT,
     ATTR_CHANNEL,
+    ATTR_CLI,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DNS,
     ATTR_HASSIO,
     ATTR_HASSOS,
-    ATTR_CLI,
-    ATTR_AUDIO,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
@@ -36,7 +36,6 @@ from .const import (
     UpdateChannels,
 )
 from .utils.validate import validate_timezone
-
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 
@@ -175,3 +174,12 @@ SCHEMA_DNS_CONFIG = vol.Schema(
     },
     extra=vol.REMOVE_EXTRA,
 )
+
+
+SCHEMA_AUDIO_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+    },
+    extra=vol.REMOVE_EXTRA,
+)
+§
