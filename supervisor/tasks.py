@@ -11,8 +11,9 @@ HASS_WATCHDOG_API = "HASS_WATCHDOG_API"
 
 RUN_UPDATE_SUPERVISOR = 29100
 RUN_UPDATE_ADDONS = 57600
-RUN_UPDATE_HASSOSCLI = 28100
+RUN_UPDATE_CLI = 28100
 RUN_UPDATE_DNS = 30100
+RUN_UPDATE_AUDIO = 30200
 
 RUN_RELOAD_ADDONS = 10800
 RUN_RELOAD_SNAPSHOTS = 72000
@@ -24,6 +25,7 @@ RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
 RUN_WATCHDOG_HOMEASSISTANT_API = 300
 
 RUN_WATCHDOG_DNS_DOCKER = 20
+RUN_WATCHDOG_AUDIO_DOCKER = 20
 
 
 class Tasks(CoreSysAttributes):
@@ -47,12 +49,13 @@ class Tasks(CoreSysAttributes):
             )
         )
         self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._update_hassos_cli, RUN_UPDATE_HASSOSCLI
-            )
+            self.sys_scheduler.register_task(self._update_cli, RUN_UPDATE_CLI)
         )
         self.jobs.add(
             self.sys_scheduler.register_task(self._update_dns, RUN_UPDATE_DNS)
+        )
+        self.jobs.add(
+            self.sys_scheduler.register_task(self._update_audio, RUN_UPDATE_AUDIO)
         )
 
         # Reload
@@ -92,6 +95,11 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(
             self.sys_scheduler.register_task(
                 self._watchdog_dns_docker, RUN_WATCHDOG_DNS_DOCKER
+            )
+        )
+        self.jobs.add(
+            self.sys_scheduler.register_task(
+                self._watchdog_audio_docker, RUN_WATCHDOG_AUDIO_DOCKER
             )
         )
 
@@ -193,17 +201,12 @@ class Tasks(CoreSysAttributes):
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
 
-    async def _update_hassos_cli(self):
-        """Check and run update of HassOS CLI."""
+    async def _update_cli(self):
+        """Check and run update of CLI."""
         if not self.sys_hassos.need_cli_update:
             return
 
-        # don't perform an update on dev channel
-        if self.sys_dev:
-            _LOGGER.warning("Ignore HassOS CLI update on dev channel!")
-            return
-
-        _LOGGER.info("Found new HassOS CLI version")
+        _LOGGER.info("Found new CLI version")
         await self.sys_hassos.update_cli()
 
     async def _update_dns(self):
@@ -211,17 +214,20 @@ class Tasks(CoreSysAttributes):
         if not self.sys_dns.need_update:
             return
 
-        # don't perform an update on dev channel
-        if self.sys_dev:
-            _LOGGER.warning("Ignore CoreDNS update on dev channel!")
-            return
-
         _LOGGER.info("Found new CoreDNS plugin version")
         await self.sys_dns.update()
 
+    async def _update_audio(self):
+        """Check and run update of PulseAudio plugin."""
+        if not self.sys_audio.need_update:
+            return
+
+        _LOGGER.info("Found new PulseAudio plugin version")
+        await self.sys_audio.update()
+
     async def _watchdog_dns_docker(self):
         """Check running state of Docker and start if they is close."""
-        # if Home Assistant is active
+        # if CoreDNS is active
         if await self.sys_dns.is_running():
             return
         _LOGGER.warning("Watchdog found a problem with CoreDNS plugin!")
@@ -234,3 +240,15 @@ class Tasks(CoreSysAttributes):
             await self.sys_dns.start()
         except CoreDNSError:
             _LOGGER.error("Watchdog CoreDNS reanimation fails!")
+
+    async def _watchdog_audio_docker(self):
+        """Check running state of Docker and start if they is close."""
+        # if PulseAudio plugin is active
+        if await self.sys_dns.is_running():
+            return
+        _LOGGER.warning("Watchdog found a problem with PulseAudio plugin!")
+
+        try:
+            await self.sys_dns.start()
+        except CoreDNSError:
+            _LOGGER.error("Watchdog PulseAudio reanimation fails!")
