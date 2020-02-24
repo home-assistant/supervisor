@@ -309,12 +309,8 @@ class DockerAddon(DockerInterface):
                         "mode": "ro",
                     },
                     str(self.sys_audio.path_extern_data.joinpath("pulse.sock")): {
-                        "bind": "/run/pulse/audio.sock",
+                        "bind": "/run/pulse.sock",
                         "mode": "rw",
-                    },
-                    str(self.sys_audio.path_extern_data.joinpath("cookie_unix")): {
-                        "bind": "/run/pulse/auth_cookie",
-                        "mode": "ro",
                     },
                 }
             )
