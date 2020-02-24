@@ -19,14 +19,14 @@
 
 ; default-sink =
 ; default-source =
-default-server = $audio_address
+default-server = unix://run/pulse/audio.sock
 ; default-dbus-server =
 
 autospawn = no
 ; daemon-binary = /usr/bin/pulseaudio
 ; extra-arguments = --log-target=syslog
 
-cookie-file = /run/pulse_cookie
+cookie-file = /run/pulse/auth_cookie
 
 ; enable-shm = yes
 ; shm-size-bytes = 0 # setting this 0 will use the system-default, usually 64 MiB

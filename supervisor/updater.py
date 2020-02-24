@@ -87,7 +87,7 @@ class Updater(JsonConfig, CoreSysAttributes):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
 
-    @AsyncThrottle(timedelta(seconds=60))
+    @AsyncThrottle(timedelta(seconds=30))
     async def fetch_data(self):
         """Fetch current versions from Github.
 

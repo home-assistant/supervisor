@@ -29,9 +29,9 @@ class Audio(JsonConfig, CoreSysAttributes):
         self.instance: DockerAudio = DockerAudio(coresys)
 
     @property
-    def path_extern_cookie(self) -> Path:
+    def path_extern_data(self) -> Path:
         """Return path of pulse cookie file."""
-        return self.sys_config.path_extern_audio.joinpath("cookie")
+        return self.sys_config.path_extern_audio.joinpath("external")
 
     @property
     def version(self) -> Optional[str]:
