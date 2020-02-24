@@ -37,11 +37,11 @@ class APIHardware(CoreSysAttributes):
 
     @api_process
     async def audio(self, request: web.Request) -> Dict[str, Any]:
-        """Show ALSA audio devices."""
+        """Show pulse audio profiles."""
         return {
             ATTR_AUDIO: {
-                ATTR_INPUT: self.sys_host.alsa.input_devices,
-                ATTR_OUTPUT: self.sys_host.alsa.output_devices,
+                ATTR_INPUT: [],
+                ATTR_OUTPUT: [],
             }
         }
 

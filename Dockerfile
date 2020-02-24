@@ -3,7 +3,6 @@ FROM $BUILD_FROM
 
 # Install base
 RUN apk add --no-cache \
-    alsa-lib \
     openssl \
     libffi \
     musl \

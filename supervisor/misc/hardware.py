@@ -199,7 +199,7 @@ class Hardware:
 
     async def udev_trigger(self) -> None:
         """Trigger a udev reload."""
-        proc = await asyncio.create_subprocess_exec("udevadm", "trigger")
+        proc = await asyncio.create_subprocess_shell("udevadm trigger && udevadm settle")
 
         await proc.wait()
         if proc.returncode == 0:

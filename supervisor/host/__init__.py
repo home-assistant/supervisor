@@ -2,7 +2,6 @@
 from contextlib import suppress
 import logging
 
-from .alsa import AlsaAudio
 from .apparmor import AppArmorControl
 from .control import SystemControl
 from .info import InfoCenter
@@ -28,17 +27,11 @@ class HostManager(CoreSysAttributes):
         """Initialize Host manager."""
         self.coresys: CoreSys = coresys
 
-        self._alsa: AlsaAudio = AlsaAudio(coresys)
         self._apparmor: AppArmorControl = AppArmorControl(coresys)
         self._control: SystemControl = SystemControl(coresys)
         self._info: InfoCenter = InfoCenter(coresys)
         self._services: ServiceManager = ServiceManager(coresys)
         self._network: NetworkManager = NetworkManager(coresys)
-
-    @property
-    def alsa(self) -> AlsaAudio:
-        """Return host ALSA handler."""
-        return self._alsa
 
     @property
     def apparmor(self) -> AppArmorControl:
