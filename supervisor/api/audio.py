@@ -76,8 +76,3 @@ class APIAudio(CoreSysAttributes):
     def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart Audio plugin."""
         return asyncio.shield(self.sys_audio.restart())
-
-    @api_process
-    def reset(self, request: web.Request) -> Awaitable[None]:
-        """Reset Audio plugin."""
-        return asyncio.shield(self.sys_audio.reset())

@@ -875,8 +875,6 @@ return:
 
 - POST `/audio/restart`
 
-- POST `/audio/reset`
-
 - GET `/audio/logs`
 
 - GET `/audio/stats`
