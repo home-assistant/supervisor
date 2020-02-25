@@ -65,6 +65,17 @@ class CoreDNSUpdateError(CoreDNSError):
     """Error on update of a CoreDNS."""
 
 
+# DNS
+
+
+class AudioError(HassioError):
+    """PulseAudio exception."""
+
+
+class AudioUpdateError(AudioError):
+    """Error on update of a Audio."""
+
+
 # Addons
 
 

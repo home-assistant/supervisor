@@ -1,21 +1,22 @@
 """Validate functions."""
+import ipaddress
 import re
 import uuid
-import ipaddress
 
 import voluptuous as vol
 
 from .const import (
     ATTR_ACCESS_TOKEN,
     ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_AUDIO,
     ATTR_BOOT,
     ATTR_CHANNEL,
+    ATTR_CLI,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DNS,
     ATTR_HASSIO,
     ATTR_HASSOS,
-    ATTR_HASSOS_CLI,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
@@ -36,7 +37,6 @@ from .const import (
 )
 from .utils.validate import validate_timezone
 
-
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 
 # pylint: disable=no-value-for-parameter
@@ -44,7 +44,6 @@ RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 network_port = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 wait_boot = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 docker_image = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
-alsa_device = vol.Maybe(vol.Match(r"\d+,\d+"))
 uuid_match = vol.Match(r"^[0-9a-f]{32}$")
 sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
@@ -125,8 +124,9 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
         vol.Optional(ATTR_HASSIO): vol.Coerce(str),
         vol.Optional(ATTR_HASSOS): vol.Coerce(str),
-        vol.Optional(ATTR_HASSOS_CLI): vol.Coerce(str),
+        vol.Optional(ATTR_CLI): vol.Coerce(str),
         vol.Optional(ATTR_DNS): vol.Coerce(str),
+        vol.Optional(ATTR_AUDIO): vol.Coerce(str),
     },
     extra=vol.REMOVE_EXTRA,
 )
@@ -172,4 +172,9 @@ SCHEMA_DNS_CONFIG = vol.Schema(
         vol.Optional(ATTR_SERVERS, default=list): dns_server_list,
     },
     extra=vol.REMOVE_EXTRA,
+)
+
+
+SCHEMA_AUDIO_CONFIG = vol.Schema(
+    {vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str))}, extra=vol.REMOVE_EXTRA,
 )

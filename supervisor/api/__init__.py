@@ -21,6 +21,7 @@ from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots
 from .supervisor import APISupervisor
+from .audio import APIAudio
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -311,6 +312,21 @@ class RestAPI(CoreSysAttributes):
                 web.post("/dns/options", api_dns.options),
                 web.post("/dns/restart", api_dns.restart),
                 web.post("/dns/reset", api_dns.reset),
+            ]
+        )
+
+    def _register_audio(self) -> None:
+        """Register Audio functions."""
+        api_audio = APIAudio()
+        api_audio.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/audio/info", api_audio.info),
+                web.get("/audio/stats", api_audio.stats),
+                web.get("/audio/logs", api_audio.logs),
+                web.post("/audio/update", api_audio.update),
+                web.post("/audio/restart", api_audio.restart),
             ]
         )
 

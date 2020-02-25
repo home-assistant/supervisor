@@ -853,6 +853,45 @@ return:
 }
 ```
 
+### Audio
+
+- GET `/audio/info`
+
+```json
+{
+  "host": "ip-address",
+  "version": "1",
+  "latest_version": "2"
+}
+```
+
+- POST `/audio/update`
+
+```json
+{
+  "version": "VERSION"
+}
+```
+
+- POST `/audio/restart`
+
+- GET `/audio/logs`
+
+- GET `/audio/stats`
+
+```json
+{
+  "cpu_percent": 0.0,
+  "memory_usage": 283123,
+  "memory_limit": 329392,
+  "memory_percent": 1.4,
+  "network_tx": 0,
+  "network_rx": 0,
+  "blk_read": 0,
+  "blk_write": 0
+}
+```
+
 ### Auth / SSO API
 
 You can use the user system on homeassistant. We handle this auth system on

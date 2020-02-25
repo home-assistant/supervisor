@@ -33,6 +33,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         containerd.io \
     && rm -rf /var/lib/apt/lists/*
 
+# Install tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        jq \
+        dbus \
+        network-manager \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies from requirements.txt if it exists
 COPY requirements.txt requirements_tests.txt ./
 RUN pip3 install -r requirements.txt -r requirements_tests.txt \

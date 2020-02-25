@@ -10,8 +10,6 @@ communicates with the Supervisor. The Supervisor provides an API to manage the
 installation. This includes changing network settings or installing
 and updating software.
 
-![](misc/hassio.png?raw=true)
-
 ## Installation
 
 Installation instructions can be found at <https://home-assistant.io/hassio>.

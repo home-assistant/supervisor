@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .addons import AddonManager
     from .api import RestAPI
     from .arch import CpuArch
+    from .audio import Audio
     from .auth import Auth
     from .core import Core
     from .dbus import DBusManager
@@ -57,6 +58,7 @@ class CoreSys:
         # Internal objects pointers
         self._core: Optional[Core] = None
         self._arch: Optional[CpuArch] = None
+        self._audio: Optional[Audio] = None
         self._auth: Optional[Auth] = None
         self._dns: Optional[CoreDNS] = None
         self._homeassistant: Optional[HomeAssistant] = None
@@ -162,6 +164,18 @@ class CoreSys:
         if self._auth:
             raise RuntimeError("Auth already set!")
         self._auth = value
+
+    @property
+    def audio(self) -> Audio:
+        """Return Audio object."""
+        return self._audio
+
+    @audio.setter
+    def audio(self, value: Audio):
+        """Set a Audio object."""
+        if self._audio:
+            raise RuntimeError("Audio already set!")
+        self._audio = value
 
     @property
     def homeassistant(self) -> HomeAssistant:
@@ -430,6 +444,11 @@ class CoreSysAttributes:
     def sys_auth(self) -> Auth:
         """Return Auth object."""
         return self.coresys.auth
+
+    @property
+    def sys_audio(self) -> Audio:
+        """Return Audio object."""
+        return self.coresys.audio
 
     @property
     def sys_homeassistant(self) -> HomeAssistant:

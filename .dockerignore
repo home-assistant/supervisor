@@ -14,10 +14,10 @@
 # virtualenv
 venv/
 
-# HA
-home-assistant-polymer/*
-misc/*
-script/*
+# Data
+home-assistant-polymer/
+script/
+tests/
 
 # Test ENV
 data/

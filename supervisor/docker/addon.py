@@ -35,7 +35,6 @@ if TYPE_CHECKING:
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-AUDIO_DEVICE = "/dev/snd:/dev/snd:rwm"
 NO_ADDDRESS = ip_address("0.0.0.0")
 
 
@@ -130,10 +129,6 @@ class DockerAddon(DockerInterface):
         # Extend add-on config
         if self.addon.devices:
             devices.extend(self.addon.devices)
-
-        # Use audio devices
-        if self.addon.with_audio and self.sys_hardware.support_audio:
-            devices.append(AUDIO_DEVICE)
 
         # Auto mapping UART devices
         if self.addon.auto_uart:
@@ -298,21 +293,25 @@ class DockerAddon(DockerInterface):
         # Docker API support
         if not self.addon.protected and self.addon.access_docker_api:
             volumes.update(
-                {"/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "ro"}}
+                {"/run/docker.sock": {"bind": "/run/docker.sock", "mode": "ro"}}
             )
 
         # Host D-Bus system
         if self.addon.host_dbus:
-            volumes.update({"/var/run/dbus": {"bind": "/var/run/dbus", "mode": "rw"}})
+            volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "rw"}})
 
-        # ALSA configuration
+        # Configuration Audio
         if self.addon.with_audio:
             volumes.update(
                 {
-                    str(self.addon.path_extern_asound): {
-                        "bind": "/etc/asound.conf",
+                    str(self.addon.path_extern_pulse): {
+                        "bind": "/etc/pulse/client.conf",
                         "mode": "ro",
-                    }
+                    },
+                    str(self.sys_audio.path_extern_data.joinpath("pulse.sock")): {
+                        "bind": "/run/pulse.sock",
+                        "mode": "rw",
+                    },
                 }
             )
 

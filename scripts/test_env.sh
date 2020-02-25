@@ -61,9 +61,7 @@ function build_supervisor() {
     docker run --rm --privileged \
         -v /run/docker.sock:/run/docker.sock -v "$(pwd):/data" \
         homeassistant/amd64-builder:dev \
-            --supervisor 3.7-alpine3.11 --version dev \
-            -t /data --test --amd64 \
-            --no-cache --docker-hub homeassistant
+            --generic dev -t /data --test --amd64 --no-cache
 }
 
 
@@ -79,7 +77,7 @@ function cleanup_lastboot() {
 
 function cleanup_docker() {
     echo "Cleaning up stopped containers..."
-    docker rm $(docker ps -a -q)
+    docker rm $(docker ps -a -q) || true
 }
 
 
@@ -108,6 +106,22 @@ function setup_test_env() {
 
 }
 
+
+function init_dbus() {
+    if pgrep dbus-daemon; then
+        echo "Dbus is running"
+        return 0
+    fi
+
+    echo "Startup dbus"
+    mkdir -p /var/lib/dbus
+    cp -f /etc/machine-id /var/lib/dbus/machine-id
+
+    # run
+    mkdir -p /run/dbus
+    dbus-daemon --system --print-address
+}
+
 echo "Start Test-Env"
 
 start_docker
@@ -117,5 +131,6 @@ build_supervisor
 install_cli
 cleanup_lastboot
 cleanup_docker
+init_dbus
 setup_test_env
 stop_docker

@@ -1,9 +1,11 @@
 """Tools file for Supervisor."""
+import asyncio
 from datetime import datetime
 from ipaddress import IPv4Address
 import logging
 import re
 import socket
+from typing import Optional
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
@@ -41,18 +43,23 @@ class AsyncThrottle:
         """Initialize async throttle."""
         self.throttle_period = delta
         self.time_of_last_call = datetime.min
+        self.synchronize: Optional[asyncio.Lock] = None
 
     def __call__(self, method):
         """Throttle function"""
 
         async def wrapper(*args, **kwargs):
             """Throttle function wrapper"""
-            now = datetime.now()
-            time_since_last_call = now - self.time_of_last_call
+            if not self.synchronize:
+                self.synchronize = asyncio.Lock()
 
-            if time_since_last_call > self.throttle_period:
-                self.time_of_last_call = now
-                return await method(*args, **kwargs)
+            async with self.synchronize:
+                now = datetime.now()
+                time_since_last_call = now - self.time_of_last_call
+
+                if time_since_last_call > self.throttle_period:
+                    self.time_of_last_call = now
+                    return await method(*args, **kwargs)
 
         return wrapper
 

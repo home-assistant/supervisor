@@ -96,7 +96,6 @@ from ..discovery.validate import valid_discovery_service
 from ..validate import (
     DOCKER_PORTS,
     DOCKER_PORTS_DESCRIPTION,
-    alsa_device,
     network_port,
     token,
     uuid_match,
@@ -296,8 +295,8 @@ SCHEMA_ADDON_USER = vol.Schema(
         vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
         vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
         vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
-        vol.Optional(ATTR_AUDIO_OUTPUT): alsa_device,
-        vol.Optional(ATTR_AUDIO_INPUT): alsa_device,
+        vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_PROTECTED, default=True): vol.Boolean(),
         vol.Optional(ATTR_INGRESS_PANEL, default=False): vol.Boolean(),
     },

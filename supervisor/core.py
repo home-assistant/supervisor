@@ -40,8 +40,8 @@ class Core(CoreSysAttributes):
         # Load Host
         await self.sys_host.load()
 
-        # Load CoreDNS
-        await self.sys_dns.load()
+        # Load Plugins container
+        await asyncio.wait([self.sys_dns.load(), self.sys_audio.load()])
 
         # Load Home Assistant
         await self.sys_homeassistant.load()
