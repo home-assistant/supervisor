@@ -38,7 +38,7 @@ class APIHardware(CoreSysAttributes):
     @api_process
     async def audio(self, request: web.Request) -> Dict[str, Any]:
         """Show pulse audio profiles."""
-        return {ATTR_AUDIO: {ATTR_INPUT: [], ATTR_OUTPUT: [],}}
+        return {ATTR_AUDIO: {ATTR_INPUT: [], ATTR_OUTPUT: []}}
 
     @api_process
     def trigger(self, request: web.Request) -> None:
