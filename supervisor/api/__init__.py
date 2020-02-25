@@ -327,6 +327,9 @@ class RestAPI(CoreSysAttributes):
                 web.get("/audio/logs", api_audio.logs),
                 web.post("/audio/update", api_audio.update),
                 web.post("/audio/restart", api_audio.restart),
+                web.post("/audio/reload", api_audio.reload),
+                web.post("/audio/volume/{source}", api_audio.set_volume),
+                web.post("/audio/default/{source}", api_audio.set_default),
             ]
         )
 

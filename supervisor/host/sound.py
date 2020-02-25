@@ -7,7 +7,7 @@ import attr
 from pulsectl import Pulse, PulseError
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exception import PulseAudioError
+from ..exceptions import PulseAudioError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

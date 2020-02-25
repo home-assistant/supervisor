@@ -231,6 +231,8 @@ ATTR_DOCUMENTATION = "documentation"
 ATTR_ADVANCED = "advanced"
 ATTR_STAGE = "stage"
 ATTR_CLI = "cli"
+ATTR_DEFAULT = "default"
+ATTR_VOLUME = "volume"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
