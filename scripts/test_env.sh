@@ -106,6 +106,22 @@ function setup_test_env() {
 
 }
 
+
+function init_dbus() {
+    if pgrep dbus-daemon; then
+        echo "Dbus is running"
+        return 0
+    fi
+
+    echo "Startup dbus"
+    mkdir -p /var/lib/dbus
+    cp -f /etc/machine-id /var/lib/dbus/machine-id
+
+    # run
+    mkdir -p /run/dbus
+    dbus-daemon --system --print-address
+}
+
 echo "Start Test-Env"
 
 start_docker
@@ -115,5 +131,6 @@ build_supervisor
 install_cli
 cleanup_lastboot
 cleanup_docker
+init_dbus
 setup_test_env
 stop_docker

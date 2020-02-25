@@ -36,6 +36,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
         jq \
+        dbus \
+        network-manager \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies from requirements.txt if it exists
