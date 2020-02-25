@@ -244,11 +244,11 @@ class Tasks(CoreSysAttributes):
     async def _watchdog_audio_docker(self):
         """Check running state of Docker and start if they is close."""
         # if PulseAudio plugin is active
-        if await self.sys_dns.is_running():
+        if await self.sys_audio.is_running():
             return
         _LOGGER.warning("Watchdog found a problem with PulseAudio plugin!")
 
         try:
-            await self.sys_dns.start()
+            await self.sys_audio.start()
         except CoreDNSError:
             _LOGGER.error("Watchdog PulseAudio reanimation fails!")

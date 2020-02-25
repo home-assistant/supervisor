@@ -53,8 +53,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
                     "mode": "rw",
                 },
                 "/dev/snd": {"bind": "/dev/snd", "mode": "rw"},
-                "/run/dbus": {"bind": "/run/dbus", "mode": "rw"},
-                "/etc/group": {"bind": "/etc/group_host", "mode": "ro"},
+                "/etc/group": {"bind": "/host/group", "mode": "ro"},
             },
         )
 

@@ -119,7 +119,6 @@ function init_dbus() {
 
     # run
     mkdir -p /run/dbus
-    cp scripts/dbus-system.conf /usr/share/dbus-1/system.conf
     dbus-daemon --system --print-address
 }
 
