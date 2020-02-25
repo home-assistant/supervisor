@@ -3,14 +3,15 @@ FROM $BUILD_FROM
 
 # Install base
 RUN apk add --no-cache \
-    openssl \
-    libffi \
-    musl \
-    git \
-    socat \
-    glib \
     eudev \
-    eudev-libs
+    eudev-libs \
+    git \
+    glib \
+    libffi \
+    libpulse \
+    musl \
+    openssl \
+    socat
 
 ARG BUILD_ARCH
 WORKDIR /usr/src

@@ -95,7 +95,6 @@ class Updater(JsonConfig, CoreSysAttributes):
         """
         url = URL_HASSIO_VERSION.format(channel=self.channel)
         machine = self.sys_machine or "default"
-        board = self.sys_hassos.board
 
         try:
             _LOGGER.info("Fetch update data from %s", url)
@@ -123,8 +122,8 @@ class Updater(JsonConfig, CoreSysAttributes):
             self._data[ATTR_HOMEASSISTANT] = data["homeassistant"][machine]
 
             # Update HassOS version
-            if self.sys_hassos.available and board:
-                self._data[ATTR_HASSOS] = data["hassos"][board]
+            if self.sys_hassos.board:
+                self._data[ATTR_HASSOS] = data["hassos"][self.sys_hassos.board]
 
             # Update Home Assistant services
             self._data[ATTR_CLI] = data["cli"]
