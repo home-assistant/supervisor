@@ -4,7 +4,7 @@ import logging
 from typing import List
 
 import attr
-from pulsectl import Pulse, PulseError
+from pulsectl import Pulse, PulseError, PulseIndexError, PulseOperationFailed
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import PulseAudioError
@@ -62,6 +62,9 @@ class SoundControl(CoreSysAttributes):
                     # Get sink and set it as default
                     sink = pulse.get_sink_by_name(name)
                     pulse.sink_default_set(sink)
+        except PulseIndexError:
+            _LOGGER.error("Can't find profile %s", name)
+            raise PulseAudioError() from None
         except PulseError as err:
             _LOGGER.error("Can't set %s as default: %s", name, err)
             raise PulseAudioError() from None
@@ -81,6 +84,9 @@ class SoundControl(CoreSysAttributes):
                     source = pulse.get_sink_by_name(name)
 
                 pulse.volume_set_all_chans(source, volume)
+        except PulseIndexError:
+            _LOGGER.error("Can't find profile %s", name)
+            raise PulseAudioError() from None
         except PulseError as err:
             _LOGGER.error("Can't set %s volume: %s", name, err)
             raise PulseAudioError() from None
@@ -118,5 +124,8 @@ class SoundControl(CoreSysAttributes):
                             source.name == server.default_source_name,
                         )
                     )
+        except PulseOperationFailed as err:
+            _LOGGER.error("Error while processing pulse update: %s", err)
+            raise PulseAudioError() from None
         except PulseError as err:
-            _LOGGER.warning("Can't update PulseAudio data: %s", err)
+            _LOGGER.debug("Can't update PulseAudio data: %s", err)

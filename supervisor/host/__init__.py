@@ -10,7 +10,7 @@ from ..const import (
     FEATURES_SHUTDOWN,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError
+from ..exceptions import HassioError, PulseAudioError
 from .apparmor import AppArmorControl
 from .control import SystemControl
 from .info import InfoCenter
@@ -91,6 +91,9 @@ class HostManager(CoreSysAttributes):
 
         if self.sys_dbus.nmi_dns.is_connected:
             await self.network.update()
+
+        with suppress(PulseAudioError):
+            await self.sound.update()
 
     async def load(self):
         """Load host information."""
