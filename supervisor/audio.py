@@ -3,8 +3,9 @@ import asyncio
 from contextlib import suppress
 import logging
 from pathlib import Path
-from string import Template
 from typing import Awaitable, Optional
+
+import jinja2
 
 from .const import ATTR_VERSION, FILE_HASSIO_AUDIO
 from .coresys import CoreSys, CoreSysAttributes
@@ -27,6 +28,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_AUDIO, SCHEMA_AUDIO_CONFIG)
         self.coresys: CoreSys = coresys
         self.instance: DockerAudio = DockerAudio(coresys)
+        self.client_template: Optional[jinja2.Template] = None
 
     @property
     def path_extern_data(self) -> Path:
@@ -60,7 +62,6 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Load Audio setup."""
-
         # Check Audio state
         try:
             # Evaluate Version if we lost this information
@@ -71,19 +72,25 @@ class Audio(JsonConfig, CoreSysAttributes):
         except DockerAPIError:
             _LOGGER.info("No Audio plugin Docker image %s found.", self.instance.image)
 
-            # Install CoreDNS
+            # Install PulseAudio
             with suppress(AudioError):
                 await self.install()
         else:
             self.version = self.instance.version
             self.save_data()
 
-        # Run CoreDNS
+        # Run PulseAudio
         with suppress(AudioError):
             if await self.instance.is_running():
                 await self.restart()
             else:
                 await self.start()
+
+        # Initialize Client Template
+        try:
+            self.client_template = jinja2.Template(PULSE_CLIENT_TMPL.read_text())
+        except OSError as err:
+            _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
 
     async def install(self) -> None:
         """Install Audio."""
@@ -184,16 +191,12 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     def pulse_client(self, input_profile=None, output_profile=None) -> str:
         """Generate an /etc/pulse/client.conf data."""
-
-        # Read Template
-        try:
-            config_data = PULSE_CLIENT_TMPL.read_text()
-        except OSError as err:
-            _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
+        if self.client_template is None:
             return ""
 
         # Process Template
-        config_template = Template(config_data)
-        return config_template.safe_substitute(
-            audio_address=self.sys_docker.network.audio
+        return self.client_template.render(
+            audio_address=self.sys_docker.network.audio,
+            default_source=input_profile,
+            default_sink=output_profile,
         )
