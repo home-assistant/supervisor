@@ -107,7 +107,7 @@ class SoundControl(CoreSysAttributes):
                     self._output.append(
                         AudioProfile(
                             sink.name,
-                            sink.desc,
+                            sink.description,
                             sink.volume.value_flat,
                             sink.name == server.default_sink_name,
                         )
@@ -119,7 +119,7 @@ class SoundControl(CoreSysAttributes):
                     self._input.append(
                         AudioProfile(
                             source.name,
-                            source.desc,
+                            source.description,
                             source.volume.value_flat,
                             source.name == server.default_source_name,
                         )

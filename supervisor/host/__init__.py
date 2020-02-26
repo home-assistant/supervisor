@@ -33,7 +33,7 @@ class HostManager(CoreSysAttributes):
         self._info: InfoCenter = InfoCenter(coresys)
         self._services: ServiceManager = ServiceManager(coresys)
         self._network: NetworkManager = NetworkManager(coresys)
-        self._sound: SoundControl(coresys)
+        self._sound: SoundControl = SoundControl(coresys)
 
     @property
     def apparmor(self) -> AppArmorControl:
