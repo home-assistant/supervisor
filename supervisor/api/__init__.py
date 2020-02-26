@@ -62,6 +62,7 @@ class RestAPI(CoreSysAttributes):
         self._register_info()
         self._register_auth()
         self._register_dns()
+        self._register_audio()
 
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
@@ -327,6 +328,9 @@ class RestAPI(CoreSysAttributes):
                 web.get("/audio/logs", api_audio.logs),
                 web.post("/audio/update", api_audio.update),
                 web.post("/audio/restart", api_audio.restart),
+                web.post("/audio/reload", api_audio.reload),
+                web.post("/audio/volume/{source}", api_audio.set_volume),
+                web.post("/audio/default/{source}", api_audio.set_default),
             ]
         )
 

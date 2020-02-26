@@ -38,6 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         jq \
         dbus \
         network-manager \
+        libpulse0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies from requirements.txt if it exists

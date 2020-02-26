@@ -210,3 +210,10 @@ class DockerAPIError(HassioError):
 
 class HardwareNotSupportedError(HassioNotSupportedError):
     """Raise if hardware function is not supported."""
+
+
+# Pulse Audio
+
+
+class PulseAudioError(HassioError):
+    """Raise if an sound error is happening."""

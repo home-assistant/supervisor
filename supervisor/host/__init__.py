@@ -2,20 +2,21 @@
 from contextlib import suppress
 import logging
 
+from ..const import (
+    FEATURES_HASSOS,
+    FEATURES_HOSTNAME,
+    FEATURES_REBOOT,
+    FEATURES_SERVICES,
+    FEATURES_SHUTDOWN,
+)
+from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import HassioError, PulseAudioError
 from .apparmor import AppArmorControl
 from .control import SystemControl
 from .info import InfoCenter
-from .services import ServiceManager
 from .network import NetworkManager
-from ..const import (
-    FEATURES_REBOOT,
-    FEATURES_SHUTDOWN,
-    FEATURES_HOSTNAME,
-    FEATURES_SERVICES,
-    FEATURES_HASSOS,
-)
-from ..coresys import CoreSysAttributes, CoreSys
-from ..exceptions import HassioError
+from .services import ServiceManager
+from .sound import SoundControl
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class HostManager(CoreSysAttributes):
         self._info: InfoCenter = InfoCenter(coresys)
         self._services: ServiceManager = ServiceManager(coresys)
         self._network: NetworkManager = NetworkManager(coresys)
+        self._sound: SoundControl = SoundControl(coresys)
 
     @property
     def apparmor(self) -> AppArmorControl:
@@ -59,6 +61,11 @@ class HostManager(CoreSysAttributes):
         return self._network
 
     @property
+    def sound(self) -> SoundControl:
+        """Return host PulseAudio control."""
+        return self._sound
+
+    @property
     def supperted_features(self):
         """Return a list of supported host features."""
         features = []
@@ -84,6 +91,9 @@ class HostManager(CoreSysAttributes):
 
         if self.sys_dbus.nmi_dns.is_connected:
             await self.network.update()
+
+        with suppress(PulseAudioError):
+            await self.sound.update()
 
     async def load(self):
         """Load host information."""

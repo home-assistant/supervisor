@@ -861,7 +861,25 @@ return:
 {
   "host": "ip-address",
   "version": "1",
-  "latest_version": "2"
+  "latest_version": "2",
+  "audio": {
+    "input": [
+      {
+        "name": "...",
+        "description": "...",
+        "volume": 0.3,
+        "default": false
+      }
+    ],
+    "output": [
+      {
+        "name": "...",
+        "description": "...",
+        "volume": 0.3,
+        "default": false
+      }
+    ]
+  }
 }
 ```
 
@@ -875,7 +893,43 @@ return:
 
 - POST `/audio/restart`
 
+- POST `/audio/reload`
+
 - GET `/audio/logs`
+
+- POST `/audio/volume/input`
+
+```json
+{
+  "name": "...",
+  "volume": 0.5
+}
+```
+
+- POST `/audio/volume/output`
+
+```json
+{
+  "name": "...",
+  "volume": 0.5
+}
+```
+
+- POST `/audio/default/input`
+
+```json
+{
+  "name": "..."
+}
+```
+
+- POST `/audio/default/output`
+
+```json
+{
+  "name": "..."
+}
+```
 
 - GET `/audio/stats`
 
