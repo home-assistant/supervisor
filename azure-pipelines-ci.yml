@@ -18,8 +18,8 @@ jobs:
       vmImage: "ubuntu-latest"
     steps:
       - script: |
-          apt-get update
-          apt-get install -y libpulse0 libudev1
+          sudo apt-get update
+          sudo apt-get install -y libpulse0 libudev1
         displayName: "Install Host library"
       - task: UsePythonVersion@0
         displayName: "Use Python 3.7"
