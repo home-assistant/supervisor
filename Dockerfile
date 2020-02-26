@@ -19,7 +19,7 @@ WORKDIR /usr/src
 # Install requirements
 COPY requirements.txt .
 RUN export MAKEFLAGS="-j$(nproc)" \
-    && pip3 install --no-cache-dir --find-links \
+    && pip3 install --no-cache-dir --no-index --only-binary=:all: \
         "https://wheels.home-assistant.io/alpine-$(cut -d '.' -f 1-2 < /etc/alpine-release)/${BUILD_ARCH}/" \
         -r ./requirements.txt \
     && rm -f requirements.txt
