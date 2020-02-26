@@ -62,6 +62,7 @@ class RestAPI(CoreSysAttributes):
         self._register_info()
         self._register_auth()
         self._register_dns()
+        self._register_audio()
 
     def _register_host(self) -> None:
         """Register hostcontrol functions."""

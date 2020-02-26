@@ -62,7 +62,7 @@ class APIAudio(CoreSysAttributes):
                 ],
                 ATTR_OUTPUT: [
                     attr.asdict(profile)
-                    for profile in self.sys_host.sound.input_profiles
+                    for profile in self.sys_host.sound.output_profiles
                 ],
             },
         }
