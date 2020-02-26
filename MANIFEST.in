@@ -1,3 +1,3 @@
 include LICENSE.md
-graft hassio
+graft supervisor
 recursive-exclude * *.py[co]

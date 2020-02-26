@@ -853,6 +853,99 @@ return:
 }
 ```
 
+### Audio
+
+- GET `/audio/info`
+
+```json
+{
+  "host": "ip-address",
+  "version": "1",
+  "latest_version": "2",
+  "audio": {
+    "input": [
+      {
+        "name": "...",
+        "description": "...",
+        "volume": 0.3,
+        "default": false
+      }
+    ],
+    "output": [
+      {
+        "name": "...",
+        "description": "...",
+        "volume": 0.3,
+        "default": false
+      }
+    ]
+  }
+}
+```
+
+- POST `/audio/update`
+
+```json
+{
+  "version": "VERSION"
+}
+```
+
+- POST `/audio/restart`
+
+- POST `/audio/reload`
+
+- GET `/audio/logs`
+
+- POST `/audio/volume/input`
+
+```json
+{
+  "name": "...",
+  "volume": 0.5
+}
+```
+
+- POST `/audio/volume/output`
+
+```json
+{
+  "name": "...",
+  "volume": 0.5
+}
+```
+
+- POST `/audio/default/input`
+
+```json
+{
+  "name": "..."
+}
+```
+
+- POST `/audio/default/output`
+
+```json
+{
+  "name": "..."
+}
+```
+
+- GET `/audio/stats`
+
+```json
+{
+  "cpu_percent": 0.0,
+  "memory_usage": 283123,
+  "memory_limit": 329392,
+  "memory_percent": 1.4,
+  "network_tx": 0,
+  "network_rx": 0,
+  "blk_read": 0,
+  "blk_write": 0
+}
+```
+
 ### Auth / SSO API
 
 You can use the user system on homeassistant. We handle this auth system on

@@ -10,10 +10,8 @@ trigger:
       - "*"
 pr: none
 variables:
-  - name: basePythonTag
-    value: "3.7-alpine3.11"
   - name: versionBuilder
-    value: "6.9"
+    value: "7.0"
   - group: docker
 
 jobs:
@@ -51,6 +49,5 @@ jobs:
             -v ~/.docker:/root/.docker \
             -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
             homeassistant/amd64-builder:$(versionBuilder) \
-            --supervisor $(basePythonTag) --version $(Build.SourceBranchName) \
-            --all -t /data --docker-hub homeassistant
+            --generic $(Build.SourceBranchName) --all -t /data
         displayName: "Build Release"

@@ -3,7 +3,7 @@
 import voluptuous as vol
 import pytest
 
-from hassio.addons import validate as vd
+from supervisor.addons import validate as vd
 
 from ..common import load_json_fixture
 

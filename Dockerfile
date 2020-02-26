@@ -3,14 +3,15 @@ FROM $BUILD_FROM
 
 # Install base
 RUN apk add --no-cache \
-    openssl \
-    libffi \
-    musl \
-    git \
-    socat \
-    glib \
     eudev \
-    eudev-libs
+    eudev-libs \
+    git \
+    glib \
+    libffi \
+    libpulse \
+    musl \
+    openssl \
+    socat
 
 ARG BUILD_ARCH
 WORKDIR /usr/src
@@ -23,15 +24,11 @@ RUN export MAKEFLAGS="-j$(nproc)" \
         -r ./requirements.txt \
     && rm -f requirements.txt
 
-# Install HassIO
-COPY . hassio
-RUN pip3 install --no-cache-dir -e ./hassio \
-    && python3 -m compileall ./hassio/hassio
+# Install Home Assistant Supervisor
+COPY . supervisor
+RUN pip3 install --no-cache-dir -e ./supervisor \
+    && python3 -m compileall ./supervisor/supervisor
 
-
-# Initialize udev daemon, handle CMD
-COPY entry.sh /bin/
-ENTRYPOINT ["/bin/entry.sh"]
 
 WORKDIR /
-CMD [ "python3", "-m", "hassio" ]
+COPY rootfs /

@@ -1,6 +1,6 @@
 [![Build Status](https://dev.azure.com/home-assistant/Hass.io/_apis/build/status/hassio?branchName=dev)](https://dev.azure.com/home-assistant/Hass.io/_build/latest?definitionId=2&branchName=dev)
 
-# Hass.io
+# Home Assistant Supervisor
 
 ## First private cloud solution for home automation
 
@@ -9,8 +9,6 @@ and related applications. The system is controlled via Home Assistant which
 communicates with the Supervisor. The Supervisor provides an API to manage the
 installation. This includes changing network settings or installing
 and updating software.
-
-![](misc/hassio.png?raw=true)
 
 ## Installation
 

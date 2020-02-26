@@ -1,10 +1,11 @@
+"""Home Assistant Supervisor setup."""
 from setuptools import setup
 
-from hassio.const import HASSIO_VERSION
+from supervisor.const import SUPERVISOR_VERSION
 
 setup(
-    name="HassIO",
-    version=HASSIO_VERSION,
+    name="Supervisor",
+    version=SUPERVISOR_VERSION,
     license="BSD License",
     author="The Home Assistant Authors",
     author_email="hello@home-assistant.io",
@@ -24,19 +25,19 @@ setup(
         "Topic :: Scientific/Engineering :: Atmospheric Science",
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
     ],
     keywords=["docker", "home-assistant", "api"],
     zip_safe=False,
     platforms="any",
     packages=[
-        "hassio",
-        "hassio.docker",
-        "hassio.addons",
-        "hassio.api",
-        "hassio.misc",
-        "hassio.utils",
-        "hassio.snapshots",
+        "supervisor",
+        "supervisor.docker",
+        "supervisor.addons",
+        "supervisor.api",
+        "supervisor.misc",
+        "supervisor.utils",
+        "supervisor.snapshots",
     ],
     include_package_data=True,
 )
