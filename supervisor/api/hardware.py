@@ -42,11 +42,11 @@ class APIHardware(CoreSysAttributes):
             ATTR_AUDIO: {
                 ATTR_INPUT: {
                     profile.name: profile.description
-                    for profile in self.sys_host.sound.input_profiles
+                    for profile in self.sys_host.sound.input_streams
                 },
                 ATTR_OUTPUT: {
                     profile.name: profile.description
-                    for profile in self.sys_host.sound.output_profiles
+                    for profile in self.sys_host.sound.output_streams
                 },
             }
         }

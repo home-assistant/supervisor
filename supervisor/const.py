@@ -233,6 +233,7 @@ ATTR_STAGE = "stage"
 ATTR_CLI = "cli"
 ATTR_DEFAULT = "default"
 ATTR_VOLUME = "volume"
+ATTR_CARD = "card"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
