@@ -29,7 +29,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..host.sound import SourceType
+from ..host.sound import StreamType
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_volume(self, request: web.Request) -> None:
         """Set audio volume on stream."""
-        source: SourceType = SourceType(request.match_info.get("source"))
+        source: StreamType = StreamType(request.match_info.get("source"))
         body = await api_validate(SCHEMA_VOLUME, request)
 
         await asyncio.shield(
@@ -125,7 +125,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_default(self, request: web.Request) -> None:
         """Set audio default stream."""
-        source: SourceType = SourceType(request.match_info.get("source"))
+        source: StreamType = StreamType(request.match_info.get("source"))
         body = await api_validate(SCHEMA_DEFAULT, request)
 
         await asyncio.shield(self.sys_host.sound.set_default(source, body[ATTR_NAME]))
