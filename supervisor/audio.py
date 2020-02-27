@@ -152,9 +152,6 @@ class Audio(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't start Audio plugin")
             raise AudioError() from None
 
-        # Update device list after 10seconds
-        self.sys_loop.call_later(10, self.sys_create_task, self.sys_host.sound.update())
-
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.
 
