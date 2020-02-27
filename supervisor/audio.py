@@ -81,9 +81,7 @@ class Audio(JsonConfig, CoreSysAttributes):
 
         # Run PulseAudio
         with suppress(AudioError):
-            if await self.instance.is_running():
-                await self.restart()
-            else:
+            if not await self.instance.is_running():
                 await self.start()
 
         # Initialize Client Template
@@ -137,8 +135,12 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     async def restart(self) -> None:
         """Restart Audio plugin."""
-        with suppress(DockerAPIError):
+        _LOGGER.info("Restart Audio plugin")
+        try:
             await self.instance.restart()
+        except DockerAPIError:
+            _LOGGER.error("Can't start Audio plugin")
+            raise AudioError() from None
 
     async def start(self) -> None:
         """Run CoreDNS."""
@@ -149,6 +151,9 @@ class Audio(JsonConfig, CoreSysAttributes):
         except DockerAPIError:
             _LOGGER.error("Can't start Audio plugin")
             raise AudioError() from None
+
+        # Update device list after 10seconds
+        self.sys_loop.call_later(10, self.sys_create_task, self.sys_host.sound.update())
 
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.
