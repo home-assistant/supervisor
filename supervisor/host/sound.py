@@ -16,7 +16,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 PULSE_NAME = "supervisor"
 
 
-class SourceType(str, Enum):
+class StreamType(str, Enum):
     """INPUT/OUTPUT type of source."""
 
     INPUT = "input"
@@ -76,13 +76,13 @@ class SoundControl(CoreSysAttributes):
         """Return a list of available output streams."""
         return self._outputs
 
-    async def set_default(self, source: SourceType, name: str) -> None:
+    async def set_default(self, stream_type: StreamType, name: str) -> None:
         """Set a stream to default input/output."""
 
         def _set_default():
             try:
                 with Pulse(PULSE_NAME) as pulse:
-                    if source == SourceType.OUTPUT:
+                    if stream_type == StreamType.OUTPUT:
                         # Get source and set it as default
                         source = pulse.get_source_by_name(name)
                         pulse.source_default_set(source)
@@ -101,13 +101,15 @@ class SoundControl(CoreSysAttributes):
         await self.sys_run_in_executor(_set_default)
         await self.update()
 
-    async def set_volume(self, source: SourceType, name: str, volume: float) -> None:
+    async def set_volume(
+        self, stream_type: StreamType, name: str, volume: float
+    ) -> None:
         """Set a stream to volume input/output."""
 
         def _set_volume():
             try:
                 with Pulse(PULSE_NAME) as pulse:
-                    if source == SourceType.OUTPUT:
+                    if stream_type == StreamType.OUTPUT:
                         # Get source and set it as default
                         source = pulse.get_source_by_name(name)
                     else:
