@@ -45,7 +45,7 @@ class SoundCard:
     """Represent a Sound Card."""
 
     name: str = attr.ib()
-    description: str = attr.ib()
+    driver: str = attr.ib()
     profiles: List[SoundProfile] = attr.ib()
 
 
@@ -122,20 +122,8 @@ class SoundControl(CoreSysAttributes):
         """Set a profile to volume input/output."""
         try:
             with Pulse(PULSE_NAME) as pulse:
-
-                # Get card
-                select_card = None
-                for card in pulse.card_list():
-                    if card.name != card_name:
-                        continue
-                    select_card = card
-                    break
-
-                if not select_card:
-                    raise PulseIndexError()
-
-                # set profile
-                pulse.card_profile_set(select_card, profile_name)
+                card = pulse.get_sink_by_name(card_name)
+                pulse.card_profile_set(card, profile_name)
 
         except PulseIndexError:
             _LOGGER.error("Can't find %s profile %s", card_name, profile_name)
@@ -201,7 +189,7 @@ class SoundControl(CoreSysAttributes):
                         )
 
                     self._cards.append(
-                        SoundCard(card.name, card.description, sound_profiles)
+                        SoundCard(card.name, card.driver, sound_profiles)
                     )
 
         except PulseOperationFailed as err:

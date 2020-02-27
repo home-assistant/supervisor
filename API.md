@@ -866,7 +866,7 @@ return:
     "card": [
       {
         "name": "...",
-        "description": "...",
+        "driver": "...",
         "profiles": [
           {
             "name": "...",
