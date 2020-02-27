@@ -63,6 +63,7 @@ class SoundControl(CoreSysAttributes):
     @property
     def cards(self) -> List[SoundCard]:
         """Return a list of available sound cards and profiles."""
+        return self._cards
 
     @property
     def inputs(self) -> List[AudioStream]:
