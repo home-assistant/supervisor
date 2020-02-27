@@ -82,7 +82,7 @@ class SoundControl(CoreSysAttributes):
         def _set_default():
             try:
                 with Pulse(PULSE_NAME) as pulse:
-                    if stream_type == StreamType.OUTPUT:
+                    if stream_type == StreamType.INPUT:
                         # Get source and set it as default
                         source = pulse.get_source_by_name(name)
                         pulse.source_default_set(source)
@@ -109,16 +109,16 @@ class SoundControl(CoreSysAttributes):
         def _set_volume():
             try:
                 with Pulse(PULSE_NAME) as pulse:
-                    if stream_type == StreamType.OUTPUT:
+                    if stream_type == StreamType.INPUT:
                         # Get source and set it as default
-                        source = pulse.get_source_by_name(name)
+                        stream = pulse.get_source_by_name(name)
                     else:
                         # Get sink and set it as default
-                        source = pulse.get_sink_by_name(name)
+                        stream = pulse.get_sink_by_name(name)
 
-                    pulse.volume_set_all_chans(source, volume)
+                    pulse.volume_set_all_chans(stream, volume)
             except PulseIndexError:
-                _LOGGER.error("Can't find %s profile %s", source, name)
+                _LOGGER.error("Can't find %s profile %s", stream_type, name)
                 raise PulseAudioError() from None
             except PulseError as err:
                 _LOGGER.error("Can't set %s volume: %s", name, err)
