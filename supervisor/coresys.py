@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from .discovery import Discovery
     from .dns import CoreDNS
     from .hassos import HassOS
+    from .hwmon import HwMonitor
     from .homeassistant import HomeAssistant
     from .host import HostManager
     from .ingress import Ingress
@@ -76,6 +77,7 @@ class CoreSys:
         self._secrets: Optional[SecretsManager] = None
         self._store: Optional[StoreManager] = None
         self._discovery: Optional[Discovery] = None
+        self._hwmonitor: Optional[HwMonitor] = None
 
     @property
     def machine(self) -> str:
@@ -346,6 +348,18 @@ class CoreSys:
         self._host = value
 
     @property
+    def hwmonitor(self) -> HwMonitor:
+        """Return HwMonitor object."""
+        return self._hwmonitor
+
+    @hwmonitor.setter
+    def hwmonitor(self, value: HwMonitor):
+        """Set a HwMonitor object."""
+        if self._hwmonitor:
+            raise RuntimeError("HwMonitor already set!")
+        self._hwmonitor = value
+
+    @property
     def ingress(self) -> Ingress:
         """Return Ingress object."""
         return self._ingress
@@ -519,6 +533,11 @@ class CoreSysAttributes:
     def sys_host(self) -> HostManager:
         """Return HostManager object."""
         return self.coresys.host
+
+    @property
+    def sys_hwmonitor(self) -> HwMonitor:
+        """Return HwMonitor object."""
+        return self.coresys.hwmonitor
 
     @property
     def sys_ingress(self) -> Ingress:
