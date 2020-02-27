@@ -63,10 +63,10 @@ class APIAudio(CoreSysAttributes):
             ATTR_AUDIO: {
                 ATTR_CARD: [attr.asdict(card) for card in self.sys_host.sound.cards],
                 ATTR_INPUT: [
-                    attr.asdict(stream) for stream in self.sys_host.sound.input_streams
+                    attr.asdict(stream) for stream in self.sys_host.sound.inputs
                 ],
                 ATTR_OUTPUT: [
-                    attr.asdict(stream) for stream in self.sys_host.sound.output_streams
+                    attr.asdict(stream) for stream in self.sys_host.sound.outputs
                 ],
             },
         }

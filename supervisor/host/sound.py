@@ -61,13 +61,17 @@ class SoundControl(CoreSysAttributes):
         self._outputs: List[AudioStream] = []
 
     @property
-    def input_streams(self) -> List[AudioStream]:
-        """Return a list of available input profiles."""
+    def cards(self) -> List[SoundCard]:
+        """Return a list of available sound cards and profiles."""
+
+    @property
+    def inputs(self) -> List[AudioStream]:
+        """Return a list of available input streams."""
         return self._inputs
 
     @property
-    def output_streams(self) -> List[AudioStream]:
-        """Return a list of available output profiles."""
+    def outputs(self) -> List[AudioStream]:
+        """Return a list of available output streams."""
         return self._outputs
 
     async def set_default(self, source: SourceType, name: str) -> None:
