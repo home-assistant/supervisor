@@ -142,6 +142,9 @@ class Core(CoreSysAttributes):
             if self.sys_homeassistant.version == "landingpage":
                 self.sys_create_task(self.sys_homeassistant.install())
 
+            # Start observe the host Hardware
+            await self.sys_hwmonitor.load()
+
             _LOGGER.info("Supervisor is up and running")
             self.state = CoreStates.RUNNING
 
@@ -168,6 +171,7 @@ class Core(CoreSysAttributes):
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
                         self.sys_dns.unload(),
+                        self.sys_hwmonitor.unload(),
                     ]
                 )
         except asyncio.TimeoutError:
