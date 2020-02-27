@@ -863,6 +863,19 @@ return:
   "version": "1",
   "latest_version": "2",
   "audio": {
+    "card": [
+      {
+        "name": "...",
+        "description": "...",
+        "profiles": [
+          {
+            "name": "...",
+            "description": "...",
+            "active": false
+          }
+        ]
+      }
+    ],
     "input": [
       {
         "name": "...",
@@ -927,6 +940,15 @@ return:
 
 ```json
 {
+  "name": "..."
+}
+```
+
+- POST `/audio/profile`
+
+```json
+{
+  "card": "...",
   "name": "..."
 }
 ```

@@ -29,7 +29,6 @@ class AudioStream:
     description: str = attr.ib()
     volume: float = attr.ib()
     default: bool = attr.ib()
-    card: str = attr.ib()
 
 
 @attr.s(frozen=True)
@@ -166,7 +165,6 @@ class SoundControl(CoreSysAttributes):
                             sink.description,
                             sink.volume.value_flat,
                             sink.name == server.default_sink_name,
-                            sink.card,
                         )
                     )
 
@@ -182,7 +180,6 @@ class SoundControl(CoreSysAttributes):
                             source.description,
                             source.volume.value_flat,
                             source.name == server.default_source_name,
-                            source.card,
                         )
                     )
 
