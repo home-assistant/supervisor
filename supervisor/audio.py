@@ -96,7 +96,7 @@ class Audio(JsonConfig, CoreSysAttributes):
             self.client_template = jinja2.Template(PULSE_CLIENT_TMPL.read_text())
         except OSError as err:
             _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
-        
+
         # Setup default asound config
         asound = self.sys_config.path_audio.joinpath("asound")
         if not asound.exists():
