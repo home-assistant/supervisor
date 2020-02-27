@@ -117,8 +117,11 @@ function init_dbus() {
     mkdir -p /var/lib/dbus
     cp -f /etc/machine-id /var/lib/dbus/machine-id
 
-    # run
+    # cleanups
     mkdir -p /run/dbus
+    rm -f /run/dbus/pid
+
+    # run
     dbus-daemon --system --print-address
 }
 
