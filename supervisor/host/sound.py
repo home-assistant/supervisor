@@ -116,6 +116,9 @@ class SoundControl(CoreSysAttributes):
                 # Update input
                 self._input.clear()
                 for source in pulse.source_list():
+                    # Filter monitor devices out because we did not use it now
+                    if source.name.endswith(".monitor"):
+                        continue
                     self._input.append(
                         AudioProfile(
                             source.name,

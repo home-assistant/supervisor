@@ -145,12 +145,12 @@ class Core(CoreSysAttributes):
             # Start observe the host Hardware
             await self.sys_hwmonitor.load()
 
+            # Upate Host/Deivce information
+            self.sys_create_task(self.sys_host.reload())
+            self.sys_create_task(self.sys_updater.reload())
+
             _LOGGER.info("Supervisor is up and running")
             self.state = CoreStates.RUNNING
-
-        # On full host boot, relaod information
-        self.sys_create_task(self.sys_host.reload())
-        self.sys_create_task(self.sys_updater.reload())
 
     async def stop(self):
         """Stop a running orchestration."""
