@@ -37,7 +37,10 @@ class HwMonitor(CoreSysAttributes):
         _LOGGER.info("Stop Supervisor hardware monitor")
 
     def _udev_events(self, action: str, device: pyudev.Device):
-        """Incomming events from udev."""
+        """Incomming events from udev.
+
+        This is inside a observe thread and need pass into our eventloop.
+        """
         _LOGGER.debug("Hardware monitor: %s - %s", action, pformat(device))
         self.sys_loop.call_soon_threadsafe(self._async_udev_events, action, device)
 
@@ -50,4 +53,5 @@ class HwMonitor(CoreSysAttributes):
     @AsyncCallFilter(timedelta(seconds=5))
     def _action_sound(self, device: pyudev.Device):
         """Process sound actions."""
+        _LOGGER.info("Detect changed audio hardware")
         self.sys_loop.call_later(5, self.sys_create_task, self.sys_host.sound.update())
