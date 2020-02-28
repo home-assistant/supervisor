@@ -866,6 +866,7 @@ return:
     "card": [
       {
         "name": "...",
+        "index": 1,
         "driver": "...",
         "profiles": [
           {
@@ -879,17 +880,56 @@ return:
     "input": [
       {
         "name": "...",
+        "index": 0,
         "description": "...",
         "volume": 0.3,
-        "default": false
+        "mute": false,
+        "default": false,
+        "card": "null|int",
+        "applications": [
+          {
+            "name": "...",
+            "index": 0,
+            "stream_index": 0,
+            "stream_type": "INPUT",
+            "volume": 0.3,
+            "mute": false,
+            "addon": ""
+          }
+        ]
       }
     ],
     "output": [
       {
         "name": "...",
+        "index": 0,
         "description": "...",
         "volume": 0.3,
-        "default": false
+        "mute": false,
+        "default": false,
+        "card": "null|int",
+        "applications": [
+          {
+            "name": "...",
+            "index": 0,
+            "stream_index": 0,
+            "stream_type": "OUTPUT",
+            "volume": 0.3,
+            "mute": false,
+            "addon": ""
+          }
+        ]
+      }
+    ],
+    "application": [
+      {
+        "name": "...",
+        "index": 0,
+        "stream_index": 0,
+        "stream_type": "OUTPUT",
+        "volume": 0.3,
+        "mute": false,
+        "addon": ""
       }
     ]
   }
@@ -914,7 +954,7 @@ return:
 
 ```json
 {
-  "name": "...",
+  "index": "...",
   "volume": 0.5
 }
 ```
@@ -923,8 +963,44 @@ return:
 
 ```json
 {
-  "name": "...",
+  "index": "...",
   "volume": 0.5
+}
+```
+
+- POST `/audio/volume/{output|input}/application`
+
+```json
+{
+  "index": "...",
+  "volume": 0.5
+}
+```
+
+- POST `/audio/mute/input`
+
+```json
+{
+  "index": "...",
+  "active": false
+}
+```
+
+- POST `/audio/mute/output`
+
+```json
+{
+  "index": "...",
+  "active": false
+}
+```
+
+- POST `/audio/mute/{output|input}/application`
+
+```json
+{
+  "index": "...",
+  "active": false
 }
 ```
 

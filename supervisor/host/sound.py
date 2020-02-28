@@ -2,7 +2,7 @@
 from datetime import timedelta
 from enum import Enum
 import logging
-from typing import List
+from typing import List, Optional
 
 import attr
 from pulsectl import Pulse, PulseError, PulseIndexError, PulseOperationFailed
@@ -24,13 +24,30 @@ class StreamType(str, Enum):
 
 
 @attr.s(frozen=True)
-class AudioStream:
-    """Represent a input/output profile."""
+class AudioApplication:
+    """Represent a application on the stream."""
 
     name: str = attr.ib()
+    index: int = attr.ib()
+    stream_index: str = attr.ib()
+    stream_type: StreamType = attr.ib()
+    volume: float = attr.ib()
+    mute: bool = attr.ib()
+    addon: str = attr.ib()
+
+
+@attr.s(frozen=True)
+class AudioStream:
+    """Represent a input/output stream."""
+
+    name: str = attr.ib()
+    index: int = attr.ib()
     description: str = attr.ib()
     volume: float = attr.ib()
+    mute: bool = attr.ib()
     default: bool = attr.ib()
+    card: Optional[int] = attr.ib()
+    applications: List[AudioApplication] = attr.ib()
 
 
 @attr.s(frozen=True)
@@ -47,6 +64,7 @@ class SoundCard:
     """Represent a Sound Card."""
 
     name: str = attr.ib()
+    index: int = attr.ib()
     driver: str = attr.ib()
     profiles: List[SoundProfile] = attr.ib()
 
@@ -60,6 +78,7 @@ class SoundControl(CoreSysAttributes):
         self._cards: List[SoundCard] = []
         self._inputs: List[AudioStream] = []
         self._outputs: List[AudioStream] = []
+        self._applications: List[AudioApplication] = []
 
     @property
     def cards(self) -> List[SoundCard]:
@@ -76,6 +95,11 @@ class SoundControl(CoreSysAttributes):
         """Return a list of available output streams."""
         return self._outputs
 
+    @property
+    def applications(self) -> List[AudioApplication]:
+        """Return a list of available application streams."""
+        return self._applications
+
     async def set_default(self, stream_type: StreamType, name: str) -> None:
         """Set a stream to default input/output."""
 
@@ -90,11 +114,12 @@ class SoundControl(CoreSysAttributes):
                         # Get sink and set it as default
                         sink = pulse.get_sink_by_name(name)
                         pulse.sink_default_set(sink)
+
             except PulseIndexError:
-                _LOGGER.error("Can't find %s profile %s", source, name)
+                _LOGGER.error("Can't find %s stream %s", source, name)
                 raise PulseAudioError() from None
             except PulseError as err:
-                _LOGGER.error("Can't set %s as default: %s", name, err)
+                _LOGGER.error("Can't set %s as stream: %s", name, err)
                 raise PulseAudioError() from None
 
         # Run and Reload data
@@ -102,30 +127,71 @@ class SoundControl(CoreSysAttributes):
         await self.update()
 
     async def set_volume(
-        self, stream_type: StreamType, name: str, volume: float
+        self, stream_type: StreamType, index: int, volume: float, application: bool
     ) -> None:
-        """Set a stream to volume input/output."""
+        """Set a stream to volume input/output/application."""
 
         def _set_volume():
             try:
                 with Pulse(PULSE_NAME) as pulse:
                     if stream_type == StreamType.INPUT:
-                        # Get source and set it as default
-                        stream = pulse.get_source_by_name(name)
+                        if application:
+                            stream = pulse.source_output_info(index)
+                        else:
+                            stream = pulse.source_info(index)
                     else:
-                        # Get sink and set it as default
-                        stream = pulse.get_sink_by_name(name)
+                        if application:
+                            stream = pulse.sink_input_info(index)
+                        else:
+                            stream = pulse.sink_info(index)
 
+                    # Set volume
                     pulse.volume_set_all_chans(stream, volume)
             except PulseIndexError:
-                _LOGGER.error("Can't find %s profile %s", stream_type, name)
+                _LOGGER.error(
+                    "Can't find %s stream %d (App: %s)", stream_type, index, application
+                )
                 raise PulseAudioError() from None
             except PulseError as err:
-                _LOGGER.error("Can't set %s volume: %s", name, err)
+                _LOGGER.error("Can't set %d volume: %s", index, err)
                 raise PulseAudioError() from None
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_volume)
+        await self.update()
+
+    async def set_mute(
+        self, stream_type: StreamType, index: int, mute: bool, application: bool
+    ) -> None:
+        """Set a stream to mute input/output/application."""
+
+        def _set_mute():
+            try:
+                with Pulse(PULSE_NAME) as pulse:
+                    if stream_type == StreamType.INPUT:
+                        if application:
+                            stream = pulse.source_output_info(index)
+                        else:
+                            stream = pulse.source_info(index)
+                    else:
+                        if application:
+                            stream = pulse.sink_input_info(index)
+                        else:
+                            stream = pulse.sink_info(index)
+
+                    # Mute stream
+                    pulse.mute(stream, mute)
+            except PulseIndexError:
+                _LOGGER.error(
+                    "Can't find %s stream %d (App: %s)", stream_type, index, application
+                )
+                raise PulseAudioError() from None
+            except PulseError as err:
+                _LOGGER.error("Can't set %d volume: %s", index, err)
+                raise PulseAudioError() from None
+
+        # Run and Reload data
+        await self.sys_run_in_executor(_set_mute)
         await self.update()
 
     async def ativate_profile(self, card_name: str, profile_name: str) -> None:
@@ -160,15 +226,59 @@ class SoundControl(CoreSysAttributes):
                 with Pulse(PULSE_NAME) as pulse:
                     server = pulse.server_info()
 
+                    # Update applications
+                    self._applications.clear()
+                    for application in pulse.sink_input_list():
+                        self._applications.append(
+                            AudioApplication(
+                                application.proplist.get(
+                                    "application.name", application.name
+                                ),
+                                application.index,
+                                application.sink,
+                                StreamType.OUTPUT,
+                                application.volume.value_flat,
+                                bool(application.mute),
+                                application.proplist.get(
+                                    "application.process.machine_id", ""
+                                ).replace("-", "_"),
+                            )
+                        )
+                    for application in pulse.source_output_list():
+                        self._applications.append(
+                            AudioApplication(
+                                application.proplist.get(
+                                    "application.name", application.name
+                                ),
+                                application.index,
+                                application.source,
+                                StreamType.INPUT,
+                                application.volume.value_flat,
+                                bool(application.mute),
+                                application.proplist.get(
+                                    "application.process.machine_id", ""
+                                ).replace("-", "_"),
+                            )
+                        )
+
                     # Update output
                     self._outputs.clear()
                     for sink in pulse.sink_list():
                         self._outputs.append(
                             AudioStream(
                                 sink.name,
+                                sink.index,
                                 sink.description,
                                 sink.volume.value_flat,
+                                bool(sink.mute),
                                 sink.name == server.default_sink_name,
+                                sink.card if sink.card != 0xFFFFFFFF else None,
+                                [
+                                    application
+                                    for application in self._applications
+                                    if application.stream_index == sink.index
+                                    and application.stream_type == StreamType.OUTPUT
+                                ],
                             )
                         )
 
@@ -181,9 +291,18 @@ class SoundControl(CoreSysAttributes):
                         self._inputs.append(
                             AudioStream(
                                 source.name,
+                                source.index,
                                 source.description,
                                 source.volume.value_flat,
+                                bool(source.mute),
                                 source.name == server.default_source_name,
+                                source.card if source.card != 0xFFFFFFFF else None,
+                                [
+                                    application
+                                    for application in self._applications
+                                    if application.stream_index == source.index
+                                    and application.stream_type == StreamType.INPUT
+                                ],
                             )
                         )
 
@@ -205,7 +324,9 @@ class SoundControl(CoreSysAttributes):
                             )
 
                         self._cards.append(
-                            SoundCard(card.name, card.driver, sound_profiles)
+                            SoundCard(
+                                card.name, card.index, card.driver, sound_profiles
+                            )
                         )
 
             except PulseOperationFailed as err:

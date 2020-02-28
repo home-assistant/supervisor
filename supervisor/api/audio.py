@@ -8,12 +8,15 @@ import attr
 import voluptuous as vol
 
 from ..const import (
+    ATTR_ACTIVE,
+    ATTR_APPLICATION,
     ATTR_AUDIO,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_CARD,
     ATTR_CPU_PERCENT,
     ATTR_HOST,
+    ATTR_INDEX,
     ATTR_INPUT,
     ATTR_LATEST_VERSION,
     ATTR_MEMORY_LIMIT,
@@ -38,8 +41,16 @@ SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 
 SCHEMA_VOLUME = vol.Schema(
     {
-        vol.Required(ATTR_NAME): vol.Coerce(str),
+        vol.Required(ATTR_INDEX): vol.Coerce(int),
         vol.Required(ATTR_VOLUME): vol.Coerce(float),
+    }
+)
+
+# pylint: disable=no-value-for-parameter
+SCHEMA_MUTE = vol.Schema(
+    {
+        vol.Required(ATTR_INDEX): vol.Coerce(int),
+        vol.Required(ATTR_ACTIVE): vol.Boolean(),
     }
 )
 
@@ -67,6 +78,9 @@ class APIAudio(CoreSysAttributes):
                 ],
                 ATTR_OUTPUT: [
                     attr.asdict(stream) for stream in self.sys_host.sound.outputs
+                ],
+                ATTR_APPLICATION: [
+                    attr.asdict(stream) for stream in self.sys_host.sound.applications
                 ],
             },
         }
@@ -116,10 +130,26 @@ class APIAudio(CoreSysAttributes):
     async def set_volume(self, request: web.Request) -> None:
         """Set audio volume on stream."""
         source: StreamType = StreamType(request.match_info.get("source"))
+        application: bool = request.path.endswith("application")
         body = await api_validate(SCHEMA_VOLUME, request)
 
         await asyncio.shield(
-            self.sys_host.sound.set_volume(source, body[ATTR_NAME], body[ATTR_VOLUME])
+            self.sys_host.sound.set_volume(
+                source, body[ATTR_INDEX], body[ATTR_VOLUME], application
+            )
+        )
+
+    @api_process
+    async def set_mute(self, request: web.Request) -> None:
+        """Mute audio volume on stream."""
+        source: StreamType = StreamType(request.match_info.get("source"))
+        application: bool = request.path.endswith("application")
+        body = await api_validate(SCHEMA_MUTE, request)
+
+        await asyncio.shield(
+            self.sys_host.sound.set_mute(
+                source, body[ATTR_INDEX], body[ATTR_ACTIVE], application
+            )
         )
 
     @api_process
