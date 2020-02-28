@@ -41,6 +41,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
         docker_container = self.sys_docker.run(
             self.image,
             version=self.sys_dns.version,
+            init=False,
             dns=False,
             ipv4=self.sys_docker.network.dns,
             name=self.name,
