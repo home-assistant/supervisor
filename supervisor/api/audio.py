@@ -148,7 +148,7 @@ class APIAudio(CoreSysAttributes):
 
         await asyncio.shield(
             self.sys_host.sound.set_mute(
-                source, body[ATTR_ACTIVE], body[ATTR_VOLUME], application
+                source, body[ATTR_INDEX], body[ATTR_ACTIVE], application
             )
         )
 
