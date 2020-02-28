@@ -29,9 +29,11 @@ class AudioApplication:
 
     name: str = attr.ib()
     index: int = attr.ib()
-    stream: str = attr.ib()
+    stream_index: str = attr.ib()
+    stream_type: StreamType = attr.ib()
     volume: float = attr.ib()
     mute: bool = attr.ib()
+    addon: str = attr.ib()
 
 
 @attr.s(frozen=True)
@@ -220,21 +222,33 @@ class SoundControl(CoreSysAttributes):
                     for application in pulse.sink_input_list():
                         self._applications.append(
                             AudioApplication(
-                                application.name,
+                                application.proplist.get(
+                                    "application.name", application.name
+                                ),
                                 application.index,
                                 application.sink,
+                                StreamType.OUTPUT,
                                 application.volume.value_flat,
                                 bool(application.mute),
+                                application.proplist.get(
+                                    "application.process.machine_id", ""
+                                ).replace("-", "_"),
                             )
                         )
                     for application in pulse.source_output_list():
                         self._applications.append(
                             AudioApplication(
-                                application.name,
+                                application.proplist.get(
+                                    "application.name", application.name
+                                ),
                                 application.index,
                                 application.source,
+                                StreamType.INPUT,
                                 application.volume.value_flat,
                                 bool(application.mute),
+                                application.proplist.get(
+                                    "application.process.machine_id", ""
+                                ).replace("-", "_"),
                             )
                         )
 
@@ -253,7 +267,8 @@ class SoundControl(CoreSysAttributes):
                                 [
                                     application
                                     for application in self._applications
-                                    if application.stream == sink.name
+                                    if application.stream_index == sink.index
+                                    and application.stream_type == StreamType.OUTPUT
                                 ],
                             )
                         )
@@ -276,7 +291,8 @@ class SoundControl(CoreSysAttributes):
                                 [
                                     application
                                     for application in self._applications
-                                    if application.stream == source.name
+                                    if application.stream_index == source.index
+                                    and application.stream_type == StreamType.INPUT
                                 ],
                             )
                         )

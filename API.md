@@ -890,9 +890,11 @@ return:
           {
             "name": "...",
             "index": 0,
-            "stream": "...",
+            "stream_index": 0,
+            "stream_type": "INPUT",
             "volume": 0.3,
-            "mute": false
+            "mute": false,
+            "addon": ""
           }
         ]
       }
@@ -910,9 +912,11 @@ return:
           {
             "name": "...",
             "index": 0,
-            "stream": "...",
+            "stream_index": 0,
+            "stream_type": "OUTPUT",
             "volume": 0.3,
-            "mute": false
+            "mute": false,
+            "addon": ""
           }
         ]
       }
