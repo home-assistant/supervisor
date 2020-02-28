@@ -95,6 +95,11 @@ class SoundControl(CoreSysAttributes):
         """Return a list of available output streams."""
         return self._outputs
 
+    @property
+    def applications(self) -> List[AudioApplication]:
+        """Return a list of available application streams."""
+        return self._applications
+
     async def set_default(self, stream_type: StreamType, name: str) -> None:
         """Set a stream to default input/output."""
 

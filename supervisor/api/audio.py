@@ -9,6 +9,7 @@ import voluptuous as vol
 
 from ..const import (
     ATTR_ACTIVE,
+    ATTR_APPLICATION,
     ATTR_AUDIO,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
@@ -78,6 +79,9 @@ class APIAudio(CoreSysAttributes):
                 ATTR_OUTPUT: [
                     attr.asdict(stream) for stream in self.sys_host.sound.outputs
                 ],
+                ATTR_APPLICATION: [
+                    attr.asdict(stream) for stream in self.sys_host.sound.applications
+                ],
             },
         }
 
@@ -144,7 +148,7 @@ class APIAudio(CoreSysAttributes):
 
         await asyncio.shield(
             self.sys_host.sound.set_mute(
-                source, body[ATTR_INDEX], body[ATTR_VOLUME], application
+                source, body[ATTR_ACTIVE], body[ATTR_VOLUME], application
             )
         )
 

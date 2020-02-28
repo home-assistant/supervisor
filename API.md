@@ -920,6 +920,17 @@ return:
           }
         ]
       }
+    ],
+    "application": [
+      {
+        "name": "...",
+        "index": 0,
+        "stream_index": 0,
+        "stream_type": "OUTPUT",
+        "volume": 0.3,
+        "mute": false,
+        "addon": ""
+      }
     ]
   }
 }

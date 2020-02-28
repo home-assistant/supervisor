@@ -236,6 +236,7 @@ ATTR_VOLUME = "volume"
 ATTR_CARD = "card"
 ATTR_INDEX = "index"
 ATTR_ACTIVE = "active"
+ATTR_APPLICATION = "application"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
