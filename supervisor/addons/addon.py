@@ -63,6 +63,8 @@ RE_WEBUI = re.compile(
     r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$"
 )
 
+RE_OLD_AUDIO = re.compile(r"\d+,\d+")
+
 
 class Addon(AddonModel):
     """Hold data for add-on inside Supervisor."""
@@ -282,7 +284,13 @@ class Addon(AddonModel):
         """Return a pulse profile for output or None."""
         if not self.with_audio:
             return None
-        return self.persist.get(ATTR_AUDIO_OUTPUT)
+
+        # Fallback with old audio settings
+        # Remove after 210
+        output_data = self.persist.get(ATTR_AUDIO_OUTPUT)
+        if output_data and RE_OLD_AUDIO.fullmatch(output_data):
+            return None
+        return output_data
 
     @audio_output.setter
     def audio_output(self, value: Optional[str]):
@@ -297,7 +305,13 @@ class Addon(AddonModel):
         """Return pulse profile for input or None."""
         if not self.with_audio:
             return None
-        return self.persist.get(ATTR_AUDIO_INPUT)
+
+        # Fallback with old audio settings
+        # Remove after 210
+        input_data = self.persist.get(ATTR_AUDIO_INPUT)
+        if input_data and RE_OLD_AUDIO.fullmatch(input_data):
+            return None
+        return input_data
 
     @audio_input.setter
     def audio_input(self, value: Optional[str]):
