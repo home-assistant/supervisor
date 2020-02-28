@@ -379,7 +379,9 @@ Trigger an udev reload
   "port": 8123,
   "ssl": "bool",
   "watchdog": "bool",
-  "wait_boot": 600
+  "wait_boot": 600,
+  "audio_input": "null|profile",
+  "audio_output": "null|profile"
 }
 ```
 
@@ -413,7 +415,9 @@ Output is the raw Docker log.
   "ssl": "bool",
   "refresh_token": "",
   "watchdog": "bool",
-  "wait_boot": 600
+  "wait_boot": 600,
+  "audio_input": "null|profile",
+  "audio_output": "null|profile"
 }
 ```
 

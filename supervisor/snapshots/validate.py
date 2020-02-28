@@ -3,6 +3,8 @@ import voluptuous as vol
 
 from ..const import (
     ATTR_ADDONS,
+    ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT,
     ATTR_BOOT,
     ATTR_CRYPTO,
     ATTR_DATE,
@@ -67,6 +69,12 @@ SCHEMA_SNAPSHOT = vol.Schema(
                 vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
                 vol.Optional(ATTR_WAIT_BOOT, default=600): vol.All(
                     vol.Coerce(int), vol.Range(min=60)
+                ),
+                vol.Optional(ATTR_AUDIO_OUTPUT, default=None): vol.Maybe(
+                    vol.Coerce(str)
+                ),
+                vol.Optional(ATTR_AUDIO_INPUT, default=None): vol.Maybe(
+                    vol.Coerce(str)
                 ),
             },
             extra=vol.REMOVE_EXTRA,

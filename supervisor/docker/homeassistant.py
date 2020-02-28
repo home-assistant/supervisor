@@ -2,7 +2,7 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
-from typing import Awaitable, Optional
+from typing import Awaitable, Dict, Optional
 
 import docker
 
@@ -45,6 +45,46 @@ class DockerHomeAssistant(DockerInterface):
         """Return IP address of this container."""
         return self.sys_docker.network.gateway
 
+    @property
+    def volumes(self) -> Dict[str, Dict[str, str]]:
+        """Return Volumes for the mount."""
+        volumes = {}
+
+        # Add folders
+        volumes.update(
+            {
+                str(self.sys_config.path_extern_homeassistant): {
+                    "bind": "/config",
+                    "mode": "rw",
+                },
+                str(self.sys_config.path_extern_ssl): {"bind": "/ssl", "mode": "ro"},
+                str(self.sys_config.path_extern_share): {
+                    "bind": "/share",
+                    "mode": "rw",
+                },
+            }
+        )
+
+        # Configuration Audio
+        volumes.update(
+            {
+                str(self.sys_homeassistant.path_extern_pulse): {
+                    "bind": "/etc/pulse/client.conf",
+                    "mode": "ro",
+                },
+                str(self.sys_audio.path_extern_pulse): {
+                    "bind": "/run/audio",
+                    "mode": "ro",
+                },
+                str(self.sys_audio.path_extern_asound): {
+                    "bind": "/etc/asound.conf",
+                    "mode": "ro",
+                },
+            }
+        )
+
+        return volumes
+
     def _run(self) -> None:
         """Run Docker image.
 
@@ -67,23 +107,13 @@ class DockerHomeAssistant(DockerInterface):
             privileged=True,
             init=False,
             network_mode="host",
+            volumes=self.volumes,
             environment={
                 "HASSIO": self.sys_docker.network.supervisor,
                 "SUPERVISOR": self.sys_docker.network.supervisor,
                 ENV_TIME: self.sys_timezone,
                 ENV_TOKEN: self.sys_homeassistant.hassio_token,
                 ENV_TOKEN_OLD: self.sys_homeassistant.hassio_token,
-            },
-            volumes={
-                str(self.sys_config.path_extern_homeassistant): {
-                    "bind": "/config",
-                    "mode": "rw",
-                },
-                str(self.sys_config.path_extern_ssl): {"bind": "/ssl", "mode": "ro"},
-                str(self.sys_config.path_extern_share): {
-                    "bind": "/share",
-                    "mode": "rw",
-                },
             },
         )
 
@@ -105,18 +135,8 @@ class DockerHomeAssistant(DockerInterface):
             detach=True,
             stdout=True,
             stderr=True,
+            volumes=self.volumes,
             environment={ENV_TIME: self.sys_timezone},
-            volumes={
-                str(self.sys_config.path_extern_homeassistant): {
-                    "bind": "/config",
-                    "mode": "rw",
-                },
-                str(self.sys_config.path_extern_ssl): {"bind": "/ssl", "mode": "ro"},
-                str(self.sys_config.path_extern_share): {
-                    "bind": "/share",
-                    "mode": "ro",
-                },
-            },
         )
 
     def is_initialize(self) -> Awaitable[bool]:
