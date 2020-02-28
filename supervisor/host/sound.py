@@ -116,10 +116,10 @@ class SoundControl(CoreSysAttributes):
                         pulse.sink_default_set(sink)
 
             except PulseIndexError:
-                _LOGGER.error("Can't find %s profile %s", source, name)
+                _LOGGER.error("Can't find %s stream %s", source, name)
                 raise PulseAudioError() from None
             except PulseError as err:
-                _LOGGER.error("Can't set %s as default: %s", name, err)
+                _LOGGER.error("Can't set %s as stream: %s", name, err)
                 raise PulseAudioError() from None
 
         # Run and Reload data
@@ -148,7 +148,9 @@ class SoundControl(CoreSysAttributes):
                     # Set volume
                     pulse.volume_set_all_chans(stream, volume)
             except PulseIndexError:
-                _LOGGER.error("Can't find %s profile %d", stream_type, index)
+                _LOGGER.error(
+                    "Can't find %s stream %d (App: %s)", stream_type, index, application
+                )
                 raise PulseAudioError() from None
             except PulseError as err:
                 _LOGGER.error("Can't set %d volume: %s", index, err)
@@ -180,7 +182,9 @@ class SoundControl(CoreSysAttributes):
                     # Mute stream
                     pulse.mute(stream, mute)
             except PulseIndexError:
-                _LOGGER.error("Can't find %s profile %d", stream_type, index)
+                _LOGGER.error(
+                    "Can't find %s stream %d (App: %s)", stream_type, index, application
+                )
                 raise PulseAudioError() from None
             except PulseError as err:
                 _LOGGER.error("Can't set %d volume: %s", index, err)
