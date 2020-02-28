@@ -308,9 +308,13 @@ class DockerAddon(DockerInterface):
                         "bind": "/etc/pulse/client.conf",
                         "mode": "ro",
                     },
-                    str(self.sys_audio.path_extern_data.joinpath("pulse.sock")): {
+                    str(self.sys_audio.path_extern_pulse): {
                         "bind": "/run/pulse.sock",
                         "mode": "rw",
+                    },
+                    str(self.sys_audio.path_extern_asound): {
+                        "bind": "/etc/asound.conf",
+                        "mode": "ro",
                     },
                 }
             )

@@ -4,6 +4,7 @@ from contextlib import suppress
 import logging
 from pathlib import Path
 from typing import Awaitable, Optional
+import shutil
 
 import jinja2
 
@@ -18,6 +19,7 @@ from .validate import SCHEMA_AUDIO_CONFIG
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 PULSE_CLIENT_TMPL: Path = Path(__file__).parents[0].joinpath("data/pulse-client.tmpl")
+ASOUND_TMPL: Path = Path(__file__).parents[0].joinpath("data/asound.tmpl")
 
 
 class Audio(JsonConfig, CoreSysAttributes):
@@ -31,9 +33,14 @@ class Audio(JsonConfig, CoreSysAttributes):
         self.client_template: Optional[jinja2.Template] = None
 
     @property
-    def path_extern_data(self) -> Path:
-        """Return path of pulse cookie file."""
-        return self.sys_config.path_extern_audio.joinpath("external")
+    def path_extern_pulse(self) -> Path:
+        """Return path of pulse socket file."""
+        return self.sys_config.path_extern_audio.joinpath("external/pulse.sock")
+
+    @property
+    def path_extern_asound(self) -> Path:
+        """Return path of default asound config file."""
+        return self.sys_config.path_extern_audio.joinpath("asound")
 
     @property
     def version(self) -> Optional[str]:
@@ -89,6 +96,14 @@ class Audio(JsonConfig, CoreSysAttributes):
             self.client_template = jinja2.Template(PULSE_CLIENT_TMPL.read_text())
         except OSError as err:
             _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
+
+        # Setup default asound config
+        asound = self.sys_config.path_audio.joinpath("asound")
+        if not asound.exists():
+            try:
+                shutil.copy(ASOUND_TMPL, asound)
+            except OSError as err:
+                _LOGGER.error("Can't create default asound: %s", err)
 
     async def install(self) -> None:
         """Install Audio."""
