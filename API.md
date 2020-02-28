@@ -980,6 +980,15 @@ return:
 }
 ```
 
+- POST `/audio/mute/{output|input}/application`
+
+```json
+{
+  "index": "...",
+  "active": false
+}
+```
+
 - POST `/audio/default/input`
 
 ```json

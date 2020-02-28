@@ -235,6 +235,7 @@ ATTR_DEFAULT = "default"
 ATTR_VOLUME = "volume"
 ATTR_CARD = "card"
 ATTR_INDEX = "index"
+ATTR_ACTIVE = "active"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

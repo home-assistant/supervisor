@@ -129,7 +129,7 @@ class SoundControl(CoreSysAttributes):
                 with Pulse(PULSE_NAME) as pulse:
                     if stream_type == StreamType.INPUT:
                         if application:
-                            steam = pulse.source_output_info(index)
+                            stream = pulse.source_output_info(index)
                         else:
                             stream = pulse.source_info(index)
                     else:
@@ -161,7 +161,7 @@ class SoundControl(CoreSysAttributes):
                 with Pulse(PULSE_NAME) as pulse:
                     if stream_type == StreamType.INPUT:
                         if application:
-                            steam = pulse.source_output_info(index)
+                            stream = pulse.source_output_info(index)
                         else:
                             stream = pulse.source_info(index)
                     else:
