@@ -40,7 +40,7 @@ SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 
 SCHEMA_VOLUME = vol.Schema(
     {
-        vol.Required(ATTR_INDEX): vol.Coerce(str),
+        vol.Required(ATTR_INDEX): vol.Coerce(int),
         vol.Required(ATTR_VOLUME): vol.Coerce(float),
     }
 )
@@ -48,7 +48,7 @@ SCHEMA_VOLUME = vol.Schema(
 # pylint: disable=no-value-for-parameter
 SCHEMA_MUTE = vol.Schema(
     {
-        vol.Required(ATTR_INDEX): vol.Coerce(str),
+        vol.Required(ATTR_INDEX): vol.Coerce(int),
         vol.Required(ATTR_ACTIVE): vol.Boolean(),
     }
 )
