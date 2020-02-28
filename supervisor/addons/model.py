@@ -31,6 +31,7 @@ from ..const import (
     ATTR_HOST_PID,
     ATTR_IMAGE,
     ATTR_INGRESS,
+    ATTR_INIT,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -343,6 +344,11 @@ class AddonModel(CoreSysAttributes):
     def snapshot_exclude(self) -> List[str]:
         """Return Exclude list for snapshot."""
         return self.data.get(ATTR_SNAPSHOT_EXCLUDE, [])
+
+    @property
+    def default_init(self) -> bool:
+        """Return True if the add-on have no own init."""
+        return self.data[ATTR_INIT]
 
     @property
     def with_stdin(self) -> bool:

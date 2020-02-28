@@ -41,6 +41,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         docker_container = self.sys_docker.run(
             self.image,
             version=self.sys_audio.version,
+            init=False,
             ipv4=self.sys_docker.network.audio,
             name=self.name,
             hostname=self.name.replace("_", "-"),
