@@ -36,7 +36,7 @@ def process_lock(method):
 class AsyncThrottle:
     """
     Decorator that prevents a function from being called more than once every
-    time period.
+    time period with blocking.
     """
 
     def __init__(self, delta):
@@ -60,6 +60,32 @@ class AsyncThrottle:
                 if time_since_last_call > self.throttle_period:
                     self.time_of_last_call = now
                     return await method(*args, **kwargs)
+
+        return wrapper
+
+
+class AsyncCallFilter:
+    """
+    Decorator that prevents a function from being called more than once every
+    time period.
+    """
+
+    def __init__(self, delta):
+        """Initialize async throttle."""
+        self.throttle_period = delta
+        self.time_of_last_call = datetime.min
+
+    def __call__(self, method):
+        """Throttle function"""
+
+        async def wrapper(*args, **kwargs):
+            """Throttle function wrapper"""
+            now = datetime.now()
+            time_since_last_call = now - self.time_of_last_call
+
+            if time_since_last_call > self.throttle_period:
+                self.time_of_last_call = now
+                return await method(*args, **kwargs)
 
         return wrapper
 

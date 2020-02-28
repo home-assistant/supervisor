@@ -21,6 +21,7 @@ from .dns import CoreDNS
 from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
+from .hwmon import HwMonitor
 from .ingress import Ingress
 from .services import ServiceManager
 from .snapshots import SnapshotManager
@@ -57,6 +58,7 @@ async def initialize_coresys():
     coresys.addons = AddonManager(coresys)
     coresys.snapshots = SnapshotManager(coresys)
     coresys.host = HostManager(coresys)
+    coresys.hwmonitor = HwMonitor(coresys)
     coresys.ingress = Ingress(coresys)
     coresys.tasks = Tasks(coresys)
     coresys.services = ServiceManager(coresys)

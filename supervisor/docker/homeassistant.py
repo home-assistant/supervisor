@@ -65,7 +65,7 @@ class DockerHomeAssistant(DockerInterface):
             hostname=self.name,
             detach=True,
             privileged=True,
-            init=True,
+            init=False,
             network_mode="host",
             environment={
                 "HASSIO": self.sys_docker.network.supervisor,
@@ -101,6 +101,7 @@ class DockerHomeAssistant(DockerInterface):
             command=command,
             privileged=True,
             init=True,
+            entrypoint=[],
             detach=True,
             stdout=True,
             stderr=True,

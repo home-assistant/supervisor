@@ -11,6 +11,7 @@ from ..const import (
     ATTR_AUDIO,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
+    ATTR_CARD,
     ATTR_CPU_PERCENT,
     ATTR_HOST,
     ATTR_INPUT,
@@ -28,7 +29,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..host.sound import SourceType
+from ..host.sound import StreamType
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -44,6 +45,10 @@ SCHEMA_VOLUME = vol.Schema(
 
 SCHEMA_DEFAULT = vol.Schema({vol.Required(ATTR_NAME): vol.Coerce(str)})
 
+SCHEMA_PROFILE = vol.Schema(
+    {vol.Required(ATTR_CARD): vol.Coerce(str), vol.Required(ATTR_NAME): vol.Coerce(str)}
+)
+
 
 class APIAudio(CoreSysAttributes):
     """Handle RESTful API for Audio functions."""
@@ -56,13 +61,12 @@ class APIAudio(CoreSysAttributes):
             ATTR_LATEST_VERSION: self.sys_audio.latest_version,
             ATTR_HOST: str(self.sys_docker.network.audio),
             ATTR_AUDIO: {
+                ATTR_CARD: [attr.asdict(card) for card in self.sys_host.sound.cards],
                 ATTR_INPUT: [
-                    attr.asdict(profile)
-                    for profile in self.sys_host.sound.input_profiles
+                    attr.asdict(stream) for stream in self.sys_host.sound.inputs
                 ],
                 ATTR_OUTPUT: [
-                    attr.asdict(profile)
-                    for profile in self.sys_host.sound.output_profiles
+                    attr.asdict(stream) for stream in self.sys_host.sound.outputs
                 ],
             },
         }
@@ -110,8 +114,8 @@ class APIAudio(CoreSysAttributes):
 
     @api_process
     async def set_volume(self, request: web.Request) -> None:
-        """Set Audio information."""
-        source: SourceType = SourceType(request.match_info.get("source"))
+        """Set audio volume on stream."""
+        source: StreamType = StreamType(request.match_info.get("source"))
         body = await api_validate(SCHEMA_VOLUME, request)
 
         await asyncio.shield(
@@ -120,8 +124,17 @@ class APIAudio(CoreSysAttributes):
 
     @api_process
     async def set_default(self, request: web.Request) -> None:
-        """Set Audio default sources."""
-        source: SourceType = SourceType(request.match_info.get("source"))
+        """Set audio default stream."""
+        source: StreamType = StreamType(request.match_info.get("source"))
         body = await api_validate(SCHEMA_DEFAULT, request)
 
         await asyncio.shield(self.sys_host.sound.set_default(source, body[ATTR_NAME]))
+
+    @api_process
+    async def set_profile(self, request: web.Request) -> None:
+        """Set audio default sources."""
+        body = await api_validate(SCHEMA_DEFAULT, request)
+
+        await asyncio.shield(
+            self.sys_host.sound.set_profile(body[ATTR_CARD], body[ATTR_NAME])
+        )

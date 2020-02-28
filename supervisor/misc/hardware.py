@@ -12,7 +12,6 @@ import pyudev
 from ..const import ATTR_DEVICES, ATTR_NAME, ATTR_TYPE, CHAN_ID, CHAN_TYPE
 from ..exceptions import HardwareNotSupportedError
 
-
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 ASOUND_CARDS: Path = Path("/proc/asound/cards")
@@ -133,7 +132,6 @@ class Hardware:
     def audio_devices(self) -> Dict[str, Any]:
         """Return all available audio interfaces."""
         if not ASOUND_CARDS.exists():
-            _LOGGER.info("No audio devices found")
             return {}
 
         try:
