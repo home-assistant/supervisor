@@ -344,7 +344,7 @@ class DockerAddon(DockerInterface):
             name=self.name,
             hostname=self.addon.hostname,
             detach=True,
-            init=True,
+            init=self.addon.default_init,
             privileged=self.full_access,
             ipc_mode=self.ipc,
             stdin_open=self.addon.with_stdin,
