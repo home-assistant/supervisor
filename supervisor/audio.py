@@ -4,11 +4,11 @@ from contextlib import suppress
 import logging
 from pathlib import Path
 import shutil
-from typing import Awaitable, List, Optional
+from typing import Awaitable, Optional
 
 import jinja2
 
-from .const import ATTR_VERSION, FILE_HASSIO_AUDIO, STATE_STARTED
+from .const import ATTR_VERSION, FILE_HASSIO_AUDIO
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.audio import DockerAudio
 from .docker.stats import DockerStats
