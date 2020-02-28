@@ -234,6 +234,7 @@ ATTR_CLI = "cli"
 ATTR_DEFAULT = "default"
 ATTR_VOLUME = "volume"
 ATTR_CARD = "card"
+ATTR_INDEX = "index"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
