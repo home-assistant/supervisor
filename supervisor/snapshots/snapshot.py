@@ -16,6 +16,8 @@ from voluptuous.humanize import humanize_error
 
 from ..const import (
     ATTR_ADDONS,
+    ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT,
     ATTR_BOOT,
     ATTR_CRYPTO,
     ATTR_DATE,
@@ -443,6 +445,10 @@ class Snapshot(CoreSysAttributes):
             self.sys_homeassistant.refresh_token
         )
 
+        # Audio
+        self.homeassistant[ATTR_AUDIO_INPUT] = self.sys_homeassistant.audio_input
+        self.homeassistant[ATTR_AUDIO_OUTPUT] = self.sys_homeassistant.audio_output
+
     def restore_homeassistant(self):
         """Write all data to the Home Assistant object."""
         self.sys_homeassistant.watchdog = self.homeassistant[ATTR_WATCHDOG]
@@ -462,6 +468,10 @@ class Snapshot(CoreSysAttributes):
         self.sys_homeassistant.refresh_token = self._decrypt_data(
             self.homeassistant[ATTR_REFRESH_TOKEN]
         )
+
+        # Audio
+        self.sys_homeassistant.audio_input = self.homeassistant[ATTR_AUDIO_INPUT]
+        self.sys_homeassistant.audio_output = self.homeassistant[ATTR_AUDIO_OUTPUT]
 
         # save
         self.sys_homeassistant.save_data()

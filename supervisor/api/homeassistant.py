@@ -1,24 +1,27 @@
 """Init file for Supervisor Home Assistant RESTful API."""
 import asyncio
 import logging
-from typing import Coroutine, Dict, Any
+from typing import Any, Coroutine, Dict
 
-import voluptuous as vol
 from aiohttp import web
+import voluptuous as vol
 
 from ..const import (
     ATTR_ARCH,
+    ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_BOOT,
     ATTR_CPU_PERCENT,
     ATTR_CUSTOM,
     ATTR_IMAGE,
+    ATTR_IP_ADDRESS,
     ATTR_LAST_VERSION,
     ATTR_MACHINE,
     ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_USAGE,
     ATTR_MEMORY_PERCENT,
+    ATTR_MEMORY_USAGE,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
     ATTR_PORT,
@@ -27,7 +30,6 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
-    ATTR_IP_ADDRESS,
     CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
@@ -48,6 +50,8 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
         vol.Optional(ATTR_WAIT_BOOT): vol.All(vol.Coerce(int), vol.Range(min=60)),
         vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(vol.Coerce(str)),
     }
 )
 
@@ -73,6 +77,8 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_SSL: self.sys_homeassistant.api_ssl,
             ATTR_WATCHDOG: self.sys_homeassistant.watchdog,
             ATTR_WAIT_BOOT: self.sys_homeassistant.wait_boot,
+            ATTR_AUDIO_INPUT: self.sys_homeassistant.audio_input,
+            ATTR_AUDIO_OUTPUT: self.sys_homeassistant.audio_output,
         }
 
     @api_process
@@ -101,6 +107,12 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_REFRESH_TOKEN in body:
             self.sys_homeassistant.refresh_token = body[ATTR_REFRESH_TOKEN]
+
+        if ATTR_AUDIO_INPUT in body:
+            self.sys_homeassistant.audio_input = body[ATTR_AUDIO_INPUT]
+
+        if ATTR_AUDIO_OUTPUT in body:
+            self.sys_homeassistant.audio_output = body[ATTR_AUDIO_OUTPUT]
 
         self.sys_homeassistant.save_data()
 

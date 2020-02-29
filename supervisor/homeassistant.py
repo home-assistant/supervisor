@@ -19,6 +19,8 @@ from packaging import version as pkg_version
 
 from .const import (
     ATTR_ACCESS_TOKEN,
+    ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT,
     ATTR_BOOT,
     ATTR_IMAGE,
     ATTR_LAST_VERSION,
@@ -232,6 +234,36 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Set Home Assistant refresh_token."""
         self._data[ATTR_REFRESH_TOKEN] = value
 
+    @property
+    def path_pulse(self):
+        """Return path to asound config."""
+        return Path(self.sys_config.path_tmp, f"homeassistant_pulse")
+
+    @property
+    def path_extern_pulse(self):
+        """Return path to asound config for Docker."""
+        return Path(self.sys_config.path_extern_tmp, f"homeassistant_pulse")
+
+    @property
+    def audio_output(self) -> Optional[str]:
+        """Return a pulse profile for output or None."""
+        return self._data[ATTR_AUDIO_OUTPUT]
+
+    @audio_output.setter
+    def audio_output(self, value: Optional[str]):
+        """Set audio output profile settings."""
+        self._data[ATTR_AUDIO_OUTPUT] = value
+
+    @property
+    def audio_input(self) -> Optional[str]:
+        """Return pulse profile for input or None."""
+        return self._data[ATTR_AUDIO_INPUT]
+
+    @audio_input.setter
+    def audio_input(self, value: Optional[str]):
+        """Set audio input settings."""
+        self._data[ATTR_AUDIO_INPUT] = value
+
     @process_lock
     async def install_landingpage(self) -> None:
         """Install a landing page."""
@@ -333,6 +365,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         # Create new API token
         self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
         self.save_data()
+
+        # Write audio settings
+        self.write_pulse()
 
         try:
             await self.instance.run()
@@ -602,3 +637,18 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await self.instance.install(self.version)
         except DockerAPIError:
             _LOGGER.error("Repairing of Home Assistant fails")
+
+    def write_pulse(self):
+        """Write asound config to file and return True on success."""
+        pulse_config = self.sys_audio.pulse_client(
+            input_profile=self.audio_input, output_profile=self.audio_output
+        )
+
+        try:
+            with self.path_pulse.open("w") as config_file:
+                config_file.write(pulse_config)
+        except OSError as err:
+            _LOGGER.error("Home Assistant can't write pulse/client.config: %s", err)
+            raise HomeAssistantError()
+
+        _LOGGER.debug("Home Assistant write pulse/client.config: %s", self.path_pulse)

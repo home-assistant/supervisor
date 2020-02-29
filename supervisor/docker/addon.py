@@ -213,9 +213,9 @@ class DockerAddon(DockerInterface):
     @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Generate volumes for mappings."""
-        volumes = {str(self.addon.path_extern_data): {"bind": "/data", "mode": "rw"}}
-
         addon_mapping = self.addon.map_volumes
+
+        volumes = {str(self.addon.path_extern_data): {"bind": "/data", "mode": "rw"}}
 
         # setup config mappings
         if MAP_CONFIG in addon_mapping:
