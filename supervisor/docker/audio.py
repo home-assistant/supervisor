@@ -1,6 +1,8 @@
 """Audio docker object."""
 from contextlib import suppress
 import logging
+from pathlib import Path
+from typing import Dict
 
 from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
@@ -25,6 +27,20 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         """Return name of Docker container."""
         return AUDIO_DOCKER_NAME
 
+    @property
+    def volumes(self) -> Dict[str, Dict[str, str]]:
+        """Return Volumes for the mount."""
+        volumes = {
+            str(self.sys_config.path_extern_audio): {"bind": "/data", "mode": "rw"},
+            "/etc/group": {"bind": "/host/group", "mode": "ro"},
+        }
+
+        # SND support
+        if Path("/dev/snd").exists():
+            volumes.update({"/dev/snd": {"bind": "/dev/snd", "mode": "rw"}})
+
+        return volumes
+
     def _run(self) -> None:
         """Run Docker image.
 
@@ -48,14 +64,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             detach=True,
             privileged=True,
             environment={ENV_TIME: self.sys_timezone},
-            volumes={
-                str(self.sys_config.path_extern_audio): {
-                    "bind": "/data",
-                    "mode": "rw",
-                },
-                "/dev/snd": {"bind": "/dev/snd", "mode": "rw"},
-                "/etc/group": {"bind": "/host/group", "mode": "ro"},
-            },
+            volumes=self.volumes,
         )
 
         self._meta = docker_container.attrs
