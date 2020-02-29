@@ -298,7 +298,7 @@ class DockerAddon(DockerInterface):
 
         # Host D-Bus system
         if self.addon.host_dbus:
-            volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "rw"}})
+            volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}})
 
         # Configuration Audio
         if self.addon.with_audio:
@@ -309,8 +309,8 @@ class DockerAddon(DockerInterface):
                         "mode": "ro",
                     },
                     str(self.sys_audio.path_extern_pulse): {
-                        "bind": "/run/pulse.sock",
-                        "mode": "rw",
+                        "bind": "/run/audio",
+                        "mode": "ro",
                     },
                     str(self.sys_audio.path_extern_asound): {
                         "bind": "/etc/asound.conf",
