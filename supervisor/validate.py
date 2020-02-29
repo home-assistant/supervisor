@@ -9,6 +9,8 @@ from .const import (
     ATTR_ACCESS_TOKEN,
     ATTR_ADDONS_CUSTOM_LIST,
     ATTR_AUDIO,
+    ATTR_AUDIO_INPUT,
+    ATTR_AUDIO_OUTPUT,
     ATTR_BOOT,
     ATTR_CHANNEL,
     ATTR_CLI,
@@ -111,6 +113,8 @@ SCHEMA_HASS_CONFIG = vol.Schema(
         vol.Optional(ATTR_WAIT_BOOT, default=600): vol.All(
             vol.Coerce(int), vol.Range(min=60)
         ),
+        vol.Optional(ATTR_AUDIO_OUTPUT, default=None): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_AUDIO_INPUT, default=None): vol.Maybe(vol.Coerce(str)),
     },
     extra=vol.REMOVE_EXTRA,
 )

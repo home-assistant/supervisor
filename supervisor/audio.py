@@ -4,11 +4,11 @@ from contextlib import suppress
 import logging
 from pathlib import Path
 import shutil
-from typing import Awaitable, List, Optional
+from typing import Awaitable, Optional
 
 import jinja2
 
-from .const import ATTR_VERSION, FILE_HASSIO_AUDIO, STATE_STARTED
+from .const import ATTR_VERSION, FILE_HASSIO_AUDIO
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.audio import DockerAudio
 from .docker.stats import DockerStats
@@ -35,7 +35,7 @@ class Audio(JsonConfig, CoreSysAttributes):
     @property
     def path_extern_pulse(self) -> Path:
         """Return path of pulse socket file."""
-        return self.sys_config.path_extern_audio.joinpath("external/pulse.sock")
+        return self.sys_config.path_extern_audio.joinpath("external")
 
     @property
     def path_extern_asound(self) -> Path:
@@ -157,8 +157,6 @@ class Audio(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't start Audio plugin")
             raise AudioError() from None
 
-        await self._restart_audio_addons()
-
     async def start(self) -> None:
         """Run CoreDNS."""
         # Start Instance
@@ -168,8 +166,6 @@ class Audio(JsonConfig, CoreSysAttributes):
         except DockerAPIError:
             _LOGGER.error("Can't start Audio plugin")
             raise AudioError() from None
-
-        await self._restart_audio_addons()
 
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.
@@ -221,22 +217,3 @@ class Audio(JsonConfig, CoreSysAttributes):
             default_source=input_profile,
             default_sink=output_profile,
         )
-
-    async def _restart_audio_addons(self):
-        """Restart all Add-ons they can be connect to unix socket."""
-        tasks: List[Awaitable[None]] = []
-
-        # Find all Add-ons running with audio
-        for addon in self.sys_addons.installed:
-            if not addon.with_audio:
-                continue
-            if await addon.state() != STATE_STARTED:
-                continue
-            tasks.append(addon.restart())
-
-        if not tasks:
-            return
-
-        # restart
-        _LOGGER.info("Restart all Add-ons attach to pulse server: %d", len(tasks))
-        await asyncio.wait(tasks)

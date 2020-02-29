@@ -294,11 +294,8 @@ class Addon(AddonModel):
 
     @audio_output.setter
     def audio_output(self, value: Optional[str]):
-        """Set/reset audio output profile settings."""
-        if value is None:
-            self.persist.pop(ATTR_AUDIO_OUTPUT, None)
-        else:
-            self.persist[ATTR_AUDIO_OUTPUT] = value
+        """Set audio output profile settings."""
+        self.persist[ATTR_AUDIO_OUTPUT] = value
 
     @property
     def audio_input(self) -> Optional[str]:
@@ -315,11 +312,8 @@ class Addon(AddonModel):
 
     @audio_input.setter
     def audio_input(self, value: Optional[str]):
-        """Set/reset audio input settings."""
-        if value is None:
-            self.persist.pop(ATTR_AUDIO_INPUT, None)
-        else:
-            self.persist[ATTR_AUDIO_INPUT] = value
+        """Set audio input settings."""
+        self.persist[ATTR_AUDIO_INPUT] = value
 
     @property
     def image(self):
