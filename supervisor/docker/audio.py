@@ -38,6 +38,8 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         # SND support
         if Path("/dev/snd").exists():
             volumes.update({"/dev/snd": {"bind": "/dev/snd", "mode": "rw"}})
+        else:
+            _LOGGER.warning("Kernel have no audio support in")
 
         return volumes
 
