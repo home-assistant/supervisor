@@ -115,7 +115,7 @@ class Supervisor(CoreSysAttributes):
 
         _LOGGER.info("Update Supervisor to version %s", version)
         try:
-            await self.instance.update(version, latest=True)
+            await self.instance.install(version, image=None, latest=True)
         except DockerAPIError:
             _LOGGER.error("Update of Supervisor fails!")
             raise SupervisorUpdateError() from None

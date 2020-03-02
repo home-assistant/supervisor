@@ -163,7 +163,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_profile(self, request: web.Request) -> None:
         """Set audio default sources."""
-        body = await api_validate(SCHEMA_DEFAULT, request)
+        body = await api_validate(SCHEMA_PROFILE, request)
 
         await asyncio.shield(
             self.sys_host.sound.set_profile(body[ATTR_CARD], body[ATTR_NAME])

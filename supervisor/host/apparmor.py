@@ -73,7 +73,7 @@ class AppArmorControl(CoreSysAttributes):
         # Copy to AppArmor folder
         dest_profile = Path(self.sys_config.path_apparmor, profile_name)
         try:
-            shutil.copy(profile_file, dest_profile)
+            shutil.copyfile(profile_file, dest_profile)
         except OSError as err:
             _LOGGER.error("Can't copy %s: %s", profile_file, err)
             raise HostAppArmorError() from None
