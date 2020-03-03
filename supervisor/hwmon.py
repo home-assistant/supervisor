@@ -19,15 +19,19 @@ class HwMonitor(CoreSysAttributes):
         """Initialize Hardware Monitor object."""
         self.coresys: CoreSys = coresys
         self.context = pyudev.Context()
-        self.monitor = pyudev.Monitor.from_netlink(self.context)
+        self.monitor: Optional[pyudev.Monitor] = None
         self.observer: Optional[pyudev.MonitorObserver] = None
 
     async def load(self) -> None:
         """Start hardware monitor."""
-        self.observer = pyudev.MonitorObserver(self.monitor, self._udev_events)
-        self.observer.start()
-
-        _LOGGER.info("Start Supervisor hardware monitor")
+        try:
+            self.monitor = pyudev.Monitor.from_netlink(self.context)
+            self.observer = pyudev.MonitorObserver(self.monitor, self._udev_events)
+            self.observer.start()
+        except OSError:
+            _LOGGER.fatal("No privileged to run udev. Update your installation!")
+        else:
+            _LOGGER.info("Start Supervisor hardware monitor")
 
     async def unload(self) -> None:
         """Shutdown sessions."""
