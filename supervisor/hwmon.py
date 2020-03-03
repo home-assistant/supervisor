@@ -1,6 +1,5 @@
 """Supervisor Hardware monitor based on udev."""
 from datetime import timedelta
-from contextlib import suppress
 import logging
 from pprint import pformat
 from typing import Optional
@@ -28,10 +27,10 @@ class HwMonitor(CoreSysAttributes):
         try:
             self.monitor = pyudev.Monitor.from_netlink(self.context)
             self.observer = pyudev.MonitorObserver(self.monitor, self._udev_events)
-            self.observer.start()
         except OSError:
             _LOGGER.fatal("No privileged to run udev. Update your installation!")
         else:
+            self.observer.start()
             _LOGGER.info("Start Supervisor hardware monitor")
 
     async def unload(self) -> None:
@@ -39,9 +38,7 @@ class HwMonitor(CoreSysAttributes):
         if self.observer is None:
             return
 
-        # Stop udev monitor
-        with suppress(OSError):
-            self.observer.stop()
+        self.observer.stop()
         _LOGGER.info("Stop Supervisor hardware monitor")
 
     def _udev_events(self, action: str, device: pyudev.Device):
