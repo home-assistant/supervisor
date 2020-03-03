@@ -1,5 +1,6 @@
 """Supervisor Hardware monitor based on udev."""
 from datetime import timedelta
+from contextlib import suppress
 import logging
 from pprint import pformat
 from typing import Optional
@@ -37,7 +38,10 @@ class HwMonitor(CoreSysAttributes):
         """Shutdown sessions."""
         if self.observer is None:
             return
-        self.observer.stop()
+
+        # Stop udev monitor
+        with suppress(OSError):
+            self.observer.stop()
         _LOGGER.info("Stop Supervisor hardware monitor")
 
     def _udev_events(self, action: str, device: pyudev.Device):
