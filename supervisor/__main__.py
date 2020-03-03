@@ -30,8 +30,7 @@ if __name__ == "__main__":
     loop = initialize_event_loop()
 
     # Check if all information are available to setup Supervisor
-    if not bootstrap.check_environment():
-        sys.exit(1)
+    bootstrap.check_environment()
 
     # init executor pool
     executor = ThreadPoolExecutor(thread_name_prefix="SyncWorker")

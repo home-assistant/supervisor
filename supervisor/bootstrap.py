@@ -197,7 +197,7 @@ def initialize_logging():
     )
 
 
-def check_environment():
+def check_environment() -> None:
     """Check if all environment are exists."""
     # check environment variables
     for key in (ENV_SHARE, ENV_NAME, ENV_REPO):
@@ -205,24 +205,18 @@ def check_environment():
             os.environ[key]
         except KeyError:
             _LOGGER.fatal("Can't find %s in env!", key)
-            return False
 
     # check docker socket
     if not SOCKET_DOCKER.is_socket():
         _LOGGER.fatal("Can't find Docker socket!")
-        return False
 
     # check socat exec
     if not shutil.which("socat"):
         _LOGGER.fatal("Can't find socat!")
-        return False
 
     # check socat exec
     if not shutil.which("gdbus"):
         _LOGGER.fatal("Can't find gdbus!")
-        return False
-
-    return True
 
 
 def reg_signal(loop):
