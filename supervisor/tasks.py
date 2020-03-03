@@ -228,7 +228,7 @@ class Tasks(CoreSysAttributes):
     async def _watchdog_dns_docker(self):
         """Check running state of Docker and start if they is close."""
         # if CoreDNS is active
-        if await self.sys_dns.is_running():
+        if await self.sys_dns.is_running() or self.sys_dns.in_progress:
             return
         _LOGGER.warning("Watchdog found a problem with CoreDNS plugin!")
 
@@ -244,7 +244,7 @@ class Tasks(CoreSysAttributes):
     async def _watchdog_audio_docker(self):
         """Check running state of Docker and start if they is close."""
         # if PulseAudio plugin is active
-        if await self.sys_audio.is_running():
+        if await self.sys_audio.is_running() or self.sys_audio.in_progress:
             return
         _LOGGER.warning("Watchdog found a problem with PulseAudio plugin!")
 
