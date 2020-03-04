@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "207"
+SUPERVISOR_VERSION = "208"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -28,7 +28,7 @@ FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
 FILE_HASSIO_DNS = Path(SUPERVISOR_DATA, "dns.json")
 FILE_HASSIO_AUDIO = Path(SUPERVISOR_DATA, "audio.json")
 
-SOCKET_DOCKER = Path("/var/run/docker.sock")
+SOCKET_DOCKER = Path("/run/docker.sock")
 
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
