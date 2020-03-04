@@ -135,7 +135,17 @@ class DockerHomeAssistant(DockerInterface):
             detach=True,
             stdout=True,
             stderr=True,
-            volumes=self.volumes,
+            volumes={
+                str(self.sys_config.path_extern_homeassistant): {
+                    "bind": "/config",
+                    "mode": "rw",
+                },
+                str(self.sys_config.path_extern_ssl): {"bind": "/ssl", "mode": "ro"},
+                str(self.sys_config.path_extern_share): {
+                    "bind": "/share",
+                    "mode": "ro",
+                },
+            },
             environment={ENV_TIME: self.sys_timezone},
         )
 
