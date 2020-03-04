@@ -31,7 +31,7 @@ class HwMonitor(CoreSysAttributes):
             _LOGGER.fatal("Not privileged to run udev. Update your installation!")
         else:
             self.observer.start()
-            _LOGGER.info("Start Supervisor hardware monitor")
+            _LOGGER.info("Started Supervisor hardware monitor")
 
     async def unload(self) -> None:
         """Shutdown sessions."""
