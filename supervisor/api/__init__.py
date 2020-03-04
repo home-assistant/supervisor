@@ -7,11 +7,13 @@ from aiohttp import web
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .addons import APIAddons
+from .audio import APIAudio
 from .auth import APIAuth
+from .cli import APICli
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
 from .hardware import APIHardware
-from .hassos import APIHassOS
+from .os import APIOS
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .info import APIInfo
@@ -21,7 +23,6 @@ from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots
 from .supervisor import APISupervisor
-from .audio import APIAudio
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -49,7 +50,8 @@ class RestAPI(CoreSysAttributes):
         """Register REST API Calls."""
         self._register_supervisor()
         self._register_host()
-        self._register_hassos()
+        self._register_os()
+        self._register_cli()
         self._register_hardware()
         self._register_homeassistant()
         self._register_proxy()
@@ -84,22 +86,28 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
-    def _register_hassos(self) -> None:
-        """Register HassOS functions."""
-        api_hassos = APIHassOS()
-        api_hassos.coresys = self.coresys
+    def _register_os(self) -> None:
+        """Register OS functions."""
+        api_os = APIOS()
+        api_os.coresys = self.coresys
 
         self.webapp.add_routes(
             [
-                web.get("/os/info", api_hassos.info),
-                web.post("/os/update", api_hassos.update),
-                web.post("/os/update/cli", api_hassos.update_cli),
-                web.post("/os/config/sync", api_hassos.config_sync),
-                # Remove with old Supervisor fallback
-                web.get("/hassos/info", api_hassos.info),
-                web.post("/hassos/update", api_hassos.update),
-                web.post("/hassos/update/cli", api_hassos.update_cli),
-                web.post("/hassos/config/sync", api_hassos.config_sync),
+                web.get("/os/info", api_os.info),
+                web.post("/os/update", api_os.update),
+                web.post("/os/config/sync", api_os.config_sync),
+            ]
+        )
+
+    def _register_cli(self) -> None:
+        """Register HA cli functions."""
+        api_cli = APICli()
+        api_cli.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/cli/info", api_cli.info),
+                web.post("/cli/update", api_cli.update),
             ]
         )
 
