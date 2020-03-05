@@ -649,6 +649,5 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 config_file.write(pulse_config)
         except OSError as err:
             _LOGGER.error("Home Assistant can't write pulse/client.config: %s", err)
-            raise HomeAssistantError()
-
-        _LOGGER.debug("Home Assistant write pulse/client.config: %s", self.path_pulse)
+        else:
+            _LOGGER.info("Update pulse/client.config: %s", self.path_pulse)
