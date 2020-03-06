@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import shutil
 import time
 from typing import Any, AsyncContextManager, Awaitable, Dict, Optional
 from uuid import UUID
@@ -237,12 +238,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def path_pulse(self):
         """Return path to asound config."""
-        return Path(self.sys_config.path_tmp, f"homeassistant_pulse")
+        return Path(self.sys_config.path_tmp, "homeassistant_pulse")
 
     @property
     def path_extern_pulse(self):
         """Return path to asound config for Docker."""
-        return Path(self.sys_config.path_extern_tmp, f"homeassistant_pulse")
+        return Path(self.sys_config.path_extern_tmp, "homeassistant_pulse")
 
     @property
     def audio_output(self) -> Optional[str]:
@@ -644,6 +645,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             input_profile=self.audio_input, output_profile=self.audio_output
         )
 
+        # Cleanup wrong maps
+        if self.path_pulse.is_dir():
+            shutil.rmtree(self.path_pulse, ignore_errors=True)
+
+        # Write pulse config
         try:
             with self.path_pulse.open("w") as config_file:
                 config_file.write(pulse_config)
