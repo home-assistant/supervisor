@@ -393,6 +393,11 @@ class Addon(AddonModel):
             input_profile=self.audio_input, output_profile=self.audio_output
         )
 
+        # Cleanup wrong maps
+        if self.path_pulse.is_dir():
+            shutil.rmtree(self.path_pulse, ignore_errors=True)
+
+        # Write pulse config
         try:
             with self.path_pulse.open("w") as config_file:
                 config_file.write(pulse_config)
@@ -400,11 +405,10 @@ class Addon(AddonModel):
             _LOGGER.error(
                 "Add-on %s can't write pulse/client.config: %s", self.slug, err
             )
-            raise AddonsError()
-
-        _LOGGER.debug(
-            "Add-on %s write pulse/client.config: %s", self.slug, self.path_pulse
-        )
+        else:
+            _LOGGER.debug(
+                "Add-on %s write pulse/client.config: %s", self.slug, self.path_pulse
+            )
 
     async def install_apparmor(self) -> None:
         """Install or Update AppArmor profile for Add-on."""
