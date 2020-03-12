@@ -470,8 +470,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Fatal error on config check!")
             raise HomeAssistantError()
 
-        # parse output
+        # Convert output
         log = convert_to_ascii(result.output)
+        _LOGGER.debug("Result config check: %s", log)
+
+        # parse output
         if result.exit_code != 0 or RE_YAML_ERROR.search(log):
             _LOGGER.error("Invalid Home Assistant config found!")
             return ConfigResult(False, log)
