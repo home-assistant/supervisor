@@ -472,7 +472,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # Convert output
         log = convert_to_ascii(result.output)
-        _LOGGER.debug("Result config check: %s", log)
+        _LOGGER.debug("Result config check: %s", log.strip())
 
         # parse output
         if result.exit_code != 0 or RE_YAML_ERROR.search(log):
