@@ -465,7 +465,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             "python3 -m homeassistant -c /config --script check_config"
         )
 
-        # if not valid
+        # If not valid
         if result.exit_code is None:
             _LOGGER.error("Fatal error on config check!")
             raise HomeAssistantError()
@@ -474,7 +474,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         log = convert_to_ascii(result.output)
         _LOGGER.debug("Result config check: %s", log.strip())
 
-        # parse output
+        # Parse output
         if result.exit_code != 0 or RE_YAML_ERROR.search(log):
             _LOGGER.error("Invalid Home Assistant config found!")
             return ConfigResult(False, log)
