@@ -261,7 +261,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         ),
         vol.Optional(ATTR_IMAGE): vol.Match(RE_DOCKER_IMAGE),
         vol.Optional(ATTR_TIMEOUT, default=10): vol.All(
-            vol.Coerce(int), vol.Range(min=10, max=120)
+            vol.Coerce(int), vol.Range(min=10, max=300)
         ),
     },
     extra=vol.REMOVE_EXTRA,
