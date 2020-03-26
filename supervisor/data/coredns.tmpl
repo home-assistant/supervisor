@@ -7,16 +7,10 @@
     template ANY AAAA local.hass.io hassio {
         rcode NOERROR
     }
-    {% if locals %}
-    forward . {{ locals | join(" ") }} {
-        except local.hass.io
-        policy sequential
-        health_check 5s
-    }
-    {% endif %}
-    forward . tls://1.1.1.1 tls://1.0.0.1 {
+    forward . {{ locals | join(" ") }} tls://1.1.1.1 tls://1.0.0.1 {
         tls_servername cloudflare-dns.com
         except local.hass.io
+        policy sequential
         health_check 5s
     }
     cache 10

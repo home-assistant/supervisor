@@ -221,7 +221,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         servers: List[str] = self.servers + local_dns
 
         _LOGGER.debug(
-            "config-dns = %s, local-dns = %s , backup-dns = CloudFlare",
+            "config-dns = %s, local-dns = %s , backup-dns = CloudFlare DoT",
             self.servers,
             local_dns,
         )
