@@ -1,6 +1,7 @@
 .:53 {
     log
     errors
+    loop
     hosts /config/hosts {
         fallthrough
     }
@@ -12,6 +13,8 @@
         policy sequential
         health_check 5s
     }
+    fallback REFUSED . dns://127.0.0.1:5353
+    fallback SERVFAIL . dns://127.0.0.1:5353
     cache 10
 }
 
