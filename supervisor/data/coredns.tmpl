@@ -8,7 +8,7 @@
     template ANY AAAA local.hass.io hassio {
         rcode NOERROR
     }
-    forward . {{ locals | join(" ") }} {
+    forward . {{ locals | join(" ") }} dns://127.0.0.1:5353 {
         except local.hass.io
         policy sequential
         health_check 5s

@@ -216,8 +216,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         dns_servers: List[str] = []
 
         # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
-        local_dns: List[str] = self.sys_host.network.dns_servers or []
-        servers: List[str] = self.servers + local_dns + ["dns://127.0.0.1:5353"]
+        local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
+        servers: List[str] = self.servers + local_dns
 
         _LOGGER.debug(
             "config-dns = %s, local-dns = %s , backup-dns = CloudFlare DoT",
