@@ -4,13 +4,13 @@ from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
-from string import Template
 from typing import Awaitable, List, Optional
 
 import attr
+import jinja2
 import voluptuous as vol
 
-from .const import ATTR_SERVERS, ATTR_VERSION, DNS_SERVERS, DNS_SUFFIX, FILE_HASSIO_DNS
+from .const import ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, FILE_HASSIO_DNS
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.dns import DockerDNS
 from .docker.stats import DockerStats
@@ -42,6 +42,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
         self.forwarder: DNSForward = DNSForward()
+        self.coredns_template: Optional[jinja2.Template] = None
 
         self._hosts: List[HostEntry] = []
 
@@ -115,6 +116,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Start DNS forwarder
         self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
+
+        # Initialize CoreDNS Template
+        try:
+            self.coredns_template = jinja2.Template(COREDNS_TMPL.read_text())
+        except OSError as err:
+            _LOGGER.error("Can't read coredns.tmpl: %s", err)
 
         # Run CoreDNS
         with suppress(CoreDNSError):
@@ -208,24 +215,17 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """Write CoreDNS config."""
         dns_servers: List[str] = []
 
-        # Load Template
-        try:
-            corefile_template: Template = Template(COREDNS_TMPL.read_text())
-        except OSError as err:
-            _LOGGER.error("Can't read coredns template file: %s", err)
-            raise CoreDNSError() from None
-
         # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
         local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
-        servers: List[str] = self.servers + local_dns + DNS_SERVERS
+        servers: List[str] = self.servers + local_dns
 
         _LOGGER.debug(
-            "config-dns = %s, local-dns = %s , backup-dns = %s",
+            "config-dns = %s, local-dns = %s , backup-dns = CloudFlare DoT",
             self.servers,
             local_dns,
-            DNS_SERVERS,
         )
 
+        # Make sure, they are valid
         for server in servers:
             try:
                 dns_url(server)
@@ -235,7 +235,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 _LOGGER.warning("Ignore invalid DNS Server: %s", server)
 
         # Generate config file
-        data = corefile_template.safe_substitute(servers=" ".join(dns_servers))
+        data = self.coredns_template.render(locals=dns_servers)
 
         try:
             self.corefile.write_text(data)
