@@ -18,7 +18,7 @@ from ..const import (
     ATTR_HOST,
     ATTR_INDEX,
     ATTR_INPUT,
-    ATTR_LATEST_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
@@ -69,7 +69,7 @@ class APIAudio(CoreSysAttributes):
         """Return Audio information."""
         return {
             ATTR_VERSION: self.sys_audio.version,
-            ATTR_LATEST_VERSION: self.sys_audio.latest_version,
+            ATTR_VERSION_LATEST: self.sys_audio.latest_version,
             ATTR_HOST: str(self.sys_docker.network.audio),
             ATTR_AUDIO: {
                 ATTR_CARD: [attr.asdict(card) for card in self.sys_host.sound.cards],

@@ -20,7 +20,7 @@ from ..const import (
     ATTR_ICON,
     ATTR_INSTALLED,
     ATTR_IP_ADDRESS,
-    ATTR_LAST_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_LOGGING,
     ATTR_LOGO,
     ATTR_MEMORY_LIMIT,
@@ -92,7 +92,7 @@ class APISupervisor(CoreSysAttributes):
 
         return {
             ATTR_VERSION: SUPERVISOR_VERSION,
-            ATTR_LAST_VERSION: self.sys_updater.version_hassio,
+            ATTR_VERSION_LATEST: self.sys_updater.version_hassio,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_ARCH: self.sys_supervisor.arch,
             ATTR_IP_ADDRESS: str(self.sys_supervisor.ip_address),

@@ -17,7 +17,7 @@ from ..const import (
     ATTR_CUSTOM,
     ATTR_IMAGE,
     ATTR_IP_ADDRESS,
-    ATTR_LAST_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_MACHINE,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
@@ -44,7 +44,7 @@ SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_BOOT): vol.Boolean(),
         vol.Inclusive(ATTR_IMAGE, "custom_hass"): vol.Maybe(docker_image),
-        vol.Inclusive(ATTR_LAST_VERSION, "custom_hass"): vol.Maybe(vol.Coerce(str)),
+        vol.Inclusive(ATTR_VERSION_LATEST, "custom_hass"): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_PORT): network_port,
         vol.Optional(ATTR_SSL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
@@ -66,7 +66,7 @@ class APIHomeAssistant(CoreSysAttributes):
         """Return host information."""
         return {
             ATTR_VERSION: self.sys_homeassistant.version,
-            ATTR_LAST_VERSION: self.sys_homeassistant.latest_version,
+            ATTR_VERSION_LATEST: self.sys_homeassistant.latest_version,
             ATTR_MACHINE: self.sys_homeassistant.machine,
             ATTR_IP_ADDRESS: str(self.sys_homeassistant.ip_address),
             ATTR_ARCH: self.sys_homeassistant.arch,
@@ -79,6 +79,8 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_WAIT_BOOT: self.sys_homeassistant.wait_boot,
             ATTR_AUDIO_INPUT: self.sys_homeassistant.audio_input,
             ATTR_AUDIO_OUTPUT: self.sys_homeassistant.audio_output,
+            # Remove end of Q3 2020
+            "last_version": self.sys_homeassistant.latest_version,
         }
 
     @api_process
@@ -86,9 +88,9 @@ class APIHomeAssistant(CoreSysAttributes):
         """Set Home Assistant options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_IMAGE in body and ATTR_LAST_VERSION in body:
+        if ATTR_IMAGE in body and ATTR_VERSION_LATEST in body:
             self.sys_homeassistant.image = body[ATTR_IMAGE]
-            self.sys_homeassistant.latest_version = body[ATTR_LAST_VERSION]
+            self.sys_homeassistant.latest_version = body[ATTR_VERSION_LATEST]
 
         if ATTR_BOOT in body:
             self.sys_homeassistant.boot = body[ATTR_BOOT]
