@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "210"
+SUPERVISOR_VERSION = "211"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -93,8 +93,6 @@ ATTR_VERSION = "version"
 ATTR_VERSION_LATEST = "version_latest"
 ATTR_AUTO_UART = "auto_uart"
 ATTR_LAST_BOOT = "last_boot"
-ATTR_LAST_VERSION = "last_version"
-ATTR_LATEST_VERSION = "latest_version"
 ATTR_CHANNEL = "channel"
 ATTR_NAME = "name"
 ATTR_SLUG = "slug"

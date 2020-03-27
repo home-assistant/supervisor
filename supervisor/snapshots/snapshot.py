@@ -24,7 +24,7 @@ from ..const import (
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
-    ATTR_LAST_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_NAME,
     ATTR_PORT,
     ATTR_PROTECTED,
@@ -435,7 +435,7 @@ class Snapshot(CoreSysAttributes):
         if self.sys_homeassistant.is_custom_image:
             self.homeassistant[ATTR_IMAGE] = self.sys_homeassistant.image
             self.homeassistant[
-                ATTR_LAST_VERSION
+                ATTR_VERSION_LATEST
             ] = self.sys_homeassistant.latest_version
 
         # API/Proxy
@@ -459,7 +459,7 @@ class Snapshot(CoreSysAttributes):
         if self.homeassistant.get(ATTR_IMAGE):
             self.sys_homeassistant.image = self.homeassistant[ATTR_IMAGE]
             self.sys_homeassistant.latest_version = self.homeassistant[
-                ATTR_LAST_VERSION
+                ATTR_VERSION_LATEST
             ]
 
         # API/Proxy
