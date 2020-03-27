@@ -208,11 +208,11 @@ class Tasks(CoreSysAttributes):
             self._cache[HASS_WATCHDOG_API] = 0
 
     async def _update_cli(self):
-        """Check and run update of HA cli."""
+        """Check and run update of cli."""
         if not self.sys_cli.need_update:
             return
 
-        _LOGGER.info("Found new HA cli version")
+        _LOGGER.info("Found new cli version")
         await self.sys_cli.update()
 
     async def _update_dns(self):
