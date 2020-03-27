@@ -67,7 +67,6 @@ class APIHomeAssistant(CoreSysAttributes):
         return {
             ATTR_VERSION: self.sys_homeassistant.version,
             ATTR_VERSION_LATEST: self.sys_homeassistant.latest_version,
-            "last_version": self.sys_homeassistant.latest_version,  # Remove end of Q3 2020
             ATTR_MACHINE: self.sys_homeassistant.machine,
             ATTR_IP_ADDRESS: str(self.sys_homeassistant.ip_address),
             ATTR_ARCH: self.sys_homeassistant.arch,
@@ -80,6 +79,8 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_WAIT_BOOT: self.sys_homeassistant.wait_boot,
             ATTR_AUDIO_INPUT: self.sys_homeassistant.audio_input,
             ATTR_AUDIO_OUTPUT: self.sys_homeassistant.audio_output,
+            # Remove end of Q3 2020
+            "last_version": self.sys_homeassistant.latest_version,
         }
 
     @api_process
