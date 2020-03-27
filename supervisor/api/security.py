@@ -75,6 +75,7 @@ ADDONS_ROLE_ACCESS = {
         r"^(?:"
         r"|/audio/.*"
         r"|/dns/.*"
+        r"|/cli/.*"
         r"|/core/.+"
         r"|/homeassistant/.+"
         r"|/host/.+"
