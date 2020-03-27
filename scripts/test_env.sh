@@ -81,11 +81,6 @@ function cleanup_docker() {
 }
 
 
-function install_cli() {
-    docker pull homeassistant/amd64-hassio-cli:dev
-}
-
-
 function setup_test_env() {
     mkdir -p /workspaces/test_supervisor
 
@@ -131,7 +126,6 @@ start_docker
 trap "stop_docker" ERR
 
 build_supervisor
-install_cli
 cleanup_lastboot
 cleanup_docker
 init_dbus

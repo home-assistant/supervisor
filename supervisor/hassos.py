@@ -1,6 +1,5 @@
 """HassOS support on supervisor."""
 import asyncio
-from contextlib import suppress
 import logging
 from pathlib import Path
 from typing import Awaitable, Optional
@@ -10,12 +9,10 @@ from cpe import CPE
 
 from .const import URL_HASSOS_OTA
 from .coresys import CoreSysAttributes, CoreSys
-from .docker.hassos_cli import DockerHassOSCli
 from .exceptions import (
     DBusError,
     HassOSNotSupportedError,
     HassOSUpdateError,
-    DockerAPIError,
 )
 from .dbus.rauc import RaucState
 
@@ -28,7 +25,6 @@ class HassOS(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize HassOS handler."""
         self.coresys: CoreSys = coresys
-        self.instance: DockerHassOSCli = DockerHassOSCli(coresys)
         self._available: bool = False
         self._version: Optional[str] = None
         self._board: Optional[str] = None
@@ -44,29 +40,14 @@ class HassOS(CoreSysAttributes):
         return self._version
 
     @property
-    def version_cli(self) -> Optional[str]:
-        """Return version of HassOS cli."""
-        return self.instance.version
-
-    @property
-    def version_latest(self) -> str:
+    def latest_version(self) -> str:
         """Return version of HassOS."""
         return self.sys_updater.version_hassos
 
     @property
-    def version_cli_latest(self) -> str:
-        """Return version of HassOS."""
-        return self.sys_updater.version_cli
-
-    @property
     def need_update(self) -> bool:
         """Return true if a HassOS update is available."""
-        return self.version != self.version_latest
-
-    @property
-    def need_cli_update(self) -> bool:
-        """Return true if a HassOS cli update is available."""
-        return self.version_cli != self.version_cli_latest
+        return self.version != self.latest_version
 
     @property
     def board(self) -> Optional[str]:
@@ -134,8 +115,6 @@ class HassOS(CoreSysAttributes):
         _LOGGER.info(
             "Detect HassOS %s / BootSlot %s", self.version, self.sys_dbus.rauc.boot_slot
         )
-        with suppress(DockerAPIError):
-            await self.instance.attach(tag="latest")
 
     def config_sync(self) -> Awaitable[None]:
         """Trigger a host config reload from usb.
@@ -149,7 +128,7 @@ class HassOS(CoreSysAttributes):
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update HassOS system."""
-        version = version or self.version_latest
+        version = version or self.latest_version
 
         # Check installed version
         self._check_host()
@@ -182,35 +161,6 @@ class HassOS(CoreSysAttributes):
         await self.sys_dbus.rauc.update()
         _LOGGER.error("HassOS update fails with: %s", self.sys_dbus.rauc.last_error)
         raise HassOSUpdateError()
-
-    async def update_cli(self, version: Optional[str] = None) -> None:
-        """Update local HassOS cli."""
-        version = version or self.version_cli_latest
-
-        if version == self.version_cli:
-            _LOGGER.warning("Version %s is already installed for CLI", version)
-            return
-
-        try:
-            await self.instance.update(version, latest=True)
-        except DockerAPIError:
-            _LOGGER.error("HassOS CLI update fails")
-            raise HassOSUpdateError() from None
-        else:
-            # Cleanup
-            with suppress(DockerAPIError):
-                await self.instance.cleanup()
-
-    async def repair_cli(self) -> None:
-        """Repair CLI container."""
-        if await self.instance.exists():
-            return
-
-        _LOGGER.info("Repair HassOS CLI %s", self.version_cli)
-        try:
-            await self.instance.install(self.version_cli, latest=True)
-        except DockerAPIError:
-            _LOGGER.error("Repairing of HassOS CLI fails")
 
     async def mark_healthy(self):
         """Set booted partition as good for rauc."""

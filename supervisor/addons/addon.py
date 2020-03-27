@@ -164,7 +164,7 @@ class Addon(AddonModel):
         return self.persist[ATTR_UUID]
 
     @property
-    def hassio_token(self) -> Optional[str]:
+    def supervisor_token(self) -> Optional[str]:
         """Return access token for Supervisor API."""
         return self.persist.get(ATTR_ACCESS_TOKEN)
 

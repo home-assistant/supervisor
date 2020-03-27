@@ -208,7 +208,7 @@ class DBus:
             raise exception()
 
         # General
-        _LOGGER.error("DBus return error: %s", error)
+        _LOGGER.error("DBus return error: %s", error.strip())
         raise DBusFatalError()
 
     def attach_signals(self, filters=None):

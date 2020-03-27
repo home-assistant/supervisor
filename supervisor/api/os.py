@@ -10,8 +10,6 @@ from ..const import (
     ATTR_BOARD,
     ATTR_BOOT,
     ATTR_VERSION,
-    ATTR_VERSION_CLI,
-    ATTR_VERSION_CLI_LATEST,
     ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSysAttributes
@@ -22,38 +20,28 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 
 
-class APIHassOS(CoreSysAttributes):
-    """Handle RESTful API for HassOS functions."""
+class APIOS(CoreSysAttributes):
+    """Handle RESTful API for OS functions."""
 
     @api_process
     async def info(self, request: web.Request) -> Dict[str, Any]:
-        """Return HassOS information."""
+        """Return OS information."""
         return {
             ATTR_VERSION: self.sys_hassos.version,
-            ATTR_VERSION_CLI: self.sys_hassos.version_cli,
-            ATTR_VERSION_LATEST: self.sys_hassos.version_latest,
-            ATTR_VERSION_CLI_LATEST: self.sys_hassos.version_cli_latest,
+            ATTR_VERSION_LATEST: self.sys_hassos.latest_version,
             ATTR_BOARD: self.sys_hassos.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
         }
 
     @api_process
     async def update(self, request: web.Request) -> None:
-        """Update HassOS."""
+        """Update OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_hassos.version_latest)
+        version = body.get(ATTR_VERSION, self.sys_hassos.latest_version)
 
         await asyncio.shield(self.sys_hassos.update(version))
 
     @api_process
-    async def update_cli(self, request: web.Request) -> None:
-        """Update HassOS CLI."""
-        body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_hassos.version_cli_latest)
-
-        await asyncio.shield(self.sys_hassos.update_cli(version))
-
-    @api_process
     def config_sync(self, request: web.Request) -> Awaitable[None]:
-        """Trigger config reload on HassOS."""
+        """Trigger config reload on OS."""
         return asyncio.shield(self.sys_hassos.config_sync())

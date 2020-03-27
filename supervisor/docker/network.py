@@ -53,6 +53,11 @@ class DockerNetwork:
         """Return audio of the network."""
         return DOCKER_NETWORK_MASK[4]
 
+    @property
+    def cli(self) -> IPv4Address:
+        """Return cli of the network."""
+        return DOCKER_NETWORK_MASK[5]
+
     def _get_network(self) -> docker.models.networks.Network:
         """Get supervisor network."""
         try:

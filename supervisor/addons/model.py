@@ -137,7 +137,7 @@ class AddonModel(CoreSysAttributes):
         return None
 
     @property
-    def hassio_token(self) -> Optional[str]:
+    def supervisor_token(self) -> Optional[str]:
         """Return access token for Supervisor API."""
         return None
 

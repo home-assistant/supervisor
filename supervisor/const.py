@@ -27,6 +27,7 @@ FILE_HASSIO_DISCOVERY = Path(SUPERVISOR_DATA, "discovery.json")
 FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
 FILE_HASSIO_DNS = Path(SUPERVISOR_DATA, "dns.json")
 FILE_HASSIO_AUDIO = Path(SUPERVISOR_DATA, "audio.json")
+FILE_HASSIO_CLI = Path(SUPERVISOR_DATA, "cli.json")
 
 SOCKET_DOCKER = Path("/run/docker.sock")
 
@@ -189,9 +190,6 @@ ATTR_DEVICETREE = "devicetree"
 ATTR_CPE = "cpe"
 ATTR_BOARD = "board"
 ATTR_HASSOS = "hassos"
-ATTR_HASSOS_CLI = "hassos_cli"
-ATTR_VERSION_CLI = "version_cli"
-ATTR_VERSION_CLI_LATEST = "version_cli_latest"
 ATTR_REFRESH_TOKEN = "refresh_token"
 ATTR_ACCESS_TOKEN = "access_token"
 ATTR_DOCKER_API = "docker_api"

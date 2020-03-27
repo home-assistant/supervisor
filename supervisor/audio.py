@@ -49,7 +49,7 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     @version.setter
     def version(self, value: str) -> None:
-        """Return current version of Audio."""
+        """Set current version of Audio."""
         self._data[ATTR_VERSION] = value
 
     @property

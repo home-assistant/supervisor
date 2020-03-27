@@ -221,7 +221,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return self._data[ATTR_UUID]
 
     @property
-    def hassio_token(self) -> str:
+    def supervisor_token(self) -> str:
         """Return an access token for the Supervisor API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
 
