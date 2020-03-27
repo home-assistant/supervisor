@@ -11,7 +11,7 @@ from ..const import (
     ATTR_BLK_WRITE,
     ATTR_CPU_PERCENT,
     ATTR_HOST,
-    ATTR_LATEST_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_LOCALS,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
@@ -43,7 +43,7 @@ class APICoreDNS(CoreSysAttributes):
         """Return DNS information."""
         return {
             ATTR_VERSION: self.sys_dns.version,
-            ATTR_LATEST_VERSION: self.sys_dns.latest_version,
+            ATTR_VERSION_LATEST: self.sys_dns.latest_version,
             ATTR_HOST: str(self.sys_docker.network.dns),
             ATTR_SERVERS: self.sys_dns.servers,
             ATTR_LOCALS: self.sys_host.network.dns_servers,

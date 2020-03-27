@@ -24,7 +24,7 @@ from .const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_BOOT,
     ATTR_IMAGE,
-    ATTR_LAST_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
@@ -164,16 +164,16 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def latest_version(self) -> str:
         """Return last available version of Home Assistant."""
         if self.is_custom_image:
-            return self._data.get(ATTR_LAST_VERSION)
+            return self._data.get(ATTR_VERSION_LATEST)
         return self.sys_updater.version_homeassistant
 
     @latest_version.setter
     def latest_version(self, value: str):
         """Set last available version of Home Assistant."""
         if value:
-            self._data[ATTR_LAST_VERSION] = value
+            self._data[ATTR_VERSION_LATEST] = value
         else:
-            self._data.pop(ATTR_LAST_VERSION, None)
+            self._data.pop(ATTR_VERSION_LATEST, None)
 
     @property
     def image(self) -> str:
@@ -193,7 +193,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def is_custom_image(self) -> bool:
         """Return True if a custom image is used."""
-        return all(attr in self._data for attr in (ATTR_IMAGE, ATTR_LAST_VERSION))
+        return all(attr in self._data for attr in (ATTR_IMAGE, ATTR_VERSION_LATEST))
 
     @property
     def version(self) -> Optional[str]:

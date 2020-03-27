@@ -38,7 +38,7 @@ The addons from `addons` are only installed one.
 ```json
 {
   "version": "INSTALL_VERSION",
-  "last_version": "LAST_VERSION",
+  "version_latest": "version_latest",
   "arch": "armhf|aarch64|i386|amd64",
   "channel": "stable|beta|dev",
   "timezone": "TIMEZONE",
@@ -359,7 +359,7 @@ Trigger an udev reload
 ```json
 {
   "version": "INSTALL_VERSION",
-  "last_version": "LAST_VERSION",
+  "version_latest": "version_latest",
   "arch": "arch",
   "machine": "Image machine type",
   "ip_address": "ip address",
@@ -400,7 +400,7 @@ Output is the raw Docker log.
 ```json
 {
   "image": "Optional|null",
-  "last_version": "Optional for custom image|null",
+  "version_latest": "Optional for custom image|null",
   "port": "port for access core",
   "ssl": "bool",
   "refresh_token": "",
@@ -411,7 +411,7 @@ Output is the raw Docker log.
 }
 ```
 
-Image with `null` and last_version with `null` reset this options.
+Image with `null` and version_latest with `null` reset this options.
 
 - POST/GET `/core/api`
 
@@ -454,7 +454,7 @@ Get all available add-ons.
       "advanced": "bool",
       "stage": "stable|experimental|deprecated",
       "repository": "core|local|REP_ID",
-      "version": "LAST_VERSION",
+      "version": "version_latest",
       "installed": "none|INSTALL_VERSION",
       "detached": "bool",
       "available": "bool",
@@ -498,7 +498,7 @@ Get all available add-ons.
   "homeassistant": "null|min Home Assistant Core version",
   "repository": "12345678|null",
   "version": "null|VERSION_INSTALLED",
-  "last_version": "LAST_VERSION",
+  "version_latest": "version_latest",
   "state": "none|started|stopped",
   "boot": "auto|manual",
   "build": "bool",
@@ -804,7 +804,7 @@ return:
 {
   "host": "ip-address",
   "version": "1",
-  "latest_version": "2",
+  "version_latest": "2",
   "servers": ["dns://8.8.8.8"],
   "locals": ["dns://xy"]
 }
@@ -855,7 +855,7 @@ return:
 {
   "host": "ip-address",
   "version": "1",
-  "latest_version": "2",
+  "version_latest": "2",
   "servers": ["dns://8.8.8.8"],
   "locals": ["dns://xy"]
 }
