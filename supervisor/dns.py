@@ -221,7 +221,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Check the log for loop plugin output
         if b"plugin/loop: Loop" in log:
-            _LOGGER.fatal("Detect a DNS loop in local Network!")
+            _LOGGER.error("Detect a DNS loop in local Network!")
             self._loop = True
         else:
             self._loop = False
