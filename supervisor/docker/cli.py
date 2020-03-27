@@ -5,7 +5,7 @@ import logging
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerAPIError
 from .interface import DockerInterface
-from ..const import ENV_TIME
+from ..const import ENV_TIME, ENV_TOKEN
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -40,13 +40,18 @@ class DockerCli(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
+            command="bash -c 'sleep infinity'",
             version=self.sys_cli.version,
             init=False,
             ipv4=self.sys_docker.network.cli,
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
-            environment={ENV_TIME: self.sys_timezone},
+            extra_hosts={"supervisor": self.sys_docker.network.supervisor},
+            environment={
+                ENV_TIME: self.sys_timezone,
+                ENV_TOKEN: self.sys_cli.supervisor_token,
+            },
         )
 
         self._meta = docker_container.attrs

@@ -2,9 +2,10 @@
 import asyncio
 from contextlib import suppress
 import logging
+import secrets
 from typing import Awaitable, Optional
 
-from .const import ATTR_VERSION, FILE_HASSIO_CLI
+from .const import ATTR_ACCESS_TOKEN, ATTR_VERSION, FILE_HASSIO_CLI
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.cli import DockerCli
 from .docker.stats import DockerStats
@@ -43,6 +44,11 @@ class HaCli(CoreSysAttributes, JsonConfig):
     def need_update(self) -> bool:
         """Return true if a cli update is available."""
         return self.version != self.latest_version
+
+    @property
+    def supervisor_token(self) -> str:
+        """Return an access token for the Supervisor API."""
+        return self._data.get(ATTR_ACCESS_TOKEN)
 
     async def load(self) -> None:
         """Load cli setup."""
@@ -106,7 +112,11 @@ class HaCli(CoreSysAttributes, JsonConfig):
                 await self.instance.cleanup()
 
     async def start(self) -> None:
-        """Run CoreDNS."""
+        """Run cli."""
+        # Create new API token
+        self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
+        self.save_data()
+
         # Start Instance
         _LOGGER.info("Start cli plugin")
         try:

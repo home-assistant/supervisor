@@ -117,8 +117,8 @@ class DockerAddon(DockerInterface):
         return {
             **addon_env,
             ENV_TIME: self.sys_timezone,
-            ENV_TOKEN: self.addon.hassio_token,
-            ENV_TOKEN_OLD: self.addon.hassio_token,
+            ENV_TOKEN: self.addon.supervisor_token,
+            ENV_TOKEN_OLD: self.addon.supervisor_token,
         }
 
     @property

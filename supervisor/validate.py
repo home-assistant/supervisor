@@ -185,5 +185,9 @@ SCHEMA_AUDIO_CONFIG = vol.Schema(
 
 
 SCHEMA_CLI_CONFIG = vol.Schema(
-    {vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str))}, extra=vol.REMOVE_EXTRA,
+    {
+        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_ACCESS_TOKEN): token,
+    },
+    extra=vol.REMOVE_EXTRA,
 )
