@@ -40,14 +40,14 @@ class HassOS(CoreSysAttributes):
         return self._version
 
     @property
-    def version_latest(self) -> str:
+    def latest_version(self) -> str:
         """Return version of HassOS."""
         return self.sys_updater.version_hassos
 
     @property
     def need_update(self) -> bool:
         """Return true if a HassOS update is available."""
-        return self.version != self.version_latest
+        return self.version != self.latest_version
 
     @property
     def board(self) -> Optional[str]:
@@ -128,7 +128,7 @@ class HassOS(CoreSysAttributes):
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update HassOS system."""
-        version = version or self.version_latest
+        version = version or self.latest_version
 
         # Check installed version
         self._check_host()

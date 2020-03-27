@@ -28,7 +28,7 @@ class APIOS(CoreSysAttributes):
         """Return OS information."""
         return {
             ATTR_VERSION: self.sys_hassos.version,
-            ATTR_VERSION_LATEST: self.sys_hassos.version_latest,
+            ATTR_VERSION_LATEST: self.sys_hassos.latest_version,
             ATTR_BOARD: self.sys_hassos.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
         }
@@ -37,7 +37,7 @@ class APIOS(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_hassos.version_latest)
+        version = body.get(ATTR_VERSION, self.sys_hassos.latest_version)
 
         await asyncio.shield(self.sys_hassos.update(version))
 

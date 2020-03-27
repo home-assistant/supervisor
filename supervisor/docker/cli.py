@@ -1,12 +1,15 @@
 """HA Cli docker object."""
+from contextlib import suppress
 import logging
 
-import docker
-
 from ..coresys import CoreSysAttributes
+from ..exceptions import DockerAPIError
 from .interface import DockerInterface
+from ..const import ENV_TIME
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+CLI_DOCKER_NAME: str = "hassio_cli"
 
 
 class DockerCli(DockerInterface, CoreSysAttributes):
@@ -17,19 +20,41 @@ class DockerCli(DockerInterface, CoreSysAttributes):
         """Return name of HA cli image."""
         return f"homeassistant/{self.sys_arch.supervisor}-hassio-cli"
 
-    def _stop(self, remove_container=True):
-        """Don't need stop."""
-        return True
+    @property
+    def name(self) -> str:
+        """Return name of Docker container."""
+        return CLI_DOCKER_NAME
 
-    def _attach(self, tag: str):
-        """Attach to running Docker container.
+    def _run(self) -> None:
+        """Run Docker image.
 
         Need run inside executor.
         """
-        try:
-            image = self.sys_docker.images.get(f"{self.image}:{tag}")
-        except docker.errors.DockerException:
-            _LOGGER.warning("Can't find a HA cli %s", self.image)
-        else:
-            self._meta = image.attrs
-            _LOGGER.info("Found HA cli %s with version %s", self.image, self.version)
+        if self._is_running():
+            return
+
+        # Cleanup
+        with suppress(DockerAPIError):
+            self._stop()
+
+        # Create & Run container
+        docker_container = self.sys_docker.run(
+            self.image,
+            version=self.sys_audio.version,
+            init=False,
+            ipv4=self.sys_docker.network.audio,
+            name=self.name,
+            hostname=self.name.replace("_", "-"),
+            detach=True,
+            privileged=True,
+            environment={ENV_TIME: self.sys_timezone},
+            volumes=self.volumes,
+        )
+
+        self._meta = docker_container.attrs
+        _LOGGER.info(
+            "Start Audio %s with version %s - %s",
+            self.image,
+            self.version,
+            self.sys_docker.network.audio,
+        )

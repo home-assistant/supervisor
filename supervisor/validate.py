@@ -182,3 +182,8 @@ SCHEMA_DNS_CONFIG = vol.Schema(
 SCHEMA_AUDIO_CONFIG = vol.Schema(
     {vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str))}, extra=vol.REMOVE_EXTRA,
 )
+
+
+SCHEMA_CLI_CONFIG = vol.Schema(
+    {vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str))}, extra=vol.REMOVE_EXTRA,
+)
