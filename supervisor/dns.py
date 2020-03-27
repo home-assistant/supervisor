@@ -45,6 +45,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.coredns_template: Optional[jinja2.Template] = None
 
         self._hosts: List[HostEntry] = []
+        self._loop: bool = False
 
     @property
     def corefile(self) -> Path:
@@ -209,16 +210,36 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.hosts.unlink()
         self._init_hosts()
 
+        # Reset loop protection
+        self._loop = False
+
         await self.sys_addons.sync_dns()
+
+    async def loop_detection(self) -> None:
+        """Check if there was a loop found."""
+        log = await self.instance.logs()
+
+        # Check the log for loop plugin output
+        if b"plugin/loop: Loop" in log:
+            _LOGGER.error("Detect a DNS loop in local Network!")
+            self._loop = True
+        else:
+            self._loop = False
 
     def _write_corefile(self) -> None:
         """Write CoreDNS config."""
         dns_servers: List[str] = []
+        local_dns: List[str] = []
+        servers: List[str] = []
 
         # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
-        local_dns: List[str] = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
-        servers: List[str] = self.servers + local_dns
+        if not self._loop:
+            local_dns = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
+            servers = self.servers + local_dns
+        else:
+            _LOGGER.warning("Ignore user DNS settings because of loop")
 
+        # Print some usefully debug data
         _LOGGER.debug(
             "config-dns = %s, local-dns = %s , backup-dns = CloudFlare DoT",
             self.servers,
@@ -339,7 +360,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     def is_fails(self) -> Awaitable[bool]:
         """Return True if a Docker container is fails state.
-
         Return a coroutine.
         """
         return self.instance.is_fails()
