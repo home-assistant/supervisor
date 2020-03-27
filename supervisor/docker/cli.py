@@ -40,9 +40,10 @@ class DockerCli(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            command="bash -c 'sleep infinity'",
+            entrypoint=[],
+            command=["/bin/bash", "-c", "sleep infinity"],
             version=self.sys_cli.version,
-            init=False,
+            init=True,
             ipv4=self.sys_docker.network.cli,
             name=self.name,
             hostname=self.name.replace("_", "-"),

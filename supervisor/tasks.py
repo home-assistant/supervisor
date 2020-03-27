@@ -25,7 +25,8 @@ RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
 RUN_WATCHDOG_HOMEASSISTANT_API = 300
 
 RUN_WATCHDOG_DNS_DOCKER = 20
-RUN_WATCHDOG_AUDIO_DOCKER = 20
+RUN_WATCHDOG_AUDIO_DOCKER = 30
+RUN_WATCHDOG_CLI_DOCKER = 40
 
 
 class Tasks(CoreSysAttributes):
@@ -100,6 +101,11 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(
             self.sys_scheduler.register_task(
                 self._watchdog_audio_docker, RUN_WATCHDOG_AUDIO_DOCKER
+            )
+        )
+        self.jobs.add(
+            self.sys_scheduler.register_task(
+                self._watchdog_cli_docker, RUN_WATCHDOG_CLI_DOCKER
             )
         )
 
@@ -254,3 +260,15 @@ class Tasks(CoreSysAttributes):
             await self.sys_audio.start()
         except CoreDNSError:
             _LOGGER.error("Watchdog PulseAudio reanimation fails!")
+
+    async def _watchdog_cli_docker(self):
+        """Check running state of Docker and start if they is close."""
+        # if cli plugin is active
+        if await self.sys_cli.is_running() or self.sys_cli.in_progress:
+            return
+        _LOGGER.warning("Watchdog found a problem with cli plugin!")
+
+        try:
+            await self.sys_cli.start()
+        except CoreDNSError:
+            _LOGGER.error("Watchdog cli reanimation fails!")
