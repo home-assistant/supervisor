@@ -57,6 +57,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         return Path(self.sys_config.path_dns, "hosts")
 
     @property
+    def hosts_custom_records(self) -> Path:
+        """Return Path to hosts_config."""
+        return Path(self.sys_config.path_dns, "hosts.config")    
+    
+    @property
     def servers(self) -> List[str]:
         """Return list of DNS servers."""
         return self._data[ATTR_SERVERS]
@@ -260,9 +265,16 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     def write_hosts(self) -> None:
         """Write hosts from memory to file."""
         try:
+            hosts_config_data = None
+            with self.hosts_custom_records.open('r') as file:
+                hosts_config_data = file.read() 
+                        
             with self.hosts.open("w") as hosts:
                 for entry in self._hosts:
                     hosts.write(f"{entry.ip_address!s} {' '.join(entry.names)}\n")
+
+                if hosts_config_data is not None:
+                    hosts.write(hosts_config_data)
         except OSError as err:
             _LOGGER.error("Can't write hosts file: %s", err)
             raise CoreDNSError() from None
