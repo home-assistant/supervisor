@@ -107,6 +107,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/cli/info", api_cli.info),
+                web.get("/cli/stats", api_cli.stats),
                 web.post("/cli/update", api_cli.update),
             ]
         )
