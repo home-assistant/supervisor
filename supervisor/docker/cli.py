@@ -40,20 +40,18 @@ class DockerCli(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_audio.version,
+            version=self.sys_cli.version,
             init=False,
-            ipv4=self.sys_docker.network.audio,
+            ipv4=self.sys_docker.network.cli,
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
-            privileged=True,
             environment={ENV_TIME: self.sys_timezone},
-            volumes=self.volumes,
         )
 
         self._meta = docker_container.attrs
         _LOGGER.info(
-            "Start Audio %s with version %s - %s",
+            "Start CLI %s with version %s - %s",
             self.image,
             self.version,
             self.sys_docker.network.audio,
