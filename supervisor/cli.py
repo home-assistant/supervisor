@@ -143,7 +143,6 @@ class HaCli(CoreSysAttributes, JsonConfig):
         """Repair cli container."""
         if await self.instance.exists():
             return
-        version = self.version or self.latest_version
 
         _LOGGER.info("Repair HA cli %s", version)
         try:
