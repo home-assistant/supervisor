@@ -358,13 +358,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """
         return self.instance.is_running()
 
-    def is_fails(self) -> Awaitable[bool]:
-        """Return True if a Docker container is fails state.
-
-        Return a coroutine.
-        """
-        return self.instance.is_fails()
-
     async def repair(self) -> None:
         """Repair CoreDNS plugin."""
         if await self.instance.exists():

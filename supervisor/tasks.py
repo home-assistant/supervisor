@@ -232,10 +232,9 @@ class Tasks(CoreSysAttributes):
             return
         _LOGGER.warning("Watchdog found a problem with CoreDNS plugin!")
 
-        if await self.sys_dns.is_fails():
-            _LOGGER.warning("CoreDNS plugin is in fails state / Reset config")
-            await self.sys_dns.reset()
-            await self.sys_dns.loop_detection()
+        # Try to fix the DNS setup
+        await self.sys_dns.reset()
+        await self.sys_dns.loop_detection()
 
         try:
             await self.sys_dns.start()
