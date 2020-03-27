@@ -26,11 +26,11 @@ class APIProxy(CoreSysAttributes):
         """Check the Supervisor token."""
         if AUTHORIZATION in request.headers:
             bearer = request.headers[AUTHORIZATION]
-            hassio_token = bearer.split(" ")[-1]
+            supervisor_token = bearer.split(" ")[-1]
         else:
-            hassio_token = request.headers.get(HEADER_HA_ACCESS)
+            supervisor_token = request.headers.get(HEADER_HA_ACCESS)
 
-        addon = self.sys_addons.from_token(hassio_token)
+        addon = self.sys_addons.from_token(supervisor_token)
         if not addon:
             _LOGGER.warning("Unknown Home Assistant API access!")
         elif not addon.access_homeassistant_api:
@@ -177,8 +177,10 @@ class APIProxy(CoreSysAttributes):
 
             # Check API access
             response = await server.receive_json()
-            hassio_token = response.get("api_password") or response.get("access_token")
-            addon = self.sys_addons.from_token(hassio_token)
+            supervisor_token = response.get("api_password") or response.get(
+                "access_token"
+            )
+            addon = self.sys_addons.from_token(supervisor_token)
 
             if not addon or not addon.access_homeassistant_api:
                 _LOGGER.warning("Unauthorized WebSocket access!")

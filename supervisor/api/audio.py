@@ -166,5 +166,5 @@ class APIAudio(CoreSysAttributes):
         body = await api_validate(SCHEMA_PROFILE, request)
 
         await asyncio.shield(
-            self.sys_host.sound.set_profile(body[ATTR_CARD], body[ATTR_NAME])
+            self.sys_host.sound.ativate_profile(body[ATTR_CARD], body[ATTR_NAME])
         )

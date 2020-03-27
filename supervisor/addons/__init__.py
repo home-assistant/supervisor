@@ -59,7 +59,7 @@ class AddonManager(CoreSysAttributes):
     def from_token(self, token: str) -> Optional[Addon]:
         """Return an add-on from Supervisor token."""
         for addon in self.installed:
-            if token == addon.hassio_token:
+            if token == addon.supervisor_token:
                 return addon
         return None
 

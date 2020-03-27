@@ -75,6 +75,7 @@ ADDONS_ROLE_ACCESS = {
         r"^(?:"
         r"|/audio/.*"
         r"|/dns/.*"
+        r"|/cli/.*"
         r"|/core/.+"
         r"|/homeassistant/.+"
         r"|/host/.+"
@@ -123,12 +124,13 @@ class SecurityMiddleware(CoreSysAttributes):
             raise HTTPUnauthorized()
 
         # Home-Assistant
-        if supervisor_token == self.sys_homeassistant.hassio_token:
+        if supervisor_token == self.sys_homeassistant.supervisor_token:
             _LOGGER.debug("%s access from Home Assistant", request.path)
             request_from = self.sys_homeassistant
 
         # Host
-        if supervisor_token == self.sys_machine_id:
+        # Remove machine_id handling later if all use new CLI
+        if supervisor_token in (self.sys_machine_id, self.sys_cli.supervisor_token):
             _LOGGER.debug("%s access from Host", request.path)
             request_from = self.sys_host
 

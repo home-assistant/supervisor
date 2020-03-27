@@ -14,6 +14,7 @@ from .auth import Auth
 from .audio import Audio
 from .const import SOCKET_DOCKER, UpdateChannels
 from .core import Core
+from .cli import HaCli
 from .coresys import CoreSys
 from .dbus import DBusManager
 from .discovery import Discovery
@@ -67,6 +68,7 @@ async def initialize_coresys():
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
     coresys.secrets = SecretsManager(coresys)
+    coresys.cli = HaCli(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)

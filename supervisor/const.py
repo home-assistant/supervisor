@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "209"
+SUPERVISOR_VERSION = "210"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -27,6 +27,7 @@ FILE_HASSIO_DISCOVERY = Path(SUPERVISOR_DATA, "discovery.json")
 FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
 FILE_HASSIO_DNS = Path(SUPERVISOR_DATA, "dns.json")
 FILE_HASSIO_AUDIO = Path(SUPERVISOR_DATA, "audio.json")
+FILE_HASSIO_CLI = Path(SUPERVISOR_DATA, "cli.json")
 
 SOCKET_DOCKER = Path("/run/docker.sock")
 
@@ -34,7 +35,6 @@ DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
 
-DNS_SERVERS = ["dns://1.1.1.1", "dns://9.9.9.9"]
 DNS_SUFFIX = "local.hass.io"
 
 LABEL_VERSION = "io.hass.version"
@@ -190,9 +190,6 @@ ATTR_DEVICETREE = "devicetree"
 ATTR_CPE = "cpe"
 ATTR_BOARD = "board"
 ATTR_HASSOS = "hassos"
-ATTR_HASSOS_CLI = "hassos_cli"
-ATTR_VERSION_CLI = "version_cli"
-ATTR_VERSION_CLI_LATEST = "version_cli_latest"
 ATTR_REFRESH_TOKEN = "refresh_token"
 ATTR_ACCESS_TOKEN = "access_token"
 ATTR_DOCKER_API = "docker_api"

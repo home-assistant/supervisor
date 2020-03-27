@@ -291,23 +291,13 @@ return:
 ```json
 {
   "version": "2.3",
-  "version_cli": "7",
   "version_latest": "2.4",
-  "version_cli_latest": "8",
   "board": "ova|rpi",
   "boot": "rauc boot slot"
 }
 ```
 
 - POST `/os/update`
-
-```json
-{
-  "version": "optional"
-}
-```
-
-- POST `/os/update/cli`
 
 ```json
 {
@@ -857,90 +847,29 @@ return:
 }
 ```
 
-### Audio
+### DNS
 
-- GET `/audio/info`
+- GET `/dns/info`
 
 ```json
 {
   "host": "ip-address",
   "version": "1",
   "latest_version": "2",
-  "audio": {
-    "card": [
-      {
-        "name": "...",
-        "index": 1,
-        "driver": "...",
-        "profiles": [
-          {
-            "name": "...",
-            "description": "...",
-            "active": false
-          }
-        ]
-      }
-    ],
-    "input": [
-      {
-        "name": "...",
-        "index": 0,
-        "description": "...",
-        "volume": 0.3,
-        "mute": false,
-        "default": false,
-        "card": "null|int",
-        "applications": [
-          {
-            "name": "...",
-            "index": 0,
-            "stream_index": 0,
-            "stream_type": "INPUT",
-            "volume": 0.3,
-            "mute": false,
-            "addon": ""
-          }
-        ]
-      }
-    ],
-    "output": [
-      {
-        "name": "...",
-        "index": 0,
-        "description": "...",
-        "volume": 0.3,
-        "mute": false,
-        "default": false,
-        "card": "null|int",
-        "applications": [
-          {
-            "name": "...",
-            "index": 0,
-            "stream_index": 0,
-            "stream_type": "OUTPUT",
-            "volume": 0.3,
-            "mute": false,
-            "addon": ""
-          }
-        ]
-      }
-    ],
-    "application": [
-      {
-        "name": "...",
-        "index": 0,
-        "stream_index": 0,
-        "stream_type": "OUTPUT",
-        "volume": 0.3,
-        "mute": false,
-        "addon": ""
-      }
-    ]
-  }
+  "servers": ["dns://8.8.8.8"],
+  "locals": ["dns://xy"]
 }
 ```
 
-- POST `/audio/update`
+- POST `/dns/options`
+
+```json
+{
+  "servers": ["dns://8.8.8.8"]
+}
+```
+
+- POST `/dns/update`
 
 ```json
 {
@@ -948,92 +877,47 @@ return:
 }
 ```
 
-- POST `/audio/restart`
+- POST `/dns/restart`
 
-- POST `/audio/reload`
+- POST `/dns/reset`
 
-- GET `/audio/logs`
+- GET `/dns/logs`
 
-- POST `/audio/volume/input`
-
-```json
-{
-  "index": "...",
-  "volume": 0.5
-}
-```
-
-- POST `/audio/volume/output`
+- GET `/dns/stats`
 
 ```json
 {
-  "index": "...",
-  "volume": 0.5
+  "cpu_percent": 0.0,
+  "memory_usage": 283123,
+  "memory_limit": 329392,
+  "memory_percent": 1.4,
+  "network_tx": 0,
+  "network_rx": 0,
+  "blk_read": 0,
+  "blk_write": 0
 }
 ```
 
-- POST `/audio/volume/{output|input}/application`
+### CLI
+
+- GET `/cli/info`
 
 ```json
 {
-  "index": "...",
-  "volume": 0.5
+  "version": "1",
+  "version_latest": "2"
 }
 ```
 
-- POST `/audio/mute/input`
+- POST `/cli/update`
 
 ```json
 {
-  "index": "...",
-  "active": false
+  "version": "VERSION"
 }
 ```
 
-- POST `/audio/mute/output`
-
-```json
-{
-  "index": "...",
-  "active": false
-}
-```
-
-- POST `/audio/mute/{output|input}/application`
-
-```json
-{
-  "index": "...",
-  "active": false
-}
-```
-
-- POST `/audio/default/input`
-
-```json
-{
-  "name": "..."
-}
-```
-
-- POST `/audio/default/output`
-
-```json
-{
-  "name": "..."
-}
-```
-
-- POST `/audio/profile`
-
-```json
-{
-  "card": "...",
-  "name": "..."
-}
-```
-
-- GET `/audio/stats`
+- GET `/cli/stats`
 
 ```json
 {

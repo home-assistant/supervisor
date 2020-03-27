@@ -1,15 +1,31 @@
 .:53 {
     log
     errors
+    loop
     hosts /config/hosts {
         fallthrough
     }
     template ANY AAAA local.hass.io hassio {
         rcode NOERROR
     }
-    forward . $servers {
+    forward . {{ locals | join(" ") }} dns://127.0.0.1:5353 {
         except local.hass.io
         policy sequential
+        health_check 5s
+    }
+    fallback REFUSED . dns://127.0.0.1:5353
+    fallback SERVFAIL . dns://127.0.0.1:5353
+    fallback NXDOMAIN . dns://127.0.0.1:5353
+    cache 10
+}
+
+.:5353 {
+    log
+    errors
+    forward . tls://1.1.1.1 tls://1.0.0.1 {
+        tls_servername cloudflare-dns.com
+        except local.hass.io
         health_check 10s
     }
+    cache 30
 }

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from .audio import Audio
     from .auth import Auth
     from .core import Core
+    from .cli import HaCli
     from .dbus import DBusManager
     from .discovery import Discovery
     from .dns import CoreDNS
@@ -62,6 +63,7 @@ class CoreSys:
         self._audio: Optional[Audio] = None
         self._auth: Optional[Auth] = None
         self._dns: Optional[CoreDNS] = None
+        self._cli: Optional[HaCli] = None
         self._homeassistant: Optional[HomeAssistant] = None
         self._supervisor: Optional[Supervisor] = None
         self._addons: Optional[AddonManager] = None
@@ -142,6 +144,18 @@ class CoreSys:
         if self._core:
             raise RuntimeError("Core already set!")
         self._core = value
+
+    @property
+    def cli(self) -> HaCli:
+        """Return HaCli object."""
+        return self._cli
+
+    @cli.setter
+    def cli(self, value: HaCli):
+        """Set a HaCli object."""
+        if self._cli:
+            raise RuntimeError("HaCli already set!")
+        self._cli = value
 
     @property
     def arch(self) -> CpuArch:
@@ -448,6 +462,11 @@ class CoreSysAttributes:
     def sys_core(self) -> Core:
         """Return core object."""
         return self.coresys.core
+
+    @property
+    def sys_cli(self) -> HaCli:
+        """Return HaCli object."""
+        return self.coresys.cli
 
     @property
     def sys_arch(self) -> CpuArch:

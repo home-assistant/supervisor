@@ -54,6 +54,17 @@ class HassOSNotSupportedError(HassioNotSupportedError):
     """Function not supported by HassOS."""
 
 
+# HaCli
+
+
+class CliError(HassioError):
+    """HA cli exception."""
+
+
+class CliUpdateError(HassOSError):
+    """Error on update of a HA cli."""
+
+
 # DNS
 
 
