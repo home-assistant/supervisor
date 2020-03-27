@@ -40,10 +40,10 @@ class DockerCli(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            entrypoint=[],
+            entrypoint=["/init"],
             command=["/bin/bash", "-c", "sleep infinity"],
             version=self.sys_cli.version,
-            init=True,
+            init=False,
             ipv4=self.sys_docker.network.cli,
             name=self.name,
             hostname=self.name.replace("_", "-"),
