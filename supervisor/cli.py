@@ -89,7 +89,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
 
             if self.latest_version:
                 with suppress(DockerAPIError):
-                    await self.instance.install(self.latest_version)
+                    await self.instance.install(self.latest_version, latest=True)
                     break
             _LOGGER.warning("Error on install cli plugin. Retry in 30sec")
             await asyncio.sleep(30)
@@ -115,7 +115,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
         # Cleanup
         with suppress(DockerAPIError):
             await self.instance.cleanup()
-        
+
         self.version = version
         self.save_data()
 
