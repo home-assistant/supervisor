@@ -1,9 +1,15 @@
 """Info control for host."""
+import asyncio
 import logging
 from typing import Optional
 
 from ..coresys import CoreSysAttributes
-from ..exceptions import HostNotSupportedError, DBusNotConnectedError, DBusError
+from ..exceptions import (
+    HostNotSupportedError,
+    HostError,
+    DBusNotConnectedError,
+    DBusError,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -44,6 +50,21 @@ class InfoCenter(CoreSysAttributes):
     def cpe(self) -> Optional[str]:
         """Return local CPE."""
         return self.sys_dbus.hostname.cpe
+
+    async def get_dmesg(self) -> bytes:
+        """Return host dmesg output."""
+        proc = await asyncio.create_subprocess_shell(
+            "dmesg", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+
+        # Get kernel log
+        try:
+            stdout, _ = await proc.communicate()
+        except OSError as err:
+            _LOGGER.error("Can't read kernel log: %s", err)
+            raise HostError()
+
+        return stdout
 
     async def update(self):
         """Update properties over dbus."""
