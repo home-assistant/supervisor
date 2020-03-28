@@ -74,6 +74,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/host/info", api_host.info),
+                web.get("/host/logs", api_host.logs),
                 web.post("/host/reboot", api_host.reboot),
                 web.post("/host/shutdown", api_host.shutdown),
                 web.post("/host/reload", api_host.reload),
