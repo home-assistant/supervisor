@@ -165,15 +165,16 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.warning("Version %s is already installed for CoreDNS", version)
             return
 
+        # Update
         try:
             await self.instance.update(version)
         except DockerAPIError:
             _LOGGER.error("CoreDNS update fails")
             raise CoreDNSUpdateError() from None
-        else:
-            # Cleanup
-            with suppress(DockerAPIError):
-                await self.instance.cleanup()
+
+        # Cleanup
+        with suppress(DockerAPIError):
+            await self.instance.cleanup()
 
         self.version = version
         self.save_data()

@@ -111,10 +111,16 @@ class HaCli(CoreSysAttributes, JsonConfig):
         except DockerAPIError:
             _LOGGER.error("HA cli update fails")
             raise CliUpdateError() from None
-        else:
-            # Cleanup
-            with suppress(DockerAPIError):
-                await self.instance.cleanup()
+
+        # Cleanup
+        with suppress(DockerAPIError):
+            await self.instance.cleanup()
+        
+        self.version = version
+        self.save_data()
+
+        # Start cli
+        await self.start()
 
     async def start(self) -> None:
         """Run cli."""
