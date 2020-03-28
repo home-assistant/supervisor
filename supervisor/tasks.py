@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from .coresys import CoreSysAttributes
-from .exceptions import HomeAssistantError, CoreDNSError
+from .exceptions import AudioError, CliError, CoreDNSError, HomeAssistantError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -258,7 +258,7 @@ class Tasks(CoreSysAttributes):
 
         try:
             await self.sys_audio.start()
-        except CoreDNSError:
+        except AudioError:
             _LOGGER.error("Watchdog PulseAudio reanimation fails!")
 
     async def _watchdog_cli_docker(self):
@@ -270,5 +270,5 @@ class Tasks(CoreSysAttributes):
 
         try:
             await self.sys_cli.start()
-        except CoreDNSError:
+        except CliError:
             _LOGGER.error("Watchdog cli reanimation fails!")
