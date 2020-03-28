@@ -252,6 +252,10 @@ return:
 }
 ```
 
+- GET `/host/logs`
+
+Return host dmesg
+
 - POST `/host/options`
 
 ```json

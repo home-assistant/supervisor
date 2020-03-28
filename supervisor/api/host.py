@@ -1,24 +1,26 @@
 """Init file for Supervisor host RESTful API."""
 import asyncio
 import logging
+from typing import Awaitable
 
 import voluptuous as vol
 
-from .utils import api_process, api_validate
 from ..const import (
-    ATTR_HOSTNAME,
-    ATTR_FEATURES,
-    ATTR_KERNEL,
-    ATTR_OPERATING_SYSTEM,
     ATTR_CHASSIS,
-    ATTR_DEPLOYMENT,
-    ATTR_STATE,
-    ATTR_NAME,
-    ATTR_DESCRIPTON,
-    ATTR_SERVICES,
     ATTR_CPE,
+    ATTR_DEPLOYMENT,
+    ATTR_DESCRIPTON,
+    ATTR_FEATURES,
+    ATTR_HOSTNAME,
+    ATTR_KERNEL,
+    ATTR_NAME,
+    ATTR_OPERATING_SYSTEM,
+    ATTR_SERVICES,
+    ATTR_STATE,
+    CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
+from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -107,3 +109,8 @@ class APIHost(CoreSysAttributes):
         """Restart a service."""
         unit = request.match_info.get(SERVICE)
         return asyncio.shield(self.sys_host.services.restart(unit))
+
+    @api_process_raw(CONTENT_TYPE_BINARY)
+    def logs(self, request: web.Request) -> Awaitable[bytes]:
+        """Return host kernel logs."""
+        return self.sys_host.info.get_dmesg()
