@@ -65,7 +65,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
 
             await self.instance.attach(tag=self.version)
         except DockerAPIError:
-            _LOGGER.info("No Audio plugin Docker image %s found.", self.instance.image)
+            _LOGGER.info("No cli plugin Docker image %s found.", self.instance.image)
 
             # Install cli
             with suppress(CliError):
