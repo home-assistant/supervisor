@@ -1,0 +1,5 @@
+search local.hass.io
+{% for server in servers %}
+nameserver {{ server }}
+{% endfor %}
+options ndots:0

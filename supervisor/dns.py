@@ -22,7 +22,8 @@ from .validate import dns_url, SCHEMA_DNS_CONFIG
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 COREDNS_TMPL: Path = Path(__file__).parents[0].joinpath("data/coredns.tmpl")
-RESOLV_CONF: Path = Path("/etc/resolv.conf")
+RESOLV_TMPL: Path = Path(__file__).parents[0].joinpath("data/resolv.tmpl")
+HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
 
 @attr.s
@@ -43,6 +44,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self.instance: DockerDNS = DockerDNS(coresys)
         self.forwarder: DNSForward = DNSForward()
         self.coredns_template: Optional[jinja2.Template] = None
+        self.resolv_template: Optional[jinja2.Template] = None
 
         self._hosts: List[HostEntry] = []
         self._loop: bool = False
@@ -123,6 +125,10 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.coredns_template = jinja2.Template(COREDNS_TMPL.read_text())
         except OSError as err:
             _LOGGER.error("Can't read coredns.tmpl: %s", err)
+        try:
+            self.resolv_template = jinja2.Template(RESOLV_TMPL.read_text())
+        except OSError as err:
+            _LOGGER.error("Can't read coredns.tmpl: %s", err)
 
         # Run CoreDNS
         with suppress(CoreDNSError):
@@ -130,6 +136,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 await self.restart()
             else:
                 await self.start()
+
+        # Update supervisor
+        self._write_resolv(HOST_RESOLV)
 
     async def unload(self) -> None:
         """Unload DNS forwarder."""
@@ -375,3 +384,19 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.install(self.version)
         except DockerAPIError:
             _LOGGER.error("Repairing of CoreDNS fails")
+
+    def _write_resolv(self, resolv_conf: Path) -> None:
+        """Update/Write resolv.conf file."""
+        nameservers = [f"{self.sys_docker.network.dns!s}", "127.0.0.11"]
+
+        # Read resolv config
+        data = self.resolv_template.render(servers=nameservers)
+
+        # Write config back to resolv
+        try:
+            resolv_conf.write_text(data)
+        except OSError as err:
+            _LOGGER.warning("Can't write/update %s: %s", resolv_conf, err)
+            return
+
+        _LOGGER.info("Updated %s", resolv_conf)
