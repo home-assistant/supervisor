@@ -398,3 +398,5 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         except OSError as err:
             _LOGGER.warning("Can't write/update %s: %s", resolv_conf, err)
             return
+
+        _LOGGER.info("Updated %s", resolv_conf)
