@@ -18,7 +18,7 @@ class DockerCli(DockerInterface, CoreSysAttributes):
     @property
     def image(self):
         """Return name of HA cli image."""
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-cli"
+        return self.sys_cli.image
 
     @property
     def name(self) -> str:

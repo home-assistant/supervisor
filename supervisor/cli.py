@@ -5,7 +5,7 @@ import logging
 import secrets
 from typing import Awaitable, Optional
 
-from .const import ATTR_ACCESS_TOKEN, ATTR_VERSION, FILE_HASSIO_CLI
+from .const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION, FILE_HASSIO_CLI
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.cli import DockerCli
 from .docker.stats import DockerStats
@@ -34,6 +34,18 @@ class HaCli(CoreSysAttributes, JsonConfig):
     def version(self, value: str) -> None:
         """Set current version of cli."""
         self._data[ATTR_VERSION] = value
+
+    @property
+    def image(self) -> str:
+        """Return current image of cli."""
+        if self._data.get(ATTR_IMAGE):
+            return self._data[ATTR_IMAGE]
+        return f"homeassistant/{self.sys_arch.supervisor}-hassio-cli"
+
+    @image.setter
+    def image(self, value: str) -> None:
+        """Return current image of cli."""
+        self._data[ATTR_IMAGE] = value
 
     @property
     def latest_version(self) -> str:
@@ -72,6 +84,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
                 await self.install()
         else:
             self.version = self.instance.version
+            self.image = self.instance.image
             self.save_data()
 
         # Run PulseAudio
@@ -95,7 +108,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
             await asyncio.sleep(30)
 
         _LOGGER.info("cli plugin now installed")
-        self.version = self.instance.version
+        self.version = self.latest_version
         self.save_data()
 
     async def update(self, version: Optional[str] = None) -> None:

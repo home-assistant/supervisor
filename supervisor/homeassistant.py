@@ -91,6 +91,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await self.install_landingpage()
         else:
             self.version = self.instance.version
+            self.image = self.instance.image
             self.save_data()
 
     @property
@@ -163,8 +164,6 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def latest_version(self) -> str:
         """Return last available version of Home Assistant."""
-        if self.is_custom_image:
-            return self._data.get(ATTR_VERSION_LATEST)
         return self.sys_updater.version_homeassistant
 
     @latest_version.setter
@@ -183,17 +182,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return os.environ["HOMEASSISTANT_REPOSITORY"]
 
     @image.setter
-    def image(self, value: str):
+    def image(self, value: str) -> None:
         """Set image name of Home Assistant container."""
-        if value:
-            self._data[ATTR_IMAGE] = value
-        else:
-            self._data.pop(ATTR_IMAGE, None)
-
-    @property
-    def is_custom_image(self) -> bool:
-        """Return True if a custom image is used."""
-        return all(attr in self._data for attr in (ATTR_IMAGE, ATTR_VERSION_LATEST))
+        self._data[ATTR_IMAGE] = value
 
     @property
     def version(self) -> Optional[str]:

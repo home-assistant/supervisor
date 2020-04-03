@@ -10,14 +10,14 @@ import attr
 import jinja2
 import voluptuous as vol
 
-from .const import ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, FILE_HASSIO_DNS
+from .const import ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, FILE_HASSIO_DNS
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.dns import DockerDNS
 from .docker.stats import DockerStats
 from .exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
 from .misc.forwarder import DNSForward
 from .utils.json import JsonConfig
-from .validate import dns_url, SCHEMA_DNS_CONFIG
+from .validate import SCHEMA_DNS_CONFIG, dns_url
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -80,6 +80,18 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self._data[ATTR_VERSION] = value
 
     @property
+    def image(self) -> str:
+        """Return current image of DNS."""
+        if self._data.get(ATTR_IMAGE):
+            return self._data[ATTR_IMAGE]
+        return f"homeassistant/{self.sys_arch.supervisor}-hassio-dns"
+
+    @image.setter
+    def image(self, value: str) -> None:
+        """Return current image of DNS."""
+        self._data[ATTR_IMAGE] = value
+
+    @property
     def latest_version(self) -> Optional[str]:
         """Return latest version of CoreDNS."""
         return self.sys_updater.version_dns
@@ -115,6 +127,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 await self.install()
         else:
             self.version = self.instance.version
+            self.image = self.instance.image
             self.save_data()
 
         # Start DNS forwarder
@@ -160,7 +173,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await asyncio.sleep(30)
 
         _LOGGER.info("CoreDNS plugin now installed")
-        self.version = self.instance.version
+        self.version = self.latest_version
         self.save_data()
 
         # Init Hosts

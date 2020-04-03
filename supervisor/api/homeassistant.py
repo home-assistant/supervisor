@@ -14,10 +14,8 @@ from ..const import (
     ATTR_BLK_WRITE,
     ATTR_BOOT,
     ATTR_CPU_PERCENT,
-    ATTR_CUSTOM,
     ATTR_IMAGE,
     ATTR_IP_ADDRESS,
-    ATTR_VERSION_LATEST,
     ATTR_MACHINE,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
@@ -28,6 +26,7 @@ from ..const import (
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     CONTENT_TYPE_BINARY,
@@ -43,8 +42,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_BOOT): vol.Boolean(),
-        vol.Inclusive(ATTR_IMAGE, "custom_hass"): vol.Maybe(docker_image),
-        vol.Inclusive(ATTR_VERSION_LATEST, "custom_hass"): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_IMAGE): vol.Maybe(docker_image),
         vol.Optional(ATTR_PORT): network_port,
         vol.Optional(ATTR_SSL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
@@ -71,7 +69,6 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_IP_ADDRESS: str(self.sys_homeassistant.ip_address),
             ATTR_ARCH: self.sys_homeassistant.arch,
             ATTR_IMAGE: self.sys_homeassistant.image,
-            ATTR_CUSTOM: self.sys_homeassistant.is_custom_image,
             ATTR_BOOT: self.sys_homeassistant.boot,
             ATTR_PORT: self.sys_homeassistant.api_port,
             ATTR_SSL: self.sys_homeassistant.api_ssl,
@@ -88,9 +85,8 @@ class APIHomeAssistant(CoreSysAttributes):
         """Set Home Assistant options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_IMAGE in body and ATTR_VERSION_LATEST in body:
+        if ATTR_IMAGE in body:
             self.sys_homeassistant.image = body[ATTR_IMAGE]
-            self.sys_homeassistant.latest_version = body[ATTR_VERSION_LATEST]
 
         if ATTR_BOOT in body:
             self.sys_homeassistant.boot = body[ATTR_BOOT]

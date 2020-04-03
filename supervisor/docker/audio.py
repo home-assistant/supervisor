@@ -20,7 +20,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
     @property
     def image(self) -> str:
         """Return name of Supervisor Audio image."""
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-audio"
+        return self.sys_cli.image
 
     @property
     def name(self) -> str:
