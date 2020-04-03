@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
 from ipaddress import IPv4Address
 import logging
-import os
 from pathlib import Path
 import re
 import secrets
@@ -24,7 +23,6 @@ from .const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_BOOT,
     ATTR_IMAGE,
-    ATTR_VERSION_LATEST,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
