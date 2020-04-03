@@ -31,7 +31,8 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Return Volumes for the mount."""
         volumes = {
-            str(self.sys_config.path_extern_audio): {"bind": "/data", "mode": "rw"}
+            str(self.sys_config.path_extern_audio): {"bind": "/data", "mode": "rw"},
+            "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
         }
 
         # SND support
