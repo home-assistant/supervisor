@@ -220,10 +220,12 @@ def check_environment() -> None:
             _LOGGER.fatal("Can't find %s in env!", key)
 
     # Check Machine info
-    if not os.environ.get(ENV_HOMEASSISTANT_REPOSITORY) and os.environ.get(
+    if not os.environ.get(ENV_HOMEASSISTANT_REPOSITORY) and not os.environ.get(
         ENV_SUPERVISOR_MACHINE
     ):
         _LOGGER.fatal("Can't find any kind of machine/homeassistant details!")
+    elif not os.environ.get(ENV_SUPERVISOR_MACHINE):
+        _LOGGER.info("Use the old homeassistant repository for machine extraction")
 
     # check docker socket
     if not SOCKET_DOCKER.is_socket():
