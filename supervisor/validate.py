@@ -17,7 +17,7 @@ from .const import (
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DNS,
-    ATTR_HASSIO,
+    ATTR_SUPERVISOR,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
@@ -124,11 +124,21 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
             UpdateChannels
         ),
         vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
-        vol.Optional(ATTR_HASSIO): vol.Coerce(str),
+        vol.Optional(ATTR_SUPERVISOR): vol.Coerce(str),
         vol.Optional(ATTR_HASSOS): vol.Coerce(str),
         vol.Optional(ATTR_CLI): vol.Coerce(str),
         vol.Optional(ATTR_DNS): vol.Coerce(str),
         vol.Optional(ATTR_AUDIO): vol.Coerce(str),
+        vol.Optional(ATTR_IMAGE, default=dict): vol.Schema(
+            {
+                vol.Optional(ATTR_HOMEASSISTANT): docker_image,
+                vol.Optional(ATTR_SUPERVISOR): docker_image,
+                vol.Optional(ATTR_CLI): docker_image,
+                vol.Optional(ATTR_DNS): docker_image,
+                vol.Optional(ATTR_AUDIO): docker_image,
+            },
+            extra=vol.REMOVE_EXTRA,
+        ),
     },
     extra=vol.REMOVE_EXTRA,
 )

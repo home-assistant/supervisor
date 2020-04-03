@@ -102,7 +102,11 @@ class HaCli(CoreSysAttributes, JsonConfig):
 
             if self.latest_version:
                 with suppress(DockerAPIError):
-                    await self.instance.install(self.latest_version, latest=True)
+                    await self.instance.install(
+                        self.latest_version,
+                        image=self.sys_updater.image_audio,
+                        latest=True,
+                    )
                     break
             _LOGGER.warning("Error on install cli plugin. Retry in 30sec")
             await asyncio.sleep(30)
@@ -121,7 +125,9 @@ class HaCli(CoreSysAttributes, JsonConfig):
             return
 
         try:
-            await self.instance.update(version, latest=True)
+            await self.instance.update(
+                version, image=self.sys_updater.image_cli, latest=True
+            )
         except DockerAPIError:
             _LOGGER.error("HA cli update fails")
             raise CliUpdateError() from None
@@ -131,6 +137,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
             await self.instance.cleanup()
 
         self.version = version
+        self.image = self.sys_updater.image_cli
         self.save_data()
 
         # Start cli

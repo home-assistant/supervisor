@@ -92,7 +92,7 @@ class APISupervisor(CoreSysAttributes):
 
         return {
             ATTR_VERSION: SUPERVISOR_VERSION,
-            ATTR_VERSION_LATEST: self.sys_updater.version_hassio,
+            ATTR_VERSION_LATEST: self.sys_updater.version_supervisor,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_ARCH: self.sys_supervisor.arch,
             ATTR_IP_ADDRESS: str(self.sys_supervisor.ip_address),
@@ -153,7 +153,7 @@ class APISupervisor(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update Supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_updater.version_hassio)
+        version = body.get(ATTR_VERSION, self.sys_updater.version_supervisor)
 
         if version == self.sys_supervisor.version:
             raise APIError("Version {} is already in use".format(version))

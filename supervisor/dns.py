@@ -167,7 +167,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
             if self.latest_version:
                 with suppress(DockerAPIError):
-                    await self.instance.install(self.latest_version)
+                    await self.instance.install(
+                        self.latest_version, image=self.sys_updater.image_audio
+                    )
                     break
             _LOGGER.warning("Error on install CoreDNS plugin. Retry in 30sec")
             await asyncio.sleep(30)
@@ -190,7 +192,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Update
         try:
-            await self.instance.update(version)
+            await self.instance.update(version, image=self.sys_updater.image_dns)
         except DockerAPIError:
             _LOGGER.error("CoreDNS update fails")
             raise CoreDNSUpdateError() from None
@@ -200,6 +202,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.cleanup()
 
         self.version = version
+        self.image = self.sys_updater.image_dns
         self.save_data()
 
         # Start CoreDNS

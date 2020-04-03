@@ -262,7 +262,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Setup HomeAssistant landingpage")
         while True:
             try:
-                await self.instance.install("landingpage")
+                await self.instance.install(
+                    "landingpage", image=self.sys_updater.image_homeassistant
+                )
             except DockerAPIError:
                 _LOGGER.warning("Fails install landingpage, retry after 30sec")
                 await asyncio.sleep(30)
@@ -288,7 +290,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             tag = self.latest_version
             if tag:
                 with suppress(DockerAPIError):
-                    await self.instance.update(tag)
+                    await self.instance.update(
+                        tag, image=self.sys_updater.image_homeassistant
+                    )
                     break
             _LOGGER.warning("Error on install Home Assistant. Retry in 30sec")
             await asyncio.sleep(30)
@@ -326,12 +330,15 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             """Run Home Assistant update."""
             _LOGGER.info("Update Home Assistant to version %s", to_version)
             try:
-                await self.instance.update(to_version)
+                await self.instance.update(
+                    to_version, image=self.sys_updater.image_homeassistant
+                )
             except DockerAPIError:
                 _LOGGER.warning("Update Home Assistant image fails")
                 raise HomeAssistantUpdateError() from None
             else:
                 self.version = self.instance.version
+                self.image = self.sys_updater.image_homeassistant
 
             if running:
                 await self._start()
