@@ -270,6 +270,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 await asyncio.sleep(30)
             else:
                 self.version = self.instance.version
+                self.image = self.sys_updater.image_homeassistant
                 self.save_data()
                 break
 
@@ -299,7 +300,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         _LOGGER.info("Home Assistant docker now installed")
         self.version = self.instance.version
-        self.image = self.instance.image
+        self.image = self.sys_updater.image_homeassistant
         self.save_data()
 
         # finishing
@@ -317,6 +318,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def update(self, version: Optional[str] = None) -> None:
         """Update HomeAssistant version."""
         version = version or self.latest_version
+        old_image = self.image
         rollback = self.version if not self.error_state else None
         running = await self.instance.is_running()
         exists = await self.instance.exists()
@@ -342,11 +344,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             if running:
                 await self._start()
-
             _LOGGER.info("Successful run Home Assistant %s", to_version)
+
+            # Successfull - last step
             self.save_data()
             with suppress(DockerAPIError):
-                await self.instance.cleanup()
+                await self.instance.cleanup(old_image=old_image)
 
         # Update Home Assistant
         with suppress(HomeAssistantError):

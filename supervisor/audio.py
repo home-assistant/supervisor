@@ -137,12 +137,13 @@ class Audio(JsonConfig, CoreSysAttributes):
 
         _LOGGER.info("Audio plugin now installed")
         self.version = self.instance.version
-        self.image = self.instance.image
+        self.image = self.sys_updater.image_audio
         self.save_data()
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update Audio plugin."""
         version = version or self.latest_version
+        old_image = self.image
 
         if version == self.version:
             _LOGGER.warning("Version %s is already installed for Audio", version)
@@ -154,13 +155,13 @@ class Audio(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Audio update fails")
             raise AudioUpdateError() from None
         else:
-            # Cleanup
-            with suppress(DockerAPIError):
-                await self.instance.cleanup()
+            self.version = version
+            self.image = self.sys_updater.image_audio
+            self.save_data()
 
-        self.version = version
-        self.image = self.sys_updater.image_audio
-        self.save_data()
+        # Cleanup
+        with suppress(DockerAPIError):
+            await self.instance.cleanup(old_image=old_image)
 
         # Start Audio
         await self.start()

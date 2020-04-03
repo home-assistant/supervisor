@@ -176,7 +176,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         _LOGGER.info("CoreDNS plugin now installed")
         self.version = self.instance.version
-        self.image = self.instance.image
+        self.image = self.sys_updater.image_audio
         self.save_data()
 
         # Init Hosts
@@ -185,6 +185,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     async def update(self, version: Optional[str] = None) -> None:
         """Update CoreDNS plugin."""
         version = version or self.latest_version
+        old_image = self.image
 
         if version == self.version:
             _LOGGER.warning("Version %s is already installed for CoreDNS", version)
@@ -196,14 +197,14 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         except DockerAPIError:
             _LOGGER.error("CoreDNS update fails")
             raise CoreDNSUpdateError() from None
+        else:
+            self.version = version
+            self.image = self.sys_updater.image_dns
+            self.save_data()
 
         # Cleanup
         with suppress(DockerAPIError):
-            await self.instance.cleanup()
-
-        self.version = version
-        self.image = self.sys_updater.image_dns
-        self.save_data()
+            await self.instance.cleanup(old_image=old_image)
 
         # Start CoreDNS
         await self.start()
