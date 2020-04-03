@@ -22,7 +22,6 @@ from .const import (
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
-    ATTR_VERSION_LATEST,
     ATTR_LOGGING,
     ATTR_PORT,
     ATTR_PORTS,
@@ -102,10 +101,9 @@ SCHEMA_HASS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
         vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
-        vol.Inclusive(ATTR_IMAGE, "custom_hass"): docker_image,
-        vol.Inclusive(ATTR_VERSION_LATEST, "custom_hass"): vol.Coerce(str),
         vol.Optional(ATTR_PORT, default=8123): network_port,
         vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
@@ -137,7 +135,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_HASSIO_CONFIG = vol.Schema(
+SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_TIMEZONE, default="UTC"): validate_timezone,
         vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
@@ -173,6 +171,7 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
 SCHEMA_DNS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_SERVERS, default=list): dns_server_list,
     },
     extra=vol.REMOVE_EXTRA,
@@ -180,13 +179,18 @@ SCHEMA_DNS_CONFIG = vol.Schema(
 
 
 SCHEMA_AUDIO_CONFIG = vol.Schema(
-    {vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str))}, extra=vol.REMOVE_EXTRA,
+    {
+        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_IMAGE): docker_image,
+    },
+    extra=vol.REMOVE_EXTRA,
 )
 
 
 SCHEMA_CLI_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
     },
     extra=vol.REMOVE_EXTRA,

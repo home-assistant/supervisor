@@ -17,7 +17,7 @@ from .const import (
 )
 from .utils.dt import parse_datetime
 from .utils.json import JsonConfig
-from .validate import SCHEMA_HASSIO_CONFIG
+from .validate import SCHEMA_SUPERVISOR_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class CoreConfig(JsonConfig):
 
     def __init__(self):
         """Initialize config object."""
-        super().__init__(FILE_HASSIO_CONFIG, SCHEMA_HASSIO_CONFIG)
+        super().__init__(FILE_HASSIO_CONFIG, SCHEMA_SUPERVISOR_CONFIG)
 
     @property
     def timezone(self):

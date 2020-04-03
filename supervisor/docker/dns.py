@@ -18,7 +18,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
     @property
     def image(self) -> str:
         """Return name of Supervisor DNS image."""
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-dns"
+        return self.sys_dns.image
 
     @property
     def name(self) -> str:

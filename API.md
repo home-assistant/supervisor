@@ -368,7 +368,6 @@ Trigger an udev reload
   "machine": "Image machine type",
   "ip_address": "ip address",
   "image": "str",
-  "custom": "bool -> if custom image",
   "boot": "bool",
   "port": 8123,
   "ssl": "bool",
