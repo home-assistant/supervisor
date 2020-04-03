@@ -166,20 +166,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Return last available version of Home Assistant."""
         return self.sys_updater.version_homeassistant
 
-    @latest_version.setter
-    def latest_version(self, value: str):
-        """Set last available version of Home Assistant."""
-        if value:
-            self._data[ATTR_VERSION_LATEST] = value
-        else:
-            self._data.pop(ATTR_VERSION_LATEST, None)
-
     @property
     def image(self) -> str:
         """Return image name of the Home Assistant container."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
-        return os.environ["HOMEASSISTANT_REPOSITORY"]
+        return f"homeassistant/{self.sys_machine}-homeassistant"
 
     @image.setter
     def image(self, value: str) -> None:

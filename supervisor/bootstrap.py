@@ -176,7 +176,7 @@ def migrate_system_env(coresys: CoreSys):
     config = coresys.config
 
     # hass.io 0.37 -> 0.38
-    old_build = Path(config.path_hassio, "addons/build")
+    old_build = Path(config.path_supervisor, "addons/build")
     if old_build.is_dir():
         try:
             old_build.rmdir()
