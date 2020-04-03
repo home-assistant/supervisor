@@ -20,7 +20,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
     @property
     def image(self) -> str:
         """Return name of Supervisor Audio image."""
-        return self.sys_cli.image
+        return self.sys_audio.image
 
     @property
     def name(self) -> str:

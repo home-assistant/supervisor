@@ -295,6 +295,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         _LOGGER.info("Home Assistant docker now installed")
         self.version = self.instance.version
+        self.image = self.instance.image
         self.save_data()
 
         # finishing

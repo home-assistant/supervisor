@@ -173,7 +173,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await asyncio.sleep(30)
 
         _LOGGER.info("CoreDNS plugin now installed")
-        self.version = self.latest_version
+        self.version = self.instance.version
+        self.image = self.instance.image
         self.save_data()
 
         # Init Hosts

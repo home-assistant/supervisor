@@ -134,7 +134,8 @@ class Audio(JsonConfig, CoreSysAttributes):
             await asyncio.sleep(30)
 
         _LOGGER.info("Audio plugin now installed")
-        self.version = self.latest_version
+        self.version = self.instance.version
+        self.image = self.instance.image
         self.save_data()
 
     async def update(self, version: Optional[str] = None) -> None:
