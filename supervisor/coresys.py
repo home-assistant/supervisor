@@ -42,7 +42,8 @@ class CoreSys:
     def __init__(self):
         """Initialize coresys."""
         # Static attributes
-        self.machine_id: Optional[str] = None
+        self._machine_id: Optional[str] = None
+        self._machine: Optional[str] = None
 
         # External objects
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
@@ -80,13 +81,6 @@ class CoreSys:
         self._store: Optional[StoreManager] = None
         self._discovery: Optional[Discovery] = None
         self._hwmonitor: Optional[HwMonitor] = None
-
-    @property
-    def machine(self) -> str:
-        """Return running machine type of the Supervisor system."""
-        if self._homeassistant:
-            return self._homeassistant.machine
-        return None
 
     @property
     def dev(self) -> bool:
@@ -396,6 +390,30 @@ class CoreSys:
         if self._hassos:
             raise RuntimeError("HassOS already set!")
         self._hassos = value
+
+    @property
+    def machine(self) -> Optional[str]:
+        """Return machine type string."""
+        return self._machine
+
+    @machine.setter
+    def machine(self, value: str):
+        """Set a machine type string."""
+        if self._machine:
+            raise RuntimeError("Machine type already set!")
+        self._machine = value
+
+    @property
+    def machine_id(self) -> Optional[str]:
+        """Return machine-id type string."""
+        return self._machine_id
+
+    @machine_id.setter
+    def machine_id(self, value: str):
+        """Set a machine-id type string."""
+        if self._machine_id:
+            raise RuntimeError("Machine-ID type already set!")
+        self._machine_id = value
 
 
 class CoreSysAttributes:

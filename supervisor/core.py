@@ -203,10 +203,12 @@ class Core(CoreSysAttributes):
         _LOGGER.info("Start repairing of Supervisor Environment")
         await self.sys_run_in_executor(self.sys_docker.repair)
 
+        # Fix plugins
+        await asyncio.wait(
+            [self.sys_dns.repair(), self.sys_audio.repair(), self.sys_cli.repair()]
+        )
+
         # Restore core functionality
-        await self.sys_dns.repair()
-        await self.sys_audio.repair()
-        await self.sys_cli.repair()
         await self.sys_addons.repair()
         await self.sys_homeassistant.repair()
 

@@ -359,7 +359,7 @@ class Snapshot(CoreSysAttributes):
             """Internal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
-            origin_dir = Path(self.sys_config.path_hassio, name)
+            origin_dir = Path(self.sys_config.path_supervisor, name)
 
             # Check if exists
             if not origin_dir.is_dir():
@@ -396,7 +396,7 @@ class Snapshot(CoreSysAttributes):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
-            origin_dir = Path(self.sys_config.path_hassio, name)
+            origin_dir = Path(self.sys_config.path_supervisor, name)
 
             # Check if exists inside snapshot
             if not tar_name.exists():

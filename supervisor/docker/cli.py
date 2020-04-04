@@ -60,5 +60,5 @@ class DockerCli(DockerInterface, CoreSysAttributes):
             "Start CLI %s with version %s - %s",
             self.image,
             self.version,
-            self.sys_docker.network.audio,
+            self.sys_docker.network.cli,
         )

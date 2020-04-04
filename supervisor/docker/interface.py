@@ -302,11 +302,11 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.warning("Can't grep logs from %s: %s", self.image, err)
 
     @process_lock
-    def cleanup(self) -> Awaitable[None]:
+    def cleanup(self, old_image: Optional[str] = None) -> Awaitable[None]:
         """Check if old version exists and cleanup."""
-        return self.sys_run_in_executor(self._cleanup)
+        return self.sys_run_in_executor(self._cleanup, old_image)
 
-    def _cleanup(self) -> None:
+    def _cleanup(self, old_image: Optional[str] = None) -> None:
         """Check if old version exists and cleanup.
 
         Need run inside executor.
@@ -317,10 +317,20 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.warning("Can't find %s for cleanup", self.image)
             raise DockerAPIError() from None
 
+        # Cleanup Current
         for image in self.sys_docker.images.list(name=self.image):
             if origin.id == image.id:
                 continue
 
+            with suppress(docker.errors.DockerException):
+                _LOGGER.info("Cleanup images: %s", image.tags)
+                self.sys_docker.images.remove(image.id, force=True)
+
+        # Cleanup Old
+        if not old_image or self.image == old_image:
+            return
+
+        for image in self.sys_docker.images.list(name=old_image):
             with suppress(docker.errors.DockerException):
                 _LOGGER.info("Cleanup images: %s", image.tags)
                 self.sys_docker.images.remove(image.id, force=True)

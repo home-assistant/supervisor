@@ -12,7 +12,14 @@ from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
 from .audio import Audio
-from .const import SOCKET_DOCKER, UpdateChannels
+from .const import (
+    SOCKET_DOCKER,
+    UpdateChannels,
+    ENV_SUPERVISOR_SHARE,
+    ENV_SUPERVISOR_NAME,
+    ENV_HOMEASSISTANT_REPOSITORY,
+    ENV_SUPERVISOR_MACHINE,
+)
 from .core import Core
 from .cli import HaCli
 from .coresys import CoreSys
@@ -35,9 +42,6 @@ from .utils.dt import fetch_timezone
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-ENV_SHARE = "SUPERVISOR_SHARE"
-ENV_NAME = "SUPERVISOR_NAME"
-ENV_REPO = "HOMEASSISTANT_REPOSITORY"
 
 MACHINE_ID = Path("/etc/machine-id")
 
@@ -80,6 +84,13 @@ async def initialize_coresys():
     # Init TimeZone
     if coresys.config.timezone == "UTC":
         coresys.config.timezone = await fetch_timezone(coresys.websession)
+
+    # Set machine type
+    if os.environ.get(ENV_SUPERVISOR_MACHINE):
+        coresys.machine = os.environ[ENV_SUPERVISOR_MACHINE]
+    elif os.environ.get(ENV_HOMEASSISTANT_REPOSITORY):
+        coresys.machine = os.environ[ENV_HOMEASSISTANT_REPOSITORY][14:-14]
+    _LOGGER.info("Setup coresys for machine: %s", coresys.machine)
 
     return coresys
 
@@ -165,7 +176,7 @@ def migrate_system_env(coresys: CoreSys):
     config = coresys.config
 
     # hass.io 0.37 -> 0.38
-    old_build = Path(config.path_hassio, "addons/build")
+    old_build = Path(config.path_supervisor, "addons/build")
     if old_build.is_dir():
         try:
             old_build.rmdir()
@@ -202,11 +213,19 @@ def initialize_logging():
 def check_environment() -> None:
     """Check if all environment are exists."""
     # check environment variables
-    for key in (ENV_SHARE, ENV_NAME, ENV_REPO):
+    for key in (ENV_SUPERVISOR_SHARE, ENV_SUPERVISOR_NAME):
         try:
             os.environ[key]
         except KeyError:
             _LOGGER.fatal("Can't find %s in env!", key)
+
+    # Check Machine info
+    if not os.environ.get(ENV_HOMEASSISTANT_REPOSITORY) and not os.environ.get(
+        ENV_SUPERVISOR_MACHINE
+    ):
+        _LOGGER.fatal("Can't find any kind of machine/homeassistant details!")
+    elif not os.environ.get(ENV_SUPERVISOR_MACHINE):
+        _LOGGER.info("Use the old homeassistant repository for machine extraction")
 
     # check docker socket
     if not SOCKET_DOCKER.is_socket():

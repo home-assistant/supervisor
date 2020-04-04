@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
 from ipaddress import IPv4Address
 import logging
-import os
 from pathlib import Path
 import re
 import secrets
@@ -24,7 +23,6 @@ from .const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_BOOT,
     ATTR_IMAGE,
-    ATTR_VERSION_LATEST,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
@@ -166,20 +164,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Return last available version of Home Assistant."""
         return self.sys_updater.version_homeassistant
 
-    @latest_version.setter
-    def latest_version(self, value: str):
-        """Set last available version of Home Assistant."""
-        if value:
-            self._data[ATTR_VERSION_LATEST] = value
-        else:
-            self._data.pop(ATTR_VERSION_LATEST, None)
-
     @property
     def image(self) -> str:
         """Return image name of the Home Assistant container."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
-        return os.environ["HOMEASSISTANT_REPOSITORY"]
+        return f"homeassistant/{self.sys_machine}-homeassistant"
 
     @image.setter
     def image(self, value: str) -> None:
@@ -262,12 +252,15 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Setup HomeAssistant landingpage")
         while True:
             try:
-                await self.instance.install("landingpage")
+                await self.instance.install(
+                    "landingpage", image=self.sys_updater.image_homeassistant
+                )
             except DockerAPIError:
                 _LOGGER.warning("Fails install landingpage, retry after 30sec")
                 await asyncio.sleep(30)
             else:
                 self.version = self.instance.version
+                self.image = self.sys_updater.image_homeassistant
                 self.save_data()
                 break
 
@@ -288,14 +281,16 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             tag = self.latest_version
             if tag:
                 with suppress(DockerAPIError):
-                    await self.instance.update(tag)
+                    await self.instance.update(
+                        tag, image=self.sys_updater.image_homeassistant
+                    )
                     break
             _LOGGER.warning("Error on install Home Assistant. Retry in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("Home Assistant docker now installed")
         self.version = self.instance.version
-        self.image = self.instance.image
+        self.image = self.sys_updater.image_homeassistant
         self.save_data()
 
         # finishing
@@ -313,6 +308,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     async def update(self, version: Optional[str] = None) -> None:
         """Update HomeAssistant version."""
         version = version or self.latest_version
+        old_image = self.image
         rollback = self.version if not self.error_state else None
         running = await self.instance.is_running()
         exists = await self.instance.exists()
@@ -326,20 +322,24 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             """Run Home Assistant update."""
             _LOGGER.info("Update Home Assistant to version %s", to_version)
             try:
-                await self.instance.update(to_version)
+                await self.instance.update(
+                    to_version, image=self.sys_updater.image_homeassistant
+                )
             except DockerAPIError:
                 _LOGGER.warning("Update Home Assistant image fails")
                 raise HomeAssistantUpdateError() from None
             else:
                 self.version = self.instance.version
+                self.image = self.sys_updater.image_homeassistant
 
             if running:
                 await self._start()
-
             _LOGGER.info("Successful run Home Assistant %s", to_version)
+
+            # Successfull - last step
             self.save_data()
             with suppress(DockerAPIError):
-                await self.instance.cleanup()
+                await self.instance.cleanup(old_image=old_image)
 
         # Update Home Assistant
         with suppress(HomeAssistantError):
