@@ -168,7 +168,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             if self.latest_version:
                 with suppress(DockerAPIError):
                     await self.instance.install(
-                        self.latest_version, image=self.sys_updater.image_audio
+                        self.latest_version, image=self.sys_updater.image_dns
                     )
                     break
             _LOGGER.warning("Error on install CoreDNS plugin. Retry in 30sec")
@@ -176,7 +176,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         _LOGGER.info("CoreDNS plugin now installed")
         self.version = self.instance.version
-        self.image = self.sys_updater.image_audio
+        self.image = self.sys_updater.image_dns
         self.save_data()
 
         # Init Hosts

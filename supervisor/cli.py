@@ -104,7 +104,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
                 with suppress(DockerAPIError):
                     await self.instance.install(
                         self.latest_version,
-                        image=self.sys_updater.image_audio,
+                        image=self.sys_updater.image_cli,
                         latest=True,
                     )
                     break
@@ -113,7 +113,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
 
         _LOGGER.info("cli plugin now installed")
         self.version = self.instance.version
-        self.image = self.sys_updater.image_audio
+        self.image = self.sys_updater.image_cli
         self.save_data()
 
     async def update(self, version: Optional[str] = None) -> None:
