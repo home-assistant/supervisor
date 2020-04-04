@@ -37,6 +37,7 @@ setup(
         "supervisor.api",
         "supervisor.misc",
         "supervisor.utils",
+        "supervisor.plugins",
         "supervisor.snapshots",
     ],
     include_package_data=True,

@@ -15,13 +15,10 @@ if TYPE_CHECKING:
     from .addons import AddonManager
     from .api import RestAPI
     from .arch import CpuArch
-    from .audio import Audio
     from .auth import Auth
     from .core import Core
-    from .cli import HaCli
     from .dbus import DBusManager
     from .discovery import Discovery
-    from .dns import CoreDNS
     from .hassos import HassOS
     from .hwmon import HwMonitor
     from .homeassistant import HomeAssistant
@@ -34,6 +31,9 @@ if TYPE_CHECKING:
     from .store import StoreManager
     from .tasks import Tasks
     from .updater import Updater
+    from .plugins.cli import HaCli
+    from .plugins.audio import Audio
+    from .plugins.dns import CoreDNS
 
 
 class CoreSys:
