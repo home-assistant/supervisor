@@ -5,13 +5,13 @@ import logging
 import secrets
 from typing import Awaitable, Optional
 
-from .const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION, FILE_HASSIO_CLI
-from .coresys import CoreSys, CoreSysAttributes
-from .docker.cli import DockerCli
-from .docker.stats import DockerStats
-from .exceptions import CliError, CliUpdateError, DockerAPIError
-from .utils.json import JsonConfig
-from .validate import SCHEMA_CLI_CONFIG
+from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION, FILE_HASSIO_CLI
+from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.cli import DockerCli
+from ..docker.stats import DockerStats
+from ..exceptions import CliError, CliUpdateError, DockerAPIError
+from ..utils.json import JsonConfig
+from ..validate import SCHEMA_CLI_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

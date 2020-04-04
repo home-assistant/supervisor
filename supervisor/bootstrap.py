@@ -11,7 +11,6 @@ from .addons import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
-from .audio import Audio
 from .const import (
     SOCKET_DOCKER,
     UpdateChannels,
@@ -21,11 +20,9 @@ from .const import (
     ENV_SUPERVISOR_MACHINE,
 )
 from .core import Core
-from .cli import HaCli
 from .coresys import CoreSys
 from .dbus import DBusManager
 from .discovery import Discovery
-from .dns import CoreDNS
 from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
@@ -39,6 +36,9 @@ from .tasks import Tasks
 from .updater import Updater
 from .secrets import SecretsManager
 from .utils.dt import fetch_timezone
+from .plugins.dns import CoreDNS
+from .plugins.cli import HaCli
+from .plugins.audio import Audio
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

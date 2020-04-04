@@ -10,14 +10,14 @@ import attr
 import jinja2
 import voluptuous as vol
 
-from .const import ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, FILE_HASSIO_DNS
-from .coresys import CoreSys, CoreSysAttributes
-from .docker.dns import DockerDNS
-from .docker.stats import DockerStats
-from .exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
-from .misc.forwarder import DNSForward
-from .utils.json import JsonConfig
-from .validate import SCHEMA_DNS_CONFIG, dns_url
+from ..const import ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, FILE_HASSIO_DNS
+from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.dns import DockerDNS
+from ..docker.stats import DockerStats
+from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
+from ..misc.forwarder import DNSForward
+from ..utils.json import JsonConfig
+from ..validate import SCHEMA_DNS_CONFIG, dns_url
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
