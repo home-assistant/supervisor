@@ -3,7 +3,13 @@ import asyncio
 import logging
 
 from .coresys import CoreSysAttributes
-from .exceptions import AudioError, CliError, CoreDNSError, HomeAssistantError
+from .exceptions import (
+    AudioError,
+    CliError,
+    CoreDNSError,
+    HomeAssistantError,
+    MulticastError,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -14,6 +20,7 @@ RUN_UPDATE_ADDONS = 57600
 RUN_UPDATE_CLI = 28100
 RUN_UPDATE_DNS = 30100
 RUN_UPDATE_AUDIO = 30200
+RUN_UPDATE_MULTICAST = 30300
 
 RUN_RELOAD_ADDONS = 10800
 RUN_RELOAD_SNAPSHOTS = 72000
@@ -27,6 +34,7 @@ RUN_WATCHDOG_HOMEASSISTANT_API = 300
 RUN_WATCHDOG_DNS_DOCKER = 20
 RUN_WATCHDOG_AUDIO_DOCKER = 30
 RUN_WATCHDOG_CLI_DOCKER = 40
+RUN_WATCHDOG_MULTICAST_DOCKER = 50
 
 
 class Tasks(CoreSysAttributes):
@@ -57,6 +65,11 @@ class Tasks(CoreSysAttributes):
         )
         self.jobs.add(
             self.sys_scheduler.register_task(self._update_audio, RUN_UPDATE_AUDIO)
+        )
+        self.jobs.add(
+            self.sys_scheduler.register_task(
+                self._update_multicast, RUN_UPDATE_MULTICAST
+            )
         )
 
         # Reload
@@ -106,6 +119,11 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(
             self.sys_scheduler.register_task(
                 self._watchdog_cli_docker, RUN_WATCHDOG_CLI_DOCKER
+            )
+        )
+        self.jobs.add(
+            self.sys_scheduler.register_task(
+                self._watchdog_multicast_docker, RUN_WATCHDOG_MULTICAST_DOCKER
             )
         )
 
@@ -231,6 +249,14 @@ class Tasks(CoreSysAttributes):
         _LOGGER.info("Found new PulseAudio plugin version")
         await self.sys_plugins.audio.update()
 
+    async def _update_multicast(self):
+        """Check and run update of multicast."""
+        if not self.sys_plugins.multicast.need_update:
+            return
+
+        _LOGGER.info("Found new Multicast version")
+        await self.sys_plugins.multicast.update()
+
     async def _watchdog_dns_docker(self):
         """Check running state of Docker and start if they is close."""
         # if CoreDNS is active
@@ -275,3 +301,18 @@ class Tasks(CoreSysAttributes):
             await self.sys_plugins.cli.start()
         except CliError:
             _LOGGER.error("Watchdog cli reanimation fails!")
+
+    async def _watchdog_multicast_docker(self):
+        """Check running state of Docker and start if they is close."""
+        # if multicast plugin is active
+        if (
+            await self.sys_plugins.multicast.is_running()
+            or self.sys_plugins.multicast.in_progress
+        ):
+            return
+        _LOGGER.warning("Watchdog found a problem with Multicast plugin!")
+
+        try:
+            await self.sys_plugins.multicast.start()
+        except MulticastError:
+            _LOGGER.error("Watchdog Multicast reanimation fails!")
