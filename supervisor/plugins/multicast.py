@@ -4,10 +4,8 @@ Code: https://github.com/home-assistant/plugin-multicast
 """
 import asyncio
 from contextlib import suppress
-from ipaddress import IPv4Address
 import logging
-from pathlib import Path
-from typing import Awaitable, List, Optional
+from typing import Awaitable, Optional
 
 from ..const import ATTR_IMAGE, ATTR_VERSION, FILE_HASSIO_MULTICAST
 from ..coresys import CoreSys, CoreSysAttributes
@@ -160,6 +158,15 @@ class Multicast(JsonConfig, CoreSysAttributes):
             await self.instance.run()
         except DockerAPIError:
             _LOGGER.error("Can't start Multicast plugin")
+            raise MulticastError()
+
+    async def stop(self) -> None:
+        """Stop Multicast."""
+        _LOGGER.info("Stop Multicast plugin")
+        try:
+            await self.instance.stop()
+        except DockerAPIError:
+            _LOGGER.error("Can't stop Multicast plugin")
             raise MulticastError()
 
     def logs(self) -> Awaitable[bytes]:

@@ -161,6 +161,15 @@ class HaCli(CoreSysAttributes, JsonConfig):
             _LOGGER.error("Can't start cli plugin")
             raise CliError() from None
 
+    async def stop(self) -> None:
+        """Stop cli."""
+        _LOGGER.info("Stop cli plugin")
+        try:
+            await self.instance.stop()
+        except DockerAPIError:
+            _LOGGER.error("Can't stop cli plugin")
+            raise CliError() from None
+
     async def stats(self) -> DockerStats:
         """Return stats of cli."""
         try:

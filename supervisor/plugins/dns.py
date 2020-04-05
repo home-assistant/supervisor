@@ -235,6 +235,15 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't start CoreDNS plugin")
             raise CoreDNSError() from None
 
+    async def stop(self) -> None:
+        """Stop CoreDNS."""
+        _LOGGER.info("Stop CoreDNS plugin")
+        try:
+            await self.instance.stop()
+        except DockerAPIError:
+            _LOGGER.error("Can't stop CoreDNS plugin")
+            raise CoreDNSError() from None
+
     async def reset(self) -> None:
         """Reset DNS and hosts."""
         # Reset manually defined DNS

@@ -180,12 +180,20 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     async def start(self) -> None:
         """Run CoreDNS."""
-        # Start Instance
         _LOGGER.info("Start Audio plugin")
         try:
             await self.instance.run()
         except DockerAPIError:
             _LOGGER.error("Can't start Audio plugin")
+            raise AudioError() from None
+
+    async def stop(self) -> None:
+        """Stop CoreDNS."""
+        _LOGGER.info("Stop Audio plugin")
+        try:
+            await self.instance.stop()
+        except DockerAPIError:
+            _LOGGER.error("Can't stop Audio plugin")
             raise AudioError() from None
 
     def logs(self) -> Awaitable[bytes]:
