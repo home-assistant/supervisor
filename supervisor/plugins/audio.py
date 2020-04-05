@@ -1,4 +1,7 @@
-"""Home Assistant control object."""
+"""Home Assistant control object.
+
+Code: https://github.com/home-assistant/plugin-audio
+"""
 import asyncio
 from contextlib import suppress
 import logging

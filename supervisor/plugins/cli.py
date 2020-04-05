@@ -1,4 +1,7 @@
-"""CLI support on supervisor."""
+"""CLI support on supervisor.
+
+Code: https://github.com/home-assistant/plugin-cli
+"""
 import asyncio
 from contextlib import suppress
 import logging

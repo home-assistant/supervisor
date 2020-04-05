@@ -1,6 +1,6 @@
 """Home Assistant control object.
 
-Code: https://github.com/home-assistant/plugin-dns
+Code: https://github.com/home-assistant/plugin-multicast
 """
 import asyncio
 from contextlib import suppress
