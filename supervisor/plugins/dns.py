@@ -221,7 +221,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.restart()
         except DockerAPIError:
             _LOGGER.error("Can't start CoreDNS plugin")
-            raise DNSError()
+            raise CoreDNSError()
 
     async def start(self) -> None:
         """Run CoreDNS."""

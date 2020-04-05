@@ -18,7 +18,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
     @property
     def image(self):
         """Return name of HA multicast image."""
-        return self.sys_multicast.image
+        return self.sys_plugins.multicast.image
 
     @property
     def name(self) -> str:
@@ -40,7 +40,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_multicast.version,
+            version=self.sys_plugins.multicast.version,
             init=False,
             name=self.name,
             hostname=self.name.replace("_", "-"),
@@ -54,4 +54,4 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         )
 
         self._meta = docker_container.attrs
-        _LOGGER.info("Start CLI %s with version %s - Host", self.image, self.version)
+        _LOGGER.info("Start Multicast %s with version %s - Host", self.image, self.version)
