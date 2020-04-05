@@ -1,4 +1,7 @@
-"""CLI support on supervisor."""
+"""Home Assistant cli plugin.
+
+Code: https://github.com/home-assistant/plugin-cli
+"""
 import asyncio
 from contextlib import suppress
 import logging
@@ -11,7 +14,7 @@ from ..docker.cli import DockerCli
 from ..docker.stats import DockerStats
 from ..exceptions import CliError, CliUpdateError, DockerAPIError
 from ..utils.json import JsonConfig
-from ..validate import SCHEMA_CLI_CONFIG
+from .validate import SCHEMA_CLI_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -156,6 +159,15 @@ class HaCli(CoreSysAttributes, JsonConfig):
             await self.instance.run()
         except DockerAPIError:
             _LOGGER.error("Can't start cli plugin")
+            raise CliError() from None
+
+    async def stop(self) -> None:
+        """Stop cli."""
+        _LOGGER.info("Stop cli plugin")
+        try:
+            await self.instance.stop()
+        except DockerAPIError:
+            _LOGGER.error("Can't stop cli plugin")
             raise CliError() from None
 
     async def stats(self) -> DockerStats:

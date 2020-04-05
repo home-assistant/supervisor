@@ -18,7 +18,7 @@ class DockerCli(DockerInterface, CoreSysAttributes):
     @property
     def image(self):
         """Return name of HA cli image."""
-        return self.sys_cli.image
+        return self.sys_plugins.cli.image
 
     @property
     def name(self) -> str:
@@ -42,7 +42,7 @@ class DockerCli(DockerInterface, CoreSysAttributes):
             self.image,
             entrypoint=["/init"],
             command=["/bin/bash", "-c", "sleep infinity"],
-            version=self.sys_cli.version,
+            version=self.sys_plugins.cli.version,
             init=False,
             ipv4=self.sys_docker.network.cli,
             name=self.name,
@@ -51,7 +51,7 @@ class DockerCli(DockerInterface, CoreSysAttributes):
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={
                 ENV_TIME: self.sys_timezone,
-                ENV_TOKEN: self.sys_cli.supervisor_token,
+                ENV_TOKEN: self.sys_plugins.cli.supervisor_token,
             },
         )
 

@@ -1,4 +1,7 @@
-"""Home Assistant control object."""
+"""Home Assistant dns plugin.
+
+Code: https://github.com/home-assistant/plugin-dns
+"""
 import asyncio
 from contextlib import suppress
 from ipaddress import IPv4Address
@@ -17,12 +20,13 @@ from ..docker.stats import DockerStats
 from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
 from ..misc.forwarder import DNSForward
 from ..utils.json import JsonConfig
-from ..validate import SCHEMA_DNS_CONFIG, dns_url
+from .validate import SCHEMA_DNS_CONFIG
+from ..validate import dns_url
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-COREDNS_TMPL: Path = Path(__file__).parents[0].joinpath("data/coredns.tmpl")
-RESOLV_TMPL: Path = Path(__file__).parents[0].joinpath("data/resolv.tmpl")
+COREDNS_TMPL: Path = Path(__file__).parents[1].joinpath("data/coredns.tmpl")
+RESOLV_TMPL: Path = Path(__file__).parents[1].joinpath("data/resolv.tmpl")
 HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
 
@@ -212,8 +216,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""
         self._write_corefile()
-        with suppress(DockerAPIError):
+        _LOGGER.info("Restart CoreDNS plugin")
+        try:
             await self.instance.restart()
+        except DockerAPIError:
+            _LOGGER.error("Can't start CoreDNS plugin")
+            raise CoreDNSError()
 
     async def start(self) -> None:
         """Run CoreDNS."""
@@ -225,6 +233,15 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.run()
         except DockerAPIError:
             _LOGGER.error("Can't start CoreDNS plugin")
+            raise CoreDNSError() from None
+
+    async def stop(self) -> None:
+        """Stop CoreDNS."""
+        _LOGGER.info("Stop CoreDNS plugin")
+        try:
+            await self.instance.stop()
+        except DockerAPIError:
+            _LOGGER.error("Can't stop CoreDNS plugin")
             raise CoreDNSError() from None
 
     async def reset(self) -> None:

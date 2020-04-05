@@ -41,9 +41,7 @@ class Core(CoreSysAttributes):
         await self.sys_host.load()
 
         # Load Plugins container
-        await asyncio.wait(
-            [self.sys_dns.load(), self.sys_audio.load(), self.sys_cli.load()]
-        )
+        await self.sys_plugins.load()
 
         # Load Home Assistant
         await self.sys_homeassistant.load()
@@ -172,7 +170,7 @@ class Core(CoreSysAttributes):
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
-                        self.sys_dns.unload(),
+                        self.sys_plugins.unload(),
                         self.sys_hwmonitor.unload(),
                     ]
                 )
@@ -193,6 +191,9 @@ class Core(CoreSysAttributes):
         await self.sys_addons.shutdown(STARTUP_SYSTEM)
         await self.sys_addons.shutdown(STARTUP_INITIALIZE)
 
+        # Shutdown all Plugins
+        await self.sys_plugins.shutdown()
+
     def _update_last_boot(self):
         """Update last boot time."""
         self.sys_config.last_boot = self.sys_hardware.last_boot
@@ -204,9 +205,7 @@ class Core(CoreSysAttributes):
         await self.sys_run_in_executor(self.sys_docker.repair)
 
         # Fix plugins
-        await asyncio.wait(
-            [self.sys_dns.repair(), self.sys_audio.repair(), self.sys_cli.repair()]
-        )
+        await self.sys_plugins.repair()
 
         # Restore core functionality
         await self.sys_addons.repair()

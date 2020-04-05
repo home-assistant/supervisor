@@ -1,4 +1,7 @@
-"""Home Assistant control object."""
+"""Home Assistant audio plugin.
+
+Code: https://github.com/home-assistant/plugin-audio
+"""
 import asyncio
 from contextlib import suppress
 import logging
@@ -14,12 +17,12 @@ from ..docker.audio import DockerAudio
 from ..docker.stats import DockerStats
 from ..exceptions import AudioError, AudioUpdateError, DockerAPIError
 from ..utils.json import JsonConfig
-from ..validate import SCHEMA_AUDIO_CONFIG
+from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-PULSE_CLIENT_TMPL: Path = Path(__file__).parents[0].joinpath("data/pulse-client.tmpl")
-ASOUND_TMPL: Path = Path(__file__).parents[0].joinpath("data/asound.tmpl")
+PULSE_CLIENT_TMPL: Path = Path(__file__).parents[1].joinpath("data/pulse-client.tmpl")
+ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
 
 
 class Audio(JsonConfig, CoreSysAttributes):
@@ -177,12 +180,20 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     async def start(self) -> None:
         """Run CoreDNS."""
-        # Start Instance
         _LOGGER.info("Start Audio plugin")
         try:
             await self.instance.run()
         except DockerAPIError:
             _LOGGER.error("Can't start Audio plugin")
+            raise AudioError() from None
+
+    async def stop(self) -> None:
+        """Stop CoreDNS."""
+        _LOGGER.info("Stop Audio plugin")
+        try:
+            await self.instance.stop()
+        except DockerAPIError:
+            _LOGGER.error("Can't stop Audio plugin")
             raise AudioError() from None
 
     def logs(self) -> Awaitable[bytes]:

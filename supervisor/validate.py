@@ -17,18 +17,18 @@ from .const import (
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DNS,
-    ATTR_SUPERVISOR,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
+    ATTR_MULTICAST,
     ATTR_PORT,
     ATTR_PORTS,
     ATTR_REFRESH_TOKEN,
-    ATTR_SERVERS,
     ATTR_SESSION,
     ATTR_SSL,
+    ATTR_SUPERVISOR,
     ATTR_TIMEZONE,
     ATTR_UUID,
     ATTR_VERSION,
@@ -129,6 +129,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_CLI): vol.Coerce(str),
         vol.Optional(ATTR_DNS): vol.Coerce(str),
         vol.Optional(ATTR_AUDIO): vol.Coerce(str),
+        vol.Optional(ATTR_MULTICAST): vol.Coerce(str),
         vol.Optional(ATTR_IMAGE, default=dict): vol.Schema(
             {
                 vol.Optional(ATTR_HOMEASSISTANT): docker_image,
@@ -136,6 +137,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
                 vol.Optional(ATTR_CLI): docker_image,
                 vol.Optional(ATTR_DNS): docker_image,
                 vol.Optional(ATTR_AUDIO): docker_image,
+                vol.Optional(ATTR_MULTICAST): docker_image,
             },
             extra=vol.REMOVE_EXTRA,
         ),
@@ -173,35 +175,6 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
         vol.Required(ATTR_PORTS, default=dict): vol.Schema(
             {vol.Coerce(str): network_port}
         ),
-    },
-    extra=vol.REMOVE_EXTRA,
-)
-
-
-SCHEMA_DNS_CONFIG = vol.Schema(
-    {
-        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_IMAGE): docker_image,
-        vol.Optional(ATTR_SERVERS, default=list): dns_server_list,
-    },
-    extra=vol.REMOVE_EXTRA,
-)
-
-
-SCHEMA_AUDIO_CONFIG = vol.Schema(
-    {
-        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_IMAGE): docker_image,
-    },
-    extra=vol.REMOVE_EXTRA,
-)
-
-
-SCHEMA_CLI_CONFIG = vol.Schema(
-    {
-        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_IMAGE): docker_image,
-        vol.Optional(ATTR_ACCESS_TOKEN): token,
     },
     extra=vol.REMOVE_EXTRA,
 )

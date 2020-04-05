@@ -68,8 +68,8 @@ class APIAudio(CoreSysAttributes):
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return Audio information."""
         return {
-            ATTR_VERSION: self.sys_audio.version,
-            ATTR_VERSION_LATEST: self.sys_audio.latest_version,
+            ATTR_VERSION: self.sys_plugins.audio.version,
+            ATTR_VERSION_LATEST: self.sys_plugins.audio.latest_version,
             ATTR_HOST: str(self.sys_docker.network.audio),
             ATTR_AUDIO: {
                 ATTR_CARD: [attr.asdict(card) for card in self.sys_host.sound.cards],
@@ -88,7 +88,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def stats(self, request: web.Request) -> Dict[str, Any]:
         """Return resource information."""
-        stats = await self.sys_audio.stats()
+        stats = await self.sys_plugins.audio.stats()
 
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
@@ -105,21 +105,21 @@ class APIAudio(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update Audio plugin."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_audio.latest_version)
+        version = body.get(ATTR_VERSION, self.sys_plugins.audio.latest_version)
 
-        if version == self.sys_audio.version:
+        if version == self.sys_plugins.audio.version:
             raise APIError("Version {} is already in use".format(version))
-        await asyncio.shield(self.sys_audio.update(version))
+        await asyncio.shield(self.sys_plugins.audio.update(version))
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return Audio Docker logs."""
-        return self.sys_audio.logs()
+        return self.sys_plugins.audio.logs()
 
     @api_process
     def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart Audio plugin."""
-        return asyncio.shield(self.sys_audio.restart())
+        return asyncio.shield(self.sys_plugins.audio.restart())
 
     @api_process
     def reload(self, request: web.Request) -> Awaitable[None]:
