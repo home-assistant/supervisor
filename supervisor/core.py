@@ -42,7 +42,11 @@ class Core(CoreSysAttributes):
 
         # Load Plugins container
         await asyncio.wait(
-            [self.sys_dns.load(), self.sys_audio.load(), self.sys_cli.load()]
+            [
+                self.sys_plugins.dns.load(),
+                self.sys_plugins.audio.load(),
+                self.sys_plugins.cli.load(),
+            ]
         )
 
         # Load Home Assistant
@@ -172,7 +176,7 @@ class Core(CoreSysAttributes):
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
-                        self.sys_dns.unload(),
+                        self.sys_plugins.dns.unload(),
                         self.sys_hwmonitor.unload(),
                     ]
                 )
@@ -205,7 +209,11 @@ class Core(CoreSysAttributes):
 
         # Fix plugins
         await asyncio.wait(
-            [self.sys_dns.repair(), self.sys_audio.repair(), self.sys_cli.repair()]
+            [
+                self.sys_plugins.dns.repair(),
+                self.sys_plugins.audio.repair(),
+                self.sys_plugins.cli.repair(),
+            ]
         )
 
         # Restore core functionality

@@ -28,6 +28,7 @@ FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
 FILE_HASSIO_DNS = Path(SUPERVISOR_DATA, "dns.json")
 FILE_HASSIO_AUDIO = Path(SUPERVISOR_DATA, "audio.json")
 FILE_HASSIO_CLI = Path(SUPERVISOR_DATA, "cli.json")
+FILE_HASSIO_MULTICAST = Path(SUPERVISOR_DATA, "multicast.json")
 
 SOCKET_DOCKER = Path("/run/docker.sock")
 

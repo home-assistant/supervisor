@@ -1,4 +1,4 @@
-"""Home Assistant control object.
+"""Home Assistant audio plugin.
 
 Code: https://github.com/home-assistant/plugin-audio
 """
@@ -17,7 +17,7 @@ from ..docker.audio import DockerAudio
 from ..docker.stats import DockerStats
 from ..exceptions import AudioError, AudioUpdateError, DockerAPIError
 from ..utils.json import JsonConfig
-from ..validate import SCHEMA_AUDIO_CONFIG
+from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

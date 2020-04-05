@@ -1,4 +1,4 @@
-"""Home Assistant control object.
+"""Home Assistant multicast plugin.
 
 Code: https://github.com/home-assistant/plugin-multicast
 """
@@ -13,44 +13,25 @@ import attr
 import jinja2
 import voluptuous as vol
 
-from ..const import ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, FILE_HASSIO_DNS
+from ..const import ATTR_IMAGE, ATTR_VERSION, FILE_HASSIO_MULTICAST
 from ..coresys import CoreSys, CoreSysAttributes
-from ..docker.dns import DockerDNS
+from ..docker.multicast import DockerMulticast
 from ..docker.stats import DockerStats
 from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
-from ..misc.forwarder import DNSForward
 from ..utils.json import JsonConfig
-from ..validate import SCHEMA_DNS_CONFIG, dns_url
+from .validate import SCHEMA_MULTICAST_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-COREDNS_TMPL: Path = Path(__file__).parents[0].joinpath("data/coredns.tmpl")
-RESOLV_TMPL: Path = Path(__file__).parents[0].joinpath("data/resolv.tmpl")
-HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
-
-@attr.s
-class HostEntry:
-    """Single entry in hosts."""
-
-    ip_address: IPv4Address = attr.ib()
-    names: List[str] = attr.ib()
-
-
-class CoreDNS(JsonConfig, CoreSysAttributes):
+class Multicast(JsonConfig, CoreSysAttributes):
     """Home Assistant core object for handle it."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
-        super().__init__(FILE_HASSIO_DNS, SCHEMA_DNS_CONFIG)
+        super().__init__(FILE_HASSIO_MULTICAST, SCHEMA_MULTICAST_CONFIG)
         self.coresys: CoreSys = coresys
-        self.instance: DockerDNS = DockerDNS(coresys)
-        self.forwarder: DNSForward = DNSForward()
-        self.coredns_template: Optional[jinja2.Template] = None
-        self.resolv_template: Optional[jinja2.Template] = None
-
-        self._hosts: List[HostEntry] = []
-        self._loop: bool = False
+        self.instance: DockerDNS = DockerMulticast(coresys)
 
     @property
     def corefile(self) -> Path:

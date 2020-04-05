@@ -130,7 +130,7 @@ class SecurityMiddleware(CoreSysAttributes):
 
         # Host
         # Remove machine_id handling later if all use new CLI
-        if supervisor_token in (self.sys_machine_id, self.sys_cli.supervisor_token):
+        if supervisor_token in (self.sys_machine_id, self.sys_plugins.cli.supervisor_token):
             _LOGGER.debug("%s access from Host", request.path)
             request_from = self.sys_host
 

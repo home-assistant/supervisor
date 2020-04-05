@@ -31,9 +31,7 @@ if TYPE_CHECKING:
     from .store import StoreManager
     from .tasks import Tasks
     from .updater import Updater
-    from .plugins.cli import HaCli
-    from .plugins.audio import Audio
-    from .plugins.dns import CoreDNS
+    from .plugins import PluginManager
 
 
 class CoreSys:
@@ -61,10 +59,7 @@ class CoreSys:
         # Internal objects pointers
         self._core: Optional[Core] = None
         self._arch: Optional[CpuArch] = None
-        self._audio: Optional[Audio] = None
         self._auth: Optional[Auth] = None
-        self._dns: Optional[CoreDNS] = None
-        self._cli: Optional[HaCli] = None
         self._homeassistant: Optional[HomeAssistant] = None
         self._supervisor: Optional[Supervisor] = None
         self._addons: Optional[AddonManager] = None
@@ -81,6 +76,7 @@ class CoreSys:
         self._store: Optional[StoreManager] = None
         self._discovery: Optional[Discovery] = None
         self._hwmonitor: Optional[HwMonitor] = None
+        self._plugins: Optional[PluginManager] = None
 
     @property
     def dev(self) -> bool:
@@ -140,16 +136,16 @@ class CoreSys:
         self._core = value
 
     @property
-    def cli(self) -> HaCli:
-        """Return HaCli object."""
-        return self._cli
+    def plugins(self) -> PluginManager:
+        """Return PluginManager object."""
+        return self._plugins
 
-    @cli.setter
-    def cli(self, value: HaCli):
-        """Set a HaCli object."""
-        if self._cli:
-            raise RuntimeError("HaCli already set!")
-        self._cli = value
+    @plugins.setter
+    def plugins(self, value: PluginManager):
+        """Set a PluginManager object."""
+        if self._plugins:
+            raise RuntimeError("PluginManager already set!")
+        self._plugins = value
 
     @property
     def arch(self) -> CpuArch:
@@ -174,18 +170,6 @@ class CoreSys:
         if self._auth:
             raise RuntimeError("Auth already set!")
         self._auth = value
-
-    @property
-    def audio(self) -> Audio:
-        """Return Audio object."""
-        return self._audio
-
-    @audio.setter
-    def audio(self, value: Audio):
-        """Set a Audio object."""
-        if self._audio:
-            raise RuntimeError("Audio already set!")
-        self._audio = value
 
     @property
     def homeassistant(self) -> HomeAssistant:
@@ -332,18 +316,6 @@ class CoreSys:
         self._dbus = value
 
     @property
-    def dns(self) -> CoreDNS:
-        """Return CoreDNS object."""
-        return self._dns
-
-    @dns.setter
-    def dns(self, value: CoreDNS):
-        """Set a CoreDNS object."""
-        if self._dns:
-            raise RuntimeError("CoreDNS already set!")
-        self._dns = value
-
-    @property
     def host(self) -> HostManager:
         """Return HostManager object."""
         return self._host
@@ -482,9 +454,9 @@ class CoreSysAttributes:
         return self.coresys.core
 
     @property
-    def sys_cli(self) -> HaCli:
-        """Return HaCli object."""
-        return self.coresys.cli
+    def sys_plugins(self) -> PluginManager:
+        """Return PluginManager object."""
+        return self.coresys.plugins
 
     @property
     def sys_arch(self) -> CpuArch:
@@ -495,11 +467,6 @@ class CoreSysAttributes:
     def sys_auth(self) -> Auth:
         """Return Auth object."""
         return self.coresys.auth
-
-    @property
-    def sys_audio(self) -> Audio:
-        """Return Audio object."""
-        return self.coresys.audio
 
     @property
     def sys_homeassistant(self) -> HomeAssistant:
@@ -560,11 +527,6 @@ class CoreSysAttributes:
     def sys_dbus(self) -> DBusManager:
         """Return DBusManager object."""
         return self.coresys.dbus
-
-    @property
-    def sys_dns(self) -> CoreDNS:
-        """Return CoreDNS object."""
-        return self.coresys.dns
 
     @property
     def sys_host(self) -> HostManager:

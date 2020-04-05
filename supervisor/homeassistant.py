@@ -636,7 +636,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     def write_pulse(self):
         """Write asound config to file and return True on success."""
-        pulse_config = self.sys_audio.pulse_client(
+        pulse_config = self.sys_plugins.audio.pulse_client(
             input_profile=self.audio_input, output_profile=self.audio_output
         )
 

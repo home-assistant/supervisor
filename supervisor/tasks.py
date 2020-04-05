@@ -209,66 +209,69 @@ class Tasks(CoreSysAttributes):
 
     async def _update_cli(self):
         """Check and run update of cli."""
-        if not self.sys_cli.need_update:
+        if not self.sys_plugins.cli.need_update:
             return
 
         _LOGGER.info("Found new cli version")
-        await self.sys_cli.update()
+        await self.sys_plugins.cli.update()
 
     async def _update_dns(self):
         """Check and run update of CoreDNS plugin."""
-        if not self.sys_dns.need_update:
+        if not self.sys_plugins.dns.need_update:
             return
 
         _LOGGER.info("Found new CoreDNS plugin version")
-        await self.sys_dns.update()
+        await self.sys_plugins.dns.update()
 
     async def _update_audio(self):
         """Check and run update of PulseAudio plugin."""
-        if not self.sys_audio.need_update:
+        if not self.sys_plugins.audio.need_update:
             return
 
         _LOGGER.info("Found new PulseAudio plugin version")
-        await self.sys_audio.update()
+        await self.sys_plugins.audio.update()
 
     async def _watchdog_dns_docker(self):
         """Check running state of Docker and start if they is close."""
         # if CoreDNS is active
-        if await self.sys_dns.is_running() or self.sys_dns.in_progress:
+        if await self.sys_plugins.dns.is_running() or self.sys_plugins.dns.in_progress:
             return
         _LOGGER.warning("Watchdog found a problem with CoreDNS plugin!")
 
         # Reset of fails
-        if await self.sys_dns.is_fails():
+        if await self.sys_plugins.dns.is_fails():
             _LOGGER.error("CoreDNS plugin is in fails state / Reset config")
-            await self.sys_dns.reset()
-            await self.sys_dns.loop_detection()
+            await self.sys_plugins.dns.reset()
+            await self.sys_plugins.dns.loop_detection()
 
         try:
-            await self.sys_dns.start()
+            await self.sys_plugins.dns.start()
         except CoreDNSError:
             _LOGGER.error("Watchdog CoreDNS reanimation fails!")
 
     async def _watchdog_audio_docker(self):
         """Check running state of Docker and start if they is close."""
         # if PulseAudio plugin is active
-        if await self.sys_audio.is_running() or self.sys_audio.in_progress:
+        if (
+            await self.sys_plugins.audio.is_running()
+            or self.sys_plugins.audio.in_progress
+        ):
             return
         _LOGGER.warning("Watchdog found a problem with PulseAudio plugin!")
 
         try:
-            await self.sys_audio.start()
+            await self.sys_plugins.audio.start()
         except AudioError:
             _LOGGER.error("Watchdog PulseAudio reanimation fails!")
 
     async def _watchdog_cli_docker(self):
         """Check running state of Docker and start if they is close."""
         # if cli plugin is active
-        if await self.sys_cli.is_running() or self.sys_cli.in_progress:
+        if await self.sys_plugins.cli.is_running() or self.sys_plugins.cli.in_progress:
             return
         _LOGGER.warning("Watchdog found a problem with cli plugin!")
 
         try:
-            await self.sys_cli.start()
+            await self.sys_plugins.cli.start()
         except CliError:
             _LOGGER.error("Watchdog cli reanimation fails!")

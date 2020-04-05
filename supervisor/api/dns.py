@@ -42,10 +42,10 @@ class APICoreDNS(CoreSysAttributes):
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return DNS information."""
         return {
-            ATTR_VERSION: self.sys_dns.version,
-            ATTR_VERSION_LATEST: self.sys_dns.latest_version,
+            ATTR_VERSION: self.sys_plugins.dns.version,
+            ATTR_VERSION_LATEST: self.sys_plugins.dns.latest_version,
             ATTR_HOST: str(self.sys_docker.network.dns),
-            ATTR_SERVERS: self.sys_dns.servers,
+            ATTR_SERVERS: self.sys_plugins.dns.servers,
             ATTR_LOCALS: self.sys_host.network.dns_servers,
         }
 
@@ -55,15 +55,15 @@ class APICoreDNS(CoreSysAttributes):
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_SERVERS in body:
-            self.sys_dns.servers = body[ATTR_SERVERS]
-            self.sys_create_task(self.sys_dns.restart())
+            self.sys_plugins.dns.servers = body[ATTR_SERVERS]
+            self.sys_create_task(self.sys_plugins.dns.restart())
 
-        self.sys_dns.save_data()
+        self.sys_plugins.dns.save_data()
 
     @api_process
     async def stats(self, request: web.Request) -> Dict[str, Any]:
         """Return resource information."""
-        stats = await self.sys_dns.stats()
+        stats = await self.sys_plugins.dns.stats()
 
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
@@ -80,23 +80,23 @@ class APICoreDNS(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update DNS plugin."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_dns.latest_version)
+        version = body.get(ATTR_VERSION, self.sys_plugins.dns.latest_version)
 
-        if version == self.sys_dns.version:
+        if version == self.sys_plugins.dns.version:
             raise APIError("Version {} is already in use".format(version))
-        await asyncio.shield(self.sys_dns.update(version))
+        await asyncio.shield(self.sys_plugins.dns.update(version))
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return DNS Docker logs."""
-        return self.sys_dns.logs()
+        return self.sys_plugins.dns.logs()
 
     @api_process
     def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart CoreDNS plugin."""
-        return asyncio.shield(self.sys_dns.restart())
+        return asyncio.shield(self.sys_plugins.dns.restart())
 
     @api_process
     def reset(self, request: web.Request) -> Awaitable[None]:
         """Reset CoreDNS plugin."""
-        return asyncio.shield(self.sys_dns.reset())
+        return asyncio.shield(self.sys_plugins.dns.reset())

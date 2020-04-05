@@ -26,7 +26,6 @@ from .const import (
     ATTR_PORT,
     ATTR_PORTS,
     ATTR_REFRESH_TOKEN,
-    ATTR_SERVERS,
     ATTR_SESSION,
     ATTR_SSL,
     ATTR_TIMEZONE,
@@ -173,35 +172,6 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
         vol.Required(ATTR_PORTS, default=dict): vol.Schema(
             {vol.Coerce(str): network_port}
         ),
-    },
-    extra=vol.REMOVE_EXTRA,
-)
-
-
-SCHEMA_DNS_CONFIG = vol.Schema(
-    {
-        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_IMAGE): docker_image,
-        vol.Optional(ATTR_SERVERS, default=list): dns_server_list,
-    },
-    extra=vol.REMOVE_EXTRA,
-)
-
-
-SCHEMA_AUDIO_CONFIG = vol.Schema(
-    {
-        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_IMAGE): docker_image,
-    },
-    extra=vol.REMOVE_EXTRA,
-)
-
-
-SCHEMA_CLI_CONFIG = vol.Schema(
-    {
-        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_IMAGE): docker_image,
-        vol.Optional(ATTR_ACCESS_TOKEN): token,
     },
     extra=vol.REMOVE_EXTRA,
 )

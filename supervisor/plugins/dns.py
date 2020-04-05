@@ -1,4 +1,4 @@
-"""Home Assistant control object.
+"""Home Assistant dns plugin.
 
 Code: https://github.com/home-assistant/plugin-dns
 """
@@ -20,7 +20,8 @@ from ..docker.stats import DockerStats
 from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
 from ..misc.forwarder import DNSForward
 from ..utils.json import JsonConfig
-from ..validate import SCHEMA_DNS_CONFIG, dns_url
+from .validate import SCHEMA_DNS_CONFIG
+from ..validate import dns_url
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

@@ -18,7 +18,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
     @property
     def image(self) -> str:
         """Return name of Supervisor DNS image."""
-        return self.sys_dns.image
+        return self.sys_plugins.dns.image
 
     @property
     def name(self) -> str:
@@ -40,7 +40,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_dns.version,
+            version=self.sys_plugins.dns.version,
             init=False,
             dns=False,
             ipv4=self.sys_docker.network.dns,

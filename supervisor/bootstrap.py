@@ -35,10 +35,8 @@ from .supervisor import Supervisor
 from .tasks import Tasks
 from .updater import Updater
 from .secrets import SecretsManager
+from .plugins import PluginManager
 from .utils.dt import fetch_timezone
-from .plugins.dns import CoreDNS
-from .plugins.cli import HaCli
-from .plugins.audio import Audio
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -52,9 +50,8 @@ async def initialize_coresys():
 
     # Initialize core objects
     coresys.core = Core(coresys)
-    coresys.dns = CoreDNS(coresys)
+    coresys.plugins = PluginManager(coresys)
     coresys.arch = CpuArch(coresys)
-    coresys.audio = Audio(coresys)
     coresys.auth = Auth(coresys)
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
@@ -72,7 +69,6 @@ async def initialize_coresys():
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
     coresys.secrets = SecretsManager(coresys)
-    coresys.cli = HaCli(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
