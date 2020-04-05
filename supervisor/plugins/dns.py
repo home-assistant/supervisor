@@ -25,8 +25,8 @@ from ..validate import dns_url
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-COREDNS_TMPL: Path = Path(__file__).parents[0].joinpath("data/coredns.tmpl")
-RESOLV_TMPL: Path = Path(__file__).parents[0].joinpath("data/resolv.tmpl")
+COREDNS_TMPL: Path = Path(__file__).parents[1].joinpath("data/coredns.tmpl")
+RESOLV_TMPL: Path = Path(__file__).parents[1].joinpath("data/resolv.tmpl")
 HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
 

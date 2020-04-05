@@ -21,8 +21,8 @@ from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-PULSE_CLIENT_TMPL: Path = Path(__file__).parents[0].joinpath("data/pulse-client.tmpl")
-ASOUND_TMPL: Path = Path(__file__).parents[0].joinpath("data/asound.tmpl")
+PULSE_CLIENT_TMPL: Path = Path(__file__).parents[1].joinpath("data/pulse-client.tmpl")
+ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
 
 
 class Audio(JsonConfig, CoreSysAttributes):
