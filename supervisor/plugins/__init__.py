@@ -62,15 +62,15 @@ class PluginManager(CoreSysAttributes):
 
     async def unload(self) -> None:
         """Unload Supervisor plugin."""
-        await asyncio.wait([
-            self.dns.unload()
-        ])
+        await asyncio.wait([self.dns.unload()])
 
     async def shutdown(self) -> None:
         """Shutdown Supervisor plugin."""
-        await asyncio.wait([
+        await asyncio.wait(
+            [
                 self.dns.stop(),
                 self.audio.stop(),
                 self.cli.stop(),
                 self.multicast.stop(),
-        ])
+            ]
+        )
