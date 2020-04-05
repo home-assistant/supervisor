@@ -216,8 +216,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""
         self._write_corefile()
-        with suppress(DockerAPIError):
+        _LOGGER.info("Restart CoreDNS plugin")
+        try:
             await self.instance.restart()
+        except DockerAPIError:
+            _LOGGER.error("Can't start CoreDNS plugin")
+            raise DNSError()
 
     async def start(self) -> None:
         """Run CoreDNS."""

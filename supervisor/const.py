@@ -79,6 +79,7 @@ REQUEST_FROM = "HASSIO_FROM"
 
 ATTR_SUPERVISOR = "supervisor"
 ATTR_MACHINE = "machine"
+ATTR_MULTICAST = "multicast"
 ATTR_WAIT_BOOT = "wait_boot"
 ATTR_DEPLOYMENT = "deployment"
 ATTR_WATCHDOG = "watchdog"

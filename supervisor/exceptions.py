@@ -61,8 +61,19 @@ class CliError(HassioError):
     """HA cli exception."""
 
 
-class CliUpdateError(HassOSError):
+class CliUpdateError(CliError):
     """Error on update of a HA cli."""
+
+
+# Multicast
+
+
+class MulticastError(HassioError):
+    """Multicast exception."""
+
+
+class MulticastUpdateError(MulticastError):
+    """Error on update of a multicast."""
 
 
 # DNS
