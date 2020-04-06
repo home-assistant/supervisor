@@ -2,7 +2,7 @@
 from contextlib import suppress
 import logging
 
-from ..const import DOCKER_NETWORK_MASK, ENV_HASSIO_NETWORK, ENV_TIME
+from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerAPIError
 from .interface import DockerInterface
@@ -47,10 +47,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
             network_mode="host",
             detach=True,
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
-            environment={
-                ENV_TIME: self.sys_timezone,
-                ENV_HASSIO_NETWORK: str(DOCKER_NETWORK_MASK),
-            },
+            environment={ENV_TIME: self.sys_timezone},
         )
 
         self._meta = docker_container.attrs
