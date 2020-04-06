@@ -76,6 +76,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/audio/.*"
         r"|/dns/.*"
         r"|/cli/.*"
+        r"|/multicast/.*"
         r"|/core/.+"
         r"|/homeassistant/.+"
         r"|/host/.+"
