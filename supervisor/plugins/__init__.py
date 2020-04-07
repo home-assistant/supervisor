@@ -1,6 +1,7 @@
 """Plugin for Supervisor backend."""
 import asyncio
 import logging
+from typing import Awaitable
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .audio import Audio
@@ -13,6 +14,11 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 class PluginManager(CoreSysAttributes):
     """Manage supported function for plugins."""
+
+    required_cli: int = 24
+    required_dns: int = 5
+    required_audio: int = 14
+    required_multicast: int = 2
 
     def __init__(self, coresys: CoreSys):
         """Initialize plugin manager."""
@@ -48,6 +54,31 @@ class PluginManager(CoreSysAttributes):
         await asyncio.wait(
             [self.dns.load(), self.audio.load(), self.cli.load(), self.multicast.load()]
         )
+
+        # Check requirements
+        update_tasks: Awaitable[None] = []
+        for plugin, required_version in (
+            (self._audio, self.required_audio),
+            (self._dns, self.required_dns),
+            (self._cli, self.required_cli),
+            (self._multicast, self.required_multicast),
+        ):
+            try:
+                if int(plugin.version) < required_version:
+                    update_tasks.append(plugin.update(version=str(required_version)))
+                    _LOGGER.info(
+                        "Requirement need update for %s - %i",
+                        type(plugin).__name__,
+                        required_version,
+                    )
+            except TypeError:
+                _LOGGER.warning(
+                    "Somethings going wrong with requirements on %s",
+                    type(plugin).__name__,
+                )
+
+        if update_tasks:
+            await asyncio.wait(update_tasks)
 
     async def repair(self):
         """Repair Supervisor plugins."""
