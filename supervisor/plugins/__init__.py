@@ -1,9 +1,9 @@
 """Plugin for Supervisor backend."""
 import asyncio
 import logging
-from typing import Awaitable
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import HassioError
 from .audio import Audio
 from .cli import HaCli
 from .dns import CoreDNS
@@ -56,29 +56,35 @@ class PluginManager(CoreSysAttributes):
         )
 
         # Check requirements
-        update_tasks: Awaitable[None] = []
         for plugin, required_version in (
             (self._audio, self.required_audio),
             (self._dns, self.required_dns),
             (self._cli, self.required_cli),
             (self._multicast, self.required_multicast),
         ):
+            # Check if need an update
             try:
-                if int(plugin.version) < required_version:
-                    update_tasks.append(plugin.update(version=str(required_version)))
-                    _LOGGER.info(
-                        "Requirement need update for %s - %i",
-                        type(plugin).__name__,
-                        required_version,
-                    )
+                if int(plugin.version) >= required_version:
+                    continue
             except TypeError:
                 _LOGGER.warning(
                     "Somethings going wrong with requirements on %s",
                     type(plugin).__name__,
                 )
 
-        if update_tasks:
-            await asyncio.wait(update_tasks)
+            _LOGGER.info(
+                "Requirement need update for %s - %i",
+                type(plugin).__name__,
+                required_version,
+            )
+            try:
+                await plugin.update(version=str(required_version))
+            except HassioError:
+                _LOGGER.error(
+                    "Can't update %s to %i but it's a reuirement, the Supervisor is not health now!",
+                    type(plugin).__name__,
+                    required_version,
+                )
 
     async def repair(self):
         """Repair Supervisor plugins."""
