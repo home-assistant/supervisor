@@ -96,7 +96,7 @@ function setup_test_env() {
         -e SUPERVISOR_SHARE="/workspaces/test_supervisor" \
         -e SUPERVISOR_NAME=hassio_supervisor \
         -e SUPERVISOR_DEV=1 \
-        -e HOMEASSISTANT_REPOSITORY="homeassistant/qemux86-64-homeassistant" \
+        -e SUPERISOR_MACHINE="qemux86-64" \
         homeassistant/amd64-hassio-supervisor:latest
 
 }
