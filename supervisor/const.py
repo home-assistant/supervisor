@@ -361,3 +361,13 @@ class CoreStates(str, Enum):
     STARTUP = "startup"
     RUNNING = "running"
     FREEZE = "freeze"
+
+
+class LogLevel(str, Enum):
+    """Logging level of system."""
+
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
