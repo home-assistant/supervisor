@@ -38,11 +38,12 @@ from ..const import (
     CONTENT_TYPE_BINARY,
     SUPERVISOR_VERSION,
     UpdateChannels,
+    LogLevel,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
-from ..validate import log_level, repositories, wait_boot
+from ..validate import repositories, wait_boot
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_ADDONS_REPOSITORIES): repositories,
         vol.Optional(ATTR_TIMEZONE): validate_timezone,
         vol.Optional(ATTR_WAIT_BOOT): wait_boot,
-        vol.Optional(ATTR_LOGGING): log_level,
+        vol.Optional(ATTR_LOGGING): vol.Coerce(LogLevel),
         vol.Optional(ATTR_DEBUG): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK): vol.Boolean(),
     }

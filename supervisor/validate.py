@@ -34,6 +34,7 @@ from .const import (
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
+    LogLevel,
     UpdateChannels,
 )
 from .utils.validate import validate_timezone
@@ -48,7 +49,6 @@ docker_image = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 uuid_match = vol.Match(r"^[0-9a-f]{32}$")
 sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
-log_level = vol.In(["debug", "info", "warning", "error", "critical"])
 
 
 def dns_url(url: str) -> str:
@@ -156,7 +156,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
             default=["https://github.com/hassio-addons/repository"],
         ): repositories,
         vol.Optional(ATTR_WAIT_BOOT, default=5): wait_boot,
-        vol.Optional(ATTR_LOGGING, default="info"): log_level,
+        vol.Optional(ATTR_LOGGING, default=LogLevel.INFO): vol.Coerce(LogLevel),
         vol.Optional(ATTR_DEBUG, default=False): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK, default=False): vol.Boolean(),
     },

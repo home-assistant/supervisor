@@ -12,12 +12,13 @@ from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
 from .const import (
-    SOCKET_DOCKER,
-    UpdateChannels,
-    ENV_SUPERVISOR_SHARE,
-    ENV_SUPERVISOR_NAME,
     ENV_HOMEASSISTANT_REPOSITORY,
     ENV_SUPERVISOR_MACHINE,
+    ENV_SUPERVISOR_NAME,
+    ENV_SUPERVISOR_SHARE,
+    SOCKET_DOCKER,
+    LogLevel,
+    UpdateChannels,
 )
 from .core import Core
 from .coresys import CoreSys
@@ -28,14 +29,14 @@ from .homeassistant import HomeAssistant
 from .host import HostManager
 from .hwmon import HwMonitor
 from .ingress import Ingress
+from .plugins import PluginManager
+from .secrets import SecretsManager
 from .services import ServiceManager
 from .snapshots import SnapshotManager
 from .store import StoreManager
 from .supervisor import Supervisor
 from .tasks import Tasks
 from .updater import Updater
-from .secrets import SecretsManager
-from .plugins import PluginManager
 from .utils.dt import fetch_timezone
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -163,7 +164,7 @@ def initialize_system_data(coresys: CoreSys):
     if bool(os.environ.get("SUPERVISOR_DEV", 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
         coresys.updater.channel = UpdateChannels.DEV
-        coresys.config.logging = "debug"
+        coresys.config.logging = LogLevel.DEBUG
         coresys.config.debug = True
 
 

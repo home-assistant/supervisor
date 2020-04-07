@@ -15,6 +15,7 @@ from .const import (
     ENV_SUPERVISOR_SHARE,
     FILE_HASSIO_CONFIG,
     SUPERVISOR_DATA,
+    LogLevel,
 )
 from .utils.dt import parse_datetime
 from .utils.json import JsonConfig
@@ -89,19 +90,19 @@ class CoreConfig(JsonConfig):
         self._data[ATTR_DEBUG_BLOCK] = value
 
     @property
-    def logging(self) -> str:
+    def logging(self) -> LogLevel:
         """Return log level of system."""
         return self._data[ATTR_LOGGING]
 
     @logging.setter
-    def logging(self, value: str):
+    def logging(self, value: LogLevel):
         """Set system log level."""
         self._data[ATTR_LOGGING] = value
         self.modify_log_level()
 
     def modify_log_level(self) -> None:
         """Change log level."""
-        lvl = getattr(logging, self.logging.upper())
+        lvl = getattr(logging, str(self.logging.value).upper())
         logging.getLogger("supervisor").setLevel(lvl)
 
     @property
