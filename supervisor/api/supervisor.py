@@ -43,7 +43,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
-from ..validate import log_level, repositories, wait_boot
+from ..validate import repositories, wait_boot
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
