@@ -15,8 +15,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class PluginManager(CoreSysAttributes):
     """Manage supported function for plugins."""
 
-    required_cli: int = 24
-    required_dns: int = 5
+    required_cli: int = 25
+    required_dns: int = 6
     required_audio: int = 14
     required_multicast: int = 2
 
