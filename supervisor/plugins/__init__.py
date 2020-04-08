@@ -16,7 +16,7 @@ class PluginManager(CoreSysAttributes):
     """Manage supported function for plugins."""
 
     required_cli: int = 25
-    required_dns: int = 6
+    required_dns: int = 7
     required_audio: int = 14
     required_multicast: int = 2
 
