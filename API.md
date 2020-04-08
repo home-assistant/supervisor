@@ -956,6 +956,8 @@ return:
 
 - POST `/multicast/restart`
 
+- GET `/multicast/logs`
+
 - GET `/multicast/stats`
 
 ```json
