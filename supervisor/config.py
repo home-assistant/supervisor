@@ -12,12 +12,14 @@ from .const import (
     ATTR_LOGGING,
     ATTR_TIMEZONE,
     ATTR_WAIT_BOOT,
+    ENV_SUPERVISOR_SHARE,
     FILE_HASSIO_CONFIG,
     SUPERVISOR_DATA,
+    LogLevel,
 )
 from .utils.dt import parse_datetime
 from .utils.json import JsonConfig
-from .validate import SCHEMA_HASSIO_CONFIG
+from .validate import SCHEMA_SUPERVISOR_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -45,7 +47,7 @@ class CoreConfig(JsonConfig):
 
     def __init__(self):
         """Initialize config object."""
-        super().__init__(FILE_HASSIO_CONFIG, SCHEMA_HASSIO_CONFIG)
+        super().__init__(FILE_HASSIO_CONFIG, SCHEMA_SUPERVISOR_CONFIG)
 
     @property
     def timezone(self):
@@ -88,19 +90,19 @@ class CoreConfig(JsonConfig):
         self._data[ATTR_DEBUG_BLOCK] = value
 
     @property
-    def logging(self) -> str:
+    def logging(self) -> LogLevel:
         """Return log level of system."""
         return self._data[ATTR_LOGGING]
 
     @logging.setter
-    def logging(self, value: str):
+    def logging(self, value: LogLevel):
         """Set system log level."""
         self._data[ATTR_LOGGING] = value
         self.modify_log_level()
 
     def modify_log_level(self) -> None:
         """Change log level."""
-        lvl = getattr(logging, self.logging.upper())
+        lvl = getattr(logging, str(self.logging.value).upper())
         logging.getLogger("supervisor").setLevel(lvl)
 
     @property
@@ -119,19 +121,19 @@ class CoreConfig(JsonConfig):
         self._data[ATTR_LAST_BOOT] = value.isoformat()
 
     @property
-    def path_hassio(self):
+    def path_supervisor(self):
         """Return Supervisor data path."""
         return SUPERVISOR_DATA
 
     @property
-    def path_extern_hassio(self):
+    def path_extern_supervisor(self):
         """Return Supervisor data path external for Docker."""
-        return PurePath(os.environ["SUPERVISOR_SHARE"])
+        return PurePath(os.environ[ENV_SUPERVISOR_SHARE])
 
     @property
     def path_extern_homeassistant(self):
         """Return config path external for Docker."""
-        return str(PurePath(self.path_extern_hassio, HOMEASSISTANT_CONFIG))
+        return str(PurePath(self.path_extern_supervisor, HOMEASSISTANT_CONFIG))
 
     @property
     def path_homeassistant(self):
@@ -141,7 +143,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_extern_ssl(self):
         """Return SSL path external for Docker."""
-        return str(PurePath(self.path_extern_hassio, HASSIO_SSL))
+        return str(PurePath(self.path_extern_supervisor, HASSIO_SSL))
 
     @property
     def path_ssl(self):
@@ -166,7 +168,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_extern_addons_local(self):
         """Return path for custom Add-ons."""
-        return PurePath(self.path_extern_hassio, ADDONS_LOCAL)
+        return PurePath(self.path_extern_supervisor, ADDONS_LOCAL)
 
     @property
     def path_addons_data(self):
@@ -176,7 +178,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_extern_addons_data(self):
         """Return root add-on data folder external for Docker."""
-        return PurePath(self.path_extern_hassio, ADDONS_DATA)
+        return PurePath(self.path_extern_supervisor, ADDONS_DATA)
 
     @property
     def path_audio(self):
@@ -186,7 +188,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_extern_audio(self):
         """Return root audio data folder external for Docker."""
-        return PurePath(self.path_extern_hassio, AUDIO_DATA)
+        return PurePath(self.path_extern_supervisor, AUDIO_DATA)
 
     @property
     def path_tmp(self):
@@ -196,7 +198,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_extern_tmp(self):
         """Return Supervisor temp folder for Docker."""
-        return PurePath(self.path_extern_hassio, TMP_DATA)
+        return PurePath(self.path_extern_supervisor, TMP_DATA)
 
     @property
     def path_backup(self):
@@ -206,7 +208,7 @@ class CoreConfig(JsonConfig):
     @property
     def path_extern_backup(self):
         """Return root backup data folder external for Docker."""
-        return PurePath(self.path_extern_hassio, BACKUP_DATA)
+        return PurePath(self.path_extern_supervisor, BACKUP_DATA)
 
     @property
     def path_share(self):
@@ -221,12 +223,12 @@ class CoreConfig(JsonConfig):
     @property
     def path_extern_share(self):
         """Return root share data folder external for Docker."""
-        return PurePath(self.path_extern_hassio, SHARE_DATA)
+        return PurePath(self.path_extern_supervisor, SHARE_DATA)
 
     @property
     def path_extern_dns(self):
         """Return dns path external for Docker."""
-        return str(PurePath(self.path_extern_hassio, DNS_DATA))
+        return str(PurePath(self.path_extern_supervisor, DNS_DATA))
 
     @property
     def path_dns(self):

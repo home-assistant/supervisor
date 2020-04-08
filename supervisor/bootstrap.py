@@ -11,33 +11,36 @@ from .addons import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
-from .audio import Audio
-from .const import SOCKET_DOCKER, UpdateChannels
+from .const import (
+    ENV_HOMEASSISTANT_REPOSITORY,
+    ENV_SUPERVISOR_MACHINE,
+    ENV_SUPERVISOR_NAME,
+    ENV_SUPERVISOR_SHARE,
+    SOCKET_DOCKER,
+    LogLevel,
+    UpdateChannels,
+)
 from .core import Core
-from .cli import HaCli
 from .coresys import CoreSys
 from .dbus import DBusManager
 from .discovery import Discovery
-from .dns import CoreDNS
 from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
 from .hwmon import HwMonitor
 from .ingress import Ingress
+from .plugins import PluginManager
+from .secrets import SecretsManager
 from .services import ServiceManager
 from .snapshots import SnapshotManager
 from .store import StoreManager
 from .supervisor import Supervisor
 from .tasks import Tasks
 from .updater import Updater
-from .secrets import SecretsManager
 from .utils.dt import fetch_timezone
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-ENV_SHARE = "SUPERVISOR_SHARE"
-ENV_NAME = "SUPERVISOR_NAME"
-ENV_REPO = "HOMEASSISTANT_REPOSITORY"
 
 MACHINE_ID = Path("/etc/machine-id")
 
@@ -48,9 +51,8 @@ async def initialize_coresys():
 
     # Initialize core objects
     coresys.core = Core(coresys)
-    coresys.dns = CoreDNS(coresys)
+    coresys.plugins = PluginManager(coresys)
     coresys.arch = CpuArch(coresys)
-    coresys.audio = Audio(coresys)
     coresys.auth = Auth(coresys)
     coresys.updater = Updater(coresys)
     coresys.api = RestAPI(coresys)
@@ -68,7 +70,6 @@ async def initialize_coresys():
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
     coresys.secrets = SecretsManager(coresys)
-    coresys.cli = HaCli(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
@@ -80,6 +81,13 @@ async def initialize_coresys():
     # Init TimeZone
     if coresys.config.timezone == "UTC":
         coresys.config.timezone = await fetch_timezone(coresys.websession)
+
+    # Set machine type
+    if os.environ.get(ENV_SUPERVISOR_MACHINE):
+        coresys.machine = os.environ[ENV_SUPERVISOR_MACHINE]
+    elif os.environ.get(ENV_HOMEASSISTANT_REPOSITORY):
+        coresys.machine = os.environ[ENV_HOMEASSISTANT_REPOSITORY][14:-14]
+    _LOGGER.info("Setup coresys for machine: %s", coresys.machine)
 
     return coresys
 
@@ -156,7 +164,7 @@ def initialize_system_data(coresys: CoreSys):
     if bool(os.environ.get("SUPERVISOR_DEV", 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
         coresys.updater.channel = UpdateChannels.DEV
-        coresys.config.logging = "debug"
+        coresys.config.logging = LogLevel.DEBUG
         coresys.config.debug = True
 
 
@@ -165,7 +173,7 @@ def migrate_system_env(coresys: CoreSys):
     config = coresys.config
 
     # hass.io 0.37 -> 0.38
-    old_build = Path(config.path_hassio, "addons/build")
+    old_build = Path(config.path_supervisor, "addons/build")
     if old_build.is_dir():
         try:
             old_build.rmdir()
@@ -202,11 +210,19 @@ def initialize_logging():
 def check_environment() -> None:
     """Check if all environment are exists."""
     # check environment variables
-    for key in (ENV_SHARE, ENV_NAME, ENV_REPO):
+    for key in (ENV_SUPERVISOR_SHARE, ENV_SUPERVISOR_NAME):
         try:
             os.environ[key]
         except KeyError:
             _LOGGER.fatal("Can't find %s in env!", key)
+
+    # Check Machine info
+    if not os.environ.get(ENV_HOMEASSISTANT_REPOSITORY) and not os.environ.get(
+        ENV_SUPERVISOR_MACHINE
+    ):
+        _LOGGER.fatal("Can't find any kind of machine/homeassistant details!")
+    elif not os.environ.get(ENV_SUPERVISOR_MACHINE):
+        _LOGGER.info("Use the old homeassistant repository for machine extraction")
 
     # check docker socket
     if not SOCKET_DOCKER.is_socket():

@@ -308,11 +308,11 @@ class DockerAddon(DockerInterface):
                         "bind": "/etc/pulse/client.conf",
                         "mode": "ro",
                     },
-                    str(self.sys_audio.path_extern_pulse): {
+                    str(self.sys_plugins.audio.path_extern_pulse): {
                         "bind": "/run/audio",
                         "mode": "ro",
                     },
-                    str(self.sys_audio.path_extern_asound): {
+                    str(self.sys_plugins.audio.path_extern_asound): {
                         "bind": "/etc/asound.conf",
                         "mode": "ro",
                     },
@@ -364,7 +364,7 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
 
         # Write data to DNS server
-        self.sys_dns.add_host(ipv4=self.ip_address, names=[self.addon.hostname])
+        self.sys_plugins.dns.add_host(ipv4=self.ip_address, names=[self.addon.hostname])
 
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
@@ -490,5 +490,5 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         if self.ip_address != NO_ADDDRESS:
-            self.sys_dns.delete_host(self.addon.hostname)
+            self.sys_plugins.dns.delete_host(self.addon.hostname)
         super()._stop(remove_container)

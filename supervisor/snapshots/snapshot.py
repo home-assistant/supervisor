@@ -24,7 +24,6 @@ from ..const import (
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
-    ATTR_VERSION_LATEST,
     ATTR_NAME,
     ATTR_PORT,
     ATTR_PROTECTED,
@@ -360,7 +359,7 @@ class Snapshot(CoreSysAttributes):
             """Internal function to snapshot a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
-            origin_dir = Path(self.sys_config.path_hassio, name)
+            origin_dir = Path(self.sys_config.path_supervisor, name)
 
             # Check if exists
             if not origin_dir.is_dir():
@@ -397,7 +396,7 @@ class Snapshot(CoreSysAttributes):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
-            origin_dir = Path(self.sys_config.path_hassio, name)
+            origin_dir = Path(self.sys_config.path_supervisor, name)
 
             # Check if exists inside snapshot
             if not tar_name.exists():
@@ -430,13 +429,7 @@ class Snapshot(CoreSysAttributes):
         self.homeassistant[ATTR_WATCHDOG] = self.sys_homeassistant.watchdog
         self.homeassistant[ATTR_BOOT] = self.sys_homeassistant.boot
         self.homeassistant[ATTR_WAIT_BOOT] = self.sys_homeassistant.wait_boot
-
-        # Custom image
-        if self.sys_homeassistant.is_custom_image:
-            self.homeassistant[ATTR_IMAGE] = self.sys_homeassistant.image
-            self.homeassistant[
-                ATTR_VERSION_LATEST
-            ] = self.sys_homeassistant.latest_version
+        self.homeassistant[ATTR_IMAGE] = self.sys_homeassistant.image
 
         # API/Proxy
         self.homeassistant[ATTR_PORT] = self.sys_homeassistant.api_port
@@ -455,12 +448,9 @@ class Snapshot(CoreSysAttributes):
         self.sys_homeassistant.boot = self.homeassistant[ATTR_BOOT]
         self.sys_homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
 
-        # Custom image
-        if self.homeassistant.get(ATTR_IMAGE):
+        # Was not needed before
+        if self.homeassistant[ATTR_IMAGE]:
             self.sys_homeassistant.image = self.homeassistant[ATTR_IMAGE]
-            self.sys_homeassistant.latest_version = self.homeassistant[
-                ATTR_VERSION_LATEST
-            ]
 
         # API/Proxy
         self.sys_homeassistant.api_port = self.homeassistant[ATTR_PORT]

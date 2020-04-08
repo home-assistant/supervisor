@@ -1,4 +1,7 @@
-"""Home Assistant control object."""
+"""Home Assistant dns plugin.
+
+Code: https://github.com/home-assistant/plugin-dns
+"""
 import asyncio
 from contextlib import suppress
 from ipaddress import IPv4Address
@@ -10,19 +13,27 @@ import attr
 import jinja2
 import voluptuous as vol
 
-from .const import ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, FILE_HASSIO_DNS
-from .coresys import CoreSys, CoreSysAttributes
-from .docker.dns import DockerDNS
-from .docker.stats import DockerStats
-from .exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
-from .misc.forwarder import DNSForward
-from .utils.json import JsonConfig
-from .validate import dns_url, SCHEMA_DNS_CONFIG
+from ..const import (
+    ATTR_IMAGE,
+    ATTR_SERVERS,
+    ATTR_VERSION,
+    DNS_SUFFIX,
+    FILE_HASSIO_DNS,
+    LogLevel,
+)
+from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.dns import DockerDNS
+from ..docker.stats import DockerStats
+from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
+from ..misc.forwarder import DNSForward
+from ..utils.json import JsonConfig
+from ..validate import dns_url
+from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-COREDNS_TMPL: Path = Path(__file__).parents[0].joinpath("data/coredns.tmpl")
-RESOLV_TMPL: Path = Path(__file__).parents[0].joinpath("data/resolv.tmpl")
+COREDNS_TMPL: Path = Path(__file__).parents[1].joinpath("data/coredns.tmpl")
+RESOLV_TMPL: Path = Path(__file__).parents[1].joinpath("data/resolv.tmpl")
 HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
 
@@ -80,6 +91,18 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self._data[ATTR_VERSION] = value
 
     @property
+    def image(self) -> str:
+        """Return current image of DNS."""
+        if self._data.get(ATTR_IMAGE):
+            return self._data[ATTR_IMAGE]
+        return f"homeassistant/{self.sys_arch.supervisor}-hassio-dns"
+
+    @image.setter
+    def image(self, value: str) -> None:
+        """Return current image of DNS."""
+        self._data[ATTR_IMAGE] = value
+
+    @property
     def latest_version(self) -> Optional[str]:
         """Return latest version of CoreDNS."""
         return self.sys_updater.version_dns
@@ -115,6 +138,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 await self.install()
         else:
             self.version = self.instance.version
+            self.image = self.instance.image
             self.save_data()
 
         # Start DNS forwarder
@@ -154,13 +178,16 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
             if self.latest_version:
                 with suppress(DockerAPIError):
-                    await self.instance.install(self.latest_version)
+                    await self.instance.install(
+                        self.latest_version, image=self.sys_updater.image_dns
+                    )
                     break
             _LOGGER.warning("Error on install CoreDNS plugin. Retry in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("CoreDNS plugin now installed")
         self.version = self.instance.version
+        self.image = self.sys_updater.image_dns
         self.save_data()
 
         # Init Hosts
@@ -169,6 +196,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     async def update(self, version: Optional[str] = None) -> None:
         """Update CoreDNS plugin."""
         version = version or self.latest_version
+        old_image = self.image
 
         if version == self.version:
             _LOGGER.warning("Version %s is already installed for CoreDNS", version)
@@ -176,17 +204,18 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Update
         try:
-            await self.instance.update(version)
+            await self.instance.update(version, image=self.sys_updater.image_dns)
         except DockerAPIError:
             _LOGGER.error("CoreDNS update fails")
             raise CoreDNSUpdateError() from None
+        else:
+            self.version = version
+            self.image = self.sys_updater.image_dns
+            self.save_data()
 
         # Cleanup
         with suppress(DockerAPIError):
-            await self.instance.cleanup()
-
-        self.version = version
-        self.save_data()
+            await self.instance.cleanup(old_image=old_image)
 
         # Start CoreDNS
         await self.start()
@@ -194,8 +223,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""
         self._write_corefile()
-        with suppress(DockerAPIError):
+        _LOGGER.info("Restart CoreDNS plugin")
+        try:
             await self.instance.restart()
+        except DockerAPIError:
+            _LOGGER.error("Can't start CoreDNS plugin")
+            raise CoreDNSError()
 
     async def start(self) -> None:
         """Run CoreDNS."""
@@ -207,6 +240,15 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.run()
         except DockerAPIError:
             _LOGGER.error("Can't start CoreDNS plugin")
+            raise CoreDNSError() from None
+
+    async def stop(self) -> None:
+        """Stop CoreDNS."""
+        _LOGGER.info("Stop CoreDNS plugin")
+        try:
+            await self.instance.stop()
+        except DockerAPIError:
+            _LOGGER.error("Can't stop CoreDNS plugin")
             raise CoreDNSError() from None
 
     async def reset(self) -> None:
@@ -266,7 +308,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 _LOGGER.warning("Ignore invalid DNS Server: %s", server)
 
         # Generate config file
-        data = self.coredns_template.render(locals=dns_servers)
+        data = self.coredns_template.render(
+            locals=dns_servers, debug=self.sys_config.logging == LogLevel.DEBUG
+        )
 
         try:
             self.corefile.write_text(data)

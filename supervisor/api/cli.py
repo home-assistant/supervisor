@@ -33,14 +33,14 @@ class APICli(CoreSysAttributes):
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return HA cli information."""
         return {
-            ATTR_VERSION: self.sys_cli.version,
-            ATTR_VERSION_LATEST: self.sys_cli.latest_version,
+            ATTR_VERSION: self.sys_plugins.cli.version,
+            ATTR_VERSION_LATEST: self.sys_plugins.cli.latest_version,
         }
 
     @api_process
     async def stats(self, request: web.Request) -> Dict[str, Any]:
         """Return resource information."""
-        stats = await self.sys_cli.stats()
+        stats = await self.sys_plugins.cli.stats()
 
         return {
             ATTR_CPU_PERCENT: stats.cpu_percent,
@@ -57,6 +57,6 @@ class APICli(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update HA CLI."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_cli.latest_version)
+        version = body.get(ATTR_VERSION, self.sys_plugins.cli.latest_version)
 
-        await asyncio.shield(self.sys_cli.update(version))
+        await asyncio.shield(self.sys_plugins.cli.update(version))

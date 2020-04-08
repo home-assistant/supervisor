@@ -23,6 +23,7 @@ from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots
 from .supervisor import APISupervisor
+from .multicast import APIMulticast
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class RestAPI(CoreSysAttributes):
         self._register_host()
         self._register_os()
         self._register_cli()
+        self._register_multicast()
         self._register_hardware()
         self._register_homeassistant()
         self._register_proxy()
@@ -110,6 +112,21 @@ class RestAPI(CoreSysAttributes):
                 web.get("/cli/info", api_cli.info),
                 web.get("/cli/stats", api_cli.stats),
                 web.post("/cli/update", api_cli.update),
+            ]
+        )
+
+    def _register_multicast(self) -> None:
+        """Register Multicast functions."""
+        api_multicast = APIMulticast()
+        api_multicast.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/multicast/info", api_multicast.info),
+                web.get("/multicast/stats", api_multicast.stats),
+                web.get("/multicast/logs", api_multicast.logs),
+                web.post("/multicast/update", api_multicast.update),
+                web.post("/multicast/restart", api_multicast.restart),
             ]
         )
 

@@ -65,7 +65,7 @@ class Supervisor(CoreSysAttributes):
     @property
     def latest_version(self) -> str:
         """Return last available version of Home Assistant."""
-        return self.sys_updater.version_hassio
+        return self.sys_updater.version_supervisor
 
     @property
     def image(self) -> str:
@@ -115,7 +115,9 @@ class Supervisor(CoreSysAttributes):
 
         _LOGGER.info("Update Supervisor to version %s", version)
         try:
-            await self.instance.install(version, image=None, latest=True)
+            await self.instance.install(
+                version, image=self.sys_updater.image_supervisor, latest=True
+            )
         except DockerAPIError:
             _LOGGER.error("Update of Supervisor fails!")
             raise SupervisorUpdateError() from None

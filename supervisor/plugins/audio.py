@@ -1,4 +1,7 @@
-"""Home Assistant control object."""
+"""Home Assistant audio plugin.
+
+Code: https://github.com/home-assistant/plugin-audio
+"""
 import asyncio
 from contextlib import suppress
 import logging
@@ -8,18 +11,18 @@ from typing import Awaitable, Optional
 
 import jinja2
 
-from .const import ATTR_VERSION, FILE_HASSIO_AUDIO
-from .coresys import CoreSys, CoreSysAttributes
-from .docker.audio import DockerAudio
-from .docker.stats import DockerStats
-from .exceptions import AudioError, AudioUpdateError, DockerAPIError
-from .utils.json import JsonConfig
+from ..const import ATTR_IMAGE, ATTR_VERSION, FILE_HASSIO_AUDIO
+from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.audio import DockerAudio
+from ..docker.stats import DockerStats
+from ..exceptions import AudioError, AudioUpdateError, DockerAPIError
+from ..utils.json import JsonConfig
 from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-PULSE_CLIENT_TMPL: Path = Path(__file__).parents[0].joinpath("data/pulse-client.tmpl")
-ASOUND_TMPL: Path = Path(__file__).parents[0].joinpath("data/asound.tmpl")
+PULSE_CLIENT_TMPL: Path = Path(__file__).parents[1].joinpath("data/pulse-client.tmpl")
+ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
 
 
 class Audio(JsonConfig, CoreSysAttributes):
@@ -53,6 +56,18 @@ class Audio(JsonConfig, CoreSysAttributes):
         self._data[ATTR_VERSION] = value
 
     @property
+    def image(self) -> str:
+        """Return current image of Audio."""
+        if self._data.get(ATTR_IMAGE):
+            return self._data[ATTR_IMAGE]
+        return f"homeassistant/{self.sys_arch.supervisor}-hassio-audio"
+
+    @image.setter
+    def image(self, value: str) -> None:
+        """Return current image of Audio."""
+        self._data[ATTR_IMAGE] = value
+
+    @property
     def latest_version(self) -> Optional[str]:
         """Return latest version of Audio."""
         return self.sys_updater.version_audio
@@ -84,6 +99,7 @@ class Audio(JsonConfig, CoreSysAttributes):
                 await self.install()
         else:
             self.version = self.instance.version
+            self.image = self.instance.image
             self.save_data()
 
         # Run PulseAudio
@@ -115,35 +131,40 @@ class Audio(JsonConfig, CoreSysAttributes):
 
             if self.latest_version:
                 with suppress(DockerAPIError):
-                    await self.instance.install(self.latest_version)
+                    await self.instance.install(
+                        self.latest_version, image=self.sys_updater.image_audio
+                    )
                     break
             _LOGGER.warning("Error on install Audio plugin. Retry in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("Audio plugin now installed")
         self.version = self.instance.version
+        self.image = self.sys_updater.image_audio
         self.save_data()
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update Audio plugin."""
         version = version or self.latest_version
+        old_image = self.image
 
         if version == self.version:
             _LOGGER.warning("Version %s is already installed for Audio", version)
             return
 
         try:
-            await self.instance.update(version)
+            await self.instance.update(version, image=self.sys_updater.image_audio)
         except DockerAPIError:
             _LOGGER.error("Audio update fails")
             raise AudioUpdateError() from None
         else:
-            # Cleanup
-            with suppress(DockerAPIError):
-                await self.instance.cleanup()
+            self.version = version
+            self.image = self.sys_updater.image_audio
+            self.save_data()
 
-        self.version = version
-        self.save_data()
+        # Cleanup
+        with suppress(DockerAPIError):
+            await self.instance.cleanup(old_image=old_image)
 
         # Start Audio
         await self.start()
@@ -159,12 +180,20 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     async def start(self) -> None:
         """Run CoreDNS."""
-        # Start Instance
         _LOGGER.info("Start Audio plugin")
         try:
             await self.instance.run()
         except DockerAPIError:
             _LOGGER.error("Can't start Audio plugin")
+            raise AudioError() from None
+
+    async def stop(self) -> None:
+        """Stop CoreDNS."""
+        _LOGGER.info("Stop Audio plugin")
+        try:
+            await self.instance.stop()
+        except DockerAPIError:
+            _LOGGER.error("Can't stop Audio plugin")
             raise AudioError() from None
 
     def logs(self) -> Awaitable[bytes]:

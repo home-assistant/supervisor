@@ -20,7 +20,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
     @property
     def image(self) -> str:
         """Return name of Supervisor Audio image."""
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-audio"
+        return self.sys_plugins.audio.image
 
     @property
     def name(self) -> str:
@@ -32,7 +32,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         """Return Volumes for the mount."""
         volumes = {
             str(self.sys_config.path_extern_audio): {"bind": "/data", "mode": "rw"},
-            "/etc/group": {"bind": "/host/group", "mode": "ro"},
+            "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
         }
 
         # SND support
@@ -58,7 +58,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_audio.version,
+            version=self.sys_plugins.audio.version,
             init=False,
             ipv4=self.sys_docker.network.audio,
             name=self.name,

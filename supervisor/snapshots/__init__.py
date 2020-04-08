@@ -310,6 +310,9 @@ class SnapshotManager(CoreSysAttributes):
                     )
 
                 if addons:
+                    _LOGGER.info("Restore %s run Repositories", snapshot.slug)
+                    await snapshot.restore_repositories()
+
                     _LOGGER.info("Restore %s old add-ons", snapshot.slug)
                     await snapshot.restore_addons(addons)
 

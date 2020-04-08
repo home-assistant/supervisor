@@ -123,21 +123,11 @@ class APIProxy(CoreSysAttributes):
                 _LOGGER.error("Got unexpected response from HA WebSocket: %s", data)
                 raise APIError()
 
-            if self.sys_homeassistant.refresh_token:
-                await self.sys_homeassistant.ensure_access_token()
-                await client.send_json(
-                    {
-                        "type": "auth",
-                        "access_token": self.sys_homeassistant.access_token,
-                    }
-                )
-            else:
-                await client.send_json(
-                    {
-                        "type": "auth",
-                        "api_password": self.sys_homeassistant.api_password,
-                    }
-                )
+            # Auth session
+            await self.sys_homeassistant.ensure_access_token()
+            await client.send_json(
+                {"type": "auth", "access_token": self.sys_homeassistant.access_token}
+            )
 
             data = await client.receive_json()
 

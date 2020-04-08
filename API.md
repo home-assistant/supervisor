@@ -368,7 +368,6 @@ Trigger an udev reload
   "machine": "Image machine type",
   "ip_address": "ip address",
   "image": "str",
-  "custom": "bool -> if custom image",
   "boot": "bool",
   "port": 8123,
   "ssl": "bool",
@@ -922,6 +921,44 @@ return:
 ```
 
 - GET `/cli/stats`
+
+```json
+{
+  "cpu_percent": 0.0,
+  "memory_usage": 283123,
+  "memory_limit": 329392,
+  "memory_percent": 1.4,
+  "network_tx": 0,
+  "network_rx": 0,
+  "blk_read": 0,
+  "blk_write": 0
+}
+```
+
+### Multicast
+
+- GET `/multicast/info`
+
+```json
+{
+  "version": "1",
+  "version_latest": "2"
+}
+```
+
+- POST `/multicast/update`
+
+```json
+{
+  "version": "VERSION"
+}
+```
+
+- POST `/multicast/restart`
+
+- GET `/multicast/logs`
+
+- GET `/multicast/stats`
 
 ```json
 {

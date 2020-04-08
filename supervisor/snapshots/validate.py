@@ -11,7 +11,6 @@ from ..const import (
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
-    ATTR_VERSION_LATEST,
     ATTR_NAME,
     ATTR_PORT,
     ATTR_PROTECTED,
@@ -60,8 +59,7 @@ SCHEMA_SNAPSHOT = vol.Schema(
         vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema(
             {
                 vol.Optional(ATTR_VERSION): vol.Coerce(str),
-                vol.Inclusive(ATTR_IMAGE, "custom_hass"): docker_image,
-                vol.Inclusive(ATTR_VERSION_LATEST, "custom_hass"): vol.Coerce(str),
+                vol.Optional(ATTR_IMAGE): docker_image,
                 vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
                 vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
                 vol.Optional(ATTR_PORT, default=8123): network_port,

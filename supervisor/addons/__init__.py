@@ -325,10 +325,10 @@ class AddonManager(CoreSysAttributes):
         for addon in self.installed:
             if not await addon.instance.is_running():
                 continue
-            self.sys_dns.add_host(
+            self.sys_plugins.dns.add_host(
                 ipv4=addon.ip_address, names=[addon.hostname], write=False
             )
 
         # Write hosts files
         with suppress(CoreDNSError):
-            self.sys_dns.write_hosts()
+            self.sys_plugins.dns.write_hosts()

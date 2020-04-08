@@ -72,11 +72,11 @@ class DockerHomeAssistant(DockerInterface):
                     "bind": "/etc/pulse/client.conf",
                     "mode": "ro",
                 },
-                str(self.sys_audio.path_extern_pulse): {
+                str(self.sys_plugins.audio.path_extern_pulse): {
                     "bind": "/run/audio",
                     "mode": "ro",
                 },
-                str(self.sys_audio.path_extern_asound): {
+                str(self.sys_plugins.audio.path_extern_asound): {
                     "bind": "/etc/asound.conf",
                     "mode": "ro",
                 },

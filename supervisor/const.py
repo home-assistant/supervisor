@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "214"
+SUPERVISOR_VERSION = "215"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -28,6 +28,7 @@ FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
 FILE_HASSIO_DNS = Path(SUPERVISOR_DATA, "dns.json")
 FILE_HASSIO_AUDIO = Path(SUPERVISOR_DATA, "audio.json")
 FILE_HASSIO_CLI = Path(SUPERVISOR_DATA, "cli.json")
+FILE_HASSIO_MULTICAST = Path(SUPERVISOR_DATA, "multicast.json")
 
 SOCKET_DOCKER = Path("/run/docker.sock")
 
@@ -68,9 +69,16 @@ ENV_TOKEN_OLD = "HASSIO_TOKEN"
 ENV_TOKEN = "SUPERVISOR_TOKEN"
 ENV_TIME = "TZ"
 
+ENV_HOMEASSISTANT_REPOSITORY = "HOMEASSISTANT_REPOSITORY"
+ENV_SUPERVISOR_SHARE = "SUPERVISOR_SHARE"
+ENV_SUPERVISOR_NAME = "SUPERVISOR_NAME"
+ENV_SUPERVISOR_MACHINE = "SUPERVISOR_MACHINE"
+
 REQUEST_FROM = "HASSIO_FROM"
 
+ATTR_SUPERVISOR = "supervisor"
 ATTR_MACHINE = "machine"
+ATTR_MULTICAST = "multicast"
 ATTR_WAIT_BOOT = "wait_boot"
 ATTR_DEPLOYMENT = "deployment"
 ATTR_WATCHDOG = "watchdog"
@@ -138,7 +146,6 @@ ATTR_USER = "user"
 ATTR_SYSTEM = "system"
 ATTR_SNAPSHOTS = "snapshots"
 ATTR_HOMEASSISTANT = "homeassistant"
-ATTR_HASSIO = "hassio"
 ATTR_HASSIO_API = "hassio_api"
 ATTR_HOMEASSISTANT_API = "homeassistant_api"
 ATTR_UUID = "uuid"
@@ -147,7 +154,6 @@ ATTR_SIZE = "size"
 ATTR_TYPE = "type"
 ATTR_TIMEOUT = "timeout"
 ATTR_AUTO_UPDATE = "auto_update"
-ATTR_CUSTOM = "custom"
 ATTR_VIDEO = "video"
 ATTR_AUDIO = "audio"
 ATTR_AUDIO_INPUT = "audio_input"
@@ -355,3 +361,13 @@ class CoreStates(str, Enum):
     STARTUP = "startup"
     RUNNING = "running"
     FREEZE = "freeze"
+
+
+class LogLevel(str, Enum):
+    """Logging level of system."""
+
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
