@@ -1,5 +1,3 @@
-[![Build Status](https://dev.azure.com/home-assistant/supervisor/_apis/build/status/Release?branchName=dev)](https://dev.azure.com/home-assistant/supervisor/_build/latest?definitionId=60&branchName=dev)
-
 # Home Assistant Supervisor
 
 ## First private cloud solution for home automation
