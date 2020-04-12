@@ -448,10 +448,6 @@ class Snapshot(CoreSysAttributes):
         self.sys_homeassistant.boot = self.homeassistant[ATTR_BOOT]
         self.sys_homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
 
-        # Was not needed before
-        if self.homeassistant[ATTR_IMAGE]:
-            self.sys_homeassistant.image = self.homeassistant[ATTR_IMAGE]
-
         # API/Proxy
         self.sys_homeassistant.api_port = self.homeassistant[ATTR_PORT]
         self.sys_homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
