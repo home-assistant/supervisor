@@ -444,7 +444,7 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.debug("No version found for %s", self.image)
             raise DockerAPIError()
         else:
-            _LOGGER.debug("Found HA versions: %s", available_version)
+            _LOGGER.debug("Found %s versions: %s", self.image, available_version)
 
         # Sort version and return latest version
         available_version.sort(key=key, reverse=True)
