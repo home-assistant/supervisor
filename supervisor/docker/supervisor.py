@@ -74,7 +74,6 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
 
             docker_container.image.tag(self.image, tag=self.version)
             docker_container.image.tag(self.image, tag="latest")
-
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't retag supervisor version: %s", err)
             raise DockerAPIError() from None
@@ -90,7 +89,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-            docker_image = self.sys_docker.imaes.get(f"{image}:{version}")
+            docker_image = self.sys_docker.images.get(f"{image}:{version}")
 
             for tag in docker_container.image.tags:
                 start_image = tag.partition(":")[0]
