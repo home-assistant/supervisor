@@ -87,55 +87,49 @@ class Updater(JsonConfig, CoreSysAttributes):
     @property
     def image_homeassistant(self) -> Optional[str]:
         """Return latest version of Home Assistant."""
-        return (
-            self._data[ATTR_IMAGE]
-            .get(ATTR_HOMEASSISTANT, "")
-            .format(machine=self.sys_machine)
+        if ATTR_HOMEASSISTANT not in self._data[ATTR_IMAGE]:
+            return None
+        return self._data[ATTR_IMAGE][ATTR_HOMEASSISTANT].format(
+            machine=self.sys_machine
         )
 
     @property
     def image_supervisor(self) -> Optional[str]:
         """Return latest version of Supervisor."""
-        return (
-            self._data[ATTR_IMAGE]
-            .get(ATTR_SUPERVISOR, "")
-            .format(arch=self.sys_arch.supervisor)
+        if ATTR_SUPERVISOR not in self._data[ATTR_IMAGE]:
+            return None
+        return self._data[ATTR_IMAGE][ATTR_SUPERVISOR].format(
+            arch=self.sys_arch.supervisor
         )
 
     @property
     def image_cli(self) -> Optional[str]:
         """Return latest version of CLI."""
-        return (
-            self._data[ATTR_IMAGE]
-            .get(ATTR_CLI, "")
-            .format(arch=self.sys_arch.supervisor)
-        )
+        if ATTR_CLI not in self._data[ATTR_IMAGE]:
+            return None
+        return self._data[ATTR_IMAGE][ATTR_CLI].format(arch=self.sys_arch.supervisor)
 
     @property
     def image_dns(self) -> Optional[str]:
         """Return latest version of DNS."""
-        return (
-            self._data[ATTR_IMAGE]
-            .get(ATTR_DNS, "")
-            .format(arch=self.sys_arch.supervisor)
-        )
+        if ATTR_DNS not in self._data[ATTR_IMAGE]:
+            return None
+        return self._data[ATTR_IMAGE][ATTR_DNS].format(arch=self.sys_arch.supervisor)
 
     @property
     def image_audio(self) -> Optional[str]:
         """Return latest version of Audio."""
-        return (
-            self._data[ATTR_IMAGE]
-            .get(ATTR_AUDIO, "")
-            .format(arch=self.sys_arch.supervisor)
-        )
+        if ATTR_AUDIO not in self._data[ATTR_IMAGE]:
+            return None
+        return self._data[ATTR_IMAGE][ATTR_AUDIO].format(arch=self.sys_arch.supervisor)
 
     @property
     def image_multicast(self) -> Optional[str]:
         """Return latest version of Multicast."""
-        return (
-            self._data[ATTR_IMAGE]
-            .get(ATTR_MULTICAST, "")
-            .format(arch=self.sys_arch.supervisor)
+        if ATTR_MULTICAST not in self._data[ATTR_IMAGE]:
+            return None
+        return self._data[ATTR_IMAGE][ATTR_MULTICAST].format(
+            arch=self.sys_arch.supervisor
         )
 
     @property

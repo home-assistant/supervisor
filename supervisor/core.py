@@ -34,6 +34,9 @@ class Core(CoreSysAttributes):
         """Setup supervisor orchestration."""
         self.state = CoreStates.STARTUP
 
+        # load last available data
+        await self.sys_updater.load()
+
         # Load DBus
         await self.sys_dbus.load()
 
@@ -60,9 +63,6 @@ class Core(CoreSysAttributes):
 
         # rest api views
         await self.sys_api.load()
-
-        # load last available data
-        await self.sys_updater.load()
 
         # load last available data
         await self.sys_snapshots.load()
