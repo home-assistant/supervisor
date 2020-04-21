@@ -95,3 +95,4 @@ ENV/
 .vscode/*
 !.vscode/cSpell.json
 !.vscode/tasks.json
+!.vscode/launch.json

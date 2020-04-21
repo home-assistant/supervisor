@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Supervisor remote debug",
+      "type": "python",
+      "request": "attach",
+      "port": 33333,
+      "host": "172.30.32.2",
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/usr/src/supervisor"
+        }
+      ]
+    }
+  ]
+}
