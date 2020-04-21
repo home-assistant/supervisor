@@ -97,7 +97,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
                 start_tag = tag.partition(":")[2] or "latest"
 
                 # If version tag
-                if start_tag.isdigit():
+                if start_tag != "latest":
                     continue
                 docker_image.tag(start_image, start_tag)
 
