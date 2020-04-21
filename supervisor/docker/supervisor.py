@@ -91,9 +91,14 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             docker_container = self.sys_docker.containers.get(self.name)
             docker_image = self.sys_docker.images.get(f"{image}:{version}")
 
+            # Find start tag
             for tag in docker_container.image.tags:
                 start_image = tag.partition(":")[0]
                 start_tag = tag.partition(":")[2] or "latest"
+
+                # If version tag
+                if start_tag.isdigit():
+                    continue
                 docker_image.tag(start_image, start_tag)
 
         except docker.errors.DockerException as err:
