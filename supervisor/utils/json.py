@@ -13,6 +13,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 _DEFAULT: Dict[str, Any] = {}
 
+
 def write_json_file(jsonfile: Path, data: Any) -> None:
     """Write a JSON file."""
     try:
