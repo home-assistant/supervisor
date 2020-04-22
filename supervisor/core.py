@@ -34,9 +34,6 @@ class Core(CoreSysAttributes):
         """Setup supervisor orchestration."""
         self.state = CoreStates.STARTUP
 
-        # load last available data
-        await self.sys_updater.load()
-
         # Load DBus
         await self.sys_dbus.load()
 
@@ -45,6 +42,9 @@ class Core(CoreSysAttributes):
 
         # Load Plugins container
         await self.sys_plugins.load()
+
+        # load last available data
+        await self.sys_updater.load()
 
         # Load Home Assistant
         await self.sys_homeassistant.load()

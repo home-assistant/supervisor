@@ -251,6 +251,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Install a landing page."""
         _LOGGER.info("Setup HomeAssistant landingpage")
         while True:
+            if not self.sys_updater.image_homeassistant:
+                _LOGGER.warning(
+                    "Found no information about Home Assistant. Retry in 15sec"
+                )
+                await asyncio.sleep(15)
+                await self.sys_updater.reload()
+                continue
+
             try:
                 await self.instance.install(
                     "landingpage", image=self.sys_updater.image_homeassistant
