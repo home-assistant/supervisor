@@ -11,6 +11,8 @@ from ..exceptions import JsonFileError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+_DEFAULT: Dict[str, Any] = {}
+
 
 def write_json_file(jsonfile: Path, data: Any) -> None:
     """Write a JSON file."""
@@ -37,7 +39,7 @@ class JsonConfig:
         """Initialize hass object."""
         self._file: Path = json_file
         self._schema: vol.Schema = schema
-        self._data: Dict[str, Any] = {}
+        self._data: Dict[str, Any] = _DEFAULT
 
         self.read_data()
 
@@ -68,7 +70,7 @@ class JsonConfig:
 
             # Reset data to default
             _LOGGER.warning("Reset %s to default", self._file)
-            self._data = self._schema({})
+            self._data = self._schema(_DEFAULT)
 
     def save_data(self) -> None:
         """Store data to configuration file."""
@@ -80,6 +82,7 @@ class JsonConfig:
 
             # Load last valid data
             _LOGGER.warning("Reset %s to last version", self._file)
+            self._data = _DEFAULT
             self.read_data()
         else:
             # write
