@@ -252,15 +252,13 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Setup HomeAssistant landingpage")
         while True:
             try:
-                await self.instance.install(
-                    "landingpage", image=self.sys_updater.image_homeassistant
-                )
+                await self.instance.install("landingpage", image=self.image)
             except DockerAPIError:
                 _LOGGER.warning("Fails install landingpage, retry after 30sec")
                 await asyncio.sleep(30)
             else:
                 self.version = self.instance.version
-                self.image = self.sys_updater.image_homeassistant
+                self.image = self.instance.image
                 self.save_data()
                 break
 
