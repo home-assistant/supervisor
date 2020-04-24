@@ -118,7 +118,10 @@ class Ingress(JsonConfig, CoreSysAttributes):
         """Get/Create a dynamic port from range."""
         if addon_slug in self.ports:
             return self.ports[addon_slug]
-        port = random.randint(62000, 65500)
+
+        port = None
+        while port is None or port in self.ports.values():
+            port = random.randint(62000, 65500)
 
         # Save port for next time
         self.ports[addon_slug] = port
