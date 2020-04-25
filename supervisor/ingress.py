@@ -1,5 +1,6 @@
 """Fetch last versions from webserver."""
 from datetime import timedelta
+from ipaddress import IPv4Address
 import logging
 import random
 import secrets
@@ -8,6 +9,7 @@ from typing import Dict, List, Optional
 from .addons.addon import Addon
 from .const import ATTR_PORTS, ATTR_SESSION, FILE_HASSIO_INGRESS
 from .coresys import CoreSys, CoreSysAttributes
+from .utils import check_port
 from .utils.dt import utc_from_timestamp, utcnow
 from .utils.json import JsonConfig
 from .validate import SCHEMA_INGRESS_CONFIG
@@ -120,7 +122,11 @@ class Ingress(JsonConfig, CoreSysAttributes):
             return self.ports[addon_slug]
 
         port = None
-        while port is None or port in self.ports.values():
+        while (
+            port is None
+            or port in self.ports.values()
+            or check_port(IPv4Address(self.coresys.docker.network.gateway), port)
+        ):
             port = random.randint(62000, 65500)
 
         # Save port for next time
