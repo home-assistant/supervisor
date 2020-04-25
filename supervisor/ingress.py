@@ -1,6 +1,5 @@
 """Fetch last versions from webserver."""
 from datetime import timedelta
-from ipaddress import IPv4Address
 import logging
 import random
 import secrets
@@ -125,7 +124,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
         while (
             port is None
             or port in self.ports.values()
-            or check_port(IPv4Address(self.coresys.docker.network.gateway), port)
+            or check_port(self.coresys.docker.network.gateway, port)
         ):
             port = random.randint(62000, 65500)
 
