@@ -128,6 +128,14 @@ class Ingress(JsonConfig, CoreSysAttributes):
         self.save_data()
         return port
 
+    def del_dynamic_port(self, addon_slug: str) -> None:
+        """Remove a previously assigned dynamic port."""
+        if addon_slug not in self.ports:
+            return
+
+        del self.ports[addon_slug]
+        self.save_data()
+
     async def update_hass_panel(self, addon: Addon):
         """Return True if Home Assistant up and running."""
         if not await self.sys_homeassistant.is_running():
