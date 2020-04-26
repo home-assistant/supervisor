@@ -124,7 +124,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
         while (
             port is None
             or port in self.ports.values()
-            or check_port(self.coresys.docker.network.gateway, port)
+            or check_port(self.sys_docker.network.gateway, port)
         ):
             port = random.randint(62000, 65500)
 
