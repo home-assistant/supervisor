@@ -11,7 +11,7 @@ jinja2==2.11.2
 packaging==20.3
 ptvsd==4.3.2
 pulsectl==20.4.3
-pytz==2019.3
+pytz==2020.1
 pyudev==0.22.0
 ruamel.yaml==0.15.100
 uvloop==0.14.0
