@@ -4,14 +4,14 @@ attrs==19.3.0
 cchardet==2.1.6
 colorlog==4.1.0
 cpe==1.2.1
-cryptography==2.9
+cryptography==2.9.2
 docker==4.2.0
 gitpython==3.1.1
 jinja2==2.11.2
 packaging==20.3
 ptvsd==4.3.2
-pulsectl==20.2.4
-pytz==2019.3
+pulsectl==20.4.3
+pytz==2020.1
 pyudev==0.22.0
 ruamel.yaml==0.15.100
 uvloop==0.14.0

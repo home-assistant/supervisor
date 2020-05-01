@@ -166,6 +166,9 @@ class AddonManager(CoreSysAttributes):
             with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
 
+        # Cleanup Ingress dynamic port assignment
+        self.sys_ingress.del_dynamic_port(slug)
+
         # Cleanup discovery data
         for message in self.sys_discovery.list_messages:
             if message.addon != addon.slug:

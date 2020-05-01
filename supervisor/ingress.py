@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 from .addons.addon import Addon
 from .const import ATTR_PORTS, ATTR_SESSION, FILE_HASSIO_INGRESS
 from .coresys import CoreSys, CoreSysAttributes
+from .utils import check_port
 from .utils.dt import utc_from_timestamp, utcnow
 from .utils.json import JsonConfig
 from .validate import SCHEMA_INGRESS_CONFIG
@@ -118,12 +119,27 @@ class Ingress(JsonConfig, CoreSysAttributes):
         """Get/Create a dynamic port from range."""
         if addon_slug in self.ports:
             return self.ports[addon_slug]
-        port = random.randint(62000, 65500)
+
+        port = None
+        while (
+            port is None
+            or port in self.ports.values()
+            or check_port(self.sys_docker.network.gateway, port)
+        ):
+            port = random.randint(62000, 65500)
 
         # Save port for next time
         self.ports[addon_slug] = port
         self.save_data()
         return port
+
+    def del_dynamic_port(self, addon_slug: str) -> None:
+        """Remove a previously assigned dynamic port."""
+        if addon_slug not in self.ports:
+            return
+
+        del self.ports[addon_slug]
+        self.save_data()
 
     async def update_hass_panel(self, addon: Addon):
         """Return True if Home Assistant up and running."""
