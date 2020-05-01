@@ -64,7 +64,7 @@ class APIDiscovery(CoreSysAttributes):
 
         # Access?
         if body[ATTR_SERVICE] not in addon.discovery:
-            raise APIForbidden(f"Can't use discovery!")
+            raise APIForbidden("Can't use discovery!")
 
         # Process discovery message
         message = self.sys_discovery.send(addon, **body)
@@ -94,7 +94,7 @@ class APIDiscovery(CoreSysAttributes):
 
         # Permission
         if message.addon != addon.slug:
-            raise APIForbidden(f"Can't remove discovery message")
+            raise APIForbidden("Can't remove discovery message")
 
         self.sys_discovery.remove(message)
         return True

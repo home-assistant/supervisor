@@ -181,7 +181,7 @@ class APISnapshots(CoreSysAttributes):
     async def upload(self, request):
         """Upload a snapshot file."""
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp_dir:
-            tar_file = Path(temp_dir, f"snapshot.tar")
+            tar_file = Path(temp_dir, "snapshot.tar")
 
             try:
                 with tar_file.open("wb") as snapshot:
