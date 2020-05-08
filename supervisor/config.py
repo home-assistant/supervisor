@@ -3,6 +3,7 @@ from datetime import datetime
 import logging
 import os
 from pathlib import Path, PurePath
+from typing import Optional
 
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
@@ -11,6 +12,7 @@ from .const import (
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_TIMEZONE,
+    ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ENV_SUPERVISOR_SHARE,
     FILE_HASSIO_CONFIG,
@@ -58,6 +60,16 @@ class CoreConfig(JsonConfig):
     def timezone(self, value):
         """Set system timezone."""
         self._data[ATTR_TIMEZONE] = value
+
+    @property
+    def version(self) -> Optional[str]:
+        """Return config version."""
+        return self._data.get(ATTR_VERSION)
+
+    @version.setter
+    def version(self, value: str):
+        """Set config version."""
+        self._data[ATTR_VERSION] = str
 
     @property
     def wait_boot(self) -> int:

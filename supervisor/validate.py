@@ -100,7 +100,7 @@ DOCKER_PORTS_DESCRIPTION = vol.Schema(
 SCHEMA_HASS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
-        vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_VERSION): vol.Coerce(str),
         vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
@@ -151,6 +151,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_TIMEZONE, default="UTC"): validate_timezone,
         vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
+        vol.Optional(ATTR_VERSION): vol.Coerce(str),
         vol.Optional(
             ATTR_ADDONS_CUSTOM_LIST,
             default=["https://github.com/hassio-addons/repository"],

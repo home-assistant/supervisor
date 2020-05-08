@@ -124,6 +124,9 @@ class Supervisor(CoreSysAttributes):
         except DockerAPIError:
             _LOGGER.error("Update of Supervisor fails!")
             raise SupervisorUpdateError() from None
+        else:
+            self.sys_config.version = version
+            self.sys_config.save_data()
 
         with suppress(SupervisorError):
             await self.update_apparmor()
