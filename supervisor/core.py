@@ -25,10 +25,21 @@ class Core(CoreSysAttributes):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
         self.state: CoreStates = CoreStates.INITIALIZE
+        self.healthy: bool = True
 
     async def connect(self):
         """Connect Supervisor container."""
         await self.sys_supervisor.load()
+
+        # Check if system is healthy
+        if self.sys_dev:
+            self.sys_config.version = self.sys_supervisor.version
+        elif (
+            self.sys_config.version
+            and self.sys_config.version != self.sys_supervisor.version
+        ):
+            self.healthy = False
+            _LOGGER.fatal("System running in a unhealthy state. Please update you OS!")
 
     async def setup(self):
         """Setup supervisor orchestration."""
@@ -90,8 +101,8 @@ class Core(CoreSysAttributes):
         # On release channel, try update itself
         if self.sys_supervisor.need_update:
             try:
-                if self.sys_dev:
-                    _LOGGER.warning("Ignore Supervisor updates on dev!")
+                if self.sys_dev or not self.healthy:
+                    _LOGGER.warning("Ignore Supervisor updates!")
                 else:
                     await self.sys_supervisor.update()
             except SupervisorUpdateError:
