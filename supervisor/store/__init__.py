@@ -3,8 +3,8 @@ import asyncio
 import logging
 from typing import Dict, List
 
-from ..coresys import CoreSys, CoreSysAttributes
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
+from ..coresys import CoreSys, CoreSysAttributes
 from .addon import AddonStore
 from .data import StoreData
 from .repository import Repository
