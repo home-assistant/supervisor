@@ -40,6 +40,7 @@ def sys_machine():
 
 @pytest.fixture
 def sys_supervisor():
+    """Mock sys_supervisor."""
     with patch(
         "supervisor.coresys.CoreSys.supervisor", new_callable=PropertyMock
     ) as mock:

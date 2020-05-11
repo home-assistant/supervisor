@@ -4,8 +4,8 @@ from unittest.mock import patch
 import pytest
 
 
-@pytest.fixture(autouse=True)
-def mock_detect_cpu():
+@pytest.fixture(name="mock_detect_cpu", autouse=True)
+def mock_detect_cpu_fixture():
     """Mock cpu detection."""
     with patch("platform.machine") as detect_mock:
         detect_mock.return_value = "Unknown"
