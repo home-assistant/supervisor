@@ -8,7 +8,7 @@ cryptography==2.9.2
 docker==4.2.0
 gitpython==3.1.2
 jinja2==2.11.2
-packaging==20.3
+packaging==20.4
 ptvsd==4.3.2
 pulsectl==20.4.3
 pytz==2020.1
