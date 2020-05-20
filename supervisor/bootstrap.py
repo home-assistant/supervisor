@@ -214,27 +214,27 @@ def check_environment() -> None:
         try:
             os.environ[key]
         except KeyError:
-            _LOGGER.fatal("Can't find %s in env!", key)
+            _LOGGER.critical("Can't find %s in env!", key)
 
     # Check Machine info
     if not os.environ.get(ENV_HOMEASSISTANT_REPOSITORY) and not os.environ.get(
         ENV_SUPERVISOR_MACHINE
     ):
-        _LOGGER.fatal("Can't find any kind of machine/homeassistant details!")
+        _LOGGER.critical("Can't find any kind of machine/homeassistant details!")
     elif not os.environ.get(ENV_SUPERVISOR_MACHINE):
         _LOGGER.info("Use the old homeassistant repository for machine extraction")
 
     # check docker socket
     if not SOCKET_DOCKER.is_socket():
-        _LOGGER.fatal("Can't find Docker socket!")
+        _LOGGER.critical("Can't find Docker socket!")
 
     # check socat exec
     if not shutil.which("socat"):
-        _LOGGER.fatal("Can't find socat!")
+        _LOGGER.critical("Can't find socat!")
 
     # check socat exec
     if not shutil.which("gdbus"):
-        _LOGGER.fatal("Can't find gdbus!")
+        _LOGGER.critical("Can't find gdbus!")
 
 
 def reg_signal(loop):

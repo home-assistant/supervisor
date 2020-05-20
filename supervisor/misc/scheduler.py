@@ -64,7 +64,7 @@ class Scheduler:
 
             job = self.loop.call_at(calc.timestamp(), self._run_task, task_id)
         else:
-            _LOGGER.fatal(
+            _LOGGER.critical(
                 "Unknown interval %s (type: %s) for scheduler %s",
                 interval,
                 type(interval),

@@ -39,7 +39,9 @@ class Core(CoreSysAttributes):
             and self.sys_config.version != self.sys_supervisor.version
         ):
             self.healthy = False
-            _LOGGER.fatal("System running in a unhealthy state. Please update you OS!")
+            _LOGGER.critical(
+                "System running in a unhealthy state. Please update you OS!"
+            )
 
     async def setup(self):
         """Setup supervisor orchestration."""
@@ -106,7 +108,7 @@ class Core(CoreSysAttributes):
                 else:
                     await self.sys_supervisor.update()
             except SupervisorUpdateError:
-                _LOGGER.fatal(
+                _LOGGER.critical(
                     "Can't update supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )
