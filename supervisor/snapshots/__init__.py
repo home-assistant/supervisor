@@ -19,7 +19,7 @@ class SnapshotManager(CoreSysAttributes):
         """Initialize a snapshot manager."""
         self.coresys = coresys
         self.snapshots_obj = {}
-        self.lock = asyncio.Lock(loop=coresys.loop)
+        self.lock = asyncio.Lock()
 
     @property
     def list_snapshots(self):
