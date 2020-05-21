@@ -36,7 +36,7 @@ class Supervisor(CoreSysAttributes):
         try:
             await self.instance.attach(tag="latest")
         except DockerAPIError:
-            _LOGGER.fatal("Can't setup Supervisor Docker container!")
+            _LOGGER.critical("Can't setup Supervisor Docker container!")
 
         with suppress(DockerAPIError):
             await self.instance.cleanup()

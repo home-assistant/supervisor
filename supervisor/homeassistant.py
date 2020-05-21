@@ -356,7 +356,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # Update going wrong, revert it
         if self.error_state and rollback:
-            _LOGGER.fatal("HomeAssistant update fails -> rollback!")
+            _LOGGER.critical("HomeAssistant update fails -> rollback!")
             await _update(rollback)
         else:
             raise HomeAssistantUpdateError()
