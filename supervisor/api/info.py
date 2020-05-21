@@ -7,6 +7,7 @@ from aiohttp import web
 from ..const import (
     ATTR_ARCH,
     ATTR_CHANNEL,
+    ATTR_DOCKER,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
     ATTR_HOSTNAME,
@@ -32,6 +33,7 @@ class APIInfo(CoreSysAttributes):
             ATTR_SUPERVISOR: self.sys_supervisor.version,
             ATTR_HOMEASSISTANT: self.sys_homeassistant.version,
             ATTR_HASSOS: self.sys_hassos.version,
+            ATTR_DOCKER: self.sys_docker.info.version,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_MACHINE: self.sys_machine,
             ATTR_ARCH: self.sys_arch.default,

@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 import attr
 import docker
+from packaging import version as pkg_version
 
 from ..const import SOCKET_DOCKER, DNS_SUFFIX
 from ..exceptions import DockerAPIError
@@ -22,6 +23,20 @@ class CommandReturn:
     output: bytes = attr.ib()
 
 
+@attr.s(frozen=True)
+class DockerInfo:
+    """Return docker information."""
+
+    version: str = attr.ib()
+    storage: str = attr.ib()
+    logging: str = attr.ib()
+
+    @staticmethod
+    def new(data: Dict[str, Any]) -> DockerInfo:
+        """Create a object from docker info."""
+        return DockerInfo(data["ServerVersion"], data["Driver"], data["LoggingDriver"],)
+
+
 class DockerAPI:
     """Docker Supervisor wrapper.
 
@@ -34,6 +49,7 @@ class DockerAPI:
             base_url="unix:/{}".format(str(SOCKET_DOCKER)), version="auto", timeout=900
         )
         self.network: DockerNetwork = DockerNetwork(self.docker)
+        self._info: DockerInfo = DockerInfo.new(self.docker.info())
 
     @property
     def images(self) -> docker.models.images.ImageCollection:
@@ -49,6 +65,11 @@ class DockerAPI:
     def api(self) -> docker.APIClient:
         """Return API containers."""
         return self.docker.api
+
+    @property
+    def info(self) -> DockerInfo:
+        """Return local docker info."""
+        return self._info
 
     def run(
         self,
