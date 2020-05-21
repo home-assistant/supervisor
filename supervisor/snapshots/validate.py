@@ -38,7 +38,7 @@ ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
 def unique_addons(addons_list):
     """Validate that an add-on is unique."""
-    single = set(addon[ATTR_SLUG] for addon in addons_list)
+    single = {addon[ATTR_SLUG] for addon in addons_list}
 
     if len(single) != len(addons_list):
         raise vol.Invalid("Invalid addon list on snapshot!")

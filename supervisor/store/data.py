@@ -91,7 +91,7 @@ class StoreData(CoreSysAttributes):
                 continue
 
             # Generate slug
-            addon_slug = "{}_{}".format(repository, addon_config[ATTR_SLUG])
+            addon_slug = f"{repository}_{addon_config[ATTR_SLUG]}"
 
             # store
             addon_config[ATTR_REPOSITORY] = repository

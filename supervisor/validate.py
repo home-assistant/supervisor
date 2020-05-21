@@ -59,7 +59,7 @@ def dns_url(url: str) -> str:
     try:
         ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
     except ValueError:
-        raise vol.Invalid("Invalid DNS URL: {}".format(url))
+        raise vol.Invalid(f"Invalid DNS URL: {url}")
     return url
 
 
