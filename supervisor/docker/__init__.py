@@ -34,7 +34,7 @@ class DockerInfo:
     logging: str = attr.ib()
 
     @staticmethod
-    def new(data: Dict[str, Any]) -> DockerInfo:
+    def new(data: Dict[str, Any]):
         """Create a object from docker info."""
         return DockerInfo(data["ServerVersion"], data["Driver"], data["LoggingDriver"])
 
