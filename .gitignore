@@ -96,3 +96,7 @@ ENV/
 !.vscode/cSpell.json
 !.vscode/tasks.json
 !.vscode/launch.json
+
+# mypy
+/.mypy_cache/*
+/.dmypy.json
