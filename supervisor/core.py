@@ -31,7 +31,7 @@ class Core(CoreSysAttributes):
         """Connect Supervisor container."""
         await self.sys_supervisor.load()
 
-        # Check if system is healthy
+        # If a update is failed?
         if self.sys_dev:
             self.sys_config.version = self.sys_supervisor.version
         elif (
@@ -39,7 +39,22 @@ class Core(CoreSysAttributes):
             and self.sys_config.version != self.sys_supervisor.version
         ):
             self.healthy = False
-            _LOGGER.fatal("System running in a unhealthy state. Please update you OS!")
+            _LOGGER.critical("Update of Supervisor fails!")
+
+        # If local docker is supported?
+        if not self.sys_docker.info.supported_version:
+            self.healthy = False
+            _LOGGER.critical(
+                "Docker version %s is not supported by Supervisor!",
+                self.sys_docker.info.version,
+            )
+        self.sys_docker.info.check_requirements()
+
+        # Check if system is healthy
+        if not self.healthy:
+            _LOGGER.critical(
+                "System running in a unhealthy state. Please update you OS or software!"
+            )
 
     async def setup(self):
         """Setup supervisor orchestration."""
@@ -106,7 +121,7 @@ class Core(CoreSysAttributes):
                 else:
                     await self.sys_supervisor.update()
             except SupervisorUpdateError:
-                _LOGGER.fatal(
+                _LOGGER.critical(
                     "Can't update supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )

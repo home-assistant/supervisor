@@ -776,6 +776,7 @@ return:
   "supervisor": "version",
   "homeassistant": "version",
   "hassos": "null|version",
+  "docker": "version",
   "hostname": "name",
   "machine": "type",
   "arch": "arch",

@@ -1,14 +1,13 @@
 """Test Tarfile functions."""
 
 import attr
-import pytest
 
 from supervisor.utils.tar import secure_path, exclude_filter
 
 
 @attr.s
 class TarInfo:
-    """Fake TarInfo"""
+    """Fake TarInfo."""
 
     name: str = attr.ib()
 

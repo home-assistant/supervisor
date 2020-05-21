@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "222"
+SUPERVISOR_VERSION = "223"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -76,6 +76,7 @@ ENV_SUPERVISOR_MACHINE = "SUPERVISOR_MACHINE"
 
 REQUEST_FROM = "HASSIO_FROM"
 
+ATTR_DOCKER = "docker"
 ATTR_SUPERVISOR = "supervisor"
 ATTR_MACHINE = "machine"
 ATTR_MULTICAST = "multicast"

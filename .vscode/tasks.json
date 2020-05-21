@@ -60,7 +60,7 @@
     {
       "label": "Flake8",
       "type": "shell",
-      "command": "flake8 hassio tests",
+      "command": "flake8 supervisor tests",
       "group": {
         "kind": "test",
         "isDefault": true
@@ -74,7 +74,7 @@
     {
       "label": "Pylint",
       "type": "shell",
-      "command": "pylint hassio",
+      "command": "pylint supervisor",
       "dependsOn": ["Install all Requirements"],
       "group": {
         "kind": "test",

@@ -69,7 +69,7 @@ class CoreConfig(JsonConfig):
     @version.setter
     def version(self, value: str):
         """Set config version."""
-        self._data[ATTR_VERSION] = str
+        self._data[ATTR_VERSION] = value
 
     @property
     def wait_boot(self) -> int:
