@@ -23,7 +23,7 @@ class DockerInterface(CoreSysAttributes):
         """Initialize Docker base wrapper."""
         self.coresys: CoreSys = coresys
         self._meta: Optional[Dict[str, Any]] = None
-        self.lock: asyncio.Lock = asyncio.Lock(loop=coresys.loop)
+        self.lock: asyncio.Lock = asyncio.Lock()
 
     @property
     def timeout(self) -> str:

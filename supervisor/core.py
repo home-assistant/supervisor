@@ -121,7 +121,7 @@ class Core(CoreSysAttributes):
                 else:
                     await self.sys_supervisor.update()
             except SupervisorUpdateError:
-                _LOGGER.fatal(
+                _LOGGER.critical(
                     "Can't update supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )

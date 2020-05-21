@@ -23,7 +23,7 @@ class GitRepo(CoreSysAttributes):
         self.coresys = coresys
         self.repo = None
         self.path = path
-        self.lock = asyncio.Lock(loop=coresys.loop)
+        self.lock = asyncio.Lock()
 
         self.data = RE_REPOSITORY.match(url).groupdict()
 

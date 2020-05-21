@@ -67,7 +67,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_HOMEASSISTANT, SCHEMA_HASS_CONFIG)
         self.coresys: CoreSys = coresys
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
-        self.lock: asyncio.Lock = asyncio.Lock(loop=coresys.loop)
+        self.lock: asyncio.Lock = asyncio.Lock()
         self._error_state: bool = False
 
         # We don't persist access tokens. Instead we fetch new ones when needed
@@ -356,7 +356,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # Update going wrong, revert it
         if self.error_state and rollback:
-            _LOGGER.fatal("HomeAssistant update fails -> rollback!")
+            _LOGGER.critical("HomeAssistant update fails -> rollback!")
             await _update(rollback)
         else:
             raise HomeAssistantUpdateError()
