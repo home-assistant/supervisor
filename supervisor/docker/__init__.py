@@ -46,6 +46,14 @@ class DockerInfo:
 
         return version_local >= version_min
 
+    def check_requirements(self) -> None:
+        """Show wrong configurations."""
+        if self.storage != "overlay2":
+            _LOGGER.error("Docker storage driver %s is not supported!", self.storage)
+
+        if self.logging != "journald":
+            _LOGGER.error("Docker logging driver %s is not supported!", self.logging)
+
 
 class DockerAPI:
     """Docker Supervisor wrapper.

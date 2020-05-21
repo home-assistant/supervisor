@@ -39,15 +39,16 @@ class Core(CoreSysAttributes):
             and self.sys_config.version != self.sys_supervisor.version
         ):
             self.healthy = False
-            _LOGGER.error("Update of Supervisor fails!")
+            _LOGGER.critical("Update of Supervisor fails!")
 
         # If local docker is supported?
         if not self.sys_docker.info.supported_version:
             self.healthy = False
-            _LOGGER.error(
+            _LOGGER.critical(
                 "Docker version %s is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
+        self.sys_docker.info.check_requirements()
 
         # Check if system is healthy
         if not self.healthy:
