@@ -6,7 +6,7 @@ from typing import Optional
 
 import pyudev
 
-from .coresys import CoreSysAttributes, CoreSys
+from .coresys import CoreSys, CoreSysAttributes
 from .utils import AsyncCallFilter
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

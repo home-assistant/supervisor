@@ -5,10 +5,10 @@ from typing import Optional
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
-    HostNotSupportedError,
-    HostError,
-    DBusNotConnectedError,
     DBusError,
+    DBusNotConnectedError,
+    HostError,
+    HostNotSupportedError,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

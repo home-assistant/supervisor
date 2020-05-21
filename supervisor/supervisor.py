@@ -9,7 +9,7 @@ from typing import Awaitable, Optional
 
 import aiohttp
 
-from .const import URL_HASSIO_APPARMOR, SUPERVISOR_VERSION
+from .const import SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor

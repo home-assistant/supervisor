@@ -20,12 +20,11 @@ from ..const import (
     ATTR_ICON,
     ATTR_INSTALLED,
     ATTR_IP_ADDRESS,
-    ATTR_VERSION_LATEST,
     ATTR_LOGGING,
     ATTR_LOGO,
     ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_USAGE,
     ATTR_MEMORY_PERCENT,
+    ATTR_MEMORY_USAGE,
     ATTR_NAME,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
@@ -34,11 +33,12 @@ from ..const import (
     ATTR_STATE,
     ATTR_TIMEZONE,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_WAIT_BOOT,
     CONTENT_TYPE_BINARY,
     SUPERVISOR_VERSION,
-    UpdateChannels,
     LogLevel,
+    UpdateChannels,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError

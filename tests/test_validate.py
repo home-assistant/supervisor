@@ -1,8 +1,9 @@
 """Test validators."""
 
-import supervisor.validate
-import voluptuous.error
 import pytest
+import voluptuous.error
+
+import supervisor.validate
 
 GOOD_V4 = [
     "dns://10.0.0.1",  # random local

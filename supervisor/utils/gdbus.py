@@ -2,19 +2,19 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import json
-import shlex
+import logging
 import re
+import shlex
 from signal import SIGINT
 from typing import Any, Dict, List, Optional, Set
 import xml.etree.ElementTree as ET
 
 from ..exceptions import (
     DBusFatalError,
-    DBusParseError,
     DBusInterfaceError,
     DBusNotConnectedError,
+    DBusParseError,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

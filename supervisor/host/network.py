@@ -2,8 +2,8 @@
 import logging
 from typing import List
 
-from ..coresys import CoreSysAttributes, CoreSys
-from ..exceptions import HostNotSupportedError, DBusNotConnectedError, DBusError
+from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import DBusError, DBusNotConnectedError, HostNotSupportedError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

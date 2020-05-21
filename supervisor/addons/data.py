@@ -12,8 +12,8 @@ from ..const import (
     FILE_HASSIO_ADDONS,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..utils.json import JsonConfig
 from ..store.addon import AddonStore
+from ..utils.json import JsonConfig
 from .addon import Addon
 from .validate import SCHEMA_ADDONS_FILE
 

@@ -1,7 +1,7 @@
 """Util add-on functions."""
 import hashlib
-import shutil
 import re
+import shutil
 
 RE_DIGITS = re.compile(r"\d+")
 

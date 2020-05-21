@@ -2,8 +2,7 @@
 
 import voluptuous as vol
 
-from ..const import ATTR_NAME, ATTR_URL, ATTR_MAINTAINER
-
+from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_URL
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_REPOSITORY_CONFIG = vol.Schema(

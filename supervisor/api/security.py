@@ -5,7 +5,6 @@ import re
 from aiohttp.web import middleware
 from aiohttp.web_exceptions import HTTPForbidden, HTTPUnauthorized
 
-from .utils import excract_supervisor_token
 from ..const import (
     REQUEST_FROM,
     ROLE_ADMIN,
@@ -15,6 +14,7 @@ from ..const import (
     ROLE_MANAGER,
 )
 from ..coresys import CoreSysAttributes
+from .utils import excract_supervisor_token
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

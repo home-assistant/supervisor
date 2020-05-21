@@ -5,7 +5,6 @@ import voluptuous as vol
 from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION
 from ..validate import dns_server_list, docker_image, token
 
-
 SCHEMA_DNS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_VERSION): vol.Maybe(vol.Coerce(str)),
