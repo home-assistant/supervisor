@@ -14,6 +14,8 @@ from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+MIN_SUPPORTED_DOCKER = "19.03.0"
+
 
 @attr.s(frozen=True)
 class CommandReturn:
@@ -34,7 +36,15 @@ class DockerInfo:
     @staticmethod
     def new(data: Dict[str, Any]) -> DockerInfo:
         """Create a object from docker info."""
-        return DockerInfo(data["ServerVersion"], data["Driver"], data["LoggingDriver"],)
+        return DockerInfo(data["ServerVersion"], data["Driver"], data["LoggingDriver"])
+
+    @property
+    def supported_version(self) -> bool:
+        """Return true, if docker version is supported."""
+        version_local = pkg_version.parse(self.version)
+        version_min = pkg_version.parse(MIN_SUPPORTED_DOCKER)
+
+        return version_local >= version_min
 
 
 class DockerAPI:
