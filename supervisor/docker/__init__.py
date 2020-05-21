@@ -6,12 +6,15 @@ from typing import Any, Dict, Optional
 
 import attr
 import docker
+from packaging import version as pkg_version
 
 from ..const import SOCKET_DOCKER, DNS_SUFFIX
 from ..exceptions import DockerAPIError
 from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+MIN_SUPPORTED_DOCKER = "19.03.0"
 
 
 @attr.s(frozen=True)
@@ -20,6 +23,36 @@ class CommandReturn:
 
     exit_code: int = attr.ib()
     output: bytes = attr.ib()
+
+
+@attr.s(frozen=True)
+class DockerInfo:
+    """Return docker information."""
+
+    version: str = attr.ib()
+    storage: str = attr.ib()
+    logging: str = attr.ib()
+
+    @staticmethod
+    def new(data: Dict[str, Any]):
+        """Create a object from docker info."""
+        return DockerInfo(data["ServerVersion"], data["Driver"], data["LoggingDriver"])
+
+    @property
+    def supported_version(self) -> bool:
+        """Return true, if docker version is supported."""
+        version_local = pkg_version.parse(self.version)
+        version_min = pkg_version.parse(MIN_SUPPORTED_DOCKER)
+
+        return version_local >= version_min
+
+    def check_requirements(self) -> None:
+        """Show wrong configurations."""
+        if self.storage != "overlay2":
+            _LOGGER.error("Docker storage driver %s is not supported!", self.storage)
+
+        if self.logging != "journald":
+            _LOGGER.error("Docker logging driver %s is not supported!", self.logging)
 
 
 class DockerAPI:
@@ -34,6 +67,7 @@ class DockerAPI:
             base_url="unix:/{}".format(str(SOCKET_DOCKER)), version="auto", timeout=900
         )
         self.network: DockerNetwork = DockerNetwork(self.docker)
+        self._info: DockerInfo = DockerInfo.new(self.docker.info())
 
     @property
     def images(self) -> docker.models.images.ImageCollection:
@@ -49,6 +83,11 @@ class DockerAPI:
     def api(self) -> docker.APIClient:
         """Return API containers."""
         return self.docker.api
+
+    @property
+    def info(self) -> DockerInfo:
+        """Return local docker info."""
+        return self._info
 
     def run(
         self,
