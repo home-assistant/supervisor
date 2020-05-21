@@ -18,7 +18,6 @@ from ..const import (
     ATTR_HOST,
     ATTR_INDEX,
     ATTR_INPUT,
-    ATTR_VERSION_LATEST,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
@@ -27,6 +26,7 @@ from ..const import (
     ATTR_NETWORK_TX,
     ATTR_OUTPUT,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_VOLUME,
     CONTENT_TYPE_BINARY,
 )

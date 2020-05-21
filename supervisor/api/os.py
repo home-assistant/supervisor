@@ -6,12 +6,7 @@ from typing import Any, Awaitable, Dict
 from aiohttp import web
 import voluptuous as vol
 
-from ..const import (
-    ATTR_BOARD,
-    ATTR_BOOT,
-    ATTR_VERSION,
-    ATTR_VERSION_LATEST,
-)
+from ..const import ATTR_BOARD, ATTR_BOOT, ATTR_VERSION, ATTR_VERSION_LATEST
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_validate
 

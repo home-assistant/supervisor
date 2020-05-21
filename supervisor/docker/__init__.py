@@ -8,7 +8,7 @@ import attr
 import docker
 from packaging import version as pkg_version
 
-from ..const import SOCKET_DOCKER, DNS_SUFFIX
+from ..const import DNS_SUFFIX, SOCKET_DOCKER
 from ..exceptions import DockerAPIError
 from .network import DockerNetwork
 

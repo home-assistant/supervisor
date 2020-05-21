@@ -1,8 +1,8 @@
 """Setup the internal DNS service for host applications."""
 import asyncio
+from ipaddress import IPv4Address
 import logging
 import shlex
-from ipaddress import IPv4Address
 from typing import Optional
 
 import async_timeout

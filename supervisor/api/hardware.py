@@ -5,16 +5,16 @@ from typing import Any, Dict
 
 from aiohttp import web
 
-from .utils import api_process
 from ..const import (
-    ATTR_SERIAL,
+    ATTR_AUDIO,
     ATTR_DISK,
     ATTR_GPIO,
-    ATTR_AUDIO,
     ATTR_INPUT,
     ATTR_OUTPUT,
+    ATTR_SERIAL,
 )
 from ..coresys import CoreSysAttributes
+from .utils import api_process
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

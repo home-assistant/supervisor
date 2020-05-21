@@ -2,10 +2,10 @@
 import logging
 from typing import Optional
 
-from .interface import DBusInterface
-from .utils import dbus_connected
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
+from .interface import DBusInterface
+from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

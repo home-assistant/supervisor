@@ -5,12 +5,12 @@ import logging
 
 import aiohttp
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 from aiohttp.client_exceptions import ClientConnectorError
-from aiohttp.hdrs import CONTENT_TYPE, AUTHORIZATION
+from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
+from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 
 from ..coresys import CoreSysAttributes
-from ..exceptions import HomeAssistantAuthError, HomeAssistantAPIError, APIError
+from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

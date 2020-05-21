@@ -3,8 +3,7 @@ import voluptuous as vol
 
 from supervisor.validate import network_port
 
-from ..const import ATTR_HOST, ATTR_PORT, ATTR_API_KEY, ATTR_SERIAL
-
+from ..const import ATTR_API_KEY, ATTR_HOST, ATTR_PORT, ATTR_SERIAL
 
 SCHEMA = vol.Schema(
     {

@@ -11,7 +11,6 @@ from ..const import (
     ATTR_BLK_WRITE,
     ATTR_CPU_PERCENT,
     ATTR_HOST,
-    ATTR_VERSION_LATEST,
     ATTR_LOCALS,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
@@ -20,6 +19,7 @@ from ..const import (
     ATTR_NETWORK_TX,
     ATTR_SERVERS,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes

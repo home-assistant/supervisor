@@ -7,8 +7,6 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..const import (
-    ATTR_VERSION,
-    ATTR_VERSION_LATEST,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_CPU_PERCENT,
@@ -17,6 +15,8 @@ from ..const import (
     ATTR_MEMORY_USAGE,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
+    ATTR_VERSION,
+    ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_validate

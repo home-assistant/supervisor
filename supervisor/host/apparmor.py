@@ -1,7 +1,7 @@
 """AppArmor control for host."""
 import logging
-import shutil
 from pathlib import Path
+import shutil
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import DBusError, HostAppArmorError

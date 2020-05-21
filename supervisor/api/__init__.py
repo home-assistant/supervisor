@@ -13,17 +13,17 @@ from .cli import APICli
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
 from .hardware import APIHardware
-from .os import APIOS
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .info import APIInfo
 from .ingress import APIIngress
+from .multicast import APIMulticast
+from .os import APIOS
 from .proxy import APIProxy
 from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots
 from .supervisor import APISupervisor
-from .multicast import APIMulticast
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

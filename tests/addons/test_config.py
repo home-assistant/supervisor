@@ -1,7 +1,7 @@
 """Validate Add-on configs."""
 
-import voluptuous as vol
 import pytest
+import voluptuous as vol
 
 from supervisor.addons import validate as vd
 
