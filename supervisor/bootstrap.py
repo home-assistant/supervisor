@@ -182,7 +182,7 @@ def migrate_system_env(coresys: CoreSys):
 
 
 def initialize_logging():
-    """Setup the logging."""
+    """Initialize the logging."""
     logging.basicConfig(level=logging.INFO)
     fmt = "%(asctime)s %(levelname)s (%(threadName)s) [%(name)s] %(message)s"
     colorfmt = f"%(log_color)s{fmt}%(reset)s"
@@ -256,7 +256,7 @@ def reg_signal(loop):
 
 
 def supervisor_debugger(coresys: CoreSys) -> None:
-    """Setup debugger if needed."""
+    """Start debugger if needed."""
     if not coresys.config.debug:
         return
     # pylint: disable=import-outside-toplevel

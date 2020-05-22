@@ -550,9 +550,9 @@ class CoreSysAttributes:
         return self.coresys.hassos
 
     def sys_run_in_executor(self, funct, *args) -> asyncio.Future:
-        """Wrapper for executor pool."""
+        """Add an job to the executor pool."""
         return self.sys_loop.run_in_executor(None, funct, *args)
 
     def sys_create_task(self, coroutine) -> asyncio.Task:
-        """Wrapper for async task."""
+        """Create an async task."""
         return self.sys_loop.create_task(coroutine)

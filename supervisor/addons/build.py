@@ -31,7 +31,7 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
 
     @property
     def base_image(self) -> str:
-        """Base images for this add-on."""
+        """Return base image for this add-on."""
         return self._data[ATTR_BUILD_FROM].get(
             self.sys_arch.default, f"homeassistant/{self.sys_arch.default}-base:latest"
         )
