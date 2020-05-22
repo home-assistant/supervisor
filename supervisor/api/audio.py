@@ -33,11 +33,12 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..host.sound import StreamType
+from ..validate import version as vol_version
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol_version})
 
 SCHEMA_VOLUME = vol.Schema(
     {

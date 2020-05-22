@@ -2,6 +2,7 @@
 import ipaddress
 import re
 import uuid
+from typing import Optional, Union
 
 import voluptuous as vol
 
@@ -49,6 +50,17 @@ docker_image = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
 uuid_match = vol.Match(r"^[0-9a-f]{32}$")
 sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
+
+
+def version(value: Union[str, int, None]) -> Optional[str]:
+    """Validate main version handling."""
+    if not isinstance(value, (str, int)):
+        return None
+    elif isinstance(value, int):
+        return str(value)
+    elif value.isnumeric() or value == "dev":
+        return value
+    return None
 
 
 def dns_url(url: str) -> str:
@@ -100,7 +112,7 @@ DOCKER_PORTS_DESCRIPTION = vol.Schema(
 SCHEMA_HASS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
-        vol.Optional(ATTR_VERSION): vol.Coerce(str),
+        vol.Optional(ATTR_VERSION): version,
         vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
@@ -124,12 +136,12 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
             UpdateChannels
         ),
         vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
-        vol.Optional(ATTR_SUPERVISOR): vol.Coerce(str),
+        vol.Optional(ATTR_SUPERVISOR): version,
         vol.Optional(ATTR_HASSOS): vol.Coerce(str),
-        vol.Optional(ATTR_CLI): vol.Coerce(str),
-        vol.Optional(ATTR_DNS): vol.Coerce(str),
-        vol.Optional(ATTR_AUDIO): vol.Coerce(str),
-        vol.Optional(ATTR_MULTICAST): vol.Coerce(str),
+        vol.Optional(ATTR_CLI): version,
+        vol.Optional(ATTR_DNS): version,
+        vol.Optional(ATTR_AUDIO): version,
+        vol.Optional(ATTR_MULTICAST): version,
         vol.Optional(ATTR_IMAGE, default=dict): vol.Schema(
             {
                 vol.Optional(ATTR_HOMEASSISTANT): docker_image,
@@ -151,7 +163,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_TIMEZONE, default="UTC"): validate_timezone,
         vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
-        vol.Optional(ATTR_VERSION): vol.Coerce(str),
+        vol.Optional(ATTR_VERSION): version,
         vol.Optional(
             ATTR_ADDONS_CUSTOM_LIST,
             default=["https://github.com/hassio-addons/repository"],

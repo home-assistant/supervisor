@@ -31,7 +31,7 @@ from ..const import (
     SNAPSHOT_FULL,
     SNAPSHOT_PARTIAL,
 )
-from ..validate import docker_image, network_port, repositories
+from ..validate import docker_image, network_port, repositories, version
 
 ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
@@ -58,7 +58,7 @@ SCHEMA_SNAPSHOT = vol.Schema(
         vol.Inclusive(ATTR_CRYPTO, "encrypted"): CRYPTO_AES128,
         vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema(
             {
-                vol.Optional(ATTR_VERSION): vol.Coerce(str),
+                vol.Optional(ATTR_VERSION): version,
                 vol.Optional(ATTR_IMAGE): docker_image,
                 vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
                 vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
