@@ -37,7 +37,7 @@ class AddonManager(CoreSysAttributes):
     @property
     def all(self) -> List[AnyAddon]:
         """Return a list of all add-ons."""
-        addons = {**self.store, **self.local}
+        addons: Dict[str, AnyAddon] = {**self.store, **self.local}
         return list(addons.values())
 
     @property
@@ -142,7 +142,7 @@ class AddonManager(CoreSysAttributes):
         if slug not in self.local:
             _LOGGER.warning("Add-on %s is not installed", slug)
             return
-        addon = self.local.get(slug)
+        addon = self.local[slug]
 
         try:
             await addon.instance.remove()
@@ -191,12 +191,12 @@ class AddonManager(CoreSysAttributes):
         if slug not in self.local:
             _LOGGER.error("Add-on %s is not installed", slug)
             raise AddonsError()
-        addon = self.local.get(slug)
+        addon = self.local[slug]
 
         if addon.is_detached:
             _LOGGER.error("Add-on %s is not available inside store", slug)
             raise AddonsError()
-        store = self.store.get(slug)
+        store = self.store[slug]
 
         if addon.version == store.version:
             _LOGGER.warning("No update available for add-on %s", slug)
@@ -233,12 +233,12 @@ class AddonManager(CoreSysAttributes):
         if slug not in self.local:
             _LOGGER.error("Add-on %s is not installed", slug)
             raise AddonsError()
-        addon = self.local.get(slug)
+        addon = self.local[slug]
 
         if addon.is_detached:
             _LOGGER.error("Add-on %s is not available inside store", slug)
             raise AddonsError()
-        store = self.store.get(slug)
+        store = self.store[slug]
 
         # Check if a rebuild is possible now
         if addon.version != store.version:

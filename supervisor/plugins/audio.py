@@ -5,7 +5,7 @@ Code: https://github.com/home-assistant/plugin-audio
 import asyncio
 from contextlib import suppress
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 import shutil
 from typing import Awaitable, Optional
 
@@ -36,12 +36,12 @@ class Audio(JsonConfig, CoreSysAttributes):
         self.client_template: Optional[jinja2.Template] = None
 
     @property
-    def path_extern_pulse(self) -> Path:
+    def path_extern_pulse(self) -> PurePath:
         """Return path of pulse socket file."""
         return self.sys_config.path_extern_audio.joinpath("external")
 
     @property
-    def path_extern_asound(self) -> Path:
+    def path_extern_asound(self) -> PurePath:
         """Return path of default asound config file."""
         return self.sys_config.path_extern_audio.joinpath("asound")
 

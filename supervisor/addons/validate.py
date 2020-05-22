@@ -2,7 +2,7 @@
 import logging
 import re
 import secrets
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 import uuid
 
 import voluptuous as vol
@@ -385,6 +385,9 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     # parse extend data from type
     match = RE_SCHEMA_ELEMENT.match(typ)
 
+    if not match:
+        raise vol.Invalid(f"Unknown type {typ}")
+
     # prepare range
     range_args = {}
     for group_name in _SCHEMA_LENGTH_PARTS:
@@ -462,7 +465,7 @@ def _check_missing_options(origin, exists, root):
 
 def schema_ui_options(raw_schema: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Generate UI schema."""
-    ui_schema = []
+    ui_schema: List[Dict[str, Any]] = []
 
     # read options
     for key, value in raw_schema.items():
@@ -483,7 +486,7 @@ def _single_ui_option(
     ui_schema: List[Dict[str, Any]], value: str, key: str, multiple: bool = False
 ) -> None:
     """Validate a single element."""
-    ui_node = {"name": key}
+    ui_node: Dict[str, Union[str, bool, float, List[str]]] = {"name": key}
 
     # If multiple
     if multiple:
@@ -491,6 +494,8 @@ def _single_ui_option(
 
     # Parse extend data from type
     match = RE_SCHEMA_ELEMENT.match(value)
+    if not match:
+        return
 
     # Prepare range
     for group_name in _SCHEMA_LENGTH_PARTS:

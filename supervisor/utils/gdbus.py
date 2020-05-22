@@ -20,21 +20,23 @@ from ..exceptions import (
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # Use to convert GVariant into json
-RE_GVARIANT_TYPE: re.Match = re.compile(
+RE_GVARIANT_TYPE: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
     r"string|objectpath|signature|@[asviumodf\{\}]+) "
 )
-RE_GVARIANT_VARIANT: re.Match = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(<|>)")
-RE_GVARIANT_STRING_ESC: re.Match = re.compile(
+RE_GVARIANT_VARIANT: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(<|>)")
+RE_GVARIANT_STRING_ESC: re.Pattern[Any] = re.compile(
     r"(?<=(?: |{|\[|\(|<))'[^']*?\"[^']*?'(?=(?:|]|}|,|\)|>))"
 )
-RE_GVARIANT_STRING: re.Match = re.compile(
+RE_GVARIANT_STRING: re.Pattern[Any] = re.compile(
     r"(?<=(?: |{|\[|\(|<))'(.*?)'(?=(?:|]|}|,|\)|>))"
 )
-RE_GVARIANT_TUPLE_O: re.Match = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(\()")
-RE_GVARIANT_TUPLE_C: re.Match = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(,?\))")
+RE_GVARIANT_TUPLE_O: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(\()")
+RE_GVARIANT_TUPLE_C: re.Pattern[Any] = re.compile(
+    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(,?\))"
+)
 
-RE_MONITOR_OUTPUT: re.Match = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
+RE_MONITOR_OUTPUT: re.Pattern[Any] = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
 
 # Map GDBus to errors
 MAP_GDBUS_ERROR: Dict[str, Any] = {

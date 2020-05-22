@@ -91,10 +91,10 @@ class DockerNetwork:
 
         Need run inside executor.
         """
-        ipv4 = str(ipv4) if ipv4 else None
+        ipv4_address = str(ipv4) if ipv4 else None
 
         try:
-            self.network.connect(container, aliases=alias, ipv4_address=ipv4)
+            self.network.connect(container, aliases=alias, ipv4_address=ipv4_address)
         except docker.errors.APIError as err:
             _LOGGER.error("Can't link container to hassio-net: %s", err)
             raise DockerAPIError() from None
