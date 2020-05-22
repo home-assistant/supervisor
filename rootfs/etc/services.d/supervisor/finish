@@ -2,4 +2,4 @@
 # ==============================================================================
 # Take down the S6 supervision tree when Supervisor fails
 # ==============================================================================
-s6-svscanctl -t /var/run/s6/services
+redirfd -w 2 /dev/null s6-svscanctl -t /var/run/s6/services
