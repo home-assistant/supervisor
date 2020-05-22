@@ -71,9 +71,8 @@ class Addon(AddonModel):
 
     def __init__(self, coresys: CoreSys, slug: str):
         """Initialize data holder."""
-        self.coresys: CoreSys = coresys
+        super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
-        self.slug: str = slug
 
     async def load(self) -> None:
         """Async initialize of object."""

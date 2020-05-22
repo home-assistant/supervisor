@@ -65,7 +65,7 @@ from ..const import (
     SECURITY_PROFILE,
     AddonStages,
 )
-from ..coresys import CoreSysAttributes
+from ..coresys import CoreSys, CoreSysAttributes
 from .validate import RE_SERVICE, RE_VOLUME, schema_ui_options, validate_options
 
 Data = Dict[str, Any]
@@ -74,7 +74,10 @@ Data = Dict[str, Any]
 class AddonModel(CoreSysAttributes):
     """Add-on Data layout."""
 
-    slug: str = None
+    def __init__(self, coresys: CoreSys, slug: str):
+        """Initialize data holder."""
+        self.coresys: CoreSys = coresys
+        self.slug: str = slug
 
     @property
     def data(self) -> Data:
