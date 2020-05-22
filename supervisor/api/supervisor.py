@@ -157,7 +157,7 @@ class APISupervisor(CoreSysAttributes):
         version = body.get(ATTR_VERSION, self.sys_updater.version_supervisor)
 
         if version == self.sys_supervisor.version:
-            raise APIError("Version {} is already in use".format(version))
+            raise APIError(f"Version {version} is already in use")
         await asyncio.shield(self.sys_supervisor.update(version))
 
     @api_process

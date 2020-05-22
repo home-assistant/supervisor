@@ -626,7 +626,7 @@ class Addon(AddonModel):
                 _LOGGER.error("Add-on %s is not available for this Platform", self.slug)
                 raise AddonsNotSupportedError()
 
-            # Restore local add-on informations
+            # Restore local add-on information
             _LOGGER.info("Restore config for addon %s", self.slug)
             restore_image = self._image(data[ATTR_SYSTEM])
             self.sys_addons.data.restore(

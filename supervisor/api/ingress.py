@@ -129,7 +129,7 @@ class APIIngress(CoreSysAttributes):
 
         # Support GET query
         if request.query_string:
-            url = "{}?{}".format(url, request.query_string)
+            url = f"{url}?{request.query_string}"
 
         # Start proxy
         async with self.sys_websession.ws_connect(

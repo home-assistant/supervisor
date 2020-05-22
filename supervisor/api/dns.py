@@ -83,7 +83,7 @@ class APICoreDNS(CoreSysAttributes):
         version = body.get(ATTR_VERSION, self.sys_plugins.dns.latest_version)
 
         if version == self.sys_plugins.dns.version:
-            raise APIError("Version {} is already in use".format(version))
+            raise APIError(f"Version {version} is already in use")
         await asyncio.shield(self.sys_plugins.dns.update(version))
 
     @api_process_raw(CONTENT_TYPE_BINARY)

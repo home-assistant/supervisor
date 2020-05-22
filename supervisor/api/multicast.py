@@ -62,7 +62,7 @@ class APIMulticast(CoreSysAttributes):
         version = body.get(ATTR_VERSION, self.sys_plugins.multicast.latest_version)
 
         if version == self.sys_plugins.multicast.version:
-            raise APIError("Version {} is already in use".format(version))
+            raise APIError(f"Version {version} is already in use")
         await asyncio.shield(self.sys_plugins.multicast.update(version))
 
     @api_process_raw(CONTENT_TYPE_BINARY)
