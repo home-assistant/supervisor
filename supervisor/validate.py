@@ -125,7 +125,7 @@ DOCKER_PORTS_DESCRIPTION = vol.Schema(
 SCHEMA_HASS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
-        vol.Optional(ATTR_VERSION): simple_version,
+        vol.Optional(ATTR_VERSION): complex_version,
         vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
