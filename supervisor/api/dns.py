@@ -24,7 +24,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..validate import dns_server_list, version as vol_version
+from ..validate import dns_server_list, simple_version
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_SERVERS): dns_server_list})
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol_version})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): simple_version})
 
 
 class APICoreDNS(CoreSysAttributes):

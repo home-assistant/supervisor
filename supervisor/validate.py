@@ -5,6 +5,7 @@ import uuid
 from typing import Optional, Union
 
 import voluptuous as vol
+from packaging import version as pkg_version
 
 from .const import (
     ATTR_ACCESS_TOKEN,
@@ -52,7 +53,7 @@ sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
 
 
-def version(value: Union[str, int, None]) -> Optional[str]:
+def simple_version(value: Union[str, int, None]) -> Optional[str]:
     """Validate main version handling."""
     if not isinstance(value, (str, int)):
         return None
@@ -61,6 +62,18 @@ def version(value: Union[str, int, None]) -> Optional[str]:
     elif value.isnumeric() or value == "dev":
         return value
     return None
+
+
+def complex_version(value: Union[str, None]) -> Optional[str]:
+    """Validate main version handling."""
+    if not isinstance(value, str):
+        return None
+
+    try:
+        pkg_version.parse(value)
+    except pkg_version.InvalidVersion:
+        raise vol.Invalid(f"Invalid version format {value}")
+    return value
 
 
 def dns_url(url: str) -> str:
@@ -112,7 +125,7 @@ DOCKER_PORTS_DESCRIPTION = vol.Schema(
 SCHEMA_HASS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
-        vol.Optional(ATTR_VERSION): version,
+        vol.Optional(ATTR_VERSION): simple_version,
         vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
@@ -135,13 +148,13 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_CHANNEL, default=UpdateChannels.STABLE): vol.Coerce(
             UpdateChannels
         ),
-        vol.Optional(ATTR_HOMEASSISTANT): vol.Coerce(str),
-        vol.Optional(ATTR_SUPERVISOR): version,
-        vol.Optional(ATTR_HASSOS): vol.Coerce(str),
-        vol.Optional(ATTR_CLI): version,
-        vol.Optional(ATTR_DNS): version,
-        vol.Optional(ATTR_AUDIO): version,
-        vol.Optional(ATTR_MULTICAST): version,
+        vol.Optional(ATTR_HOMEASSISTANT): complex_version,
+        vol.Optional(ATTR_SUPERVISOR): simple_version,
+        vol.Optional(ATTR_HASSOS): complex_version,
+        vol.Optional(ATTR_CLI): simple_version,
+        vol.Optional(ATTR_DNS): simple_version,
+        vol.Optional(ATTR_AUDIO): simple_version,
+        vol.Optional(ATTR_MULTICAST): simple_version,
         vol.Optional(ATTR_IMAGE, default=dict): vol.Schema(
             {
                 vol.Optional(ATTR_HOMEASSISTANT): docker_image,
@@ -163,7 +176,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_TIMEZONE, default="UTC"): validate_timezone,
         vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
-        vol.Optional(ATTR_VERSION): version,
+        vol.Optional(ATTR_VERSION): simple_version,
         vol.Optional(
             ATTR_ADDONS_CUSTOM_LIST,
             default=["https://github.com/hassio-addons/repository"],

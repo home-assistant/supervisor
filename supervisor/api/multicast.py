@@ -21,12 +21,12 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..validate import version as vol_version
+from ..validate import simple_version
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol_version})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): simple_version})
 
 
 class APIMulticast(CoreSysAttributes):
