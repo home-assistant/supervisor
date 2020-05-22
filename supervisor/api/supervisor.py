@@ -43,7 +43,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
-from ..validate import repositories, wait_boot
+from ..validate import repositories, wait_boot, simple_version
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ SCHEMA_OPTIONS = vol.Schema(
     }
 )
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): simple_version})
 
 
 class APISupervisor(CoreSysAttributes):
