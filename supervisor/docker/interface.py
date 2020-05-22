@@ -227,9 +227,9 @@ class DockerInterface(CoreSysAttributes):
         return self.sys_run_in_executor(self._remove)
 
     def _remove(self) -> None:
-        """remove docker images.
+        """Remove docker images.
 
-        Need run inside executor.
+        Needs run inside executor.
         """
         # Cleanup container
         with suppress(DockerAPIError):

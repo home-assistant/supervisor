@@ -97,7 +97,7 @@ class DockerAPI:
         ipv4: Optional[IPv4Address] = None,
         **kwargs: Dict[str, Any],
     ) -> docker.models.containers.Container:
-        """"Create a Docker container and run it.
+        """Create a Docker container and run it.
 
         Need run inside executor.
         """

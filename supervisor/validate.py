@@ -52,7 +52,7 @@ token = vol.Match(r"^[0-9a-f]{32,256}$")
 
 
 def dns_url(url: str) -> str:
-    """ takes a DNS url (str) and validates that it matches the scheme dns://<ip address>."""
+    """Take a DNS url (str) and validates that it matches the scheme dns://<ip address>."""
     if not url.lower().startswith("dns://"):
         raise vol.Invalid("Doesn't start with dns://")
     address: str = url[6:]  # strip the dns:// off

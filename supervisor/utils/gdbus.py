@@ -223,7 +223,7 @@ class DBus:
                 return signal
 
     def __getattr__(self, name: str) -> DBusCallWrapper:
-        """Mapping to dbus method."""
+        """Map to dbus method."""
         return getattr(DBusCallWrapper(self, self.bus_name), name)
 
 
@@ -236,12 +236,12 @@ class DBusCallWrapper:
         self.interface: str = interface
 
     def __call__(self) -> None:
-        """Should never be called."""
+        """Catch this method from being called."""
         _LOGGER.error("DBus method %s not exists!", self.interface)
         raise DBusFatalError()
 
     def __getattr__(self, name: str):
-        """Mapping to dbus method."""
+        """Map to dbus method."""
         interface = f"{self.interface}.{name}"
 
         if interface not in self.dbus.methods:

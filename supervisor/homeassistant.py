@@ -483,7 +483,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return ConfigResult(True, log)
 
     async def ensure_access_token(self) -> None:
-        """Ensures there is an access token."""
+        """Ensure there is an access token."""
         if (
             self.access_token is not None
             and self._access_token_expires > datetime.utcnow()

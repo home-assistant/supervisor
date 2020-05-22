@@ -170,7 +170,7 @@ MACHINE_ALL = [
 
 
 def _simple_startup(value):
-    """Simple startup schema."""
+    """Define startup schema."""
     if value == "before":
         return STARTUP_SERVICES
     if value == "after":
