@@ -2,18 +2,12 @@
 import logging
 
 from ..addons.model import AddonModel, Data
-from ..coresys import CoreSys
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class AddonStore(AddonModel):
     """Hold data for add-on inside Supervisor."""
-
-    def __init__(self, coresys: CoreSys, slug: str):
-        """Initialize data holder."""
-        self.coresys: CoreSys = coresys
-        self.slug: str = slug
 
     @property
     def data(self) -> Data:
