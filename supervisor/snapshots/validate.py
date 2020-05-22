@@ -31,14 +31,14 @@ from ..const import (
     SNAPSHOT_FULL,
     SNAPSHOT_PARTIAL,
 )
-from ..validate import docker_image, network_port, repositories
+from ..validate import docker_image, network_port, repositories, complex_version
 
 ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
 
 def unique_addons(addons_list):
     """Validate that an add-on is unique."""
-    single = set(addon[ATTR_SLUG] for addon in addons_list)
+    single = {addon[ATTR_SLUG] for addon in addons_list}
 
     if len(single) != len(addons_list):
         raise vol.Invalid("Invalid addon list on snapshot!")
@@ -58,7 +58,7 @@ SCHEMA_SNAPSHOT = vol.Schema(
         vol.Inclusive(ATTR_CRYPTO, "encrypted"): CRYPTO_AES128,
         vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema(
             {
-                vol.Optional(ATTR_VERSION): vol.Coerce(str),
+                vol.Optional(ATTR_VERSION): complex_version,
                 vol.Optional(ATTR_IMAGE): docker_image,
                 vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
                 vol.Optional(ATTR_SSL, default=False): vol.Boolean(),

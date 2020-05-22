@@ -2,10 +2,11 @@
 import logging
 from typing import Any, Dict, List
 
+import voluptuous as vol
+
 from supervisor.addons.addon import Addon
 from supervisor.exceptions import ServicesError
 from supervisor.validate import network_port
-import voluptuous as vol
 
 from ..const import (
     ATTR_ADDON,

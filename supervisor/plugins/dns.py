@@ -414,6 +414,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     def is_fails(self) -> Awaitable[bool]:
         """Return True if a Docker container is fails state.
+
         Return a coroutine.
         """
         return self.instance.is_fails()

@@ -356,7 +356,7 @@ class Snapshot(CoreSysAttributes):
         folder_list = set(folder_list or ALL_FOLDERS)
 
         def _folder_save(name):
-            """Internal function to snapshot a folder."""
+            """Take snapshot of a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self.sys_config.path_supervisor, name)

@@ -11,7 +11,7 @@ from .repository import Repository
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-BUILTIN_REPOSITORIES = set((REPOSITORY_CORE, REPOSITORY_LOCAL))
+BUILTIN_REPOSITORIES = {REPOSITORY_CORE, REPOSITORY_LOCAL}
 
 
 class StoreManager(CoreSysAttributes):
@@ -55,7 +55,7 @@ class StoreManager(CoreSysAttributes):
 
         # add new repository
         async def _add_repository(url):
-            """Helper function to async add repository."""
+            """Add a repository."""
             repository = Repository(self.coresys, url)
             if not await repository.load():
                 _LOGGER.error("Can't load from repository %s", url)

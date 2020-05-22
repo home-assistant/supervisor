@@ -1,8 +1,8 @@
 """Test hardware utils."""
-from unittest.mock import patch, PropertyMock
 from pathlib import Path
+from unittest.mock import PropertyMock, patch
 
-from supervisor.misc.hardware import Hardware, Device
+from supervisor.misc.hardware import Device, Hardware
 
 
 def test_read_all_devices():

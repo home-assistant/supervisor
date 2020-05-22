@@ -2,19 +2,19 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import json
-import shlex
+import logging
 import re
+import shlex
 from signal import SIGINT
 from typing import Any, Dict, List, Optional, Set
 import xml.etree.ElementTree as ET
 
 from ..exceptions import (
     DBusFatalError,
-    DBusParseError,
     DBusInterfaceError,
     DBusNotConnectedError,
+    DBusParseError,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -223,7 +223,7 @@ class DBus:
                 return signal
 
     def __getattr__(self, name: str) -> DBusCallWrapper:
-        """Mapping to dbus method."""
+        """Map to dbus method."""
         return getattr(DBusCallWrapper(self, self.bus_name), name)
 
 
@@ -236,12 +236,12 @@ class DBusCallWrapper:
         self.interface: str = interface
 
     def __call__(self) -> None:
-        """Should never be called."""
+        """Catch this method from being called."""
         _LOGGER.error("DBus method %s not exists!", self.interface)
         raise DBusFatalError()
 
     def __getattr__(self, name: str):
-        """Mapping to dbus method."""
+        """Map to dbus method."""
         interface = f"{self.interface}.{name}"
 
         if interface not in self.dbus.methods:

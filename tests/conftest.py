@@ -1,5 +1,5 @@
 """Common test functions."""
-from unittest.mock import patch, PropertyMock, MagicMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 

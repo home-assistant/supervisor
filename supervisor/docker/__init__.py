@@ -8,7 +8,7 @@ import attr
 import docker
 from packaging import version as pkg_version
 
-from ..const import SOCKET_DOCKER, DNS_SUFFIX
+from ..const import DNS_SUFFIX, SOCKET_DOCKER
 from ..exceptions import DockerAPIError
 from .network import DockerNetwork
 
@@ -97,7 +97,7 @@ class DockerAPI:
         ipv4: Optional[IPv4Address] = None,
         **kwargs: Dict[str, Any],
     ) -> docker.models.containers.Container:
-        """"Create a Docker container and run it.
+        """Create a Docker container and run it.
 
         Need run inside executor.
         """

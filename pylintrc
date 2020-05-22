@@ -2,6 +2,8 @@
 reports=no
 jobs=2
 
+good-names=id,i,j,k,ex,Run,_,fp,T
+
 # Reasons disabled:
 # format - handled by black
 # locally-disabled - it spams too much

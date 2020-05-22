@@ -8,7 +8,7 @@ def schema_or(schema):
     """Allow schema or empty."""
 
     def _wrapper(value):
-        """Wrapper for validator."""
+        """Define a wrapper for validator."""
         if not value:
             return value
         return schema(value)

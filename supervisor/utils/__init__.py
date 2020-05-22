@@ -34,7 +34,8 @@ def process_lock(method):
 
 
 class AsyncThrottle:
-    """
+    """A class for throttling the execution of tasks.
+
     Decorator that prevents a function from being called more than once every
     time period with blocking.
     """
@@ -46,10 +47,10 @@ class AsyncThrottle:
         self.synchronize: Optional[asyncio.Lock] = None
 
     def __call__(self, method):
-        """Throttle function"""
+        """Throttle function."""
 
         async def wrapper(*args, **kwargs):
-            """Throttle function wrapper"""
+            """Throttle function wrapper."""
             if not self.synchronize:
                 self.synchronize = asyncio.Lock()
 
@@ -65,7 +66,8 @@ class AsyncThrottle:
 
 
 class AsyncCallFilter:
-    """
+    """A class for throttling the execution of tasks, with a filter.
+
     Decorator that prevents a function from being called more than once every
     time period.
     """
@@ -76,10 +78,10 @@ class AsyncCallFilter:
         self.time_of_last_call = datetime.min
 
     def __call__(self, method):
-        """Throttle function"""
+        """Throttle function."""
 
         async def wrapper(*args, **kwargs):
-            """Throttle function wrapper"""
+            """Throttle function wrapper."""
             now = datetime.now()
             time_since_last_call = now - self.time_of_last_call
 

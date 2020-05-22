@@ -18,7 +18,6 @@ from ..const import (
     ATTR_HOST,
     ATTR_INDEX,
     ATTR_INPUT,
-    ATTR_VERSION_LATEST,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
@@ -27,17 +26,19 @@ from ..const import (
     ATTR_NETWORK_TX,
     ATTR_OUTPUT,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_VOLUME,
     CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..host.sound import StreamType
+from ..validate import simple_version
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): simple_version})
 
 SCHEMA_VOLUME = vol.Schema(
     {
@@ -108,7 +109,7 @@ class APIAudio(CoreSysAttributes):
         version = body.get(ATTR_VERSION, self.sys_plugins.audio.latest_version)
 
         if version == self.sys_plugins.audio.version:
-            raise APIError("Version {} is already in use".format(version))
+            raise APIError(f"Version {version} is already in use")
         await asyncio.shield(self.sys_plugins.audio.update(version))
 
     @api_process_raw(CONTENT_TYPE_BINARY)

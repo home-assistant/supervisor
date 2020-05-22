@@ -7,8 +7,6 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..const import (
-    ATTR_VERSION,
-    ATTR_VERSION_LATEST,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_CPU_PERCENT,
@@ -17,13 +15,16 @@ from ..const import (
     ATTR_MEMORY_USAGE,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
+    ATTR_VERSION,
+    ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSysAttributes
+from ..validate import simple_version
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): simple_version})
 
 
 class APICli(CoreSysAttributes):

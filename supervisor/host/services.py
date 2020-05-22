@@ -20,7 +20,7 @@ class ServiceManager(CoreSysAttributes):
         self._services = set()
 
     def __iter__(self):
-        """Iterator trought services."""
+        """Iterate through services."""
         return iter(self._services)
 
     def _check_dbus(self, unit=None):

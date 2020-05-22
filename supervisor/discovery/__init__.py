@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from contextlib import suppress
 import logging
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
-from uuid import uuid4, UUID
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from uuid import UUID, uuid4
 
 import attr
 import voluptuous as vol

@@ -71,9 +71,8 @@ class Addon(AddonModel):
 
     def __init__(self, coresys: CoreSys, slug: str):
         """Initialize data holder."""
-        self.coresys: CoreSys = coresys
+        super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
-        self.slug: str = slug
 
     async def load(self) -> None:
         """Async initialize of object."""
@@ -626,7 +625,7 @@ class Addon(AddonModel):
                 _LOGGER.error("Add-on %s is not available for this Platform", self.slug)
                 raise AddonsNotSupportedError()
 
-            # Restore local add-on informations
+            # Restore local add-on information
             _LOGGER.info("Restore config for addon %s", self.slug)
             restore_image = self._image(data[ATTR_SYSTEM])
             self.sys_addons.data.restore(

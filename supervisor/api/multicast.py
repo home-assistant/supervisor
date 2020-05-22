@@ -10,22 +10,23 @@ from ..const import (
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_CPU_PERCENT,
-    ATTR_VERSION_LATEST,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
+from ..validate import simple_version
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): simple_version})
 
 
 class APIMulticast(CoreSysAttributes):
@@ -62,7 +63,7 @@ class APIMulticast(CoreSysAttributes):
         version = body.get(ATTR_VERSION, self.sys_plugins.multicast.latest_version)
 
         if version == self.sys_plugins.multicast.version:
-            raise APIError("Version {} is already in use".format(version))
+            raise APIError(f"Version {version} is already in use")
         await asyncio.shield(self.sys_plugins.multicast.update(version))
 
     @api_process_raw(CONTENT_TYPE_BINARY)

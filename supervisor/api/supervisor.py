@@ -20,12 +20,11 @@ from ..const import (
     ATTR_ICON,
     ATTR_INSTALLED,
     ATTR_IP_ADDRESS,
-    ATTR_VERSION_LATEST,
     ATTR_LOGGING,
     ATTR_LOGO,
     ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_USAGE,
     ATTR_MEMORY_PERCENT,
+    ATTR_MEMORY_USAGE,
     ATTR_NAME,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
@@ -34,16 +33,17 @@ from ..const import (
     ATTR_STATE,
     ATTR_TIMEZONE,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_WAIT_BOOT,
     CONTENT_TYPE_BINARY,
     SUPERVISOR_VERSION,
-    UpdateChannels,
     LogLevel,
+    UpdateChannels,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
-from ..validate import repositories, wait_boot
+from ..validate import repositories, wait_boot, simple_version
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ SCHEMA_OPTIONS = vol.Schema(
     }
 )
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): simple_version})
 
 
 class APISupervisor(CoreSysAttributes):
@@ -157,7 +157,7 @@ class APISupervisor(CoreSysAttributes):
         version = body.get(ATTR_VERSION, self.sys_updater.version_supervisor)
 
         if version == self.sys_supervisor.version:
-            raise APIError("Version {} is already in use".format(version))
+            raise APIError(f"Version {version} is already in use")
         await asyncio.shield(self.sys_supervisor.update(version))
 
     @api_process

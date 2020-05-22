@@ -140,7 +140,7 @@ def exclude_filter(
     """Create callable filter function to check TarInfo for add."""
 
     def my_filter(tar: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
-        """Custom exclude filter."""
+        """Filter to filter excludes."""
         file_path = Path(tar.name)
         for exclude in exclude_list:
             if not file_path.match(exclude):

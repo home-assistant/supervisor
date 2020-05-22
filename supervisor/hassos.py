@@ -8,13 +8,9 @@ import aiohttp
 from cpe import CPE
 
 from .const import URL_HASSOS_OTA
-from .coresys import CoreSysAttributes, CoreSys
-from .exceptions import (
-    DBusError,
-    HassOSNotSupportedError,
-    HassOSUpdateError,
-)
+from .coresys import CoreSys, CoreSysAttributes
 from .dbus.rauc import RaucState
+from .exceptions import DBusError, HassOSNotSupportedError, HassOSUpdateError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

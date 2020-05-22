@@ -16,11 +16,11 @@ from multidict import CIMultiDict, istr
 from ..addons.addon import Addon
 from ..const import (
     ATTR_ADMIN,
+    ATTR_ENABLE,
     ATTR_ICON,
+    ATTR_PANELS,
     ATTR_SESSION,
     ATTR_TITLE,
-    ATTR_PANELS,
-    ATTR_ENABLE,
     COOKIE_INGRESS,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
@@ -129,7 +129,7 @@ class APIIngress(CoreSysAttributes):
 
         # Support GET query
         if request.query_string:
-            url = "{}?{}".format(url, request.query_string)
+            url = f"{url}?{request.query_string}"
 
         # Start proxy
         async with self.sys_websession.ws_connect(

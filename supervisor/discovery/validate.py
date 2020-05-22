@@ -1,6 +1,6 @@
 """Validate services schema."""
-from pathlib import Path
 from importlib import import_module
+from pathlib import Path
 
 import voluptuous as vol
 

@@ -11,7 +11,6 @@ from ..const import (
     ATTR_BLK_WRITE,
     ATTR_CPU_PERCENT,
     ATTR_HOST,
-    ATTR_VERSION_LATEST,
     ATTR_LOCALS,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
@@ -20,11 +19,12 @@ from ..const import (
     ATTR_NETWORK_TX,
     ATTR_SERVERS,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..validate import dns_server_list
+from ..validate import dns_server_list, simple_version
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_SERVERS): dns_server_list})
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): simple_version})
 
 
 class APICoreDNS(CoreSysAttributes):
@@ -83,7 +83,7 @@ class APICoreDNS(CoreSysAttributes):
         version = body.get(ATTR_VERSION, self.sys_plugins.dns.latest_version)
 
         if version == self.sys_plugins.dns.version:
-            raise APIError("Version {} is already in use".format(version))
+            raise APIError(f"Version {version} is already in use")
         await asyncio.shield(self.sys_plugins.dns.update(version))
 
     @api_process_raw(CONTENT_TYPE_BINARY)

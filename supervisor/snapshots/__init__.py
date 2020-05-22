@@ -3,11 +3,11 @@ import asyncio
 import logging
 from pathlib import Path
 
-from .snapshot import Snapshot
-from .utils import create_slug
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL
 from ..coresys import CoreSysAttributes
 from ..utils.dt import utcnow
+from .snapshot import Snapshot
+from .utils import create_slug
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class SnapshotManager(CoreSysAttributes):
         self.snapshots_obj = {}
 
         async def _load_snapshot(tar_file):
-            """Internal function to load snapshot."""
+            """Load the snapshot."""
             snapshot = Snapshot(self.coresys, tar_file)
             if await snapshot.load():
                 self.snapshots_obj[snapshot.slug] = snapshot

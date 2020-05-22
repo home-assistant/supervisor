@@ -1,7 +1,7 @@
 """Validate Add-on configs."""
 
-import voluptuous as vol
 import pytest
+import voluptuous as vol
 
 from supervisor.addons import validate as vd
 
@@ -48,7 +48,7 @@ def test_invalid_repository():
 
 
 def test_valid_repository():
-    """Validate basic config with different valid repositories"""
+    """Validate basic config with different valid repositories."""
     config = load_json_fixture("basic-addon-config.json")
 
     custom_registry = "registry.gitlab.com/company/add-ons/core/test-example"
@@ -58,7 +58,7 @@ def test_valid_repository():
 
 
 def test_valid_map():
-    """Validate basic config with different valid maps"""
+    """Validate basic config with different valid maps."""
     config = load_json_fixture("basic-addon-config.json")
 
     config["map"] = ["backup:rw", "ssl:ro", "config"]
