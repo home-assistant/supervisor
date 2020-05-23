@@ -95,7 +95,7 @@ class DockerAPI:
         version: str = "latest",
         dns: bool = True,
         ipv4: Optional[IPv4Address] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any,
     ) -> docker.models.containers.Container:
         """Create a Docker container and run it.
 
@@ -153,7 +153,7 @@ class DockerAPI:
         image: str,
         version: str = "latest",
         command: Optional[str] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any,
     ) -> CommandReturn:
         """Create a temporary container and run command.
 

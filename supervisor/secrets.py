@@ -2,7 +2,7 @@
 from datetime import timedelta
 import logging
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 from ruamel.yaml import YAML, YAMLError
 
@@ -25,7 +25,7 @@ class SecretsManager(CoreSysAttributes):
         """Return path to secret file."""
         return Path(self.sys_config.path_homeassistant, "secrets.yaml")
 
-    def get(self, secret: str) -> Union[bool, float, int, str]:
+    def get(self, secret: str) -> Optional[Union[bool, float, int, str]]:
         """Get secret from store."""
         _LOGGER.info("Request secret %s", secret)
         return self.secrets.get(secret)

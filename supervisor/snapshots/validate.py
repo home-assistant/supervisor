@@ -31,7 +31,7 @@ from ..const import (
     SNAPSHOT_FULL,
     SNAPSHOT_PARTIAL,
 )
-from ..validate import docker_image, network_port, repositories, complex_version
+from ..validate import complex_version, docker_image, network_port, repositories
 
 ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
 
