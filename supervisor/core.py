@@ -50,7 +50,7 @@ class Core(CoreSysAttributes):
             )
         elif self.sys_docker.info.inside_lxc:
             self.healthy = False
-            _LOGGER.critical("Docker inside LXC is not supported by Supervisor!")
+            _LOGGER.critical("Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!")
 
         self.sys_docker.info.check_requirements()
 
