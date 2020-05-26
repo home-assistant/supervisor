@@ -46,6 +46,11 @@ class DockerInfo:
 
         return version_local >= version_min
 
+    @property
+    def inside_lxc(self) -> bool:
+        """Return True if the docker run inside lxc."""
+        return Path("/dev/lxd/sock").exists()
+
     def check_requirements(self) -> None:
         """Show wrong configurations."""
         if self.storage != "overlay2":

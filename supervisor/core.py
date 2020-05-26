@@ -48,6 +48,10 @@ class Core(CoreSysAttributes):
                 "Docker version %s is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
+        elif self.sys_docker.info.inside_lxc:
+            self.healthy = False
+            _LOGGER.critical("Docker inside LXC is not supported by Supervisor!")
+
         self.sys_docker.info.check_requirements()
 
         # Check if system is healthy
