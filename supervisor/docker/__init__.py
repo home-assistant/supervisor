@@ -2,6 +2,7 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import attr
