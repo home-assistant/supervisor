@@ -72,7 +72,12 @@ class Ingress(JsonConfig, CoreSysAttributes):
 
         sessions = {}
         for session, valid in self.sessions.items():
-            valid_dt = utc_from_timestamp(valid)
+            try:
+                valid_dt = utc_from_timestamp(valid)
+            except OverflowError:
+                _LOGGER.warning(f"Session {session} timestamp {valid_dt} is invalid!")
+                continue
+
             if valid_dt < now:
                 continue
 
