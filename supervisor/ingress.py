@@ -109,7 +109,13 @@ class Ingress(JsonConfig, CoreSysAttributes):
         """Return True if session valid and make it longer valid."""
         if session not in self.sessions:
             return False
-        valid_until = utc_from_timestamp(self.sessions[session])
+
+        # check if timestamp valid, to avoid crash on malformed timestamp
+        try:
+            valid_until = utc_from_timestamp(self.sessions[session])
+        except OverflowError:
+            _LOGGER.warning("Session timestamp %f is invalid!", valid_until)
+            return False
 
         # Is still valid?
         if valid_until < utcnow():
