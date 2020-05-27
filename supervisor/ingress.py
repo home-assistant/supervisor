@@ -76,7 +76,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
             try:
                 valid_dt = utc_from_timestamp(valid)
             except OverflowError:
-                _LOGGER.warning(f"Session {session} timestamp {valid_dt} is invalid!")
+                _LOGGER.warning("Session timestamp %f is invalid!", valid_dt)
                 continue
 
             if valid_dt < now:
