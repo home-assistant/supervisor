@@ -6,8 +6,8 @@ from typing import Dict, Optional, Union
 
 from ruamel.yaml import YAML, YAMLError
 
-from .coresys import CoreSys, CoreSysAttributes
-from .utils import AsyncThrottle
+from ..coresys import CoreSys, CoreSysAttributes
+from ..utils import AsyncThrottle
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

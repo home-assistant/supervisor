@@ -27,15 +27,16 @@ from .discovery import Discovery
 from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
-from .hwmon import HwMonitor
 from .ingress import Ingress
+from .misc.hwmon import HwMonitor
+from .misc.scheduler import Scheduler
+from .misc.secrets import SecretsManager
+from .misc.tasks import Tasks
 from .plugins import PluginManager
-from .secrets import SecretsManager
 from .services import ServiceManager
 from .snapshots import SnapshotManager
 from .store import StoreManager
 from .supervisor import Supervisor
-from .tasks import Tasks
 from .updater import Updater
 from .utils.dt import fetch_timezone
 
@@ -70,6 +71,7 @@ async def initialize_coresys() -> None:
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
     coresys.secrets = SecretsManager(coresys)
+    coresys.scheduler = Scheduler(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)

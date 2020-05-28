@@ -10,7 +10,6 @@ from .config import CoreConfig
 from .const import UpdateChannels
 from .docker import DockerAPI
 from .misc.hardware import Hardware
-from .misc.scheduler import Scheduler
 
 if TYPE_CHECKING:
     from .addons import AddonManager
@@ -21,16 +20,17 @@ if TYPE_CHECKING:
     from .dbus import DBusManager
     from .discovery import Discovery
     from .hassos import HassOS
-    from .hwmon import HwMonitor
+    from .misc.scheduler import Scheduler
+    from .misc.hwmon import HwMonitor
+    from .misc.secrets import SecretsManager
+    from .misc.tasks import Tasks
     from .homeassistant import HomeAssistant
     from .host import HostManager
     from .ingress import Ingress
-    from .secrets import SecretsManager
     from .services import ServiceManager
     from .snapshots import SnapshotManager
     from .supervisor import Supervisor
     from .store import StoreManager
-    from .tasks import Tasks
     from .updater import Updater
     from .plugins import PluginManager
 
@@ -58,7 +58,6 @@ class CoreSys:
         self._config: CoreConfig = CoreConfig()
         self._hardware: Hardware = Hardware()
         self._docker: DockerAPI = DockerAPI()
-        self._scheduler: Scheduler = Scheduler()
 
         # Internal objects pointers
         self._core: Optional[Core] = None
@@ -77,6 +76,7 @@ class CoreSys:
         self._hassos: Optional[HassOS] = None
         self._services: Optional[ServiceManager] = None
         self._secrets: Optional[SecretsManager] = None
+        self._scheduler: Optional[Scheduler] = None
         self._store: Optional[StoreManager] = None
         self._discovery: Optional[Discovery] = None
         self._hwmonitor: Optional[HwMonitor] = None
@@ -127,7 +127,16 @@ class CoreSys:
     @property
     def scheduler(self) -> Scheduler:
         """Return Scheduler object."""
+        if self._scheduler is None:
+            raise RuntimeError("Scheduler not set!")
         return self._scheduler
+
+    @scheduler.setter
+    def scheduler(self, value: Scheduler) -> None:
+        """Set a Scheduler object."""
+        if self._scheduler:
+            raise RuntimeError("Scheduler already set!")
+        self._scheduler = value
 
     @property
     def core(self) -> Core:

@@ -2,8 +2,8 @@
 import asyncio
 import logging
 
-from .coresys import CoreSysAttributes
-from .exceptions import (
+from ..coresys import CoreSysAttributes
+from ..exceptions import (
     AudioError,
     CliError,
     CoreDNSError,
