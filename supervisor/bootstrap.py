@@ -71,6 +71,7 @@ async def initialize_coresys() -> None:
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
     coresys.secrets = SecretsManager(coresys)
+    coresys.scheduler = Scheduler(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
