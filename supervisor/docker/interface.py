@@ -26,7 +26,7 @@ class DockerInterface(CoreSysAttributes):
         self.lock: asyncio.Lock = asyncio.Lock()
 
     @property
-    def timeout(self) -> str:
+    def timeout(self) -> int:
         """Return timeout for Docker actions."""
         return 30
 

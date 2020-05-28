@@ -390,6 +390,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 if name not in entry.names:
                     continue
                 return entry
+        return None
 
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.

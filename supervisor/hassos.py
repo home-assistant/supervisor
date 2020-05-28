@@ -56,7 +56,7 @@ class HassOS(CoreSysAttributes):
             _LOGGER.error("No HassOS available")
             raise HassOSNotSupportedError()
 
-    async def _download_raucb(self, version: str) -> None:
+    async def _download_raucb(self, version: str) -> Path:
         """Download rauc bundle (OTA) from github."""
         url = URL_HASSOS_OTA.format(version=version, board=self.board)
         raucb = Path(self.sys_config.path_tmp, f"hassos-{version}.raucb")
@@ -158,7 +158,7 @@ class HassOS(CoreSysAttributes):
         _LOGGER.error("HassOS update fails with: %s", self.sys_dbus.rauc.last_error)
         raise HassOSUpdateError()
 
-    async def mark_healthy(self):
+    async def mark_healthy(self) -> None:
         """Set booted partition as good for rauc."""
         try:
             response = await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")

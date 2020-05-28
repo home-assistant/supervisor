@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 import os
 from pathlib import Path, PurePath
-from typing import Optional
+from typing import List, Optional
 
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
@@ -52,12 +52,12 @@ class CoreConfig(JsonConfig):
         super().__init__(FILE_HASSIO_CONFIG, SCHEMA_SUPERVISOR_CONFIG)
 
     @property
-    def timezone(self):
+    def timezone(self) -> str:
         """Return system timezone."""
         return self._data[ATTR_TIMEZONE]
 
     @timezone.setter
-    def timezone(self, value):
+    def timezone(self, value: str) -> None:
         """Set system timezone."""
         self._data[ATTR_TIMEZONE] = value
 
@@ -67,7 +67,7 @@ class CoreConfig(JsonConfig):
         return self._data.get(ATTR_VERSION)
 
     @version.setter
-    def version(self, value: str):
+    def version(self, value: str) -> None:
         """Set config version."""
         self._data[ATTR_VERSION] = value
 
@@ -77,7 +77,7 @@ class CoreConfig(JsonConfig):
         return self._data[ATTR_WAIT_BOOT]
 
     @wait_boot.setter
-    def wait_boot(self, value: int):
+    def wait_boot(self, value: int) -> None:
         """Set wait boot time."""
         self._data[ATTR_WAIT_BOOT] = value
 
@@ -87,7 +87,7 @@ class CoreConfig(JsonConfig):
         return self._data[ATTR_DEBUG]
 
     @debug.setter
-    def debug(self, value: bool):
+    def debug(self, value: bool) -> None:
         """Set debug mode."""
         self._data[ATTR_DEBUG] = value
 
@@ -97,7 +97,7 @@ class CoreConfig(JsonConfig):
         return self._data[ATTR_DEBUG_BLOCK]
 
     @debug_block.setter
-    def debug_block(self, value: bool):
+    def debug_block(self, value: bool) -> None:
         """Set debug wait mode."""
         self._data[ATTR_DEBUG_BLOCK] = value
 
@@ -107,7 +107,7 @@ class CoreConfig(JsonConfig):
         return self._data[ATTR_LOGGING]
 
     @logging.setter
-    def logging(self, value: LogLevel):
+    def logging(self, value: LogLevel) -> None:
         """Set system log level."""
         self._data[ATTR_LOGGING] = value
         self.modify_log_level()
@@ -118,7 +118,7 @@ class CoreConfig(JsonConfig):
         logging.getLogger("supervisor").setLevel(lvl)
 
     @property
-    def last_boot(self):
+    def last_boot(self) -> datetime:
         """Return last boot datetime."""
         boot_str = self._data.get(ATTR_LAST_BOOT, DEFAULT_BOOT_TIME)
 
@@ -128,138 +128,138 @@ class CoreConfig(JsonConfig):
         return boot_time
 
     @last_boot.setter
-    def last_boot(self, value):
+    def last_boot(self, value: datetime) -> None:
         """Set last boot datetime."""
         self._data[ATTR_LAST_BOOT] = value.isoformat()
 
     @property
-    def path_supervisor(self):
+    def path_supervisor(self) -> Path:
         """Return Supervisor data path."""
         return SUPERVISOR_DATA
 
     @property
-    def path_extern_supervisor(self):
+    def path_extern_supervisor(self) -> PurePath:
         """Return Supervisor data path external for Docker."""
         return PurePath(os.environ[ENV_SUPERVISOR_SHARE])
 
     @property
-    def path_extern_homeassistant(self):
+    def path_extern_homeassistant(self) -> str:
         """Return config path external for Docker."""
         return str(PurePath(self.path_extern_supervisor, HOMEASSISTANT_CONFIG))
 
     @property
-    def path_homeassistant(self):
+    def path_homeassistant(self) -> Path:
         """Return config path inside supervisor."""
         return Path(SUPERVISOR_DATA, HOMEASSISTANT_CONFIG)
 
     @property
-    def path_extern_ssl(self):
+    def path_extern_ssl(self) -> str:
         """Return SSL path external for Docker."""
         return str(PurePath(self.path_extern_supervisor, HASSIO_SSL))
 
     @property
-    def path_ssl(self):
+    def path_ssl(self) -> Path:
         """Return SSL path inside supervisor."""
         return Path(SUPERVISOR_DATA, HASSIO_SSL)
 
     @property
-    def path_addons_core(self):
+    def path_addons_core(self) -> Path:
         """Return git path for core Add-ons."""
         return Path(SUPERVISOR_DATA, ADDONS_CORE)
 
     @property
-    def path_addons_git(self):
+    def path_addons_git(self) -> Path:
         """Return path for Git Add-on."""
         return Path(SUPERVISOR_DATA, ADDONS_GIT)
 
     @property
-    def path_addons_local(self):
+    def path_addons_local(self) -> Path:
         """Return path for custom Add-ons."""
         return Path(SUPERVISOR_DATA, ADDONS_LOCAL)
 
     @property
-    def path_extern_addons_local(self):
+    def path_extern_addons_local(self) -> PurePath:
         """Return path for custom Add-ons."""
         return PurePath(self.path_extern_supervisor, ADDONS_LOCAL)
 
     @property
-    def path_addons_data(self):
+    def path_addons_data(self) -> Path:
         """Return root Add-on data folder."""
         return Path(SUPERVISOR_DATA, ADDONS_DATA)
 
     @property
-    def path_extern_addons_data(self):
+    def path_extern_addons_data(self) -> PurePath:
         """Return root add-on data folder external for Docker."""
         return PurePath(self.path_extern_supervisor, ADDONS_DATA)
 
     @property
-    def path_audio(self):
+    def path_audio(self) -> Path:
         """Return root audio data folder."""
         return Path(SUPERVISOR_DATA, AUDIO_DATA)
 
     @property
-    def path_extern_audio(self):
+    def path_extern_audio(self) -> PurePath:
         """Return root audio data folder external for Docker."""
         return PurePath(self.path_extern_supervisor, AUDIO_DATA)
 
     @property
-    def path_tmp(self):
+    def path_tmp(self) -> Path:
         """Return Supervisor temp folder."""
         return Path(SUPERVISOR_DATA, TMP_DATA)
 
     @property
-    def path_extern_tmp(self):
+    def path_extern_tmp(self) -> PurePath:
         """Return Supervisor temp folder for Docker."""
         return PurePath(self.path_extern_supervisor, TMP_DATA)
 
     @property
-    def path_backup(self):
+    def path_backup(self) -> Path:
         """Return root backup data folder."""
         return Path(SUPERVISOR_DATA, BACKUP_DATA)
 
     @property
-    def path_extern_backup(self):
+    def path_extern_backup(self) -> PurePath:
         """Return root backup data folder external for Docker."""
         return PurePath(self.path_extern_supervisor, BACKUP_DATA)
 
     @property
-    def path_share(self):
+    def path_share(self) -> Path:
         """Return root share data folder."""
         return Path(SUPERVISOR_DATA, SHARE_DATA)
 
     @property
-    def path_apparmor(self):
+    def path_apparmor(self) -> Path:
         """Return root Apparmor profile folder."""
         return Path(SUPERVISOR_DATA, APPARMOR_DATA)
 
     @property
-    def path_extern_share(self):
+    def path_extern_share(self) -> PurePath:
         """Return root share data folder external for Docker."""
         return PurePath(self.path_extern_supervisor, SHARE_DATA)
 
     @property
-    def path_extern_dns(self):
+    def path_extern_dns(self) -> str:
         """Return dns path external for Docker."""
         return str(PurePath(self.path_extern_supervisor, DNS_DATA))
 
     @property
-    def path_dns(self):
+    def path_dns(self) -> Path:
         """Return dns path inside supervisor."""
         return Path(SUPERVISOR_DATA, DNS_DATA)
 
     @property
-    def addons_repositories(self):
+    def addons_repositories(self) -> List[str]:
         """Return list of custom Add-on repositories."""
         return self._data[ATTR_ADDONS_CUSTOM_LIST]
 
-    def add_addon_repository(self, repo):
+    def add_addon_repository(self, repo: str) -> None:
         """Add a custom repository to list."""
         if repo in self._data[ATTR_ADDONS_CUSTOM_LIST]:
             return
 
         self._data[ATTR_ADDONS_CUSTOM_LIST].append(repo)
 
-    def drop_addon_repository(self, repo):
+    def drop_addon_repository(self, repo: str) -> None:
         """Remove a custom repository from list."""
         if repo not in self._data[ATTR_ADDONS_CUSTOM_LIST]:
             return

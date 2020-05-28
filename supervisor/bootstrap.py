@@ -27,15 +27,16 @@ from .discovery import Discovery
 from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
-from .hwmon import HwMonitor
 from .ingress import Ingress
+from .misc.hwmon import HwMonitor
+from .misc.scheduler import Scheduler
+from .misc.secrets import SecretsManager
+from .misc.tasks import Tasks
 from .plugins import PluginManager
-from .secrets import SecretsManager
 from .services import ServiceManager
 from .snapshots import SnapshotManager
 from .store import StoreManager
 from .supervisor import Supervisor
-from .tasks import Tasks
 from .updater import Updater
 from .utils.dt import fetch_timezone
 
@@ -45,7 +46,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 MACHINE_ID = Path("/etc/machine-id")
 
 
-async def initialize_coresys():
+async def initialize_coresys() -> None:
     """Initialize supervisor coresys/objects."""
     coresys = CoreSys()
 
@@ -70,6 +71,7 @@ async def initialize_coresys():
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
     coresys.secrets = SecretsManager(coresys)
+    coresys.scheduler = Scheduler(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
@@ -92,7 +94,7 @@ async def initialize_coresys():
     return coresys
 
 
-def initialize_system_data(coresys: CoreSys):
+def initialize_system_data(coresys: CoreSys) -> None:
     """Set up the default configuration and create folders."""
     config = coresys.config
 
@@ -168,7 +170,7 @@ def initialize_system_data(coresys: CoreSys):
         coresys.config.debug = True
 
 
-def migrate_system_env(coresys: CoreSys):
+def migrate_system_env(coresys: CoreSys) -> None:
     """Cleanup some stuff after update."""
     config = coresys.config
 
@@ -181,7 +183,7 @@ def migrate_system_env(coresys: CoreSys):
             _LOGGER.warning("Can't cleanup old Add-on build directory")
 
 
-def initialize_logging():
+def initialize_logging() -> None:
     """Initialize the logging."""
     logging.basicConfig(level=logging.INFO)
     fmt = "%(asctime)s %(levelname)s (%(threadName)s) [%(name)s] %(message)s"
@@ -237,7 +239,7 @@ def check_environment() -> None:
         _LOGGER.critical("Can't find gdbus!")
 
 
-def reg_signal(loop):
+def reg_signal(loop) -> None:
     """Register SIGTERM and SIGKILL to stop system."""
     try:
         loop.add_signal_handler(signal.SIGTERM, lambda: loop.call_soon(loop.stop))

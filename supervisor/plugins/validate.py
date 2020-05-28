@@ -3,7 +3,7 @@
 import voluptuous as vol
 
 from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION
-from ..validate import dns_server_list, docker_image, token, simple_version
+from ..validate import dns_server_list, docker_image, simple_version, token
 
 SCHEMA_DNS_CONFIG = vol.Schema(
     {

@@ -2,6 +2,7 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import attr
@@ -45,6 +46,11 @@ class DockerInfo:
         version_min = pkg_version.parse(MIN_SUPPORTED_DOCKER)
 
         return version_local >= version_min
+
+    @property
+    def inside_lxc(self) -> bool:
+        """Return True if the docker run inside lxc."""
+        return Path("/dev/lxd/sock").exists()
 
     def check_requirements(self) -> None:
         """Show wrong configurations."""
@@ -95,7 +101,7 @@ class DockerAPI:
         version: str = "latest",
         dns: bool = True,
         ipv4: Optional[IPv4Address] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any,
     ) -> docker.models.containers.Container:
         """Create a Docker container and run it.
 
@@ -153,7 +159,7 @@ class DockerAPI:
         image: str,
         version: str = "latest",
         command: Optional[str] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any,
     ) -> CommandReturn:
         """Create a temporary container and run command.
 

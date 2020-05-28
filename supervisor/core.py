@@ -48,6 +48,12 @@ class Core(CoreSysAttributes):
                 "Docker version %s is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
+        elif self.sys_docker.info.inside_lxc:
+            self.healthy = False
+            _LOGGER.critical(
+                "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
+            )
+
         self.sys_docker.info.check_requirements()
 
         # Check if system is healthy
@@ -181,7 +187,7 @@ class Core(CoreSysAttributes):
     async def stop(self):
         """Stop a running orchestration."""
         # don't process scheduler anymore
-        self.sys_scheduler.suspend = True
+        self.state = CoreStates.STOPPING
 
         # store new last boot / prevent time adjustments
         if self.state == CoreStates.RUNNING:
@@ -207,12 +213,17 @@ class Core(CoreSysAttributes):
 
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
+        # don't process scheduler anymore
+        self.state = CoreStates.STOPPING
+
+        # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(STARTUP_APPLICATION)
 
         # Close Home Assistant
         with suppress(HassioError):
             await self.sys_homeassistant.stop()
 
+        # Shutdown System Add-ons
         await self.sys_addons.shutdown(STARTUP_SERVICES)
         await self.sys_addons.shutdown(STARTUP_SYSTEM)
         await self.sys_addons.shutdown(STARTUP_INITIALIZE)

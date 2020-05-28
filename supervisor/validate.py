@@ -1,11 +1,11 @@
 """Validate functions."""
 import ipaddress
 import re
-import uuid
 from typing import Optional, Union
+import uuid
 
-import voluptuous as vol
 from packaging import version as pkg_version
+import voluptuous as vol
 
 from .const import (
     ATTR_ACCESS_TOKEN,

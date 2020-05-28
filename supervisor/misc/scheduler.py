@@ -1,7 +1,9 @@
 """Schedule for Supervisor."""
-import asyncio
 from datetime import date, datetime, time, timedelta
 import logging
+
+from ..const import CoreStates
+from ..coresys import CoreSys, CoreSysAttributes
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -11,14 +13,13 @@ CALL = "callback"
 TASK = "task"
 
 
-class Scheduler:
+class Scheduler(CoreSysAttributes):
     """Schedule task inside Supervisor."""
 
-    def __init__(self):
+    def __init__(self, coresys: CoreSys):
         """Initialize task schedule."""
-        self.loop = asyncio.get_running_loop()
+        self.coresys: CoreSys = coresys
         self._data = {}
-        self.suspend = False
 
     def register_task(self, coro_callback, interval, repeat=True):
         """Schedule a coroutine.
@@ -40,8 +41,8 @@ class Scheduler:
         """Run a scheduled task."""
         data = self._data[task_id]
 
-        if not self.suspend:
-            self.loop.create_task(data[CALL]())
+        if self.sys_core.state == CoreStates.RUNNING:
+            self.sys_create_task(data[CALL]())
 
         if data[REPEAT]:
             self._schedule_task(data[INTERVAL], task_id)
@@ -51,7 +52,7 @@ class Scheduler:
     def _schedule_task(self, interval, task_id):
         """Schedule a task on loop."""
         if isinstance(interval, (int, float)):
-            job = self.loop.call_later(interval, self._run_task, task_id)
+            job = self.sys_loop.call_later(interval, self._run_task, task_id)
         elif isinstance(interval, time):
             today = datetime.combine(date.today(), interval)
             tomorrow = datetime.combine(date.today() + timedelta(days=1), interval)
@@ -62,7 +63,7 @@ class Scheduler:
             else:
                 calc = tomorrow
 
-            job = self.loop.call_at(calc.timestamp(), self._run_task, task_id)
+            job = self.sys_loop.call_at(calc.timestamp(), self._run_task, task_id)
         else:
             _LOGGER.critical(
                 "Unknown interval %s (type: %s) for scheduler %s",

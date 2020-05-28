@@ -253,9 +253,9 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         while True:
             if not self.sys_updater.image_homeassistant:
                 _LOGGER.warning(
-                    "Found no information about Home Assistant. Retry in 15sec"
+                    "Found no information about Home Assistant. Retry in 30sec"
                 )
-                await asyncio.sleep(15)
+                await asyncio.sleep(30)
                 await self.sys_updater.reload()
                 continue
 

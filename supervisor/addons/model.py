@@ -215,7 +215,8 @@ class AddonModel(CoreSysAttributes):
         services = {}
         for data in services_list:
             service = RE_SERVICE.match(data)
-            services[service.group("service")] = service.group("rights")
+            if service:
+                services[service.group("service")] = service.group("rights")
 
         return services
 
@@ -464,6 +465,8 @@ class AddonModel(CoreSysAttributes):
         volumes = {}
         for volume in self.data[ATTR_MAP]:
             result = RE_VOLUME.match(volume)
+            if not result:
+                continue
             volumes[result.group(1)] = result.group(2) or "ro"
 
         return volumes
