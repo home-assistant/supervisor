@@ -52,7 +52,7 @@ class Scheduler(CoreSysAttributes):
     def _schedule_task(self, interval, task_id):
         """Schedule a task on loop."""
         if isinstance(interval, (int, float)):
-            job = self.sys_loop.loop.call_later(interval, self._run_task, task_id)
+            job = self.sys_loop.call_later(interval, self._run_task, task_id)
         elif isinstance(interval, time):
             today = datetime.combine(date.today(), interval)
             tomorrow = datetime.combine(date.today() + timedelta(days=1), interval)
