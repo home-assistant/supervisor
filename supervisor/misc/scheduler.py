@@ -42,7 +42,7 @@ class Scheduler(CoreSysAttributes):
         data = self._data[task_id]
 
         if self.sys_core.state == CoreStates.RUNNING:
-            self.sys_loop.create_task(data[CALL]())
+            self.sys_create_task(data[CALL]())
 
         if data[REPEAT]:
             self._schedule_task(data[INTERVAL], task_id)
