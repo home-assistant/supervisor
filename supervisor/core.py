@@ -187,7 +187,7 @@ class Core(CoreSysAttributes):
     async def stop(self):
         """Stop a running orchestration."""
         # don't process scheduler anymore
-        self.sys_scheduler.suspend = True
+        self.state = CoreStates.STOPPING
 
         # store new last boot / prevent time adjustments
         if self.state == CoreStates.RUNNING:
@@ -213,12 +213,17 @@ class Core(CoreSysAttributes):
 
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
+        # don't process scheduler anymore
+        self.state = CoreStates.STOPPING
+
+        # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(STARTUP_APPLICATION)
 
         # Close Home Assistant
         with suppress(HassioError):
             await self.sys_homeassistant.stop()
 
+        # Shutdown System Add-ons
         await self.sys_addons.shutdown(STARTUP_SERVICES)
         await self.sys_addons.shutdown(STARTUP_SYSTEM)
         await self.sys_addons.shutdown(STARTUP_INITIALIZE)
