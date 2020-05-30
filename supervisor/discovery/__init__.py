@@ -118,7 +118,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
     async def _push_discovery(self, message: Message, command: str) -> None:
         """Send a discovery request."""
         if not await self.sys_homeassistant.check_api_state():
-            _LOGGER.info("Discovery %s mesage ignore", message.uuid)
+            _LOGGER.info("Discovery %s message ignore", message.uuid)
             return
 
         data = attr.asdict(message)
