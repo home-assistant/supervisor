@@ -80,28 +80,47 @@ class AddonManager(CoreSysAttributes):
 
     async def boot(self, stage: str) -> None:
         """Boot add-ons with mode auto."""
-        tasks = []
+        tasks: List[Addon] = []
         for addon in self.installed:
             if addon.boot != BOOT_AUTO or addon.startup != stage:
                 continue
-            tasks.append(addon.start())
+            tasks.append(addon)
 
+        # Evaluate add-ons which need to be started
         _LOGGER.info("Phase '%s' start %d add-ons", stage, len(tasks))
-        if tasks:
-            await asyncio.wait(tasks)
-            await asyncio.sleep(self.sys_config.wait_boot)
+        if not tasks:
+            return
+
+        # Start Add-ons sequential
+        # avoid issue on slow IO
+        for addon in tasks:
+            try:
+                await addon.start()
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Can't start Add-on %s: %s", addon.slug, err)
+
+        await asyncio.sleep(self.sys_config.wait_boot)
 
     async def shutdown(self, stage: str) -> None:
         """Shutdown addons."""
-        tasks = []
+        tasks: List[Addon] = []
         for addon in self.installed:
             if await addon.state() != STATE_STARTED or addon.startup != stage:
                 continue
-            tasks.append(addon.stop())
+            tasks.append(addon)
 
+        # Evaluate add-ons which need to be stopped
         _LOGGER.info("Phase '%s' stop %d add-ons", stage, len(tasks))
-        if tasks:
-            await asyncio.wait(tasks)
+        if not tasks:
+            return
+
+        # Stop Add-ons sequential
+        # avoid issue on slow IO
+        for addon in tasks:
+            try:
+                await addon.stop()
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Can't stop Add-on %s: %s", addon.slug, err)
 
     async def install(self, slug: str) -> None:
         """Install an add-on."""

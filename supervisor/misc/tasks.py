@@ -4,6 +4,7 @@ import logging
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
+    AddonsError,
     AudioError,
     CliError,
     CoreDNSError,
@@ -131,7 +132,6 @@ class Tasks(CoreSysAttributes):
 
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
-        tasks = []
         for addon in self.sys_addons.all:
             if not addon.is_installed or not addon.auto_update:
                 continue
@@ -140,15 +140,15 @@ class Tasks(CoreSysAttributes):
                 continue
 
             if addon.test_update_schema():
-                tasks.append(addon.update())
+                _LOGGER.info("Add-on auto update process %s", addon.slug)
+                try:
+                    await addon.update()
+                except AddonsError:
+                    _LOGGER.error("Can't auto update Add-on %s", addon.slug)
             else:
                 _LOGGER.warning(
                     "Add-on %s will be ignored, schema tests fails", addon.slug
                 )
-
-        if tasks:
-            _LOGGER.info("Add-on auto update process %d tasks", len(tasks))
-            await asyncio.wait(tasks)
 
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
