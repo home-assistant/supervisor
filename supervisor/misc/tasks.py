@@ -1,5 +1,4 @@
 """A collection of tasks."""
-import asyncio
 import logging
 
 from ..coresys import CoreSysAttributes
