@@ -185,7 +185,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_VERSION]
 
     @property
-    def version(self) -> str:
+    def version(self) -> Optional[str]:
         """Return version of add-on."""
         return self.data[ATTR_VERSION]
 
@@ -288,7 +288,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_HOST_DBUS]
 
     @property
-    def devices(self) -> Optional[List[str]]:
+    def devices(self) -> List[str]:
         """Return devices of add-on."""
         return self.data.get(ATTR_DEVICES, [])
 
@@ -452,7 +452,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data.get(ATTR_MACHINE, [])
 
     @property
-    def image(self) -> str:
+    def image(self) -> Optional[str]:
         """Generate image name from data."""
         return self._image(self.data)
 

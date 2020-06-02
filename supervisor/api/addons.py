@@ -280,6 +280,8 @@ class APIAddons(CoreSysAttributes):
     async def options(self, request: web.Request) -> None:
         """Store user options for add-on."""
         addon: AnyAddon = self._extract_addon(request)
+        if not isinstance(addon, Addon):
+            raise APIError(f"Cannot set options, add-on {addon.slug} is not installed")
 
         # Update secrets for validation
         await self.sys_secrets.reload()
@@ -315,6 +317,11 @@ class APIAddons(CoreSysAttributes):
         addon: AnyAddon = self._extract_addon(request)
         body: Dict[str, Any] = await api_validate(SCHEMA_SECURITY, request)
 
+        if not isinstance(addon, Addon):
+            raise APIError(
+                f"Cannot set security options, add-on {addon.slug} is not installed"
+            )
+
         if ATTR_PROTECTED in body:
             _LOGGER.warning("Protected flag changing for %s!", addon.slug)
             addon.protected = body[ATTR_PROTECTED]
@@ -325,6 +332,9 @@ class APIAddons(CoreSysAttributes):
     async def stats(self, request: web.Request) -> Dict[str, Any]:
         """Return resource information."""
         addon: AnyAddon = self._extract_addon(request)
+        if not isinstance(addon, Addon):
+            raise APIError(f"Cannot get stats, add-on {addon.slug} is not installed")
+
         stats: DockerStats = await addon.stats()
 
         return {
@@ -354,12 +364,16 @@ class APIAddons(CoreSysAttributes):
     def start(self, request: web.Request) -> Awaitable[None]:
         """Start add-on."""
         addon: AnyAddon = self._extract_addon(request)
+        if not isinstance(addon, Addon):
+            raise APIError(f"Cannot start add-on, add-on {addon.slug} is not installed")
         return asyncio.shield(addon.start())
 
     @api_process
     def stop(self, request: web.Request) -> Awaitable[None]:
         """Stop add-on."""
         addon: AnyAddon = self._extract_addon(request)
+        if not isinstance(addon, Addon):
+            raise APIError(f"Cannot stop add-on, add-on {addon.slug} is not installed")
         return asyncio.shield(addon.stop())
 
     @api_process
@@ -376,6 +390,11 @@ class APIAddons(CoreSysAttributes):
     def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart add-on."""
         addon: AnyAddon = self._extract_addon(request)
+        if not isinstance(addon, Addon):
+            raise APIError(
+                f"Cannot restart add-on, add-on {addon.slug} is not installed"
+            )
+
         return asyncio.shield(addon.restart())
 
     @api_process
@@ -391,6 +410,8 @@ class APIAddons(CoreSysAttributes):
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return logs from add-on."""
         addon: AnyAddon = self._extract_addon(request)
+        if not isinstance(addon, Addon):
+            raise APIError(f"Cannot get logs, add-on {addon.slug} is not installed")
         return addon.logs()
 
     @api_process_raw(CONTENT_TYPE_PNG)
@@ -437,6 +458,10 @@ class APIAddons(CoreSysAttributes):
     async def stdin(self, request: web.Request) -> None:
         """Write to stdin of add-on."""
         addon: AnyAddon = self._extract_addon(request)
+        if not isinstance(addon, Addon):
+            raise APIError(
+                f"Cannot write to STDIN, add-on {addon.slug} is not installed"
+            )
         if not addon.with_stdin:
             raise APIError(f"STDIN not supported the {addon.slug} add-on")
 
@@ -448,7 +473,7 @@ def _pretty_devices(addon: AnyAddon) -> List[str]:
     """Return a simplified device list."""
     dev_list = addon.devices
     if not dev_list:
-        return None
+        return []
     return [row.split(":")[0] for row in dev_list]
 
 
