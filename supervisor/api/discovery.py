@@ -5,6 +5,7 @@ from ..const import (
     ATTR_ADDON,
     ATTR_CONFIG,
     ATTR_DISCOVERY,
+    ATTR_SERVICES,
     ATTR_SERVICE,
     ATTR_UUID,
     REQUEST_FROM,
@@ -42,6 +43,7 @@ class APIDiscovery(CoreSysAttributes):
         """Show register services."""
         self._check_permission_ha(request)
 
+        # Get available discovery
         discovery = []
         for message in self.sys_discovery.list_messages:
             discovery.append(
@@ -53,7 +55,13 @@ class APIDiscovery(CoreSysAttributes):
                 }
             )
 
-        return {ATTR_DISCOVERY: discovery}
+        # Get available services/add-ons
+        services = {}
+        for addon in self.sys_addons.all:
+            for name in addon.discovery:
+                services.setdefault(name, []).append(addon.slug)
+
+        return {ATTR_DISCOVERY: discovery, ATTR_SERVICES: services}
 
     @api_process
     async def set_discovery(self, request):
