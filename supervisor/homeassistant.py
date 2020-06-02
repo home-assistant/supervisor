@@ -274,8 +274,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # Start landingpage
         _LOGGER.info("Start HomeAssistant landingpage")
-        with suppress(DockerAPIError):
-            await self.instance.run()
+        with suppress(HomeAssistantError):
+            await self._start()
 
     @process_lock
     async def install(self) -> None:
@@ -374,6 +374,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await self.instance.run()
         except DockerAPIError:
             raise HomeAssistantError() from None
+
+        # Don't block for landingpage
+        if self.version == "landingpage":
+            return
         await self._block_till_run()
 
     @process_lock
