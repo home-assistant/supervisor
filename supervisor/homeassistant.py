@@ -275,7 +275,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         # Start landingpage
         _LOGGER.info("Start HomeAssistant landingpage")
         with suppress(HomeAssistantError):
-            await self._start()
+            await self.instance.run()
 
     @process_lock
     async def install(self) -> None:
