@@ -274,7 +274,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # Start landingpage
         _LOGGER.info("Start HomeAssistant landingpage")
-        with suppress(HomeAssistantError):
+        with suppress(DockerAPIError):
             await self.instance.run()
 
     @process_lock
