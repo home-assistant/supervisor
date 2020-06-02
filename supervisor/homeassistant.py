@@ -567,10 +567,13 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         # Check if API is up
         with suppress(HomeAssistantAPIError):
-            async with self.make_request("get", "api/") as resp:
+            async with self.make_request("get", "api/config") as resp:
                 if resp.status in (200, 201):
-                    return True
-                _LOGGER.debug("Home Assistant API return: %d", resp.status)
+                    data = await resp.json()
+                    if data.get("state", "RUNNING") == "RUNNING":
+                        return True
+                else:
+                    _LOGGER.debug("Home Assistant API return: %d", resp.status)
 
         return False
 
