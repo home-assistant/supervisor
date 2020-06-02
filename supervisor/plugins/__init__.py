@@ -51,9 +51,17 @@ class PluginManager(CoreSysAttributes):
 
     async def load(self):
         """Load Supervisor plugins."""
-        await asyncio.wait(
-            [self.dns.load(), self.audio.load(), self.cli.load(), self.multicast.load()]
-        )
+        # Sequential to avoid issue on slow IO
+        for plugin in (
+            self.dns,
+            self.audio,
+            self.cli,
+            self.multicast,
+        ):
+            try:
+                await plugin.load()
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.warning("Can't load plugin %s", type(plugin).__name__)
 
         # Check requirements
         for plugin, required_version in (
@@ -103,11 +111,14 @@ class PluginManager(CoreSysAttributes):
 
     async def shutdown(self) -> None:
         """Shutdown Supervisor plugin."""
-        await asyncio.wait(
-            [
-                self.dns.stop(),
-                self.audio.stop(),
-                self.cli.stop(),
-                self.multicast.stop(),
-            ]
-        )
+        # Sequential to avoid issue on slow IO
+        for plugin in (
+            self.audio,
+            self.cli,
+            self.multicast,
+            self.dns,
+        ):
+            try:
+                await plugin.stop()
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.warning("Can't stop plugin %s", type(plugin).__name__)
