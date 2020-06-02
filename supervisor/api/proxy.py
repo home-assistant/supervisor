@@ -75,6 +75,8 @@ class APIProxy(CoreSysAttributes):
     async def stream(self, request: web.Request):
         """Proxy HomeAssistant EventStream Requests."""
         self._check_access(request)
+        if not await self.sys_homeassistant.check_api_state():
+            raise HTTPBadGateway()
 
         _LOGGER.info("Home Assistant EventStream start")
         async with self._api_client(request, "stream", timeout=None) as client:
@@ -94,6 +96,8 @@ class APIProxy(CoreSysAttributes):
     async def api(self, request: web.Request):
         """Proxy Home Assistant API Requests."""
         self._check_access(request)
+        if not await self.sys_homeassistant.check_api_state():
+            raise HTTPBadGateway()
 
         # Normal request
         path = request.match_info.get("path", "")
@@ -153,6 +157,8 @@ class APIProxy(CoreSysAttributes):
 
     async def websocket(self, request: web.Request):
         """Initialize a WebSocket API connection."""
+        if not await self.sys_homeassistant.check_api_state():
+            raise HTTPBadGateway()
         _LOGGER.info("Home Assistant WebSocket API request initialize")
 
         # init server

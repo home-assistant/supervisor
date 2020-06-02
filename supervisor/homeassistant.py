@@ -374,6 +374,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             await self.instance.run()
         except DockerAPIError:
             raise HomeAssistantError() from None
+
+        # Don't block for landingpage
+        if self.version == "landingpage":
+            return
         await self._block_till_run()
 
     @process_lock
@@ -559,12 +563,21 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
+        # Check if port is up
+        if not await self.sys_run_in_executor(
+            check_port, self.ip_address, self.api_port
+        ):
+            return False
+
+        # Check if API is up
         with suppress(HomeAssistantAPIError):
-            async with self.make_request("get", "api/") as resp:
+            async with self.make_request("get", "api/config") as resp:
                 if resp.status in (200, 201):
-                    return True
-                status = resp.status
-            _LOGGER.warning("Home Assistant API config mismatch: %s", status)
+                    data = await resp.json()
+                    if data.get("state", "RUNNING") == "RUNNING":
+                        return True
+                else:
+                    _LOGGER.debug("Home Assistant API return: %d", resp.status)
 
         return False
 
@@ -589,9 +602,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 break
 
             # 2: Check if API response
-            if await self.sys_run_in_executor(
-                check_port, self.ip_address, self.api_port
-            ):
+            if await self.check_api_state():
                 _LOGGER.info("Detect a running Home Assistant instance")
                 self._error_state = False
                 return
