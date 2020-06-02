@@ -137,7 +137,7 @@ class APIAddons(CoreSysAttributes):
 
         addon = self.sys_addons.get(addon_slug)
         if not addon:
-            raise APIError(f"Addon {addon_slug} does not exist", addon_slug)
+            raise APIError(f"Addon {addon_slug} does not exist")
 
         if check_installed and not addon.is_installed:
             raise APIError(f"Addon {addon.slug} is not installed")
