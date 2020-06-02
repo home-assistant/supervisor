@@ -5,13 +5,7 @@ import logging
 
 import async_timeout
 
-from .const import (
-    STARTUP_APPLICATION,
-    STARTUP_INITIALIZE,
-    STARTUP_SERVICES,
-    STARTUP_SYSTEM,
-    CoreStates,
-)
+from .const import AddonStartup, CoreStates
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
 
@@ -133,7 +127,7 @@ class Core(CoreSysAttributes):
                 )
 
         # Start addon mark as initialize
-        await self.sys_addons.boot(STARTUP_INITIALIZE)
+        await self.sys_addons.boot(AddonStartup.INITIALIZE)
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
@@ -145,10 +139,10 @@ class Core(CoreSysAttributes):
             self.sys_services.reset()
 
             # start addon mark as system
-            await self.sys_addons.boot(STARTUP_SYSTEM)
+            await self.sys_addons.boot(AddonStartup.SYSTEM)
 
             # start addon mark as services
-            await self.sys_addons.boot(STARTUP_SERVICES)
+            await self.sys_addons.boot(AddonStartup.SERVICES)
 
             # run HomeAssistant
             if (
@@ -161,7 +155,7 @@ class Core(CoreSysAttributes):
                 _LOGGER.info("Skip start of Home Assistant")
 
             # start addon mark as application
-            await self.sys_addons.boot(STARTUP_APPLICATION)
+            await self.sys_addons.boot(AddonStartup.APPLICATION)
 
             # store new last boot
             self._update_last_boot()
@@ -214,22 +208,24 @@ class Core(CoreSysAttributes):
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
         # don't process scheduler anymore
-        self.state = CoreStates.STOPPING
+        if self.state == CoreStates.RUNNING:
+            self.state = CoreStates.STOPPING
 
         # Shutdown Application Add-ons, using Home Assistant API
-        await self.sys_addons.shutdown(STARTUP_APPLICATION)
+        await self.sys_addons.shutdown(AddonStartup.APPLICATION)
 
         # Close Home Assistant
         with suppress(HassioError):
             await self.sys_homeassistant.stop()
 
         # Shutdown System Add-ons
-        await self.sys_addons.shutdown(STARTUP_SERVICES)
-        await self.sys_addons.shutdown(STARTUP_SYSTEM)
-        await self.sys_addons.shutdown(STARTUP_INITIALIZE)
+        await self.sys_addons.shutdown(AddonStartup.SERVICES)
+        await self.sys_addons.shutdown(AddonStartup.SYSTEM)
+        await self.sys_addons.shutdown(AddonStartup.INITIALIZE)
 
         # Shutdown all Plugins
-        await self.sys_plugins.shutdown()
+        if self.state == CoreStates.STOPPING:
+            await self.sys_plugins.shutdown()
 
     def _update_last_boot(self):
         """Update last boot time."""

@@ -5,7 +5,7 @@ import logging
 import tarfile
 from typing import Dict, List, Optional, Union
 
-from ..const import BOOT_AUTO, STATE_STARTED
+from ..const import BOOT_AUTO, STATE_STARTED, AddonStartup
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     AddonsError,
@@ -78,7 +78,7 @@ class AddonManager(CoreSysAttributes):
         # Sync DNS
         await self.sync_dns()
 
-    async def boot(self, stage: str) -> None:
+    async def boot(self, stage: AddonStartup) -> None:
         """Boot add-ons with mode auto."""
         tasks: List[Addon] = []
         for addon in self.installed:
@@ -101,7 +101,7 @@ class AddonManager(CoreSysAttributes):
 
         await asyncio.sleep(self.sys_config.wait_boot)
 
-    async def shutdown(self, stage: str) -> None:
+    async def shutdown(self, stage: AddonStartup) -> None:
         """Shutdown addons."""
         tasks: List[Addon] = []
         for addon in self.installed:
