@@ -135,19 +135,22 @@ class Tasks(CoreSysAttributes):
             if not addon.is_installed or not addon.auto_update:
                 continue
 
+            # Evaluate available updates
             if addon.version == addon.latest_version:
                 continue
-
-            if addon.test_update_schema():
-                _LOGGER.info("Add-on auto update process %s", addon.slug)
-                try:
-                    await addon.update()
-                except AddonsError:
-                    _LOGGER.error("Can't auto update Add-on %s", addon.slug)
-            else:
+            if not addon.test_update_schema():
                 _LOGGER.warning(
                     "Add-on %s will be ignored, schema tests fails", addon.slug
                 )
+                continue
+
+            # Run Add-on update sequential
+            # avoid issue on slow IO
+            _LOGGER.info("Add-on auto update process %s", addon.slug)
+            try:
+                await addon.update()
+            except AddonsError:
+                _LOGGER.error("Can't auto update Add-on %s", addon.slug)
 
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
