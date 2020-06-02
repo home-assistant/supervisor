@@ -659,7 +659,10 @@ authentication system. Needs an ingress session as cookie.
       "uuid": "uuid",
       "config": {}
     }
-  ]
+  ],
+  "services": {
+    "ozw": ["core_zwave"]
+  }
 }
 ```
 

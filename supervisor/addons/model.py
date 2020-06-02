@@ -1,4 +1,5 @@
 """Init file for Supervisor add-ons."""
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
@@ -64,6 +65,7 @@ from ..const import (
     SECURITY_DISABLE,
     SECURITY_PROFILE,
     AddonStages,
+    AddonStartup,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from .validate import RE_SERVICE, RE_VOLUME, schema_ui_options, validate_options
@@ -71,7 +73,7 @@ from .validate import RE_SERVICE, RE_VOLUME, schema_ui_options, validate_options
 Data = Dict[str, Any]
 
 
-class AddonModel(CoreSysAttributes):
+class AddonModel(CoreSysAttributes, ABC):
     """Add-on Data layout."""
 
     def __init__(self, coresys: CoreSys, slug: str):
@@ -80,19 +82,19 @@ class AddonModel(CoreSysAttributes):
         self.slug: str = slug
 
     @property
+    @abstractmethod
     def data(self) -> Data:
-        """Return Add-on config/data."""
-        raise NotImplementedError()
+        """Return add-on config/data."""
 
     @property
+    @abstractmethod
     def is_installed(self) -> bool:
         """Return True if an add-on is installed."""
-        raise NotImplementedError()
 
     @property
+    @abstractmethod
     def is_detached(self) -> bool:
         """Return True if add-on is detached."""
-        raise NotImplementedError()
 
     @property
     def available(self) -> bool:
@@ -193,9 +195,9 @@ class AddonModel(CoreSysAttributes):
         return True
 
     @property
-    def startup(self) -> Optional[str]:
+    def startup(self) -> AddonStartup:
         """Return startup type of add-on."""
-        return self.data.get(ATTR_STARTUP)
+        return self.data[ATTR_STARTUP]
 
     @property
     def advanced(self) -> bool:
