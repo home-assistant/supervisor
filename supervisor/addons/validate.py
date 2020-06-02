@@ -85,12 +85,10 @@ from ..const import (
     PRIVILEGED_ALL,
     ROLE_ALL,
     ROLE_DEFAULT,
-    STARTUP_ALL,
-    STARTUP_APPLICATION,
-    STARTUP_SERVICES,
     STATE_STARTED,
     STATE_STOPPED,
     AddonStages,
+    AddonStartup,
 )
 from ..coresys import CoreSys
 from ..discovery.validate import valid_discovery_service
@@ -169,12 +167,12 @@ MACHINE_ALL = [
 ]
 
 
-def _simple_startup(value):
+def _simple_startup(value) -> str:
     """Define startup schema."""
     if value == "before":
-        return STARTUP_SERVICES
+        return AddonStartup.SERVICES.value
     if value == "after":
-        return STARTUP_APPLICATION
+        return AddonStartup.APPLICATION.value
     return value
 
 
@@ -188,7 +186,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
         vol.Optional(ATTR_MACHINE): [vol.In(MACHINE_ALL)],
         vol.Optional(ATTR_URL): vol.Url(),
-        vol.Required(ATTR_STARTUP): vol.All(_simple_startup, vol.In(STARTUP_ALL)),
+        vol.Required(ATTR_STARTUP): vol.All(_simple_startup, vol.Coerce(AddonStartup)),
         vol.Required(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
         vol.Optional(ATTR_INIT, default=True): vol.Boolean(),
         vol.Optional(ATTR_ADVANCED, default=False): vol.Boolean(),

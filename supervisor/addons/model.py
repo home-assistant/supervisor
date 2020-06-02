@@ -64,6 +64,7 @@ from ..const import (
     SECURITY_DISABLE,
     SECURITY_PROFILE,
     AddonStages,
+    AddonStartup,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from .validate import RE_SERVICE, RE_VOLUME, schema_ui_options, validate_options
@@ -193,9 +194,9 @@ class AddonModel(CoreSysAttributes):
         return True
 
     @property
-    def startup(self) -> Optional[str]:
+    def startup(self) -> AddonStartup:
         """Return startup type of add-on."""
-        return self.data.get(ATTR_STARTUP)
+        return self.data[ATTR_STARTUP]
 
     @property
     def advanced(self) -> bool:

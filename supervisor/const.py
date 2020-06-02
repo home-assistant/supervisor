@@ -245,20 +245,6 @@ PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
 WANT_SERVICE = "want"
 
-STARTUP_INITIALIZE = "initialize"
-STARTUP_SYSTEM = "system"
-STARTUP_SERVICES = "services"
-STARTUP_APPLICATION = "application"
-STARTUP_ONCE = "once"
-
-STARTUP_ALL = [
-    STARTUP_ONCE,
-    STARTUP_INITIALIZE,
-    STARTUP_SYSTEM,
-    STARTUP_SERVICES,
-    STARTUP_APPLICATION,
-]
-
 BOOT_AUTO = "auto"
 BOOT_MANUAL = "manual"
 
@@ -337,6 +323,16 @@ ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_AD
 
 CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
+
+
+class AddonStartup(str, Enum):
+    """Startup types of Add-on."""
+
+    INITIALIZE = "initialize"
+    SYSTEM = "system"
+    SERVICES = "services"
+    APPLICATION = "application"
+    ONCE = "once"
 
 
 class AddonStages(str, Enum):
