@@ -137,10 +137,10 @@ class APIAddons(CoreSysAttributes):
 
         addon = self.sys_addons.get(addon_slug)
         if not addon:
-            raise APIError("Addon does not exist")
+            raise APIError(f"Addon {addon_slug} does not exist", addon_slug)
 
         if check_installed and not addon.is_installed:
-            raise APIError("Addon is not installed")
+            raise APIError(f"Addon {addon.slug} is not installed")
 
         return addon
 
@@ -398,7 +398,7 @@ class APIAddons(CoreSysAttributes):
         """Return icon from add-on."""
         addon: AnyAddon = self._extract_addon(request, check_installed=False)
         if not addon.with_icon:
-            raise APIError("No icon found!")
+            raise APIError(f"No icon found for add-on {addon.slug}!")
 
         with addon.path_icon.open("rb") as png:
             return png.read()
@@ -408,7 +408,7 @@ class APIAddons(CoreSysAttributes):
         """Return logo from add-on."""
         addon: AnyAddon = self._extract_addon(request, check_installed=False)
         if not addon.with_logo:
-            raise APIError("No logo found!")
+            raise APIError(f"No logo found for add-on {addon.slug}!")
 
         with addon.path_logo.open("rb") as png:
             return png.read()
@@ -418,7 +418,7 @@ class APIAddons(CoreSysAttributes):
         """Return changelog from add-on."""
         addon: AnyAddon = self._extract_addon(request, check_installed=False)
         if not addon.with_changelog:
-            raise APIError("No changelog found!")
+            raise APIError(f"No changelog found for add-on {addon.slug}!")
 
         with addon.path_changelog.open("r") as changelog:
             return changelog.read()
@@ -428,7 +428,7 @@ class APIAddons(CoreSysAttributes):
         """Return documentation from add-on."""
         addon: AnyAddon = self._extract_addon(request, check_installed=False)
         if not addon.with_documentation:
-            raise APIError("No documentation found!")
+            raise APIError(f"No documentation found for add-on {addon.slug}!")
 
         with addon.path_documentation.open("r") as documentation:
             return documentation.read()
@@ -438,7 +438,7 @@ class APIAddons(CoreSysAttributes):
         """Write to stdin of add-on."""
         addon: AnyAddon = self._extract_addon(request)
         if not addon.with_stdin:
-            raise APIError("STDIN not supported by add-on")
+            raise APIError(f"STDIN not supported the {addon.slug} add-on")
 
         data = await request.read()
         await asyncio.shield(addon.write_stdin(data))

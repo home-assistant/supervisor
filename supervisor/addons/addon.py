@@ -81,7 +81,7 @@ class Addon(AddonModel):
 
     @property
     def ip_address(self) -> IPv4Address:
-        """Return IP of Add-on instance."""
+        """Return IP of add-on instance."""
         return self.instance.ip_address
 
     @property
@@ -366,7 +366,7 @@ class Addon(AddonModel):
             write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error(
-                "Add-on %s have wrong options: %s",
+                "Add-on %s has invalid options: %s",
                 self.slug,
                 humanize_error(options, ex),
             )
@@ -524,7 +524,7 @@ class Addon(AddonModel):
         Return a coroutine.
         """
         if not self.with_stdin:
-            _LOGGER.error("Add-on don't support write to stdin!")
+            _LOGGER.error("Add-on %s does not support writing to stdin!", self.slug)
             raise AddonsNotSupportedError()
 
         try:
@@ -622,7 +622,7 @@ class Addon(AddonModel):
 
             # If available
             if not self._available(data[ATTR_SYSTEM]):
-                _LOGGER.error("Add-on %s is not available for this Platform", self.slug)
+                _LOGGER.error("Add-on %s is not available for this platform", self.slug)
                 raise AddonsNotSupportedError()
 
             # Restore local add-on information
@@ -673,7 +673,9 @@ class Addon(AddonModel):
                 try:
                     await self.sys_host.apparmor.load_profile(self.slug, profile_file)
                 except HostAppArmorError:
-                    _LOGGER.error("Can't restore AppArmor profile")
+                    _LOGGER.error(
+                        "Can't restore AppArmor profile for add-on %s", self.slug
+                    )
                     raise AddonsError() from None
 
             # Run add-on
