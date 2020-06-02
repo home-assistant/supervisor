@@ -194,9 +194,9 @@ class AddonModel(CoreSysAttributes):
         return True
 
     @property
-    def startup(self) -> Optional[AddonStartup]:
+    def startup(self) -> AddonStartup:
         """Return startup type of add-on."""
-        return self.data.get(ATTR_STARTUP)
+        return self.data[ATTR_STARTUP]
 
     @property
     def advanced(self) -> bool:
