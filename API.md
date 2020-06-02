@@ -672,7 +672,10 @@ Need ingress session as cookie.
       "uuid": "uuid",
       "config": {}
     }
-  ]
+  ],
+  "services": {
+    "ozw": ["core_zwave"]
+  }
 }
 ```
 
