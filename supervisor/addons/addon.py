@@ -143,7 +143,7 @@ class Addon(AddonModel):
         return self.persist.get(ATTR_BOOT, super().boot)
 
     @boot.setter
-    def boot(self, value: bool):
+    def boot(self, value: bool) -> None:
         """Store user boot options."""
         self.persist[ATTR_BOOT] = value
 
@@ -153,7 +153,7 @@ class Addon(AddonModel):
         return self.persist.get(ATTR_AUTO_UPDATE, super().auto_update)
 
     @auto_update.setter
-    def auto_update(self, value: bool):
+    def auto_update(self, value: bool) -> None:
         """Set auto update."""
         self.persist[ATTR_AUTO_UPDATE] = value
 
@@ -190,7 +190,7 @@ class Addon(AddonModel):
         return self.persist[ATTR_PROTECTED]
 
     @protected.setter
-    def protected(self, value: bool):
+    def protected(self, value: bool) -> None:
         """Set add-on in protected mode."""
         self.persist[ATTR_PROTECTED] = value
 
@@ -200,7 +200,7 @@ class Addon(AddonModel):
         return self.persist.get(ATTR_NETWORK, super().ports)
 
     @ports.setter
-    def ports(self, value: Optional[Dict[str, Optional[int]]]):
+    def ports(self, value: Optional[Dict[str, Optional[int]]]) -> None:
         """Set custom ports of add-on."""
         if value is None:
             self.persist.pop(ATTR_NETWORK, None)
@@ -232,6 +232,8 @@ class Addon(AddonModel):
         if not url:
             return None
         webui = RE_WEBUI.match(url)
+        if not webui:
+            return None
 
         # extract arguments
         t_port = webui.group("t_port")
@@ -274,7 +276,7 @@ class Addon(AddonModel):
         return self.persist[ATTR_INGRESS_PANEL]
 
     @ingress_panel.setter
-    def ingress_panel(self, value: bool):
+    def ingress_panel(self, value: bool) -> None:
         """Return True if the add-on access support ingress."""
         self.persist[ATTR_INGRESS_PANEL] = value
 
@@ -310,50 +312,50 @@ class Addon(AddonModel):
         return input_data
 
     @audio_input.setter
-    def audio_input(self, value: Optional[str]):
+    def audio_input(self, value: Optional[str]) -> None:
         """Set audio input settings."""
         self.persist[ATTR_AUDIO_INPUT] = value
 
     @property
-    def image(self):
+    def image(self) -> Optional[str]:
         """Return image name of add-on."""
         return self.persist.get(ATTR_IMAGE)
 
     @property
-    def need_build(self):
+    def need_build(self) -> bool:
         """Return True if this  add-on need a local build."""
         return ATTR_IMAGE not in self.data
 
     @property
-    def path_data(self):
+    def path_data(self) -> Path:
         """Return add-on data path inside Supervisor."""
         return Path(self.sys_config.path_addons_data, self.slug)
 
     @property
-    def path_extern_data(self):
+    def path_extern_data(self) -> PurePath:
         """Return add-on data path external for Docker."""
         return PurePath(self.sys_config.path_extern_addons_data, self.slug)
 
     @property
-    def path_options(self):
+    def path_options(self) -> Path:
         """Return path to add-on options."""
         return Path(self.path_data, "options.json")
 
     @property
-    def path_pulse(self):
+    def path_pulse(self) -> Path:
         """Return path to asound config."""
         return Path(self.sys_config.path_tmp, f"{self.slug}_pulse")
 
     @property
-    def path_extern_pulse(self):
+    def path_extern_pulse(self) -> Path:
         """Return path to asound config for Docker."""
         return Path(self.sys_config.path_extern_tmp, f"{self.slug}_pulse")
 
-    def save_persist(self):
+    def save_persist(self) -> None:
         """Save data of add-on."""
         self.sys_addons.data.save_data()
 
-    async def write_options(self):
+    async def write_options(self) -> None:
         """Return True if add-on options is written to data."""
         schema = self.schema
         options = self.options
@@ -378,7 +380,7 @@ class Addon(AddonModel):
 
         raise AddonsError()
 
-    async def remove_data(self):
+    async def remove_data(self) -> None:
         """Remove add-on data."""
         if not self.path_data.is_dir():
             return
@@ -386,7 +388,7 @@ class Addon(AddonModel):
         _LOGGER.info("Remove add-on data folder %s", self.path_data)
         await remove_data(self.path_data)
 
-    def write_pulse(self):
+    def write_pulse(self) -> None:
         """Write asound config to file and return True on success."""
         pulse_config = self.sys_plugins.audio.pulse_client(
             input_profile=self.audio_input, output_profile=self.audio_output
@@ -518,7 +520,7 @@ class Addon(AddonModel):
         except DockerAPIError:
             raise AddonsError() from None
 
-    async def write_stdin(self, data):
+    async def write_stdin(self, data) -> None:
         """Write data to add-on stdin.
 
         Return a coroutine.
