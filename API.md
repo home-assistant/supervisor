@@ -320,44 +320,44 @@ Return the host log messages (dmesg).
 
 - GET `/hardware/info`
 
-```json
-{
-    "serial": ["/dev/xy"],
-    "input": ["Input device name"],
-    "disk": ["/dev/sdax"],
-    "gpio": ["gpiochip0", "gpiochip100"],
-    "audio": {
-        "CARD_ID": {
-            "name": "xy",
-            "type": "microphone",
-            "devices": [
-                "chan_id": "channel ID",
-                "chan_type": "type of device"
-            ]
-        }
-    }
-}
-```
+  ```json
+  {
+      "serial": ["/dev/xy"],
+      "input": ["Input device name"],
+      "disk": ["/dev/sdax"],
+      "gpio": ["gpiochip0", "gpiochip100"],
+      "audio": {
+          "CARD_ID": {
+              "name": "xy",
+              "type": "microphone",
+              "devices": [
+                  "chan_id": "channel ID",
+                  "chan_type": "type of device"
+              ]
+          }
+      }
+  }
+  ```
 
 - GET `/hardware/audio`
 
-```json
-{
-  "audio": {
-    "input": {
-      "0,0": "Mic"
-    },
-    "output": {
-      "1,0": "Jack",
-      "1,1": "HDMI"
+  ```json
+  {
+    "audio": {
+      "input": {
+        "0,0": "Mic"
+      },
+      "output": {
+        "1,0": "Jack",
+        "1,1": "HDMI"
+      }
     }
   }
-}
-```
+  ```
 
 - POST `/hardware/trigger`
 
-Trigger an UDEV reload.
+  Trigger a UDEV reload.
 
 ### Home Assistant
 
