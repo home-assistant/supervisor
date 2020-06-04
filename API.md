@@ -363,37 +363,37 @@ Return the host log messages (dmesg).
 
 - GET `/core/info`
 
-```json
-{
-  "version": "INSTALL_VERSION",
-  "version_latest": "version_latest",
-  "arch": "arch",
-  "machine": "Image machine type",
-  "ip_address": "ip address",
-  "image": "str",
-  "boot": "bool",
-  "port": 8123,
-  "ssl": "bool",
-  "watchdog": "bool",
-  "wait_boot": 600,
-  "audio_input": "null|profile",
-  "audio_output": "null|profile"
-}
-```
+  ```json
+  {
+    "version": "INSTALL_VERSION",
+    "version_latest": "version_latest",
+    "arch": "arch",
+    "machine": "Image machine type",
+    "ip_address": "ip address",
+    "image": "str",
+    "boot": "bool",
+    "port": 8123,
+    "ssl": "bool",
+    "watchdog": "bool",
+    "wait_boot": 600,
+    "audio_input": "null|profile",
+    "audio_output": "null|profile"
+  }
+  ```
 
 - POST `/core/update`
 
-Optional:
+  Optional:
 
-```json
-{
-  "version": "VERSION"
-}
-```
+  ```json
+  {
+    "version": "VERSION"
+  }
+  ```
 
 - GET `/core/logs`
 
-Output is the raw Docker log.
+  Output is the raw Docker log.
 
 - POST `/core/restart`
 - POST `/core/check`
@@ -403,44 +403,44 @@ Output is the raw Docker log.
 
 - POST `/core/options`
 
-```json
-{
-  "image": "Optional|null",
-  "version_latest": "Optional for custom image|null",
-  "port": "port for access core",
-  "ssl": "bool",
-  "refresh_token": "",
-  "watchdog": "bool",
-  "wait_boot": 600,
-  "audio_input": "null|profile",
-  "audio_output": "null|profile"
-}
-```
+  ```json
+  {
+    "image": "Optional|null",
+    "version_latest": "Optional for custom image|null",
+    "port": "port for access core",
+    "ssl": "bool",
+    "refresh_token": "",
+    "watchdog": "bool",
+    "wait_boot": 600,
+    "audio_input": "null|profile",
+    "audio_output": "null|profile"
+  }
+  ```
 
-Image with `null` and `version_latest` with `null` reset this options.
+  Passing `image` with `null` and `version_latest` with `null` resets these options.
 
 - POST/GET `/core/api`
 
-Proxy to the Home Assistant Core instance.
+  Proxy to Home Assistant Core instance.
 
 - GET `/core/websocket`
 
-Proxy to Home Assistant Core websocket.
+  Proxy to Home Assistant Core websocket.
 
 - GET `/core/stats`
 
-```json
-{
-  "cpu_percent": 0.0,
-  "memory_usage": 283123,
-  "memory_limit": 329392,
-  "memory_percent": 1.4,
-  "network_tx": 0,
-  "network_rx": 0,
-  "blk_read": 0,
-  "blk_write": 0
-}
-```
+  ```json
+  {
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "memory_percent": 1.4,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
+  }
+  ```
 
 ### Network
 
