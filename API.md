@@ -125,113 +125,113 @@ The token is available for add-ons and Home Assistant using the
 
 - GET `/snapshots`
 
-```json
-{
-  "snapshots": [
-    {
-      "slug": "SLUG",
-      "date": "ISO",
-      "name": "Custom name",
-      "type": "full|partial",
-      "protected": "bool"
-    }
-  ]
-}
-```
+  ```json
+  {
+    "snapshots": [
+      {
+        "slug": "SLUG",
+        "date": "ISO",
+        "name": "Custom name",
+        "type": "full|partial",
+        "protected": "bool"
+      }
+    ]
+  }
+  ```
 
 - POST `/snapshots/reload`
 - POST `/snapshots/new/upload`
 
-return:
+  return:
 
-```json
-{
-  "slug": ""
-}
-```
+  ```json
+  {
+    "slug": ""
+  }
+  ```
 
 - POST `/snapshots/new/full`
 
-```json
-{
-  "name": "Optional",
-  "password": "Optional"
-}
-```
+  ```json
+  {
+    "name": "Optional",
+    "password": "Optional"
+  }
+  ```
 
-return:
+  return:
 
-```json
-{
-  "slug": ""
-}
-```
+  ```json
+  {
+    "slug": ""
+  }
+  ```
 
 - POST `/snapshots/new/partial`
 
-```json
-{
-  "name": "Optional",
-  "addons": ["ADDON_SLUG"],
-  "folders": ["FOLDER_NAME"],
-  "password": "Optional"
-}
-```
+  ```json
+  {
+    "name": "Optional",
+    "addons": ["ADDON_SLUG"],
+    "folders": ["FOLDER_NAME"],
+    "password": "Optional"
+  }
+  ```
 
-return:
+  return:
 
-```json
-{
-  "slug": ""
-}
-```
+  ```json
+  {
+    "slug": ""
+  }
+  ```
 
 - POST `/snapshots/reload`
 
 - GET `/snapshots/{slug}/info`
 
-```json
-{
-  "slug": "SNAPSHOT ID",
-  "type": "full|partial",
-  "name": "custom snapshot name / description",
-  "date": "ISO",
-  "size": "SIZE_IN_MB",
-  "protected": "bool",
-  "homeassistant": "version",
-  "addons": [
-    {
-      "slug": "ADDON_SLUG",
-      "name": "NAME",
-      "version": "INSTALLED_VERSION",
-      "size": "SIZE_IN_MB"
-    }
-  ],
-  "repositories": ["URL"],
-  "folders": ["NAME"]
-}
-```
+  ```json
+  {
+    "slug": "SNAPSHOT ID",
+    "type": "full|partial",
+    "name": "custom snapshot name / description",
+    "date": "ISO",
+    "size": "SIZE_IN_MB",
+    "protected": "bool",
+    "homeassistant": "version",
+    "addons": [
+      {
+        "slug": "ADDON_SLUG",
+        "name": "NAME",
+        "version": "INSTALLED_VERSION",
+        "size": "SIZE_IN_MB"
+      }
+    ],
+    "repositories": ["URL"],
+    "folders": ["NAME"]
+  }
+  ```
 
 - POST `/snapshots/{slug}/remove`
 - GET `/snapshots/{slug}/download`
 - POST `/snapshots/{slug}/restore/full`
 
-```json
-{
-  "password": "Optional"
-}
-```
+  ```json
+  {
+    "password": "Optional"
+  }
+  ```
 
 - POST `/snapshots/{slug}/restore/partial`
 
-```json
-{
-  "homeassistant": "bool",
-  "addons": ["ADDON_SLUG"],
-  "folders": ["FOLDER_NAME"],
-  "password": "Optional"
-}
-```
+  ```json
+  {
+    "homeassistant": "bool",
+    "addons": ["ADDON_SLUG"],
+    "folders": ["FOLDER_NAME"],
+    "password": "Optional"
+  }
+  ```
 
 ### Host
 
