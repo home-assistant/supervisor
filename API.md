@@ -240,20 +240,20 @@ The token is available for add-ons and Home Assistant using the
 - POST `/host/reboot`
 - GET `/host/info`
 
-```json
-{
-  "chassis": "specific|null",
-  "cpe": "xy|null",
-  "deployment": "stable|beta|dev|null",
-  "disk_total": 32.0,
-  "disk_used": 30.0,
-  "disk_free": 2.0,
-  "features": ["shutdown", "reboot", "hostname", "services", "hassos"],
-  "hostname": "hostname|null",
-  "kernel": "4.15.7|null",
-  "operating_system": "HassOS XY|Ubuntu 16.4|null"
-}
-```
+  ```json
+  {
+    "chassis": "specific|null",
+    "cpe": "xy|null",
+    "deployment": "stable|beta|dev|null",
+    "disk_total": 32.0,
+    "disk_used": 30.0,
+    "disk_free": 2.0,
+    "features": ["shutdown", "reboot", "hostname", "services", "hassos"],
+    "hostname": "hostname|null",
+    "kernel": "4.15.7|null",
+    "operating_system": "HassOS XY|Ubuntu 16.4|null"
+  }
+  ```
 
 - GET `/host/logs`
 
@@ -261,11 +261,11 @@ Return the host log messages (dmesg).
 
 - POST `/host/options`
 
-```json
-{
-  "hostname": ""
-}
-```
+  ```json
+  {
+    "hostname": ""
+  }
+  ```
 
 - POST `/host/reload`
 
