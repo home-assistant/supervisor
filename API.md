@@ -32,94 +32,94 @@ The token is available for add-ons and Home Assistant using the
 
 - GET `/supervisor/ping`
 
-This API call don't need a token.
+  This API call doesn't need a token.
 
 - GET `/supervisor/info`
 
-Shows the installed add-ons from `addons`.
+  `addons` returns all the installed add-ons.
 
-```json
-{
-  "version": "INSTALL_VERSION",
-  "version_latest": "version_latest",
-  "arch": "armhf|aarch64|i386|amd64",
-  "channel": "stable|beta|dev",
-  "timezone": "TIMEZONE",
-  "healthy": "bool",
-  "supported": "bool",
-  "logging": "debug|info|warning|error|critical",
-  "ip_address": "ip address",
-  "wait_boot": "int",
-  "debug": "bool",
-  "debug_block": "bool",
-  "diagnostics": "None|bool",
-  "addons": [
-    {
-      "name": "xy bla",
-      "slug": "xy",
-      "description": "description",
-      "repository": "12345678|null",
-      "version": "LATEST_VERSION",
-      "installed": "INSTALL_VERSION",
-      "icon": "bool",
-      "logo": "bool",
-      "state": "started|stopped"
-    }
-  ],
-  "addons_repositories": ["REPO_URL"]
-}
-```
+  ```json
+  {
+    "version": "INSTALL_VERSION",
+    "version_latest": "version_latest",
+    "arch": "armhf|aarch64|i386|amd64",
+    "channel": "stable|beta|dev",
+    "timezone": "TIMEZONE",
+    "healthy": "bool",
+    "supported": "bool",
+    "logging": "debug|info|warning|error|critical",
+    "ip_address": "ip address",
+    "wait_boot": "int",
+    "debug": "bool",
+    "debug_block": "bool",
+    "diagnostics": "None|bool",
+    "addons": [
+      {
+        "name": "xy bla",
+        "slug": "xy",
+        "description": "description",
+        "repository": "12345678|null",
+        "version": "LATEST_VERSION",
+        "installed": "INSTALL_VERSION",
+        "icon": "bool",
+        "logo": "bool",
+        "state": "started|stopped"
+      }
+    ],
+    "addons_repositories": ["REPO_URL"]
+  }
+  ```
 
 - POST `/supervisor/update`
 
-Optional:
+  Optional:
 
-```json
-{
-  "version": "VERSION"
-}
-```
+  ```json
+  {
+    "version": "VERSION"
+  }
+  ```
 
 - POST `/supervisor/options`
 
-```json
-{
-  "channel": "stable|beta|dev",
-  "timezone": "TIMEZONE",
-  "wait_boot": "int",
-  "debug": "bool",
-  "debug_block": "bool",
-  "logging": "debug|info|warning|error|critical",
-  "addons_repositories": ["REPO_URL"]
-}
-```
+  ```json
+  {
+    "channel": "stable|beta|dev",
+    "timezone": "TIMEZONE",
+    "wait_boot": "int",
+    "debug": "bool",
+    "debug_block": "bool",
+    "logging": "debug|info|warning|error|critical",
+    "addons_repositories": ["REPO_URL"]
+  }
+  ```
 
 - POST `/supervisor/reload`
 
-Reload the add-ons/version.
+  Reload the add-ons/version.
 
 - GET `/supervisor/logs`
 
-Output is the raw Docker log.
+  Output is the raw Docker log.
 
 - GET `/supervisor/stats`
 
-```json
-{
-  "cpu_percent": 0.0,
-  "memory_usage": 283123,
-  "memory_limit": 329392,
-  "memory_percent": 1.4,
-  "network_tx": 0,
-  "network_rx": 0,
-  "blk_read": 0,
-  "blk_write": 0
-}
-```
+  ```json
+  {
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "memory_percent": 1.4,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
+  }
+  ```
 
 - GET `/supervisor/repair`
 
-Repair overlayfs issue and restore lost images.
+  Repair overlayfs issue and restore lost images.
 
 ### Snapshot
 
