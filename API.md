@@ -273,17 +273,17 @@ Return the host log messages (dmesg).
 
 - GET `/host/services`
 
-```json
-{
-  "services": [
-    {
-      "name": "xy.service",
-      "description": "XY ...",
-      "state": "active|"
-    }
-  ]
-}
-```
+  ```json
+  {
+    "services": [
+      {
+        "name": "xy.service",
+        "description": "XY ...",
+        "state": "active|"
+      }
+    ]
+  }
+  ```
 
 - POST `/host/service/{unit}/stop`
 
