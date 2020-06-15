@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 import os
 from pathlib import Path, PurePath
-from typing import List, Optional
+from typing import List
 
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
