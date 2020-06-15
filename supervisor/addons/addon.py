@@ -130,12 +130,9 @@ class Addon(AddonModel):
         return {**self.data[ATTR_OPTIONS], **self.persist[ATTR_OPTIONS]}
 
     @options.setter
-    def options(self, value: Optional[Dict[str, Any]]):
+    def options(self, value: Optional[Dict[str, Any]]) -> None:
         """Store user add-on options."""
-        if value is None:
-            self.persist[ATTR_OPTIONS] = {}
-        else:
-            self.persist[ATTR_OPTIONS] = deepcopy(value)
+        self.persist[ATTR_OPTIONS] = {} if value is None else deepcopy(value)
 
     @property
     def boot(self) -> bool:
@@ -417,7 +414,7 @@ class Addon(AddonModel):
         exists_addon = self.path_apparmor.exists()
 
         # Nothing to do
-        if not exists_local and not exists_addon:
+        if not (exists_local or exists_addon):
             return
 
         # Need removed
