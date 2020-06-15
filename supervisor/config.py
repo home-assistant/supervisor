@@ -62,9 +62,9 @@ class CoreConfig(JsonConfig):
         self._data[ATTR_TIMEZONE] = value
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> str:
         """Return config version."""
-        return self._data.get(ATTR_VERSION)
+        return self._data[ATTR_VERSION]
 
     @version.setter
     def version(self, value: str) -> None:
