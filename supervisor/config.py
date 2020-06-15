@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 import os
 from pathlib import Path, PurePath
-from typing import List, Optional
+from typing import List
 
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
@@ -62,9 +62,9 @@ class CoreConfig(JsonConfig):
         self._data[ATTR_TIMEZONE] = value
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> str:
         """Return config version."""
-        return self._data.get(ATTR_VERSION)
+        return self._data[ATTR_VERSION]
 
     @version.setter
     def version(self, value: str) -> None:

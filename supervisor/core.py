@@ -28,10 +28,7 @@ class Core(CoreSysAttributes):
         # If a update is failed?
         if self.sys_dev:
             self.sys_config.version = self.sys_supervisor.version
-        elif (
-            self.sys_config.version
-            and self.sys_config.version != self.sys_supervisor.version
-        ):
+        elif self.sys_config.version != self.sys_supervisor.version:
             self.healthy = False
             _LOGGER.critical("Update of Supervisor fails!")
 
