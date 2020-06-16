@@ -539,13 +539,17 @@ class AddonModel(CoreSysAttributes, ABC):
             return False
 
         # Home Assistant
-        version = config.get(ATTR_HOMEASSISTANT) or self.sys_homeassistant.version
-        return (
-            not version
-            or self.sys_homeassistant.version is None
-            or pkg_version.parse(self.sys_homeassistant.version)
-            >= pkg_version.parse(version)
-        )
+        version = config.get(ATTR_HOMEASSISTANT)
+        if version is None:
+            return True
+
+        try:
+            assert self.sys_homeassistant.version is not None
+            return pkg_version.parse(
+                self.sys_homeassistant.version
+            ) >= pkg_version.parse(version)
+        except pkg_version.InvalidVersion:
+            return True
 
     def _image(self, config) -> str:
         """Generate image name from data."""
