@@ -414,7 +414,7 @@ class Addon(AddonModel):
         exists_addon = self.path_apparmor.exists()
 
         # Nothing to do
-        if not (exists_local or exists_addon):
+        if not exists_local and not exists_addon:
             return
 
         # Need removed
