@@ -540,11 +540,10 @@ class AddonModel(CoreSysAttributes, ABC):
 
         # Home Assistant
         version = config.get(ATTR_HOMEASSISTANT)
-        if version is None:
+        if version is None or self.sys_homeassistant.version is None:
             return True
 
         try:
-            assert self.sys_homeassistant.version is not None
             return pkg_version.parse(
                 self.sys_homeassistant.version
             ) >= pkg_version.parse(version)
