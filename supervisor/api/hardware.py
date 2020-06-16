@@ -1,7 +1,7 @@
 """Init file for Supervisor hardware RESTful API."""
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any, Awaitable, Dict
 
 from aiohttp import web
 
@@ -52,6 +52,6 @@ class APIHardware(CoreSysAttributes):
         }
 
     @api_process
-    def trigger(self, request: web.Request) -> None:
+    def trigger(self, request: web.Request) -> Awaitable[None]:
         """Trigger a udev device reload."""
-        asyncio.shield(self.sys_hardware.udev_trigger())
+        return asyncio.shield(self.sys_hardware.udev_trigger())

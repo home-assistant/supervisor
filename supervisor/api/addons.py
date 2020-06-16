@@ -141,7 +141,7 @@ class APIAddons(CoreSysAttributes):
 
     def _extract_addon_installed(self, request: web.Request) -> Addon:
         addon = self._extract_addon(request)
-        if not (isinstance(addon, Addon) and addon.is_installed):
+        if not isinstance(addon, Addon) or not addon.is_installed:
             raise APIError("Addon is not installed")
         return addon
 

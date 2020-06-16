@@ -134,7 +134,6 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.DockerException:
             return False
 
-        # container is not running
         return docker_container.status == "running"
 
     @process_lock
