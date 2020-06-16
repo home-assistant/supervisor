@@ -1,7 +1,7 @@
 """Init file for Supervisor Home Assistant RESTful API."""
 import asyncio
 import logging
-from typing import Any, Coroutine, Dict
+from typing import Any, Awaitable, Dict
 
 from aiohttp import web
 import voluptuous as vol
@@ -141,27 +141,27 @@ class APIHomeAssistant(CoreSysAttributes):
         await asyncio.shield(self.sys_homeassistant.update(version))
 
     @api_process
-    def stop(self, request: web.Request) -> Coroutine:
+    def stop(self, request: web.Request) -> Awaitable[None]:
         """Stop Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.stop())
 
     @api_process
-    def start(self, request: web.Request) -> Coroutine:
+    def start(self, request: web.Request) -> Awaitable[None]:
         """Start Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.start())
 
     @api_process
-    def restart(self, request: web.Request) -> Coroutine:
+    def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.restart())
 
     @api_process
-    def rebuild(self, request: web.Request) -> Coroutine:
+    def rebuild(self, request: web.Request) -> Awaitable[None]:
         """Rebuild Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.rebuild())
 
     @api_process_raw(CONTENT_TYPE_BINARY)
-    def logs(self, request: web.Request) -> Coroutine:
+    def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return Home Assistant Docker logs."""
         return self.sys_homeassistant.logs()
 

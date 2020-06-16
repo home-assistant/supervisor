@@ -49,7 +49,7 @@ class PluginManager(CoreSysAttributes):
         """Return multicast handler."""
         return self._multicast
 
-    async def load(self):
+    async def load(self) -> None:
         """Load Supervisor plugins."""
         # Sequential to avoid issue on slow IO
         for plugin in (
@@ -94,7 +94,7 @@ class PluginManager(CoreSysAttributes):
                     required_version,
                 )
 
-    async def repair(self):
+    async def repair(self) -> None:
         """Repair Supervisor plugins."""
         await asyncio.wait(
             [

@@ -41,7 +41,7 @@ class SecureTarFile:
 
         # Encryption/Description
         self._aes: Optional[Cipher] = None
-        self._key: bytes = key
+        self._key: Optional[bytes] = key
 
         # Function helper
         self._decrypt: Optional[CipherContext] = None
@@ -101,7 +101,7 @@ class SecureTarFile:
         return self._name
 
     @property
-    def size(self) -> int:
+    def size(self) -> float:
         """Return snapshot size."""
         if not self._name.is_file():
             return 0

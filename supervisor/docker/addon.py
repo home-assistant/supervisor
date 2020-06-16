@@ -47,7 +47,7 @@ class DockerAddon(DockerInterface):
         self.addon = addon
 
     @property
-    def image(self) -> str:
+    def image(self) -> Optional[str]:
         """Return name of Docker image."""
         return self.addon.image
 
@@ -102,7 +102,7 @@ class DockerAddon(DockerInterface):
         return not self.addon.protected and self.addon.with_full_access
 
     @property
-    def environment(self) -> Dict[str, str]:
+    def environment(self) -> Dict[str, Optional[str]]:
         """Return environment for Docker add-on."""
         addon_env = self.addon.environment or {}
 
@@ -189,7 +189,7 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def network_mapping(self) -> Dict[str, str]:
+    def network_mapping(self) -> Dict[str, IPv4Address]:
         """Return hosts mapping."""
         return {
             "supervisor": self.sys_docker.network.supervisor,
