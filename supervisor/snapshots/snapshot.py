@@ -43,7 +43,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils.json import write_json_file
-from ..utils.tar import SecureTarFile, exclude_filter, secure_path
+from ..utils.tar import SecureTarFile, secure_path
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
 from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
 
