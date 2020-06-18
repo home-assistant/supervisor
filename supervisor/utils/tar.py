@@ -169,7 +169,9 @@ def recursively_add_directory_contents_to_tar_file(
 
         arcpath = PurePath(arcname, directory_item.name).as_posix()
         if directory_item.is_dir():
-            recursively_add_directory_contents_to_tar_file(tar_file, directory_item.as_posix(), excludes, arcpath)
+            recursively_add_directory_contents_to_tar_file(
+                tar_file, directory_item.as_posix(), excludes, arcpath
+            )
             continue
 
         tar_file.add(directory_item.as_posix(), arcname=arcpath)
