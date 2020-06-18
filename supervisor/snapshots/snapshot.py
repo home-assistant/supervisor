@@ -3,8 +3,7 @@ import asyncio
 from base64 import b64decode, b64encode
 import json
 import logging
-import os
-from pathlib import Path, PurePath
+from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, Optional
@@ -43,7 +42,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils.json import write_json_file
-from ..utils.tar import SecureTarFile, secure_path
+from ..utils.tar import SecureTarFile, secure_path, recursively_add_directory_contents_to_tar_file
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
 from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
 
@@ -371,48 +370,17 @@ class Snapshot(CoreSysAttributes):
             try:
                 _LOGGER.info("Snapshot folder %s", name)
                 with SecureTarFile(tar_name, "w", key=self._key) as tar_file:
-                    arcname = "."
-                    tar_file.add(origin_dir, arcname, False)
-                    add_directory_contents(
-                        tar_file, origin_dir, MAP_FOLDER_EXCLUDE.get(name, []), arcname
+                    recursively_add_directory_contents_to_tar_file(
+                        tar_file,
+                        origin_dir,
+                        excludes=MAP_FOLDER_EXCLUDE.get(name, []),
+                        arcname='.'
                     )
 
                 _LOGGER.info("Snapshot folder %s done", name)
                 self._data[ATTR_FOLDERS].append(name)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
-
-        def add_directory_contents(
-            tar_file: tarfile.TarFile, origin_dir, excludes, arcname="."
-        ):
-            """Append directories and/or files to the TarFile if excludes wont filter."""
-
-            def excluded_path(file_path: PurePath):
-                """Exclude path if listed in excludes ."""
-                for exclude in excludes:
-                    if not file_path.match(exclude):
-                        continue
-                    _LOGGER.debug("Ignore %s because of %s", file_path.name, exclude)
-                    return True
-                return False
-
-            origin_path = PurePath(origin_dir)
-            if excluded_path(origin_path):
-                return None
-
-            for directory_item in os.listdir(origin_dir):
-                path = os.path.join(origin_dir, directory_item)
-                file_path = PurePath(path)
-                if excluded_path(file_path):
-                    continue
-
-                arcpath = os.path.join(arcname, directory_item)
-                if os.path.isdir(path):
-                    tar_file.add(path, arcpath, False)
-                    add_directory_contents(tar_file, path, excludes, arcpath)
-                    continue
-
-                tar_file.add(path, arcname=arcpath)
 
         # Run tasks
         tasks = [

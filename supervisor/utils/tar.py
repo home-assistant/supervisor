@@ -2,7 +2,7 @@
 import hashlib
 import logging
 import os
-from pathlib import Path
+from pathlib import Path, PurePath
 import tarfile
 from typing import IO, Callable, Generator, List, Optional
 
@@ -14,6 +14,8 @@ from cryptography.hazmat.primitives.ciphers import (
     algorithms,
     modes,
 )
+
+from .pathlib import is_excluded_by_filter
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -140,14 +142,36 @@ def exclude_filter(
     """Create callable filter function to check TarInfo for add."""
 
     def my_filter(tar: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
-        """Filter to filter excludes."""
-        file_path = Path(tar.name)
-        for exclude in exclude_list:
-            if not file_path.match(exclude):
-                continue
-            _LOGGER.debug("Ignore %s because of %s", file_path, exclude)
+        """Filter to filter TarInfo name excludes."""
+        file_path = PurePath(tar.name)
+        if is_excluded_by_filter(file_path, exclude_list):
             return None
 
         return tar
 
     return my_filter
+
+
+def recursively_add_directory_contents_to_tar_file(
+    tar_file: tarfile.TarFile, origin_dir: str, excludes: List[str], arcname: str = "."
+) -> None:
+    """Append directories and/or files to the TarFile if excludes wont filter."""
+
+    origin_path = Path(origin_dir)
+    if is_excluded_by_filter(origin_path, excludes):
+        return None
+
+    tar_file.add(origin_dir, arcname, recursive=False)
+
+    for directory_item in origin_path.iterdir():
+        if is_excluded_by_filter(directory_item, excludes):
+            continue
+
+        arcpath = PurePath(arcname, directory_item.name).as_posix()
+        if directory_item.is_dir():
+            recursively_add_directory_contents_to_tar_file(tar_file, directory_item.as_posix(), excludes, arcpath)
+            continue
+
+        tar_file.add(directory_item.as_posix(), arcname=arcpath)
+
+    return None
