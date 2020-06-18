@@ -5,8 +5,8 @@ from ..const import (
     ATTR_ADDON,
     ATTR_CONFIG,
     ATTR_DISCOVERY,
-    ATTR_SERVICES,
     ATTR_SERVICE,
+    ATTR_SERVICES,
     ATTR_UUID,
     REQUEST_FROM,
 )

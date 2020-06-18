@@ -46,7 +46,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 MACHINE_ID = Path("/etc/machine-id")
 
 
-async def initialize_coresys() -> None:
+async def initialize_coresys() -> CoreSys:
     """Initialize supervisor coresys/objects."""
     coresys = CoreSys()
 

@@ -36,8 +36,8 @@ from .const import (
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
-    LogLevel,
     SUPERVISOR_VERSION,
+    LogLevel,
     UpdateChannels,
 )
 from .utils.validate import validate_timezone

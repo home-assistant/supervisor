@@ -130,12 +130,9 @@ class Addon(AddonModel):
         return {**self.data[ATTR_OPTIONS], **self.persist[ATTR_OPTIONS]}
 
     @options.setter
-    def options(self, value: Optional[Dict[str, Any]]):
+    def options(self, value: Optional[Dict[str, Any]]) -> None:
         """Store user add-on options."""
-        if value is None:
-            self.persist[ATTR_OPTIONS] = {}
-        else:
-            self.persist[ATTR_OPTIONS] = deepcopy(value)
+        self.persist[ATTR_OPTIONS] = {} if value is None else deepcopy(value)
 
     @property
     def boot(self) -> bool:

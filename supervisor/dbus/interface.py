@@ -1,10 +1,11 @@
 """Interface class for D-Bus wrappers."""
+from abc import ABC, abstractmethod
 from typing import Optional
 
 from ..utils.gdbus import DBus
 
 
-class DBusInterface:
+class DBusInterface(ABC):
     """Handle D-Bus interface for hostname/system."""
 
     dbus: Optional[DBus] = None
@@ -14,6 +15,6 @@ class DBusInterface:
         """Return True, if they is connected to D-Bus."""
         return self.dbus is not None
 
+    @abstractmethod
     async def connect(self):
         """Connect to D-Bus."""
-        raise NotImplementedError()

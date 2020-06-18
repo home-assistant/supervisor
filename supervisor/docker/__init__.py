@@ -107,9 +107,9 @@ class DockerAPI:
 
         Need run inside executor.
         """
-        name: str = kwargs.get("name")
-        network_mode: str = kwargs.get("network_mode")
-        hostname: str = kwargs.get("hostname")
+        name: Optional[str] = kwargs.get("name")
+        network_mode: Optional[str] = kwargs.get("network_mode")
+        hostname: Optional[str] = kwargs.get("hostname")
 
         # Setup DNS
         if dns:
