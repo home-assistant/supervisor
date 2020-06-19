@@ -45,7 +45,7 @@ from ..utils.json import write_json_file
 from ..utils.tar import (
     SecureTarFile,
     secure_path,
-    recursively_add_directory_contents_to_tar_file,
+    atomic_contents_add,
 )
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
 from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
@@ -374,7 +374,7 @@ class Snapshot(CoreSysAttributes):
             try:
                 _LOGGER.info("Snapshot folder %s", name)
                 with SecureTarFile(tar_name, "w", key=self._key) as tar_file:
-                    recursively_add_directory_contents_to_tar_file(
+                    atomic_contents_add(
                         tar_file,
                         origin_dir,
                         excludes=MAP_FOLDER_EXCLUDE.get(name, []),

@@ -161,7 +161,7 @@ def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
     return False
 
 
-def recursively_add_directory_contents_to_tar_file(
+def atomic_contents_add(
     tar_file: tarfile.TarFile, origin_dir: str, excludes: List[str], arcname: str = "."
 ) -> None:
     """Append directories and/or files to the TarFile if excludes wont filter."""
@@ -178,7 +178,7 @@ def recursively_add_directory_contents_to_tar_file(
 
         arcpath = PurePath(arcname, directory_item.name).as_posix()
         if directory_item.is_dir():
-            recursively_add_directory_contents_to_tar_file(
+            atomic_contents_add(
                 tar_file, directory_item.as_posix(), excludes, arcpath
             )
             continue
