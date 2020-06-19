@@ -149,6 +149,7 @@ def exclude_filter(
 
     return my_filter
 
+
 def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
     """Filter to filter excludes."""
 
@@ -162,7 +163,10 @@ def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
 
 
 def atomic_contents_add(
-    tar_file: tarfile.TarFile, origin_path: Path, excludes: List[str], arcname: str = "."
+    tar_file: tarfile.TarFile,
+    origin_path: Path,
+    excludes: List[str],
+    arcname: str = ".",
 ) -> None:
     """Append directories and/or files to the TarFile if excludes wont filter."""
 
@@ -177,9 +181,7 @@ def atomic_contents_add(
 
         arcpath = PurePath(arcname, directory_item.name).as_posix()
         if directory_item.is_dir():
-            atomic_contents_add(
-                tar_file, directory_item.as_posix(), excludes, arcpath
-            )
+            atomic_contents_add(tar_file, directory_item.as_posix(), excludes, arcpath)
             continue
 
         tar_file.add(directory_item.as_posix(), arcname=arcpath)
