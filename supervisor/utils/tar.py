@@ -15,8 +15,6 @@ from cryptography.hazmat.primitives.ciphers import (
     modes,
 )
 
-from .pathlib import is_excluded_by_filter
-
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 BLOCK_SIZE = 16
@@ -144,12 +142,23 @@ def exclude_filter(
     def my_filter(tar: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
         """Filter to filter TarInfo name excludes."""
         file_path = PurePath(tar.name)
-        if is_excluded_by_filter(file_path, exclude_list):
+        if _is_excluded_by_filter(file_path, exclude_list):
             return None
 
         return tar
 
     return my_filter
+
+def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
+    """Filter to filter excludes."""
+
+    for exclude in exclude_list:
+        if not path.match(exclude):
+            continue
+        _LOGGER.debug("Ignore %s because of %s", path, exclude)
+        return True
+
+    return False
 
 
 def recursively_add_directory_contents_to_tar_file(
@@ -158,13 +167,13 @@ def recursively_add_directory_contents_to_tar_file(
     """Append directories and/or files to the TarFile if excludes wont filter."""
 
     origin_path = Path(origin_dir)
-    if is_excluded_by_filter(origin_path, excludes):
+    if _is_excluded_by_filter(origin_path, excludes):
         return None
 
     tar_file.add(origin_dir, arcname, recursive=False)
 
     for directory_item in origin_path.iterdir():
-        if is_excluded_by_filter(directory_item, excludes):
+        if _is_excluded_by_filter(directory_item, excludes):
             continue
 
         arcpath = PurePath(arcname, directory_item.name).as_posix()
