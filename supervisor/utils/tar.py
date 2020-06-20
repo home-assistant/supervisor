@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path, PurePath
 import tarfile
-from typing import IO, Callable, Generator, List, Optional
+from typing import IO, Generator, List, Optional
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
@@ -149,7 +149,7 @@ def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
 def atomic_contents_add(
     tar_file: tarfile.TarFile,
     origin_path: Path,
-    excludes: List[str] = [],
+    excludes: List[str],
     arcname: str = ".",
 ) -> None:
     """Append directories and/or files to the TarFile if excludes wont filter."""
