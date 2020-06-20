@@ -580,7 +580,11 @@ class Addon(AddonModel):
 
                     # Snapshot data
                     atomic_contents_add(
-                        tar_file, self.path_data, self.snapshot_exclude, arcname="data"
+                        tar_file,
+                        self.path_data,
+                        self.snapshot_exclude,
+                        excludes=[],
+                        arcname="data",
                     )
 
             try:
