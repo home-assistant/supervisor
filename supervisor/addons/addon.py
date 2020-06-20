@@ -51,7 +51,7 @@ from ..exceptions import (
 )
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
-from ..utils.tar import exclude_filter, secure_path
+from ..utils.tar import secure_path, atomic_contents_add
 from .model import AddonModel, Data
 from .utils import remove_data
 from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
@@ -537,10 +537,13 @@ class Addon(AddonModel):
     async def snapshot(self, tar_file: tarfile.TarFile) -> None:
         """Snapshot state of an add-on."""
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
+
+            tempPath = Path(temp)
+
             # store local image
             if self.need_build:
                 try:
-                    await self.instance.export_image(Path(temp, "image.tar"))
+                    await self.instance.export_image(tempPath.joinPath("image.tar"))
                 except DockerAPIError:
                     raise AddonsError() from None
 
@@ -553,14 +556,14 @@ class Addon(AddonModel):
 
             # Store local configs/state
             try:
-                write_json_file(Path(temp, "addon.json"), data)
+                write_json_file(tempPath.joinPath("addon.json"), data)
             except JsonFileError:
                 _LOGGER.error("Can't save meta for %s", self.slug)
                 raise AddonsError() from None
 
             # Store AppArmor Profile
             if self.sys_host.apparmor.exists(self.slug):
-                profile = Path(temp, "apparmor.txt")
+                profile = tempPath.joinPath("apparmor.txt")
                 try:
                     self.sys_host.apparmor.backup_profile(self.slug, profile)
                 except HostAppArmorError:
@@ -572,13 +575,12 @@ class Addon(AddonModel):
                 """Write tar inside loop."""
                 with tar_file as snapshot:
                     # Snapshot system
+
                     snapshot.add(temp, arcname=".")
 
                     # Snapshot data
-                    snapshot.add(
-                        self.path_data,
-                        arcname="data",
-                        filter=exclude_filter(self.snapshot_exclude),
+                    atomic_contents_add(
+                        tar_file, self.path_data, self.snapshot_exclude, arcname="data"
                     )
 
             try:
