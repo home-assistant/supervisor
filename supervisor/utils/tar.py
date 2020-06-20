@@ -173,6 +173,7 @@ def atomic_contents_add(
     if _is_excluded_by_filter(origin_path, excludes):
         return None
 
+    # Add directory only (recursive=False) to ensure we also archive empty directories
     tar_file.add(origin_path.as_posix(), arcname, recursive=False)
 
     for directory_item in origin_path.iterdir():
