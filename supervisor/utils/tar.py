@@ -134,22 +134,6 @@ def secure_path(tar: tarfile.TarFile) -> Generator[tarfile.TarInfo, None, None]:
             yield member
 
 
-def exclude_filter(
-    exclude_list: List[str],
-) -> Callable[[tarfile.TarInfo], Optional[tarfile.TarInfo]]:
-    """Create callable filter function to check TarInfo for add."""
-
-    def my_filter(tar: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
-        """Filter to filter TarInfo name excludes."""
-        file_path = PurePath(tar.name)
-        if _is_excluded_by_filter(file_path, exclude_list):
-            return None
-
-        return tar
-
-    return my_filter
-
-
 def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
     """Filter to filter excludes."""
 
@@ -165,7 +149,7 @@ def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
 def atomic_contents_add(
     tar_file: tarfile.TarFile,
     origin_path: Path,
-    excludes: List[str],
+    excludes: List[str] = [],
     arcname: str = ".",
 ) -> None:
     """Append directories and/or files to the TarFile if excludes wont filter."""
