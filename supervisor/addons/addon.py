@@ -538,12 +538,12 @@ class Addon(AddonModel):
         """Snapshot state of an add-on."""
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
 
-            tempPath = Path(temp)
+            temp_path = Path(temp)
 
             # store local image
             if self.need_build:
                 try:
-                    await self.instance.export_image(tempPath.joinpath("image.tar"))
+                    await self.instance.export_image(temp_path.joinpath("image.tar"))
                 except DockerAPIError:
                     raise AddonsError() from None
 
@@ -556,14 +556,14 @@ class Addon(AddonModel):
 
             # Store local configs/state
             try:
-                write_json_file(tempPath.joinpath("addon.json"), data)
+                write_json_file(temp_path.joinpath("addon.json"), data)
             except JsonFileError:
                 _LOGGER.error("Can't save meta for %s", self.slug)
                 raise AddonsError() from None
 
             # Store AppArmor Profile
             if self.sys_host.apparmor.exists(self.slug):
-                profile = tempPath.joinpath("apparmor.txt")
+                profile = temp_path.joinpath("apparmor.txt")
                 try:
                     self.sys_host.apparmor.backup_profile(self.slug, profile)
                 except HostAppArmorError:
@@ -580,10 +580,9 @@ class Addon(AddonModel):
 
                     # Snapshot data
                     atomic_contents_add(
-                        tar_file,
+                        snapshot,
                         self.path_data,
-                        self.snapshot_exclude,
-                        excludes=[],
+                        excludes=self.snapshot_exclude,
                         arcname="data",
                     )
 
