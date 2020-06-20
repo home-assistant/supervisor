@@ -543,7 +543,7 @@ class Addon(AddonModel):
             # store local image
             if self.need_build:
                 try:
-                    await self.instance.export_image(tempPath.joinPath("image.tar"))
+                    await self.instance.export_image(tempPath.joinpath("image.tar"))
                 except DockerAPIError:
                     raise AddonsError() from None
 
@@ -556,14 +556,14 @@ class Addon(AddonModel):
 
             # Store local configs/state
             try:
-                write_json_file(tempPath.joinPath("addon.json"), data)
+                write_json_file(tempPath.joinpath("addon.json"), data)
             except JsonFileError:
                 _LOGGER.error("Can't save meta for %s", self.slug)
                 raise AddonsError() from None
 
             # Store AppArmor Profile
             if self.sys_host.apparmor.exists(self.slug):
-                profile = tempPath.joinPath("apparmor.txt")
+                profile = tempPath.joinpath("apparmor.txt")
                 try:
                     self.sys_host.apparmor.backup_profile(self.slug, profile)
                 except HostAppArmorError:
