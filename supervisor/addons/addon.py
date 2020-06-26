@@ -537,7 +537,6 @@ class Addon(AddonModel):
     async def snapshot(self, tar_file: tarfile.TarFile) -> None:
         """Snapshot state of an add-on."""
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
-
             temp_path = Path(temp)
 
             # store local image
