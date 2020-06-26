@@ -2,9 +2,9 @@
 import hashlib
 import logging
 import os
-from pathlib import Path
+from pathlib import Path, PurePath
 import tarfile
-from typing import IO, Callable, Generator, List, Optional
+from typing import IO, Generator, List, Optional
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
@@ -134,20 +134,41 @@ def secure_path(tar: tarfile.TarFile) -> Generator[tarfile.TarInfo, None, None]:
             yield member
 
 
-def exclude_filter(
-    exclude_list: List[str],
-) -> Callable[[tarfile.TarInfo], Optional[tarfile.TarInfo]]:
-    """Create callable filter function to check TarInfo for add."""
+def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
+    """Filter to filter excludes."""
 
-    def my_filter(tar: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
-        """Filter to filter excludes."""
-        file_path = Path(tar.name)
-        for exclude in exclude_list:
-            if not file_path.match(exclude):
-                continue
-            _LOGGER.debug("Ignore %s because of %s", file_path, exclude)
-            return None
+    for exclude in exclude_list:
+        if not path.match(exclude):
+            continue
+        _LOGGER.debug("Ignore %s because of %s", path, exclude)
+        return True
 
-        return tar
+    return False
 
-    return my_filter
+
+def atomic_contents_add(
+    tar_file: tarfile.TarFile,
+    origin_path: Path,
+    excludes: List[str],
+    arcname: str = ".",
+) -> None:
+    """Append directories and/or files to the TarFile if excludes wont filter."""
+
+    if _is_excluded_by_filter(origin_path, excludes):
+        return None
+
+    # Add directory only (recursive=False) to ensure we also archive empty directories
+    tar_file.add(origin_path.as_posix(), arcname, recursive=False)
+
+    for directory_item in origin_path.iterdir():
+        if _is_excluded_by_filter(directory_item, excludes):
+            continue
+
+        arcpath = PurePath(arcname, directory_item.name).as_posix()
+        if directory_item.is_dir():
+            atomic_contents_add(tar_file, directory_item.as_posix(), excludes, arcpath)
+            continue
+
+        tar_file.add(directory_item.as_posix(), arcname=arcpath)
+
+    return None

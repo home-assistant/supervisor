@@ -42,7 +42,11 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils.json import write_json_file
-from ..utils.tar import SecureTarFile, exclude_filter, secure_path
+from ..utils.tar import (
+    SecureTarFile,
+    secure_path,
+    atomic_contents_add,
+)
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
 from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
 
@@ -370,10 +374,11 @@ class Snapshot(CoreSysAttributes):
             try:
                 _LOGGER.info("Snapshot folder %s", name)
                 with SecureTarFile(tar_name, "w", key=self._key) as tar_file:
-                    tar_file.add(
+                    atomic_contents_add(
+                        tar_file,
                         origin_dir,
+                        excludes=MAP_FOLDER_EXCLUDE.get(name, []),
                         arcname=".",
-                        filter=exclude_filter(MAP_FOLDER_EXCLUDE.get(name, [])),
                     )
 
                 _LOGGER.info("Snapshot folder %s done", name)
