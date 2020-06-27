@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreStates
 from ..coresys import CoreSysAttributes
+from ..exceptions import AddonsError
 from ..utils.dt import utcnow
 from .snapshot import Snapshot
 from .utils import create_slug
@@ -247,10 +248,8 @@ class SnapshotManager(CoreSysAttributes):
                     # Do it sequential avoid issue on slow IO
                     try:
                         await addon.uninstall()
-                    except Exception as err:  # pylint: disable=broad-except
-                        _LOGGER.warning(
-                            "Can't uninstall Add-on %s: %s", addon.slug, err
-                        )
+                    except AddonsError:
+                        _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
 
                 # Restore add-ons
                 _LOGGER.info("Restore %s old add-ons", snapshot.slug)
