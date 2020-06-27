@@ -166,7 +166,7 @@ def atomic_contents_add(
 
         arcpath = PurePath(arcname, directory_item.name).as_posix()
         if directory_item.is_dir():
-            atomic_contents_add(tar_file, directory_item.as_posix(), excludes, arcpath)
+            atomic_contents_add(tar_file, directory_item, excludes, arcpath)
             continue
 
         tar_file.add(directory_item.as_posix(), arcname=arcpath)
