@@ -219,8 +219,6 @@ class SnapshotManager(CoreSysAttributes):
             await self.lock.acquire()
 
             async with snapshot:
-                tasks = []
-
                 # Stop Home-Assistant / Add-ons
                 await self.sys_core.shutdown()
 
@@ -240,14 +238,19 @@ class SnapshotManager(CoreSysAttributes):
                 await snapshot.restore_repositories()
 
                 # Delete delta add-ons
-                tasks.clear()
+                _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
                 for addon in self.sys_addons.installed:
-                    if addon.slug not in snapshot.addon_list:
-                        tasks.append(addon.uninstall())
+                    if addon.slug in snapshot.addon_list:
+                        continue
 
-                if tasks:
-                    _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
-                    await asyncio.wait(tasks)
+                    # Remove Add-on because it's not a part of the new env
+                    # Do it sequential avoid issue on slow IO
+                    try:
+                        await addon.uninstall()
+                    except Exception as err:  # pylint: disable=broad-except
+                        _LOGGER.warning(
+                            "Can't uninstall Add-on %s: %s", addon.slug, err
+                        )
 
                 # Restore add-ons
                 _LOGGER.info("Restore %s old add-ons", snapshot.slug)
