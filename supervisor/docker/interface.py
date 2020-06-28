@@ -11,6 +11,7 @@ from ..const import LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DockerAPIError
 from ..utils import process_lock
+from .progress import pull_with_progress
 from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class DockerInterface(CoreSysAttributes):
 
         _LOGGER.info("Pull image %s tag %s.", image, tag)
         try:
-            docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
+            docker_image = pull_with_progress(self, image, tag)
             if latest:
                 _LOGGER.info("Tag image %s with version %s as latest", image, tag)
                 docker_image.tag(image, tag="latest")
