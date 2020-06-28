@@ -1,5 +1,4 @@
 """Representation of a snapshot file."""
-import asyncio
 from base64 import b64decode, b64encode
 import json
 import logging
