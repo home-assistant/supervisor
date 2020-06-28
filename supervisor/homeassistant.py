@@ -202,12 +202,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         return self._data[ATTR_UUID]
 
     @property
-    def supervisor_token(self) -> str:
+    def supervisor_token(self) -> Optional[str]:
         """Return an access token for the Supervisor API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
 
     @property
-    def refresh_token(self) -> str:
+    def refresh_token(self) -> Optional[str]:
         """Return the refresh token to authenticate with Home Assistant."""
         return self._data.get(ATTR_REFRESH_TOKEN)
 

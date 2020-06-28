@@ -148,39 +148,36 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def list(self, request: web.Request) -> Dict[str, Any]:
         """Return all add-ons or repositories."""
-        data_addons = []
-        for addon in self.sys_addons.all:
-            data_addons.append(
-                {
-                    ATTR_NAME: addon.name,
-                    ATTR_SLUG: addon.slug,
-                    ATTR_DESCRIPTON: addon.description,
-                    ATTR_ADVANCED: addon.advanced,
-                    ATTR_STAGE: addon.stage,
-                    ATTR_VERSION: addon.latest_version,
-                    ATTR_INSTALLED: addon.version if addon.is_installed else None,
-                    ATTR_AVAILABLE: addon.available,
-                    ATTR_DETACHED: addon.is_detached,
-                    ATTR_REPOSITORY: addon.repository,
-                    ATTR_BUILD: addon.need_build,
-                    ATTR_URL: addon.url,
-                    ATTR_ICON: addon.with_icon,
-                    ATTR_LOGO: addon.with_logo,
-                }
-            )
+        data_addons = [
+            {
+                ATTR_NAME: addon.name,
+                ATTR_SLUG: addon.slug,
+                ATTR_DESCRIPTON: addon.description,
+                ATTR_ADVANCED: addon.advanced,
+                ATTR_STAGE: addon.stage,
+                ATTR_VERSION: addon.latest_version,
+                ATTR_INSTALLED: addon.version if addon.is_installed else None,
+                ATTR_AVAILABLE: addon.available,
+                ATTR_DETACHED: addon.is_detached,
+                ATTR_REPOSITORY: addon.repository,
+                ATTR_BUILD: addon.need_build,
+                ATTR_URL: addon.url,
+                ATTR_ICON: addon.with_icon,
+                ATTR_LOGO: addon.with_logo,
+            }
+            for addon in self.sys_addons.all
+        ]
 
-        data_repositories = []
-        for repository in self.sys_store.all:
-            data_repositories.append(
-                {
-                    ATTR_SLUG: repository.slug,
-                    ATTR_NAME: repository.name,
-                    ATTR_SOURCE: repository.source,
-                    ATTR_URL: repository.url,
-                    ATTR_MAINTAINER: repository.maintainer,
-                }
-            )
-
+        data_repositories = [
+            {
+                ATTR_SLUG: repository.slug,
+                ATTR_NAME: repository.name,
+                ATTR_SOURCE: repository.source,
+                ATTR_URL: repository.url,
+                ATTR_MAINTAINER: repository.maintainer,
+            }
+            for repository in self.sys_store.all
+        ]
         return {ATTR_ADDONS: data_addons, ATTR_REPOSITORIES: data_repositories}
 
     @api_process
@@ -449,7 +446,4 @@ def _pretty_devices(addon: AnyAddon) -> List[str]:
 
 def _pretty_services(addon: AnyAddon) -> List[str]:
     """Return a simplified services role list."""
-    services = []
-    for name, access in addon.services_role.items():
-        services.append(f"{name}:{access}")
-    return services
+    return [f"{name}:{access}" for name, access in addon.services_role.items()]

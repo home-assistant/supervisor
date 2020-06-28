@@ -2,7 +2,8 @@
 
 import attr
 
-from supervisor.utils.tar import exclude_filter, secure_path
+from pathlib import PurePath
+from supervisor.utils.tar import secure_path, _is_excluded_by_filter
 
 
 @attr.s
@@ -33,28 +34,29 @@ def test_not_secure_path():
     assert [] == list(secure_path(test_list))
 
 
-def test_exclude_filter_good():
+def test_is_excluded_by_filter_good():
     """Test exclude filter."""
-    filter_funct = exclude_filter(["not/match", "/dev/xy"])
+    filter_list = ["not/match", "/dev/xy"]
     test_list = [
-        TarInfo("test.txt"),
-        TarInfo("data/xy.blob"),
-        TarInfo("bla/blu/ble"),
-        TarInfo("data/../xy.blob"),
+        PurePath("test.txt"),
+        PurePath("data/xy.blob"),
+        PurePath("bla/blu/ble"),
+        PurePath("data/../xy.blob"),
     ]
 
-    assert test_list == [filter_funct(result) for result in test_list]
+    for path_object in test_list:
+        assert _is_excluded_by_filter(path_object, filter_list) is False
 
 
-def test_exclude_filter_bad():
+def test_is_exclude_by_filter_bad():
     """Test exclude filter."""
-    filter_funct = exclude_filter(["*.txt", "data/*", "bla/blu/ble"])
+    filter_list = ["*.txt", "data/*", "bla/blu/ble"]
     test_list = [
-        TarInfo("test.txt"),
-        TarInfo("data/xy.blob"),
-        TarInfo("bla/blu/ble"),
-        TarInfo("data/test_files/kk.txt"),
+        PurePath("test.txt"),
+        PurePath("data/xy.blob"),
+        PurePath("bla/blu/ble"),
+        PurePath("data/test_files/kk.txt"),
     ]
 
-    for info in [filter_funct(result) for result in test_list]:
-        assert info is None
+    for path_object in test_list:
+        assert _is_excluded_by_filter(path_object, filter_list) is True

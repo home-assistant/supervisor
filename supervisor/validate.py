@@ -36,6 +36,7 @@ from .const import (
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
+    SUPERVISOR_VERSION,
     LogLevel,
     UpdateChannels,
 )
@@ -176,7 +177,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_TIMEZONE, default="UTC"): validate_timezone,
         vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
-        vol.Optional(ATTR_VERSION): simple_version,
+        vol.Optional(ATTR_VERSION, default=SUPERVISOR_VERSION): simple_version,
         vol.Optional(
             ATTR_ADDONS_CUSTOM_LIST,
             default=["https://github.com/hassio-addons/repository"],

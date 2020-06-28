@@ -134,11 +134,7 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.DockerException:
             return False
 
-        # container is not running
-        if docker_container.status != "running":
-            return False
-
-        return True
+        return docker_container.status == "running"
 
     @process_lock
     def attach(self, tag: str):
@@ -301,6 +297,8 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't grep logs from %s: %s", self.image, err)
 
+        return b""
+
     @process_lock
     def cleanup(self, old_image: Optional[str] = None) -> Awaitable[None]:
         """Check if old version exists and cleanup."""
@@ -412,10 +410,7 @@ class DockerInterface(CoreSysAttributes):
             return False
 
         # Check return value
-        if int(docker_container.attrs["State"]["ExitCode"]) != 0:
-            return True
-
-        return False
+        return int(docker_container.attrs["State"]["ExitCode"]) != 0
 
     def get_latest_version(self, key: Any = int) -> Awaitable[str]:
         """Return latest version of local Home Asssistant image."""

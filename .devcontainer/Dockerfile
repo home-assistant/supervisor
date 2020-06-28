@@ -1,4 +1,4 @@
-FROM python:3.7
+FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.7
 
 WORKDIR /workspaces
 
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends \
         nodejs \
         yarn \
-    && curl -o - https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash \
+    && curl -o - https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash \
     && rm -rf /var/lib/apt/lists/*
 ENV NVM_DIR /root/.nvm
 

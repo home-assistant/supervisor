@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreStates
 from ..coresys import CoreSysAttributes
+from ..exceptions import AddonsError
 from ..utils.dt import utcnow
 from .snapshot import Snapshot
 from .utils import create_slug
@@ -219,8 +220,6 @@ class SnapshotManager(CoreSysAttributes):
             await self.lock.acquire()
 
             async with snapshot:
-                tasks = []
-
                 # Stop Home-Assistant / Add-ons
                 await self.sys_core.shutdown()
 
@@ -240,14 +239,17 @@ class SnapshotManager(CoreSysAttributes):
                 await snapshot.restore_repositories()
 
                 # Delete delta add-ons
-                tasks.clear()
+                _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
                 for addon in self.sys_addons.installed:
-                    if addon.slug not in snapshot.addon_list:
-                        tasks.append(addon.uninstall())
+                    if addon.slug in snapshot.addon_list:
+                        continue
 
-                if tasks:
-                    _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
-                    await asyncio.wait(tasks)
+                    # Remove Add-on because it's not a part of the new env
+                    # Do it sequential avoid issue on slow IO
+                    try:
+                        await addon.uninstall()
+                    except AddonsError:
+                        _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
 
                 # Restore add-ons
                 _LOGGER.info("Restore %s old add-ons", snapshot.slug)

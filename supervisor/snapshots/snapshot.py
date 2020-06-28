@@ -1,12 +1,11 @@
 """Representation of a snapshot file."""
-import asyncio
 from base64 import b64decode, b64encode
 import json
 import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
@@ -14,6 +13,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from ..addons import Addon
 from ..const import (
     ATTR_ADDONS,
     ATTR_AUDIO_INPUT,
@@ -42,7 +42,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils.json import write_json_file
-from ..utils.tar import SecureTarFile, exclude_filter, secure_path
+from ..utils.tar import SecureTarFile, atomic_contents_add, secure_path
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
 from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
 
@@ -293,11 +293,11 @@ class Snapshot(CoreSysAttributes):
         finally:
             self._tmp.cleanup()
 
-    async def store_addons(self, addon_list=None):
+    async def store_addons(self, addon_list: Optional[List[Addon]] = None):
         """Add a list of add-ons into snapshot."""
-        addon_list = addon_list or self.sys_addons.installed
+        addon_list: List[Addon] = addon_list or self.sys_addons.installed
 
-        async def _addon_save(addon):
+        async def _addon_save(addon: Addon):
             """Task to store an add-on into snapshot."""
             addon_file = SecureTarFile(
                 Path(self._tmp.name, f"{addon.slug}.tar.gz"), "w", key=self._key
@@ -320,16 +320,19 @@ class Snapshot(CoreSysAttributes):
                 }
             )
 
-        # Run tasks
-        tasks = [_addon_save(addon) for addon in addon_list]
-        if tasks:
-            await asyncio.wait(tasks)
+        # Save Add-ons sequential
+        # avoid issue on slow IO
+        for addon in addon_list:
+            try:
+                await _addon_save(addon)
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
 
-    async def restore_addons(self, addon_list=None):
+    async def restore_addons(self, addon_list: Optional[List[str]] = None):
         """Restore a list add-on from snapshot."""
-        addon_list = addon_list or self.addon_list
+        addon_list: List[str] = addon_list or self.addon_list
 
-        async def _addon_restore(addon_slug):
+        async def _addon_restore(addon_slug: str):
             """Task to restore an add-on into snapshot."""
             addon_file = SecureTarFile(
                 Path(self._tmp.name, f"{addon_slug}.tar.gz"), "r", key=self._key
@@ -346,16 +349,19 @@ class Snapshot(CoreSysAttributes):
             except AddonsError:
                 _LOGGER.error("Can't restore snapshot for %s", addon_slug)
 
-        # Run tasks
-        tasks = [_addon_restore(slug) for slug in addon_list]
-        if tasks:
-            await asyncio.wait(tasks)
+        # Save Add-ons sequential
+        # avoid issue on slow IO
+        for slug in addon_list:
+            try:
+                await _addon_restore(slug)
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Can't restore Add-on %s: %s", slug, err)
 
-    async def store_folders(self, folder_list=None):
+    async def store_folders(self, folder_list: Optional[List[str]] = None):
         """Backup Supervisor data into snapshot."""
-        folder_list = set(folder_list or ALL_FOLDERS)
+        folder_list: Set[str] = set(folder_list or ALL_FOLDERS)
 
-        def _folder_save(name):
+        def _folder_save(name: str):
             """Take snapshot of a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
@@ -370,10 +376,11 @@ class Snapshot(CoreSysAttributes):
             try:
                 _LOGGER.info("Snapshot folder %s", name)
                 with SecureTarFile(tar_name, "w", key=self._key) as tar_file:
-                    tar_file.add(
+                    atomic_contents_add(
+                        tar_file,
                         origin_dir,
+                        excludes=MAP_FOLDER_EXCLUDE.get(name, []),
                         arcname=".",
-                        filter=exclude_filter(MAP_FOLDER_EXCLUDE.get(name, [])),
                     )
 
                 _LOGGER.info("Snapshot folder %s done", name)
@@ -381,18 +388,19 @@ class Snapshot(CoreSysAttributes):
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
 
-        # Run tasks
-        tasks = [
-            self.sys_run_in_executor(_folder_save, folder) for folder in folder_list
-        ]
-        if tasks:
-            await asyncio.wait(tasks)
+        # Save folder sequential
+        # avoid issue on slow IO
+        for folder in folder_list:
+            try:
+                await self.sys_run_in_executor(_folder_save, folder)
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Can't save folder %s: %s", folder, err)
 
-    async def restore_folders(self, folder_list=None):
+    async def restore_folders(self, folder_list: Optional[List[str]] = None):
         """Backup Supervisor data into snapshot."""
-        folder_list = set(folder_list or self.folders)
+        folder_list: Set[str] = set(folder_list or self.folders)
 
-        def _folder_restore(name):
+        def _folder_restore(name: str):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
@@ -416,12 +424,13 @@ class Snapshot(CoreSysAttributes):
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
-        # Run tasks
-        tasks = [
-            self.sys_run_in_executor(_folder_restore, folder) for folder in folder_list
-        ]
-        if tasks:
-            await asyncio.wait(tasks)
+        # Restore folder sequential
+        # avoid issue on slow IO
+        for folder in folder_list:
+            try:
+                await self.sys_run_in_executor(_folder_restore, folder)
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Can't restore folder %s: %s", folder, err)
 
     def store_homeassistant(self):
         """Read all data from Home Assistant object."""
