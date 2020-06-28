@@ -1,3 +1,4 @@
+"""Docker pull progress emitter."""
 import asyncio
 import time
 from contextlib import suppress
@@ -9,11 +10,13 @@ from ..exceptions import HomeAssistantAPIError
 
 
 def pull_with_progress(interface: CoreSysAttributes, image, tag):
+    """Docker pull with progress"""
+
     progress = PullProgress(interface)
     try:
         progress.send_event()
         pull_log = interface.sys_docker.api.pull(image, tag, stream=True, decode=True)
-        progress.watch_log(pull_log)
+        progress.process_log(pull_log)
 
         return interface.sys_docker.images.get(
             "{0}{2}{1}".format(image, tag, "@" if tag.startswith("sha256:") else ":")
@@ -24,32 +27,41 @@ def pull_with_progress(interface: CoreSysAttributes, image, tag):
 
 
 class Status:
+    """Docker image status object"""
+
     def __init__(self):
         self._current = {}
         self._total = {}
 
     def update(self, layer_id, current, total):
+        """Update one layer status"""
         self._current[layer_id] = current
         self._total[layer_id] = total
 
     def done(self, layer_id):
+        """Mark one layer as done"""
         if layer_id in self._total:
             self._current[layer_id] = self._total[layer_id]
 
     def done_all(self):
+        """Mark image as done"""
         if len(self._total) == 0:
             self.update("id", 1, 1)
         for layer_id in self._total:
             self._current[layer_id] = self._total[layer_id]
 
     def current(self):
+        """Get current for image"""
         return sum(self._current.values())
 
     def total(self):
+        """Get total for image"""
         return sum(self._total.values())
 
 
 class PullProgress:
+    """Docker pull log progress listener"""
+
     def __init__(self, interface: CoreSysAttributes, sleep=1.0) -> None:
         super().__init__()
         self._interface = interface
@@ -59,31 +71,34 @@ class PullProgress:
         self._extract = Status()
 
     def send_event(self):
+        """Send event to HA Core"""
         self._next_push = time.time() + self._sleep
         asyncio.run_coroutine_threadsafe(
-            self.async_send_event(self.status()), self._interface.sys_loop,
+            self._send_event(self._status()), self._interface.sys_loop,
         )
 
     def done(self):
+        """Mark current pull as done and send this info to HA Core"""
         self._download.done_all()
         self._extract.done_all()
         self.send_event()
 
-    async def async_send_event(self, status) -> None:
+    async def _send_event(self, status) -> None:
         with suppress(HomeAssistantAPIError):
             async with self._interface.sys_homeassistant.make_request(
                 "post", "api/events/hassio_progress", json=status, timeout=2,
             ):
                 pass
 
-    def watch_log(self, pull_log):
+    def process_log(self, pull_log):
+        """Process pull log and emit events"""
         for msg in pull_log:
-            self.update(msg)
+            self._update(msg)
             if self._next_push < time.time():
                 self.send_event()
         self.done()
 
-    def update(self, data):
+    def _update(self, data):
         try:
             layer_id = data["id"]
             detail = data["progressDetail"]
@@ -103,7 +118,7 @@ class PullProgress:
         except KeyError:
             pass
 
-    def status(self):
+    def _status(self):
         return {
             "name": self._interface.name,
             "downloading": {
