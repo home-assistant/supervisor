@@ -6,6 +6,7 @@
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
   "extensions": [
     "ms-python.python",
+    "ms-python.vscode-pylance",
     "visualstudioexptteam.vscodeintellicode",
     "esbenp.prettier-vscode"
   ],
