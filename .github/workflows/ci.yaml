@@ -43,7 +43,7 @@ jobs:
           python -m venv venv
           . venv/bin/activate
           pip install -U pip setuptools
-          pip install -r requirements.txt -r requirements_test.txt
+          pip install -r requirements.txt -r requirements_tests.txt
       - name: Restore pre-commit environment from cache
         id: cache-precommit
         uses: actions/cache@v2
