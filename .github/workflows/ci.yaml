@@ -302,7 +302,7 @@ jobs:
   lint-pyupgrade:
     name: Check pyupgrade
     runs-on: ubuntu-latest
-    needs: prepare-base
+    needs: prepare
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
