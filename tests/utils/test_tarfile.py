@@ -1,9 +1,10 @@
 """Test Tarfile functions."""
 
+from pathlib import PurePath
+
 import attr
 
-from pathlib import PurePath
-from supervisor.utils.tar import secure_path, _is_excluded_by_filter
+from supervisor.utils.tar import _is_excluded_by_filter, secure_path
 
 
 @attr.s

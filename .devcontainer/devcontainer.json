@@ -3,6 +3,7 @@
   "context": "..",
   "dockerFile": "Dockerfile",
   "appPort": "9123:8123",
+  "postCreateCommand": "pre-commit install",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
   "extensions": [
     "ms-python.python",
