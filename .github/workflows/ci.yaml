@@ -157,7 +157,7 @@ jobs:
 
   pytest:
     runs-on: ubuntu-latest
-    needs: prepare-tests
+    needs: prepare
     strategy:
       matrix:
         python-version: [3.7, 3.8]
