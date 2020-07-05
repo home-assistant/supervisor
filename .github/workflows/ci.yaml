@@ -91,6 +91,21 @@ jobs:
           . venv/bin/activate
           black --target-version py37 --check supervisor tests setup.py
 
+  lint-dockerfile:
+    name: Check Dockerfile
+    runs-on: ubuntu-latest
+    needs: prepare
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v2
+      - name: Register hadolint problem matcher
+        run: |
+          echo "::add-matcher::.github/workflows/matchers/hadolint.json"
+      - name: Check Dockerfile
+        uses: docker://hadolint/hadolint:v1.18.0
+        with:
+          args: hadolint Dockerfile
+
   lint-flake8:
     name: Check flake8
     runs-on: ubuntu-latest
