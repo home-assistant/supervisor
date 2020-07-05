@@ -95,11 +95,11 @@ jobs:
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
-      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v2
         id: python
         with:
-          python-version: ${{ env.DEFAULT_PYTHON }}
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v2
