@@ -35,11 +35,11 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
           restore-keys: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-
-            ${{ runner.os }}-venv-
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-
+            ${{ runner.os }}-venv2-
       - name: Create Python virtual environment
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -80,7 +80,7 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
       - name: Fail job if Python cache restore failed
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -124,7 +124,7 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
       - name: Fail job if Python cache restore failed
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -168,7 +168,7 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
       - name: Fail job if Python cache restore failed
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -200,7 +200,7 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
       - name: Fail job if Python cache restore failed
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -241,7 +241,7 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
       - name: Fail job if Python cache restore failed
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -285,7 +285,7 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
       - name: Fail job if Python cache restore failed
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -317,7 +317,7 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
       - name: Fail job if Python cache restore failed
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -361,7 +361,7 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
       - name: Fail job if Python cache restore failed
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -415,7 +415,7 @@ jobs:
         with:
           path: venv
           key: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
+            ${{ runner.os }}-venv2-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
       - name: Fail job if Python cache restore failed
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
