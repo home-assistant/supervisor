@@ -7,11 +7,11 @@ from typing import Any, Awaitable, Dict, List, Optional
 import docker
 
 from . import CommandReturn
+from .utils import PullProgress
 from ..const import LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DockerAPIError
+from ..exceptions import DockerAPIError, HomeAssistantAPIError
 from ..utils import process_lock
-from .progress import pull_with_progress
 from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ class DockerInterface(CoreSysAttributes):
 
         _LOGGER.info("Pull image %s tag %s.", image, tag)
         try:
-            docker_image = pull_with_progress(self, image, tag)
+            docker_image = self._pull_with_progress(image, tag)
             if latest:
                 _LOGGER.info("Tag image %s with version %s as latest", image, tag)
                 docker_image.tag(image, tag="latest")
@@ -103,6 +103,39 @@ class DockerInterface(CoreSysAttributes):
             raise DockerAPIError() from None
         else:
             self._meta = docker_image.attrs
+
+    def _pull_with_progress(self, image, tag):
+        """Docker pull with progress"""
+
+        progress = PullProgress(self.name)
+        try:
+            status = progress.status()
+            self._send_progress(status)
+            pull_log = self.sys_docker.api.pull(image, tag, stream=True, decode=True)
+            for status in progress.process_log(pull_log):
+                self._send_progress(status)
+
+            return self.sys_docker.images.get(
+                "{0}{2}{1}".format(
+                    image, tag, "@" if tag.startswith("sha256:") else ":"
+                )
+            )
+        except docker.errors.APIError as err:
+            status = progress.done()
+            self._send_progress(status)
+            raise err
+
+    def _send_progress(self, status):
+        asyncio.run_coroutine_threadsafe(
+            self._async_send_progress(status), self.sys_loop,
+        )
+
+    async def _async_send_progress(self, status) -> None:
+        with suppress(HomeAssistantAPIError):
+            async with self.sys_homeassistant.make_request(
+                "post", "api/events/hassio_progress", json=status, timeout=2,
+            ):
+                pass
 
     def exists(self) -> Awaitable[bool]:
         """Return True if Docker image exists in local repository."""
