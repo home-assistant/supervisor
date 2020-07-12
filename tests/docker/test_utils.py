@@ -4,6 +4,7 @@ import json
 import time
 
 from supervisor.docker.utils import PullProgress
+
 from tests.common import load_json_fixture
 
 

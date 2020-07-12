@@ -7,12 +7,12 @@ from typing import Any, Awaitable, Dict, List, Optional
 import docker
 
 from . import CommandReturn
-from .utils import PullProgress
 from ..const import LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DockerAPIError, HomeAssistantAPIError
 from ..utils import process_lock
 from .stats import DockerStats
+from .utils import PullProgress
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -105,8 +105,6 @@ class DockerInterface(CoreSysAttributes):
             self._meta = docker_image.attrs
 
     def _pull_with_progress(self, image, tag):
-        """Docker pull with progress"""
-
         progress = PullProgress(self.name)
         try:
             status = progress.status()

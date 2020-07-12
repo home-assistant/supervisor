@@ -3,9 +3,10 @@ import time
 
 
 class PullProgress:
-    """Docker pull log progress listener"""
+    """Docker pull log progress listener."""
 
     def __init__(self, name: str, sleep=1.0) -> None:
+        """Initialize pull log listener."""
         self._name = name
         self._sleep = sleep
         self._next_push = 0
@@ -13,7 +14,7 @@ class PullProgress:
         self._extracting = Status()
 
     def status(self):
-        """Get pull status"""
+        """Get pull status."""
         return {
             "name": self._name,
             "downloading": self._downloading.get(),
@@ -21,13 +22,13 @@ class PullProgress:
         }
 
     def done(self):
-        """Mark current pull as done and send this info to HA Core"""
+        """Mark current pull as done and send this info to HA Core."""
         self._downloading.done_all()
         self._extracting.done_all()
         return self.status()
 
     def process_log(self, pull_log):
-        """Process pull log and emit events"""
+        """Process pull log and yield current status."""
         for msg in pull_log:
             self._update(msg)
             if self._next_push < time.time():
@@ -57,31 +58,32 @@ class PullProgress:
 
 
 class Status:
-    """Docker image status object"""
+    """Docker image status object."""
 
     def __init__(self):
+        """Initialize status object."""
         self._current = {}
         self._total = {}
 
     def update(self, layer_id, current, total):
-        """Update one layer status"""
+        """Update one layer status."""
         self._current[layer_id] = current
         self._total[layer_id] = total
 
     def done(self, layer_id):
-        """Mark one layer as done"""
+        """Mark one layer as done."""
         if layer_id in self._total:
             self._current[layer_id] = self._total[layer_id]
 
     def done_all(self):
-        """Mark image as done"""
+        """Mark image as done."""
         if len(self._total) == 0:
             self.update("id", 1, 1)
         for layer_id in self._total:
             self._current[layer_id] = self._total[layer_id]
 
     def get(self):
-        """Get status"""
+        """Returns status."""
         return {
             "current": sum(self._current.values()),
             "total": sum(self._total.values()),
