@@ -14,5 +14,5 @@ cd hassio
 ./script/build_hassio
 
 # Copy frontend
-rm -f ../../supervisor/hassio/api/panel/*
+rm -rf ../../supervisor/api/panel/*
 cp -rf build/* ../../supervisor/api/panel/
