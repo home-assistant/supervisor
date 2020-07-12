@@ -83,7 +83,7 @@ class Status:
             self._current[layer_id] = self._total[layer_id]
 
     def get(self):
-        """Returns status."""
+        """Return the current status as dict."""
         return {
             "current": sum(self._current.values()),
             "total": sum(self._total.values()),
