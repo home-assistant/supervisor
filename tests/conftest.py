@@ -5,8 +5,6 @@ import pytest
 
 from supervisor.bootstrap import initialize_coresys
 
-from tests.common import mock_coro
-
 # pylint: disable=redefined-outer-name
 
 
@@ -21,8 +19,7 @@ def docker():
 async def coresys(loop, docker):
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system_data"), patch(
-        "supervisor.bootstrap.fetch_timezone",
-        return_value=mock_coro(return_value="Europe/Zurich"),
+        "supervisor.bootstrap.fetch_timezone", return_value="Europe/Zurich",
     ):
         coresys_obj = await initialize_coresys()
 
