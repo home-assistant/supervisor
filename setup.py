@@ -25,7 +25,7 @@ setup(
         "Topic :: Scientific/Engineering :: Atmospheric Science",
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
-        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     keywords=["docker", "home-assistant", "api"],
     zip_safe=False,
