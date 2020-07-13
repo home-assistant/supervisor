@@ -8,7 +8,7 @@ trigger:
 pr: none
 variables:
   - name: versionWheels
-    value: '1.6.1-3.7-alpine3.11'
+    value: '1.13.0-3.8-alpine3.12'
 resources:
   repositories:
     - repository: azure

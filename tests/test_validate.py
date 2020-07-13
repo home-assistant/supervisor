@@ -24,23 +24,23 @@ async def test_dns_url_v4_good():
         assert supervisor.validate.dns_url(url)
 
 
-async def test_dns_url_v6_good():
+def test_dns_url_v6_good():
     """Test the DNS validator with known-good ipv6 DNS URLs."""
     for url in GOOD_V6:
         assert supervisor.validate.dns_url(url)
 
 
-async def test_dns_server_list_v4():
+def test_dns_server_list_v4():
     """Test a list with v4 addresses."""
     assert supervisor.validate.dns_server_list(GOOD_V4)
 
 
-async def test_dns_server_list_v6():
+def test_dns_server_list_v6():
     """Test a list with v6 addresses."""
     assert supervisor.validate.dns_server_list(GOOD_V6)
 
 
-async def test_dns_server_list_combined():
+def test_dns_server_list_combined():
     """Test a list with both v4 and v6 addresses."""
     combined = GOOD_V4 + GOOD_V6
     # test the matches
@@ -52,14 +52,14 @@ async def test_dns_server_list_combined():
         supervisor.validate.dns_server_list(combined + combined + combined + combined)
 
 
-async def test_dns_server_list_bad():
+def test_dns_server_list_bad():
     """Test the bad list."""
     # test the matches
     with pytest.raises(voluptuous.error.Invalid):
         assert supervisor.validate.dns_server_list(BAD)
 
 
-async def test_dns_server_list_bad_combined():
+def test_dns_server_list_bad_combined():
     """Test the bad list, combined with the good."""
     combined = GOOD_V4 + GOOD_V6 + BAD
 
