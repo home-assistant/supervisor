@@ -12,15 +12,21 @@
     "esbenp.prettier-vscode"
   ],
   "settings": {
-    "python.pythonPath": "/usr/local/bin/python",
     "terminal.integrated.shell.linux": "/bin/bash",
+    "editor.formatOnPaste": false,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "files.trimTrailingWhitespace": true,
+    "python.pythonPath": "/usr/local/bin/python3",
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": true,
     "python.formatting.provider": "black",
     "python.formatting.blackArgs": ["--target-version", "py38"],
-    "editor.formatOnPaste": false,
-    "editor.formatOnSave": true,
-    "editor.formatOnType": true,
-    "files.trimTrailingWhitespace": true
+    "python.formatting.blackPath": "/usr/local/bin/black",
+    "python.linting.banditPath": "/usr/local/bin/bandit",
+    "python.linting.flake8Path": "/usr/local/bin/flake8",
+    "python.linting.mypyPath": "/usr/local/bin/mypy",
+    "python.linting.pylintPath": "/usr/local/bin/pylint",
+    "python.linting.pydocstylePath": "/usr/local/bin/pydocstyle"
   }
 }

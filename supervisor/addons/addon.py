@@ -659,7 +659,7 @@ class Addon(AddonModel):
             # Restore data
             def _restore_data():
                 """Restore data."""
-                shutil.copytree(Path(temp, "data"), self.path_data)
+                shutil.copytree(Path(temp, "data"), self.path_data, symlinks=True)
 
             _LOGGER.info("Restore data for addon %s", self.slug)
             if self.path_data.is_dir():

@@ -1,10 +1,16 @@
 """Test Tarfile functions."""
-
-from pathlib import PurePath
+from pathlib import Path, PurePath
+import shutil
+from tempfile import TemporaryDirectory
 
 import attr
 
-from supervisor.utils.tar import _is_excluded_by_filter, secure_path
+from supervisor.utils.tar import (
+    SecureTarFile,
+    _is_excluded_by_filter,
+    atomic_contents_add,
+    secure_path,
+)
 
 
 @attr.s
@@ -61,3 +67,35 @@ def test_is_exclude_by_filter_bad():
 
     for path_object in test_list:
         assert _is_excluded_by_filter(path_object, filter_list) is True
+
+
+def test_create_pure_tar():
+    """Test to create a tar file without encryption."""
+    with TemporaryDirectory() as temp_dir:
+        temp = Path(temp_dir)
+
+        # Prepair test folder
+        temp_orig = temp.joinpath("orig")
+        fixture_data = Path(__file__).parents[1].joinpath("fixtures/tar_data")
+        shutil.copytree(fixture_data, temp_orig, symlinks=True)
+
+        # Create Tarfile
+        temp_tar = temp.joinpath("backup.tar")
+        with SecureTarFile(temp_tar, "w") as tar_file:
+            atomic_contents_add(
+                tar_file, temp_orig, excludes=[], arcname=".",
+            )
+
+        assert temp_tar.exists()
+
+        # Restore
+        temp_new = temp.joinpath("new")
+        with SecureTarFile(temp_tar, "r") as tar_file:
+            tar_file.extractall(path=temp_new, members=tar_file)
+
+        assert temp_new.is_dir()
+        assert temp_new.joinpath("test_symlink").is_symlink()
+        assert temp_new.joinpath("test1").is_dir()
+        assert temp_new.joinpath("test1/script.sh").is_file()
+        assert temp_new.joinpath("test1/script.sh").stat().st_mode == 33261
+        assert temp_new.joinpath("README.md").is_file()

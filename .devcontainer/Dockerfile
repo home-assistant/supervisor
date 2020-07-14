@@ -46,6 +46,3 @@ COPY requirements.txt requirements_tests.txt ./
 RUN pip3 install -r requirements.txt -r requirements_tests.txt \
     && pip3 install tox \
     && rm -f requirements.txt requirements_tests.txt
-
-# Set the default shell to bash instead of sh
-ENV SHELL /bin/bash
