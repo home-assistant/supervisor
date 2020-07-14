@@ -4,10 +4,11 @@ updates:
   directory: "/"
   schedule:
     interval: daily
-    time: "11:00"
+    time: "06:00"
   open-pull-requests-limit: 10
-  ignore:
-  - dependency-name: ruamel-yaml
-    versions:
-    - "> 0.15.100"
-    - "< 1"
+- package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+    interval: daily
+    time: "06:00"
+  open-pull-requests-limit: 10
