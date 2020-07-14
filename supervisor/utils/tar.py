@@ -165,7 +165,7 @@ def atomic_contents_add(
             continue
 
         arcpath = PurePath(arcname, directory_item.name).as_posix()
-        if directory_item.is_dir():
+        if directory_item.is_dir() and not directory_item.is_symlink():
             atomic_contents_add(tar_file, directory_item, excludes, arcpath)
             continue
 
