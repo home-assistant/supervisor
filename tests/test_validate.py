@@ -79,6 +79,7 @@ def test_version_complex():
         "0.150.1b1",
         "0.150.1.dev20200715",
         "1",
+        "alpine-5.4",
         1,
         1.1,
     ):
