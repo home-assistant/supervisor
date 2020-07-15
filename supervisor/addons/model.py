@@ -535,7 +535,9 @@ class AddonModel(CoreSysAttributes, ABC):
 
         # Machine / Hardware
         machine = config.get(ATTR_MACHINE)
-        if machine and self.sys_machine not in machine:
+        if machine and f"!{self.sys_machine}" in machine:
+            return False
+        elif machine and self.sys_machine not in machine:
             return False
 
         # Home Assistant
