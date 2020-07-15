@@ -8,12 +8,12 @@ import voluptuous as vol
 
 from ..const import ATTR_BOARD, ATTR_BOOT, ATTR_VERSION, ATTR_VERSION_LATEST
 from ..coresys import CoreSysAttributes
-from ..validate import complex_version
+from ..validate import version_tag
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): complex_version})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 
 
 class APIOS(CoreSysAttributes):

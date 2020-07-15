@@ -33,7 +33,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..validate import complex_version, docker_image, network_port
+from ..validate import docker_image, network_port, version_tag
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ SCHEMA_OPTIONS = vol.Schema(
     }
 )
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): complex_version})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 
 
 class APIHomeAssistant(CoreSysAttributes):
