@@ -98,6 +98,7 @@ from ..validate import (
     network_port,
     token,
     uuid_match,
+    version_tag,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -119,7 +120,10 @@ V_LIST = "list"
 
 RE_SCHEMA_ELEMENT = re.compile(
     r"^(?:"
-    r"|bool|email|url|port"
+    r"|bool"
+    r"|email"
+    r"|url"
+    r"|port"
     r"|str(?:\((?P<s_min>\d+)?,(?P<s_max>\d+)?\))?"
     r"|password(?:\((?P<p_min>\d+)?,(?P<p_max>\d+)?\))?"
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
@@ -147,24 +151,25 @@ RE_DOCKER_IMAGE_BUILD = re.compile(
 
 SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
 
-
-MACHINE_ALL = [
-    "intel-nuc",
-    "odroid-c2",
-    "odroid-n2",
-    "odroid-xu",
-    "qemuarm-64",
-    "qemuarm",
-    "qemux86-64",
-    "qemux86",
-    "raspberrypi",
-    "raspberrypi2",
-    "raspberrypi3-64",
-    "raspberrypi3",
-    "raspberrypi4-64",
-    "raspberrypi4",
-    "tinker",
-]
+RE_MACHINE = re.compile(
+    r"^!?(?:"
+    r"|intel-nuc"
+    r"|odroid-c2"
+    r"|odroid-n2"
+    r"|odroid-xu"
+    r"|qemuarm-64"
+    r"|qemuarm"
+    r"|qemux86-64"
+    r"|qemux86"
+    r"|raspberrypi"
+    r"|raspberrypi2"
+    r"|raspberrypi3-64"
+    r"|raspberrypi3"
+    r"|raspberrypi4-64"
+    r"|raspberrypi4"
+    r"|tinker"
+    r")$"
+)
 
 
 def _simple_startup(value) -> str:
@@ -180,11 +185,11 @@ def _simple_startup(value) -> str:
 SCHEMA_ADDON_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_NAME): vol.Coerce(str),
-        vol.Required(ATTR_VERSION): vol.Coerce(str),
+        vol.Required(ATTR_VERSION): vol.All(version_tag, str),
         vol.Required(ATTR_SLUG): vol.Coerce(str),
         vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
         vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
-        vol.Optional(ATTR_MACHINE): [vol.In(MACHINE_ALL)],
+        vol.Optional(ATTR_MACHINE): vol.All([vol.Match(RE_MACHINE)], vol.Unique()),
         vol.Optional(ATTR_URL): vol.Url(),
         vol.Required(ATTR_STARTUP): vol.All(_simple_startup, vol.Coerce(AddonStartup)),
         vol.Required(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),

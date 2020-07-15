@@ -51,7 +51,7 @@ from ..exceptions import (
 )
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
-from ..utils.tar import secure_path, atomic_contents_add
+from ..utils.tar import atomic_contents_add, secure_path
 from .model import AddonModel, Data
 from .utils import remove_data
 from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
@@ -659,7 +659,7 @@ class Addon(AddonModel):
             # Restore data
             def _restore_data():
                 """Restore data."""
-                shutil.copytree(Path(temp, "data"), self.path_data)
+                shutil.copytree(Path(temp, "data"), self.path_data, symlinks=True)
 
             _LOGGER.info("Restore data for addon %s", self.slug)
             if self.path_data.is_dir():
