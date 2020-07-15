@@ -139,13 +139,13 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_CHANNEL, default=UpdateChannels.STABLE): vol.Coerce(
             UpdateChannels
         ),
-        vol.Optional(ATTR_HOMEASSISTANT): version_tag,
-        vol.Optional(ATTR_SUPERVISOR): version_tag,
-        vol.Optional(ATTR_HASSOS): version_tag,
-        vol.Optional(ATTR_CLI): version_tag,
-        vol.Optional(ATTR_DNS): version_tag,
-        vol.Optional(ATTR_AUDIO): version_tag,
-        vol.Optional(ATTR_MULTICAST): version_tag,
+        vol.Optional(ATTR_HOMEASSISTANT): vol.All(version_tag, str),
+        vol.Optional(ATTR_SUPERVISOR): vol.All(version_tag, str),
+        vol.Optional(ATTR_HASSOS): vol.All(version_tag, str),
+        vol.Optional(ATTR_CLI): vol.All(version_tag, str),
+        vol.Optional(ATTR_DNS): vol.All(version_tag, str),
+        vol.Optional(ATTR_AUDIO): vol.All(version_tag, str),
+        vol.Optional(ATTR_MULTICAST): vol.All(version_tag, str),
         vol.Optional(ATTR_IMAGE, default=dict): vol.Schema(
             {
                 vol.Optional(ATTR_HOMEASSISTANT): docker_image,

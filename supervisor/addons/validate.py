@@ -98,6 +98,7 @@ from ..validate import (
     network_port,
     token,
     uuid_match,
+    version_tag,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -180,7 +181,7 @@ def _simple_startup(value) -> str:
 SCHEMA_ADDON_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_NAME): vol.Coerce(str),
-        vol.Required(ATTR_VERSION): vol.Coerce(str),
+        vol.Required(ATTR_VERSION): vol.All(version_tag, str),
         vol.Required(ATTR_SLUG): vol.Coerce(str),
         vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
         vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
