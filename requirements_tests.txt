@@ -10,4 +10,4 @@ pytest-aiohttp==0.3.0
 pytest-cov==2.10.0
 pytest-timeout==1.4.2
 pytest==5.4.3
-pyupgrade==2.7.0
+pyupgrade==2.7.1
