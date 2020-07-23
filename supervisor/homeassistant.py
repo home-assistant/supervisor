@@ -641,7 +641,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             # 5: Timeout
             if timeout and time.monotonic() - start_time > self.wait_boot:
-                _LOGGER.warning("Don't wait anymore of Home Assistant startup!")
+                _LOGGER.warning("Don't wait anymore on Home Assistant startup!")
                 break
 
         self._error_state = True
