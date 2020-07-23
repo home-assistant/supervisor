@@ -50,6 +50,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
+LANDINGPAGE: str = "landingpage"
+
 
 @attr.s(frozen=True)
 class ConfigResult:
@@ -261,7 +263,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             try:
                 await self.instance.install(
-                    "landingpage", image=self.sys_updater.image_homeassistant
+                    LANDINGPAGE, image=self.sys_updater.image_homeassistant
                 )
             except DockerAPIError:
                 _LOGGER.warning("Fails install landingpage, retry after 30sec")
@@ -375,10 +377,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         except DockerAPIError:
             raise HomeAssistantError() from None
 
-        # Don't block for landingpage
-        if self.version == "landingpage":
-            return
-        await self._block_till_run()
+        await self._block_till_run(self.version)
 
     @process_lock
     async def start(self) -> None:
@@ -394,7 +393,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             except DockerAPIError:
                 raise HomeAssistantError() from None
 
-            await self._block_till_run()
+            await self._block_till_run(self.version)
         # No Instance/Container found, extended start
         else:
             await self._start()
@@ -418,7 +417,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         except DockerAPIError:
             raise HomeAssistantError() from None
 
-        await self._block_till_run()
+        await self._block_till_run(self.version)
 
     @process_lock
     async def rebuild(self) -> None:
@@ -581,9 +580,20 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
         return False
 
-    async def _block_till_run(self) -> None:
+    async def _block_till_run(self, version: str) -> None:
         """Block until Home-Assistant is booting up or startup timeout."""
+        # Skip landingpage
+        if version == LANDINGPAGE:
+            return
+
+        # Manage timeouts
+        timeout: bool = True
         start_time = time.monotonic()
+        with suppress(pkg_version.InvalidVersion):
+            # Version provide early stage UI
+            if pkg_version.parse(version) >= pkg_version.parse("0.112.0"):
+                _LOGGER.debug("Disable startup timeouts - early UI")
+                timeout = False
 
         # Database migration
         migration_progress = False
@@ -630,8 +640,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 _LOGGER.info("Home Assistant pip installation done")
 
             # 5: Timeout
-            if time.monotonic() - start_time > self.wait_boot:
-                _LOGGER.warning("Don't wait anymore of Home Assistant startup!")
+            if timeout and time.monotonic() - start_time > self.wait_boot:
+                _LOGGER.warning("Don't wait anymore on Home Assistant startup!")
                 break
 
         self._error_state = True
