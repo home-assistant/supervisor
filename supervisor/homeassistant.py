@@ -593,6 +593,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             # Version provide early stage UI
             if pkg_version.parse(version) >= pkg_version.parse("0.112.0"):
                 timeout = False
+                _LOGGER.debug("Disable startup timeouts - early UI")
 
         # Database migration
         migration_progress = False
