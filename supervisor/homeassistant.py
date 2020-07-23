@@ -582,7 +582,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
     async def _block_till_run(self, version: str) -> None:
         """Block until Home-Assistant is booting up or startup timeout."""
-        # Skeep landingpage
+        # Skip landingpage
         if version == LANDINGPAGE:
             return
 
