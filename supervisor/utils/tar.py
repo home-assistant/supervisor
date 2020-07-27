@@ -51,12 +51,16 @@ class SecureTarFile:
         """Start context manager tarfile."""
         if not self._key:
             self._tar = tarfile.open(
-                name=str(self._name), mode=self._tar_mode, dereference=False
+                name=self._name, mode=self._tar_mode, dereference=False
             )
             return self._tar
 
         # Encrypted/Decryped Tarfile
-        self._file = self._name.open(f"{self._mode}b")
+        if self._mode.startswith("r"):
+            file_mode: int = os.O_RDONLY
+        else:
+            file_mode: int = os.O_WRONLY | os.O_CREAT
+        self._file = os.open(self._name, file_mode, 0o666)
 
         # Extract IV for CBC
         if self._mode == MOD_READ:
@@ -91,11 +95,11 @@ class SecureTarFile:
             padder = padding.PKCS7(BLOCK_SIZE_BITS).padder()
             data = padder.update(data) + padder.finalize()
 
-        self._file.write(self._encrypt.update(data))
+        os.write(self._file, self._encrypt.update(data))
 
     def read(self, size: int = 0) -> bytes:
         """Read data."""
-        return self._decrypt.update(self._file.read(size))
+        return self._decrypt.update(os.read(self._file, size))
 
     @property
     def path(self) -> Path:
