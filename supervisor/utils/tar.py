@@ -64,10 +64,10 @@ class SecureTarFile:
 
         # Extract IV for CBC
         if self._mode == MOD_READ:
-            cbc_rand = self._file.read(16)
+            cbc_rand = os.read(self._file, 16)
         else:
             cbc_rand = os.urandom(16)
-            self._file.write(cbc_rand)
+            os.write(self._file, cbc_rand)
 
         # Create Cipher
         self._aes = Cipher(
