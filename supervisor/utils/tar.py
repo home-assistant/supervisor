@@ -50,7 +50,9 @@ class SecureTarFile:
     def __enter__(self) -> tarfile.TarFile:
         """Start context manager tarfile."""
         if not self._key:
-            self._tar = tarfile.open(name=str(self._name), mode=self._tar_mode)
+            self._tar = tarfile.open(
+                name=str(self._name), mode=self._tar_mode, dereference=False
+            )
             return self._tar
 
         # Encrypted/Decryped Tarfile
@@ -73,7 +75,7 @@ class SecureTarFile:
         self._decrypt = self._aes.decryptor()
         self._encrypt = self._aes.encryptor()
 
-        self._tar = tarfile.open(fileobj=self, mode=self._tar_mode)
+        self._tar = tarfile.open(fileobj=self, mode=self._tar_mode, dereference=False)
         return self._tar
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
@@ -158,7 +160,7 @@ def atomic_contents_add(
         return None
 
     # Add directory only (recursive=False) to ensure we also archive empty directories
-    tar_file.add(origin_path.as_posix(), arcname, recursive=False)
+    tar_file.add(origin_path.as_posix(), arcname=arcname, recursive=False)
 
     for directory_item in origin_path.iterdir():
         if _is_excluded_by_filter(directory_item, excludes):
@@ -169,6 +171,6 @@ def atomic_contents_add(
             atomic_contents_add(tar_file, directory_item, excludes, arcpath)
             continue
 
-        tar_file.add(directory_item.as_posix(), arcname=arcpath)
+        tar_file.add(directory_item.as_posix(), arcname=arcpath, recursive=False)
 
     return None
