@@ -86,8 +86,10 @@ class SecureTarFile:
         """Close file."""
         if self._tar:
             self._tar.close()
+            self._tar = None
         if self._file:
-            self._file.close()
+            os.close(self._file)
+            self._file = None
 
     def write(self, data: bytes) -> None:
         """Write data."""
