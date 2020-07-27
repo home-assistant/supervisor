@@ -100,6 +100,8 @@ class APISupervisor(CoreSysAttributes):
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_TIMEZONE: self.sys_config.timezone,
             ATTR_LOGGING: self.sys_config.logging,
+            ATTR_DEBUG: self.sys_config.debug,
+            ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
         }
