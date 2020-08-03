@@ -1,9 +1,7 @@
 """Info control for host."""
 import asyncio
 import logging
-from pathlib import Path
-import shutil
-from typing import Optional, Union
+from typing import Optional
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
@@ -53,6 +51,13 @@ class InfoCenter(CoreSysAttributes):
         """Return local CPE."""
         return self.sys_dbus.hostname.cpe
 
+    @property
+    def free_space(self) -> float:
+        """Return available space (GiB) on disk for supervisor data directory."""
+        return self.coresys.hardware.get_disk_free_space(
+            self.coresys.config.path_supervisor
+        )
+
     async def get_dmesg(self) -> bytes:
         """Return host dmesg output."""
         proc = await asyncio.create_subprocess_shell(
@@ -67,13 +72,6 @@ class InfoCenter(CoreSysAttributes):
             raise HostError()
 
         return stdout
-
-    def get_disk_free_space(self, path: Optional[Union[str, Path]] = None) -> float:
-        """Return free space (GiB) on disk for path."""
-        if path is None:
-            path = self.coresys.config.path_supervisor
-        _, _, free = shutil.disk_usage(path)
-        return round(free / (1024.0 ** 3), 1)
 
     async def update(self):
         """Update properties over dbus."""

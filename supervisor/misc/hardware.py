@@ -4,7 +4,8 @@ from datetime import datetime
 import logging
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Optional, Set
+import shutil
+from typing import Any, Dict, List, Optional, Set, Union
 
 import attr
 import pyudev
@@ -194,6 +195,11 @@ class Hardware:
             return None
 
         return datetime.utcfromtimestamp(int(found.group(1)))
+
+    def get_disk_free_space(self, path: Union[str, Path]) -> float:
+        """Return free space (GiB) on disk for path."""
+        _, _, free = shutil.disk_usage(path)
+        return round(free / (1024.0 ** 3), 1)
 
     async def udev_trigger(self) -> None:
         """Trigger a udev reload."""
