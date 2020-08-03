@@ -100,7 +100,7 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
             if err.status_code == 404:
-                free_space = self.coresys.host.info.get_disk_free_space()
+                free_space = self.sys_host.info.get_disk_free_space()
                 _LOGGER.info(
                     "This error is often caused by not having enough disk space available. "
                     "Available space in /data is: %s GiB",
