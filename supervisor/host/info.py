@@ -1,8 +1,9 @@
 """Info control for host."""
 import asyncio
 import logging
+from pathlib import Path
 import shutil
-from typing import Optional
+from typing import Optional, Union
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
@@ -67,8 +68,10 @@ class InfoCenter(CoreSysAttributes):
 
         return stdout
 
-    def get_disk_free_space(self, path: str = "/data") -> float:
+    def get_disk_free_space(self, path: Optional[Union[str, Path]] = None) -> float:
         """Return free space (GiB) on disk for path."""
+        if path is None:
+            path = self.coresys.config.path_supervisor
         _, _, free = shutil.disk_usage(path)
         return round(free / (1024.0 ** 3), 1)
 
