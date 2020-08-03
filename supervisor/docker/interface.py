@@ -99,6 +99,8 @@ class DockerInterface(CoreSysAttributes):
                 docker_image.tag(image, tag="latest")
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
+            free_space = self.coresys.host.info.get_disk_free_space()
+            _LOGGER.info("Available space in /data is: %s", free_space)
             raise DockerAPIError() from None
         else:
             self._meta = docker_image.attrs
