@@ -32,3 +32,12 @@ def test_video_devices():
             Device("cec0", Path("/dev/cec0"), []),
             Device("video1", Path("/dev/video1"), []),
         ]
+
+
+def test_free_space():
+    """Test free space helper."""
+    system = Hardware()
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        free = system.get_disk_free_space("/data")
+
+    assert free == 2.0

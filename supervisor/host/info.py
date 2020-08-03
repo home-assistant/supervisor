@@ -51,6 +51,13 @@ class InfoCenter(CoreSysAttributes):
         """Return local CPE."""
         return self.sys_dbus.hostname.cpe
 
+    @property
+    def free_space(self) -> float:
+        """Return available space (GiB) on disk for supervisor data directory."""
+        return self.coresys.hardware.get_disk_free_space(
+            self.coresys.config.path_supervisor
+        )
+
     async def get_dmesg(self) -> bytes:
         """Return host dmesg output."""
         proc = await asyncio.create_subprocess_shell(
