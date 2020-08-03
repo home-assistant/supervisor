@@ -1,6 +1,7 @@
 """Info control for host."""
 import asyncio
 import logging
+import shutil
 from typing import Optional
 
 from ..coresys import CoreSysAttributes
@@ -65,6 +66,11 @@ class InfoCenter(CoreSysAttributes):
             raise HostError()
 
         return stdout
+
+    def get_disk_free_space(self, path: str = "/data") -> float:
+        """Return free space (GiB) on disk for path."""
+        _, _, free = shutil.disk_usage(path)
+        return round(free / (1024.0 ** 3), 1)
 
     async def update(self):
         """Update properties over dbus."""
