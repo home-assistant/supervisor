@@ -359,6 +359,13 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         # Update going wrong, revert it
         if self.error_state and rollback:
             _LOGGER.critical("HomeAssistant update fails -> rollback!")
+            # Make a copy of the current log file if it exsist
+            logfile = Path(self.sys_config.path_homeassistant, "home-assistant.log")
+            if logfile.exists():
+                backup = Path(
+                    self.sys_config.path_homeassistant, "home-assistant-rollback.log"
+                )
+                shutil.copy(logfile.as_posix(), backup.as_posix())
             await _update(rollback)
         else:
             raise HomeAssistantUpdateError()
