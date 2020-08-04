@@ -24,6 +24,8 @@ from .const import (
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
     SOCKET_DOCKER,
+    SUPERVISOR_VERSION,
+    CoreStates,
     LogLevel,
     UpdateChannels,
 )
@@ -289,6 +291,28 @@ def setup_diagnostics(coresys: CoreSys) -> None:
         # modify event here
         if not coresys.config.diagnostics:
             return None
+
+        # Not full startup - missing information
+        if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.STARTUP):
+            return event
+
+        # Update information
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_context(
+                "home_assistant",
+                {
+                    "machine": coresys.machine,
+                    "arch": coresys.arch.default,
+                    "docker": coresys.docker.info.version,
+                    "supervisor": coresys.supervisor.version,
+                    "core": coresys.homeassistant.version,
+                    "audio": coresys.plugins.audio.version,
+                    "dns": coresys.plugins.dns.version,
+                    "multicast": coresys.plugins.multicast.version,
+                    "cli": coresys.plugins.cli.version,
+                },
+            )
+
         return event
 
     sentry_sdk.init(
@@ -304,3 +328,6 @@ def setup_diagnostics(coresys: CoreSys) -> None:
             ThreadingIntegration(),
         ],
     )
+
+    with sentry_sdk.configure_scope() as scope:
+        scope.set_tag("version", SUPERVISOR_VERSION)
