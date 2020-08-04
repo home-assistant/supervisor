@@ -240,6 +240,7 @@ ATTR_INDEX = "index"
 ATTR_ACTIVE = "active"
 ATTR_APPLICATION = "application"
 ATTR_INIT = "init"
+ATTR_DIAGNOSTICS = "diagnostics"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

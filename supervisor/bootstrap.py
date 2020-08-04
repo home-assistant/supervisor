@@ -6,6 +6,13 @@ import shutil
 import signal
 
 from colorlog import ColoredFormatter
+import sentry_sdk
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+from sentry_sdk.integrations.atexit import AtexitIntegration
+from sentry_sdk.integrations.dedupe import DedupeIntegration
+from sentry_sdk.integrations.excepthook import ExcepthookIntegration
+from sentry_sdk.integrations.stdlib import StdlibIntegration
+from sentry_sdk.integrations.threading import ThreadingIntegration
 
 from .addons import AddonManager
 from .api import RestAPI
@@ -72,6 +79,9 @@ async def initialize_coresys() -> CoreSys:
     coresys.hassos = HassOS(coresys)
     coresys.secrets = SecretsManager(coresys)
     coresys.scheduler = Scheduler(coresys)
+
+    # diagnostics
+    setup_diagnostics(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
@@ -270,3 +280,27 @@ def supervisor_debugger(coresys: CoreSys) -> None:
     if coresys.config.debug_block:
         _LOGGER.info("Wait until debugger is attached")
         ptvsd.wait_for_attach()
+
+
+def setup_diagnostics(coresys: CoreSys) -> None:
+    """Sentry diagnostic backend."""
+
+    def filter_data(event, hint):
+        # modify event here
+        if not coresys.config.diagnostics:
+            return None
+        return event
+
+    sentry_sdk.init(
+        dns="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
+        before_send=filter_data,
+        default_integrations=False,
+        integrations=[
+            AioHttpIntegration(),
+            AtexitIntegration(),
+            ExcepthookIntegration(),
+            DedupeIntegration(),
+            StdlibIntegration(),
+            ThreadingIntegration(),
+        ],
+    )

@@ -3,12 +3,13 @@ from datetime import datetime
 import logging
 import os
 from pathlib import Path, PurePath
-from typing import List
+from typing import List, Optional
 
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
+    ATTR_DIAGNOSTICS,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_TIMEZONE,
@@ -100,6 +101,16 @@ class CoreConfig(JsonConfig):
     def debug_block(self, value: bool) -> None:
         """Set debug wait mode."""
         self._data[ATTR_DEBUG_BLOCK] = value
+
+    @property
+    def diagnostics(self) -> Optional[bool]:
+        """Return bool if diagnostics is set otherwise None."""
+        return self._data[ATTR_DIAGNOSTICS]
+
+    @diagnostics.setter
+    def diagnostics(self, value: bool) -> None:
+        """Set diagnostics settings."""
+        self._data[ATTR_DIAGNOSTICS] = value
 
     @property
     def logging(self) -> LogLevel:
