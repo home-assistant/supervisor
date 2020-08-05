@@ -293,7 +293,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
             return None
 
         # Not full startup - missing information
-        if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.STARTUP):
+        if coresys.core.state == CoreStates.INITIALIZE:
             return event
 
         # Update information
@@ -304,7 +304,9 @@ def setup_diagnostics(coresys: CoreSys) -> None:
                     "machine": coresys.machine,
                     "arch": coresys.arch.default,
                     "docker": coresys.docker.info.version,
+                    "channel": coresys.updater.channel,
                     "supervisor": coresys.supervisor.version,
+                    "os": coresys.hassos.version,
                     "core": coresys.homeassistant.version,
                     "audio": coresys.plugins.audio.version,
                     "dns": coresys.plugins.dns.version,

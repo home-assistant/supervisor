@@ -55,8 +55,6 @@ class Core(CoreSysAttributes):
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
-        self.state = CoreStates.STARTUP
-
         # Load DBus
         await self.sys_dbus.load()
 
@@ -104,6 +102,7 @@ class Core(CoreSysAttributes):
 
     async def start(self):
         """Start Supervisor orchestration."""
+        self.state = CoreStates.STARTUP
         await self.sys_api.start()
 
         # Mark booted partition as healthy
