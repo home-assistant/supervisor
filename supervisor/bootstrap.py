@@ -288,8 +288,8 @@ def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
 
     def filter_data(event, hint):
-        # modify event here
-        if not coresys.config.diagnostics:
+        # Ignore issue if system is not supported or diagnostics is disabled
+        if not coresys.config.diagnostics or not coresys.core.healthy:
             return None
 
         # Not full startup - missing information
