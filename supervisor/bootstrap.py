@@ -274,14 +274,14 @@ def supervisor_debugger(coresys: CoreSys) -> None:
     if not coresys.config.debug:
         return
     # pylint: disable=import-outside-toplevel
-    import ptvsd
+    import debugpy
 
     _LOGGER.info("Initialize Supervisor debugger")
 
-    ptvsd.enable_attach(address=("0.0.0.0", 33333), redirect_output=True)
+    debugpy.listen(("0.0.0.0", 33333))
     if coresys.config.debug_block:
         _LOGGER.info("Wait until debugger is attached")
-        ptvsd.wait_for_attach()
+        debugpy.wait_for_client()
 
 
 def setup_diagnostics(coresys: CoreSys) -> None:
