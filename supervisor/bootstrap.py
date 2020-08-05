@@ -318,7 +318,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
         return event
 
     sentry_sdk.init(
-        dns="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
+        dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
         before_send=filter_data,
         default_integrations=False,
         integrations=[
