@@ -47,6 +47,7 @@ The addons from `addons` are only installed one.
   "wait_boot": "int",
   "debug": "bool",
   "debug_block": "bool",
+  "diagnostics": "None|bool",
   "addons": [
     {
       "name": "xy bla",

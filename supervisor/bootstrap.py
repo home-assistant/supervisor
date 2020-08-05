@@ -6,6 +6,13 @@ import shutil
 import signal
 
 from colorlog import ColoredFormatter
+import sentry_sdk
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+from sentry_sdk.integrations.atexit import AtexitIntegration
+from sentry_sdk.integrations.dedupe import DedupeIntegration
+from sentry_sdk.integrations.excepthook import ExcepthookIntegration
+from sentry_sdk.integrations.stdlib import StdlibIntegration
+from sentry_sdk.integrations.threading import ThreadingIntegration
 
 from .addons import AddonManager
 from .api import RestAPI
@@ -17,6 +24,8 @@ from .const import (
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
     SOCKET_DOCKER,
+    SUPERVISOR_VERSION,
+    CoreStates,
     LogLevel,
     UpdateChannels,
 )
@@ -72,6 +81,9 @@ async def initialize_coresys() -> CoreSys:
     coresys.hassos = HassOS(coresys)
     coresys.secrets = SecretsManager(coresys)
     coresys.scheduler = Scheduler(coresys)
+
+    # diagnostics
+    setup_diagnostics(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
@@ -270,3 +282,54 @@ def supervisor_debugger(coresys: CoreSys) -> None:
     if coresys.config.debug_block:
         _LOGGER.info("Wait until debugger is attached")
         ptvsd.wait_for_attach()
+
+
+def setup_diagnostics(coresys: CoreSys) -> None:
+    """Sentry diagnostic backend."""
+
+    def filter_data(event, hint):
+        # Ignore issue if system is not supported or diagnostics is disabled
+        if not coresys.config.diagnostics or not coresys.core.healthy:
+            return None
+
+        # Not full startup - missing information
+        if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.SETUP):
+            return event
+
+        # Update information
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_context(
+                "supervisor",
+                {
+                    "machine": coresys.machine,
+                    "arch": coresys.arch.default,
+                    "docker": coresys.docker.info.version,
+                    "channel": coresys.updater.channel,
+                    "supervisor": coresys.supervisor.version,
+                    "os": coresys.hassos.version,
+                    "core": coresys.homeassistant.version,
+                    "audio": coresys.plugins.audio.version,
+                    "dns": coresys.plugins.dns.version,
+                    "multicast": coresys.plugins.multicast.version,
+                    "cli": coresys.plugins.cli.version,
+                },
+            )
+
+        return event
+
+    sentry_sdk.init(
+        dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
+        before_send=filter_data,
+        default_integrations=False,
+        integrations=[
+            AioHttpIntegration(),
+            AtexitIntegration(),
+            ExcepthookIntegration(),
+            DedupeIntegration(),
+            StdlibIntegration(),
+            ThreadingIntegration(),
+        ],
+    )
+
+    with sentry_sdk.configure_scope() as scope:
+        scope.set_tag("version", SUPERVISOR_VERSION)
