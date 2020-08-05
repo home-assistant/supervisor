@@ -293,7 +293,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
             return None
 
         # Not full startup - missing information
-        if coresys.core.state == CoreStates.INITIALIZE:
+        if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.SETUP):
             return event
 
         # Update information

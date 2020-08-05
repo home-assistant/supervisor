@@ -356,6 +356,7 @@ class CoreStates(str, Enum):
     """Represent current loading state."""
 
     INITIALIZE = "initialize"
+    SETUP = "setup"
     STARTUP = "startup"
     RUNNING = "running"
     FREEZE = "freeze"

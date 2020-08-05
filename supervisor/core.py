@@ -55,6 +55,8 @@ class Core(CoreSysAttributes):
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
+        self.state = CoreStates.SETUP
+
         # Load DBus
         await self.sys_dbus.load()
 
