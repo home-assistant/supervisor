@@ -299,7 +299,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
         # Update information
         with sentry_sdk.configure_scope() as scope:
             scope.set_context(
-                "home_assistant",
+                "supervisor",
                 {
                     "machine": coresys.machine,
                     "arch": coresys.arch.default,
