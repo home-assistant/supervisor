@@ -5,6 +5,7 @@ import asyncio
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
 
 import aiohttp
+import sentry_sdk
 
 from .config import CoreConfig
 from .const import UpdateChannels
@@ -612,3 +613,7 @@ class CoreSysAttributes:
     def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
         """Create an async task."""
         return self.sys_loop.create_task(coroutine)
+
+    def sys_capture_exception(self, err: Exception) -> None:
+        """Capture a exception."""
+        sentry_sdk.capture_exception(err)

@@ -268,6 +268,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             except DockerAPIError:
                 _LOGGER.warning("Fails install landingpage, retry after 30sec")
                 await asyncio.sleep(30)
+            except Exception as err:  # pylint: disable=broad-except
+                self.sys_capture_exception(err)
             else:
                 self.version = self.instance.version
                 self.image = self.sys_updater.image_homeassistant
@@ -290,11 +292,16 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
 
             tag = self.latest_version
             if tag:
-                with suppress(DockerAPIError):
+                try:
                     await self.instance.update(
                         tag, image=self.sys_updater.image_homeassistant
                     )
                     break
+                except DockerAPIError:
+                    pass
+                except Exception as err:  # pylint: disable=broad-except
+                    self.sys_capture_exception(err)
+
             _LOGGER.warning("Error on install Home Assistant. Retry in 30sec")
             await asyncio.sleep(30)
 
@@ -596,6 +603,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         # Skip landingpage
         if version == LANDINGPAGE:
             return
+        _LOGGER.info("Wait until Home Assistant is ready")
 
         # Manage timeouts
         timeout: bool = True
