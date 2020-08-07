@@ -217,11 +217,11 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.DockerException:
             raise DockerAPIError() from None
 
-        _LOGGER.info("Start %s", self.image)
+        _LOGGER.info("Start %s", self.name)
         try:
             docker_container.start()
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't start %s: %s", self.image, err)
+            _LOGGER.error("Can't start %s: %s", self.name, err)
             raise DockerAPIError() from None
 
     @process_lock
