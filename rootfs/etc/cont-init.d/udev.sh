@@ -4,6 +4,9 @@
 # ==============================================================================
 udevd --daemon
 
-bashio::log.info "Update udev informations"
-udevadm trigger
-udevadm settle
+bashio::log.info "Update udev information"
+if udevadm trigger; then
+    udevadm settle || true
+else
+    bashio::log.warning "Triggering of udev rules fails!"
+fi
