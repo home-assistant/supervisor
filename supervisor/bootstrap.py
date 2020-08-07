@@ -314,7 +314,9 @@ def setup_diagnostics(coresys: CoreSys) -> None:
         return event
 
     # Set log level
-    sentry_logging = LoggingIntegration(level=logging.ERROR, event_level=logging.FATAL)
+    sentry_logging = LoggingIntegration(
+        level=logging.ERROR, event_level=logging.CRITICAL
+    )
 
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
