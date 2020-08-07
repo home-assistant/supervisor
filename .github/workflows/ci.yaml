@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         with:
           python-version: ${{ matrix.python-version }}
       - name: Restore Python virtual environment
@@ -39,7 +39,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
             ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-
-            ${{ runner.os }}-venv-
       - name: Create Python virtual environment
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
@@ -70,7 +69,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -114,7 +113,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -158,7 +157,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -190,7 +189,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -231,7 +230,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -275,7 +274,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -307,7 +306,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -351,7 +350,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         id: python
         with:
           python-version: ${{ matrix.python-version }}
@@ -392,7 +391,7 @@ jobs:
             -o console_output_style=count \
             tests
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@2.1.0
+        uses: actions/upload-artifact@v2.1.3
         with:
           name: coverage-${{ matrix.python-version }}
           path: .coverage
@@ -405,7 +404,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.1.1
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -430,4 +429,4 @@ jobs:
           coverage report
           coverage xml
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1.0.10
+        uses: codecov/codecov-action@v1.0.12

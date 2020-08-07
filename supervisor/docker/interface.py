@@ -99,6 +99,13 @@ class DockerInterface(CoreSysAttributes):
                 docker_image.tag(image, tag="latest")
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
+            if err.status_code == 404:
+                free_space = self.sys_host.info.free_space
+                _LOGGER.info(
+                    "This error is often caused by not having enough disk space available. "
+                    "Available space in /data is: %s GiB",
+                    free_space,
+                )
             raise DockerAPIError() from None
         else:
             self._meta = docker_image.attrs
@@ -210,11 +217,11 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.DockerException:
             raise DockerAPIError() from None
 
-        _LOGGER.info("Start %s", self.image)
+        _LOGGER.info("Start %s", self.name)
         try:
             docker_container.start()
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't start %s: %s", self.image, err)
+            _LOGGER.error("Can't start %s: %s", self.name, err)
             raise DockerAPIError() from None
 
     @process_lock

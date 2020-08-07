@@ -50,6 +50,7 @@ Shows the installed add-ons from `addons`.
   "wait_boot": "int",
   "debug": "bool",
   "debug_block": "bool",
+  "diagnostics": "None|bool",
   "addons": [
     {
       "name": "xy bla",

@@ -17,6 +17,7 @@ from ..const import (
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DESCRIPTON,
+    ATTR_DIAGNOSTICS,
     ATTR_ICON,
     ATTR_INSTALLED,
     ATTR_IP_ADDRESS,
@@ -58,6 +59,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_LOGGING): vol.Coerce(LogLevel),
         vol.Optional(ATTR_DEBUG): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK): vol.Boolean(),
+        vol.Optional(ATTR_DIAGNOSTICS): vol.Boolean(),
     }
 )
 
@@ -100,6 +102,9 @@ class APISupervisor(CoreSysAttributes):
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_TIMEZONE: self.sys_config.timezone,
             ATTR_LOGGING: self.sys_config.logging,
+            ATTR_DEBUG: self.sys_config.debug,
+            ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
+            ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
         }
@@ -123,6 +128,9 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_DEBUG_BLOCK in body:
             self.sys_config.debug_block = body[ATTR_DEBUG_BLOCK]
+
+        if ATTR_DIAGNOSTICS in body:
+            self.sys_config.diagnostics = body[ATTR_DIAGNOSTICS]
 
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]

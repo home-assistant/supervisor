@@ -50,18 +50,24 @@ class SecureTarFile:
     def __enter__(self) -> tarfile.TarFile:
         """Start context manager tarfile."""
         if not self._key:
-            self._tar = tarfile.open(name=str(self._name), mode=self._tar_mode)
+            self._tar = tarfile.open(
+                name=str(self._name), mode=self._tar_mode, dereference=False
+            )
             return self._tar
 
         # Encrypted/Decryped Tarfile
-        self._file = self._name.open(f"{self._mode}b")
+        if self._mode.startswith("r"):
+            file_mode: int = os.O_RDONLY
+        else:
+            file_mode: int = os.O_WRONLY | os.O_CREAT
+        self._file = os.open(self._name, file_mode, 0o666)
 
         # Extract IV for CBC
         if self._mode == MOD_READ:
-            cbc_rand = self._file.read(16)
+            cbc_rand = os.read(self._file, 16)
         else:
             cbc_rand = os.urandom(16)
-            self._file.write(cbc_rand)
+            os.write(self._file, cbc_rand)
 
         # Create Cipher
         self._aes = Cipher(
@@ -73,15 +79,17 @@ class SecureTarFile:
         self._decrypt = self._aes.decryptor()
         self._encrypt = self._aes.encryptor()
 
-        self._tar = tarfile.open(fileobj=self, mode=self._tar_mode)
+        self._tar = tarfile.open(fileobj=self, mode=self._tar_mode, dereference=False)
         return self._tar
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         """Close file."""
         if self._tar:
             self._tar.close()
+            self._tar = None
         if self._file:
-            self._file.close()
+            os.close(self._file)
+            self._file = None
 
     def write(self, data: bytes) -> None:
         """Write data."""
@@ -89,11 +97,11 @@ class SecureTarFile:
             padder = padding.PKCS7(BLOCK_SIZE_BITS).padder()
             data = padder.update(data) + padder.finalize()
 
-        self._file.write(self._encrypt.update(data))
+        os.write(self._file, self._encrypt.update(data))
 
     def read(self, size: int = 0) -> bytes:
         """Read data."""
-        return self._decrypt.update(self._file.read(size))
+        return self._decrypt.update(os.read(self._file, size))
 
     @property
     def path(self) -> Path:
@@ -158,7 +166,7 @@ def atomic_contents_add(
         return None
 
     # Add directory only (recursive=False) to ensure we also archive empty directories
-    tar_file.add(origin_path.as_posix(), arcname, recursive=False)
+    tar_file.add(origin_path.as_posix(), arcname=arcname, recursive=False)
 
     for directory_item in origin_path.iterdir():
         if _is_excluded_by_filter(directory_item, excludes):
@@ -169,6 +177,6 @@ def atomic_contents_add(
             atomic_contents_add(tar_file, directory_item, excludes, arcpath)
             continue
 
-        tar_file.add(directory_item.as_posix(), arcname=arcpath)
+        tar_file.add(directory_item.as_posix(), arcname=arcpath, recursive=False)
 
     return None

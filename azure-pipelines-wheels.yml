@@ -23,4 +23,5 @@ jobs:
     builderVersion: '$(versionWheels)'
     builderApk: 'build-base;libffi-dev;openssl-dev'
     builderPip: 'Cython'
+    skipBinary: 'aiohttp'
     wheelsRequirement: 'requirements.txt'

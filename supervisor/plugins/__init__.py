@@ -17,7 +17,7 @@ class PluginManager(CoreSysAttributes):
 
     required_cli: int = 25
     required_dns: int = 9
-    required_audio: int = 14
+    required_audio: int = 16
     required_multicast: int = 2
 
     def __init__(self, coresys: CoreSys):
@@ -74,7 +74,9 @@ class PluginManager(CoreSysAttributes):
             try:
                 if int(plugin.version) >= required_version:
                     continue
-            except TypeError:
+            except (TypeError, ValueError):
+                if plugin.version == "dev":
+                    continue
                 _LOGGER.warning(
                     "Somethings going wrong with requirements on %s",
                     type(plugin).__name__,

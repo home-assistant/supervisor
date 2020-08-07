@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "229"
+SUPERVISOR_VERSION = "230"
 
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
@@ -240,6 +240,7 @@ ATTR_INDEX = "index"
 ATTR_ACTIVE = "active"
 ATTR_APPLICATION = "application"
 ATTR_INIT = "init"
+ATTR_DIAGNOSTICS = "diagnostics"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
@@ -355,6 +356,7 @@ class CoreStates(str, Enum):
     """Represent current loading state."""
 
     INITIALIZE = "initialize"
+    SETUP = "setup"
     STARTUP = "startup"
     RUNNING = "running"
     FREEZE = "freeze"
