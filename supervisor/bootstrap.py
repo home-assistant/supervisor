@@ -8,11 +8,7 @@ import signal
 from colorlog import ColoredFormatter
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
-from sentry_sdk.integrations.atexit import AtexitIntegration
-from sentry_sdk.integrations.dedupe import DedupeIntegration
-from sentry_sdk.integrations.excepthook import ExcepthookIntegration
-from sentry_sdk.integrations.stdlib import StdlibIntegration
-from sentry_sdk.integrations.threading import ThreadingIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from .addons import AddonManager
 from .api import RestAPI
@@ -317,19 +313,14 @@ def setup_diagnostics(coresys: CoreSys) -> None:
 
         return event
 
+    # Set log level
+    sentry_logging = LoggingIntegration(
+        level=logging.ERROR, event_level=logging.CRITICAL
+    )
+
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
         before_send=filter_data,
-        default_integrations=False,
-        integrations=[
-            AioHttpIntegration(),
-            AtexitIntegration(),
-            ExcepthookIntegration(),
-            DedupeIntegration(),
-            StdlibIntegration(),
-            ThreadingIntegration(),
-        ],
+        integrations=[AioHttpIntegration(), sentry_logging],
+        release=SUPERVISOR_VERSION,
     )
-
-    with sentry_sdk.configure_scope() as scope:
-        scope.set_tag("version", SUPERVISOR_VERSION)
