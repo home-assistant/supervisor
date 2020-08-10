@@ -49,6 +49,7 @@ ADDONS_API_BYPASS = re.compile(
     r"|/services.*"
     r"|/discovery.*"
     r"|/auth"
+    r"|/host/info"
     r")$"
 )
 
