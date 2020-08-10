@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Dict
 
-from ..const import ENV_TIME
+from ..const import ENV_TIME, MACHINE_ID
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerAPIError
 from .interface import DockerInterface
@@ -34,6 +34,10 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             str(self.sys_config.path_extern_audio): {"bind": "/data", "mode": "rw"},
             "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
         }
+
+        # Machine ID
+        if MACHINE_ID.exists():
+            volumes.update({str(MACHINE_ID): {"bind": str(MACHINE_ID), "mode": "ro"}})
 
         # SND support
         if Path("/dev/snd").exists():
