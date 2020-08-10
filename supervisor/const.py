@@ -30,6 +30,7 @@ FILE_HASSIO_AUDIO = Path(SUPERVISOR_DATA, "audio.json")
 FILE_HASSIO_CLI = Path(SUPERVISOR_DATA, "cli.json")
 FILE_HASSIO_MULTICAST = Path(SUPERVISOR_DATA, "multicast.json")
 
+MACHINE_ID = Path("/etc/machine-id")
 SOCKET_DOCKER = Path("/run/docker.sock")
 
 DOCKER_NETWORK = "hassio"
