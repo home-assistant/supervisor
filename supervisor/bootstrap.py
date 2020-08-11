@@ -292,24 +292,31 @@ def setup_diagnostics(coresys: CoreSys) -> None:
             return event
 
         # Update information
-        event["contexts"]["supervisor"] = {
-            "machine": coresys.machine,
-            "arch": coresys.arch.default,
-            "docker": coresys.docker.info.version,
-            "channel": coresys.updater.channel,
-            "supervisor": coresys.supervisor.version,
-            "os": coresys.hassos.version,
-            "host": coresys.host.info.operating_system,
-            "kernel": coresys.host.info.kernel,
-            "core": coresys.homeassistant.version,
-            "audio": coresys.plugins.audio.version,
-            "dns": coresys.plugins.dns.version,
-            "multicast": coresys.plugins.multicast.version,
-            "cli": coresys.plugins.cli.version,
-        }
-        event["tags"][
-            "installation_type"
-        ] = f"{'os' if coresys.hassos.available else 'supervised'}"
+        event.setdefault("extra", {}).update(
+            {
+                "supervisor": {
+                    "machine": coresys.machine,
+                    "arch": coresys.arch.default,
+                    "docker": coresys.docker.info.version,
+                    "channel": coresys.updater.channel,
+                    "supervisor": coresys.supervisor.version,
+                    "os": coresys.hassos.version,
+                    "host": coresys.host.info.operating_system,
+                    "kernel": coresys.host.info.kernel,
+                    "core": coresys.homeassistant.version,
+                    "audio": coresys.plugins.audio.version,
+                    "dns": coresys.plugins.dns.version,
+                    "multicast": coresys.plugins.multicast.version,
+                    "cli": coresys.plugins.cli.version,
+                }
+            }
+        )
+        event.setdefault("tags", {}).update(
+            {
+                "installation_type": "os" if coresys.hassos.available else "supervised",
+                "machine": coresys.machine,
+            }
+        )
 
         return event
 
@@ -321,8 +328,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
         before_send=filter_data,
-        before_breadcrumb=filter_data,
-        max_breadcrumbs=20,
+        max_breadcrumbs=30,
         integrations=[AioHttpIntegration(), sentry_logging],
         release=SUPERVISOR_VERSION,
     )
