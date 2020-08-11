@@ -118,9 +118,7 @@ class Core(CoreSysAttributes):
 
         # Check if system is healthy
         if not self.sys_supported:
-            _LOGGER.critical(
-                "System running in a unsupported envirement. Please don't report any bugs!"
-            )
+            _LOGGER.critical("System running in a unsupported environment!")
         elif not self.healthy:
             _LOGGER.critical(
                 "System running in a unhealthy state and need manual intervention!"
