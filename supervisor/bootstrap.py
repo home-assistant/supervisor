@@ -301,6 +301,8 @@ def setup_diagnostics(coresys: CoreSys) -> None:
                     "channel": coresys.updater.channel,
                     "supervisor": coresys.supervisor.version,
                     "os": coresys.hassos.version,
+                    "host": coresys.host.info.operating_system,
+                    "kernel": coresys.host.info.kernel,
                     "core": coresys.homeassistant.version,
                     "audio": coresys.plugins.audio.version,
                     "dns": coresys.plugins.dns.version,
@@ -308,6 +310,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
                     "cli": coresys.plugins.cli.version,
                 },
             )
+            scope.set_tag("installation_type", f"{'generic' if coresys.hassos.available else 'hassos'}")
 
         return event
 
