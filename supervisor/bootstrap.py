@@ -283,7 +283,9 @@ def setup_diagnostics(coresys: CoreSys) -> None:
 
     def filter_data(event, hint):
         # Ignore issue if system is not supported or diagnostics is disabled
-        if not coresys.config.diagnostics or not coresys.supported:
+        if not coresys.config.diagnostics:
+            return None
+        elif not coresys.supported:
             return None
 
         # Not full startup - missing information
@@ -325,6 +327,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
         before_send=filter_data,
+        max_breadcrumbs=20,
         integrations=[AioHttpIntegration(), sentry_logging],
         release=SUPERVISOR_VERSION,
     )
