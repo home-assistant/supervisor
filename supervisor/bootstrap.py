@@ -310,7 +310,10 @@ def setup_diagnostics(coresys: CoreSys) -> None:
                     "cli": coresys.plugins.cli.version,
                 },
             )
-            scope.set_tag("installation_type", f"{'generic' if coresys.hassos.available else 'hassos'}")
+            scope.set_tag(
+                "installation_type",
+                f"{'generic' if coresys.hassos.available else 'hassos'}",
+            )
 
         return event
 
