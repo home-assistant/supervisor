@@ -312,7 +312,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
             )
             scope.set_tag(
                 "installation_type",
-                f"{'generic' if coresys.hassos.available else 'hassos'}",
+                f"{'ADR0014' if coresys.hassos.available else 'ADR0015'}",
             )
 
         return event
