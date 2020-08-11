@@ -19,6 +19,7 @@ from .const import (
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
+    MACHINE_ID,
     SOCKET_DOCKER,
     SUPERVISOR_VERSION,
     CoreStates,
@@ -46,9 +47,6 @@ from .updater import Updater
 from .utils.dt import fetch_timezone
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-
-MACHINE_ID = Path("/etc/machine-id")
 
 
 async def initialize_coresys() -> CoreSys:
@@ -303,12 +301,18 @@ def setup_diagnostics(coresys: CoreSys) -> None:
                     "channel": coresys.updater.channel,
                     "supervisor": coresys.supervisor.version,
                     "os": coresys.hassos.version,
+                    "host": coresys.host.info.operating_system,
+                    "kernel": coresys.host.info.kernel,
                     "core": coresys.homeassistant.version,
                     "audio": coresys.plugins.audio.version,
                     "dns": coresys.plugins.dns.version,
                     "multicast": coresys.plugins.multicast.version,
                     "cli": coresys.plugins.cli.version,
                 },
+            )
+            scope.set_tag(
+                "installation_type",
+                f"{'os' if coresys.hassos.available else 'supervised'}",
             )
 
         return event

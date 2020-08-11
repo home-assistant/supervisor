@@ -6,7 +6,7 @@ from typing import Awaitable, Dict, Optional
 
 import docker
 
-from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_OLD, LABEL_MACHINE
+from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_OLD, LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerAPIError
 from .interface import CommandReturn, DockerInterface
 
@@ -48,7 +48,7 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Return Volumes for the mount."""
-        volumes = {}
+        volumes = {"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}}
 
         # Add folders
         volumes.update(
@@ -64,6 +64,10 @@ class DockerHomeAssistant(DockerInterface):
                 },
             }
         )
+
+        # Machine ID
+        if MACHINE_ID.exists():
+            volumes.update({str(MACHINE_ID): {"bind": str(MACHINE_ID), "mode": "ro"}})
 
         # Configuration Audio
         volumes.update(
