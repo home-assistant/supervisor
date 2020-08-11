@@ -116,6 +116,11 @@ class Core(CoreSysAttributes):
         # Load secrets
         await self.sys_secrets.load()
 
+    async def start(self):
+        """Start Supervisor orchestration."""
+        self.state = CoreStates.STARTUP
+        await self.sys_api.start()
+
         # Check if system is healthy
         if not self.sys_supported:
             _LOGGER.critical("System running in a unsupported environment!")
@@ -123,11 +128,6 @@ class Core(CoreSysAttributes):
             _LOGGER.critical(
                 "System running in a unhealthy state and need manual intervention!"
             )
-
-    async def start(self):
-        """Start Supervisor orchestration."""
-        self.state = CoreStates.STARTUP
-        await self.sys_api.start()
 
         # Mark booted partition as healthy
         if self.sys_hassos.available:
