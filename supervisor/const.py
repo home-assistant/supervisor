@@ -32,6 +32,7 @@ FILE_HASSIO_MULTICAST = Path(SUPERVISOR_DATA, "multicast.json")
 
 MACHINE_ID = Path("/etc/machine-id")
 SOCKET_DOCKER = Path("/run/docker.sock")
+SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
