@@ -44,9 +44,11 @@ class CoreSys:
 
     def __init__(self):
         """Initialize coresys."""
+        # Static attributes protected
+        self._machine_id: Optional[str] = None
+        self._machine: Optional[str] = None
+
         # Static attributes
-        self.machine_id: Optional[str] = None
-        self.machine: Optional[str] = None
         self.supported: bool = True
 
         # External objects
@@ -419,6 +421,30 @@ class CoreSys:
         if self._hassos:
             raise RuntimeError("HassOS already set!")
         self._hassos = value
+
+    @property
+    def machine(self) -> Optional[str]:
+        """Return machine type string."""
+        return self._machine
+
+    @machine.setter
+    def machine(self, value: str) -> None:
+        """Set a machine type string."""
+        if self._machine:
+            raise RuntimeError("Machine type already set!")
+        self._machine = value
+
+    @property
+    def machine_id(self) -> Optional[str]:
+        """Return machine-id type string."""
+        return self._machine_id
+
+    @machine_id.setter
+    def machine_id(self, value: str) -> None:
+        """Set a machine-id type string."""
+        if self._machine_id:
+            raise RuntimeError("Machine-ID type already set!")
+        self._machine_id = value
 
 
 class CoreSysAttributes:
