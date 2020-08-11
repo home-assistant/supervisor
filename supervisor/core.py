@@ -54,9 +54,18 @@ class Core(CoreSysAttributes):
         # If a update is failed?
         if self.sys_dev:
             self.sys_config.version = self.sys_supervisor.version
+        elif self.sys_config.version == "dev":
+            _LOGGER.warning(
+                "Found a development supervisor outside dev channel (%s)",
+                self.sys_updater.channel,
+            )
         elif self.sys_config.version != self.sys_supervisor.version:
             self._healthy = False
-            _LOGGER.critical("Update of Supervisor fails!")
+            _LOGGER.critical(
+                "Update %s of Supervisor %s fails!",
+                self.sys_config.version,
+                self.sys_supervisor.version,
+            )
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
@@ -108,9 +117,13 @@ class Core(CoreSysAttributes):
         await self.sys_secrets.load()
 
         # Check if system is healthy
-        if not self.healthy:
+        if not self.sys_supported:
             _LOGGER.critical(
-                "System running in a unhealthy state. Please update you OS or software!"
+                "System running in a unsupported envirement. Please don't report any bugs!"
+            )
+        elif not self.healthy:
+            _LOGGER.critical(
+                "System running in a unhealthy state and need manual intervention!"
             )
 
     async def start(self):
