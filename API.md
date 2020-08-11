@@ -42,6 +42,8 @@ The addons from `addons` are only installed one.
   "arch": "armhf|aarch64|i386|amd64",
   "channel": "stable|beta|dev",
   "timezone": "TIMEZONE",
+  "healthy": "bool",
+  "supported": "bool",
   "logging": "debug|info|warning|error|critical",
   "ip_address": "ip address",
   "wait_boot": "int",
@@ -798,6 +800,7 @@ return:
   "machine": "type",
   "arch": "arch",
   "supported_arch": ["arch1", "arch2"],
+  "supported": "bool",
   "channel": "stable|beta|dev",
   "logging": "debug|info|warning|error|critical",
   "timezone": "Europe/Zurich"

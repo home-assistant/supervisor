@@ -243,6 +243,8 @@ ATTR_ACTIVE = "active"
 ATTR_APPLICATION = "application"
 ATTR_INIT = "init"
 ATTR_DIAGNOSTICS = "diagnostics"
+ATTR_HEALTHY = "healthy"
+ATTR_SUPPORTED = "supported"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

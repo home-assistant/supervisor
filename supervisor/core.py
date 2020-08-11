@@ -19,46 +19,44 @@ class Core(CoreSysAttributes):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
         self.state: CoreStates = CoreStates.INITIALIZE
-        self.healthy: bool = True
+        self._healthy: bool = True
+
+    @property
+    def healthy(self) -> bool:
+        """Return True if system is healthy."""
+        return self._healthy and self.sys_supported
 
     async def connect(self):
         """Connect Supervisor container."""
         await self.sys_supervisor.load()
 
-        # If a update is failed?
-        if self.sys_dev:
-            self.sys_config.version = self.sys_supervisor.version
-        elif self.sys_config.version != self.sys_supervisor.version:
-            self.healthy = False
-            _LOGGER.critical("Update of Supervisor fails!")
-
-        # If local docker is supported?
+        # If host docker is supported?
         if not self.sys_docker.info.supported_version:
-            self.healthy = False
+            self.coresys.supported = False
             _LOGGER.critical(
                 "Docker version %s is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
         elif self.sys_docker.info.inside_lxc:
-            self.healthy = False
+            self.coresys.supported = False
             _LOGGER.critical(
                 "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
             )
-
         self.sys_docker.info.check_requirements()
 
         # Dbus available
         if not SOCKET_DBUS.exists():
-            self.healthy = False
+            self.coresys.supported = False
             _LOGGER.critical(
                 "DBus is required for Home Assistant. This system is not supported!"
             )
 
-        # Check if system is healthy
-        if not self.healthy:
-            _LOGGER.critical(
-                "System running in a unhealthy state. Please update you OS or software!"
-            )
+        # If a update is failed?
+        if self.sys_dev:
+            self.sys_config.version = self.sys_supervisor.version
+        elif self.sys_config.version != self.sys_supervisor.version:
+            self._healthy = False
+            _LOGGER.critical("Update of Supervisor fails!")
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
@@ -108,6 +106,12 @@ class Core(CoreSysAttributes):
 
         # Load secrets
         await self.sys_secrets.load()
+
+        # Check if system is healthy
+        if not self.healthy:
+            _LOGGER.critical(
+                "System running in a unhealthy state. Please update you OS or software!"
+            )
 
     async def start(self):
         """Start Supervisor orchestration."""

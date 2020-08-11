@@ -44,9 +44,12 @@ class CoreSys:
 
     def __init__(self):
         """Initialize coresys."""
-        # Static attributes
+        # Static attributes protected
         self._machine_id: Optional[str] = None
         self._machine: Optional[str] = None
+
+        # Static attributes
+        self.supported: bool = True
 
         # External objects
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
@@ -458,6 +461,11 @@ class CoreSysAttributes:
     def sys_dev(self) -> bool:
         """Return True if we run dev mode."""
         return self.coresys.dev
+
+    @property
+    def sys_supported(self) -> bool:
+        """Return True if the system is supported."""
+        return self.coresys.supported
 
     @property
     def sys_timezone(self) -> str:
