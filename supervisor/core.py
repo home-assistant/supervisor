@@ -61,7 +61,7 @@ class Core(CoreSysAttributes):
             )
         elif self.sys_config.version != self.sys_supervisor.version:
             self._healthy = False
-            _LOGGER.critical(
+            _LOGGER.error(
                 "Update %s of Supervisor %s fails!",
                 self.sys_config.version,
                 self.sys_supervisor.version,
