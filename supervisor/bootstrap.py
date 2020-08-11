@@ -283,7 +283,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
 
     def filter_data(event, hint):
         # Ignore issue if system is not supported or diagnostics is disabled
-        if not coresys.config.diagnostics or not coresys.core.healthy:
+        if not coresys.config.diagnostics or not coresys.supported:
             return None
 
         # Not full startup - missing information
