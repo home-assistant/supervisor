@@ -5,7 +5,7 @@ import logging
 
 import async_timeout
 
-from .const import AddonStartup, CoreStates
+from .const import SOCKET_DBUS, AddonStartup, CoreStates
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
 
@@ -46,6 +46,13 @@ class Core(CoreSysAttributes):
             )
 
         self.sys_docker.info.check_requirements()
+
+        # Dbus available
+        if not SOCKET_DBUS.exists():
+            self.healthy = False
+            _LOGGER.critical(
+                "DBus is required for Home Assistant. This system is not supported!"
+            )
 
         # Check if system is healthy
         if not self.healthy:

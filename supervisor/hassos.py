@@ -97,7 +97,7 @@ class HassOS(CoreSysAttributes):
             if cpe.get_product()[0] != "hassos":
                 raise NotImplementedError()
         except NotImplementedError:
-            _LOGGER.warning("No Home Assistant Operating System found!")
+            _LOGGER.info("No Home Assistant Operating System found")
             return
         else:
             self._available = True
