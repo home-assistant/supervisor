@@ -280,6 +280,7 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
+    _LOGGER.info("Initialize Supervisor Sentry")
 
     def filter_data(event, hint):
         # Ignore issue if system is not supported or diagnostics is disabled
