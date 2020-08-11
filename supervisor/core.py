@@ -33,13 +33,13 @@ class Core(CoreSysAttributes):
         # If host docker is supported?
         if not self.sys_docker.info.supported_version:
             self.coresys.supported = False
-            _LOGGER.critical(
+            _LOGGER.error(
                 "Docker version %s is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
         elif self.sys_docker.info.inside_lxc:
             self.coresys.supported = False
-            _LOGGER.critical(
+            _LOGGER.error(
                 "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
             )
         self.sys_docker.info.check_requirements()
@@ -47,7 +47,7 @@ class Core(CoreSysAttributes):
         # Dbus available
         if not SOCKET_DBUS.exists():
             self.coresys.supported = False
-            _LOGGER.critical(
+            _LOGGER.error(
                 "DBus is required for Home Assistant. This system is not supported!"
             )
 
