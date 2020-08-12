@@ -239,7 +239,7 @@ class DockerAPI:
                 imagename = tag.split(":")[0]
                 if imagename in DOCKER_IMAGE_DENYLIST:
                     has_denied_images = True
-                    _LOGGER.critical(
+                    _LOGGER.error(
                         "Found image %s, this is not supported, remove this from the host!",
                         imagename,
                     )
