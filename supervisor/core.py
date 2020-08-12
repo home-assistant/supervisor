@@ -5,7 +5,7 @@ import logging
 
 import async_timeout
 
-from .const import SOCKET_DBUS, AddonStartup, CoreStates
+from .const import DOCKER_IMAGE_DENYLIST, SOCKET_DBUS, AddonStartup, CoreStates
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
 
@@ -43,6 +43,17 @@ class Core(CoreSysAttributes):
                 "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
             )
         self.sys_docker.info.check_requirements()
+
+        # Check if imagenames from denylist exsist
+        for image in self.coresys.docker.images.list():
+            for tag in image.tags:
+                imagename = tag.split(":")[0]
+                if imagename in DOCKER_IMAGE_DENYLIST:
+                    self.healthy = False
+                    _LOGGER.critical(
+                        "Found image %s, this is not supported, remove this from the host!",
+                        imagename,
+                    )
 
         # Dbus available
         if not SOCKET_DBUS.exists():

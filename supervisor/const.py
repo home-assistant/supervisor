@@ -37,6 +37,7 @@ SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
+DOCKER_IMAGE_DENYLIST = ["containrrr/watchtower", "v2tec/watchtower"]
 
 DNS_SUFFIX = "local.hass.io"
 
