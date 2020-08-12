@@ -391,7 +391,7 @@ jobs:
             -o console_output_style=count \
             tests
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v2.1.3
+        uses: actions/upload-artifact@v2.1.4
         with:
           name: coverage-${{ matrix.python-version }}
           path: .coverage
