@@ -232,7 +232,7 @@ class DockerAPI:
             _LOGGER.warning("Error for networks prune: %s", err)
 
     def check_denylist_images(self) -> bool:
-        """Retrun a boolen if the host has images in the denylist."""
+        """Return a boolen if the host has images in the denylist."""
         has_denied_images = False
         for image in self.images.list():
             for tag in image.tags:
