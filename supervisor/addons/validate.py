@@ -444,7 +444,7 @@ def _nested_validate_dict(coresys, typ, data_dict, key):
     """Validate nested items."""
     options = {}
 
-    # Make sure it is a list
+    # Make sure it is a dict
     if not isinstance(data_dict, dict):
         raise vol.Invalid(f"Invalid dict for {key}")
 
