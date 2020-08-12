@@ -5,7 +5,7 @@ cchardet==2.1.6
 colorlog==4.2.1
 cpe==1.2.1
 cryptography==3.0
-debugpy==1.0.0b12
+debugpy==1.0.0rc1
 docker==4.3.0
 gitpython==3.1.7
 jinja2==2.11.2
