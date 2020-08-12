@@ -51,10 +51,14 @@ class Core(CoreSysAttributes):
                 "DBus is required for Home Assistant. This system is not supported!"
             )
 
-        # If a update is failed?
+        # Check supervisor version/update
         if self.sys_dev:
             self.sys_config.version = self.sys_supervisor.version
-        elif self.sys_config.version == "dev":
+        elif (
+            self.sys_config.version == "dev"
+            or self.sys_supervisor.instance.version == "dev"
+        ):
+            self.coresys.supported = False
             _LOGGER.warning(
                 "Found a development supervisor outside dev channel (%s)",
                 self.sys_updater.channel,
