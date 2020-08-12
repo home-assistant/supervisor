@@ -424,6 +424,11 @@ def _nested_validate_list(coresys, typ, data_list, key):
     """Validate nested items."""
     options = []
 
+    # Make sure it is a list
+    if not isinstance(data_list, list):
+        raise vol.Invalid(f"Invalid list for {key}")
+
+    # Process list
     for element in data_list:
         # Nested?
         if isinstance(typ, dict):
@@ -439,6 +444,11 @@ def _nested_validate_dict(coresys, typ, data_dict, key):
     """Validate nested items."""
     options = {}
 
+    # Make sure it is a list
+    if not isinstance(data_dict, dict):
+        raise vol.Invalid(f"Invalid dict for {key}")
+
+    # Process dict
     for c_key, c_value in data_dict.items():
         # Ignore unknown options / remove from list
         if c_key not in typ:
