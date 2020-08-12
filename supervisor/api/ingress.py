@@ -191,7 +191,11 @@ class APIIngress(CoreSysAttributes):
                 async for data in result.content.iter_chunked(4096):
                     await response.write(data)
 
-            except (aiohttp.ClientError, aiohttp.ClientPayloadError) as err:
+            except (
+                aiohttp.ClientError,
+                aiohttp.ClientPayloadError,
+                ConnectionResetError,
+            ) as err:
                 _LOGGER.error("Stream error with %s: %s", url, err)
 
             return response

@@ -98,6 +98,7 @@ class AddonManager(CoreSysAttributes):
                 await addon.start()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't start Add-on %s: %s", addon.slug, err)
+                self.sys_capture_exception(err)
 
         await asyncio.sleep(self.sys_config.wait_boot)
 
@@ -121,6 +122,7 @@ class AddonManager(CoreSysAttributes):
                 await addon.stop()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't stop Add-on %s: %s", addon.slug, err)
+                self.sys_capture_exception(err)
 
     async def install(self, slug: str) -> None:
         """Install an add-on."""

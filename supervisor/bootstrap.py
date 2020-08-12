@@ -280,10 +280,11 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
+    _LOGGER.info("Initialize Supervisor Sentry")
 
     def filter_data(event, hint):
         # Ignore issue if system is not supported or diagnostics is disabled
-        if not coresys.config.diagnostics or not coresys.core.healthy:
+        if not coresys.config.diagnostics or not coresys.supported:
             return None
 
         # Not full startup - missing information
@@ -291,10 +292,9 @@ def setup_diagnostics(coresys: CoreSys) -> None:
             return event
 
         # Update information
-        with sentry_sdk.configure_scope() as scope:
-            scope.set_context(
-                "supervisor",
-                {
+        event.setdefault("extra", {}).update(
+            {
+                "supervisor": {
                     "machine": coresys.machine,
                     "arch": coresys.arch.default,
                     "docker": coresys.docker.info.version,
@@ -308,23 +308,27 @@ def setup_diagnostics(coresys: CoreSys) -> None:
                     "dns": coresys.plugins.dns.version,
                     "multicast": coresys.plugins.multicast.version,
                     "cli": coresys.plugins.cli.version,
-                },
-            )
-            scope.set_tag(
-                "installation_type",
-                f"{'os' if coresys.hassos.available else 'supervised'}",
-            )
+                }
+            }
+        )
+        event.setdefault("tags", {}).update(
+            {
+                "installation_type": "os" if coresys.hassos.available else "supervised",
+                "machine": coresys.machine,
+            }
+        )
 
         return event
 
     # Set log level
     sentry_logging = LoggingIntegration(
-        level=logging.ERROR, event_level=logging.CRITICAL
+        level=logging.WARNING, event_level=logging.CRITICAL
     )
 
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
         before_send=filter_data,
+        max_breadcrumbs=30,
         integrations=[AioHttpIntegration(), sentry_logging],
         release=SUPERVISOR_VERSION,
     )
