@@ -233,14 +233,18 @@ class DockerAPI:
 
     def check_denylist_images(self) -> bool:
         """Return a boolean if the host has images in the denylist."""
-        has_denied_images = False
+        denied_images = set()
         for image in self.images.list():
             for tag in image.tags:
                 imagename = tag.split(":")[0]
-                if imagename in DOCKER_IMAGE_DENYLIST:
-                    has_denied_images = True
+                if (
+                    imagename in DOCKER_IMAGE_DENYLIST
+                    and imagename not in denied_images
+                ):
+                    denied_images.add(imagename)
                     _LOGGER.error(
-                        "Found image %s, this is not supported, remove this from the host!",
+                        "Found image '%s', this is not supported, remove this from the host!",
                         imagename,
                     )
-        return has_denied_images
+                    denied_images.add(imagename)
+        return bool(denied_images)
