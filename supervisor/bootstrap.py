@@ -15,6 +15,7 @@ from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
 from .const import (
+    DUMMY_VALUE,
     ENV_HOMEASSISTANT_REPOSITORY,
     ENV_SUPERVISOR_DEV,
     ENV_SUPERVISOR_MACHINE,
@@ -45,6 +46,7 @@ from .snapshots import SnapshotManager
 from .store import StoreManager
 from .supervisor import Supervisor
 from .updater import Updater
+from .utils import sanitise_url
 from .utils.dt import fetch_timezone
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -322,9 +324,21 @@ def setup_diagnostics(coresys: CoreSys) -> None:
         # Sanitise event
         for tag in event.get("tags", []):
             if "url" in tag:
-                event["tags"].remove(tag)
+                tag[1] = sanitise_url(tag[1])
+
         if event.get("request"):
-            event["request"]["headers"] = []
+            if event["request"].get("url"):
+                event["request"]["url"] = sanitise_url(event["request"]["url"])
+
+            for header in event["request"].get("headers", []):
+                if header[0] == "Referer":
+                    header[1] = sanitise_url(header[1])
+
+                if header[0] == "X-Hassio-Key":
+                    header[1] = DUMMY_VALUE
+
+                if header[0] in ["Host", "X-Forwarded-Host"]:
+                    event["request"]["headers"].remove(header)
 
         return event
 

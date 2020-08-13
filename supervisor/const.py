@@ -2,6 +2,7 @@
 from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
+import re
 
 SUPERVISOR_VERSION = "233"
 
@@ -15,6 +16,9 @@ URL_HASSOS_OTA = (
 )
 
 SUPERVISOR_DATA = Path("/data")
+
+RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
+RE_URL: re.Pattern = re.compile(r"(\w+:\/\/)(.*\.\w+)(.*)")
 
 FILE_HASSIO_AUTH = Path(SUPERVISOR_DATA, "auth.json")
 FILE_HASSIO_ADDONS = Path(SUPERVISOR_DATA, "addons.json")
@@ -38,6 +42,8 @@ DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
 
 DNS_SUFFIX = "local.hass.io"
+
+DUMMY_VALUE = "XXXXXXXXXXXXXXXXXXX"
 
 LABEL_VERSION = "io.hass.version"
 LABEL_ARCH = "io.hass.arch"

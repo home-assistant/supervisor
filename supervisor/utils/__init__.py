@@ -7,8 +7,9 @@ import re
 import socket
 from typing import Optional
 
+from ..const import RE_STRING, RE_URL
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 
 
 def convert_to_ascii(raw: bytes) -> str:
@@ -106,3 +107,12 @@ def check_port(address: IPv4Address, port: int) -> bool:
     except OSError:
         pass
     return False
+
+
+def sanitise_url(url: str) -> str:
+    """Return a sanitized url."""
+    if not re.match(RE_URL, url):
+        # Not a URL, just return it back
+        return url
+
+    return re.sub(RE_URL, r"\1example.com\3", url)
