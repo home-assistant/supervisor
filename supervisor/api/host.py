@@ -39,7 +39,7 @@ class APIHost(CoreSysAttributes):
         return {
             ATTR_CHASSIS: self.sys_host.info.chassis,
             ATTR_CPE: self.sys_host.info.cpe,
-            ATTR_FEATURES: self.sys_host.supperted_features,
+            ATTR_FEATURES: self.sys_host.supported_features,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
             ATTR_DEPLOYMENT: self.sys_host.info.deployment,
