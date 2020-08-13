@@ -16,6 +16,7 @@ from .arch import CpuArch
 from .auth import Auth
 from .const import (
     ENV_HOMEASSISTANT_REPOSITORY,
+    ENV_SUPERVISOR_DEV,
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
@@ -169,7 +170,7 @@ def initialize_system_data(coresys: CoreSys) -> None:
     coresys.config.modify_log_level()
 
     # Check if ENV is in development mode
-    if bool(os.environ.get("SUPERVISOR_DEV", 0)):
+    if bool(os.environ.get(ENV_SUPERVISOR_DEV, 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
         coresys.updater.channel = UpdateChannels.DEV
         coresys.config.logging = LogLevel.DEBUG
@@ -280,7 +281,7 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
-    dev_env: bool = bool(os.environ.get("SUPERVISOR_DEV", 0))
+    dev_env: bool = bool(os.environ.get(ENV_SUPERVISOR_DEV, 0))
 
     def filter_data(event, hint):
         # Ignore issue if system is not supported or diagnostics is disabled
