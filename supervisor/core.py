@@ -46,7 +46,7 @@ class Core(CoreSysAttributes):
 
         # Check if image names from denylist exist
         if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
-            self._healthy = False
+            self.coresys.supported = False
 
         # Dbus available
         if not SOCKET_DBUS.exists():
