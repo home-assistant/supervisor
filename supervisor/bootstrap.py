@@ -46,7 +46,7 @@ from .snapshots import SnapshotManager
 from .store import StoreManager
 from .supervisor import Supervisor
 from .updater import Updater
-from .utils import sanitise_url
+from .utils import sanitize_url
 from .utils.dt import fetch_timezone
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -321,18 +321,18 @@ def setup_diagnostics(coresys: CoreSys) -> None:
             }
         )
 
-        # Sanitise event
+        # Sanitize event
         for tag in event.get("tags", []):
             if "url" in tag:
-                tag[1] = sanitise_url(tag[1])
+                tag[1] = sanitize_url(tag[1])
 
         if event.get("request"):
             if event["request"].get("url"):
-                event["request"]["url"] = sanitise_url(event["request"]["url"])
+                event["request"]["url"] = sanitize_url(event["request"]["url"])
 
             for header in event["request"].get("headers", []):
                 if header[0] == "Referer":
-                    header[1] = sanitise_url(header[1])
+                    header[1] = sanitize_url(header[1])
 
                 if header[0] == "X-Hassio-Key":
                     header[1] = DUMMY_VALUE

@@ -109,7 +109,7 @@ def check_port(address: IPv4Address, port: int) -> bool:
     return False
 
 
-def sanitise_url(url: str) -> str:
+def sanitize_url(url: str) -> str:
     """Return a sanitized url."""
     if not re.match(RE_URL, url):
         # Not a URL, just return it back
