@@ -247,7 +247,7 @@ class DockerAPI:
             return False
 
         _LOGGER.error(
-            "Found images: '%s' which is not  supported, remove these from the host!",
+            "Found images: '%s' which are not supported, remove these from the host!",
             ", ".join(denied_images),
         )
         return True
