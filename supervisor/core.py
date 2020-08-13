@@ -19,12 +19,13 @@ class Core(CoreSysAttributes):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
         self.state: CoreStates = CoreStates.INITIALIZE
-        self._healthy: bool = True
+        self.healthy: bool = True
+        self.supported: bool = True
 
     @property
-    def healthy(self) -> bool:
-        """Return True if system is healthy."""
-        return self._healthy and self.sys_supported
+    def full_working(self) -> bool:
+        """Return True if all is healthy and supported."""
+        return self.healthy and self.supported
 
     async def connect(self):
         """Connect Supervisor container."""
@@ -32,23 +33,23 @@ class Core(CoreSysAttributes):
 
         # If host docker is supported?
         if not self.sys_docker.info.supported_version:
-            self.coresys.supported = False
+            self.supported = False
             _LOGGER.error(
                 "Docker version %s is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
         elif self.sys_docker.info.inside_lxc:
-            self.coresys.supported = False
+            self.supported = False
             _LOGGER.error(
                 "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
             )
 
         if self.sys_docker.info.check_requirements():
-            self.coresys.supported = False
+            self.supported = False
 
         # Dbus available
         if not SOCKET_DBUS.exists():
-            self.coresys.supported = False
+            self.supported = False
             _LOGGER.error(
                 "DBus is required for Home Assistant. This system is not supported!"
             )
@@ -60,13 +61,13 @@ class Core(CoreSysAttributes):
             self.sys_config.version == "dev"
             or self.sys_supervisor.instance.version == "dev"
         ):
-            self.coresys.supported = False
+            self.supported = False
             _LOGGER.warning(
                 "Found a development supervisor outside dev channel (%s)",
                 self.sys_updater.channel,
             )
         elif self.sys_config.version != self.sys_supervisor.version:
-            self._healthy = False
+            self.healthy = False
             _LOGGER.error(
                 "Update %s of Supervisor %s fails!",
                 self.sys_config.version,
@@ -122,13 +123,23 @@ class Core(CoreSysAttributes):
         # Load secrets
         await self.sys_secrets.load()
 
+        # FIXME:
+        # Check supported
+        # if not self.sys_hassos.available:
+        #   check if debian - supported
+        # else
+        #   if rauc debus connected - healthy
+
+        # check if sys_dbus.as_usual: (All are connect - no rauc)
+        #   supported
+
     async def start(self):
         """Start Supervisor orchestration."""
         self.state = CoreStates.STARTUP
         await self.sys_api.start()
 
         # Check if system is healthy
-        if not self.sys_supported:
+        if not self.supported:
             _LOGGER.critical("System running in a unsupported environment!")
         elif not self.healthy:
             _LOGGER.critical(
@@ -142,7 +153,7 @@ class Core(CoreSysAttributes):
         # On release channel, try update itself
         if self.sys_supervisor.need_update:
             try:
-                if self.sys_dev or not self.healthy:
+                if self.sys_dev or not self.full_working:
                     _LOGGER.warning("Ignore Supervisor updates!")
                 else:
                     await self.sys_supervisor.update()
