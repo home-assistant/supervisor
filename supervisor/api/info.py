@@ -39,7 +39,7 @@ class APIInfo(CoreSysAttributes):
             ATTR_MACHINE: self.sys_machine,
             ATTR_ARCH: self.sys_arch.default,
             ATTR_SUPPORTED_ARCH: self.sys_arch.supported,
-            ATTR_SUPPORTED: self.sys_supported,
+            ATTR_SUPPORTED: self.sys_core.supported,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_LOGGING: self.sys_config.logging,
             ATTR_TIMEZONE: self.sys_timezone,

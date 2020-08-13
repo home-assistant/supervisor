@@ -28,7 +28,7 @@ class HwMonitor(CoreSysAttributes):
             self.monitor = pyudev.Monitor.from_netlink(self.context)
             self.observer = pyudev.MonitorObserver(self.monitor, self._udev_events)
         except OSError:
-            self.coresys.supported = False
+            self.sys_core.healthy = False
             _LOGGER.critical("Not privileged to run udev monitor!")
         else:
             self.observer.start()
