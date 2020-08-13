@@ -2,7 +2,8 @@
 
 ## Supervisor RESTful API
 
-Interface for Home Assistant to control things from supervisor.
+The RESTful API for Home Assistant allows you to control things around
+around the Supervisor and other components.
 
 On error / Code 400:
 
@@ -22,8 +23,10 @@ On success / Code 200:
 }
 ```
 
-For access to API you need use a authorization header with a `Bearer` token.
-They are available for Add-ons and the Home Assistant using the `SUPERVISOR_TOKEN` environment variable.
+To access the API you need use an authorization header with a `Bearer` token.
+
+The token is available for add-ons and Home Assistant using the 
+`SUPERVISOR_TOKEN` environment variable.
 
 ### Supervisor
 
@@ -33,7 +36,7 @@ This API call don't need a token.
 
 - GET `/supervisor/info`
 
-The addons from `addons` are only installed one.
+Shows the installed add-ons from `addons`.
 
 ```json
 {
@@ -93,11 +96,11 @@ Optional:
 
 - POST `/supervisor/reload`
 
-Reload addons/version.
+Reload the add-ons/version.
 
 - GET `/supervisor/logs`
 
-Output is the raw docker log.
+Output is the raw Docker log.
 
 - GET `/supervisor/stats`
 
@@ -116,7 +119,7 @@ Output is the raw docker log.
 
 - GET `/supervisor/repair`
 
-Repair overlayfs issue and restore lost images
+Repair overlayfs issue and restore lost images.
 
 ### Snapshot
 
@@ -137,7 +140,6 @@ Repair overlayfs issue and restore lost images
 ```
 
 - POST `/snapshots/reload`
-
 - POST `/snapshots/new/upload`
 
 return:
@@ -211,9 +213,7 @@ return:
 ```
 
 - POST `/snapshots/{slug}/remove`
-
 - GET `/snapshots/{slug}/download`
-
 - POST `/snapshots/{slug}/restore/full`
 
 ```json
@@ -236,11 +236,8 @@ return:
 ### Host
 
 - POST `/host/reload`
-
 - POST `/host/shutdown`
-
 - POST `/host/reboot`
-
 - GET `/host/info`
 
 ```json
@@ -257,7 +254,7 @@ return:
 
 - GET `/host/logs`
 
-Return host dmesg
+Return the host log messages (dmesg).
 
 - POST `/host/options`
 
@@ -314,7 +311,7 @@ Return host dmesg
 
 - POST `/os/config/sync`
 
-Load host configs from a USB stick.
+Load host configurations from an USB stick.
 
 ### Hardware
 
@@ -357,7 +354,7 @@ Load host configs from a USB stick.
 
 - POST `/hardware/trigger`
 
-Trigger an udev reload
+Trigger an UDEV reload.
 
 ### Home Assistant
 
@@ -417,7 +414,7 @@ Output is the raw Docker log.
 }
 ```
 
-Image with `null` and version_latest with `null` reset this options.
+Image with `null` and `version_latest` with `null` reset this options.
 
 - POST/GET `/core/api`
 
@@ -554,13 +551,9 @@ Get all available add-ons.
 ```
 
 - GET `/addons/{addon}/icon`
-
 - GET `/addons/{addon}/logo`
-
 - GET `/addons/{addon}/changelog`
-
 - GET `/addons/{addon}/documentation`
-
 - POST `/addons/{addon}/options`
 
 ```json
@@ -577,7 +570,7 @@ Get all available add-ons.
 }
 ```
 
-Reset custom network/audio/options, set it `null`.
+Reset custom network, audio and options, set it to `null`.
 
 - POST `/addons/{addon}/security`
 
@@ -590,28 +583,22 @@ This function is not callable by itself.
 ```
 
 - POST `/addons/{addon}/start`
-
 - POST `/addons/{addon}/stop`
-
 - POST `/addons/{addon}/install`
-
 - POST `/addons/{addon}/uninstall`
-
 - POST `/addons/{addon}/update`
-
 - GET `/addons/{addon}/logs`
 
 Output is the raw Docker log.
 
 - POST `/addons/{addon}/restart`
-
 - POST `/addons/{addon}/rebuild`
 
-Only supported for local build addons
+Only supported for local build add-ons.
 
 - POST `/addons/{addon}/stdin`
 
-Write data to add-on stdin
+Write data to add-on stdin.
 
 - GET `/addons/{addon}/stats`
 
@@ -632,7 +619,7 @@ Write data to add-on stdin
 
 - POST `/ingress/session`
 
-Create a new Session for access to ingress service.
+Create a new session for access to the ingress service.
 
 ```json
 {
@@ -659,8 +646,8 @@ Return a list of enabled panels.
 
 - VIEW `/ingress/{token}`
 
-Ingress WebUI for this Add-on. The addon need support HASS Auth!
-Need ingress session as cookie.
+Ingress WebUI for this add-on. The add-on need support for the Home Assistant
+authentication system. Needs an ingress session as cookie.
 
 ### discovery
 
@@ -804,57 +791,6 @@ return:
   "channel": "stable|beta|dev",
   "logging": "debug|info|warning|error|critical",
   "timezone": "Europe/Zurich"
-}
-```
-
-### DNS
-
-- GET `/dns/info`
-
-```json
-{
-  "host": "ip-address",
-  "version": "1",
-  "version_latest": "2",
-  "servers": ["dns://8.8.8.8"],
-  "locals": ["dns://xy"]
-}
-```
-
-- POST `/dns/options`
-
-```json
-{
-  "servers": ["dns://8.8.8.8"]
-}
-```
-
-- POST `/dns/update`
-
-```json
-{
-  "version": "VERSION"
-}
-```
-
-- POST `/dns/restart`
-
-- POST `/dns/reset`
-
-- GET `/dns/logs`
-
-- GET `/dns/stats`
-
-```json
-{
-  "cpu_percent": 0.0,
-  "memory_usage": 283123,
-  "memory_limit": 329392,
-  "memory_percent": 1.4,
-  "network_tx": 0,
-  "network_rx": 0,
-  "blk_read": 0,
-  "blk_write": 0
 }
 ```
 
@@ -1172,18 +1108,18 @@ return:
 }
 ```
 
-### Auth / SSO API
+### Authentication/SSO API
 
-You can use the user system on homeassistant. We handle this auth system on
-supervisor.
+You can use the user system from Home Assistant. The auth system can be handled
+with the Supervisor.
 
-You can call post `/auth`
+`/auth` is accepting POST calls.
 
 We support:
 
-- Json `{ "user|name": "...", "password": "..." }`
-- application/x-www-form-urlencoded `user|name=...&password=...`
-- BasicAuth
+- JSON: `{ "user|name": "...", "password": "..." }`
+- `application/x-www-form-urlencoded`: `user|name=...&password=...`
+- Basic Authentication
 
 * POST `/auth/reset`
 

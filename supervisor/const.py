@@ -3,8 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "232"
-
+SUPERVISOR_VERSION = "233"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
@@ -80,6 +79,7 @@ ENV_HOMEASSISTANT_REPOSITORY = "HOMEASSISTANT_REPOSITORY"
 ENV_SUPERVISOR_SHARE = "SUPERVISOR_SHARE"
 ENV_SUPERVISOR_NAME = "SUPERVISOR_NAME"
 ENV_SUPERVISOR_MACHINE = "SUPERVISOR_MACHINE"
+ENV_SUPERVISOR_DEV = "SUPERVISOR_DEV"
 
 REQUEST_FROM = "HASSIO_FROM"
 
@@ -333,6 +333,8 @@ ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_AD
 
 CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
+
+SUPERVISED_SUPPORTED_OS = ["Debian GNU/Linux 10 (buster)"]
 
 
 class AddonStartup(str, Enum):

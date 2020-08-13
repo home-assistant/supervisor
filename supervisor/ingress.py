@@ -28,8 +28,8 @@ class Ingress(JsonConfig, CoreSysAttributes):
     def get(self, token: str) -> Optional[Addon]:
         """Return addon they have this ingress token."""
         if token not in self.tokens:
-            self._update_token_list()
-        return self.sys_addons.get(self.tokens.get(token))
+            return None
+        return self.sys_addons.get(self.tokens[token], local_only=True)
 
     @property
     def sessions(self) -> Dict[str, float]:
@@ -61,6 +61,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
     async def reload(self) -> None:
         """Reload/Validate sessions."""
         self._cleanup_sessions()
+        self._update_token_list()
 
     async def unload(self) -> None:
         """Shutdown sessions."""

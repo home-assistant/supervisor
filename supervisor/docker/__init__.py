@@ -60,6 +60,8 @@ class DockerInfo:
         if self.logging != "journald":
             _LOGGER.error("Docker logging driver %s is not supported!", self.logging)
 
+        return self.storage != "overlay2" or self.logging != "journald"
+
 
 class DockerAPI:
     """Docker Supervisor wrapper.
