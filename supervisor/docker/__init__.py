@@ -241,9 +241,13 @@ class DockerAPI:
                     image_name in DOCKER_IMAGE_DENYLIST
                     and image_name not in denied_images
                 ):
-                    _LOGGER.error(
-                        "Found image '%s', this is not supported, remove this from the host!",
-                        image_name,
-                    )
                     denied_images.add(image_name)
-        return bool(denied_images)
+
+        if not denied_images:
+            return False
+
+        _LOGGER.error(
+            "Found images: '%s' which is not  supported, remove these from the host!",
+            ", ".join(denied_images),
+        )
+        return True
