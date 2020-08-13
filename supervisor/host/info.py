@@ -52,6 +52,20 @@ class InfoCenter(CoreSysAttributes):
         return self.sys_dbus.hostname.cpe
 
     @property
+    def total_space(self) -> float:
+        """Return total space (GiB) on disk for supervisor data directory."""
+        return self.coresys.hardware.get_disk_total_space(
+            self.coresys.config.path_supervisor
+        )
+
+    @property
+    def used_space(self) -> float:
+        """Return used space (GiB) on disk for supervisor data directory."""
+        return self.coresys.hardware.get_disk_used_space(
+            self.coresys.config.path_supervisor
+        )
+
+    @property
     def free_space(self) -> float:
         """Return available space (GiB) on disk for supervisor data directory."""
         return self.coresys.hardware.get_disk_free_space(
