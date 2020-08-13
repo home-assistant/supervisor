@@ -319,6 +319,18 @@ def setup_diagnostics(coresys: CoreSys) -> None:
             }
         )
 
+        # Sanitise event
+        for tag in event.get("tags", []):
+            if "url" in tag:
+                event["tags"].remove(tag)
+        if event.get("request"):
+            event["request"]["headers"] = []
+        for value in event.get("request", {}).get("values", []):
+            for stack in value.get("stacktrace", []):
+                for frame in stack.get("frames", []):
+                    if "supervisor_token" in frame.get("vars", {}):
+                        del frame["vars"]["supervisor_token"]
+
         return event
 
     # Set log level
