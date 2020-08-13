@@ -45,7 +45,7 @@ class AddonManager(CoreSysAttributes):
         """Return a list of all installed add-ons."""
         return list(self.local.values())
 
-    def get(self, addon_slug: str) -> Optional[AnyAddon]:
+    def get(self, addon_slug: str, local_only: bool = False) -> Optional[AnyAddon]:
         """Return an add-on from slug.
 
         Prio:
@@ -54,7 +54,9 @@ class AddonManager(CoreSysAttributes):
         """
         if addon_slug in self.local:
             return self.local[addon_slug]
-        return self.store.get(addon_slug)
+        if not local_only:
+            return self.store.get(addon_slug)
+        return None
 
     def from_token(self, token: str) -> Optional[Addon]:
         """Return an add-on from Supervisor token."""
