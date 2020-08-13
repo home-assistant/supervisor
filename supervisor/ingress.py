@@ -61,6 +61,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
     async def reload(self) -> None:
         """Reload/Validate sessions."""
         self._cleanup_sessions()
+        self._update_token_list()
 
     async def unload(self) -> None:
         """Shutdown sessions."""

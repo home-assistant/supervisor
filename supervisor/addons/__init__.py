@@ -207,6 +207,10 @@ class AddonManager(CoreSysAttributes):
         self.data.uninstall(addon)
         self.local.pop(slug)
 
+        # Reload ingress tokens
+        if addon.with_ingress:
+            await self.sys_ingress.reload()
+
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
     async def update(self, slug: str) -> None:
