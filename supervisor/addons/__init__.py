@@ -195,7 +195,9 @@ class AddonManager(CoreSysAttributes):
                 await self.sys_ingress.update_hass_panel(addon)
 
         # Cleanup Ingress dynamic port assignment
-        self.sys_ingress.del_dynamic_port(slug)
+        if addon.with_ingress:
+            self.sys_create_task(self.sys_ingress.reload())
+            self.sys_ingress.del_dynamic_port(slug)
 
         # Cleanup discovery data
         for message in self.sys_discovery.list_messages:
@@ -211,10 +213,6 @@ class AddonManager(CoreSysAttributes):
 
         self.data.uninstall(addon)
         self.local.pop(slug)
-
-        # Reload ingress tokens
-        if addon.with_ingress:
-            await self.sys_ingress.reload()
 
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
