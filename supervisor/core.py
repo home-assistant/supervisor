@@ -42,7 +42,9 @@ class Core(CoreSysAttributes):
             _LOGGER.error(
                 "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
             )
-        self.sys_docker.info.check_requirements()
+
+        if self.sys_docker.info.check_requirements():
+            self.coresys.supported = False
 
         # Dbus available
         if not SOCKET_DBUS.exists():
