@@ -158,7 +158,12 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError() from None
         else:
             self.local[slug] = addon
-            _LOGGER.info("Add-on '%s' successfully installed", slug)
+
+        # Reload ingress tokens
+        if addon.with_ingress:
+            await self.sys_ingress.reload()
+
+        _LOGGER.info("Add-on '%s' successfully installed", slug)
 
     async def uninstall(self, slug: str) -> None:
         """Remove an add-on."""
@@ -308,6 +313,7 @@ class AddonManager(CoreSysAttributes):
 
         # Update ingress
         if addon.with_ingress:
+            await self.sys_ingress.reload()
             with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
 
