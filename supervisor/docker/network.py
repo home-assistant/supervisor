@@ -31,7 +31,15 @@ class DockerNetwork:
     @property
     def containers(self) -> List[docker.models.containers.Container]:
         """Return of connected containers from network."""
-        return self.network.containers
+        containers: List[docker.models.containers.Container] = []
+        for cid, data in self.network.attrs.get("Containers", {}).items():
+            try:
+                containers.append(self.docker.containers.get(cid))
+            except docker.errors.APIError as err:
+                _LOGGER.warning("Docker network is corrupt! %s - run autofix", err)
+                self.stale_cleanup(data.get("Name", cid))
+
+        return containers
 
     @property
     def gateway(self) -> IPv4Address:
