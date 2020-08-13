@@ -22,11 +22,6 @@ class Core(CoreSysAttributes):
         self.healthy: bool = True
         self.supported: bool = True
 
-    @property
-    def full_working(self) -> bool:
-        """Return True if all is healthy and supported."""
-        return self.healthy and self.supported
-
     async def connect(self):
         """Connect Supervisor container."""
         await self.sys_supervisor.load()
@@ -34,12 +29,14 @@ class Core(CoreSysAttributes):
         # If host docker is supported?
         if not self.sys_docker.info.supported_version:
             self.supported = False
+            self.healthy = False
             _LOGGER.error(
                 "Docker version %s is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
         elif self.sys_docker.info.inside_lxc:
             self.supported = False
+            self.healthy = False
             _LOGGER.error(
                 "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
             )
@@ -153,7 +150,7 @@ class Core(CoreSysAttributes):
         # On release channel, try update itself
         if self.sys_supervisor.need_update:
             try:
-                if self.sys_dev or not self.full_working:
+                if self.sys_dev or not self.healthy:
                     _LOGGER.warning("Ignore Supervisor updates!")
                 else:
                     await self.sys_supervisor.update()
