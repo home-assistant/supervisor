@@ -5,7 +5,7 @@ import logging
 
 import async_timeout
 
-from .const import SOCKET_DBUS, AddonStartup, CoreStates
+from .const import SOCKET_DBUS, SUPERVISED_SUPPORTED_OS, AddonStartup, CoreStates
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
 
@@ -120,15 +120,29 @@ class Core(CoreSysAttributes):
         # Load secrets
         await self.sys_secrets.load()
 
-        # FIXME:
-        # Check supported
-        # if not self.sys_hassos.available:
-        #   check if debian - supported
-        # else
-        #   if rauc debus connected - healthy
+        # Check supported OS
+        if not self.sys_hassos.available:
+            if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:
+                self.supported = False
+                _LOGGER.error(
+                    "Using '%s' as the OS is not supported",
+                    self.sys_host.info.operating_system,
+                )
+        else:
+            # Check rauc connectivity on our OS
+            if not self.sys_dbus.rauc.is_connected:
+                self.healthy = False
 
-        # check if sys_dbus.as_usual: (All are connect - no rauc)
-        #   supported
+        # Check all DBUS connectivity
+        if not self.sys_dbus.hostname.is_connected:
+            self.supported = False
+            _LOGGER.error("Hostname DBUS is not connected")
+        if not self.sys_dbus.nmi_dns.is_connected:
+            self.supported = False
+            _LOGGER.error("NetworkManager DNS DBUS is not connected")
+        if not self.sys_dbus.systemd.is_connected:
+            self.supported = False
+            _LOGGER.error("Systemd DBUS is not connected")
 
     async def start(self):
         """Start Supervisor orchestration."""

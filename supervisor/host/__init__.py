@@ -66,7 +66,7 @@ class HostManager(CoreSysAttributes):
         return self._sound
 
     @property
-    def supperted_features(self):
+    def supported_features(self):
         """Return a list of supported host features."""
         features = []
 

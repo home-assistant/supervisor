@@ -329,6 +329,8 @@ ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_AD
 CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
 
+SUPERVISED_SUPPORTED_OS = ["Debian GNU/Linux 10 (buster)"]
+
 
 class AddonStartup(str, Enum):
     """Startup types of Add-on."""
