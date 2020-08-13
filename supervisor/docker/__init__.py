@@ -236,15 +236,15 @@ class DockerAPI:
         denied_images = set()
         for image in self.images.list():
             for tag in image.tags:
-                imagename = tag.split(":")[0]
+                image_name = tag.split(":")[0]
                 if (
-                    imagename in DOCKER_IMAGE_DENYLIST
-                    and imagename not in denied_images
+                    image_name in DOCKER_IMAGE_DENYLIST
+                    and image_name not in denied_images
                 ):
-                    denied_images.add(imagename)
+                    denied_images.add(image_name)
                     _LOGGER.error(
                         "Found image '%s', this is not supported, remove this from the host!",
-                        imagename,
+                        image_name,
                     )
-                    denied_images.add(imagename)
+                    denied_images.add(image_name)
         return bool(denied_images)
