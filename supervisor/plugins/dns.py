@@ -207,7 +207,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.update(version, image=self.sys_updater.image_dns)
         except DockerAPIError:
             _LOGGER.error("CoreDNS update fails")
-            raise CoreDNSUpdateError() from None
+            raise CoreDNSUpdateError()
         else:
             self.version = version
             self.image = self.sys_updater.image_dns
@@ -240,7 +240,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.run()
         except DockerAPIError:
             _LOGGER.error("Can't start CoreDNS plugin")
-            raise CoreDNSError() from None
+            raise CoreDNSError()
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
@@ -249,7 +249,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             await self.instance.stop()
         except DockerAPIError:
             _LOGGER.error("Can't stop CoreDNS plugin")
-            raise CoreDNSError() from None
+            raise CoreDNSError()
 
     async def reset(self) -> None:
         """Reset DNS and hosts."""
@@ -316,7 +316,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.corefile.write_text(data)
         except OSError as err:
             _LOGGER.error("Can't update corefile: %s", err)
-            raise CoreDNSError() from None
+            raise CoreDNSError()
 
     def _init_hosts(self) -> None:
         """Import hosts entry."""
@@ -340,7 +340,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                     hosts.write(f"{entry.ip_address!s} {' '.join(entry.names)}\n")
         except OSError as err:
             _LOGGER.error("Can't write hosts file: %s", err)
-            raise CoreDNSError() from None
+            raise CoreDNSError()
 
     def add_host(self, ipv4: IPv4Address, names: List[str], write: bool = True) -> None:
         """Add a new host entry."""
@@ -404,7 +404,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         try:
             return await self.instance.stats()
         except DockerAPIError:
-            raise CoreDNSError() from None
+            raise CoreDNSError()
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
