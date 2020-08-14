@@ -1,15 +1,10 @@
-"""Filter utils."""
+"""Filter tools."""
 import os
 import re
 
-from ..const import (
-    ENV_SUPERVISOR_DEV,
-    HEADER_FORWARDED_HOST,
-    HEADER_HOST,
-    HEADER_REFERER,
-    HEADER_TOKEN_OLD,
-    CoreStates,
-)
+from aiohttp import hdrs
+
+from ..const import ENV_SUPERVISOR_DEV, HEADER_TOKEN_OLD, CoreStates
 from ..coresys import CoreSys
 
 RE_URL: re.Pattern = re.compile(r"(\w+:\/\/)(.*\.\w+)(.*)")
@@ -75,13 +70,13 @@ def filter_data(coresys: CoreSys, event: dict) -> dict:
 
         for i, header in enumerate(event["request"].get("headers", [])):
             key, value = header
-            if key == HEADER_REFERER:
+            if key == hdrs.REFERER:
                 event["request"]["headers"][i] = [key, sanitize_url(value)]
 
             if key == HEADER_TOKEN_OLD:
                 event["request"]["headers"][i] = [key, "XXXXXXXXXXXXXXXXXXX"]
 
-            if key in [HEADER_HOST, HEADER_FORWARDED_HOST]:
+            if key in [hdrs.HOST, hdrs.X_FORWARDED_HOST]:
                 event["request"]["headers"][i] = [key, "example.com"]
     print(event)
     return event

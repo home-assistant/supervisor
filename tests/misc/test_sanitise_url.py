@@ -1,5 +1,5 @@
 """Test supervisor.utils.sanitize_url."""
-from supervisor.utils.filter import sanitize_url
+from supervisor.misc.filter import sanitize_url
 
 
 def test_sanitize_url():

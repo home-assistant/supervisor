@@ -2,7 +2,7 @@
 from unittest.mock import patch
 
 from supervisor.const import CoreStates
-from supervisor.utils.filter import filter_data
+from supervisor.misc.filter import filter_data
 
 SAMPLE_EVENT = {"sample": "event"}
 

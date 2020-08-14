@@ -34,6 +34,7 @@ from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
 from .ingress import Ingress
+from .misc.filter import filter_data
 from .misc.hwmon import HwMonitor
 from .misc.scheduler import Scheduler
 from .misc.secrets import SecretsManager
@@ -45,7 +46,6 @@ from .store import StoreManager
 from .supervisor import Supervisor
 from .updater import Updater
 from .utils.dt import fetch_timezone
-from .utils.filter import filter_data
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

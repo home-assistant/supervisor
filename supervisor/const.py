@@ -63,9 +63,6 @@ CONTENT_TYPE_TAR = "application/tar"
 CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
 COOKIE_INGRESS = "ingress_session"
 
-HEADER_FORWARDED_HOST = "X-Forwarded-Host"
-HEADER_HOST = "Host"
-HEADER_REFERER = "Referer"
 HEADER_TOKEN = "X-Supervisor-Token"
 HEADER_TOKEN_OLD = "X-Hassio-Key"
 
