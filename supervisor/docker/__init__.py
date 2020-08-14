@@ -9,7 +9,7 @@ import attr
 import docker
 from packaging import version as pkg_version
 
-from ..const import DNS_SUFFIX, SOCKET_DOCKER
+from ..const import DNS_SUFFIX, DOCKER_IMAGE_DENYLIST, SOCKET_DOCKER
 from ..exceptions import DockerAPIError
 from .network import DockerNetwork
 
@@ -232,3 +232,24 @@ class DockerAPI:
             _LOGGER.debug("Networks prune: %s", output)
         except docker.errors.APIError as err:
             _LOGGER.warning("Error for networks prune: %s", err)
+
+    def check_denylist_images(self) -> bool:
+        """Return a boolean if the host has images in the denylist."""
+        denied_images = set()
+        for image in self.images.list():
+            for tag in image.tags:
+                image_name = tag.split(":")[0]
+                if (
+                    image_name in DOCKER_IMAGE_DENYLIST
+                    and image_name not in denied_images
+                ):
+                    denied_images.add(image_name)
+
+        if not denied_images:
+            return False
+
+        _LOGGER.error(
+            "Found images: '%s' which are not supported, remove these from the host!",
+            ", ".join(denied_images),
+        )
+        return True
