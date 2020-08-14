@@ -17,21 +17,21 @@ def test_ignored_exception(coresys):
 def test_diagnostics_disabled(coresys):
     """Test if diagnostics is disabled."""
     coresys.config.diagnostics = False
-    coresys.supported = True
+    coresys.core.supported = True
     assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
 def test_not_supported(coresys):
     """Test if not supported."""
     coresys.config.diagnostics = True
-    coresys.supported = False
+    coresys.core.supported = False
     assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
 def test_is_dev(coresys):
     """Test if dev."""
     coresys.config.diagnostics = True
-    coresys.supported = True
+    coresys.core.supported = True
     with patch("os.environ", return_value=[("ENV_SUPERVISOR_DEV", "1")]):
         assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
@@ -39,7 +39,7 @@ def test_is_dev(coresys):
 def test_not_started(coresys):
     """Test if supervisor not fully started."""
     coresys.config.diagnostics = True
-    coresys.supported = True
+    coresys.core.supported = True
 
     coresys.core.state = CoreStates.INITIALIZE
     assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
