@@ -281,11 +281,6 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
-
-    def filter_event(event, hint):
-        return filter_data(coresys, event, hint)
-
-    # Set log level
     sentry_logging = LoggingIntegration(
         level=logging.WARNING, event_level=logging.CRITICAL
     )
@@ -293,7 +288,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
     _LOGGER.info("Initialize Supervisor Sentry")
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
-        before_send=filter_event,
+        before_send=lambda event, hint: filter_data(coresys, event, hint),
         max_breadcrumbs=30,
         integrations=[AioHttpIntegration(), sentry_logging],
         release=SUPERVISOR_VERSION,
