@@ -31,7 +31,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
             return None
 
     # Ignore issue if system is not supported or diagnostics is disabled
-    if not coresys.config.diagnostics or not coresys.supported or dev_env:
+    if not coresys.config.diagnostics or not coresys.core.supported or dev_env:
         return None
 
     # Not full startup - missing information
