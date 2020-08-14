@@ -47,16 +47,21 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "docker": coresys.docker.info.version,
                 "channel": coresys.updater.channel,
                 "supervisor": coresys.supervisor.version,
+            },
+            "host": {
+                "disk_free_space": coresys.host.info.free_space,
+                "deployment": coresys.host.info.deployment,
                 "os": coresys.hassos.version,
                 "host": coresys.host.info.operating_system,
                 "kernel": coresys.host.info.kernel,
+            },
+            "versions": {
                 "core": coresys.homeassistant.version,
                 "audio": coresys.plugins.audio.version,
                 "dns": coresys.plugins.dns.version,
                 "multicast": coresys.plugins.multicast.version,
                 "cli": coresys.plugins.cli.version,
-                "disk_free_space": coresys.host.info.free_space,
-            }
+            },
         }
     )
     event.setdefault("tags", []).extend(
