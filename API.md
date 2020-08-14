@@ -25,7 +25,7 @@ On success / Code 200:
 
 To access the API you need use an authorization header with a `Bearer` token.
 
-The token is available for add-ons and Home Assistant using the 
+The token is available for add-ons and Home Assistant using the
 `SUPERVISOR_TOKEN` environment variable.
 
 ### Supervisor
@@ -242,13 +242,16 @@ return:
 
 ```json
 {
-  "hostname": "hostname|null",
-  "features": ["shutdown", "reboot", "hostname", "services", "hassos"],
-  "operating_system": "HassOS XY|Ubuntu 16.4|null",
-  "kernel": "4.15.7|null",
   "chassis": "specific|null",
+  "cpe": "xy|null",
   "deployment": "stable|beta|dev|null",
-  "cpe": "xy|null"
+  "disk_total": 32.0,
+  "disk_used": 30.0,
+  "disk_free": 2.0,
+  "features": ["shutdown", "reboot", "hostname", "services", "hassos"],
+  "hostname": "hostname|null",
+  "kernel": "4.15.7|null",
+  "operating_system": "HassOS XY|Ubuntu 16.4|null"
 }
 ```
 

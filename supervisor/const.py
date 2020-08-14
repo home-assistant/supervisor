@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "232"
+SUPERVISOR_VERSION = "233"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
@@ -36,6 +36,11 @@ SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
+DOCKER_IMAGE_DENYLIST = [
+    "containrrr/watchtower",
+    "pyouroboros/ouroboros",
+    "v2tec/watchtower",
+]
 
 DNS_SUFFIX = "local.hass.io"
 
@@ -74,6 +79,7 @@ ENV_HOMEASSISTANT_REPOSITORY = "HOMEASSISTANT_REPOSITORY"
 ENV_SUPERVISOR_SHARE = "SUPERVISOR_SHARE"
 ENV_SUPERVISOR_NAME = "SUPERVISOR_NAME"
 ENV_SUPERVISOR_MACHINE = "SUPERVISOR_MACHINE"
+ENV_SUPERVISOR_DEV = "SUPERVISOR_DEV"
 
 REQUEST_FROM = "HASSIO_FROM"
 
@@ -163,6 +169,9 @@ ATTR_AUDIO_OUTPUT = "audio_output"
 ATTR_INPUT = "input"
 ATTR_OUTPUT = "output"
 ATTR_DISK = "disk"
+ATTR_DISK_FREE = "disk_free"
+ATTR_DISK_TOTAL = "disk_total"
+ATTR_DISK_USED = "disk_used"
 ATTR_SERIAL = "serial"
 ATTR_SECURITY = "security"
 ATTR_BUILD_FROM = "build_from"
@@ -327,6 +336,8 @@ ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_AD
 
 CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
+
+SUPERVISED_SUPPORTED_OS = ["Debian GNU/Linux 10 (buster)"]
 
 
 class AddonStartup(str, Enum):

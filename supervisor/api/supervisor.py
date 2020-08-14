@@ -100,7 +100,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_VERSION_LATEST: self.sys_updater.version_supervisor,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_ARCH: self.sys_supervisor.arch,
-            ATTR_SUPPORTED: self.sys_supported,
+            ATTR_SUPPORTED: self.sys_core.supported,
             ATTR_HEALTHY: self.sys_core.healthy,
             ATTR_IP_ADDRESS: str(self.sys_supervisor.ip_address),
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,

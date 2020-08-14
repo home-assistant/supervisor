@@ -11,6 +11,9 @@ from ..const import (
     ATTR_CPE,
     ATTR_DEPLOYMENT,
     ATTR_DESCRIPTON,
+    ATTR_DISK_FREE,
+    ATTR_DISK_TOTAL,
+    ATTR_DISK_USED,
     ATTR_FEATURES,
     ATTR_HOSTNAME,
     ATTR_KERNEL,
@@ -39,11 +42,14 @@ class APIHost(CoreSysAttributes):
         return {
             ATTR_CHASSIS: self.sys_host.info.chassis,
             ATTR_CPE: self.sys_host.info.cpe,
-            ATTR_FEATURES: self.sys_host.supperted_features,
-            ATTR_HOSTNAME: self.sys_host.info.hostname,
-            ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
             ATTR_DEPLOYMENT: self.sys_host.info.deployment,
+            ATTR_DISK_FREE: self.sys_host.info.free_space,
+            ATTR_DISK_TOTAL: self.sys_host.info.total_space,
+            ATTR_DISK_USED: self.sys_host.info.used_space,
+            ATTR_FEATURES: self.sys_host.supported_features,
+            ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_KERNEL: self.sys_host.info.kernel,
+            ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
         }
 
     @api_process

@@ -43,6 +43,7 @@ from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    AddonConfigurationError,
     AddonsError,
     AddonsNotSupportedError,
     DockerAPIError,
@@ -375,7 +376,7 @@ class Addon(AddonModel):
             _LOGGER.debug("Add-on %s write options: %s", self.slug, options)
             return
 
-        raise AddonsError()
+        raise AddonConfigurationError()
 
     async def remove_data(self) -> None:
         """Remove add-on data."""

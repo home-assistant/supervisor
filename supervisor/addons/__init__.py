@@ -45,7 +45,7 @@ class AddonManager(CoreSysAttributes):
         """Return a list of all installed add-ons."""
         return list(self.local.values())
 
-    def get(self, addon_slug: str) -> Optional[AnyAddon]:
+    def get(self, addon_slug: str, local_only: bool = False) -> Optional[AnyAddon]:
         """Return an add-on from slug.
 
         Prio:
@@ -54,7 +54,9 @@ class AddonManager(CoreSysAttributes):
         """
         if addon_slug in self.local:
             return self.local[addon_slug]
-        return self.store.get(addon_slug)
+        if not local_only:
+            return self.store.get(addon_slug)
+        return None
 
     def from_token(self, token: str) -> Optional[Addon]:
         """Return an add-on from Supervisor token."""
@@ -156,7 +158,12 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError() from None
         else:
             self.local[slug] = addon
-            _LOGGER.info("Add-on '%s' successfully installed", slug)
+
+        # Reload ingress tokens
+        if addon.with_ingress:
+            await self.sys_ingress.reload()
+
+        _LOGGER.info("Add-on '%s' successfully installed", slug)
 
     async def uninstall(self, slug: str) -> None:
         """Remove an add-on."""
@@ -188,7 +195,9 @@ class AddonManager(CoreSysAttributes):
                 await self.sys_ingress.update_hass_panel(addon)
 
         # Cleanup Ingress dynamic port assignment
-        self.sys_ingress.del_dynamic_port(slug)
+        if addon.with_ingress:
+            self.sys_create_task(self.sys_ingress.reload())
+            self.sys_ingress.del_dynamic_port(slug)
 
         # Cleanup discovery data
         for message in self.sys_discovery.list_messages:
@@ -302,6 +311,7 @@ class AddonManager(CoreSysAttributes):
 
         # Update ingress
         if addon.with_ingress:
+            await self.sys_ingress.reload()
             with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
 

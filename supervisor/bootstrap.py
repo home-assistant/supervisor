@@ -16,13 +16,13 @@ from .arch import CpuArch
 from .auth import Auth
 from .const import (
     ENV_HOMEASSISTANT_REPOSITORY,
+    ENV_SUPERVISOR_DEV,
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
     MACHINE_ID,
     SOCKET_DOCKER,
     SUPERVISOR_VERSION,
-    CoreStates,
     LogLevel,
     UpdateChannels,
 )
@@ -34,6 +34,7 @@ from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
 from .ingress import Ingress
+from .misc.filter import filter_data
 from .misc.hwmon import HwMonitor
 from .misc.scheduler import Scheduler
 from .misc.secrets import SecretsManager
@@ -169,7 +170,7 @@ def initialize_system_data(coresys: CoreSys) -> None:
     coresys.config.modify_log_level()
 
     # Check if ENV is in development mode
-    if bool(os.environ.get("SUPERVISOR_DEV", 0)):
+    if bool(os.environ.get(ENV_SUPERVISOR_DEV, 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
         coresys.updater.channel = UpdateChannels.DEV
         coresys.config.logging = LogLevel.DEBUG
@@ -280,54 +281,19 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
-    _LOGGER.info("Initialize Supervisor Sentry")
 
-    def filter_data(event, hint):
-        # Ignore issue if system is not supported or diagnostics is disabled
-        if not coresys.config.diagnostics or not coresys.supported:
-            return None
-
-        # Not full startup - missing information
-        if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.SETUP):
-            return event
-
-        # Update information
-        event.setdefault("extra", {}).update(
-            {
-                "supervisor": {
-                    "machine": coresys.machine,
-                    "arch": coresys.arch.default,
-                    "docker": coresys.docker.info.version,
-                    "channel": coresys.updater.channel,
-                    "supervisor": coresys.supervisor.version,
-                    "os": coresys.hassos.version,
-                    "host": coresys.host.info.operating_system,
-                    "kernel": coresys.host.info.kernel,
-                    "core": coresys.homeassistant.version,
-                    "audio": coresys.plugins.audio.version,
-                    "dns": coresys.plugins.dns.version,
-                    "multicast": coresys.plugins.multicast.version,
-                    "cli": coresys.plugins.cli.version,
-                }
-            }
-        )
-        event.setdefault("tags", {}).update(
-            {
-                "installation_type": "os" if coresys.hassos.available else "supervised",
-                "machine": coresys.machine,
-            }
-        )
-
-        return event
+    def filter_event(event, hint):
+        return filter_data(coresys, event, hint)
 
     # Set log level
     sentry_logging = LoggingIntegration(
         level=logging.WARNING, event_level=logging.CRITICAL
     )
 
+    _LOGGER.info("Initialize Supervisor Sentry")
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
-        before_send=filter_data,
+        before_send=filter_event,
         max_breadcrumbs=30,
         integrations=[AioHttpIntegration(), sentry_logging],
         release=SUPERVISOR_VERSION,
