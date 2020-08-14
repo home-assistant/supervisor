@@ -130,7 +130,7 @@ class DockerAPI:
             )
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't create container from %s: %s", name, err)
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
         # Attach network
         if not network_mode:
@@ -148,7 +148,7 @@ class DockerAPI:
             container.start()
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't start %s: %s", name, err)
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
         # Update metadata
         with suppress(docker.errors.DockerException):
@@ -186,7 +186,7 @@ class DockerAPI:
 
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't execute command: %s", err)
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
         finally:
             # cleanup container

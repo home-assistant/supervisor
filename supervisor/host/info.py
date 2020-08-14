@@ -96,4 +96,4 @@ class InfoCenter(CoreSysAttributes):
             _LOGGER.warning("Can't update host system information!")
         except DBusNotConnectedError:
             _LOGGER.error("No hostname D-Bus connection available")
-            raise HostNotSupportedError() from None
+            raise HostNotSupportedError()

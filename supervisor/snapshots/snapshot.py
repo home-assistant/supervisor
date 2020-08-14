@@ -277,7 +277,7 @@ class Snapshot(CoreSysAttributes):
             _LOGGER.error(
                 "Invalid data for %s: %s", self.tarfile, humanize_error(self._data, err)
             )
-            raise ValueError("Invalid config") from None
+            raise ValueError("Invalid config")
 
         # new snapshot, build it
         def _create_snapshot():

@@ -344,7 +344,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
                 )
             except DockerAPIError:
                 _LOGGER.warning("Update Home Assistant image fails")
-                raise HomeAssistantUpdateError() from None
+                raise HomeAssistantUpdateError()
             else:
                 self.version = self.instance.version
                 self.image = self.sys_updater.image_homeassistant
@@ -393,7 +393,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.run()
         except DockerAPIError:
-            raise HomeAssistantError() from None
+            raise HomeAssistantError()
 
         await self._block_till_run(self.version)
 
@@ -409,7 +409,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             try:
                 await self.instance.start()
             except DockerAPIError:
-                raise HomeAssistantError() from None
+                raise HomeAssistantError()
 
             await self._block_till_run(self.version)
         # No Instance/Container found, extended start
@@ -425,7 +425,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         try:
             return await self.instance.stop(remove_container=False)
         except DockerAPIError:
-            raise HomeAssistantError() from None
+            raise HomeAssistantError()
 
     @process_lock
     async def restart(self) -> None:
@@ -433,7 +433,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.restart()
         except DockerAPIError:
-            raise HomeAssistantError() from None
+            raise HomeAssistantError()
 
         await self._block_till_run(self.version)
 
@@ -459,7 +459,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         try:
             return await self.instance.stats()
         except DockerAPIError:
-            raise HomeAssistantError() from None
+            raise HomeAssistantError()
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.

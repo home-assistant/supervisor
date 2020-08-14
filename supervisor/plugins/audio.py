@@ -156,7 +156,7 @@ class Audio(JsonConfig, CoreSysAttributes):
             await self.instance.update(version, image=self.sys_updater.image_audio)
         except DockerAPIError:
             _LOGGER.error("Audio update fails")
-            raise AudioUpdateError() from None
+            raise AudioUpdateError()
         else:
             self.version = version
             self.image = self.sys_updater.image_audio
@@ -176,7 +176,7 @@ class Audio(JsonConfig, CoreSysAttributes):
             await self.instance.restart()
         except DockerAPIError:
             _LOGGER.error("Can't start Audio plugin")
-            raise AudioError() from None
+            raise AudioError()
 
     async def start(self) -> None:
         """Run CoreDNS."""
@@ -185,7 +185,7 @@ class Audio(JsonConfig, CoreSysAttributes):
             await self.instance.run()
         except DockerAPIError:
             _LOGGER.error("Can't start Audio plugin")
-            raise AudioError() from None
+            raise AudioError()
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
@@ -194,7 +194,7 @@ class Audio(JsonConfig, CoreSysAttributes):
             await self.instance.stop()
         except DockerAPIError:
             _LOGGER.error("Can't stop Audio plugin")
-            raise AudioError() from None
+            raise AudioError()
 
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.
@@ -208,7 +208,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         try:
             return await self.instance.stats()
         except DockerAPIError:
-            raise AudioError() from None
+            raise AudioError()
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.

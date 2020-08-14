@@ -77,7 +77,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
             try:
                 valid_dt = utc_from_timestamp(valid)
             except OverflowError:
-                _LOGGER.warning("Session timestamp %f is invalid!", valid_dt)
+                _LOGGER.warning("Session timestamp %f is invalid!", valid)
                 continue
 
             if valid_dt < now:
@@ -115,7 +115,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
         try:
             valid_until = utc_from_timestamp(self.sessions[session])
         except OverflowError:
-            _LOGGER.warning("Session timestamp %f is invalid!", valid_until)
+            _LOGGER.warning("Session timestamp %f is invalid!", self.sessions[session])
             return False
 
         # Is still valid?

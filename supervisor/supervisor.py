@@ -87,7 +87,7 @@ class Supervisor(CoreSysAttributes):
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch AppArmor profile: %s", err)
-            raise SupervisorError() from None
+            raise SupervisorError()
 
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
             profile_file = Path(tmp_dir, "apparmor.txt")
@@ -95,7 +95,7 @@ class Supervisor(CoreSysAttributes):
                 profile_file.write_text(data)
             except OSError as err:
                 _LOGGER.error("Can't write temporary profile: %s", err)
-                raise SupervisorError() from None
+                raise SupervisorError()
 
             try:
                 await self.sys_host.apparmor.load_profile(
@@ -103,7 +103,7 @@ class Supervisor(CoreSysAttributes):
                 )
             except HostAppArmorError:
                 _LOGGER.error("Can't update AppArmor profile!")
-                raise SupervisorError() from None
+                raise SupervisorError()
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update Home Assistant version."""
@@ -123,7 +123,7 @@ class Supervisor(CoreSysAttributes):
             )
         except DockerAPIError:
             _LOGGER.error("Update of Supervisor fails!")
-            raise SupervisorUpdateError() from None
+            raise SupervisorUpdateError()
         else:
             self.sys_config.version = version
             self.sys_config.save_data()
@@ -149,7 +149,7 @@ class Supervisor(CoreSysAttributes):
         try:
             return await self.instance.stats()
         except DockerAPIError:
-            raise SupervisorError() from None
+            raise SupervisorError()
 
     async def repair(self):
         """Repair local Supervisor data."""

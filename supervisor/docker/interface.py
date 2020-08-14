@@ -106,7 +106,7 @@ class DockerInterface(CoreSysAttributes):
                     "Available space in /data is: %s GiB",
                     free_space,
                 )
-            raise DockerAPIError() from None
+            raise DockerAPIError()
         else:
             self._meta = docker_image.attrs
 
@@ -162,7 +162,7 @@ class DockerInterface(CoreSysAttributes):
 
         # Successfull?
         if not self._meta:
-            raise DockerAPIError() from None
+            raise DockerAPIError()
         _LOGGER.info("Attach to %s with version %s", self.image, self.version)
 
     @process_lock
@@ -190,7 +190,7 @@ class DockerInterface(CoreSysAttributes):
         try:
             docker_container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
         if docker_container.status == "running":
             _LOGGER.info("Stop %s application", self.name)
@@ -215,14 +215,14 @@ class DockerInterface(CoreSysAttributes):
         try:
             docker_container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
         _LOGGER.info("Start %s", self.name)
         try:
             docker_container.start()
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't start %s: %s", self.name, err)
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
     @process_lock
     def remove(self) -> Awaitable[None]:
@@ -251,7 +251,7 @@ class DockerInterface(CoreSysAttributes):
 
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't remove image %s: %s", self.image, err)
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
         self._meta = None
 
@@ -320,7 +320,7 @@ class DockerInterface(CoreSysAttributes):
             origin = self.sys_docker.images.get(f"{self.image}:{self.version}")
         except docker.errors.DockerException:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
         # Cleanup Current
         for image in self.sys_docker.images.list(name=self.image):
@@ -353,14 +353,14 @@ class DockerInterface(CoreSysAttributes):
         try:
             container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
         _LOGGER.info("Restart %s", self.image)
         try:
             container.restart(timeout=self.timeout)
         except docker.errors.DockerException as err:
             _LOGGER.warning("Can't restart %s: %s", self.image, err)
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
     @process_lock
     def execute_command(self, command: str) -> Awaitable[CommandReturn]:
@@ -386,14 +386,14 @@ class DockerInterface(CoreSysAttributes):
         try:
             docker_container = self.sys_docker.containers.get(self.name)
         except docker.errors.DockerException:
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
         try:
             stats = docker_container.stats(stream=False)
             return DockerStats(stats)
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't read stats from %s: %s", self.name, err)
-            raise DockerAPIError() from None
+            raise DockerAPIError()
 
     def is_fails(self) -> Awaitable[bool]:
         """Return True if Docker is failing state.

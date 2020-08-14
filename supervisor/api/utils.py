@@ -120,7 +120,7 @@ async def api_validate(
     try:
         data_validated = schema(data)
     except vol.Invalid as ex:
-        raise APIError(humanize_error(data, ex)) from None
+        raise APIError(humanize_error(data, ex))
 
     if not origin:
         return data_validated

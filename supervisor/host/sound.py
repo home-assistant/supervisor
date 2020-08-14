@@ -117,10 +117,10 @@ class SoundControl(CoreSysAttributes):
 
             except PulseIndexError:
                 _LOGGER.error("Can't find %s stream %s", source, name)
-                raise PulseAudioError() from None
+                raise PulseAudioError()
             except PulseError as err:
                 _LOGGER.error("Can't set %s as stream: %s", name, err)
-                raise PulseAudioError() from None
+                raise PulseAudioError()
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_default)
@@ -151,10 +151,10 @@ class SoundControl(CoreSysAttributes):
                 _LOGGER.error(
                     "Can't find %s stream %d (App: %s)", stream_type, index, application
                 )
-                raise PulseAudioError() from None
+                raise PulseAudioError()
             except PulseError as err:
                 _LOGGER.error("Can't set %d volume: %s", index, err)
-                raise PulseAudioError() from None
+                raise PulseAudioError()
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_volume)
@@ -185,10 +185,10 @@ class SoundControl(CoreSysAttributes):
                 _LOGGER.error(
                     "Can't find %s stream %d (App: %s)", stream_type, index, application
                 )
-                raise PulseAudioError() from None
+                raise PulseAudioError()
             except PulseError as err:
                 _LOGGER.error("Can't set %d volume: %s", index, err)
-                raise PulseAudioError() from None
+                raise PulseAudioError()
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_mute)
@@ -205,12 +205,12 @@ class SoundControl(CoreSysAttributes):
 
             except PulseIndexError:
                 _LOGGER.error("Can't find %s profile %s", card_name, profile_name)
-                raise PulseAudioError() from None
+                raise PulseAudioError()
             except PulseError as err:
                 _LOGGER.error(
                     "Can't activate %s profile %s: %s", card_name, profile_name, err
                 )
-                raise PulseAudioError() from None
+                raise PulseAudioError()
 
         # Run and Reload data
         await self.sys_run_in_executor(_activate_profile)
@@ -331,7 +331,7 @@ class SoundControl(CoreSysAttributes):
 
             except PulseOperationFailed as err:
                 _LOGGER.error("Error while processing pulse update: %s", err)
-                raise PulseAudioError() from None
+                raise PulseAudioError()
             except PulseError as err:
                 _LOGGER.debug("Can't update PulseAudio data: %s", err)
 

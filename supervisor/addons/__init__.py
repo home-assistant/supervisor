@@ -155,7 +155,7 @@ class AddonManager(CoreSysAttributes):
             await addon.instance.install(store.version, store.image)
         except DockerAPIError:
             self.data.uninstall(addon)
-            raise AddonsError() from None
+            raise AddonsError()
         else:
             self.local[slug] = addon
 
@@ -175,7 +175,7 @@ class AddonManager(CoreSysAttributes):
         try:
             await addon.instance.remove()
         except DockerAPIError:
-            raise AddonsError() from None
+            raise AddonsError()
 
         await addon.remove_data()
 
@@ -246,7 +246,7 @@ class AddonManager(CoreSysAttributes):
             with suppress(DockerAPIError):
                 await addon.instance.cleanup()
         except DockerAPIError:
-            raise AddonsError() from None
+            raise AddonsError()
         else:
             self.data.update(store)
             _LOGGER.info("Add-on '%s' successfully updated", slug)
@@ -284,7 +284,7 @@ class AddonManager(CoreSysAttributes):
             await addon.instance.remove()
             await addon.instance.install(addon.version)
         except DockerAPIError:
-            raise AddonsError() from None
+            raise AddonsError()
         else:
             self.data.update(store)
             _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
