@@ -4,15 +4,26 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 
 from supervisor.bootstrap import initialize_coresys
+from supervisor.docker import DockerAPI
 
 # pylint: disable=redefined-outer-name, protected-access
 
 
 @pytest.fixture
 def docker():
-    """Mock Docker API."""
-    with patch("supervisor.coresys.DockerAPI") as mock:
-        yield mock
+    """Mock DockerAPI."""
+    images = [MagicMock(tags=["homeassistant/amd64-hassio-supervisor:latest"])]
+
+    with patch("docker.DockerClient", return_value=MagicMock()), patch(
+        "supervisor.docker.DockerAPI.images", return_value=MagicMock()
+    ), patch("supervisor.docker.DockerAPI.containers", return_value=MagicMock()), patch(
+        "supervisor.docker.DockerAPI.api", return_value=MagicMock()
+    ), patch(
+        "supervisor.docker.DockerAPI.images.list", return_value=images
+    ):
+        docker_obj = DockerAPI()
+
+        yield docker_obj
 
 
 @pytest.fixture
