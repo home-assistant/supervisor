@@ -76,7 +76,7 @@ class AppArmorControl(CoreSysAttributes):
             shutil.copyfile(profile_file, dest_profile)
         except OSError as err:
             _LOGGER.error("Can't copy %s: %s", profile_file, err)
-            raise HostAppArmorError() from None
+            raise HostAppArmorError()
 
         # Load profiles
         _LOGGER.info("Add or Update AppArmor profile: %s", profile_name)

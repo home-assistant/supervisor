@@ -129,7 +129,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
             await self.instance.update(version, image=self.sys_updater.image_multicast)
         except DockerAPIError:
             _LOGGER.error("Multicast update fails")
-            raise MulticastUpdateError() from None
+            raise MulticastUpdateError()
         else:
             self.version = version
             self.image = self.sys_updater.image_multicast
@@ -181,7 +181,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
         try:
             return await self.instance.stats()
         except DockerAPIError:
-            raise MulticastError() from None
+            raise MulticastError()
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.

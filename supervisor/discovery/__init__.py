@@ -79,7 +79,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
             config = valid_discovery_config(service, config)
         except vol.Invalid as err:
             _LOGGER.error("Invalid discovery %s config", humanize_error(config, err))
-            raise DiscoveryError() from None
+            raise DiscoveryError()
 
         # Create message
         message = Message(addon.slug, service, config)

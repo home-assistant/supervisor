@@ -20,7 +20,7 @@ def write_json_file(jsonfile: Path, data: Any) -> None:
         jsonfile.write_text(json.dumps(data, indent=2))
     except (OSError, ValueError, TypeError) as err:
         _LOGGER.error("Can't write %s: %s", jsonfile, err)
-        raise JsonFileError() from None
+        raise JsonFileError()
 
 
 def read_json_file(jsonfile: Path) -> Any:
@@ -29,7 +29,7 @@ def read_json_file(jsonfile: Path) -> Any:
         return json.loads(jsonfile.read_text())
     except (OSError, ValueError, TypeError, UnicodeDecodeError) as err:
         _LOGGER.error("Can't read json from %s: %s", jsonfile, err)
-        raise JsonFileError() from None
+        raise JsonFileError()
 
 
 class JsonConfig:

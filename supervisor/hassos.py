@@ -142,7 +142,7 @@ class HassOS(CoreSysAttributes):
 
         except DBusError:
             _LOGGER.error("Rauc communication error")
-            raise HassOSUpdateError() from None
+            raise HassOSUpdateError()
 
         finally:
             int_ota.unlink()

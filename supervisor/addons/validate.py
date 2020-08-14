@@ -362,7 +362,7 @@ def validate_options(coresys: CoreSys, raw_schema: Dict[str, Any]):
                     # normal value
                     options[key] = _single_validate(coresys, typ, value, key)
             except (IndexError, KeyError):
-                raise vol.Invalid(f"Type error for {key}") from None
+                raise vol.Invalid(f"Type error for {key}")
 
         _check_missing_options(raw_schema, options, "root")
         return options
