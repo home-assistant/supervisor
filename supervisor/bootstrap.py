@@ -282,8 +282,8 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
 
-    def filter_event(event, _hint):
-        return filter_data(coresys, event)
+    def filter_event(event, hint):
+        return filter_data(coresys, event, hint)
 
     # Set log level
     sentry_logging = LoggingIntegration(

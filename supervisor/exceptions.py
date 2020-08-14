@@ -105,6 +105,10 @@ class AddonsError(HassioError):
     """Addons exception."""
 
 
+class AddonConfigurationError(AddonsError):
+    """Error with add-on configuration."""
+
+
 class AddonsNotSupportedError(HassioNotSupportedError):
     """Addons don't support a function."""
 
