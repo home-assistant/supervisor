@@ -23,7 +23,6 @@ from .const import (
     MACHINE_ID,
     SOCKET_DOCKER,
     SUPERVISOR_VERSION,
-    CoreStates,
     LogLevel,
     UpdateChannels,
 )
@@ -35,6 +34,7 @@ from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
 from .ingress import Ingress
+from .misc.filter import filter_data
 from .misc.hwmon import HwMonitor
 from .misc.scheduler import Scheduler
 from .misc.secrets import SecretsManager
@@ -281,45 +281,9 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
-    dev_env: bool = bool(os.environ.get(ENV_SUPERVISOR_DEV, 0))
 
-    def filter_data(event, hint):
-        # Ignore issue if system is not supported or diagnostics is disabled
-        if not coresys.config.diagnostics or not coresys.supported or dev_env:
-            return None
-
-        # Not full startup - missing information
-        if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.SETUP):
-            return event
-
-        # Update information
-        event.setdefault("extra", {}).update(
-            {
-                "supervisor": {
-                    "machine": coresys.machine,
-                    "arch": coresys.arch.default,
-                    "docker": coresys.docker.info.version,
-                    "channel": coresys.updater.channel,
-                    "supervisor": coresys.supervisor.version,
-                    "os": coresys.hassos.version,
-                    "host": coresys.host.info.operating_system,
-                    "kernel": coresys.host.info.kernel,
-                    "core": coresys.homeassistant.version,
-                    "audio": coresys.plugins.audio.version,
-                    "dns": coresys.plugins.dns.version,
-                    "multicast": coresys.plugins.multicast.version,
-                    "cli": coresys.plugins.cli.version,
-                }
-            }
-        )
-        event.setdefault("tags", {}).update(
-            {
-                "installation_type": "os" if coresys.hassos.available else "supervised",
-                "machine": coresys.machine,
-            }
-        )
-
-        return event
+    def filter_event(event, _hint):
+        return filter_data(coresys, event)
 
     # Set log level
     sentry_logging = LoggingIntegration(
@@ -329,7 +293,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
     _LOGGER.info("Initialize Supervisor Sentry")
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
-        before_send=filter_data,
+        before_send=filter_event,
         max_breadcrumbs=30,
         integrations=[AioHttpIntegration(), sentry_logging],
         release=SUPERVISOR_VERSION,
