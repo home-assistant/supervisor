@@ -488,14 +488,16 @@ class Addon(AddonModel):
         # Start Add-on
         try:
             await self.instance.run()
-        except DockerAPIError:
+        except DockerAPIError as exception:
+            _LOGGER.error("Falied to start add-on %s - %s", self.slug, exception)
             raise AddonsError() from None
 
     async def stop(self) -> None:
         """Stop add-on."""
         try:
             return await self.instance.stop()
-        except DockerAPIError:
+        except DockerAPIError as exception:
+            _LOGGER.error("Falied to stop add-on %s - %s", self.slug, exception)
             raise AddonsError() from None
 
     async def restart(self) -> None:
@@ -515,7 +517,10 @@ class Addon(AddonModel):
         """Return stats of container."""
         try:
             return await self.instance.stats()
-        except DockerAPIError:
+        except DockerAPIError as exception:
+            _LOGGER.error(
+                "Falied to get stats for add-on %s - %s", self.slug, exception
+            )
             raise AddonsError() from None
 
     async def write_stdin(self, data) -> None:
