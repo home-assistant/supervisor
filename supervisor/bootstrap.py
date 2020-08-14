@@ -15,12 +15,15 @@ from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
 from .const import (
-    DUMMY_VALUE,
     ENV_HOMEASSISTANT_REPOSITORY,
     ENV_SUPERVISOR_DEV,
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
+    HEADER_FORWARDED_HOST,
+    HEADER_HOST,
+    HEADER_REFERER,
+    HEADER_TOKEN_OLD,
     MACHINE_ID,
     SOCKET_DOCKER,
     SUPERVISOR_VERSION,
@@ -331,14 +334,14 @@ def setup_diagnostics(coresys: CoreSys) -> None:
                 event["request"]["url"] = sanitize_url(event["request"]["url"])
 
             for header in event["request"].get("headers", []):
-                if header[0] == "Referer":
+                if header[0] == HEADER_REFERER:
                     header[1] = sanitize_url(header[1])
 
-                if header[0] == "X-Hassio-Key":
-                    header[1] = DUMMY_VALUE
+                if header[0] == HEADER_TOKEN_OLD:
+                    header[1] = "XXXXXXXXXXXXXXXXXXX"
 
-                if header[0] in ["Host", "X-Forwarded-Host"]:
-                    event["request"]["headers"].remove(header)
+                if header[0] in [HEADER_HOST, HEADER_FORWARDED_HOST]:
+                    header[1] = "example.com"
 
         return event
 

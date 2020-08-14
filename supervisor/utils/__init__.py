@@ -7,9 +7,10 @@ import re
 import socket
 from typing import Optional
 
-from ..const import RE_STRING, RE_URL
-
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+RE_STRING: re.Pattern = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
+RE_URL: re.Pattern = re.compile(r"(\w+:\/\/)(.*\.\w+)(.*)")
 
 
 def convert_to_ascii(raw: bytes) -> str:
