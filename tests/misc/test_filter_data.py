@@ -2,23 +2,30 @@
 from unittest.mock import patch
 
 from supervisor.const import CoreStates
+from supervisor.exceptions import AddonConfigurationError
 from supervisor.misc.filter import filter_data
 
 SAMPLE_EVENT = {"sample": "event"}
+
+
+def test_ignored_exception(coresys):
+    """Test ignored exceptions."""
+    hint = {"exc_info": (None, AddonConfigurationError(), None)}
+    assert filter_data(coresys, SAMPLE_EVENT, hint) is None
 
 
 def test_diagnostics_disabled(coresys):
     """Test if diagnostics is disabled."""
     coresys.config.diagnostics = False
     coresys.supported = True
-    assert filter_data(coresys, SAMPLE_EVENT) is None
+    assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
 def test_not_supported(coresys):
     """Test if not supported."""
     coresys.config.diagnostics = True
     coresys.supported = False
-    assert filter_data(coresys, SAMPLE_EVENT) is None
+    assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
 def test_is_dev(coresys):
@@ -26,7 +33,7 @@ def test_is_dev(coresys):
     coresys.config.diagnostics = True
     coresys.supported = True
     with patch("os.environ", return_value=[("ENV_SUPERVISOR_DEV", "1")]):
-        assert filter_data(coresys, SAMPLE_EVENT) is None
+        assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
 def test_not_started(coresys):
@@ -35,10 +42,10 @@ def test_not_started(coresys):
     coresys.supported = True
 
     coresys.core.state = CoreStates.INITIALIZE
-    assert filter_data(coresys, SAMPLE_EVENT) == SAMPLE_EVENT
+    assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
 
     coresys.core.state = CoreStates.SETUP
-    assert filter_data(coresys, SAMPLE_EVENT) == SAMPLE_EVENT
+    assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
 
 
 def test_defaults(coresys):
@@ -47,7 +54,8 @@ def test_defaults(coresys):
     coresys.supported = True
 
     coresys.core.state = CoreStates.RUNNING
-    filtered = filter_data(coresys, SAMPLE_EVENT)
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        filtered = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert ["installation_type", "supervised"] in filtered["tags"]
     assert filtered["extra"]["supervisor"]["arch"] == "amd64"
@@ -71,7 +79,8 @@ def test_sanitize(coresys):
     coresys.supported = True
 
     coresys.core.state = CoreStates.RUNNING
-    filtered = filter_data(coresys, event)
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        filtered = filter_data(coresys, event, {})
 
     assert ["url", "https://example.com"] in filtered["tags"]
 
