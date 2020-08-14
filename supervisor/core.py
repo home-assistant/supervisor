@@ -233,19 +233,25 @@ class Core(CoreSysAttributes):
 
     async def stop(self):
         """Stop a running orchestration."""
-        # don't process scheduler anymore
-        self.state = CoreStates.STOPPING
-
         # store new last boot / prevent time adjustments
         if self.state == CoreStates.RUNNING:
             self._update_last_boot()
 
-        # process async stop tasks
+        # don't process scheduler anymore
+        self.state = CoreStates.STOPPING
+
+        # Stage 1
         try:
-            with async_timeout.timeout(10):
+            async with async_timeout.timeout(10):
+                await asyncio.wait([self.sys_api.stop()])
+        except asyncio.TimeoutError:
+            _LOGGER.warning("Stage 1: Force Shutdown!")
+
+        # Stage 2
+        try:
+            async with async_timeout.timeout(10):
                 await asyncio.wait(
                     [
-                        self.sys_api.stop(),
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
@@ -254,7 +260,7 @@ class Core(CoreSysAttributes):
                     ]
                 )
         except asyncio.TimeoutError:
-            _LOGGER.warning("Force Shutdown!")
+            _LOGGER.warning("Stage 2: Force Shutdown!")
 
         _LOGGER.info("Supervisor is down")
 
