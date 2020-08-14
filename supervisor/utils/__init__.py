@@ -10,7 +10,6 @@ from typing import Optional
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_STRING: re.Pattern = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
-RE_URL: re.Pattern = re.compile(r"(\w+:\/\/)(.*\.\w+)(.*)")
 
 
 def convert_to_ascii(raw: bytes) -> str:
@@ -108,12 +107,3 @@ def check_port(address: IPv4Address, port: int) -> bool:
     except OSError:
         pass
     return False
-
-
-def sanitize_url(url: str) -> str:
-    """Return a sanitized url."""
-    if not re.match(RE_URL, url):
-        # Not a URL, just return it back
-        return url
-
-    return re.sub(RE_URL, r"\1example.com\3", url)

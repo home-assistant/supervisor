@@ -20,14 +20,9 @@ from .const import (
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
-    HEADER_FORWARDED_HOST,
-    HEADER_HOST,
-    HEADER_REFERER,
-    HEADER_TOKEN_OLD,
     MACHINE_ID,
     SOCKET_DOCKER,
     SUPERVISOR_VERSION,
-    CoreStates,
     LogLevel,
     UpdateChannels,
 )
@@ -49,8 +44,8 @@ from .snapshots import SnapshotManager
 from .store import StoreManager
 from .supervisor import Supervisor
 from .updater import Updater
-from .utils import sanitize_url
 from .utils.dt import fetch_timezone
+from .utils.filter import filter_data
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -286,64 +281,9 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
-    dev_env: bool = bool(os.environ.get(ENV_SUPERVISOR_DEV, 0))
 
-    def filter_data(event, hint):
-        # Ignore issue if system is not supported or diagnostics is disabled
-        if not coresys.config.diagnostics or not coresys.supported or dev_env:
-            return None
-
-        # Not full startup - missing information
-        if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.SETUP):
-            return event
-
-        # Update information
-        event.setdefault("extra", {}).update(
-            {
-                "supervisor": {
-                    "machine": coresys.machine,
-                    "arch": coresys.arch.default,
-                    "docker": coresys.docker.info.version,
-                    "channel": coresys.updater.channel,
-                    "supervisor": coresys.supervisor.version,
-                    "os": coresys.hassos.version,
-                    "host": coresys.host.info.operating_system,
-                    "kernel": coresys.host.info.kernel,
-                    "core": coresys.homeassistant.version,
-                    "audio": coresys.plugins.audio.version,
-                    "dns": coresys.plugins.dns.version,
-                    "multicast": coresys.plugins.multicast.version,
-                    "cli": coresys.plugins.cli.version,
-                }
-            }
-        )
-        event.setdefault("tags", {}).update(
-            {
-                "installation_type": "os" if coresys.hassos.available else "supervised",
-                "machine": coresys.machine,
-            }
-        )
-
-        # Sanitize event
-        for tag in event.get("tags", []):
-            if "url" in tag:
-                tag[1] = sanitize_url(tag[1])
-
-        if event.get("request"):
-            if event["request"].get("url"):
-                event["request"]["url"] = sanitize_url(event["request"]["url"])
-
-            for header in event["request"].get("headers", []):
-                if header[0] == HEADER_REFERER:
-                    header[1] = sanitize_url(header[1])
-
-                if header[0] == HEADER_TOKEN_OLD:
-                    header[1] = "XXXXXXXXXXXXXXXXXXX"
-
-                if header[0] in [HEADER_HOST, HEADER_FORWARDED_HOST]:
-                    header[1] = "example.com"
-
-        return event
+    def filter_event(event, _hint):
+        return filter_data(coresys, event)
 
     # Set log level
     sentry_logging = LoggingIntegration(
@@ -353,7 +293,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
     _LOGGER.info("Initialize Supervisor Sentry")
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
-        before_send=filter_data,
+        before_send=filter_event,
         max_breadcrumbs=30,
         integrations=[AioHttpIntegration(), sentry_logging],
         release=SUPERVISOR_VERSION,

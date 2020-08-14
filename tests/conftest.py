@@ -5,7 +5,7 @@ import pytest
 
 from supervisor.bootstrap import initialize_coresys
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, protected-access
 
 
 @pytest.fixture
@@ -26,6 +26,7 @@ async def coresys(loop, docker):
         coresys_obj = await initialize_coresys()
 
     coresys_obj.ingress.save_data = MagicMock()
+    coresys_obj.arch._default_arch = "amd64"
 
     yield coresys_obj
 
