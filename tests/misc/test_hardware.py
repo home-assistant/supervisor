@@ -41,3 +41,21 @@ def test_free_space():
         free = system.get_disk_free_space("/data")
 
     assert free == 2.0
+
+
+def test_total_space():
+    """Test total space helper."""
+    system = Hardware()
+    with patch("shutil.disk_usage", return_value=(10 * (1024.0 ** 3), 42, 42)):
+        total = system.get_disk_total_space("/data")
+
+    assert total == 10.0
+
+
+def test_used_space():
+    """Test used space helper."""
+    system = Hardware()
+    with patch("shutil.disk_usage", return_value=(42, 8 * (1024.0 ** 3), 42)):
+        used = system.get_disk_used_space("/data")
+
+    assert used == 8.0
