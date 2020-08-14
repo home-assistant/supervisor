@@ -44,11 +44,6 @@ class Core(CoreSysAttributes):
         if self.sys_docker.info.check_requirements():
             self.supported = False
 
-        # Check if image names from denylist exist
-        if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
-            self.coresys.supported = False
-            self.healthy = False
-
         # Dbus available
         if not SOCKET_DBUS.exists():
             self.supported = False
@@ -148,6 +143,11 @@ class Core(CoreSysAttributes):
         if not self.sys_dbus.systemd.is_connected:
             self.supported = False
             _LOGGER.error("Systemd DBUS is not connected")
+
+        # Check if image names from denylist exist
+        if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
+            self.coresys.supported = False
+            self.healthy = False
 
     async def start(self):
         """Start Supervisor orchestration."""
