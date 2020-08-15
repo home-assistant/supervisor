@@ -108,6 +108,10 @@ class DockerInterface(CoreSysAttributes):
                     free_space,
                 )
             raise DockerAPIError()
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            _LOGGER.error("Unknown error with %s:%s -> %s", image, tag, err)
+            self.sys_capture_exception(err)
+            raise DockerAPIError()
         else:
             self._meta = docker_image.attrs
 
