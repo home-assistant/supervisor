@@ -36,8 +36,8 @@ class DockerNetwork:
         for cid, data in self.network.attrs.get("Containers", {}).items():
             try:
                 containers.append(self.docker.containers.get(cid))
-            except docker.errors.APIError as err:
-                _LOGGER.warning("Docker network is corrupt! %s - run autofix", err)
+            except docker.errors.NotFound:
+                _LOGGER.warning("Docker network is corrupt! %s - run autofix", cid)
                 self.stale_cleanup(data.get("Name", cid))
             except (docker.errors.DockerException, requests.RequestException) as err:
                 _LOGGER.error("Unknown error with container lookup %s", err)
@@ -135,5 +135,5 @@ class DockerNetwork:
 
         Fix: https://github.com/moby/moby/issues/23302
         """
-        with suppress(docker.errors.APIError):
+        with suppress(docker.errors.DockerException, requests.RequestException):
             self.network.disconnect(container_name, force=True)
