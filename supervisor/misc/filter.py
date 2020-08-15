@@ -38,12 +38,18 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.SETUP):
         return event
 
+    # List installed addons
+    installed_addons = [
+        {"slug": addon.slug, "repository": addon.repository, "name": addon.name}
+        for addon in coresys.addons.installed
+    ]
+
     # Update information
     event.setdefault("extra", {}).update(
         {
             "supervisor": {
                 "channel": coresys.updater.channel,
-                "installed_addons": [x.slug for x in coresys.addons.installed],
+                "installed_addons": installed_addons,
                 "repositories": coresys.config.addons_repositories,
             },
             "host": {
