@@ -45,7 +45,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     ]
 
     # Update information
-    event.setdefault("extra", {}).update(
+    event.setdefault("contexts", {}).update(
         {
             "supervisor": {
                 "channel": coresys.updater.channel,
