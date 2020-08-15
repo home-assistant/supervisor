@@ -115,7 +115,7 @@ class DockerHomeAssistant(DockerInterface):
             environment={
                 "HASSIO": self.sys_docker.network.supervisor,
                 "SUPERVISOR": self.sys_docker.network.supervisor,
-                ENV_TIME: self.sys_timezone,
+                ENV_TIME: self.sys_config.timezone,
                 ENV_TOKEN: self.sys_homeassistant.supervisor_token,
                 ENV_TOKEN_OLD: self.sys_homeassistant.supervisor_token,
             },
@@ -150,7 +150,7 @@ class DockerHomeAssistant(DockerInterface):
                     "mode": "ro",
                 },
             },
-            environment={ENV_TIME: self.sys_timezone},
+            environment={ENV_TIME: self.sys_config.timezone},
         )
 
     def is_initialize(self) -> Awaitable[bool]:

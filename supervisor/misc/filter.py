@@ -45,6 +45,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     ]
 
     # Update information
+    event.setdefault("user", {}).update({"id": coresys.machine_id})
     event.setdefault("contexts", {}).update(
         {
             "supervisor": {
@@ -100,4 +101,5 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
 
             if key in [hdrs.HOST, hdrs.X_FORWARDED_HOST]:
                 event["request"]["headers"][i] = [key, "example.com"]
+
     return event

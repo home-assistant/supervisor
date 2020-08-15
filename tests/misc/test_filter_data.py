@@ -59,7 +59,9 @@ def test_defaults(coresys):
 
     assert ["installation_type", "supervised"] in filtered["tags"]
     assert filtered["contexts"]["host"]["arch"] == "amd64"
+    assert filtered["contexts"]["host"]["machine"] == "qemux86-64"
     assert filtered["contexts"]["versions"]["supervisor"] == SUPERVISOR_VERSION
+    assert filtered["user"]["id"] == coresys.machine_id
 
 
 def test_sanitize(coresys):

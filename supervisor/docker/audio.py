@@ -69,7 +69,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             hostname=self.name.replace("_", "-"),
             detach=True,
             privileged=True,
-            environment={ENV_TIME: self.sys_timezone},
+            environment={ENV_TIME: self.sys_config.timezone},
             volumes=self.volumes,
         )
 

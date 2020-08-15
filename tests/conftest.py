@@ -1,5 +1,6 @@
 """Common test functions."""
 from unittest.mock import MagicMock, PropertyMock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -38,6 +39,9 @@ async def coresys(loop, docker):
 
     coresys_obj.ingress.save_data = MagicMock()
     coresys_obj.arch._default_arch = "amd64"
+
+    coresys_obj._machine = "qemux86-64"
+    coresys_obj._machine_id = uuid4()
 
     yield coresys_obj
 

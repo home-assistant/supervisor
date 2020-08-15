@@ -91,11 +91,6 @@ class CoreSys:
         return self._updater.channel == UpdateChannels.DEV
 
     @property
-    def timezone(self) -> str:
-        """Return timezone."""
-        return self._config.timezone
-
-    @property
     def loop(self) -> asyncio.BaseEventLoop:
         """Return loop object."""
         return self._loop
@@ -458,16 +453,6 @@ class CoreSysAttributes:
     def sys_dev(self) -> bool:
         """Return True if we run dev mode."""
         return self.coresys.dev
-
-    @property
-    def sys_timezone(self) -> str:
-        """Return timezone."""
-        return self.coresys.timezone
-
-    @property
-    def sys_machine_id(self) -> Optional[str]:
-        """Return timezone."""
-        return self.coresys.machine_id
 
     @property
     def sys_loop(self) -> asyncio.BaseEventLoop:
