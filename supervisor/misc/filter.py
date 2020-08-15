@@ -42,25 +42,28 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     event.setdefault("extra", {}).update(
         {
             "supervisor": {
-                "machine": coresys.machine,
-                "arch": coresys.arch.default,
-                "docker": coresys.docker.info.version,
                 "channel": coresys.updater.channel,
-                "supervisor": coresys.supervisor.version,
+                "installed_addons": [x.slug for x in coresys.addons.installed],
+                "repositories": coresys.config.addons_repositories,
             },
             "host": {
-                "disk_free_space": coresys.host.info.free_space,
+                "arch": coresys.arch.default,
+                "board": coresys.hassos.board,
                 "deployment": coresys.host.info.deployment,
-                "os": coresys.hassos.version,
+                "disk_free_space": coresys.host.info.free_space,
+                "docker": coresys.docker.info.version,
                 "host": coresys.host.info.operating_system,
                 "kernel": coresys.host.info.kernel,
+                "machine": coresys.machine,
             },
             "versions": {
-                "core": coresys.homeassistant.version,
                 "audio": coresys.plugins.audio.version,
+                "cli": coresys.plugins.cli.version,
+                "core": coresys.homeassistant.version,
                 "dns": coresys.plugins.dns.version,
                 "multicast": coresys.plugins.multicast.version,
-                "cli": coresys.plugins.cli.version,
+                "os": coresys.hassos.version,
+                "supervisor": coresys.supervisor.version,
             },
         }
     )
