@@ -45,7 +45,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     ]
 
     # Update information
-    event["user"] = coresys.machine_id
+    event.setdefault("user", {}).update({"id": coresys.machine_id})
     event.setdefault("contexts", {}).update(
         {
             "supervisor": {
