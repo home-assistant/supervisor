@@ -125,8 +125,7 @@ class Core(CoreSysAttributes):
             if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:
                 self.supported = False
                 _LOGGER.error(
-                    "Using '%s' as the OS is not supported",
-                    self.sys_host.info.operating_system,
+                    "Detected unsupported OS: %s", self.sys_host.info.operating_system,
                 )
         else:
             # Check rauc connectivity on our OS
