@@ -5,6 +5,7 @@ import logging
 from typing import List, Optional
 
 import docker
+import requests
 
 from ..const import DOCKER_NETWORK, DOCKER_NETWORK_MASK, DOCKER_NETWORK_RANGE
 from ..exceptions import DockerAPIError
@@ -38,6 +39,8 @@ class DockerNetwork:
             except docker.errors.APIError as err:
                 _LOGGER.warning("Docker network is corrupt! %s - run autofix", err)
                 self.stale_cleanup(data.get("Name", cid))
+            except (docker.errors.DockerException, requests.RequestException) as err:
+                _LOGGER.error("Unknown error with container lookup %s", err)
 
         return containers
 
