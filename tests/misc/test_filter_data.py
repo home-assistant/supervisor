@@ -1,7 +1,7 @@
 """Test sentry data filter."""
 from unittest.mock import patch
 
-from supervisor.const import CoreStates
+from supervisor.const import SUPERVISOR_VERSION, CoreStates
 from supervisor.exceptions import AddonConfigurationError
 from supervisor.misc.filter import filter_data
 
@@ -59,6 +59,7 @@ def test_defaults(coresys):
 
     assert ["installation_type", "supervised"] in filtered["tags"]
     assert filtered["extra"]["host"]["arch"] == "amd64"
+    assert filtered["extra"]["versions"]["supervisor"] == SUPERVISOR_VERSION
 
 
 def test_sanitize(coresys):
