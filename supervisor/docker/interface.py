@@ -224,6 +224,7 @@ class DockerInterface(CoreSysAttributes):
         try:
             docker_container = self.sys_docker.containers.get(self.name)
         except (docker.errors.DockerException, requests.RequestException):
+            _LOGGER.error("%s not found for starting up", self.name)
             raise DockerAPIError()
 
         _LOGGER.info("Start %s", self.name)
