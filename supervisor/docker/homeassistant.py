@@ -1,5 +1,4 @@
 """Init file for Supervisor Docker object."""
-from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
 from typing import Awaitable, Dict, Optional
@@ -99,8 +98,7 @@ class DockerHomeAssistant(DockerInterface):
             return
 
         # Cleanup
-        with suppress(DockerAPIError):
-            self._stop()
+        self._stop()
 
         # Create & Run container
         docker_container = self.sys_docker.run(
@@ -168,8 +166,10 @@ class DockerHomeAssistant(DockerInterface):
             docker_image = self.sys_docker.images.get(
                 f"{self.image}:{self.sys_homeassistant.version}"
             )
-        except (docker.errors.DockerException, requests.RequestException):
+        except docker.errors.NotFound:
             return False
+        except (docker.errors.DockerException, requests.RequestException):
+            return DockerAPIError()
 
         # we run on an old image, stop and start it
         if docker_container.image.id != docker_image.id:

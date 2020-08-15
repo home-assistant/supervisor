@@ -334,8 +334,7 @@ class DockerAddon(DockerInterface):
             _LOGGER.warning("%s run with disabled protected mode!", self.addon.name)
 
         # Cleanup
-        with suppress(DockerAPIError):
-            self._stop()
+        self._stop()
 
         # Create & Run container
         docker_container = self.sys_docker.run(
