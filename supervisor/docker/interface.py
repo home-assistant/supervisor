@@ -196,6 +196,8 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
+        except docker.errors.NotFound:
+            return None
         except (docker.errors.DockerException, requests.RequestException):
             raise DockerAPIError()
 
