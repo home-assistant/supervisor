@@ -47,7 +47,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
             network_mode="host",
             detach=True,
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
-            environment={ENV_TIME: self.sys_timezone},
+            environment={ENV_TIME: self.sys_config.timezone},
         )
 
         self._meta = docker_container.attrs

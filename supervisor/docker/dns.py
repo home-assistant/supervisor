@@ -47,7 +47,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
-            environment={ENV_TIME: self.sys_timezone},
+            environment={ENV_TIME: self.sys_config.timezone},
             volumes={
                 str(self.sys_config.path_extern_dns): {"bind": "/config", "mode": "ro"}
             },

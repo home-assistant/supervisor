@@ -50,7 +50,7 @@ class DockerCli(DockerInterface, CoreSysAttributes):
             detach=True,
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={
-                ENV_TIME: self.sys_timezone,
+                ENV_TIME: self.sys_config.timezone,
                 ENV_TOKEN: self.sys_plugins.cli.supervisor_token,
             },
         )
