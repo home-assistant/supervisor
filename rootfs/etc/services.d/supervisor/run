@@ -2,6 +2,9 @@
 # ==============================================================================
 # Start Service service
 # ==============================================================================
-export LD_PRELOAD="/usr/local/lib/libjemalloc.so.2"
 
+# Enable Jemalloc for Home Assistant Core, unless disabled
+if [[ -z "${DISABLE_JEMALLOC+x}" ]]; then
+  export LD_PRELOAD="/usr/local/lib/libjemalloc.so.2"
+fi
 exec python3 -m supervisor
