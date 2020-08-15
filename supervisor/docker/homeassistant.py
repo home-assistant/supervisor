@@ -5,6 +5,7 @@ import logging
 from typing import Awaitable, Dict, Optional
 
 import docker
+import requests
 
 from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_OLD, LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerAPIError
@@ -167,7 +168,7 @@ class DockerHomeAssistant(DockerInterface):
             docker_image = self.sys_docker.images.get(
                 f"{self.image}:{self.sys_homeassistant.version}"
             )
-        except docker.errors.DockerException:
+        except (docker.errors.DockerException, requests.RequestException):
             return False
 
         # we run on an old image, stop and start it

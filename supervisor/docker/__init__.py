@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 import attr
 import docker
 from packaging import version as pkg_version
+import requests
 
 from ..const import DNS_SUFFIX, DOCKER_IMAGE_DENYLIST, SOCKET_DOCKER
 from ..exceptions import DockerAPIError
@@ -128,7 +129,7 @@ class DockerAPI:
             container = self.docker.containers.create(
                 f"{image}:{version}", use_config_proxy=False, **kwargs
             )
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't create container from %s: %s", name, err)
             raise DockerAPIError()
 
@@ -146,12 +147,12 @@ class DockerAPI:
         # Run container
         try:
             container.start()
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't start %s: %s", name, err)
             raise DockerAPIError()
 
         # Update metadata
-        with suppress(docker.errors.DockerException):
+        with suppress(docker.errors.DockerException, requests.RequestException):
             container.reload()
 
         return container
@@ -184,13 +185,13 @@ class DockerAPI:
             result = container.wait()
             output = container.logs(stdout=stdout, stderr=stderr)
 
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't execute command: %s", err)
             raise DockerAPIError()
 
         finally:
             # cleanup container
-            with suppress(docker.errors.DockerException):
+            with suppress(docker.errors.DockerException, requests.RequestException):
                 container.remove(force=True)
 
         return CommandReturn(result.get("StatusCode"), output)
