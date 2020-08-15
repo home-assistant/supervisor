@@ -1,10 +1,8 @@
 """DNS docker object."""
-from contextlib import suppress
 import logging
 
 from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
-from ..exceptions import DockerAPIError
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -34,8 +32,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
             return
 
         # Cleanup
-        with suppress(DockerAPIError):
-            self._stop()
+        self._stop()
 
         # Create & Run container
         docker_container = self.sys_docker.run(

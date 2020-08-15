@@ -334,8 +334,7 @@ class DockerAddon(DockerInterface):
             _LOGGER.warning("%s run with disabled protected mode!", self.addon.name)
 
         # Cleanup
-        with suppress(DockerAPIError):
-            self._stop()
+        self._stop()
 
         # Create & Run container
         docker_container = self.sys_docker.run(
@@ -396,7 +395,7 @@ class DockerAddon(DockerInterface):
             # Update meta data
             self._meta = image.attrs
 
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't build %s:%s: %s", self.image, tag, err)
             raise DockerAPIError()
 
@@ -414,7 +413,7 @@ class DockerAddon(DockerInterface):
         """
         try:
             image = self.sys_docker.api.get_image(f"{self.image}:{self.version}")
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't fetch image %s: %s", self.image, err)
             raise DockerAPIError()
 
@@ -423,7 +422,7 @@ class DockerAddon(DockerInterface):
             with tar_file.open("wb") as write_tar:
                 for chunk in image:
                     write_tar.write(chunk)
-        except (OSError, requests.exceptions.ReadTimeout) as err:
+        except (OSError, requests.RequestException) as err:
             _LOGGER.error("Can't write tar file %s: %s", tar_file, err)
             raise DockerAPIError()
 
@@ -471,7 +470,7 @@ class DockerAddon(DockerInterface):
             # Load needed docker objects
             container = self.sys_docker.containers.get(self.name)
             socket = container.attach_socket(params={"stdin": 1, "stream": 1})
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't attach to %s stdin: %s", self.name, err)
             raise DockerAPIError()
 

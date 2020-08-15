@@ -5,6 +5,7 @@ import logging
 from typing import Any, Awaitable, Dict, List, Optional
 
 import docker
+import requests
 
 from . import CommandReturn
 from ..const import LABEL_ARCH, LABEL_VERSION
@@ -107,6 +108,10 @@ class DockerInterface(CoreSysAttributes):
                     free_space,
                 )
             raise DockerAPIError()
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            _LOGGER.error("Unknown error with %s:%s -> %s", image, tag, err)
+            self.sys_capture_exception(err)
+            raise DockerAPIError()
         else:
             self._meta = docker_image.attrs
 
@@ -119,7 +124,7 @@ class DockerInterface(CoreSysAttributes):
 
         Need run inside executor.
         """
-        with suppress(docker.errors.DockerException):
+        with suppress(docker.errors.DockerException, requests.RequestException):
             self.sys_docker.images.get(f"{self.image}:{self.version}")
             return True
         return False
@@ -138,8 +143,10 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-        except docker.errors.DockerException:
+        except docker.errors.NotFound:
             return False
+        except (docker.errors.DockerException, requests.RequestException):
+            raise DockerAPIError()
 
         return docker_container.status == "running"
 
@@ -153,10 +160,10 @@ class DockerInterface(CoreSysAttributes):
 
         Need run inside executor.
         """
-        with suppress(docker.errors.DockerException):
+        with suppress(docker.errors.DockerException, requests.RequestException):
             self._meta = self.sys_docker.containers.get(self.name).attrs
 
-        with suppress(docker.errors.DockerException):
+        with suppress(docker.errors.DockerException, requests.RequestException):
             if not self._meta and self.image:
                 self._meta = self.sys_docker.images.get(f"{self.image}:{tag}").attrs
 
@@ -189,16 +196,18 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-        except docker.errors.DockerException:
+        except docker.errors.NotFound:
+            return
+        except (docker.errors.DockerException, requests.RequestException):
             raise DockerAPIError()
 
         if docker_container.status == "running":
             _LOGGER.info("Stop %s application", self.name)
-            with suppress(docker.errors.DockerException):
+            with suppress(docker.errors.DockerException, requests.RequestException):
                 docker_container.stop(timeout=self.timeout)
 
         if remove_container:
-            with suppress(docker.errors.DockerException):
+            with suppress(docker.errors.DockerException, requests.RequestException):
                 _LOGGER.info("Clean %s application", self.name)
                 docker_container.remove(force=True)
 
@@ -214,13 +223,14 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-        except docker.errors.DockerException:
+        except (docker.errors.DockerException, requests.RequestException):
+            _LOGGER.error("%s not found for starting up", self.name)
             raise DockerAPIError()
 
         _LOGGER.info("Start %s", self.name)
         try:
             docker_container.start()
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't start %s: %s", self.name, err)
             raise DockerAPIError()
 
@@ -249,7 +259,7 @@ class DockerInterface(CoreSysAttributes):
                     image=f"{self.image}:{self.version}", force=True
                 )
 
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't remove image %s: %s", self.image, err)
             raise DockerAPIError()
 
@@ -296,12 +306,12 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-        except docker.errors.DockerException:
+        except (docker.errors.DockerException, requests.RequestException):
             return b""
 
         try:
             return docker_container.logs(tail=100, stdout=True, stderr=True)
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't grep logs from %s: %s", self.image, err)
 
         return b""
@@ -318,7 +328,7 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             origin = self.sys_docker.images.get(f"{self.image}:{self.version}")
-        except docker.errors.DockerException:
+        except (docker.errors.DockerException, requests.RequestException):
             _LOGGER.warning("Can't find %s for cleanup", self.image)
             raise DockerAPIError()
 
@@ -327,7 +337,7 @@ class DockerInterface(CoreSysAttributes):
             if origin.id == image.id:
                 continue
 
-            with suppress(docker.errors.DockerException):
+            with suppress(docker.errors.DockerException, requests.RequestException):
                 _LOGGER.info("Cleanup images: %s", image.tags)
                 self.sys_docker.images.remove(image.id, force=True)
 
@@ -336,7 +346,7 @@ class DockerInterface(CoreSysAttributes):
             return
 
         for image in self.sys_docker.images.list(name=old_image):
-            with suppress(docker.errors.DockerException):
+            with suppress(docker.errors.DockerException, requests.RequestException):
                 _LOGGER.info("Cleanup images: %s", image.tags)
                 self.sys_docker.images.remove(image.id, force=True)
 
@@ -352,13 +362,13 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             container = self.sys_docker.containers.get(self.name)
-        except docker.errors.DockerException:
+        except (docker.errors.DockerException, requests.RequestException):
             raise DockerAPIError()
 
         _LOGGER.info("Restart %s", self.image)
         try:
             container.restart(timeout=self.timeout)
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't restart %s: %s", self.image, err)
             raise DockerAPIError()
 
@@ -385,13 +395,13 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-        except docker.errors.DockerException:
+        except (docker.errors.DockerException, requests.RequestException):
             raise DockerAPIError()
 
         try:
             stats = docker_container.stats(stream=False)
             return DockerStats(stats)
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't read stats from %s: %s", self.name, err)
             raise DockerAPIError()
 
@@ -409,7 +419,7 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-        except docker.errors.DockerException:
+        except (docker.errors.DockerException, requests.RequestException):
             return False
 
         # container is not running
