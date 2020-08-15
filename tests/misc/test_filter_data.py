@@ -58,8 +58,8 @@ def test_defaults(coresys):
         filtered = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert ["installation_type", "supervised"] in filtered["tags"]
-    assert filtered["extra"]["host"]["arch"] == "amd64"
-    assert filtered["extra"]["versions"]["supervisor"] == SUPERVISOR_VERSION
+    assert filtered["contexts"]["host"]["arch"] == "amd64"
+    assert filtered["contexts"]["versions"]["supervisor"] == SUPERVISOR_VERSION
 
 
 def test_sanitize(coresys):
