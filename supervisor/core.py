@@ -132,10 +132,6 @@ class Core(CoreSysAttributes):
                 _LOGGER.error(
                     "Detected unsupported OS: %s", self.sys_host.info.operating_system,
                 )
-        else:
-            # Check rauc connectivity on our OS
-            if not self.sys_dbus.rauc.is_connected:
-                self.healthy = False
 
         # Check all DBUS connectivity
         if not self.sys_dbus.hostname.is_connected:
