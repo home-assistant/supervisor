@@ -4,7 +4,7 @@ from typing import Optional
 
 from ...utils.gdbus import DBus
 from .configuration import IpConfiguration, NetworkAttributes
-from .const import DBUS_NAME_NM
+from .const import DBUS_NAME_IP4CONFIG, DBUS_NAME_NM, DBUS_NAME_SETTINGS_CONNECTION
 from .settings import NetworkSettings
 
 _LOGGER = logging.getLogger(__name__)
@@ -60,16 +60,14 @@ class NetworkConnection(NetworkAttributes):
 
     async def update_information(self):
         """Update the information for childs ."""
-        settings = await DBus.connect(DBUS_NAME_NM, self._properties["Connection"])
-        ip4_config = await DBus.connect(DBUS_NAME_NM, self._properties["Ip4Config"])
+        connection_path = self._properties["Connection"]
+        ip4config_path = self._properties["Ip4Config"]
 
-        settings_data = await settings.get_properties(
-            f"{DBUS_NAME_NM}.Settings.Connection"
-        )
+        settings = await DBus.connect(DBUS_NAME_NM, connection_path)
+        ip4_config = await DBus.connect(DBUS_NAME_NM, ip4config_path)
 
-        ip4_config_data = await ip4_config.get_properties(f"{DBUS_NAME_NM}.IP4Config")
+        settings_data = await settings.get_properties(DBUS_NAME_SETTINGS_CONNECTION)
+        ip4_config_data = await ip4_config.get_properties(DBUS_NAME_IP4CONFIG)
 
-        self._settings = NetworkSettings(self._properties["Connection"], settings_data)
-        self._ip4_config = IpConfiguration(
-            self._properties["Ip4Config"], ip4_config_data
-        )
+        self._settings = NetworkSettings(connection_path, settings_data)
+        self._ip4_config = IpConfiguration(ip4config_path, ip4_config_data)
