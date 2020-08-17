@@ -57,7 +57,6 @@ class NetworkManager(DBusInterface):
         if not data:
             _LOGGER.warning("Can't get properties for Network Manager")
             return
-        _LOGGER.debug(data)
         self._connections = []
         for active_connection in data.get("ActiveConnections", []):
             connection: NetworkConnection = await self.get_connection(active_connection)
@@ -67,6 +66,8 @@ class NetworkManager(DBusInterface):
             if connection.object_path == data.get("PrimaryConnection"):
                 self._primary_connection = connection
             self._connections.append(connection)
+
+        _LOGGER.info(self.primary_connection.ip4_config.address_data[0].address)
 
     @dbus_connected
     async def get_connection(self, connection_object: str) -> NetworkConnection:
