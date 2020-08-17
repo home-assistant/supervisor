@@ -3,9 +3,8 @@ import logging
 from typing import Optional
 
 from ...utils.gdbus import DBus
-from .configuration import IpConfiguration, NetworkAttributes
+from .configuration import IpConfiguration, NetworkAttributes, NetworkSettings
 from .const import DBUS_NAME_IP4CONFIG, DBUS_NAME_NM, DBUS_NAME_SETTINGS_CONNECTION
-from .settings import NetworkSettings
 
 _LOGGER = logging.getLogger(__name__)
 
