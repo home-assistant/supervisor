@@ -164,7 +164,7 @@ class Core(CoreSysAttributes):
         # Check if system is healthy
         if not self.supported:
             _LOGGER.critical("System running in a unsupported environment!")
-        elif not self.healthy:
+        if not self.healthy:
             _LOGGER.critical(
                 "System running in a unhealthy state and need manual intervention!"
             )
@@ -180,11 +180,12 @@ class Core(CoreSysAttributes):
                     _LOGGER.warning("Ignore Supervisor updates!")
                 else:
                     await self.sys_supervisor.update()
-            except SupervisorUpdateError:
+            except SupervisorUpdateError as err:
                 _LOGGER.critical(
                     "Can't update supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )
+                self.sys_capture_exception(err)
 
         # Start addon mark as initialize
         await self.sys_addons.boot(AddonStartup.INITIALIZE)
