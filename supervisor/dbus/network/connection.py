@@ -96,6 +96,7 @@ class NetworkConnection(NetworkAttributes):
             settings_data.get(ATTR_UNSAVED),
             settings_data.get(ATTR_FILENAME),
         )
+        _LOGGER.info(ip4_config_data)
         self._ip4_config = IpConfiguration(
             ip4_config_data.get(ATTR_GATEWAY),
             [

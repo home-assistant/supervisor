@@ -442,6 +442,31 @@ Proxy to Home Assistant Core websocket.
 }
 ```
 
+### Network
+
+- GET `/network/info`
+
+Get network information
+
+```json
+{
+  "primary connection": {
+    "ip_address": "192.168.2.149",
+    "Gateway": "192.168.2.1",
+    "Id": "Wired connection 1",
+    "Type": "802-3-ethernet"
+  },
+  "connections": [
+    {
+      "ip_address": "192.168.2.149",
+      "Gateway": "192.168.2.1",
+      "Id": "Wired connection 1",
+      "Type": "802-3-ethernet"
+    }
+  ]
+}
+```
+
 ### RESTful for API add-ons
 
 If an add-on will call itself, you can use `/addons/self/...`.
