@@ -7,7 +7,7 @@ pre-commit==2.6.0
 pydocstyle==5.0.2
 pylint==2.5.3
 pytest-aiohttp==0.3.0
-pytest-cov==2.10.0
+pytest-cov==2.10.1
 pytest-timeout==1.4.2
 pytest==6.0.1
 pyupgrade==2.7.2
