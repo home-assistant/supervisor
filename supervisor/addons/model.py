@@ -58,6 +58,7 @@ from ..const import (
     ATTR_TMPFS,
     ATTR_UDEV,
     ATTR_URL,
+    ATTR_USB,
     ATTR_VERSION,
     ATTR_VIDEO,
     ATTR_WEBUI,
@@ -293,11 +294,6 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data.get(ATTR_DEVICES, [])
 
     @property
-    def auto_uart(self) -> bool:
-        """Return True if we should map all UART device."""
-        return self.data[ATTR_AUTO_UART]
-
-    @property
     def tmpfs(self) -> Optional[str]:
         """Return tmpfs of add-on."""
         return self.data.get(ATTR_TMPFS)
@@ -375,6 +371,16 @@ class AddonModel(CoreSysAttributes, ABC):
     def with_gpio(self) -> bool:
         """Return True if the add-on access to GPIO interface."""
         return self.data[ATTR_GPIO]
+
+    @property
+    def with_usb(self) -> bool:
+        """Return True if the add-on need USB access."""
+        return self.data[ATTR_USB]
+
+    @property
+    def with_uart(self) -> bool:
+        """Return True if we should map all UART device."""
+        return self.data[ATTR_AUTO_UART]
 
     @property
     def with_udev(self) -> bool:

@@ -37,7 +37,9 @@ class Device:
 
     name: str = attr.ib()
     path: Path = attr.ib()
+    subsystem: str = attr.ib()
     links: List[Path] = attr.ib()
+    attributes: Dict[str, str] = attr.ib()
 
 
 class Hardware:
@@ -62,7 +64,9 @@ class Hardware:
                 Device(
                     device.sys_name,
                     Path(device.device_node),
+                    device.subsystem,
                     [Path(node) for node in device.device_links],
+                    {attr: device.attributes[attr] for attr in device.attributes},
                 )
             )
 
@@ -89,6 +93,11 @@ class Hardware:
                 dev_list.add(device.device_node)
 
         return dev_list
+
+    @property
+    def usb_devices(self) -> List[Device]:
+        """Return all usb and connected devices."""
+        return [device for device in self.devices if device.subsystem == "usb"]
 
     @property
     def serial_by_id(self) -> Set[str]:

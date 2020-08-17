@@ -127,11 +127,13 @@ class DockerAddon(DockerInterface):
         devices = []
 
         # Extend add-on config
-        if self.addon.devices:
-            devices.extend(self.addon.devices)
+        for device in self.addon.devices:
+            if not Path(device.split(":")[0]).exists():
+                continue
+            devices.append(device)
 
         # Auto mapping UART devices
-        if self.addon.auto_uart:
+        if self.addon.with_uart:
             if self.addon.with_udev:
                 serial_devs = self.sys_hardware.serial_devices
             else:
@@ -285,6 +287,10 @@ class DockerAddon(DockerInterface):
                     }
                 }
             )
+
+        # USB support
+        if self.addon.with_usb and self.sys_hardware.usb_devices:
+            volumes.update({"/dev/bus/usb": {"bind": "/dev/bus/usb", "mode": "rw"}})
 
         # Kernel Modules support
         if self.addon.with_kernel_modules:
