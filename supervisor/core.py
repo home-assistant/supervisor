@@ -7,7 +7,12 @@ import async_timeout
 
 from .const import SOCKET_DBUS, SUPERVISED_SUPPORTED_OS, AddonStartup, CoreStates
 from .coresys import CoreSys, CoreSysAttributes
-from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
+from .exceptions import (
+    DockerAPIError,
+    HassioError,
+    HomeAssistantError,
+    SupervisorUpdateError,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -144,8 +149,11 @@ class Core(CoreSysAttributes):
             _LOGGER.error("Systemd DBUS is not connected")
 
         # Check if image names from denylist exist
-        if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
-            self.coresys.supported = False
+        try:
+            if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
+                self.coresys.supported = False
+                self.healthy = False
+        except DockerAPIError:
             self.healthy = False
 
     async def start(self):

@@ -237,14 +237,19 @@ class DockerAPI:
     def check_denylist_images(self) -> bool:
         """Return a boolean if the host has images in the denylist."""
         denied_images = set()
-        for image in self.images.list():
-            for tag in image.tags:
-                image_name = tag.split(":")[0]
-                if (
-                    image_name in DOCKER_IMAGE_DENYLIST
-                    and image_name not in denied_images
-                ):
-                    denied_images.add(image_name)
+
+        try:
+            for image in self.images.list():
+                for tag in image.tags:
+                    image_name = tag.split(":")[0]
+                    if (
+                        image_name in DOCKER_IMAGE_DENYLIST
+                        and image_name not in denied_images
+                    ):
+                        denied_images.add(image_name)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
+            raise DockerAPIError()
 
         if not denied_images:
             return False
