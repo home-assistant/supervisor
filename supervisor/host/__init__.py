@@ -89,7 +89,7 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.systemd.is_connected:
             await self.services.update()
 
-        if self.sys_dbus.nmi_dns.is_connected:
+        if self.sys_dbus.network.is_connected:
             await self.network.update()
 
         with suppress(PulseAudioError):

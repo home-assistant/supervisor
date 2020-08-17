@@ -1,5 +1,5 @@
 """NetworkConnection object4s for Network Manager."""
-from .network_attributes import NetworkAttributes
+from .configuration import NetworkAttributes
 
 
 class NetworkSettings(NetworkAttributes):

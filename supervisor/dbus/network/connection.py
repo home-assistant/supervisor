@@ -3,9 +3,8 @@ import logging
 from typing import Optional
 
 from ...utils.gdbus import DBus
+from .configuration import IpConfiguration, NetworkAttributes
 from .const import DBUS_NAME_NM
-from .ipconfig import NetworkSettingsIPConfig
-from .network_attributes import NetworkAttributes
 from .settings import NetworkSettings
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,7 +17,7 @@ class NetworkConnection(NetworkAttributes):
         """Initialize NetworkConnection object."""
         super().__init__(object_path, properties)
         self._settings: Optional[NetworkSettings] = None
-        self._ip4_config: Optional[NetworkSettingsIPConfig] = None
+        self._ip4_config: Optional[IpConfiguration] = None
 
     @property
     def settings(self) -> NetworkSettings:
@@ -41,7 +40,7 @@ class NetworkConnection(NetworkAttributes):
         return self._properties["Type"]
 
     @property
-    def ip4_config(self) -> NetworkSettingsIPConfig:
+    def ip4_config(self) -> IpConfiguration:
         """Return a ip configuration object for the connection."""
         return self._ip4_config
 
@@ -71,6 +70,6 @@ class NetworkConnection(NetworkAttributes):
         ip4_config_data = await ip4_config.get_properties(f"{DBUS_NAME_NM}.IP4Config")
 
         self._settings = NetworkSettings(self._properties["Connection"], settings_data)
-        self._ip4_config = NetworkSettingsIPConfig(
+        self._ip4_config = IpConfiguration(
             self._properties["Ip4Config"], ip4_config_data
         )

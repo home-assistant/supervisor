@@ -73,7 +73,7 @@ class DBus:
         # pylint: disable=protected-access
         await self._init_proxy()
 
-        _LOGGER.info("Connect to dbus: %s - %s", bus_name, object_path)
+        _LOGGER.debug("Connect to dbus: %s - %s", bus_name, object_path)
         return self
 
     async def _init_proxy(self) -> None:
@@ -167,7 +167,7 @@ class DBus:
         )
 
         # Run command
-        _LOGGER.info("Call %s on %s", method, self.object_path)
+        _LOGGER.debug("Call %s on %s", method, self.object_path)
         data = await self._send(command)
 
         # Parse and return data

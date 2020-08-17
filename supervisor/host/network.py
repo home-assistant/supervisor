@@ -20,7 +20,7 @@ class NetworkManager(CoreSysAttributes):
         """Return a list of local DNS servers."""
         # Read all local dns servers
         servers: List[str] = []
-        for config in self.sys_dbus.nmi_dns.configuration:
+        for config in self.sys_dbus.network.dns.configuration:
             if config.vpn or not config.nameservers:
                 continue
             servers.extend(config.nameservers)
@@ -31,7 +31,6 @@ class NetworkManager(CoreSysAttributes):
         """Update properties over dbus."""
         _LOGGER.info("Update local network information")
         try:
-            await self.sys_dbus.nmi_dns.update()
             await self.sys_dbus.network.update()
         except DBusError:
             _LOGGER.warning("Can't update host system information!")
