@@ -2,7 +2,7 @@
 import logging
 from typing import Optional
 
-from ..dbus.utils import DBus
+from ...utils.gdbus import DBus
 from .const import DBUS_NAME_NM
 from .ipconfig import NetworkSettingsIPConfig
 from .network_attributes import NetworkAttributes

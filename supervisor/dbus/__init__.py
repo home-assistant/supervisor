@@ -3,8 +3,8 @@ import logging
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DBusNotConnectedError
-from ..network import NetworkManager
 from .hostname import Hostname
+from .network import NetworkManager
 from .nmi_dns import NMIDnsManager
 from .rauc import Rauc
 from .systemd import Systemd

@@ -2,9 +2,10 @@
 import logging
 from typing import List, Optional
 
-from ..dbus.interface import DBusInterface
-from ..dbus.utils import DBus, dbus_connected
-from ..exceptions import DBusError, DBusInterfaceError
+from ...exceptions import DBusError, DBusInterfaceError
+from ...utils.gdbus import DBus
+from ..interface import DBusInterface
+from ..utils import dbus_connected
 from .connection import NetworkConnection
 from .const import DBUS_NAME_NM, DBUS_OBJECT_NM
 
