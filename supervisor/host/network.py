@@ -29,11 +29,12 @@ class NetworkManager(CoreSysAttributes):
 
     async def update(self):
         """Update properties over dbus."""
-        _LOGGER.info("Update local network DNS information")
+        _LOGGER.info("Update local network information")
         try:
             await self.sys_dbus.nmi_dns.update()
+            await self.sys_dbus.network.update()
         except DBusError:
-            _LOGGER.warning("Can't update host DNS system information!")
+            _LOGGER.warning("Can't update host system information!")
         except DBusNotConnectedError:
             _LOGGER.error("No hostname D-Bus connection available")
             raise HostNotSupportedError()
