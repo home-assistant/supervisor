@@ -29,7 +29,7 @@ class DockerInterface(CoreSysAttributes):
     @property
     def timeout(self) -> int:
         """Return timeout for Docker actions."""
-        return 30
+        return 10
 
     @property
     def name(self) -> Optional[str]:
