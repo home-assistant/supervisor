@@ -7,7 +7,12 @@ import async_timeout
 
 from .const import SOCKET_DBUS, SUPERVISED_SUPPORTED_OS, AddonStartup, CoreStates
 from .coresys import CoreSys, CoreSysAttributes
-from .exceptions import HassioError, HomeAssistantError, SupervisorUpdateError
+from .exceptions import (
+    DockerAPIError,
+    HassioError,
+    HomeAssistantError,
+    SupervisorUpdateError,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -125,13 +130,8 @@ class Core(CoreSysAttributes):
             if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:
                 self.supported = False
                 _LOGGER.error(
-                    "Using '%s' as the OS is not supported",
-                    self.sys_host.info.operating_system,
+                    "Detected unsupported OS: %s", self.sys_host.info.operating_system,
                 )
-        else:
-            # Check rauc connectivity on our OS
-            if not self.sys_dbus.rauc.is_connected:
-                self.healthy = False
 
         # Check all DBUS connectivity
         if not self.sys_dbus.hostname.is_connected:
@@ -145,8 +145,11 @@ class Core(CoreSysAttributes):
             _LOGGER.error("Systemd DBUS is not connected")
 
         # Check if image names from denylist exist
-        if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
-            self.coresys.supported = False
+        try:
+            if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
+                self.coresys.supported = False
+                self.healthy = False
+        except DockerAPIError:
             self.healthy = False
 
     async def start(self):
@@ -157,7 +160,7 @@ class Core(CoreSysAttributes):
         # Check if system is healthy
         if not self.supported:
             _LOGGER.critical("System running in a unsupported environment!")
-        elif not self.healthy:
+        if not self.healthy:
             _LOGGER.critical(
                 "System running in a unhealthy state and need manual intervention!"
             )
@@ -173,11 +176,12 @@ class Core(CoreSysAttributes):
                     _LOGGER.warning("Ignore Supervisor updates!")
                 else:
                     await self.sys_supervisor.update()
-            except SupervisorUpdateError:
+            except SupervisorUpdateError as err:
                 _LOGGER.critical(
                     "Can't update supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )
+                self.sys_capture_exception(err)
 
         # Start addon mark as initialize
         await self.sys_addons.boot(AddonStartup.INITIALIZE)

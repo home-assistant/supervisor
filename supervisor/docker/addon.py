@@ -116,7 +116,7 @@ class DockerAddon(DockerInterface):
 
         return {
             **addon_env,
-            ENV_TIME: self.sys_timezone,
+            ENV_TIME: self.sys_config.timezone,
             ENV_TOKEN: self.addon.supervisor_token,
             ENV_TOKEN_OLD: self.addon.supervisor_token,
         }
@@ -127,20 +127,21 @@ class DockerAddon(DockerInterface):
         devices = []
 
         # Extend add-on config
-        if self.addon.devices:
-            devices.extend(self.addon.devices)
+        for device in self.addon.devices:
+            if not Path(device.split(":")[0]).exists():
+                continue
+            devices.append(device)
 
         # Auto mapping UART devices
-        if self.addon.auto_uart:
-            if self.addon.with_udev:
-                serial_devs = self.sys_hardware.serial_devices
-            else:
-                serial_devs = (
-                    self.sys_hardware.serial_devices | self.sys_hardware.serial_by_id
-                )
-
-            for device in serial_devs:
-                devices.append(f"{device}:{device}:rwm")
+        if self.addon.with_uart:
+            for device in self.sys_hardware.serial_devices:
+                devices.append(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
+                if self.addon.with_udev:
+                    continue
+                for device_link in device.links:
+                    devices.append(
+                        f"{device_link.as_posix()}:{device_link.as_posix()}:rwm"
+                    )
 
         # Use video devices
         if self.addon.with_video:
@@ -286,6 +287,10 @@ class DockerAddon(DockerInterface):
                 }
             )
 
+        # USB support
+        if self.addon.with_usb and self.sys_hardware.usb_devices:
+            volumes.update({"/dev/bus/usb": {"bind": "/dev/bus/usb", "mode": "rw"}})
+
         # Kernel Modules support
         if self.addon.with_kernel_modules:
             volumes.update({"/lib/modules": {"bind": "/lib/modules", "mode": "ro"}})
@@ -334,8 +339,7 @@ class DockerAddon(DockerInterface):
             _LOGGER.warning("%s run with disabled protected mode!", self.addon.name)
 
         # Cleanup
-        with suppress(DockerAPIError):
-            self._stop()
+        self._stop()
 
         # Create & Run container
         docker_container = self.sys_docker.run(
@@ -396,7 +400,7 @@ class DockerAddon(DockerInterface):
             # Update meta data
             self._meta = image.attrs
 
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't build %s:%s: %s", self.image, tag, err)
             raise DockerAPIError()
 
@@ -414,7 +418,7 @@ class DockerAddon(DockerInterface):
         """
         try:
             image = self.sys_docker.api.get_image(f"{self.image}:{self.version}")
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't fetch image %s: %s", self.image, err)
             raise DockerAPIError()
 
@@ -423,7 +427,7 @@ class DockerAddon(DockerInterface):
             with tar_file.open("wb") as write_tar:
                 for chunk in image:
                     write_tar.write(chunk)
-        except (OSError, requests.exceptions.ReadTimeout) as err:
+        except (OSError, requests.RequestException) as err:
             _LOGGER.error("Can't write tar file %s: %s", tar_file, err)
             raise DockerAPIError()
 
@@ -471,7 +475,7 @@ class DockerAddon(DockerInterface):
             # Load needed docker objects
             container = self.sys_docker.containers.get(self.name)
             socket = container.attach_socket(params={"stdin": 1, "stream": 1})
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't attach to %s stdin: %s", self.name, err)
             raise DockerAPIError()
 

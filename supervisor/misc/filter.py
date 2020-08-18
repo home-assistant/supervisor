@@ -38,25 +38,40 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.SETUP):
         return event
 
+    # List installed addons
+    installed_addons = [
+        {"slug": addon.slug, "repository": addon.repository, "name": addon.name}
+        for addon in coresys.addons.installed
+    ]
+
     # Update information
-    event.setdefault("extra", {}).update(
+    event.setdefault("user", {}).update({"id": coresys.machine_id})
+    event.setdefault("contexts", {}).update(
         {
             "supervisor": {
-                "machine": coresys.machine,
-                "arch": coresys.arch.default,
-                "docker": coresys.docker.info.version,
                 "channel": coresys.updater.channel,
-                "supervisor": coresys.supervisor.version,
-                "os": coresys.hassos.version,
+                "installed_addons": installed_addons,
+                "repositories": coresys.config.addons_repositories,
+            },
+            "host": {
+                "arch": coresys.arch.default,
+                "board": coresys.hassos.board,
+                "deployment": coresys.host.info.deployment,
+                "disk_free_space": coresys.host.info.free_space,
                 "host": coresys.host.info.operating_system,
                 "kernel": coresys.host.info.kernel,
-                "core": coresys.homeassistant.version,
+                "machine": coresys.machine,
+            },
+            "versions": {
                 "audio": coresys.plugins.audio.version,
-                "dns": coresys.plugins.dns.version,
-                "multicast": coresys.plugins.multicast.version,
                 "cli": coresys.plugins.cli.version,
-                "disk_free_space": coresys.host.info.free_space,
-            }
+                "core": coresys.homeassistant.version,
+                "dns": coresys.plugins.dns.version,
+                "docker": coresys.docker.info.version,
+                "multicast": coresys.plugins.multicast.version,
+                "os": coresys.hassos.version,
+                "supervisor": coresys.supervisor.version,
+            },
         }
     )
     event.setdefault("tags", []).extend(
@@ -86,4 +101,5 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
 
             if key in [hdrs.HOST, hdrs.X_FORWARDED_HOST]:
                 event["request"]["headers"][i] = [key, "example.com"]
+
     return event

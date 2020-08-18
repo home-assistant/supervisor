@@ -1,10 +1,8 @@
 """HA Cli docker object."""
-from contextlib import suppress
 import logging
 
 from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
-from ..exceptions import DockerAPIError
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -34,8 +32,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
             return
 
         # Cleanup
-        with suppress(DockerAPIError):
-            self._stop()
+        self._stop()
 
         # Create & Run container
         docker_container = self.sys_docker.run(
@@ -47,7 +44,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
             network_mode="host",
             detach=True,
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
-            environment={ENV_TIME: self.sys_timezone},
+            environment={ENV_TIME: self.sys_config.timezone},
         )
 
         self._meta = docker_container.attrs

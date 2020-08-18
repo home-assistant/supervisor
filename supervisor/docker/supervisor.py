@@ -5,6 +5,7 @@ import os
 from typing import Awaitable
 
 import docker
+import requests
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerAPIError
@@ -38,7 +39,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-        except docker.errors.DockerException:
+        except (docker.errors.DockerException, requests.RequestException):
             raise DockerAPIError()
 
         self._meta = docker_container.attrs
@@ -74,7 +75,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
 
             docker_container.image.tag(self.image, tag=self.version)
             docker_container.image.tag(self.image, tag="latest")
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't retag supervisor version: %s", err)
             raise DockerAPIError()
 
@@ -101,6 +102,6 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
                     continue
                 docker_image.tag(start_image, start_tag)
 
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't fix start tag: %s", err)
             raise DockerAPIError()
