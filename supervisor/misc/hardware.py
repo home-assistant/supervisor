@@ -31,7 +31,7 @@ RE_TTY: re.Pattern = re.compile(r"tty[A-Z]+")
 RE_VIDEO_DEVICES = re.compile(r"^(?:vchiq|cec\d+|video\d+)")
 
 
-@attr.s(frozen=True)
+@attr.s()
 class Device:
     """Represent a device."""
 
@@ -66,7 +66,7 @@ class Hardware:
                     Path(device.device_node),
                     device.subsystem,
                     [Path(node) for node in device.device_links],
-                    {attr: device.attributes[attr] for attr in device.attributes},
+                    {attr: device.properties[attr] for attr in device.properties},
                 )
             )
 
@@ -91,7 +91,7 @@ class Hardware:
         for device in self.devices:
             if (
                 device.subsystem != "tty"
-                or "ID_VENDOR" not in device.properties
+                or "ID_VENDOR" not in device.attributes
                 or not RE_TTY.search(str(device.path))
             ):
                 continue
