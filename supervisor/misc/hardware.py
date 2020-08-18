@@ -126,9 +126,9 @@ class Hardware:
         """Return all disk devices."""
         dev_list: List[Device] = []
         for device in self.devices:
-            if device.subsystem != "block" or "ID_NAME" not in device.properties:
+            if device.subsystem != "block" or "ID_NAME" not in device.attributes:
                 continue
-            dev_list.append(device.device_node)
+            dev_list.append(device)
 
         return dev_list
 
