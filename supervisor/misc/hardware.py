@@ -89,10 +89,9 @@ class Hardware:
         """Return all serial and connected devices."""
         dev_list: List[Device] = []
         for device in self.devices:
-            if (
-                device.subsystem != "tty"
-                or "ID_VENDOR" not in device.attributes
-                or not RE_TTY.search(str(device.path))
+            if device.subsystem != "tty" or (
+                "ID_VENDOR" not in device.attributes
+                and not RE_TTY.search(str(device.path))
             ):
                 continue
 
