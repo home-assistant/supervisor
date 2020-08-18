@@ -31,7 +31,7 @@ RE_TTY: re.Pattern = re.compile(r"tty[A-Z]+")
 RE_VIDEO_DEVICES = re.compile(r"^(?:vchiq|cec\d+|video\d+)")
 
 
-@attr.s(slots=True)
+@attr.s(slots=True, frozen=True)
 class Device:
     """Represent a device."""
 
@@ -96,11 +96,12 @@ class Hardware:
             ):
                 continue
 
-            device.links = [
-                link_path
-                for link_path in device.links
-                if link_path.match("/dev/serial/by-id/*")
-            ]
+            # Cleanup not usable device links
+            for link in device.links.copy():
+                if link.match("/dev/serial/by-id/*"):
+                    continue
+                device.links.remove(link)
+
             dev_list.append(device)
 
         return dev_list
