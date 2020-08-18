@@ -47,3 +47,13 @@ class NetworkSettings:
     flags: int = attr.ib()
     unsaved: bool = attr.ib()
     filename: str = attr.ib()
+
+
+@attr.s
+class Device:
+    """Device properties."""
+
+    interface: str = attr.ib()
+    ip4_address: int = attr.ib()
+    device_type: int = attr.ib()
+    real: bool = attr.ib()

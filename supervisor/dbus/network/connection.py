@@ -5,6 +5,7 @@ from typing import Optional
 from ...utils.gdbus import DBus
 from .configuration import (
     AddressData,
+    Device,
     IpConfiguration,
     NetworkAttributes,
     NetworkSettings,
@@ -14,16 +15,22 @@ from .const import (
     ATTR_ADDRESS_DATA,
     ATTR_CONNECTION,
     ATTR_DEFAULT,
+    ATTR_DEVICE_INTERFACE,
+    ATTR_DEVICE_TYPE,
+    ATTR_DEVICES,
     ATTR_FILENAME,
     ATTR_FLAGS,
     ATTR_GATEWAY,
     ATTR_ID,
+    ATTR_IP4ADDRESS,
     ATTR_IP4CONFIG,
     ATTR_PREFIX,
+    ATTR_REAL,
     ATTR_STATE,
     ATTR_TYPE,
     ATTR_UNSAVED,
     ATTR_UUID,
+    DBUS_NAME_DEVICE,
     DBUS_NAME_IP4CONFIG,
     DBUS_NAME_NM,
     DBUS_NAME_SETTINGS_CONNECTION,
@@ -40,11 +47,18 @@ class NetworkConnection(NetworkAttributes):
         super().__init__(object_path, properties)
         self._settings: Optional[NetworkSettings] = None
         self._ip4_config: Optional[IpConfiguration] = None
+        self._device: Optional[Device]
+        self.primary: bool = False
 
     @property
     def settings(self) -> NetworkSettings:
         """Return a settings object for the connection."""
         return self._settings
+
+    @property
+    def device(self) -> Device:
+        """Return the device used in the connection."""
+        return self._device
 
     @property
     def default(self) -> bool:
@@ -84,23 +98,33 @@ class NetworkConnection(NetworkAttributes):
         """Update the information for childs ."""
         connection_path = self._properties[ATTR_CONNECTION]
         ip4config_path = self._properties[ATTR_IP4CONFIG]
+        device_path = self._properties[ATTR_DEVICES][0]
 
         settings = await DBus.connect(DBUS_NAME_NM, connection_path)
         ip4_config = await DBus.connect(DBUS_NAME_NM, ip4config_path)
+        device = await DBus.connect(DBUS_NAME_NM, device_path)
 
         settings_data = await settings.get_properties(DBUS_NAME_SETTINGS_CONNECTION)
         ip4_config_data = await ip4_config.get_properties(DBUS_NAME_IP4CONFIG)
+        device_data = await device.get_properties(DBUS_NAME_DEVICE)
 
         self._settings = NetworkSettings(
             settings_data.get(ATTR_FLAGS),
             settings_data.get(ATTR_UNSAVED),
             settings_data.get(ATTR_FILENAME),
         )
-        _LOGGER.info(ip4_config_data)
+
         self._ip4_config = IpConfiguration(
             ip4_config_data.get(ATTR_GATEWAY),
             [
                 AddressData(address.get(ATTR_ADDRESS), address.get(ATTR_PREFIX))
                 for address in ip4_config_data.get(ATTR_ADDRESS_DATA, [])
             ],
+        )
+
+        self._device = Device(
+            device_data.get(ATTR_DEVICE_INTERFACE),
+            device_data.get(ATTR_IP4ADDRESS),
+            device_data.get(ATTR_DEVICE_TYPE),
+            device_data.get(ATTR_REAL),
         )
