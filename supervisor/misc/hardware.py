@@ -31,7 +31,7 @@ RE_TTY: re.Pattern = re.compile(r"tty[A-Z]+")
 RE_VIDEO_DEVICES = re.compile(r"^(?:vchiq|cec\d+|video\d+)")
 
 
-@attr.s()
+@attr.s(slots=True)
 class Device:
     """Represent a device."""
 
