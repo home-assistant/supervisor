@@ -37,7 +37,9 @@ class APIHardware(CoreSysAttributes):
         return {
             ATTR_SERIAL: serial,
             ATTR_INPUT: list(self.sys_hardware.input_devices),
-            ATTR_DISK: list(self.sys_hardware.disk_devices),
+            ATTR_DISK: [
+                device.path.as_posix() for device in self.sys_hardware.disk_devices
+            ],
             ATTR_GPIO: list(self.sys_hardware.gpio_devices),
             ATTR_USB: [
                 device.path.as_posix() for device in self.sys_hardware.usb_devices
