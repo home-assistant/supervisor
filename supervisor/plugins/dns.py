@@ -25,7 +25,6 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.dns import DockerDNS
 from ..docker.stats import DockerStats
 from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
-from ..misc.forwarder import DNSForward
 from ..utils.json import JsonConfig
 from ..validate import dns_url
 from .validate import SCHEMA_DNS_CONFIG
@@ -53,7 +52,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_DNS, SCHEMA_DNS_CONFIG)
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
-        self.forwarder: DNSForward = DNSForward()
         self.coredns_template: Optional[jinja2.Template] = None
         self.resolv_template: Optional[jinja2.Template] = None
 
@@ -141,9 +139,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.image = self.instance.image
             self.save_data()
 
-        # Start DNS forwarder
-        self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
-
         # Initialize CoreDNS Template
         try:
             self.coredns_template = jinja2.Template(COREDNS_TMPL.read_text())
@@ -163,10 +158,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Update supervisor
         self._write_resolv(HOST_RESOLV)
-
-    async def unload(self) -> None:
-        """Unload DNS forwarder."""
-        await self.forwarder.stop()
 
     async def install(self) -> None:
         """Install CoreDNS."""
