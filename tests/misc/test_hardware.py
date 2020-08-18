@@ -58,6 +58,7 @@ def test_serial_devices():
         assert [(device.name, device.links) for device in system.serial_devices] == [
             ("ttyACM0", []),
             ("ttyUSB0", [Path("/dev/serial/by-id/xyx")]),
+            ("ttyS0", []),
         ]
 
 
