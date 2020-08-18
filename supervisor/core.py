@@ -259,7 +259,6 @@ class Core(CoreSysAttributes):
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
-                        self.sys_plugins.unload(),
                         self.sys_hwmonitor.unload(),
                     ]
                 )
