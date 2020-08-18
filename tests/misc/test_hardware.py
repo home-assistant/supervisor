@@ -16,10 +16,10 @@ def test_video_devices():
     """Test video device filter."""
     system = Hardware()
     device_list = [
-        Device("test-dev", Path("/dev/test-dev"), []),
-        Device("vchiq", Path("/dev/vchiq"), []),
-        Device("cec0", Path("/dev/cec0"), []),
-        Device("video1", Path("/dev/video1"), []),
+        Device("test-dev", Path("/dev/test-dev"), "xy", [], {}),
+        Device("vchiq", Path("/dev/vchiq"), "xy", [], {}),
+        Device("cec0", Path("/dev/cec0"), "xy", [], {}),
+        Device("video1", Path("/dev/video1"), "xy", [], {}),
     ]
 
     with patch(
@@ -27,10 +27,79 @@ def test_video_devices():
     ) as mock_device:
         mock_device.return_value = device_list
 
-        assert system.video_devices == [
-            Device("vchiq", Path("/dev/vchiq"), []),
-            Device("cec0", Path("/dev/cec0"), []),
-            Device("video1", Path("/dev/video1"), []),
+        assert [device.name for device in system.video_devices] == [
+            "vchiq",
+            "cec0",
+            "video1",
+        ]
+
+
+def test_serial_devices():
+    """Test serial device filter."""
+    system = Hardware()
+    device_list = [
+        Device("ttyACM0", Path("/dev/ttyACM0"), "tty", [], {"ID_VENDOR": "xy"}),
+        Device(
+            "ttyUSB0",
+            Path("/dev/ttyUSB0"),
+            "tty",
+            [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
+            {"ID_VENDOR": "xy"},
+        ),
+        Device("ttyS0", Path("/dev/ttyS0"), "tty", [], {}),
+        Device("video1", Path("/dev/video1"), "misc", [], {"ID_VENDOR": "xy"}),
+    ]
+
+    with patch(
+        "supervisor.misc.hardware.Hardware.devices", new_callable=PropertyMock
+    ) as mock_device:
+        mock_device.return_value = device_list
+
+        assert [(device.name, device.links) for device in system.serial_devices] == [
+            ("ttyACM0", []),
+            ("ttyUSB0", [Path("/dev/serial/by-id/xyx")]),
+        ]
+
+
+def test_usb_devices():
+    """Test usb device filter."""
+    system = Hardware()
+    device_list = [
+        Device("usb1", Path("/dev/bus/usb/1/1"), "usb", [], {}),
+        Device("usb2", Path("/dev/bus/usb/2/1"), "usb", [], {}),
+        Device("cec0", Path("/dev/cec0"), "xy", [], {}),
+        Device("video1", Path("/dev/video1"), "xy", [], {}),
+    ]
+
+    with patch(
+        "supervisor.misc.hardware.Hardware.devices", new_callable=PropertyMock
+    ) as mock_device:
+        mock_device.return_value = device_list
+
+        assert [device.name for device in system.usb_devices] == [
+            "usb1",
+            "usb2",
+        ]
+
+
+def test_block_devices():
+    """Test usb device filter."""
+    system = Hardware()
+    device_list = [
+        Device("sda", Path("/dev/sda"), "block", [], {"ID_NAME": "xy"}),
+        Device("sdb", Path("/dev/sdb"), "block", [], {"ID_NAME": "xy"}),
+        Device("cec0", Path("/dev/cec0"), "xy", [], {}),
+        Device("video1", Path("/dev/video1"), "xy", [], {"ID_NAME": "xy"}),
+    ]
+
+    with patch(
+        "supervisor.misc.hardware.Hardware.devices", new_callable=PropertyMock
+    ) as mock_device:
+        mock_device.return_value = device_list
+
+        assert [device.name for device in system.disk_devices] == [
+            "sda",
+            "sdb",
         ]
 
 
