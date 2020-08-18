@@ -116,10 +116,10 @@ class NetworkConnection(NetworkAttributes):
 
         self._ip4_config = IpConfiguration(
             ip4_config_data.get(ATTR_GATEWAY),
-            [
-                AddressData(address.get(ATTR_ADDRESS), address.get(ATTR_PREFIX))
-                for address in ip4_config_data.get(ATTR_ADDRESS_DATA, [])
-            ],
+            AddressData(
+                ip4_config_data.get(ATTR_ADDRESS_DATA)[0].get(ATTR_ADDRESS),
+                ip4_config_data.get(ATTR_ADDRESS_DATA)[0].get(ATTR_PREFIX),
+            ),
         )
 
         self._device = Device(

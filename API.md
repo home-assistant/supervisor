@@ -450,16 +450,15 @@ Get network information
 
 ```json
 {
-  "connections": [
-    {
+  "interfaces": {
+    "enp0s31f6": {
       "ip_address": "192.168.2.149",
       "gateway": "192.168.2.1",
       "id": "Wired connection 1",
-      "interface": "enp0s31f6",
       "type": "802-3-ethernet",
       "primary": true
     }
-  ]
+  }
 }
 ```
 

@@ -6,9 +6,14 @@ from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.gdbus import DBus
 from ..interface import DBusInterface
 from ..utils import dbus_connected
-from .connection import NetworkConnection
-from .const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM, DBUS_OBJECT_NM
+from .const import (
+    ATTR_ACTIVE_CONNECTIONS,
+    ATTR_PRIMARY_CONNECTION,
+    DBUS_NAME_NM,
+    DBUS_OBJECT_NM,
+)
 from .dns import NetworkManagerDNS
+from .interface import NetworkInterface
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,8 +24,7 @@ class NetworkManager(DBusInterface):
     def __init__(self) -> None:
         """Initialize Properties."""
         self._dns: NetworkManagerDNS = NetworkManagerDNS()
-        self._primary_connection: Optional[NetworkConnection] = None
-        self._connections: Optional[List[NetworkConnection]] = None
+        self._interfaces: Optional[List[NetworkInterface]] = None
 
     @property
     def dns(self) -> NetworkManagerDNS:
@@ -28,14 +32,9 @@ class NetworkManager(DBusInterface):
         return self._dns
 
     @property
-    def primary_connection(self) -> NetworkConnection:
-        """Return the primary connection."""
-        return self._primary_connection
-
-    @property
-    def connections(self) -> List[NetworkConnection]:
-        """Return a list of active connections."""
-        return self._connections
+    def interfaces(self) -> List[NetworkInterface]:
+        """Return a list of active interfaces."""
+        return self._interfaces
 
     async def connect(self) -> None:
         """Connect to system's D-Bus."""
@@ -53,28 +52,30 @@ class NetworkManager(DBusInterface):
     async def update(self):
         """Update Properties."""
         await self.dns.update()
+
         data = await self.dbus.get_properties(DBUS_NAME_NM)
+
         if not data:
             _LOGGER.warning("Can't get properties for Network Manager")
             return
-        self._connections = []
-        for active_connection in data.get("ActiveConnections", []):
-            connection: NetworkConnection = await self.get_connection(active_connection)
-            if not connection.default:
+
+        self._interfaces = []
+        for connection in data.get(ATTR_ACTIVE_CONNECTIONS, []):
+            interface = NetworkInterface()
+
+            await interface.connect(connection)
+
+            if not interface.connection.default:
                 continue
-            await connection.update_information()
-            if connection.object_path == data.get("PrimaryConnection"):
-                connection.primary = True
-                self._primary_connection = connection
-            self._connections.append(connection)
 
-        _LOGGER.info(self.primary_connection.ip4_config.address_data[0].address)
+            await interface.connection.update_information()
 
-    @dbus_connected
-    async def get_connection(self, connection_object: str) -> NetworkConnection:
-        """Get connection information."""
-        connection = await self.dbus.connect(DBUS_NAME_NM, connection_object)
-        connection_properties = await connection.get_properties(
-            DBUS_NAME_CONNECTION_ACTIVE
-        )
-        return NetworkConnection(connection_object, connection_properties)
+            if interface.connection.object_path == data.get(ATTR_PRIMARY_CONNECTION):
+                interface.connection.primary = True
+
+            self._interfaces.append(interface)
+
+            _LOGGER.warning(self.interfaces)
+
+        _LOGGER.info(self.interfaces[0].connection.ip4_config.address_data.address)
+        _LOGGER.info(self.interfaces[0].name)

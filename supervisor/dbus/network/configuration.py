@@ -26,7 +26,7 @@ class IpConfiguration:
     """NetworkSettingsIPConfig object for Network Manager."""
 
     gateway: str = attr.ib()
-    address_data: List[AddressData] = attr.ib()
+    address_data: AddressData = attr.ib()
 
 
 @attr.s

@@ -4,10 +4,9 @@ from typing import Any, Dict
 from aiohttp import web
 
 from ..const import (
-    ATTR_CONNECTIONS,
     ATTR_GATEWAY,
     ATTR_ID,
-    ATTR_INTERFACE,
+    ATTR_INTERFACES,
     ATTR_IP_ADDRESS,
     ATTR_PRIMARY,
     ATTR_TYPE,
@@ -22,17 +21,14 @@ class APINetwork(CoreSysAttributes):
     @api_process
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return network information."""
-        connections = []
-        for connection in self.sys_dbus.network.connections:
-            connections.append(
-                {
-                    ATTR_IP_ADDRESS: connection.ip4_config.address_data[0].address,
-                    ATTR_GATEWAY: connection.ip4_config.gateway,
-                    ATTR_ID: connection.id,
-                    ATTR_INTERFACE: connection.device.interface,
-                    ATTR_TYPE: connection.type,
-                    ATTR_PRIMARY: connection.primary,
-                }
-            )
+        interfaces = {}
+        for interface in self.sys_dbus.network.interfaces:
+            interfaces[interface.name] = {
+                ATTR_IP_ADDRESS: interface.ip_address,
+                ATTR_GATEWAY: interface.gateway,
+                ATTR_ID: interface.id,
+                ATTR_TYPE: interface.type,
+                ATTR_PRIMARY: interface.primary,
+            }
 
-        return {ATTR_CONNECTIONS: connections}
+        return {ATTR_INTERFACES: interfaces}
