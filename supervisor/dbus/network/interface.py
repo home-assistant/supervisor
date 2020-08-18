@@ -46,7 +46,7 @@ class NetworkInterface:
         """Return the gateway."""
         return self.connection.ip4_config.gateway
 
-    async def connect(self, connection_object: str) -> NetworkConnection:
+    async def connect(self, connection_object: str) -> None:
         """Get connection information."""
         connection_bus = await DBus.connect(DBUS_NAME_NM, connection_object)
         connection_properties = await connection_bus.get_properties(
