@@ -85,12 +85,23 @@ class Hardware:
         return dev_list
 
     @property
-    def serial_devices(self) -> Set[str]:
+    def serial_devices(self) -> List[Device]:
         """Return all serial and connected devices."""
-        dev_list: Set[str] = set()
-        for device in self.context.list_devices(subsystem="tty"):
-            if "ID_VENDOR" in device.properties or RE_TTY.search(device.device_node):
-                dev_list.add(device.device_node)
+        dev_list: List[Device] = []
+        for device in self.devices:
+            if (
+                device.subsystem != "tty"
+                or "ID_VENDOR" not in device.properties
+                or not RE_TTY.search(str(device.path))
+            ):
+                continue
+
+            device.links = [
+                link_path
+                for link_path in device.links
+                if link_path.match("/dev/serial/by-id/*")
+            ]
+            dev_list.append(device)
 
         return dev_list
 
@@ -98,20 +109,6 @@ class Hardware:
     def usb_devices(self) -> List[Device]:
         """Return all usb and connected devices."""
         return [device for device in self.devices if device.subsystem == "usb"]
-
-    @property
-    def serial_by_id(self) -> Set[str]:
-        """Return all /dev/serial/by-id for serial devices."""
-        dev_list: Set[str] = set()
-        for device in self.context.list_devices(subsystem="tty"):
-            if "ID_VENDOR" in device.properties or RE_TTY.search(device.device_node):
-                # Add /dev/serial/by-id devlink for current device
-                for dev_link in device.device_links:
-                    if not dev_link.startswith("/dev/serial/by-id"):
-                        continue
-                    dev_list.add(dev_link)
-
-        return dev_list
 
     @property
     def input_devices(self) -> Set[str]:
@@ -124,12 +121,13 @@ class Hardware:
         return dev_list
 
     @property
-    def disk_devices(self) -> Set[str]:
+    def disk_devices(self) -> List[Device]:
         """Return all disk devices."""
-        dev_list: Set[str] = set()
-        for device in self.context.list_devices(subsystem="block"):
-            if "ID_NAME" in device.properties:
-                dev_list.add(device.device_node)
+        dev_list: List[Device] = []
+        for device in self.devices:
+            if device.subsystem != "block" or "ID_NAME" not in device.properties:
+                continue
+            dev_list.append(device.device_node)
 
         return dev_list
 

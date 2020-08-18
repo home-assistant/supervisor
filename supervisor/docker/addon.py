@@ -134,15 +134,14 @@ class DockerAddon(DockerInterface):
 
         # Auto mapping UART devices
         if self.addon.with_uart:
-            if self.addon.with_udev:
-                serial_devs = self.sys_hardware.serial_devices
-            else:
-                serial_devs = (
-                    self.sys_hardware.serial_devices | self.sys_hardware.serial_by_id
-                )
-
-            for device in serial_devs:
-                devices.append(f"{device}:{device}:rwm")
+            for device in self.sys_hardware.serial_devices:
+                devices.append(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
+                if self.addon.with_udev:
+                    continue
+                for device_link in device.links:
+                    devices.append(
+                        f"{device_link.as_posix()}:{device_link.as_posix()}:rwm"
+                    )
 
         # Use video devices
         if self.addon.with_video:
