@@ -535,7 +535,7 @@ Get all available add-ons.
   "stdin": "bool",
   "webui": "null|http(s)://[HOST]:port/xy/zx",
   "gpio": "bool",
-  "usb": "usb",
+  "usb": "[physical_path_to_usb_device]",
   "kernel_modules": "bool",
   "devicetree": "bool",
   "docker_api": "bool",
