@@ -61,6 +61,27 @@ def test_serial_devices():
         ]
 
 
+def test_usb_devices():
+    """Test usb device filter."""
+    system = Hardware()
+    device_list = [
+        Device("usb1", Path("/dev/bus/usb/1/1"), "usb", [], {}),
+        Device("usb2", Path("/dev/bus/usb/2/1"), "usb", [], {}),
+        Device("cec0", Path("/dev/cec0"), "xy", [], {}),
+        Device("video1", Path("/dev/video1"), "xy", [], {}),
+    ]
+
+    with patch(
+        "supervisor.misc.hardware.Hardware.devices", new_callable=PropertyMock
+    ) as mock_device:
+        mock_device.return_value = device_list
+
+        assert [device.name for device in system.usb_devices] == [
+            "usb1",
+            "usb2",
+        ]
+
+
 def test_free_space():
     """Test free space helper."""
     system = Hardware()
