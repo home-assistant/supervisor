@@ -69,6 +69,8 @@ class APINetwork(CoreSysAttributes):
             return {}
 
         body = await api_validate(SCHEMA_SET, request)
+        if not body:
+            return {}
 
         await self.sys_dbus.network.interfaces[0].update_settings(
             address=body.get("address"),
