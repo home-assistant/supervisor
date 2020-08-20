@@ -37,7 +37,7 @@ setup(
         "supervisor.api",
         "supervisor.dbus",
         "supervisor.discovery",
-        "supervisor.discovery.servcies",
+        "supervisor.discovery.services",
         "supervisor.servcies",
         "supervisor.services.modules",
         "supervisor.homeassistant",
