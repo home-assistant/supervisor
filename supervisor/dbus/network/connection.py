@@ -5,9 +5,9 @@ from typing import Optional
 from ...utils.gdbus import DBus
 from .configuration import (
     AddressData,
-    Device,
     IpConfiguration,
     NetworkAttributes,
+    NetworkDevice,
     NetworkSettings,
 )
 from .const import (
@@ -47,7 +47,7 @@ class NetworkConnection(NetworkAttributes):
         super().__init__(object_path, properties)
         self._settings: Optional[NetworkSettings] = None
         self._ip4_config: Optional[IpConfiguration] = None
-        self._device: Optional[Device]
+        self._device: Optional[NetworkDevice]
         self.primary: bool = False
 
     @property
@@ -56,7 +56,7 @@ class NetworkConnection(NetworkAttributes):
         return self._settings
 
     @property
-    def device(self) -> Device:
+    def device(self) -> NetworkDevice:
         """Return the device used in the connection."""
         return self._device
 
@@ -122,7 +122,7 @@ class NetworkConnection(NetworkAttributes):
             ),
         )
 
-        self._device = Device(
+        self._device = NetworkDevice(
             device_data.get(ATTR_DEVICE_INTERFACE),
             device_data.get(ATTR_IP4ADDRESS),
             device_data.get(ATTR_DEVICE_TYPE),

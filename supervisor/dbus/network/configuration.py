@@ -50,7 +50,7 @@ class NetworkSettings:
 
 
 @attr.s
-class Device:
+class NetworkDevice:
     """Device properties."""
 
     interface: str = attr.ib()
