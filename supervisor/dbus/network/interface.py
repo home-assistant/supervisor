@@ -70,7 +70,24 @@ class NetworkInterface:
         """Update IP configuration used for this interface."""
 
         await self.connection.settings.dbus.Settings.Connection.Update(
-            f"{{'connection':{{'id': <'{self.id}'>, 'type': <'{self.type}'>}},'ipv4': {{'method': <'{kwargs.get('method', 'manual')}'>,'dns': <[uint32 16951488]>,'address-data': <[{{'address': <'{kwargs.get('address', self.ip_address)}'>, 'prefix': <uint32 {self.prefix}>}}]>, 'gateway': <'{kwargs.get('gateway', self.gateway)}'>}}}}"
+            f"""{{
+                    'connection':
+                        {{
+                            'id': <'{self.id}'>,
+                            'type': <'{self.type}'>
+                        }},
+                    'ipv4':
+                        {{
+                            'method': <'{kwargs.get('method', 'manual')}'>,
+                            'dns': <[uint32 16951488]>,
+                            'address-data': <[
+                                {{
+                                    'address': <'{kwargs.get('address', self.ip_address)}'>,
+                                    'prefix': <uint32 {self.prefix}>
+                                }}]>,
+                            'gateway': <'{kwargs.get('gateway', self.gateway)}'>
+                                }}
+                }}"""
         )
 
         await self.nm_dbus.ActivateConnection(
