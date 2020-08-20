@@ -122,9 +122,6 @@ class Core(CoreSysAttributes):
         # Load ingress
         await self.sys_ingress.load()
 
-        # Load secrets
-        await self.sys_secrets.load()
-
         # Check supported OS
         if not self.sys_hassos.available:
             if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:
@@ -204,10 +201,10 @@ class Core(CoreSysAttributes):
             # run HomeAssistant
             if (
                 self.sys_homeassistant.boot
-                and not await self.sys_homeassistant.is_running()
+                and not await self.sys_homeassistant.core.is_running()
             ):
                 with suppress(HomeAssistantError):
-                    await self.sys_homeassistant.start()
+                    await self.sys_homeassistant.core.start()
             else:
                 _LOGGER.info("Skip start of Home Assistant")
 
@@ -223,7 +220,7 @@ class Core(CoreSysAttributes):
 
             # If landingpage / run upgrade in background
             if self.sys_homeassistant.version == "landingpage":
-                self.sys_create_task(self.sys_homeassistant.install())
+                self.sys_create_task(self.sys_homeassistant.core.install())
 
             # Start observe the host Hardware
             await self.sys_hwmonitor.load()
@@ -278,7 +275,7 @@ class Core(CoreSysAttributes):
 
         # Close Home Assistant
         with suppress(HassioError):
-            await self.sys_homeassistant.stop()
+            await self.sys_homeassistant.core.stop()
 
         # Shutdown System Add-ons
         await self.sys_addons.shutdown(AddonStartup.SERVICES)
@@ -304,7 +301,7 @@ class Core(CoreSysAttributes):
 
         # Restore core functionality
         await self.sys_addons.repair()
-        await self.sys_homeassistant.repair()
+        await self.sys_homeassistant.core.repair()
 
         # Tag version for latest
         await self.sys_supervisor.repair()
