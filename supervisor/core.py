@@ -122,9 +122,6 @@ class Core(CoreSysAttributes):
         # Load ingress
         await self.sys_ingress.load()
 
-        # Load secrets
-        await self.sys_secrets.load()
-
         # Check supported OS
         if not self.sys_hassos.available:
             if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:

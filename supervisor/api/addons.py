@@ -282,7 +282,7 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon_installed(request)
 
         # Update secrets for validation
-        await self.sys_secrets.reload()
+        await self.sys_homeassistant.secrets.reload()
 
         # Extend schema with add-on specific validation
         addon_schema = SCHEMA_OPTIONS.extend(
