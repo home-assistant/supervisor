@@ -96,7 +96,17 @@ class RestAPI(CoreSysAttributes):
         api_network = APINetwork()
         api_network.coresys = self.coresys
 
-        self.webapp.add_routes([web.get("/network/info", api_network.info)])
+        self.webapp.add_routes(
+            [
+                web.get("/network/info", api_network.info),
+                web.get(
+                    "/network/interface/{interface}/info", api_network.interface_info
+                ),
+                web.post(
+                    "/network/interface/{interface}/set", api_network.interface_set
+                ),
+            ]
+        )
 
     def _register_os(self) -> None:
         """Register OS functions."""

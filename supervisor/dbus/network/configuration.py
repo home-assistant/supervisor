@@ -3,6 +3,8 @@ from typing import List
 
 import attr
 
+from ...utils.gdbus import DBus
+
 
 class NetworkAttributes:
     """NetworkAttributes object for Network Manager."""
@@ -44,6 +46,7 @@ class DNSConfiguration:
 class NetworkSettings:
     """NetworkSettings object for Network Manager."""
 
+    dbus: DBus = attr.ib()
     flags: int = attr.ib()
     unsaved: bool = attr.ib()
     filename: str = attr.ib()
@@ -53,6 +56,7 @@ class NetworkSettings:
 class NetworkDevice:
     """Device properties."""
 
+    dbus: DBus = attr.ib()
     interface: str = attr.ib()
     ip4_address: int = attr.ib()
     device_type: int = attr.ib()

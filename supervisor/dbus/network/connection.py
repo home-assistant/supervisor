@@ -45,6 +45,8 @@ class NetworkConnection(NetworkAttributes):
     def __init__(self, object_path: str, properties: dict) -> None:
         """Initialize NetworkConnection object."""
         super().__init__(object_path, properties)
+        self._device_dbus: DBus = None
+        self._settings_dbus: DBus = None
         self._settings: Optional[NetworkSettings] = None
         self._ip4_config: Optional[IpConfiguration] = None
         self._device: Optional[NetworkDevice]
@@ -109,6 +111,7 @@ class NetworkConnection(NetworkAttributes):
         device_data = await device.get_properties(DBUS_NAME_DEVICE)
 
         self._settings = NetworkSettings(
+            settings,
             settings_data.get(ATTR_FLAGS),
             settings_data.get(ATTR_UNSAVED),
             settings_data.get(ATTR_FILENAME),
@@ -123,6 +126,7 @@ class NetworkConnection(NetworkAttributes):
         )
 
         self._device = NetworkDevice(
+            device,
             device_data.get(ATTR_DEVICE_INTERFACE),
             device_data.get(ATTR_IP4ADDRESS),
             device_data.get(ATTR_DEVICE_TYPE),

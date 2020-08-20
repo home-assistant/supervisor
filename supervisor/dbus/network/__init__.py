@@ -63,7 +63,7 @@ class NetworkManager(DBusInterface):
         for connection in data.get(ATTR_ACTIVE_CONNECTIONS, []):
             interface = NetworkInterface()
 
-            await interface.connect(connection)
+            await interface.connect(self.dbus, connection)
 
             if not interface.connection.default:
                 continue
@@ -75,7 +75,4 @@ class NetworkManager(DBusInterface):
 
             self._interfaces.append(interface)
 
-            _LOGGER.warning(self.interfaces)
-
         _LOGGER.info(self.interfaces[0].connection.ip4_config.address_data.address)
-        _LOGGER.info(self.interfaces[0].name)
