@@ -37,7 +37,6 @@ from .ingress import Ingress
 from .misc.filter import filter_data
 from .misc.hwmon import HwMonitor
 from .misc.scheduler import Scheduler
-from .misc.secrets import SecretsManager
 from .misc.tasks import Tasks
 from .plugins import PluginManager
 from .services import ServiceManager
@@ -74,7 +73,6 @@ async def initialize_coresys() -> CoreSys:
     coresys.discovery = Discovery(coresys)
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
-    coresys.secrets = SecretsManager(coresys)
     coresys.scheduler = Scheduler(coresys)
 
     # diagnostics
