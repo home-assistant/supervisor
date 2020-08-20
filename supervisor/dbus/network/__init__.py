@@ -1,6 +1,6 @@
 """Network Manager implementation for DBUS."""
 import logging
-from typing import List, Optional
+from typing import Dict, Optional
 
 from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.gdbus import DBus
@@ -24,7 +24,7 @@ class NetworkManager(DBusInterface):
     def __init__(self) -> None:
         """Initialize Properties."""
         self._dns: NetworkManagerDNS = NetworkManagerDNS()
-        self._interfaces: Optional[List[NetworkInterface]] = None
+        self._interfaces: Optional[Dict[str, NetworkInterface]] = None
 
     @property
     def dns(self) -> NetworkManagerDNS:
@@ -32,8 +32,8 @@ class NetworkManager(DBusInterface):
         return self._dns
 
     @property
-    def interfaces(self) -> List[NetworkInterface]:
-        """Return a list of active interfaces."""
+    def interfaces(self) -> Dict[str, NetworkInterface]:
+        """Return a dictionary of active interfaces."""
         return self._interfaces
 
     async def connect(self) -> None:
@@ -59,7 +59,7 @@ class NetworkManager(DBusInterface):
             _LOGGER.warning("Can't get properties for Network Manager")
             return
 
-        self._interfaces = []
+        self._interfaces = {}
         for connection in data.get(ATTR_ACTIVE_CONNECTIONS, []):
             interface = NetworkInterface()
 
@@ -73,6 +73,8 @@ class NetworkManager(DBusInterface):
             if interface.connection.object_path == data.get(ATTR_PRIMARY_CONNECTION):
                 interface.connection.primary = True
 
-            self._interfaces.append(interface)
+            self._interfaces[interface.name] = interface
 
-        _LOGGER.info(self.interfaces[0].connection.ip4_config.address_data.address)
+        _LOGGER.info(
+            self.interfaces["enp0s31f6"].connection.ip4_config.address_data.address
+        )

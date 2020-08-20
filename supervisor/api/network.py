@@ -33,12 +33,12 @@ class APINetwork(CoreSysAttributes):
         """Return network information."""
         interfaces = {}
         for interface in self.sys_dbus.network.interfaces:
-            interfaces[interface.name] = {
-                ATTR_IP_ADDRESS: interface.ip_address,
-                ATTR_GATEWAY: interface.gateway,
-                ATTR_ID: interface.id,
-                ATTR_TYPE: interface.type,
-                ATTR_PRIMARY: interface.primary,
+            interfaces[self.sys_dbus.network.interfaces[interface].name] = {
+                ATTR_IP_ADDRESS: self.sys_dbus.network.interfaces[interface].ip_address,
+                ATTR_GATEWAY: self.sys_dbus.network.interfaces[interface].gateway,
+                ATTR_ID: self.sys_dbus.network.interfaces[interface].id,
+                ATTR_TYPE: self.sys_dbus.network.interfaces[interface].type,
+                ATTR_PRIMARY: self.sys_dbus.network.interfaces[interface].primary,
             }
 
         return {ATTR_INTERFACES: interfaces}
@@ -50,11 +50,13 @@ class APINetwork(CoreSysAttributes):
         for interface in self.sys_dbus.network.interfaces:
             if req_interface == interface.name:
                 return {
-                    ATTR_IP_ADDRESS: interface.ip_address,
-                    ATTR_GATEWAY: interface.gateway,
-                    ATTR_ID: interface.id,
-                    ATTR_TYPE: interface.type,
-                    ATTR_PRIMARY: interface.primary,
+                    ATTR_IP_ADDRESS: self.sys_dbus.network.interfaces[
+                        interface
+                    ].ip_address,
+                    ATTR_GATEWAY: self.sys_dbus.network.interfaces[interface].gateway,
+                    ATTR_ID: self.sys_dbus.network.interfaces[interface].id,
+                    ATTR_TYPE: self.sys_dbus.network.interfaces[interface].type,
+                    ATTR_PRIMARY: self.sys_dbus.network.interfaces[interface].primary,
                 }
 
         return {}
@@ -65,14 +67,14 @@ class APINetwork(CoreSysAttributes):
         # req_interface = request.match_info.get("interface")
         req_interface = request.match_info.get("interface")
 
-        if req_interface not in [x.name for x in self.sys_dbus.network.interfaces]:
+        if not self.sys_dbus.network.interfaces.get(req_interface):
             return {}
 
         body = await api_validate(SCHEMA_UPDATE, request)
         if not body:
             return {}
 
-        await self.sys_dbus.network.interfaces[0].update_settings(
+        await self.sys_dbus.network.interfaces[req_interface].update_settings(
             address=body.get("address"),
         )
         await self.sys_dbus.network.update()
