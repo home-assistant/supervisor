@@ -1,6 +1,5 @@
 """Init file for Supervisor host RESTful API."""
 import asyncio
-import logging
 from typing import Awaitable
 
 from aiohttp import web
@@ -25,8 +24,6 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_process_raw, api_validate
-
-_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SERVICE = "service"
 

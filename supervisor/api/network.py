@@ -2,6 +2,7 @@
 from typing import Any, Dict
 
 from aiohttp import web
+import voluptuous as vol
 
 from ..const import (
     ATTR_GATEWAY,
@@ -12,7 +13,9 @@ from ..const import (
     ATTR_TYPE,
 )
 from ..coresys import CoreSysAttributes
-from .utils import api_process
+from .utils import api_process, api_validate
+
+SCHEMA_SET = vol.Schema({vol.Optional("address"): vol.Coerce(str)})
 
 
 class APINetwork(CoreSysAttributes):
@@ -50,10 +53,18 @@ class APINetwork(CoreSysAttributes):
         return {}
 
     @api_process
-    async def interface_set(self, request: web.Request) -> Dict[str, Any]:
-        """Set the IP of an interface."""
+    async def interface_update(self, request: web.Request) -> Dict[str, Any]:
+        """Update the configuration of an interface."""
         # req_interface = request.match_info.get("interface")
+        req_interface = request.match_info.get("interface")
+
+        if req_interface not in [x.name for x in self.sys_dbus.network.interfaces]:
+            return {}
+
+        body = await api_validate(SCHEMA_SET, request)
+
         await self.sys_dbus.network.interfaces[0].update_settings(
-            "192.168.2.149", "", []
+            body.get("address"), "", []
         )
         await self.sys_dbus.network.update()
+        return await self.interface_info(request)

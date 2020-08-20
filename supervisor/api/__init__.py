@@ -103,7 +103,8 @@ class RestAPI(CoreSysAttributes):
                     "/network/interface/{interface}/info", api_network.interface_info
                 ),
                 web.post(
-                    "/network/interface/{interface}/set", api_network.interface_set
+                    "/network/interface/{interface}/update",
+                    api_network.interface_update,
                 ),
             ]
         )
