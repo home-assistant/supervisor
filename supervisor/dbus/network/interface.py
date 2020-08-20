@@ -2,6 +2,7 @@
 from ...utils.gdbus import DBus
 from .connection import NetworkConnection
 from .const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM
+from .utils import ip2int
 
 
 class NetworkInterface:
@@ -53,9 +54,19 @@ class NetworkInterface:
         return self.connection.id
 
     @property
+    def method(self) -> str:
+        """Return the interface method."""
+        return self.connection.ip4_config.method
+
+    @property
     def gateway(self) -> str:
         """Return the gateway."""
         return self.connection.ip4_config.gateway
+
+    @property
+    def nameservers(self) -> str:
+        """Return the nameservers."""
+        return self.connection.ip4_config.nameservers
 
     async def connect(self, nm_dbus: DBus, connection_object: str) -> None:
         """Get connection information."""
@@ -68,6 +79,8 @@ class NetworkInterface:
 
     async def update_settings(self, **kwargs) -> None:
         """Update IP configuration used for this interface."""
+        if kwargs.get("dns"):
+            kwargs["dns"] = [ip2int(x) for x in kwargs["dns"].split(",")]
 
         await self.connection.settings.dbus.Settings.Connection.Update(
             f"""{{
@@ -78,8 +91,8 @@ class NetworkInterface:
                         }},
                     'ipv4':
                         {{
-                            'method': <'{kwargs.get('method', 'manual')}'>,
-                            'dns': <[uint32 16951488]>,
+                            'method': <'{kwargs.get('method', self.method)}'>,
+                            'dns': <[{",".join([f"uint32 {x}" for x in kwargs.get("dns", self.nameservers)])}]>,
                             'address-data': <[
                                 {{
                                     'address': <'{kwargs.get('address', self.ip_address)}'>,

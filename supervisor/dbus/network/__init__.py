@@ -75,6 +75,4 @@ class NetworkManager(DBusInterface):
 
             self._interfaces[interface.name] = interface
 
-        _LOGGER.info(
-            self.interfaces["enp0s31f6"].connection.ip4_config.address_data.address
-        )
+        _LOGGER.info(self.interfaces["enp0s31f6"].ip_address)

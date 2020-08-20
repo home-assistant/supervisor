@@ -13,6 +13,8 @@ from ..const import (
     ATTR_TYPE,
 )
 from ..coresys import CoreSysAttributes
+from ..dbus.network.interface import NetworkInterface
+from ..dbus.network.utils import int2ip
 from .utils import api_process, api_validate
 
 SCHEMA_UPDATE = vol.Schema(
@@ -25,6 +27,19 @@ SCHEMA_UPDATE = vol.Schema(
 )
 
 
+def interface_information(interface: NetworkInterface) -> dict:
+    """Return a dict with information of a interface to be used in th API."""
+    return {
+        ATTR_IP_ADDRESS: interface.ip_address,
+        ATTR_GATEWAY: interface.gateway,
+        ATTR_ID: interface.id,
+        ATTR_TYPE: interface.type,
+        "nameservers": ", ".join(int2ip(x) for x in interface.nameservers),
+        "method": interface.method,
+        ATTR_PRIMARY: interface.primary,
+    }
+
+
 class APINetwork(CoreSysAttributes):
     """Handle REST API for network."""
 
@@ -33,13 +48,9 @@ class APINetwork(CoreSysAttributes):
         """Return network information."""
         interfaces = {}
         for interface in self.sys_dbus.network.interfaces:
-            interfaces[self.sys_dbus.network.interfaces[interface].name] = {
-                ATTR_IP_ADDRESS: self.sys_dbus.network.interfaces[interface].ip_address,
-                ATTR_GATEWAY: self.sys_dbus.network.interfaces[interface].gateway,
-                ATTR_ID: self.sys_dbus.network.interfaces[interface].id,
-                ATTR_TYPE: self.sys_dbus.network.interfaces[interface].type,
-                ATTR_PRIMARY: self.sys_dbus.network.interfaces[interface].primary,
-            }
+            interfaces[
+                self.sys_dbus.network.interfaces[interface].name
+            ] = interface_information(self.sys_dbus.network.interfaces[interface])
 
         return {ATTR_INTERFACES: interfaces}
 
@@ -48,16 +59,10 @@ class APINetwork(CoreSysAttributes):
         """Return network information for a interface."""
         req_interface = request.match_info.get("interface")
         for interface in self.sys_dbus.network.interfaces:
-            if req_interface == interface.name:
-                return {
-                    ATTR_IP_ADDRESS: self.sys_dbus.network.interfaces[
-                        interface
-                    ].ip_address,
-                    ATTR_GATEWAY: self.sys_dbus.network.interfaces[interface].gateway,
-                    ATTR_ID: self.sys_dbus.network.interfaces[interface].id,
-                    ATTR_TYPE: self.sys_dbus.network.interfaces[interface].type,
-                    ATTR_PRIMARY: self.sys_dbus.network.interfaces[interface].primary,
-                }
+            if req_interface == self.sys_dbus.network.interfaces[interface].name:
+                return interface_information(
+                    self.sys_dbus.network.interfaces[interface]
+                )
 
         return {}
 

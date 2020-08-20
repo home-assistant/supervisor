@@ -28,6 +28,8 @@ class IpConfiguration:
     """NetworkSettingsIPConfig object for Network Manager."""
 
     gateway: str = attr.ib()
+    method: str = attr.ib()
+    nameservers: List[int] = attr.ib()
     address_data: AddressData = attr.ib()
 
 
@@ -47,9 +49,6 @@ class NetworkSettings:
     """NetworkSettings object for Network Manager."""
 
     dbus: DBus = attr.ib()
-    flags: int = attr.ib()
-    unsaved: bool = attr.ib()
-    filename: str = attr.ib()
 
 
 @attr.s

@@ -12,28 +12,20 @@ from .configuration import (
 )
 from .const import (
     ATTR_ADDRESS,
-    ATTR_ADDRESS_DATA,
     ATTR_CONNECTION,
     ATTR_DEFAULT,
     ATTR_DEVICE_INTERFACE,
     ATTR_DEVICE_TYPE,
     ATTR_DEVICES,
-    ATTR_FILENAME,
-    ATTR_FLAGS,
-    ATTR_GATEWAY,
     ATTR_ID,
     ATTR_IP4ADDRESS,
-    ATTR_IP4CONFIG,
     ATTR_PREFIX,
     ATTR_REAL,
     ATTR_STATE,
     ATTR_TYPE,
-    ATTR_UNSAVED,
     ATTR_UUID,
     DBUS_NAME_DEVICE,
-    DBUS_NAME_IP4CONFIG,
     DBUS_NAME_NM,
-    DBUS_NAME_SETTINGS_CONNECTION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,30 +90,22 @@ class NetworkConnection(NetworkAttributes):
 
     async def update_information(self):
         """Update the information for childs ."""
-        connection_path = self._properties[ATTR_CONNECTION]
-        ip4config_path = self._properties[ATTR_IP4CONFIG]
-        device_path = self._properties[ATTR_DEVICES][0]
+        settings = await DBus.connect(DBUS_NAME_NM, self._properties[ATTR_CONNECTION])
+        device = await DBus.connect(DBUS_NAME_NM, self._properties[ATTR_DEVICES][0])
 
-        settings = await DBus.connect(DBUS_NAME_NM, connection_path)
-        ip4_config = await DBus.connect(DBUS_NAME_NM, ip4config_path)
-        device = await DBus.connect(DBUS_NAME_NM, device_path)
-
-        settings_data = await settings.get_properties(DBUS_NAME_SETTINGS_CONNECTION)
-        ip4_config_data = await ip4_config.get_properties(DBUS_NAME_IP4CONFIG)
+        data = await settings.Settings.Connection.GetSettings()
+        data = data.pop()
         device_data = await device.get_properties(DBUS_NAME_DEVICE)
 
-        self._settings = NetworkSettings(
-            settings,
-            settings_data.get(ATTR_FLAGS),
-            settings_data.get(ATTR_UNSAVED),
-            settings_data.get(ATTR_FILENAME),
-        )
+        self._settings = NetworkSettings(settings)
 
         self._ip4_config = IpConfiguration(
-            ip4_config_data.get(ATTR_GATEWAY),
+            data["ipv4"].get("gateway"),
+            data["ipv4"].get("method"),
+            data["ipv4"].get("dns"),
             AddressData(
-                ip4_config_data.get(ATTR_ADDRESS_DATA)[0].get(ATTR_ADDRESS),
-                ip4_config_data.get(ATTR_ADDRESS_DATA)[0].get(ATTR_PREFIX),
+                data["ipv4"].get("address-data")[0].get(ATTR_ADDRESS),
+                data["ipv4"].get("address-data")[0].get(ATTR_PREFIX),
             ),
         )
 
