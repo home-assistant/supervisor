@@ -46,7 +46,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def api(self) -> HomeAssistantAPI:
         """Return API handler for core."""
-        return self._core
+        return self._api
 
     @property
     def core(self) -> HomeAssistantCore:
