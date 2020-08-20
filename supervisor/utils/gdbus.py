@@ -22,7 +22,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # Use to convert GVariant into json
 RE_GVARIANT_TYPE: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
-    r"string|objectpath|signature|@[asviumodf\{\}]+) "
+    r"string|objectpath|signature|@[asviumodfy\{\}\(\)]+) "
 )
 RE_GVARIANT_VARIANT: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(<|>)")
 RE_GVARIANT_STRING_ESC: re.Pattern[Any] = re.compile(
