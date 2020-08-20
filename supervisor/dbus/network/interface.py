@@ -38,6 +38,11 @@ class NetworkInterface:
         return self.connection.ip4_config.address_data.address
 
     @property
+    def prefix(self) -> str:
+        """Return the network prefix."""
+        return self.connection.ip4_config.address_data.prefix
+
+    @property
     def type(self) -> str:
         """Return the interface type."""
         return self.connection.type
@@ -65,9 +70,7 @@ class NetworkInterface:
         """Update IP configuration used for this interface."""
 
         await self.connection.settings.dbus.Settings.Connection.Update(
-            "{'connection':{'id': <'Wired connection 1'>, 'type': <'802-3-ethernet'>},'ipv4': {'method': <'manual'>,'dns': <[uint32 16951488]>,'address-data': <[{'address': <'{ip}'>, 'prefix': <uint32 24>}]>, 'gateway': <'192.168.2.1'>}}".replace(
-                "{ip}", kwargs.get("address", self.ip_address)
-            )
+            f"{{'connection':{{'id': <'{self.id}'>, 'type': <'{self.type}'>}},'ipv4': {{'method': <'{kwargs.get('method', 'manual')}'>,'dns': <[uint32 16951488]>,'address-data': <[{{'address': <'{kwargs.get('address', self.ip_address)}'>, 'prefix': <uint32 {self.prefix}>}}]>, 'gateway': <'{kwargs.get('gateway', self.gateway)}'>}}}}"
         )
 
         await self.nm_dbus.ActivateConnection(

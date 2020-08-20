@@ -15,7 +15,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_validate
 
-SCHEMA_SET = vol.Schema(
+SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional("address"): vol.Coerce(str),
         vol.Optional("mode"): vol.Coerce(str),
@@ -68,7 +68,7 @@ class APINetwork(CoreSysAttributes):
         if req_interface not in [x.name for x in self.sys_dbus.network.interfaces]:
             return {}
 
-        body = await api_validate(SCHEMA_SET, request)
+        body = await api_validate(SCHEMA_UPDATE, request)
         if not body:
             return {}
 
