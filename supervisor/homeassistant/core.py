@@ -59,7 +59,9 @@ class HomeAssistantCore(CoreSysAttributes):
 
             await self.instance.attach(tag=self.sys_homeassistant.version)
         except DockerAPIError:
-            _LOGGER.info("No Home Assistant Docker image %s found.", self.image)
+            _LOGGER.info(
+                "No Home Assistant Docker image %s found.", self.sys_homeassistant.image
+            )
             await self.install_landingpage()
         else:
             self.sys_homeassistant.version = self.instance.version
@@ -105,10 +107,10 @@ class HomeAssistantCore(CoreSysAttributes):
         _LOGGER.info("Setup Home Assistant")
         while True:
             # read homeassistant tag and install it
-            if not self.latest_version:
+            if not self.sys_homeassistant.latest_version:
                 await self.sys_updater.reload()
 
-            tag = self.latest_version
+            tag = self.sys_homeassistant.latest_version
             if tag:
                 try:
                     await self.instance.update(
@@ -142,9 +144,9 @@ class HomeAssistantCore(CoreSysAttributes):
     @process_lock
     async def update(self, version: Optional[str] = None) -> None:
         """Update HomeAssistant version."""
-        version = version or self.latest_version
-        old_image = self.image
-        rollback = self.version if not self.error_state else None
+        version = version or self.sys_homeassistant.latest_version
+        old_image = self.sys_homeassistant.image
+        rollback = self.sys_homeassistant.version if not self.error_state else None
         running = await self.instance.is_running()
         exists = await self.instance.exists()
 
@@ -253,7 +255,7 @@ class HomeAssistantCore(CoreSysAttributes):
         except DockerAPIError:
             raise HomeAssistantError()
 
-        await self._block_till_run(self.version)
+        await self._block_till_run(self.sys_homeassistant.version)
 
     @process_lock
     async def rebuild(self) -> None:
@@ -397,13 +399,13 @@ class HomeAssistantCore(CoreSysAttributes):
         if await self.instance.exists():
             return
 
-        _LOGGER.info("Repair Home Assistant %s", self.version)
+        _LOGGER.info("Repair Home Assistant %s", self.sys_homeassistant.version)
         await self.sys_run_in_executor(
             self.sys_docker.network.stale_cleanup, self.instance.name
         )
 
         # Pull image
         try:
-            await self.instance.install(self.version)
+            await self.instance.install(self.sys_homeassistant.version)
         except DockerAPIError:
             _LOGGER.error("Repairing of Home Assistant fails")

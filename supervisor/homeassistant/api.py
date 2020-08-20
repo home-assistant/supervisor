@@ -23,24 +23,24 @@ class HomeAssistantAPI(CoreSysAttributes):
         self.coresys: CoreSys = coresys
 
         # We don't persist access tokens. Instead we fetch new ones when needed
-        self._access_token: Optional[str] = None
+        self.access_token: Optional[str] = None
         self._access_token_expires: Optional[datetime] = None
 
-    async def ensure_access_token(self) -> None:
+    async def _ensure_access_token(self) -> None:
         """Ensure there is an access token."""
         if (
-            self._access_token is not None
+            self.access_token is not None
             and self._access_token_expires > datetime.utcnow()
         ):
             return
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
             async with self.sys_websession_ssl.post(
-                f"{self.api_url}/auth/token",
+                f"{self.sys_homeassistant.api_url}/auth/token",
                 timeout=30,
                 data={
                     "grant_type": "refresh_token",
-                    "refresh_token": self.refresh_token,
+                    "refresh_token": self.sys_homeassistant.refresh_token,
                 },
             ) as resp:
                 if resp.status != 200:
@@ -49,7 +49,7 @@ class HomeAssistantAPI(CoreSysAttributes):
 
                 _LOGGER.info("Updated Home Assistant API token")
                 tokens = await resp.json()
-                self._access_token = tokens["access_token"]
+                self.access_token = tokens["access_token"]
                 self._access_token_expires = datetime.utcnow() + timedelta(
                     seconds=tokens["expires_in"]
                 )
@@ -75,10 +75,8 @@ class HomeAssistantAPI(CoreSysAttributes):
             headers[hdrs.CONTENT_TYPE] = content_type
 
         for _ in (1, 2):
-            # Prepare Access token
-            if self.refresh_token:
-                await self.ensure_access_token()
-                headers[hdrs.AUTHORIZATION] = f"Bearer {self._access_token}"
+            await self._ensure_access_token()
+            headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
 
             try:
                 async with getattr(self.sys_websession_ssl, method)(
@@ -90,8 +88,8 @@ class HomeAssistantAPI(CoreSysAttributes):
                     params=params,
                 ) as resp:
                     # Access token expired
-                    if resp.status == 401 and self.sys_homeassistant.refresh_token:
-                        self._access_token = None
+                    if resp.status == 401:
+                        self.access_token = None
                         continue
                     yield resp
                     return

@@ -45,7 +45,7 @@ class APIProxy(CoreSysAttributes):
     async def _api_client(self, request: web.Request, path: str, timeout: int = 300):
         """Return a client request with proxy origin for Home Assistant."""
         try:
-            async with self.sys_homeassistant.make_request(
+            async with self.sys_homeassistant.api.make_request(
                 request.method.lower(),
                 f"api/{path}",
                 headers={
@@ -75,7 +75,7 @@ class APIProxy(CoreSysAttributes):
     async def stream(self, request: web.Request):
         """Proxy HomeAssistant EventStream Requests."""
         self._check_access(request)
-        if not await self.sys_homeassistant.check_api_state():
+        if not await self.sys_homeassistant.api.check_api_state():
             raise HTTPBadGateway()
 
         _LOGGER.info("Home Assistant EventStream start")
@@ -96,7 +96,7 @@ class APIProxy(CoreSysAttributes):
     async def api(self, request: web.Request):
         """Proxy Home Assistant API Requests."""
         self._check_access(request)
-        if not await self.sys_homeassistant.check_api_state():
+        if not await self.sys_homeassistant.api.check_api_state():
             raise HTTPBadGateway()
 
         # Normal request
@@ -130,7 +130,10 @@ class APIProxy(CoreSysAttributes):
             # Auth session
             await self.sys_homeassistant.ensure_access_token()
             await client.send_json(
-                {"type": "auth", "access_token": self.sys_homeassistant.access_token}
+                {
+                    "type": "auth",
+                    "access_token": self.sys_homeassistant.api.access_token,
+                }
             )
 
             data = await client.receive_json()
@@ -143,7 +146,7 @@ class APIProxy(CoreSysAttributes):
                 data.get("type") == "invalid_auth"
                 and self.sys_homeassistant.refresh_token
             ):
-                self.sys_homeassistant.access_token = None
+                self.sys_homeassistant.api.access_token = None
                 return await self._websocket_client()
 
             raise HomeAssistantAuthError()
@@ -157,7 +160,7 @@ class APIProxy(CoreSysAttributes):
 
     async def websocket(self, request: web.Request):
         """Initialize a WebSocket API connection."""
-        if not await self.sys_homeassistant.check_api_state():
+        if not await self.sys_homeassistant.api.check_api_state():
             raise HTTPBadGateway()
         _LOGGER.info("Home Assistant WebSocket API request initialize")
 
