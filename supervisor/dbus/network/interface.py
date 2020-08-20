@@ -1,6 +1,4 @@
 """NetworkInterface object for Network Manager."""
-from typing import List
-
 from ...utils.gdbus import DBus
 from .connection import NetworkConnection
 from .const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM
@@ -63,14 +61,12 @@ class NetworkInterface:
         )
         self._connection = NetworkConnection(connection_object, connection_properties)
 
-    async def update_settings(
-        self, ip_address: str, gateway: str, dns: List[int]
-    ) -> None:
+    async def update_settings(self, **kwargs) -> None:
         """Update IP configuration used for this interface."""
 
         await self.connection.settings.dbus.Settings.Connection.Update(
             "{'connection':{'id': <'Wired connection 1'>, 'type': <'802-3-ethernet'>},'ipv4': {'method': <'manual'>,'dns': <[uint32 16951488]>,'address-data': <[{'address': <'{ip}'>, 'prefix': <uint32 24>}]>, 'gateway': <'192.168.2.1'>}}".replace(
-                "{ip}", ip_address
+                "{ip}", kwargs.get("address", self.ip_address)
             )
         )
 

@@ -15,7 +15,14 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_validate
 
-SCHEMA_SET = vol.Schema({vol.Optional("address"): vol.Coerce(str)})
+SCHEMA_SET = vol.Schema(
+    {
+        vol.Optional("address"): vol.Coerce(str),
+        vol.Optional("mode"): vol.Coerce(str),
+        vol.Optional("gateway"): vol.Coerce(str),
+        vol.Optional("dns"): vol.Coerce(str),
+    }
+)
 
 
 class APINetwork(CoreSysAttributes):
@@ -64,7 +71,7 @@ class APINetwork(CoreSysAttributes):
         body = await api_validate(SCHEMA_SET, request)
 
         await self.sys_dbus.network.interfaces[0].update_settings(
-            body.get("address"), "", []
+            address=body.get("address"),
         )
         await self.sys_dbus.network.update()
         return await self.interface_info(request)
