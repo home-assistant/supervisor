@@ -39,13 +39,24 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Initialize Home Assistant object."""
         super().__init__(FILE_HASSIO_HOMEASSISTANT, SCHEMA_HASS_CONFIG)
         self.coresys: CoreSys = coresys
-        self.api: HomeAssistantAPI = HomeAssistantAPI(coresys)
-        self.core: HomeAssistantCore = HomeAssistantCore(coresys)
-        self.secrets: HomeAssistantSecrets = HomeAssistantSecrets(coresys)
+        self._api: HomeAssistantAPI = HomeAssistantAPI(coresys)
+        self._core: HomeAssistantCore = HomeAssistantCore(coresys)
+        self._secrets: HomeAssistantSecrets = HomeAssistantSecrets(coresys)
 
-    async def load(self) -> None:
-        """Prepare Home Assistant object."""
-        await asyncio.wait([self.secrets.load(), self.core.load()])
+    @property
+    def api(self) -> HomeAssistantAPI:
+        """Return API handler for core."""
+        return self._core
+
+    @property
+    def core(self) -> HomeAssistantCore:
+        """Return Core handler for docker."""
+        return self._core
+
+    @property
+    def secrets(self) -> HomeAssistantSecrets:
+        """Return Secrets Manager for core."""
+        return self._secrets
 
     @property
     def machine(self) -> str:
@@ -205,6 +216,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def audio_input(self, value: Optional[str]):
         """Set audio input settings."""
         self._data[ATTR_AUDIO_INPUT] = value
+
+    async def load(self) -> None:
+        """Prepare Home Assistant object."""
+        await asyncio.wait([self.secrets.load(), self.core.load()])
 
     def write_pulse(self):
         """Write asound config to file and return True on success."""
