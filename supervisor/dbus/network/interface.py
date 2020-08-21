@@ -1,4 +1,5 @@
 """NetworkInterface object for Network Manager."""
+from ...const import ATTR_ADDRESS, ATTR_DNS, ATTR_GATEWAY, ATTR_MANUAL, ATTR_METHOD
 from ...utils.gdbus import DBus
 from ..const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM, DBUS_OBJECT_BASE
 from .connection import NetworkConnection
@@ -79,8 +80,11 @@ class NetworkInterface:
 
     async def update_settings(self, **kwargs) -> None:
         """Update IP configuration used for this interface."""
-        if kwargs.get("dns"):
-            kwargs["dns"] = [ip2int(x.strip()) for x in kwargs["dns"].split(",")]
+        if kwargs.get(ATTR_DNS):
+            kwargs[ATTR_DNS] = [ip2int(x.strip()) for x in kwargs[ATTR_DNS].split(",")]
+
+        if kwargs.get(ATTR_ADDRESS) and not kwargs.get(ATTR_METHOD):
+            kwargs[ATTR_METHOD] = ATTR_MANUAL
 
         await self.connection.settings.dbus.Settings.Connection.Update(
             f"""{{
@@ -91,14 +95,14 @@ class NetworkInterface:
                         }},
                     'ipv4':
                         {{
-                            'method': <'{kwargs.get('method', self.method)}'>,
-                            'dns': <[{",".join([f"uint32 {x}" for x in kwargs.get("dns", self.nameservers)])}]>,
+                            'method': <'{kwargs.get(ATTR_METHOD, self.method)}'>,
+                            'dns': <[{",".join([f"uint32 {x}" for x in kwargs.get(ATTR_DNS, self.nameservers)])}]>,
                             'address-data': <[
                                 {{
-                                    'address': <'{kwargs.get('address', self.ip_address)}'>,
+                                    'address': <'{kwargs.get(ATTR_ADDRESS, self.ip_address)}'>,
                                     'prefix': <uint32 {self.prefix}>
                                 }}]>,
-                            'gateway': <'{kwargs.get('gateway', self.gateway)}'>
+                            'gateway': <'{kwargs.get(ATTR_GATEWAY, self.gateway)}'>
                                 }}
                 }}"""
         )

@@ -1,4 +1,5 @@
 """REST API for network."""
+import asyncio
 from typing import Any, Dict
 
 from aiohttp import web
@@ -13,7 +14,7 @@ from ..const import (
     ATTR_INTERFACES,
     ATTR_IP_ADDRESS,
     ATTR_METHOD,
-    ATTR_MODE,
+    ATTR_METHODS,
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
     ATTR_TYPE,
@@ -21,12 +22,13 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.utils import int2ip
+from ..exceptions import APIError
 from .utils import api_process, api_validate
 
 SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_ADDRESS): vol.Coerce(str),
-        vol.Optional(ATTR_MODE): vol.Coerce(str),
+        vol.Optional(ATTR_METHOD): vol.All([vol.In(ATTR_METHODS)], vol.Unique()),
         vol.Optional(ATTR_GATEWAY): vol.Coerce(str),
         vol.Optional(ATTR_DNS): vol.Coerce(str),
     }
@@ -78,12 +80,16 @@ class APINetwork(CoreSysAttributes):
         req_interface = request.match_info.get(ATTR_INTERFACE)
 
         if not self.sys_dbus.network.interfaces.get(req_interface):
-            return {}
+            raise APIError(f"Interface {req_interface} does not exsist")
 
         args = await api_validate(SCHEMA_UPDATE, request)
         if not args:
-            return {}
+            raise APIError("You need to supply at least one option to update")
 
-        await self.sys_dbus.network.interfaces[req_interface].update_settings(args)
-        await self.sys_dbus.network.update()
-        return await self.interface_info(request)
+        await asyncio.shield(
+            self.sys_dbus.network.interfaces[req_interface].update_settings(**args)
+        )
+
+        await asyncio.shield(self.sys_dbus.network.update())
+
+        return await asyncio.shield(self.interface_info(request))
