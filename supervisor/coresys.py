@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from .hassos import HassOS
     from .misc.scheduler import Scheduler
     from .misc.hwmon import HwMonitor
-    from .misc.secrets import SecretsManager
     from .misc.tasks import Tasks
     from .homeassistant import HomeAssistant
     from .host import HostManager
@@ -76,7 +75,6 @@ class CoreSys:
         self._dbus: Optional[DBusManager] = None
         self._hassos: Optional[HassOS] = None
         self._services: Optional[ServiceManager] = None
-        self._secrets: Optional[SecretsManager] = None
         self._scheduler: Optional[Scheduler] = None
         self._store: Optional[StoreManager] = None
         self._discovery: Optional[Discovery] = None
@@ -245,20 +243,6 @@ class CoreSys:
         if self._updater:
             raise RuntimeError("Updater already set!")
         self._updater = value
-
-    @property
-    def secrets(self) -> SecretsManager:
-        """Return SecretsManager object."""
-        if self._secrets is None:
-            raise RuntimeError("SecretsManager not set!")
-        return self._secrets
-
-    @secrets.setter
-    def secrets(self, value: SecretsManager) -> None:
-        """Set a Updater object."""
-        if self._secrets:
-            raise RuntimeError("SecretsManager already set!")
-        self._secrets = value
 
     @property
     def addons(self) -> AddonManager:
@@ -528,11 +512,6 @@ class CoreSysAttributes:
     def sys_updater(self) -> Updater:
         """Return Updater object."""
         return self.coresys.updater
-
-    @property
-    def sys_secrets(self) -> SecretsManager:
-        """Return SecretsManager object."""
-        return self.coresys.secrets
 
     @property
     def sys_addons(self) -> AddonManager:

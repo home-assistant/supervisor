@@ -81,6 +81,7 @@ from ..const import (
     ATTR_STDIN,
     ATTR_UDEV,
     ATTR_URL,
+    ATTR_USB,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_VIDEO,
@@ -237,6 +238,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_AUTH_API: addon.access_auth_api,
             ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
             ATTR_GPIO: addon.with_gpio,
+            ATTR_USB: addon.with_usb,
             ATTR_KERNEL_MODULES: addon.with_kernel_modules,
             ATTR_DEVICETREE: addon.with_devicetree,
             ATTR_UDEV: addon.with_udev,
@@ -280,7 +282,7 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon_installed(request)
 
         # Update secrets for validation
-        await self.sys_secrets.reload()
+        await self.sys_homeassistant.secrets.reload()
 
         # Extend schema with add-on specific validation
         addon_schema = SCHEMA_OPTIONS.extend(

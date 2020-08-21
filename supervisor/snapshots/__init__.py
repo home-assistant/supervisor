@@ -231,7 +231,7 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
                 task_hass = self.sys_create_task(
-                    self.sys_homeassistant.update(snapshot.homeassistant_version)
+                    self.sys_homeassistant.core.update(snapshot.homeassistant_version)
                 )
 
                 # Restore repositories
@@ -295,7 +295,7 @@ class SnapshotManager(CoreSysAttributes):
             async with snapshot:
                 # Stop Home-Assistant for config restore
                 if FOLDER_HOMEASSISTANT in folders:
-                    await self.sys_homeassistant.stop()
+                    await self.sys_homeassistant.core.stop()
                     snapshot.restore_homeassistant()
 
                 # Process folders
@@ -308,7 +308,9 @@ class SnapshotManager(CoreSysAttributes):
                 if homeassistant:
                     _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                     task_hass = self.sys_create_task(
-                        self.sys_homeassistant.update(snapshot.homeassistant_version)
+                        self.sys_homeassistant.core.update(
+                            snapshot.homeassistant_version
+                        )
                     )
 
                 if addons:
@@ -324,13 +326,13 @@ class SnapshotManager(CoreSysAttributes):
                     await task_hass
 
                 # Do we need start HomeAssistant?
-                if not await self.sys_homeassistant.is_running():
+                if not await self.sys_homeassistant.core.is_running():
                     await self.sys_homeassistant.start()
 
                 # Check If we can access to API / otherwise restart
-                if not await self.sys_homeassistant.check_api_state():
+                if not await self.sys_homeassistant.api.check_api_state():
                     _LOGGER.warning("Need restart HomeAssistant for API")
-                    await self.sys_homeassistant.restart()
+                    await self.sys_homeassistant.core.restart()
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)

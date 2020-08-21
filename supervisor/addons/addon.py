@@ -359,7 +359,7 @@ class Addon(AddonModel):
         options = self.options
 
         # Update secrets for validation
-        await self.sys_secrets.reload()
+        await self.sys_homeassistant.secrets.reload()
 
         try:
             options = schema(options)

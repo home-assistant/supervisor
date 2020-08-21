@@ -169,7 +169,7 @@ class Tasks(CoreSysAttributes):
         """Check running state of Docker and start if they is close."""
         # if Home Assistant is active
         if (
-            not await self.sys_homeassistant.is_fails()
+            not await self.sys_homeassistant.core.is_fails()
             or not self.sys_homeassistant.watchdog
             or self.sys_homeassistant.error_state
         ):
@@ -177,14 +177,14 @@ class Tasks(CoreSysAttributes):
 
         # if Home Assistant is running
         if (
-            self.sys_homeassistant.in_progress
-            or await self.sys_homeassistant.is_running()
+            self.sys_homeassistant.core.in_progress
+            or await self.sys_homeassistant.core.is_running()
         ):
             return
 
         _LOGGER.warning("Watchdog found a problem with Home Assistant Docker!")
         try:
-            await self.sys_homeassistant.start()
+            await self.sys_homeassistant.core.start()
         except HomeAssistantError:
             _LOGGER.error("Watchdog Home Assistant reanimation fails!")
 
@@ -196,7 +196,7 @@ class Tasks(CoreSysAttributes):
         """
         # If Home-Assistant is active
         if (
-            not await self.sys_homeassistant.is_fails()
+            not await self.sys_homeassistant.core.is_fails()
             or not self.sys_homeassistant.watchdog
             or self.sys_homeassistant.error_state
         ):
@@ -207,8 +207,8 @@ class Tasks(CoreSysAttributes):
 
         # If Home-Assistant API is up
         if (
-            self.sys_homeassistant.in_progress
-            or await self.sys_homeassistant.check_api_state()
+            self.sys_homeassistant.core.in_progress
+            or await self.sys_homeassistant.api.check_api_state()
         ):
             return
 
@@ -221,7 +221,7 @@ class Tasks(CoreSysAttributes):
 
         _LOGGER.error("Watchdog found a problem with Home Assistant API!")
         try:
-            await self.sys_homeassistant.restart()
+            await self.sys_homeassistant.core.restart()
         except HomeAssistantError:
             _LOGGER.error("Watchdog Home Assistant reanimation fails!")
         finally:

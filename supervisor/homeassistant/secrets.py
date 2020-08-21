@@ -12,7 +12,7 @@ from ..utils import AsyncThrottle
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class SecretsManager(CoreSysAttributes):
+class HomeAssistantSecrets(CoreSysAttributes):
     """Manage Home Assistant secrets."""
 
     def __init__(self, coresys: CoreSys):
