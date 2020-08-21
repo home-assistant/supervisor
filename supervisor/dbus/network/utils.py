@@ -11,6 +11,4 @@ def ip2int(address: str) -> int:
 
 def int2ip(bitaddress: int) -> int:
     """Return a IP Address object from a 32bit representation."""
-    return ip_address(
-        ".".join([str(bitaddress >> (i << 3) & 0xFF) for i in range(0, 4)])
-    )
+    return ".".join([str(bitaddress >> (i << 3) & 0xFF) for i in range(0, 4)])
