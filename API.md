@@ -444,7 +444,9 @@ Proxy to Home Assistant Core websocket.
 
 ### Network
 
-- GET `/network/info`
+Network operations over the API
+
+#### GET `/network/info`
 
 Get network information
 
@@ -456,11 +458,60 @@ Get network information
       "gateway": "192.168.2.1",
       "id": "Wired connection 1",
       "type": "802-3-ethernet",
+      "nameservers": "192.168.2.1",
+      "method": "manual",
       "primary": true
     }
   }
 }
 ```
+
+#### GET `/network/{interface}/info`
+
+Get information for a single interface
+
+```json
+{
+  "ip_address": "192.168.2.149",
+  "gateway": "192.168.2.1",
+  "id": "Wired connection 1",
+  "type": "802-3-ethernet",
+  "nameservers": "192.168.2.1",
+  "method": "manual",
+  "primary": true
+}
+```
+
+#### POST `/network/{interface}/update`
+
+Update information for a single interface
+
+**Options:**
+
+| Option  | Description                                                            |
+| ------- | ---------------------------------------------------------------------- |
+| address | The new IP address for the interface                                   |
+| dns     | Comma seperated list of DNS servers to use                             |
+| gateway | The gateway the interface should use                                   |
+| mode    | Set if the interface should use DHCP or not, can be `auto` or `manual` |
+
+_All options are optional._
+
+**NB!: If you change the `address` or `gateway` you may need to reconnect to the new address**
+
+```json
+{
+  "ip_address": "192.168.2.149",
+  "gateway": "192.168.2.1",
+  "id": "Wired connection 1",
+  "type": "802-3-ethernet",
+  "nameservers": "192.168.2.1",
+  "method": "manual",
+  "primary": true
+}
+```
+
+The result will be a updated object.
 
 ### RESTful for API add-ons
 
