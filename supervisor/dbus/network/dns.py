@@ -2,24 +2,26 @@
 import logging
 from typing import List, Optional
 
-from ...exceptions import DBusError, DBusInterfaceError
-from ...utils.gdbus import DBus
-from ..interface import DBusInterface
-from ..utils import dbus_connected
-from .configuration import DNSConfiguration
-from .const import (
-    ATTR_CONFIGURATION,
+from ...const import (
     ATTR_DOMAINS,
     ATTR_INTERFACE,
-    ATTR_MODE,
     ATTR_NAMESERVERS,
     ATTR_PRIORITY,
-    ATTR_RCMANAGER,
     ATTR_VPN,
+)
+from ...exceptions import DBusError, DBusInterfaceError
+from ...utils.gdbus import DBus
+from ..const import (
+    DBUS_ATTR_CONFIGURATION,
+    DBUS_ATTR_MODE,
+    DBUS_ATTR_RCMANAGER,
     DBUS_NAME_DNS,
     DBUS_NAME_NM,
     DBUS_OBJECT_DNS,
 )
+from ..interface import DBusInterface
+from ..utils import dbus_connected
+from .configuration import DNSConfiguration
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -67,8 +69,8 @@ class NetworkManagerDNS(DBusInterface):
             _LOGGER.warning("Can't get properties for DnsManager")
             return
 
-        self._mode = data.get(ATTR_MODE)
-        self._rc_manager = data.get(ATTR_RCMANAGER)
+        self._mode = data.get(DBUS_ATTR_MODE)
+        self._rc_manager = data.get(DBUS_ATTR_RCMANAGER)
 
         # Parse configuraton
         self._configuration = [
@@ -79,5 +81,5 @@ class NetworkManagerDNS(DBusInterface):
                 config.get(ATTR_PRIORITY),
                 config.get(ATTR_VPN),
             )
-            for config in data.get(ATTR_CONFIGURATION, [])
+            for config in data.get(DBUS_ATTR_CONFIGURATION, [])
         ]

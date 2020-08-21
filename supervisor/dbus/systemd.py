@@ -3,13 +3,11 @@ import logging
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
+from .const import DBUS_NAME_SYSTEMD, DBUS_OBJECT_SYSTEMD
 from .interface import DBusInterface
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-DBUS_NAME = "org.freedesktop.systemd1"
-DBUS_OBJECT = "/org/freedesktop/systemd1"
 
 
 class Systemd(DBusInterface):
@@ -18,7 +16,7 @@ class Systemd(DBusInterface):
     async def connect(self):
         """Connect to D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
+            self.dbus = await DBus.connect(DBUS_NAME_SYSTEMD, DBUS_OBJECT_SYSTEMD)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd")
         except DBusInterfaceError:

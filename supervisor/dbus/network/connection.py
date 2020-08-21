@@ -1,8 +1,31 @@
 """Connection object for Network Manager."""
-import logging
 from typing import Optional
 
+from ...const import (
+    ATTR_ADDRESS,
+    ATTR_ADDRESS_DATA,
+    ATTR_DNS,
+    ATTR_GATEWAY,
+    ATTR_IPV4,
+    ATTR_METHOD,
+    ATTR_PREFIX,
+)
 from ...utils.gdbus import DBus
+from ..const import (
+    DBUS_ATTR_CONNECTION,
+    DBUS_ATTR_DEFAULT,
+    DBUS_ATTR_DEVICE_INTERFACE,
+    DBUS_ATTR_DEVICE_TYPE,
+    DBUS_ATTR_DEVICES,
+    DBUS_ATTR_ID,
+    DBUS_ATTR_IP4ADDRESS,
+    DBUS_ATTR_REAL,
+    DBUS_ATTR_STATE,
+    DBUS_ATTR_TYPE,
+    DBUS_ATTR_UUID,
+    DBUS_NAME_DEVICE,
+    DBUS_NAME_NM,
+)
 from .configuration import (
     AddressData,
     IpConfiguration,
@@ -10,25 +33,6 @@ from .configuration import (
     NetworkDevice,
     NetworkSettings,
 )
-from .const import (
-    ATTR_ADDRESS,
-    ATTR_CONNECTION,
-    ATTR_DEFAULT,
-    ATTR_DEVICE_INTERFACE,
-    ATTR_DEVICE_TYPE,
-    ATTR_DEVICES,
-    ATTR_ID,
-    ATTR_IP4ADDRESS,
-    ATTR_PREFIX,
-    ATTR_REAL,
-    ATTR_STATE,
-    ATTR_TYPE,
-    ATTR_UUID,
-    DBUS_NAME_DEVICE,
-    DBUS_NAME_NM,
-)
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class NetworkConnection(NetworkAttributes):
@@ -57,17 +61,17 @@ class NetworkConnection(NetworkAttributes):
     @property
     def default(self) -> bool:
         """Return a boolean connection is marked as default."""
-        return self._properties[ATTR_DEFAULT]
+        return self._properties[DBUS_ATTR_DEFAULT]
 
     @property
     def id(self) -> str:
         """Return the id of the connection."""
-        return self._properties[ATTR_ID]
+        return self._properties[DBUS_ATTR_ID]
 
     @property
     def type(self) -> str:
         """Return the type of the connection."""
-        return self._properties[ATTR_TYPE]
+        return self._properties[DBUS_ATTR_TYPE]
 
     @property
     def ip4_config(self) -> IpConfiguration:
@@ -77,7 +81,7 @@ class NetworkConnection(NetworkAttributes):
     @property
     def uuid(self) -> str:
         """Return the uuid of the connection."""
-        return self._properties[ATTR_UUID]
+        return self._properties[DBUS_ATTR_UUID]
 
     @property
     def state(self) -> int:
@@ -86,12 +90,16 @@ class NetworkConnection(NetworkAttributes):
 
         https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMActiveConnectionState
         """
-        return self._properties[ATTR_STATE]
+        return self._properties[DBUS_ATTR_STATE]
 
     async def update_information(self):
         """Update the information for childs ."""
-        settings = await DBus.connect(DBUS_NAME_NM, self._properties[ATTR_CONNECTION])
-        device = await DBus.connect(DBUS_NAME_NM, self._properties[ATTR_DEVICES][0])
+        settings = await DBus.connect(
+            DBUS_NAME_NM, self._properties[DBUS_ATTR_CONNECTION]
+        )
+        device = await DBus.connect(
+            DBUS_NAME_NM, self._properties[DBUS_ATTR_DEVICES][0]
+        )
 
         data = await settings.Settings.Connection.GetSettings()
         data = data.pop()
@@ -100,19 +108,19 @@ class NetworkConnection(NetworkAttributes):
         self._settings = NetworkSettings(settings)
 
         self._ip4_config = IpConfiguration(
-            data["ipv4"].get("gateway"),
-            data["ipv4"].get("method"),
-            data["ipv4"].get("dns"),
+            data[ATTR_IPV4].get(ATTR_GATEWAY),
+            data[ATTR_IPV4].get(ATTR_METHOD),
+            data[ATTR_IPV4].get(ATTR_DNS),
             AddressData(
-                data["ipv4"].get("address-data")[0].get(ATTR_ADDRESS),
-                data["ipv4"].get("address-data")[0].get(ATTR_PREFIX),
+                data[ATTR_IPV4].get(ATTR_ADDRESS_DATA)[0].get(ATTR_ADDRESS),
+                data[ATTR_IPV4].get(ATTR_ADDRESS_DATA)[0].get(ATTR_PREFIX),
             ),
         )
 
         self._device = NetworkDevice(
             device,
-            device_data.get(ATTR_DEVICE_INTERFACE),
-            device_data.get(ATTR_IP4ADDRESS),
-            device_data.get(ATTR_DEVICE_TYPE),
-            device_data.get(ATTR_REAL),
+            device_data.get(DBUS_ATTR_DEVICE_INTERFACE),
+            device_data.get(DBUS_ATTR_IP4ADDRESS),
+            device_data.get(DBUS_ATTR_DEVICE_TYPE),
+            device_data.get(DBUS_ATTR_REAL),
         )

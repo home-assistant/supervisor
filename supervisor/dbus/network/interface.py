@@ -1,7 +1,7 @@
 """NetworkInterface object for Network Manager."""
 from ...utils.gdbus import DBus
+from ..const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM, DBUS_OBJECT_BASE
 from .connection import NetworkConnection
-from .const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM
 from .utils import ip2int
 
 
@@ -106,5 +106,5 @@ class NetworkInterface:
         await self.nm_dbus.ActivateConnection(
             self.connection.settings.dbus.object_path,
             self.connection.device.dbus.object_path,
-            "/",
+            DBUS_OBJECT_BASE,
         )

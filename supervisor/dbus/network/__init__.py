@@ -4,18 +4,18 @@ from typing import Dict, Optional
 
 from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.gdbus import DBus
-from ..interface import DBusInterface
-from ..utils import dbus_connected
-from .const import (
-    ATTR_ACTIVE_CONNECTIONS,
-    ATTR_PRIMARY_CONNECTION,
+from ..const import (
+    DBUS_ATTR_ACTIVE_CONNECTIONS,
+    DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_NAME_NM,
     DBUS_OBJECT_NM,
 )
+from ..interface import DBusInterface
+from ..utils import dbus_connected
 from .dns import NetworkManagerDNS
 from .interface import NetworkInterface
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class NetworkManager(DBusInterface):
@@ -60,7 +60,7 @@ class NetworkManager(DBusInterface):
             return
 
         self._interfaces = {}
-        for connection in data.get(ATTR_ACTIVE_CONNECTIONS, []):
+        for connection in data.get(DBUS_ATTR_ACTIVE_CONNECTIONS, []):
             interface = NetworkInterface()
 
             await interface.connect(self.dbus, connection)
@@ -70,9 +70,9 @@ class NetworkManager(DBusInterface):
 
             await interface.connection.update_information()
 
-            if interface.connection.object_path == data.get(ATTR_PRIMARY_CONNECTION):
+            if interface.connection.object_path == data.get(
+                DBUS_ATTR_PRIMARY_CONNECTION
+            ):
                 interface.connection.primary = True
 
             self._interfaces[interface.name] = interface
-
-        _LOGGER.info(self.interfaces["enp0s31f6"].ip_address)

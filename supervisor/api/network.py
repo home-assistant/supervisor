@@ -5,10 +5,16 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..const import (
+    ATTR_ADDRESS,
+    ATTR_DNS,
     ATTR_GATEWAY,
     ATTR_ID,
+    ATTR_INTERFACE,
     ATTR_INTERFACES,
     ATTR_IP_ADDRESS,
+    ATTR_METHOD,
+    ATTR_MODE,
+    ATTR_NAMESERVERS,
     ATTR_PRIMARY,
     ATTR_TYPE,
 )
@@ -19,10 +25,10 @@ from .utils import api_process, api_validate
 
 SCHEMA_UPDATE = vol.Schema(
     {
-        vol.Optional("address"): vol.Coerce(str),
-        vol.Optional("mode"): vol.Coerce(str),
-        vol.Optional("gateway"): vol.Coerce(str),
-        vol.Optional("dns"): vol.Coerce(str),
+        vol.Optional(ATTR_ADDRESS): vol.Coerce(str),
+        vol.Optional(ATTR_MODE): vol.Coerce(str),
+        vol.Optional(ATTR_GATEWAY): vol.Coerce(str),
+        vol.Optional(ATTR_DNS): vol.Coerce(str),
     }
 )
 
@@ -34,8 +40,8 @@ def interface_information(interface: NetworkInterface) -> dict:
         ATTR_GATEWAY: interface.gateway,
         ATTR_ID: interface.id,
         ATTR_TYPE: interface.type,
-        "nameservers": ", ".join(int2ip(x) for x in interface.nameservers),
-        "method": interface.method,
+        ATTR_NAMESERVERS: ", ".join(int2ip(x) for x in interface.nameservers),
+        ATTR_METHOD: interface.method,
         ATTR_PRIMARY: interface.primary,
     }
 
@@ -57,7 +63,7 @@ class APINetwork(CoreSysAttributes):
     @api_process
     async def interface_info(self, request: web.Request) -> Dict[str, Any]:
         """Return network information for a interface."""
-        req_interface = request.match_info.get("interface")
+        req_interface = request.match_info.get(ATTR_INTERFACE)
         for interface in self.sys_dbus.network.interfaces:
             if req_interface == self.sys_dbus.network.interfaces[interface].name:
                 return interface_information(
@@ -69,18 +75,15 @@ class APINetwork(CoreSysAttributes):
     @api_process
     async def interface_update(self, request: web.Request) -> Dict[str, Any]:
         """Update the configuration of an interface."""
-        # req_interface = request.match_info.get("interface")
-        req_interface = request.match_info.get("interface")
+        req_interface = request.match_info.get(ATTR_INTERFACE)
 
         if not self.sys_dbus.network.interfaces.get(req_interface):
             return {}
 
-        body = await api_validate(SCHEMA_UPDATE, request)
-        if not body:
+        args = await api_validate(SCHEMA_UPDATE, request)
+        if not args:
             return {}
 
-        await self.sys_dbus.network.interfaces[req_interface].update_settings(
-            address=body.get("address"),
-        )
+        await self.sys_dbus.network.interfaces[req_interface].update_settings(args)
         await self.sys_dbus.network.update()
         return await self.interface_info(request)
