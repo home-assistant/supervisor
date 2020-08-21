@@ -488,12 +488,12 @@ Update information for a single interface
 
 **Options:**
 
-| Option  | Description                                                            |
-| ------- | ---------------------------------------------------------------------- |
-| address | The new IP address for the interface                                   |
-| dns     | Comma seperated list of DNS servers to use                             |
-| gateway | The gateway the interface should use                                   |
-| mode    | Set if the interface should use DHCP or not, can be `auto` or `manual` |
+| Option    | Description                                                            |
+| --------- | ---------------------------------------------------------------------- |
+| `address` | The new IP address for the interface                                   |
+| `dns`     | Comma seperated list of DNS servers to use                             |
+| `gateway` | The gateway the interface should use                                   |
+| `mode`    | Set if the interface should use DHCP or not, can be `auto` or `manual` |
 
 _All options are optional._
 
