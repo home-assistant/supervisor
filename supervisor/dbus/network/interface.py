@@ -80,7 +80,7 @@ class NetworkInterface:
     async def update_settings(self, **kwargs) -> None:
         """Update IP configuration used for this interface."""
         if kwargs.get("dns"):
-            kwargs["dns"] = [ip2int(x) for x in kwargs["dns"].split(",")]
+            kwargs["dns"] = [ip2int(x.strip()) for x in kwargs["dns"].split(",")]
 
         await self.connection.settings.dbus.Settings.Connection.Update(
             f"""{{
