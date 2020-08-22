@@ -1,0 +1,18 @@
+{
+  "Connection": "/org/freedesktop/NetworkManager/Settings/1",
+  "SpecificObject": "/",
+  "Id": "Wired connection 1",
+  "Uuid": "0c23631e-2118-355c-bbb0-8943229cb0d6",
+  "Type": "802-3-ethernet",
+  "Devices": ["/org/freedesktop/NetworkManager/Devices/1"],
+  "State": 2,
+  "StateFlags": 12,
+  "Default": true,
+  "Ip4Config": "/org/freedesktop/NetworkManager/IP4Config/1",
+  "Dhcp4Config": "/org/freedesktop/NetworkManager/DHCP4Config/1",
+  "Default6": false,
+  "Ip6Config": "/org/freedesktop/NetworkManager/IP6Config/1",
+  "Dhcp6Config": "/",
+  "Vpn": false,
+  "Master": "/"
+}

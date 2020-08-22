@@ -101,8 +101,8 @@ class NetworkConnection(NetworkAttributes):
             DBUS_NAME_NM, self._properties[DBUS_ATTR_DEVICES][0]
         )
 
-        data = await settings.Settings.Connection.GetSettings()
-        data = data.pop()
+        data = (await settings.Settings.Connection.GetSettings())[0]
+
         device_data = await device.get_properties(DBUS_NAME_DEVICE)
 
         self._settings = NetworkSettings(settings)
