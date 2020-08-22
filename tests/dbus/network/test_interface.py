@@ -1,11 +1,13 @@
 """Test NetwrokInterface."""
 import pytest
 
-from supervisor.dbus.network.interface import NetworkInterface
+from supervisor.dbus.network import NetworkManager
+
+from tests.const import TEST_INTERFACE
 
 
 @pytest.mark.asyncio
-async def test_network_interface(network_manager):
+async def test_network_interface(network_manager: NetworkManager):
     """Test network interface."""
-    interface = NetworkInterface()
-    await interface.connect()
+    interface = network_manager.interfaces[TEST_INTERFACE]
+    assert interface.name == TEST_INTERFACE
