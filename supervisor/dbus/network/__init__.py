@@ -67,8 +67,10 @@ class NetworkManager(DBusInterface):
 
             if not interface.connection.default:
                 continue
-
-            await interface.connection.update_information()
+            try:
+                await interface.connection.update_information()
+            except IndexError:
+                continue
 
             if interface.connection.object_path == data.get(
                 DBUS_ATTR_PRIMARY_CONNECTION
