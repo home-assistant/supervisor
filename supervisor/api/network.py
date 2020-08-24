@@ -29,7 +29,7 @@ from .utils import api_process, api_validate
 SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_ADDRESS): vol.Coerce(str),
-        vol.Optional(ATTR_METHOD): vol.All([vol.In(ATTR_METHODS)], vol.Unique()),
+        vol.Optional(ATTR_METHOD): vol.In(ATTR_METHODS),
         vol.Optional(ATTR_GATEWAY): vol.Coerce(str),
         vol.Optional(ATTR_DNS): vol.Coerce(str),
     }

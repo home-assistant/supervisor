@@ -24,7 +24,7 @@ class NetworkManager(DBusInterface):
     def __init__(self) -> None:
         """Initialize Properties."""
         self._dns: NetworkManagerDNS = NetworkManagerDNS()
-        self._interfaces: Optional[Dict[str, NetworkInterface]] = None
+        self._interfaces: Optional[Dict[str, NetworkInterface]] = []
 
     @property
     def dns(self) -> NetworkManagerDNS:

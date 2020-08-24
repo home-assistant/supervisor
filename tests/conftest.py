@@ -2,6 +2,7 @@
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
+from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.bootstrap import initialize_coresys
@@ -72,12 +73,14 @@ async def network_manager(dbus) -> NetworkManager:
 
 
 @pytest.fixture
-async def coresys(loop, docker) -> CoreSys:
+async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system_data"), patch(
         "supervisor.bootstrap.setup_diagnostics"
     ), patch(
         "supervisor.bootstrap.fetch_timezone", return_value="Europe/Zurich",
+    ), patch(
+        "aiohttp.ClientSession", return_value=TestClient.session,
     ):
         coresys_obj = await initialize_coresys()
 
@@ -86,6 +89,8 @@ async def coresys(loop, docker) -> CoreSys:
 
     coresys_obj._machine = "qemux86-64"
     coresys_obj._machine_id = uuid4()
+    coresys_obj._dbus = dbus
+    coresys_obj._dbus.network = network_manager
 
     yield coresys_obj
 
