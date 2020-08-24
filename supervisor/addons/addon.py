@@ -488,15 +488,15 @@ class Addon(AddonModel):
         # Start Add-on
         try:
             await self.instance.run()
-        except DockerAPIError:
-            raise AddonsError()
+        except DockerAPIError as err:
+            raise AddonsError() from err
 
     async def stop(self) -> None:
         """Stop add-on."""
         try:
             return await self.instance.stop()
-        except DockerAPIError:
-            raise AddonsError()
+        except DockerAPIError as err:
+            raise AddonsError() from err
 
     async def restart(self) -> None:
         """Restart add-on."""
@@ -515,8 +515,8 @@ class Addon(AddonModel):
         """Return stats of container."""
         try:
             return await self.instance.stats()
-        except DockerAPIError:
-            raise AddonsError()
+        except DockerAPIError as err:
+            raise AddonsError() from err
 
     async def write_stdin(self, data) -> None:
         """Write data to add-on stdin.
@@ -529,8 +529,8 @@ class Addon(AddonModel):
 
         try:
             return await self.instance.write_stdin(data)
-        except DockerAPIError:
-            raise AddonsError()
+        except DockerAPIError as err:
+            raise AddonsError() from err
 
     async def snapshot(self, tar_file: tarfile.TarFile) -> None:
         """Snapshot state of an add-on."""
@@ -541,8 +541,8 @@ class Addon(AddonModel):
             if self.need_build:
                 try:
                     await self.instance.export_image(temp_path.joinpath("image.tar"))
-                except DockerAPIError:
-                    raise AddonsError()
+                except DockerAPIError as err:
+                    raise AddonsError() from err
 
             data = {
                 ATTR_USER: self.persist,
@@ -554,18 +554,18 @@ class Addon(AddonModel):
             # Store local configs/state
             try:
                 write_json_file(temp_path.joinpath("addon.json"), data)
-            except JsonFileError:
+            except JsonFileError as err:
                 _LOGGER.error("Can't save meta for %s", self.slug)
-                raise AddonsError()
+                raise AddonsError() from err
 
             # Store AppArmor Profile
             if self.sys_host.apparmor.exists(self.slug):
                 profile = temp_path.joinpath("apparmor.txt")
                 try:
                     self.sys_host.apparmor.backup_profile(self.slug, profile)
-                except HostAppArmorError:
+                except HostAppArmorError as err:
                     _LOGGER.error("Can't backup AppArmor profile")
-                    raise AddonsError()
+                    raise AddonsError() from err
 
             # write into tarfile
             def _write_tarfile():
@@ -588,7 +588,7 @@ class Addon(AddonModel):
                 await self.sys_run_in_executor(_write_tarfile)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
-                raise AddonsError()
+                raise AddonsError() from err
 
         _LOGGER.info("Finish snapshot for addon %s", self.slug)
 
@@ -605,13 +605,13 @@ class Addon(AddonModel):
                 await self.sys_run_in_executor(_extract_tarfile)
             except tarfile.TarError as err:
                 _LOGGER.error("Can't read tarfile %s: %s", tar_file, err)
-                raise AddonsError()
+                raise AddonsError() from err
 
             # Read snapshot data
             try:
                 data = read_json_file(Path(temp, "addon.json"))
-            except JsonFileError:
-                raise AddonsError()
+            except JsonFileError as err:
+                raise AddonsError() from err
 
             # Validate
             try:
@@ -622,7 +622,7 @@ class Addon(AddonModel):
                     self.slug,
                     humanize_error(data, err),
                 )
-                raise AddonsError()
+                raise AddonsError() from err
 
             # If available
             if not self._available(data[ATTR_SYSTEM]):
@@ -669,18 +669,18 @@ class Addon(AddonModel):
                 await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:
                 _LOGGER.error("Can't restore origin data: %s", err)
-                raise AddonsError()
+                raise AddonsError() from err
 
             # Restore AppArmor
             profile_file = Path(temp, "apparmor.txt")
             if profile_file.exists():
                 try:
                     await self.sys_host.apparmor.load_profile(self.slug, profile_file)
-                except HostAppArmorError:
+                except HostAppArmorError as err:
                     _LOGGER.error(
                         "Can't restore AppArmor profile for add-on %s", self.slug
                     )
-                    raise AddonsError()
+                    raise AddonsError() from err
 
             # Run add-on
             if data[ATTR_STATE] == STATE_STARTED:

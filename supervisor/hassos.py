@@ -140,9 +140,9 @@ class HassOS(CoreSysAttributes):
             await self.sys_dbus.rauc.install(ext_ota)
             completed = await self.sys_dbus.rauc.signal_completed()
 
-        except DBusError:
+        except DBusError as err:
             _LOGGER.error("Rauc communication error")
-            raise HassOSUpdateError()
+            raise HassOSUpdateError() from err
 
         finally:
             int_ota.unlink()
