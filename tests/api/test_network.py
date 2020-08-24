@@ -51,3 +51,25 @@ async def test_api_network_interface_update(aiohttp_client, coresys):
     )
     result = await resp.json()
     assert result["result"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_api_network_interface_info_invalid(aiohttp_client, coresys):
+    """Test network manager api."""
+    client = await aiohttp_client(await create_app(coresys))
+    resp = await client.get("/network/interface/invalid/info")
+    result = await resp.json()
+    assert not result["data"]
+
+
+@pytest.mark.asyncio
+async def test_api_network_interface_update_invalid(aiohttp_client, coresys):
+    """Test network manager api."""
+    client = await aiohttp_client(await create_app(coresys))
+    resp = await client.post("/network/interface/invalid/update", json={})
+    result = await resp.json()
+    assert result["message"] == "Interface invalid does not exsist"
+
+    resp = await client.post(f"/network/interface/{TEST_INTERFACE}/update", json={})
+    result = await resp.json()
+    assert result["message"] == "You need to supply at least one option to update"
