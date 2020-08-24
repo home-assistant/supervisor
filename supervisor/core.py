@@ -134,9 +134,9 @@ class Core(CoreSysAttributes):
         if not self.sys_dbus.hostname.is_connected:
             self.supported = False
             _LOGGER.error("Hostname DBUS is not connected")
-        if not self.sys_dbus.nmi_dns.is_connected:
+        if not self.sys_dbus.network.is_connected:
             self.supported = False
-            _LOGGER.error("NetworkManager DNS DBUS is not connected")
+            _LOGGER.error("NetworkManager  is not connected")
         if not self.sys_dbus.systemd.is_connected:
             self.supported = False
             _LOGGER.error("Systemd DBUS is not connected")

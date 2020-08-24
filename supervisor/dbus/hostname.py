@@ -4,13 +4,20 @@ from typing import Optional
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
+from .const import (
+    DBUS_ATTR_CHASSIS,
+    DBUS_ATTR_DEPLOYMENT,
+    DBUS_ATTR_KERNEL_RELEASE,
+    DBUS_ATTR_OPERATING_SYSTEM_PRETTY_NAME,
+    DBUS_ATTR_STATIC_HOSTNAME,
+    DBUS_ATTR_STATIC_OPERATING_SYSTEM_CPE_NAME,
+    DBUS_NAME_HOSTNAME,
+    DBUS_OBJECT_HOSTNAME,
+)
 from .interface import DBusInterface
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-DBUS_NAME = "org.freedesktop.hostname1"
-DBUS_OBJECT = "/org/freedesktop/hostname1"
 
 
 class Hostname(DBusInterface):
@@ -28,7 +35,7 @@ class Hostname(DBusInterface):
     async def connect(self):
         """Connect to system's D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
+            self.dbus = await DBus.connect(DBUS_NAME_HOSTNAME, DBUS_OBJECT_HOSTNAME)
         except DBusError:
             _LOGGER.warning("Can't connect to hostname")
         except DBusInterfaceError:
@@ -77,14 +84,14 @@ class Hostname(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        data = await self.dbus.get_properties(DBUS_NAME)
+        data = await self.dbus.get_properties(DBUS_NAME_HOSTNAME)
         if not data:
             _LOGGER.warning("Can't get properties for Hostname")
             return
 
-        self._hostname = data.get("StaticHostname")
-        self._chassis = data.get("Chassis")
-        self._deployment = data.get("Deployment")
-        self._kernel = data.get("KernelRelease")
-        self._operating_system = data.get("OperatingSystemPrettyName")
-        self._cpe = data.get("OperatingSystemCPEName")
+        self._hostname = data.get(DBUS_ATTR_STATIC_HOSTNAME)
+        self._chassis = data.get(DBUS_ATTR_CHASSIS)
+        self._deployment = data.get(DBUS_ATTR_DEPLOYMENT)
+        self._kernel = data.get(DBUS_ATTR_KERNEL_RELEASE)
+        self._operating_system = data.get(DBUS_ATTR_OPERATING_SYSTEM_PRETTY_NAME)
+        self._cpe = data.get(DBUS_ATTR_STATIC_OPERATING_SYSTEM_CPE_NAME)

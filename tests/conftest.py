@@ -2,16 +2,25 @@
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
+from aiohttp import web
+from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
+from supervisor.coresys import CoreSys
+from supervisor.dbus.const import DBUS_NAME_NM, DBUS_OBJECT_BASE
+from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
+from supervisor.utils.gdbus import DBus
+
+from tests.common import load_fixture, load_json_fixture
 
 # pylint: disable=redefined-outer-name, protected-access
 
 
 @pytest.fixture
-def docker():
+def docker() -> DockerAPI:
     """Mock DockerAPI."""
     images = [MagicMock(tags=["homeassistant/amd64-hassio-supervisor:latest"])]
 
@@ -28,12 +37,52 @@ def docker():
 
 
 @pytest.fixture
-async def coresys(loop, docker):
+def dbus() -> DBus:
+    """Mock DBUS."""
+
+    async def mock_get_properties(_, interface):
+        return load_json_fixture(f"{interface.replace('.', '_')}.json")
+
+    async def mock_send(_, command):
+        filetype = "xml" if "--xml" in command else "fixture"
+        fixture = f"{command[6].replace('/', '_')[1:]}.{filetype}"
+        return load_fixture(fixture)
+
+    with patch("supervisor.utils.gdbus.DBus._send", new=mock_send), patch(
+        "supervisor.dbus.interface.DBusInterface.is_connected", return_value=True,
+    ), patch("supervisor.utils.gdbus.DBus.get_properties", new=mock_get_properties):
+
+        dbus_obj = DBus(DBUS_NAME_NM, DBUS_OBJECT_BASE)
+
+        yield dbus_obj
+
+
+@pytest.fixture
+async def network_manager(dbus) -> NetworkManager:
+    """Mock NetworkManager."""
+
+    async def dns_update():
+        pass
+
+    with patch("supervisor.dbus.network.NetworkManager.dns", return_value=MagicMock()):
+        nm_obj = NetworkManager()
+    nm_obj.dns.update = dns_update
+    nm_obj.dbus = dbus
+    await nm_obj.connect()
+    await nm_obj.update()
+
+    yield nm_obj
+
+
+@pytest.fixture
+async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system_data"), patch(
         "supervisor.bootstrap.setup_diagnostics"
     ), patch(
         "supervisor.bootstrap.fetch_timezone", return_value="Europe/Zurich",
+    ), patch(
+        "aiohttp.ClientSession", return_value=TestClient.session,
     ):
         coresys_obj = await initialize_coresys()
 
@@ -42,6 +91,8 @@ async def coresys(loop, docker):
 
     coresys_obj._machine = "qemux86-64"
     coresys_obj._machine_id = uuid4()
+    coresys_obj._dbus = dbus
+    coresys_obj._dbus.network = network_manager
 
     yield coresys_obj
 
@@ -61,3 +112,12 @@ def sys_supervisor():
     ) as mock:
         mock.return_value = MagicMock()
         yield MagicMock
+
+
+@pytest.fixture
+async def api_client(aiohttp_client, coresys):
+    """Fixture for RestAPI client."""
+    api = RestAPI(coresys)
+    api.webapp = web.Application()
+    await api.load()
+    yield await aiohttp_client(api.webapp)

@@ -2,31 +2,31 @@
 import logging
 from typing import List, Optional
 
-import attr
-
-from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.gdbus import DBus
-from .interface import DBusInterface
-from .utils import dbus_connected
+from ...const import (
+    ATTR_DOMAINS,
+    ATTR_INTERFACE,
+    ATTR_NAMESERVERS,
+    ATTR_PRIORITY,
+    ATTR_VPN,
+)
+from ...exceptions import DBusError, DBusInterfaceError
+from ...utils.gdbus import DBus
+from ..const import (
+    DBUS_ATTR_CONFIGURATION,
+    DBUS_ATTR_MODE,
+    DBUS_ATTR_RCMANAGER,
+    DBUS_NAME_DNS,
+    DBUS_NAME_NM,
+    DBUS_OBJECT_DNS,
+)
+from ..interface import DBusInterface
+from ..utils import dbus_connected
+from .configuration import DNSConfiguration
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-DBUS_NAME = "org.freedesktop.NetworkManager"
-DBUS_OBJECT = "/org/freedesktop/NetworkManager/DnsManager"
 
-
-@attr.s
-class DNSConfiguration:
-    """NMI DnsManager configuration Object."""
-
-    nameservers: List[str] = attr.ib()
-    domains: List[str] = attr.ib()
-    interface: str = attr.ib()
-    priority: int = attr.ib()
-    vpn: bool = attr.ib()
-
-
-class NMIDnsManager(DBusInterface):
+class NetworkManagerDNS(DBusInterface):
     """Handle D-Bus interface for NMI DnsManager."""
 
     def __init__(self) -> None:
@@ -53,7 +53,7 @@ class NMIDnsManager(DBusInterface):
     async def connect(self) -> None:
         """Connect to system's D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
+            self.dbus = await DBus.connect(DBUS_NAME_NM, DBUS_OBJECT_DNS)
         except DBusError:
             _LOGGER.warning("Can't connect to DnsManager")
         except DBusInterfaceError:
@@ -64,22 +64,22 @@ class NMIDnsManager(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        data = await self.dbus.get_properties(f"{DBUS_NAME}.DnsManager")
+        data = await self.dbus.get_properties(DBUS_NAME_DNS)
         if not data:
-            _LOGGER.warning("Can't get properties for NMI DnsManager")
+            _LOGGER.warning("Can't get properties for DnsManager")
             return
 
-        self._mode = data.get("Mode")
-        self._rc_manager = data.get("RcManager")
+        self._mode = data.get(DBUS_ATTR_MODE)
+        self._rc_manager = data.get(DBUS_ATTR_RCMANAGER)
 
         # Parse configuraton
-        self._configuration.clear()
-        for config in data.get("Configuration", []):
-            dns = DNSConfiguration(
-                config.get("nameservers"),
-                config.get("domains"),
-                config.get("interface"),
-                config.get("priority"),
-                config.get("vpn"),
+        self._configuration = [
+            DNSConfiguration(
+                config.get(ATTR_NAMESERVERS),
+                config.get(ATTR_DOMAINS),
+                config.get(ATTR_INTERFACE),
+                config.get(ATTR_PRIORITY),
+                config.get(ATTR_VPN),
             )
-            self._configuration.append(dns)
+            for config in data.get(DBUS_ATTR_CONFIGURATION, [])
+        ]
