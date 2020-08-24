@@ -33,7 +33,7 @@ class NetworkManager(CoreSysAttributes):
         try:
             await self.sys_dbus.network.update()
         except DBusError:
-            _LOGGER.warning("Can't update host system information!")
-        except DBusNotConnectedError:
+            _LOGGER.warning("Can't update host DNS system information!")
+        except DBusNotConnectedError as err:
             _LOGGER.error("No hostname D-Bus connection available")
-            raise HostNotSupportedError()
+            raise HostNotSupportedError() from err

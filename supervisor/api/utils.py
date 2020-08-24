@@ -48,8 +48,8 @@ def json_loads(data: Any) -> Dict[str, Any]:
         return {}
     try:
         return json.loads(data)
-    except json.JSONDecodeError:
-        raise APIError("Invalid json")
+    except json.JSONDecodeError as err:
+        raise APIError("Invalid json") from err
 
 
 def api_process(method):
@@ -120,7 +120,7 @@ async def api_validate(
     try:
         data_validated = schema(data)
     except vol.Invalid as ex:
-        raise APIError(humanize_error(data, ex))
+        raise APIError(humanize_error(data, ex)) from None
 
     if not origin:
         return data_validated

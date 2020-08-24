@@ -83,7 +83,7 @@ class InfoCenter(CoreSysAttributes):
             stdout, _ = await proc.communicate()
         except OSError as err:
             _LOGGER.error("Can't read kernel log: %s", err)
-            raise HostError()
+            raise HostError() from err
 
         return stdout
 
@@ -96,4 +96,4 @@ class InfoCenter(CoreSysAttributes):
             _LOGGER.warning("Can't update host system information!")
         except DBusNotConnectedError:
             _LOGGER.error("No hostname D-Bus connection available")
-            raise HostNotSupportedError()
+            raise HostNotSupportedError() from None

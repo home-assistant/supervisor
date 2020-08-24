@@ -76,7 +76,7 @@ class AppArmorControl(CoreSysAttributes):
             shutil.copyfile(profile_file, dest_profile)
         except OSError as err:
             _LOGGER.error("Can't copy %s: %s", profile_file, err)
-            raise HostAppArmorError()
+            raise HostAppArmorError() from err
 
         # Load profiles
         _LOGGER.info("Add or Update AppArmor profile: %s", profile_name)
@@ -94,7 +94,7 @@ class AppArmorControl(CoreSysAttributes):
                 profile_file.unlink()
             except OSError as err:
                 _LOGGER.error("Can't remove profile: %s", err)
-                raise HostAppArmorError()
+                raise HostAppArmorError() from err
             return
 
         # Marks als remove and start host process
@@ -103,7 +103,7 @@ class AppArmorControl(CoreSysAttributes):
             profile_file.rename(remove_profile)
         except OSError as err:
             _LOGGER.error("Can't mark profile as remove: %s", err)
-            raise HostAppArmorError()
+            raise HostAppArmorError() from err
 
         _LOGGER.info("Remove AppArmor profile: %s", profile_name)
         self._profiles.remove(profile_name)
@@ -117,4 +117,4 @@ class AppArmorControl(CoreSysAttributes):
             shutil.copy(profile_file, backup_file)
         except OSError as err:
             _LOGGER.error("Can't backup profile %s: %s", profile_name, err)
-            raise HostAppArmorError()
+            raise HostAppArmorError() from err

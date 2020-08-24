@@ -402,7 +402,7 @@ class DockerAddon(DockerInterface):
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't build %s:%s: %s", self.image, tag, err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
         _LOGGER.info("Build %s:%s done", self.image, tag)
 
@@ -420,7 +420,7 @@ class DockerAddon(DockerInterface):
             image = self.sys_docker.api.get_image(f"{self.image}:{self.version}")
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't fetch image %s: %s", self.image, err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
         _LOGGER.info("Export image %s to %s", self.image, tar_file)
         try:
@@ -429,7 +429,7 @@ class DockerAddon(DockerInterface):
                     write_tar.write(chunk)
         except (OSError, requests.RequestException) as err:
             _LOGGER.error("Can't write tar file %s: %s", tar_file, err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
         _LOGGER.info("Export image %s done", self.image)
 
@@ -450,7 +450,7 @@ class DockerAddon(DockerInterface):
             docker_image = self.sys_docker.images.get(f"{self.image}:{self.version}")
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s: %s", self.image, err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
         self._meta = docker_image.attrs
         _LOGGER.info("Import image %s and version %s", tar_file, self.version)
@@ -477,7 +477,7 @@ class DockerAddon(DockerInterface):
             socket = container.attach_socket(params={"stdin": 1, "stream": 1})
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't attach to %s stdin: %s", self.name, err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
         try:
             # Write to stdin
@@ -486,7 +486,7 @@ class DockerAddon(DockerInterface):
             socket.close()
         except OSError as err:
             _LOGGER.error("Can't write to %s stdin: %s", self.name, err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
     def _stop(self, remove_container=True) -> None:
         """Stop/remove Docker container.

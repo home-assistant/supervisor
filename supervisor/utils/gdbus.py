@@ -89,7 +89,7 @@ class DBus:
         except ET.ParseError as err:
             _LOGGER.error("Can't parse introspect data: %s", err)
             _LOGGER.debug("Introspect %s on %s", self.bus_name, self.object_path)
-            raise DBusParseError()
+            raise DBusParseError() from err
 
         # Read available methods
         for interface in xml.findall("./interface"):
@@ -137,7 +137,7 @@ class DBus:
         except json.JSONDecodeError as err:
             _LOGGER.error("Can't parse '%s': %s", json_raw, err)
             _LOGGER.debug("GVariant data: '%s'", raw)
-            raise DBusParseError()
+            raise DBusParseError() from err
 
     @staticmethod
     def gvariant_args(args: List[Any]) -> str:
@@ -177,9 +177,9 @@ class DBus:
         """Read all properties from interface."""
         try:
             return (await self.call_dbus(DBUS_METHOD_GETALL, interface))[0]
-        except IndexError:
+        except IndexError as err:
             _LOGGER.error("No attributes returned for %s", interface)
-            raise DBusFatalError
+            raise DBusFatalError() from err
 
     async def _send(self, command: List[str]) -> str:
         """Send command over dbus."""
@@ -196,7 +196,7 @@ class DBus:
             data, error = await proc.communicate()
         except OSError as err:
             _LOGGER.error("DBus fatal error: %s", err)
-            raise DBusFatalError()
+            raise DBusFatalError() from err
 
         # Success?
         if proc.returncode == 0:
@@ -294,18 +294,18 @@ class DBusSignalWrapper:
     async def __anext__(self):
         """Get next data."""
         if not self._proc:
-            raise StopAsyncIteration()
+            raise StopAsyncIteration() from None
 
         # Read signals
         while True:
             try:
                 data = await self._proc.stdout.readline()
             except asyncio.TimeoutError:
-                raise StopAsyncIteration()
+                raise StopAsyncIteration() from None
 
             # Program close
             if not data:
-                raise StopAsyncIteration()
+                raise StopAsyncIteration() from None
 
             # Extract metadata
             match = RE_MONITOR_OUTPUT.match(data.decode())
@@ -321,5 +321,5 @@ class DBusSignalWrapper:
 
             try:
                 return self.dbus.parse_gvariant(data)
-            except DBusParseError:
-                raise StopAsyncIteration()
+            except DBusParseError as err:
+                raise StopAsyncIteration() from err

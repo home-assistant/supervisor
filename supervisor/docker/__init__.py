@@ -131,7 +131,7 @@ class DockerAPI:
             )
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't create container from %s: %s", name, err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
         # Attach network
         if not network_mode:
@@ -149,7 +149,7 @@ class DockerAPI:
             container.start()
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't start %s: %s", name, err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
         # Update metadata
         with suppress(docker.errors.DockerException, requests.RequestException):
@@ -187,7 +187,7 @@ class DockerAPI:
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't execute command: %s", err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
         finally:
             # cleanup container
@@ -249,7 +249,7 @@ class DockerAPI:
                         denied_images.add(image_name)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
-            raise DockerAPIError()
+            raise DockerAPIError() from err
 
         if not denied_images:
             return False
