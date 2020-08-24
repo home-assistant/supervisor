@@ -31,7 +31,7 @@ SCHEMA_UPDATE = vol.Schema(
         vol.Optional(ATTR_ADDRESS): vol.Coerce(str),
         vol.Optional(ATTR_METHOD): vol.In(ATTR_METHODS),
         vol.Optional(ATTR_GATEWAY): vol.Coerce(str),
-        vol.Optional(ATTR_DNS): vol.Schema([vol.Coerce(str)]),
+        vol.Optional(ATTR_DNS): [str],
     }
 )
 
