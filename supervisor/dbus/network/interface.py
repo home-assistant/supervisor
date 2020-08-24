@@ -1,6 +1,4 @@
 """NetworkInterface object for Network Manager."""
-from supervisor.exceptions import APIError
-
 from ...const import ATTR_ADDRESS, ATTR_DNS, ATTR_GATEWAY, ATTR_METHOD, ATTR_PREFIX
 from ...utils.gdbus import DBus
 from ..const import (
@@ -88,8 +86,6 @@ class NetworkInterface:
     async def update_settings(self, **kwargs) -> None:
         """Update IP configuration used for this interface."""
         if kwargs.get(ATTR_DNS):
-            if not isinstance(kwargs[ATTR_DNS], list):
-                raise APIError("DNS addresses is not a list!")
             kwargs[ATTR_DNS] = [ip2int(x.strip()) for x in kwargs[ATTR_DNS]]
 
         if kwargs.get(ATTR_METHOD):

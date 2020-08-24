@@ -47,7 +47,8 @@ async def test_api_network_interface_update(aiohttp_client, coresys):
     """Test network manager api."""
     client = await aiohttp_client(await create_app(coresys))
     resp = await client.post(
-        f"/network/interface/{TEST_INTERFACE}/update", json={"method": "static"}
+        f"/network/interface/{TEST_INTERFACE}/update",
+        json={"method": "static", "dns": ["1.1.1.1"]},
     )
     result = await resp.json()
     assert result["result"] == "ok"
@@ -73,3 +74,12 @@ async def test_api_network_interface_update_invalid(aiohttp_client, coresys):
     resp = await client.post(f"/network/interface/{TEST_INTERFACE}/update", json={})
     result = await resp.json()
     assert result["message"] == "You need to supply at least one option to update"
+
+    resp = await client.post(
+        f"/network/interface/{TEST_INTERFACE}/update", json={"dns": "1.1.1.1"}
+    )
+    result = await resp.json()
+    assert (
+        result["message"]
+        == "expected a list for dictionary value @ data['dns']. Got '1.1.1.1'"
+    )
