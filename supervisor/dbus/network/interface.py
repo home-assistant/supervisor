@@ -99,7 +99,7 @@ class NetworkInterface:
             if "/" in kwargs[ATTR_ADDRESS]:
                 kwargs[ATTR_PREFIX] = kwargs[ATTR_ADDRESS].split("/")[-1]
                 kwargs[ATTR_ADDRESS] = kwargs[ATTR_ADDRESS].split("/")[0]
-                kwargs[ATTR_METHOD] = InterfaceMethod.MANUAL
+            kwargs[ATTR_METHOD] = InterfaceMethod.MANUAL
 
         await self.connection.settings.dbus.Settings.Connection.Update(
             f"""{{

@@ -48,7 +48,7 @@ async def test_api_network_interface_update(aiohttp_client, coresys):
     client = await aiohttp_client(await create_app(coresys))
     resp = await client.post(
         f"/network/interface/{TEST_INTERFACE}/update",
-        json={"method": "static", "dns": ["1.1.1.1"]},
+        json={"method": "static", "dns": ["1.1.1.1"], "address": "192.168.2.148/24"},
     )
     result = await resp.json()
     assert result["result"] == "ok"
