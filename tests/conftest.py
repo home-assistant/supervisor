@@ -2,9 +2,11 @@
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
+from aiohttp import web
 from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import DBUS_NAME_NM, DBUS_OBJECT_BASE
@@ -110,3 +112,12 @@ def sys_supervisor():
     ) as mock:
         mock.return_value = MagicMock()
         yield MagicMock
+
+
+@pytest.fixture
+async def api_client(aiohttp_client, coresys):
+    """Fixture for RestAPI client."""
+    api = RestAPI(coresys)
+    api.webapp = web.Application()
+    await api.load()
+    yield await aiohttp_client(api.webapp)
