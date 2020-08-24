@@ -1,29 +1,26 @@
 """Connection object for Network Manager."""
 from typing import Optional
 
-from ...const import (
-    ATTR_ADDRESS,
-    ATTR_ADDRESS_DATA,
-    ATTR_DNS,
-    ATTR_GATEWAY,
-    ATTR_IPV4,
-    ATTR_METHOD,
-    ATTR_PREFIX,
-)
+from ...const import ATTR_ADDRESS, ATTR_IPV4, ATTR_METHOD, ATTR_PREFIX
 from ...utils.gdbus import DBus
 from ..const import (
+    DBUS_ATTR_ADDRESS_DATA,
     DBUS_ATTR_CONNECTION,
     DBUS_ATTR_DEFAULT,
     DBUS_ATTR_DEVICE_INTERFACE,
     DBUS_ATTR_DEVICE_TYPE,
     DBUS_ATTR_DEVICES,
+    DBUS_ATTR_GATEWAY,
     DBUS_ATTR_ID,
     DBUS_ATTR_IP4ADDRESS,
+    DBUS_ATTR_IP4CONFIG,
+    DBUS_ATTR_NAMESERVERS,
     DBUS_ATTR_REAL,
     DBUS_ATTR_STATE,
     DBUS_ATTR_TYPE,
     DBUS_ATTR_UUID,
     DBUS_NAME_DEVICE,
+    DBUS_NAME_IP4CONFIG,
     DBUS_NAME_NM,
 )
 from .configuration import (
@@ -100,20 +97,21 @@ class NetworkConnection(NetworkAttributes):
         device = await DBus.connect(
             DBUS_NAME_NM, self._properties[DBUS_ATTR_DEVICES][0]
         )
+        ip4 = await DBus.connect(DBUS_NAME_NM, self._properties[DBUS_ATTR_IP4CONFIG])
 
         data = (await settings.Settings.Connection.GetSettings())[0]
-
         device_data = await device.get_properties(DBUS_NAME_DEVICE)
+        ip4_data = await ip4.get_properties(DBUS_NAME_IP4CONFIG)
 
         self._settings = NetworkSettings(settings)
 
         self._ip4_config = IpConfiguration(
-            data[ATTR_IPV4].get(ATTR_GATEWAY),
+            ip4_data.get(DBUS_ATTR_GATEWAY),
             data[ATTR_IPV4].get(ATTR_METHOD),
-            data[ATTR_IPV4].get(ATTR_DNS),
+            ip4_data.get(DBUS_ATTR_NAMESERVERS),
             AddressData(
-                data[ATTR_IPV4].get(ATTR_ADDRESS_DATA)[0].get(ATTR_ADDRESS),
-                data[ATTR_IPV4].get(ATTR_ADDRESS_DATA)[0].get(ATTR_PREFIX),
+                ip4_data.get(DBUS_ATTR_ADDRESS_DATA)[0].get(ATTR_ADDRESS),
+                ip4_data.get(DBUS_ATTR_ADDRESS_DATA)[0].get(ATTR_PREFIX),
             ),
         )
 
