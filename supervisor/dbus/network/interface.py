@@ -1,5 +1,14 @@
 """NetworkInterface object for Network Manager."""
-from ...const import ATTR_ADDRESS, ATTR_DNS, ATTR_GATEWAY, ATTR_MANUAL, ATTR_METHOD
+from supervisor.exceptions import APIError
+
+from ...const import (
+    ATTR_ADDRESS,
+    ATTR_DNS,
+    ATTR_GATEWAY,
+    ATTR_MANUAL,
+    ATTR_METHOD,
+    ATTR_PREFIX,
+)
 from ...utils.gdbus import DBus
 from ..const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM, DBUS_OBJECT_BASE
 from .connection import NetworkConnection
@@ -81,10 +90,16 @@ class NetworkInterface:
     async def update_settings(self, **kwargs) -> None:
         """Update IP configuration used for this interface."""
         if kwargs.get(ATTR_DNS):
-            kwargs[ATTR_DNS] = [ip2int(x.strip()) for x in kwargs[ATTR_DNS].split(",")]
+            if not isinstance(kwargs[ATTR_DNS], list):
+                raise APIError("DNS addresses is not a list!")
+            kwargs[ATTR_DNS] = [ip2int(x.strip()) for x in kwargs[ATTR_DNS]]
 
-        if kwargs.get(ATTR_ADDRESS) and not kwargs.get(ATTR_METHOD):
-            kwargs[ATTR_METHOD] = ATTR_MANUAL
+        if kwargs.get(ATTR_ADDRESS):
+            if "/" in kwargs[ATTR_ADDRESS]:
+                kwargs[ATTR_PREFIX] = kwargs[ATTR_ADDRESS].split("/")[-1]
+                kwargs[ATTR_ADDRESS] = kwargs[ATTR_ADDRESS].split("/")[0]
+            if not kwargs.get(ATTR_METHOD):
+                kwargs[ATTR_METHOD] = ATTR_MANUAL
 
         await self.connection.settings.dbus.Settings.Connection.Update(
             f"""{{
@@ -100,7 +115,7 @@ class NetworkInterface:
                             'address-data': <[
                                 {{
                                     'address': <'{kwargs.get(ATTR_ADDRESS, self.ip_address)}'>,
-                                    'prefix': <uint32 {self.prefix}>
+                                    'prefix': <uint32 {kwargs.get(ATTR_PREFIX, self.prefix)}>
                                 }}]>,
                             'gateway': <'{kwargs.get(ATTR_GATEWAY, self.gateway)}'>
                                 }}
