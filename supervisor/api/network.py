@@ -20,6 +20,7 @@ from ..const import (
     ATTR_TYPE,
 )
 from ..coresys import CoreSysAttributes
+from ..dbus.const import InterfaceMethodSimple
 from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.utils import int2ip
 from ..exceptions import APIError
@@ -43,7 +44,9 @@ def interface_information(interface: NetworkInterface) -> dict:
         ATTR_ID: interface.id,
         ATTR_TYPE: interface.type,
         ATTR_NAMESERVERS: [int2ip(x) for x in interface.nameservers],
-        ATTR_METHOD: interface.method,
+        ATTR_METHOD: InterfaceMethodSimple.DHCP
+        if interface.method == "auto"
+        else InterfaceMethodSimple.STATIC,
         ATTR_PRIMARY: interface.primary,
     }
 

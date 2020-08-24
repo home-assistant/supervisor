@@ -57,3 +57,17 @@ class RaucState(str, Enum):
     GOOD = "good"
     BAD = "bad"
     ACTIVE = "active"
+
+
+class InterfaceMethod(str, Enum):
+    """Interface method simple."""
+
+    AUTO = "auto"
+    MANUAL = "manual"
+
+
+class InterfaceMethodSimple(str, Enum):
+    """Interface method."""
+
+    DHCP = "dhcp"
+    STATIC = "static"

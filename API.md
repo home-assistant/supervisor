@@ -459,7 +459,7 @@ Get network information
       "id": "Wired connection 1",
       "type": "802-3-ethernet",
       "nameservers": ["192.168.2.1"],
-      "method": "auto",
+      "method": "static",
       "primary": true
     }
   }
@@ -477,7 +477,7 @@ Get information for a single interface
   "id": "Wired connection 1",
   "type": "802-3-ethernet",
   "nameservers": ["192.168.2.1"],
-  "method": "auto",
+  "method": "dhcp",
   "primary": true
 }
 ```
@@ -493,7 +493,7 @@ Update information for a single interface
 | `address` | The new IP address for the interface in the X.X.X.X/XX format          |
 | `dns`     | Comma seperated list of DNS servers to use                             |
 | `gateway` | The gateway the interface should use                                   |
-| `method`  | Set if the interface should use DHCP or not, can be `auto` or `manual` |
+| `method`  | Set if the interface should use DHCP or not, can be `dhcp` or `static` |
 
 _All options are optional._
 

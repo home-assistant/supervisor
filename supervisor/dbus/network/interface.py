@@ -1,16 +1,14 @@
 """NetworkInterface object for Network Manager."""
 from supervisor.exceptions import APIError
 
-from ...const import (
-    ATTR_ADDRESS,
-    ATTR_DNS,
-    ATTR_GATEWAY,
-    ATTR_MANUAL,
-    ATTR_METHOD,
-    ATTR_PREFIX,
-)
+from ...const import ATTR_ADDRESS, ATTR_DNS, ATTR_GATEWAY, ATTR_METHOD, ATTR_PREFIX
 from ...utils.gdbus import DBus
-from ..const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM, DBUS_OBJECT_BASE
+from ..const import (
+    DBUS_NAME_CONNECTION_ACTIVE,
+    DBUS_NAME_NM,
+    DBUS_OBJECT_BASE,
+    InterfaceMethod,
+)
 from .connection import NetworkConnection
 from .utils import ip2int
 
@@ -64,9 +62,9 @@ class NetworkInterface:
         return self.connection.id
 
     @property
-    def method(self) -> str:
+    def method(self) -> InterfaceMethod:
         """Return the interface method."""
-        return self.connection.ip4_config.method
+        return InterfaceMethod(self.connection.ip4_config.method)
 
     @property
     def gateway(self) -> str:
@@ -94,12 +92,18 @@ class NetworkInterface:
                 raise APIError("DNS addresses is not a list!")
             kwargs[ATTR_DNS] = [ip2int(x.strip()) for x in kwargs[ATTR_DNS]]
 
+        if kwargs.get(ATTR_METHOD):
+            kwargs[ATTR_METHOD] = (
+                InterfaceMethod.MANUAL
+                if kwargs[ATTR_METHOD] == "static"
+                else InterfaceMethod.AUTO
+            )
+
         if kwargs.get(ATTR_ADDRESS):
             if "/" in kwargs[ATTR_ADDRESS]:
                 kwargs[ATTR_PREFIX] = kwargs[ATTR_ADDRESS].split("/")[-1]
                 kwargs[ATTR_ADDRESS] = kwargs[ATTR_ADDRESS].split("/")[0]
-            if not kwargs.get(ATTR_METHOD):
-                kwargs[ATTR_METHOD] = ATTR_MANUAL
+                kwargs[ATTR_METHOD] = InterfaceMethod.MANUAL
 
         await self.connection.settings.dbus.Settings.Connection.Update(
             f"""{{
