@@ -58,10 +58,10 @@ class APINetwork(CoreSysAttributes):
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return network information."""
         interfaces = {}
-        for interface in self.sys_dbus.network.interfaces:
+        for interface in self.sys_host.network.interfaces:
             interfaces[
-                self.sys_dbus.network.interfaces[interface].name
-            ] = interface_information(self.sys_dbus.network.interfaces[interface])
+                self.sys_host.network.interfaces[interface].name
+            ] = interface_information(self.sys_host.network.interfaces[interface])
 
         return {ATTR_INTERFACES: interfaces}
 
@@ -69,10 +69,10 @@ class APINetwork(CoreSysAttributes):
     async def interface_info(self, request: web.Request) -> Dict[str, Any]:
         """Return network information for a interface."""
         req_interface = request.match_info.get(ATTR_INTERFACE)
-        for interface in self.sys_dbus.network.interfaces:
-            if req_interface == self.sys_dbus.network.interfaces[interface].name:
+        for interface in self.sys_host.network.interfaces:
+            if req_interface == self.sys_host.network.interfaces[interface].name:
                 return interface_information(
-                    self.sys_dbus.network.interfaces[interface]
+                    self.sys_host.network.interfaces[interface]
                 )
 
         return {}
@@ -82,7 +82,7 @@ class APINetwork(CoreSysAttributes):
         """Update the configuration of an interface."""
         req_interface = request.match_info.get(ATTR_INTERFACE)
 
-        if not self.sys_dbus.network.interfaces.get(req_interface):
+        if not self.sys_host.network.interfaces.get(req_interface):
             raise APIError(f"Interface {req_interface} does not exsist")
 
         args = await api_validate(SCHEMA_UPDATE, request)
@@ -90,9 +90,9 @@ class APINetwork(CoreSysAttributes):
             raise APIError("You need to supply at least one option to update")
 
         await asyncio.shield(
-            self.sys_dbus.network.interfaces[req_interface].update_settings(**args)
+            self.sys_host.network.interfaces[req_interface].update_settings(**args)
         )
 
-        await asyncio.shield(self.sys_dbus.network.update())
+        await asyncio.shield(self.sys_host.network.update())
 
         return await asyncio.shield(self.interface_info(request))

@@ -1,6 +1,8 @@
 """Info control for host."""
 import logging
-from typing import List
+from typing import Dict, List
+
+from supervisor.dbus.network.interface import NetworkInterface
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DBusError, DBusNotConnectedError, HostNotSupportedError
@@ -14,6 +16,11 @@ class NetworkManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize system center handling."""
         self.coresys: CoreSys = coresys
+
+    @property
+    def interfaces(self) -> Dict[str, NetworkInterface]:
+        """Return a dictionary of active interfaces."""
+        return self.sys_dbus.network.interfaces
 
     @property
     def dns_servers(self) -> List[str]:
@@ -33,7 +40,7 @@ class NetworkManager(CoreSysAttributes):
         try:
             await self.sys_dbus.network.update()
         except DBusError:
-            _LOGGER.warning("Can't update host DNS system information!")
+            _LOGGER.warning("Can't update network information!")
         except DBusNotConnectedError as err:
             _LOGGER.error("No hostname D-Bus connection available")
             raise HostNotSupportedError() from err
