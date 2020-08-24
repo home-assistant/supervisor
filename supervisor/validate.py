@@ -64,19 +64,19 @@ def version_tag(value: Union[str, None, int, float]) -> Optional[str]:
         value = str(value)
         pkg_version.parse(value)
     except (pkg_version.InvalidVersion, TypeError):
-        raise vol.Invalid(f"Invalid version format {value}")
+        raise vol.Invalid(f"Invalid version format {value}") from None
     return value
 
 
 def dns_url(url: str) -> str:
     """Take a DNS url (str) and validates that it matches the scheme dns://<ip address>."""
     if not url.lower().startswith("dns://"):
-        raise vol.Invalid("Doesn't start with dns://")
+        raise vol.Invalid("Doesn't start with dns://") from None
     address: str = url[6:]  # strip the dns:// off
     try:
         ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
     except ValueError:
-        raise vol.Invalid(f"Invalid DNS URL: {url}")
+        raise vol.Invalid(f"Invalid DNS URL: {url}") from None
     return url
 
 
@@ -87,7 +87,7 @@ def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
     data = RE_REPOSITORY.match(repository)
     if not data:
-        raise vol.Invalid("No valid repository format!")
+        raise vol.Invalid("No valid repository format!") from None
 
     # Validate URL
     # pylint: disable=no-value-for-parameter

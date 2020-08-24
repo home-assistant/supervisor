@@ -196,9 +196,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         # Update
         try:
             await self.instance.update(version, image=self.sys_updater.image_dns)
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("CoreDNS update fails")
-            raise CoreDNSUpdateError()
+            raise CoreDNSUpdateError() from err
         else:
             self.version = version
             self.image = self.sys_updater.image_dns
@@ -217,9 +217,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Restart CoreDNS plugin")
         try:
             await self.instance.restart()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't start CoreDNS plugin")
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     async def start(self) -> None:
         """Run CoreDNS."""
@@ -229,18 +229,18 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Start CoreDNS plugin")
         try:
             await self.instance.run()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't start CoreDNS plugin")
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
         _LOGGER.info("Stop CoreDNS plugin")
         try:
             await self.instance.stop()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't stop CoreDNS plugin")
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     async def reset(self) -> None:
         """Reset DNS and hosts."""
@@ -307,7 +307,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.corefile.write_text(data)
         except OSError as err:
             _LOGGER.error("Can't update corefile: %s", err)
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     def _init_hosts(self) -> None:
         """Import hosts entry."""
@@ -331,7 +331,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                     hosts.write(f"{entry.ip_address!s} {' '.join(entry.names)}\n")
         except OSError as err:
             _LOGGER.error("Can't write hosts file: %s", err)
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     def add_host(self, ipv4: IPv4Address, names: List[str], write: bool = True) -> None:
         """Add a new host entry."""
@@ -394,8 +394,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """Return stats of CoreDNS."""
         try:
             return await self.instance.stats()
-        except DockerAPIError:
-            raise CoreDNSError()
+        except DockerAPIError as err:
+            raise CoreDNSError() from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.

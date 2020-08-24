@@ -127,9 +127,9 @@ class Multicast(JsonConfig, CoreSysAttributes):
         # Update
         try:
             await self.instance.update(version, image=self.sys_updater.image_multicast)
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Multicast update fails")
-            raise MulticastUpdateError()
+            raise MulticastUpdateError() from err
         else:
             self.version = version
             self.image = self.sys_updater.image_multicast
@@ -147,27 +147,27 @@ class Multicast(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Restart Multicast plugin")
         try:
             await self.instance.restart()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't start Multicast plugin")
-            raise MulticastError()
+            raise MulticastError() from err
 
     async def start(self) -> None:
         """Run Multicast."""
         _LOGGER.info("Start Multicast plugin")
         try:
             await self.instance.run()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't start Multicast plugin")
-            raise MulticastError()
+            raise MulticastError() from err
 
     async def stop(self) -> None:
         """Stop Multicast."""
         _LOGGER.info("Stop Multicast plugin")
         try:
             await self.instance.stop()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't stop Multicast plugin")
-            raise MulticastError()
+            raise MulticastError() from err
 
     def logs(self) -> Awaitable[bytes]:
         """Get Multicast docker logs.
@@ -180,8 +180,8 @@ class Multicast(JsonConfig, CoreSysAttributes):
         """Return stats of Multicast."""
         try:
             return await self.instance.stats()
-        except DockerAPIError:
-            raise MulticastError()
+        except DockerAPIError as err:
+            raise MulticastError() from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.

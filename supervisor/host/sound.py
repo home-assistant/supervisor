@@ -104,6 +104,7 @@ class SoundControl(CoreSysAttributes):
         """Set a stream to default input/output."""
 
         def _set_default():
+            source = sink = None
             try:
                 with Pulse(PULSE_NAME) as pulse:
                     if stream_type == StreamType.INPUT:
@@ -115,12 +116,12 @@ class SoundControl(CoreSysAttributes):
                         sink = pulse.get_sink_by_name(name)
                         pulse.sink_default_set(sink)
 
-            except PulseIndexError:
+            except PulseIndexError as err:
                 _LOGGER.error("Can't find %s stream %s", source, name)
-                raise PulseAudioError()
+                raise PulseAudioError() from err
             except PulseError as err:
                 _LOGGER.error("Can't set %s as stream: %s", name, err)
-                raise PulseAudioError()
+                raise PulseAudioError() from err
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_default)
@@ -147,14 +148,14 @@ class SoundControl(CoreSysAttributes):
 
                     # Set volume
                     pulse.volume_set_all_chans(stream, volume)
-            except PulseIndexError:
+            except PulseIndexError as err:
                 _LOGGER.error(
                     "Can't find %s stream %d (App: %s)", stream_type, index, application
                 )
-                raise PulseAudioError()
+                raise PulseAudioError() from err
             except PulseError as err:
                 _LOGGER.error("Can't set %d volume: %s", index, err)
-                raise PulseAudioError()
+                raise PulseAudioError() from err
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_volume)
@@ -181,14 +182,14 @@ class SoundControl(CoreSysAttributes):
 
                     # Mute stream
                     pulse.mute(stream, mute)
-            except PulseIndexError:
+            except PulseIndexError as err:
                 _LOGGER.error(
                     "Can't find %s stream %d (App: %s)", stream_type, index, application
                 )
-                raise PulseAudioError()
+                raise PulseAudioError() from err
             except PulseError as err:
                 _LOGGER.error("Can't set %d volume: %s", index, err)
-                raise PulseAudioError()
+                raise PulseAudioError() from err
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_mute)
@@ -203,14 +204,14 @@ class SoundControl(CoreSysAttributes):
                     card = pulse.get_sink_by_name(card_name)
                     pulse.card_profile_set(card, profile_name)
 
-            except PulseIndexError:
+            except PulseIndexError as err:
                 _LOGGER.error("Can't find %s profile %s", card_name, profile_name)
-                raise PulseAudioError()
+                raise PulseAudioError() from err
             except PulseError as err:
                 _LOGGER.error(
                     "Can't activate %s profile %s: %s", card_name, profile_name, err
                 )
-                raise PulseAudioError()
+                raise PulseAudioError() from err
 
         # Run and Reload data
         await self.sys_run_in_executor(_activate_profile)
@@ -331,7 +332,7 @@ class SoundControl(CoreSysAttributes):
 
             except PulseOperationFailed as err:
                 _LOGGER.error("Error while processing pulse update: %s", err)
-                raise PulseAudioError()
+                raise PulseAudioError() from err
             except PulseError as err:
                 _LOGGER.debug("Can't update PulseAudio data: %s", err)
 

@@ -364,7 +364,7 @@ def validate_options(coresys: CoreSys, raw_schema: Dict[str, Any]):
                     # normal value
                     options[key] = _single_validate(coresys, typ, value, key)
             except (IndexError, KeyError):
-                raise vol.Invalid(f"Type error for {key}")
+                raise vol.Invalid(f"Type error for {key}") from None
 
         _check_missing_options(raw_schema, options, "root")
         return options
@@ -378,20 +378,20 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     """Validate a single element."""
     # if required argument
     if value is None:
-        raise vol.Invalid(f"Missing required option '{key}'")
+        raise vol.Invalid(f"Missing required option '{key}'") from None
 
     # Lookup secret
     if str(value).startswith("!secret "):
         secret: str = value.partition(" ")[2]
         value = coresys.secrets.get(secret)
         if value is None:
-            raise vol.Invalid(f"Unknown secret {secret}")
+            raise vol.Invalid(f"Unknown secret {secret}") from None
 
     # parse extend data from type
     match = RE_SCHEMA_ELEMENT.match(typ)
 
     if not match:
-        raise vol.Invalid(f"Unknown type {typ}")
+        raise vol.Invalid(f"Unknown type {typ}") from None
 
     # prepare range
     range_args = {}
@@ -419,7 +419,7 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     elif typ.startswith(V_LIST):
         return vol.In(match.group("list").split("|"))(str(value))
 
-    raise vol.Invalid(f"Fatal error for {key} type {typ}")
+    raise vol.Invalid(f"Fatal error for {key} type {typ}") from None
 
 
 def _nested_validate_list(coresys, typ, data_list, key):
@@ -428,7 +428,7 @@ def _nested_validate_list(coresys, typ, data_list, key):
 
     # Make sure it is a list
     if not isinstance(data_list, list):
-        raise vol.Invalid(f"Invalid list for {key}")
+        raise vol.Invalid(f"Invalid list for {key}") from None
 
     # Process list
     for element in data_list:
@@ -448,7 +448,7 @@ def _nested_validate_dict(coresys, typ, data_dict, key):
 
     # Make sure it is a dict
     if not isinstance(data_dict, dict):
-        raise vol.Invalid(f"Invalid dict for {key}")
+        raise vol.Invalid(f"Invalid dict for {key}") from None
 
     # Process dict
     for c_key, c_value in data_dict.items():
@@ -475,7 +475,7 @@ def _check_missing_options(origin, exists, root):
     for miss_opt in missing:
         if isinstance(origin[miss_opt], str) and origin[miss_opt].endswith("?"):
             continue
-        raise vol.Invalid(f"Missing option {miss_opt} in {root}")
+        raise vol.Invalid(f"Missing option {miss_opt} in {root}") from None
 
 
 def schema_ui_options(raw_schema: Dict[str, Any]) -> List[Dict[str, Any]]:

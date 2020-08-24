@@ -162,9 +162,9 @@ class HomeAssistantCore(CoreSysAttributes):
                 await self.instance.update(
                     to_version, image=self.sys_updater.image_homeassistant
                 )
-            except DockerAPIError:
+            except DockerAPIError as err:
                 _LOGGER.warning("Update Home Assistant image fails")
-                raise HomeAssistantUpdateError()
+                raise HomeAssistantUpdateError() from err
             else:
                 self.sys_homeassistant.version = self.instance.version
                 self.sys_homeassistant.image = self.sys_updater.image_homeassistant
@@ -212,8 +212,8 @@ class HomeAssistantCore(CoreSysAttributes):
 
         try:
             await self.instance.run()
-        except DockerAPIError:
-            raise HomeAssistantError()
+        except DockerAPIError as err:
+            raise HomeAssistantError() from err
 
         await self._block_till_run(self.sys_homeassistant.version)
 
@@ -228,8 +228,8 @@ class HomeAssistantCore(CoreSysAttributes):
         if await self.instance.is_initialize():
             try:
                 await self.instance.start()
-            except DockerAPIError:
-                raise HomeAssistantError()
+            except DockerAPIError as err:
+                raise HomeAssistantError() from err
 
             await self._block_till_run(self.sys_homeassistant.version)
         # No Instance/Container found, extended start
@@ -244,16 +244,16 @@ class HomeAssistantCore(CoreSysAttributes):
         """
         try:
             return await self.instance.stop(remove_container=False)
-        except DockerAPIError:
-            raise HomeAssistantError()
+        except DockerAPIError as err:
+            raise HomeAssistantError() from err
 
     @process_lock
     async def restart(self) -> None:
         """Restart Home Assistant Docker."""
         try:
             await self.instance.restart()
-        except DockerAPIError:
-            raise HomeAssistantError()
+        except DockerAPIError as err:
+            raise HomeAssistantError() from err
 
         await self._block_till_run(self.sys_homeassistant.version)
 
@@ -278,8 +278,8 @@ class HomeAssistantCore(CoreSysAttributes):
         """
         try:
             return await self.instance.stats()
-        except DockerAPIError:
-            raise HomeAssistantError()
+        except DockerAPIError as err:
+            raise HomeAssistantError() from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
