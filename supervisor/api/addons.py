@@ -85,6 +85,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_VIDEO,
+    ATTR_WATCHDOG,
     ATTR_WEBUI,
     BOOT_AUTO,
     BOOT_MANUAL,
@@ -97,7 +98,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
 from ..exceptions import APIError
-from ..validate import DOCKER_PORTS
+from ..validate import docker_ports
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -108,11 +109,12 @@ SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
-        vol.Optional(ATTR_NETWORK): vol.Maybe(DOCKER_PORTS),
+        vol.Optional(ATTR_NETWORK): vol.Maybe(docker_ports),
         vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
         vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
+        vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
     }
 )
 
@@ -255,6 +257,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_INGRESS_URL: None,
             ATTR_INGRESS_PORT: None,
             ATTR_INGRESS_PANEL: None,
+            ATTR_WATCHDOG: None,
         }
 
         if isinstance(addon, Addon) and addon.is_installed:
@@ -271,6 +274,7 @@ class APIAddons(CoreSysAttributes):
                     ATTR_AUTO_UPDATE: addon.auto_update,
                     ATTR_IP_ADDRESS: str(addon.ip_address),
                     ATTR_VERSION: addon.version,
+                    ATTR_WATCHDOG: addon.watchdog,
                 }
             )
 
@@ -306,6 +310,8 @@ class APIAddons(CoreSysAttributes):
         if ATTR_INGRESS_PANEL in body:
             addon.ingress_panel = body[ATTR_INGRESS_PANEL]
             await self.sys_ingress.update_hass_panel(addon)
+        if ATTR_WATCHDOG in body:
+            addon.watchdog = body[ATTR_WATCHDOG]
 
         addon.save_persist()
 

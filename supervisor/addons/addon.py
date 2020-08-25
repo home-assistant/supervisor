@@ -35,6 +35,7 @@ from ..const import (
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
+    ATTR_WATCHDOG,
     DNS_SUFFIX,
     STATE_STARTED,
     STATE_STOPPED,
@@ -156,6 +157,29 @@ class Addon(AddonModel):
         self.persist[ATTR_AUTO_UPDATE] = value
 
     @property
+    def watchdog(self) -> bool:
+        """Return True if watchdog is enable."""
+        return self.persist[ATTR_WATCHDOG]
+
+    @watchdog.setter
+    def watchdog(self, value: bool) -> None:
+        """Set watchdog enable/disable."""
+        self.persist[ATTR_WATCHDOG] = value
+
+    @property
+    def watchdog_network(self) -> Optional[int]:
+        """Return port to monitor or None."""
+        docker_port: str = self.data.get(ATTR_WATCHDOG)
+        if not docker_port:
+            return None
+
+        # Evaluate port
+        port: int = int(docker_port.split("/")[0])
+        if self.host_network:
+            return self.ports.get(docker_port, port)
+        return port
+
+    @property
     def uuid(self) -> str:
         """Return an API token for this add-on."""
         return self.persist[ATTR_UUID]
@@ -244,10 +268,6 @@ class Addon(AddonModel):
             port = t_port
         else:
             port = self.ports.get(f"{t_port}/tcp", t_port)
-
-        # for interface config or port lists
-        if isinstance(port, (tuple, list)):
-            port = port[-1]
 
         # lookup the correct protocol from config
         if t_proto:
