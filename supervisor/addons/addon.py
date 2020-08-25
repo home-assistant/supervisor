@@ -76,6 +76,11 @@ class Addon(AddonModel):
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
 
+    @property
+    def in_progress(self) -> bool:
+        """Return True if a task is in progress."""
+        return self.instance.in_progress
+
     async def load(self) -> None:
         """Async initialize of object."""
         with suppress(DockerAPIError):
@@ -481,6 +486,13 @@ class Addon(AddonModel):
             _LOGGER.warning("Add-on %s new schema is not compatible", self.slug)
             return False
         return True
+
+    def is_fails(self) -> Awaitable[bool]:
+        """Return True if a Docker container is fails state.
+
+        Return a coroutine.
+        """
+        return self.instance.is_fails()
 
     async def state(self) -> str:
         """Return running state of add-on."""

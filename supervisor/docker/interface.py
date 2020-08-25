@@ -419,8 +419,10 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-        except (docker.errors.DockerException, requests.RequestException):
+        except docker.errors.NotFound:
             return False
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerAPIError() from err
 
         # container is not running
         if docker_container.status != "exited":

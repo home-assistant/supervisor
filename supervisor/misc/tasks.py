@@ -36,6 +36,9 @@ RUN_WATCHDOG_AUDIO_DOCKER = 30
 RUN_WATCHDOG_CLI_DOCKER = 40
 RUN_WATCHDOG_MULTICAST_DOCKER = 50
 
+RUN_WATCHDOG_ADDON_DOCKER = 30
+RUN_WATCHDOG_ADDON_API = 90
+
 
 class Tasks(CoreSysAttributes):
     """Handle Tasks inside Supervisor."""
@@ -126,6 +129,11 @@ class Tasks(CoreSysAttributes):
                 self._watchdog_multicast_docker, RUN_WATCHDOG_MULTICAST_DOCKER
             )
         )
+        self.jobs.add(
+            self.sys_scheduler.register_task(
+                self._watchdog_addon_docker, RUN_WATCHDOG_ADDON_DOCKER
+            )
+        )
 
         _LOGGER.info("All core tasks are scheduled")
 
@@ -185,8 +193,9 @@ class Tasks(CoreSysAttributes):
         _LOGGER.warning("Watchdog found a problem with Home Assistant Docker!")
         try:
             await self.sys_homeassistant.core.start()
-        except HomeAssistantError:
+        except HomeAssistantError as err:
             _LOGGER.error("Watchdog Home Assistant reanimation fails!")
+            self.sys_capture_exception(err)
 
     async def _watchdog_homeassistant_api(self):
         """Create scheduler task for monitoring running state of API.
@@ -222,8 +231,9 @@ class Tasks(CoreSysAttributes):
         _LOGGER.error("Watchdog found a problem with Home Assistant API!")
         try:
             await self.sys_homeassistant.core.restart()
-        except HomeAssistantError:
+        except HomeAssistantError as err:
             _LOGGER.error("Watchdog Home Assistant reanimation fails!")
+            self.sys_capture_exception(err)
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
 
@@ -318,3 +328,21 @@ class Tasks(CoreSysAttributes):
             await self.sys_plugins.multicast.start()
         except MulticastError:
             _LOGGER.error("Watchdog Multicast reanimation fails!")
+
+    async def _watchdog_addon_docker(self):
+        """Check running state  of Docker and start if they is close."""
+        for addon in self.sys_addons.installed:
+            # if watchdog need looking for
+            if not addon.watchdog or not await addon.is_fails():
+                continue
+
+            # if Addon have running actions
+            if addon.in_progress:
+                continue
+
+            _LOGGER.warning("Watchdog found a problem with %s!", addon.slug)
+            try:
+                await addon.start()
+            except AddonsError as err:
+                _LOGGER.error("Watchdog %s reanimation fails!", addon.slug)
+                self.sys_capture_exception(err)
