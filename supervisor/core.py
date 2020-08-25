@@ -173,6 +173,7 @@ class Core(CoreSysAttributes):
                     _LOGGER.warning("Ignore Supervisor updates!")
                 else:
                     await self.sys_supervisor.update()
+                    return
             except SupervisorUpdateError as err:
                 _LOGGER.critical(
                     "Can't update supervisor! This will break some Add-ons or affect "
