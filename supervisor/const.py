@@ -338,12 +338,6 @@ PRIVILEGED_ALL = [
     PRIVILEGED_DAC_READ_SEARCH,
 ]
 
-FEATURES_SHUTDOWN = "shutdown"
-FEATURES_REBOOT = "reboot"
-FEATURES_HASSOS = "hassos"
-FEATURES_HOSTNAME = "hostname"
-FEATURES_SERVICES = "services"
-
 ROLE_DEFAULT = "default"
 ROLE_HOMEASSISTANT = "homeassistant"
 ROLE_BACKUP = "backup"
@@ -403,3 +397,14 @@ class LogLevel(str, Enum):
     WARNING = "warning"
     ERROR = "error"
     CRITICAL = "critical"
+
+
+class HostFeature(str, Enum):
+    """Host feature."""
+
+    HASSOS = "hassos"
+    HOSTNAME = "hostname"
+    NETWORK = "network"
+    REBOOT = "reboot"
+    SERVICES = "services"
+    SHUTDOWN = "shutdown"

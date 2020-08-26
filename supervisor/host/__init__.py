@@ -2,13 +2,7 @@
 from contextlib import suppress
 import logging
 
-from ..const import (
-    FEATURES_HASSOS,
-    FEATURES_HOSTNAME,
-    FEATURES_REBOOT,
-    FEATURES_SERVICES,
-    FEATURES_SHUTDOWN,
-)
+from ..const import HostFeature
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, PulseAudioError
 from .apparmor import AppArmorControl
@@ -71,13 +65,18 @@ class HostManager(CoreSysAttributes):
         features = []
 
         if self.sys_dbus.systemd.is_connected:
-            features.extend([FEATURES_REBOOT, FEATURES_SHUTDOWN, FEATURES_SERVICES])
+            features.extend(
+                [HostFeature.REBOOT, HostFeature.SHUTDOWN, HostFeature.SERVICES]
+            )
+
+        if self.sys_dbus.network.is_connected:
+            features.append(HostFeature.NETWORK)
 
         if self.sys_dbus.hostname.is_connected:
-            features.append(FEATURES_HOSTNAME)
+            features.append(HostFeature.HOSTNAME)
 
         if self.sys_hassos.available:
-            features.append(FEATURES_HASSOS)
+            features.append(HostFeature.HASSOS)
 
         return features
 
