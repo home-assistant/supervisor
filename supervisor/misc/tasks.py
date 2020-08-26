@@ -30,15 +30,17 @@ RUN_RELOAD_UPDATER = 7200
 RUN_RELOAD_INGRESS = 930
 
 RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
-RUN_WATCHDOG_HOMEASSISTANT_API = 300
+RUN_WATCHDOG_HOMEASSISTANT_API = 120
 
-RUN_WATCHDOG_DNS_DOCKER = 20
-RUN_WATCHDOG_AUDIO_DOCKER = 30
-RUN_WATCHDOG_CLI_DOCKER = 40
-RUN_WATCHDOG_MULTICAST_DOCKER = 50
+RUN_WATCHDOG_DNS_DOCKER = 30
+RUN_WATCHDOG_AUDIO_DOCKER = 60
+RUN_WATCHDOG_CLI_DOCKER = 60
+RUN_WATCHDOG_MULTICAST_DOCKER = 60
 
 RUN_WATCHDOG_ADDON_DOCKER = 30
-RUN_WATCHDOG_ADDON_APPLICATON = 90
+RUN_WATCHDOG_ADDON_APPLICATON = 120
+
+RUN_REFRESH_ADDON = 15
 
 
 class Tasks(CoreSysAttributes):
@@ -384,3 +386,17 @@ class Tasks(CoreSysAttributes):
                 self.sys_capture_exception(err)
             finally:
                 self._cache[addon.slug] = 0
+
+    async def _refresh_addon(self) -> None:
+        """Refresh addon state."""
+        for addon in self.sys_addons.installed:
+            # if watchdog need looking for
+            if addon.watchdog or addon.state != AddonState.STARTED:
+                continue
+
+            # if Addon have running actions
+            if addon.in_progress or await addon.is_running():
+                continue
+
+            # Adjust state
+            addon.state = AddonState.STOPPED
