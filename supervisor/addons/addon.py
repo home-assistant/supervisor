@@ -74,7 +74,7 @@ RE_WATCHDOG = re.compile(
 
 RE_OLD_AUDIO = re.compile(r"\d+,\d+")
 
-WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=5)
+WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
 
 
 class Addon(AddonModel):
