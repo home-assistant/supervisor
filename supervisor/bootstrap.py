@@ -236,10 +236,6 @@ def check_environment() -> None:
         _LOGGER.critical("Can't find Docker socket!")
 
     # check socat exec
-    if not shutil.which("socat"):
-        _LOGGER.critical("Can't find socat!")
-
-    # check socat exec
     if not shutil.which("gdbus"):
         _LOGGER.critical("Can't find gdbus!")
 
