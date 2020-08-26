@@ -95,7 +95,6 @@ from ..const import (
 from ..coresys import CoreSys
 from ..discovery.validate import valid_discovery_service
 from ..validate import (
-    docker_port,
     docker_ports,
     docker_ports_description,
     network_port,
@@ -201,7 +200,9 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_STAGE, default=AddonStages.STABLE): vol.Coerce(AddonStages),
         vol.Optional(ATTR_PORTS): docker_ports,
         vol.Optional(ATTR_PORTS_DESCRIPTION): docker_ports_description,
-        vol.Optional(ATTR_WATCHDOG): docker_port,
+        vol.Optional(ATTR_WATCHDOG): vol.Match(
+            r"^(?:https?|\[PROTO:\w+\]|tcp):\/\/\[HOST\]:\[PORT:\d+\].*$"
+        ),
         vol.Optional(ATTR_WEBUI): vol.Match(
             r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"
         ),
