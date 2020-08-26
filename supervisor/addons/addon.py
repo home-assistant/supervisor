@@ -84,12 +84,7 @@ class Addon(AddonModel):
         """Initialize data holder."""
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
-        self._state: AddonState = AddonState.UNKNOWN
-
-    @property
-    def state(self) -> AddonState:
-        """Return running state of add-on."""
-        return self._state
+        self.state: AddonState = AddonState.UNKNOWN
 
     @property
     def in_progress(self) -> bool:

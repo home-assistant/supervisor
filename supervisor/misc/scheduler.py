@@ -1,16 +1,29 @@
 """Schedule for Supervisor."""
+import asyncio
 from datetime import date, datetime, time, timedelta
 import logging
+from typing import Awaitable, Callable, List, Optional, Union
+from uuid import UUID, uuid4
+
+import async_timeout
+import attr
 
 from ..const import CoreStates
 from ..coresys import CoreSys, CoreSysAttributes
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-INTERVAL = "interval"
-REPEAT = "repeat"
-CALL = "callback"
-TASK = "task"
+
+@attr.s
+class _Task:
+    """Task object."""
+
+    id: UUID = attr.ib()
+    coro_callback: Callable[..., Awaitable[None]] = attr.ib()
+    interval: Union[float, time] = attr.ib()
+    repeat: bool = attr.ib()
+    job: Optional[asyncio.tasks.Task] = attr.ib(eq=False)
+    next: Optional[asyncio.TimerHandle] = attr.ib(eq=False)
 
 
 class Scheduler(CoreSysAttributes):
@@ -19,43 +32,49 @@ class Scheduler(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize task schedule."""
         self.coresys: CoreSys = coresys
-        self._data = {}
+        self._tasks: List[_Task] = []
 
-    def register_task(self, coro_callback, interval, repeat=True):
+    def register_task(
+        self,
+        coro_callback: Callable[..., Awaitable[None]],
+        interval: Union[float, time],
+        repeat: bool = True,
+    ) -> UUID:
         """Schedule a coroutine.
 
         The coroutine need to be a callback without arguments.
         """
-        task_id = hash(coro_callback)
-
-        # Generate data
-        opts = {CALL: coro_callback, INTERVAL: interval, REPEAT: repeat}
+        task = _Task(uuid4(), coro_callback, interval, repeat, None, None)
 
         # Schedule task
-        self._data[task_id] = opts
-        self._schedule_task(interval, task_id)
+        self._tasks.append(task)
+        self._schedule_task(task)
 
-        return task_id
+        return task.id
 
-    def _run_task(self, task_id):
+    def _run_task(self, task: _Task):
         """Run a scheduled task."""
-        data = self._data[task_id]
 
-        if self.sys_core.state == CoreStates.RUNNING:
-            self.sys_create_task(data[CALL]())
+        async def _wrap_task():
+            """Run schedule task and reschedule."""
+            try:
+                if self.sys_core.state == CoreStates.RUNNING:
+                    await task.coro_callback()
+            finally:
+                if task.repeat and self.sys_core.state != CoreStates.STOPPING:
+                    self._schedule_task(task)
+                else:
+                    self._tasks.remove(task.id)
 
-        if data[REPEAT]:
-            self._schedule_task(data[INTERVAL], task_id)
-        else:
-            self._data.pop(task_id)
+        task.job = self.sys_create_task(_wrap_task())
 
-    def _schedule_task(self, interval, task_id):
+    def _schedule_task(self, task: _Task):
         """Schedule a task on loop."""
-        if isinstance(interval, (int, float)):
-            job = self.sys_loop.call_later(interval, self._run_task, task_id)
-        elif isinstance(interval, time):
-            today = datetime.combine(date.today(), interval)
-            tomorrow = datetime.combine(date.today() + timedelta(days=1), interval)
+        if isinstance(task.interval, (int, float)):
+            task.next = self.sys_loop.call_later(task.interval, self._run_task, task)
+        elif isinstance(task.interval, time):
+            today = datetime.combine(date.today(), task.interval)
+            tomorrow = datetime.combine(date.today() + timedelta(days=1), task.interval)
 
             # Check if we run it today or next day
             if today > datetime.today():
@@ -63,14 +82,35 @@ class Scheduler(CoreSysAttributes):
             else:
                 calc = tomorrow
 
-            job = self.sys_loop.call_at(calc.timestamp(), self._run_task, task_id)
+            task.next = self.sys_loop.call_at(calc.timestamp(), self._run_task, task)
         else:
             _LOGGER.critical(
                 "Unknown interval %s (type: %s) for scheduler %s",
-                interval,
-                type(interval),
-                task_id,
+                task.interval,
+                type(task.interval),
+                task.id,
             )
 
-        # Store job
-        self._data[task_id][TASK] = job
+    async def shutdown(self, timeout=10) -> None:
+        """Shutdown all task inside the scheduler."""
+        running: List[asyncio.tasks.Task] = []
+
+        # Cancel next task / get running list
+        _LOGGER.info("Shutdown scheduled tasks")
+        for task in self._tasks:
+            if task.next:
+                task.next.cancel()
+            if not task.job or task.job.done():
+                continue
+            running.append(task.job)
+            task.job.cancel()
+
+        if not running:
+            return
+
+        # Wait until all are shutdown
+        try:
+            async with async_timeout.timeout(timeout):
+                await asyncio.wait(running)
+        except asyncio.TimeoutError:
+            _LOGGER.error("Timeout while waiting for jobs shutdown")

@@ -245,7 +245,7 @@ class Core(CoreSysAttributes):
         # Stage 1
         try:
             async with async_timeout.timeout(10):
-                await asyncio.wait([self.sys_api.stop()])
+                await asyncio.wait([self.sys_api.stop(), self.sys_scheduler.shutdown()])
         except asyncio.TimeoutError:
             _LOGGER.warning("Stage 1: Force Shutdown!")
 
