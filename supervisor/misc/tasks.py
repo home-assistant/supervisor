@@ -372,7 +372,7 @@ class Tasks(CoreSysAttributes):
             if retry_scan == 1:
                 self._cache[addon.slug] = retry_scan
                 _LOGGER.warning(
-                    "Watchdog miss application response from %s", addon.slug
+                    "Watchdog missing application response from %s", addon.slug
                 )
                 return
 
