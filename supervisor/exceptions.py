@@ -135,7 +135,7 @@ class AuthError(HassioError):
 
 
 class AuthPasswordResetError(HassioError):
-    """Auth error if password reset fails."""
+    """Auth error if password reset failed."""
 
 
 # Host
@@ -150,11 +150,11 @@ class HostNotSupportedError(HassioNotSupportedError):
 
 
 class HostServiceError(HostError):
-    """Host service functions fails."""
+    """Host service functions failed."""
 
 
 class HostAppArmorError(HostError):
-    """Host apparmor functions fails."""
+    """Host apparmor functions failed."""
 
 
 # API

@@ -133,7 +133,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
                 version, image=self.sys_updater.image_cli, latest=True
             )
         except DockerAPIError as err:
-            _LOGGER.error("HA cli update fails")
+            _LOGGER.error("HA cli update failed")
             raise CliUpdateError() from err
         else:
             self.version = version
@@ -193,4 +193,4 @@ class HaCli(CoreSysAttributes, JsonConfig):
         try:
             await self.instance.install(self.version, latest=True)
         except DockerAPIError:
-            _LOGGER.error("Repairing of HA cli fails")
+            _LOGGER.error("Repairing of HA cli failed")

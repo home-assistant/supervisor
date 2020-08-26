@@ -148,7 +148,7 @@ class Tasks(CoreSysAttributes):
                 continue
             if not addon.test_update_schema():
                 _LOGGER.warning(
-                    "Add-on %s will be ignored, schema tests fails", addon.slug
+                    "Add-on %s will be ignored, schema tests failed", addon.slug
                 )
                 continue
 
@@ -177,7 +177,7 @@ class Tasks(CoreSysAttributes):
         """Check running state of Docker and start if they is close."""
         # if Home Assistant is active
         if (
-            not await self.sys_homeassistant.core.is_fails()
+            not await self.sys_homeassistant.core.is_failed()
             or not self.sys_homeassistant.watchdog
             or self.sys_homeassistant.error_state
         ):
@@ -194,7 +194,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_homeassistant.core.start()
         except HomeAssistantError as err:
-            _LOGGER.error("Watchdog Home Assistant reanimation fails!")
+            _LOGGER.error("Watchdog Home Assistant reanimation failed!")
             self.sys_capture_exception(err)
 
     async def _watchdog_homeassistant_api(self):
@@ -205,7 +205,7 @@ class Tasks(CoreSysAttributes):
         """
         # If Home-Assistant is active
         if (
-            not await self.sys_homeassistant.core.is_fails()
+            not await self.sys_homeassistant.core.is_failed()
             or not self.sys_homeassistant.watchdog
             or self.sys_homeassistant.error_state
         ):
@@ -232,7 +232,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_homeassistant.core.restart()
         except HomeAssistantError as err:
-            _LOGGER.error("Watchdog Home Assistant reanimation fails!")
+            _LOGGER.error("Watchdog Home Assistant reanimation failed!")
             self.sys_capture_exception(err)
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
@@ -276,16 +276,16 @@ class Tasks(CoreSysAttributes):
             return
         _LOGGER.warning("Watchdog found a problem with CoreDNS plugin!")
 
-        # Reset of fails
-        if await self.sys_plugins.dns.is_fails():
-            _LOGGER.error("CoreDNS plugin is in fails state / Reset config")
+        # Reset of failed
+        if await self.sys_plugins.dns.is_failed():
+            _LOGGER.error("CoreDNS plugin is in failed state / Reset config")
             await self.sys_plugins.dns.reset()
             await self.sys_plugins.dns.loop_detection()
 
         try:
             await self.sys_plugins.dns.start()
         except CoreDNSError:
-            _LOGGER.error("Watchdog CoreDNS reanimation fails!")
+            _LOGGER.error("Watchdog CoreDNS reanimation failed!")
 
     async def _watchdog_audio_docker(self):
         """Check running state of Docker and start if they is close."""
@@ -300,7 +300,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_plugins.audio.start()
         except AudioError:
-            _LOGGER.error("Watchdog PulseAudio reanimation fails!")
+            _LOGGER.error("Watchdog PulseAudio reanimation failed!")
 
     async def _watchdog_cli_docker(self):
         """Check running state of Docker and start if they is close."""
@@ -312,7 +312,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_plugins.cli.start()
         except CliError:
-            _LOGGER.error("Watchdog cli reanimation fails!")
+            _LOGGER.error("Watchdog cli reanimation failed!")
 
     async def _watchdog_multicast_docker(self):
         """Check running state of Docker and start if they is close."""
@@ -327,13 +327,13 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_plugins.multicast.start()
         except MulticastError:
-            _LOGGER.error("Watchdog Multicast reanimation fails!")
+            _LOGGER.error("Watchdog Multicast reanimation failed!")
 
     async def _watchdog_addon_docker(self):
         """Check running state  of Docker and start if they is close."""
         for addon in self.sys_addons.installed:
             # if watchdog need looking for
-            if not addon.watchdog or not await addon.is_fails():
+            if not addon.watchdog or not await addon.is_failed():
                 continue
 
             # if Addon have running actions
@@ -344,5 +344,5 @@ class Tasks(CoreSysAttributes):
             try:
                 await addon.start()
             except AddonsError as err:
-                _LOGGER.error("Watchdog %s reanimation fails!", addon.slug)
+                _LOGGER.error("Watchdog %s reanimation failed!", addon.slug)
                 self.sys_capture_exception(err)

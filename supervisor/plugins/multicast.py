@@ -128,7 +128,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.update(version, image=self.sys_updater.image_multicast)
         except DockerAPIError as err:
-            _LOGGER.error("Multicast update fails")
+            _LOGGER.error("Multicast update failed")
             raise MulticastUpdateError() from err
         else:
             self.version = version
@@ -190,12 +190,12 @@ class Multicast(JsonConfig, CoreSysAttributes):
         """
         return self.instance.is_running()
 
-    def is_fails(self) -> Awaitable[bool]:
-        """Return True if a Docker container is fails state.
+    def is_failed(self) -> Awaitable[bool]:
+        """Return True if a Docker container is failed state.
 
         Return a coroutine.
         """
-        return self.instance.is_fails()
+        return self.instance.is_failed()
 
     async def repair(self) -> None:
         """Repair Multicast plugin."""
@@ -206,4 +206,4 @@ class Multicast(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.install(self.version)
         except DockerAPIError:
-            _LOGGER.error("Repairing of Multicast fails")
+            _LOGGER.error("Repairing of Multicast failed")

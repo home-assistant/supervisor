@@ -524,12 +524,12 @@ class Addon(AddonModel):
             return False
         return True
 
-    def is_fails(self) -> Awaitable[bool]:
-        """Return True if a Docker container is fails state.
+    def is_failed(self) -> Awaitable[bool]:
+        """Return True if a Docker container is failed state.
 
         Return a coroutine.
         """
-        return self.instance.is_fails()
+        return self.instance.is_failed()
 
     async def state(self) -> str:
         """Return running state of add-on."""
