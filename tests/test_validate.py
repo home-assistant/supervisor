@@ -47,7 +47,7 @@ def test_dns_server_list_combined():
     assert validate.dns_server_list(combined)
     # test max_length is OK still
     assert validate.dns_server_list(combined)
-    # test that it failed when the list is too long
+    # test that it fails when the list is too long
     with pytest.raises(vol.error.Invalid):
         validate.dns_server_list(combined + combined + combined + combined)
 
