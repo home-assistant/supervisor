@@ -74,7 +74,7 @@ RE_WATCHDOG = re.compile(
 
 RE_OLD_AUDIO = re.compile(r"\d+,\d+")
 
-WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
+WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=5)
 
 
 class Addon(AddonModel):
@@ -534,13 +534,6 @@ class Addon(AddonModel):
             _LOGGER.warning("Add-on %s new schema is not compatible", self.slug)
             return False
         return True
-
-    def is_failed(self) -> Awaitable[bool]:
-        """Return True if a Docker container is failed state.
-
-        Return a coroutine.
-        """
-        return self.instance.is_failed()
 
     async def start(self) -> None:
         """Set options and start add-on."""
