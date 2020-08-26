@@ -80,22 +80,22 @@ from ..const import (
     ATTR_UUID,
     ATTR_VERSION,
     ATTR_VIDEO,
+    ATTR_WATCHDOG,
     ATTR_WEBUI,
     BOOT_AUTO,
     BOOT_MANUAL,
     PRIVILEGED_ALL,
     ROLE_ALL,
     ROLE_DEFAULT,
-    STATE_STARTED,
-    STATE_STOPPED,
     AddonStages,
     AddonStartup,
+    AddonState,
 )
 from ..coresys import CoreSys
 from ..discovery.validate import valid_discovery_service
 from ..validate import (
-    DOCKER_PORTS,
-    DOCKER_PORTS_DESCRIPTION,
+    docker_ports,
+    docker_ports_description,
     network_port,
     token,
     uuid_match,
@@ -197,8 +197,11 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_INIT, default=True): vol.Boolean(),
         vol.Optional(ATTR_ADVANCED, default=False): vol.Boolean(),
         vol.Optional(ATTR_STAGE, default=AddonStages.STABLE): vol.Coerce(AddonStages),
-        vol.Optional(ATTR_PORTS): DOCKER_PORTS,
-        vol.Optional(ATTR_PORTS_DESCRIPTION): DOCKER_PORTS_DESCRIPTION,
+        vol.Optional(ATTR_PORTS): docker_ports,
+        vol.Optional(ATTR_PORTS_DESCRIPTION): docker_ports_description,
+        vol.Optional(ATTR_WATCHDOG): vol.Match(
+            r"^(?:https?|\[PROTO:\w+\]|tcp):\/\/\[HOST\]:\[PORT:\d+\].*$"
+        ),
         vol.Optional(ATTR_WEBUI): vol.Match(
             r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"
         ),
@@ -301,11 +304,12 @@ SCHEMA_ADDON_USER = vol.Schema(
         vol.Optional(ATTR_OPTIONS, default=dict): dict,
         vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
         vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
-        vol.Optional(ATTR_NETWORK): DOCKER_PORTS,
+        vol.Optional(ATTR_NETWORK): docker_ports,
         vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(vol.Coerce(str)),
         vol.Optional(ATTR_PROTECTED, default=True): vol.Boolean(),
         vol.Optional(ATTR_INGRESS_PANEL, default=False): vol.Boolean(),
+        vol.Optional(ATTR_WATCHDOG, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )
@@ -331,7 +335,7 @@ SCHEMA_ADDON_SNAPSHOT = vol.Schema(
     {
         vol.Required(ATTR_USER): SCHEMA_ADDON_USER,
         vol.Required(ATTR_SYSTEM): SCHEMA_ADDON_SYSTEM,
-        vol.Required(ATTR_STATE): vol.In([STATE_STARTED, STATE_STOPPED]),
+        vol.Required(ATTR_STATE): vol.Coerce(AddonState),
         vol.Required(ATTR_VERSION): vol.Coerce(str),
     },
     extra=vol.REMOVE_EXTRA,

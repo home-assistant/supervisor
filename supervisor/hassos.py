@@ -153,9 +153,9 @@ class HassOS(CoreSysAttributes):
             self.sys_create_task(self.sys_host.control.reboot())
             return
 
-        # Update fails
+        # Update failed
         await self.sys_dbus.rauc.update()
-        _LOGGER.error("HassOS update fails with: %s", self.sys_dbus.rauc.last_error)
+        _LOGGER.error("HassOS update failed with: %s", self.sys_dbus.rauc.last_error)
         raise HassOSUpdateError()
 
     async def mark_healthy(self) -> None:

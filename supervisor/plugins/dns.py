@@ -197,7 +197,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.update(version, image=self.sys_updater.image_dns)
         except DockerAPIError as err:
-            _LOGGER.error("CoreDNS update fails")
+            _LOGGER.error("CoreDNS update failed")
             raise CoreDNSUpdateError() from err
         else:
             self.version = version
@@ -404,12 +404,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """
         return self.instance.is_running()
 
-    def is_fails(self) -> Awaitable[bool]:
-        """Return True if a Docker container is fails state.
+    def is_failed(self) -> Awaitable[bool]:
+        """Return True if a Docker container is failed state.
 
         Return a coroutine.
         """
-        return self.instance.is_fails()
+        return self.instance.is_failed()
 
     async def repair(self) -> None:
         """Repair CoreDNS plugin."""
@@ -420,7 +420,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.install(self.version)
         except DockerAPIError:
-            _LOGGER.error("Repairing of CoreDNS fails")
+            _LOGGER.error("Repairing of CoreDNS failed")
 
     def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""

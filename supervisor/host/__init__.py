@@ -103,4 +103,4 @@ class HostManager(CoreSysAttributes):
         try:
             await self.apparmor.load()
         except HassioError as err:
-            _LOGGER.waring("Load host AppArmor on start fails: %s", err)
+            _LOGGER.waring("Load host AppArmor on start failed: %s", err)

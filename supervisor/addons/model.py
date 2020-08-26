@@ -61,6 +61,7 @@ from ..const import (
     ATTR_USB,
     ATTR_VERSION,
     ATTR_VIDEO,
+    ATTR_WATCHDOG,
     ATTR_WEBUI,
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
@@ -247,6 +248,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def webui(self) -> Optional[str]:
         """Return URL to webui or None."""
         return self.data.get(ATTR_WEBUI)
+
+    @property
+    def watchdog(self) -> Optional[str]:
+        """Return URL to for watchdog or None."""
+        return self.data.get(ATTR_WATCHDOG)
 
     @property
     def ingress_port(self) -> Optional[int]:

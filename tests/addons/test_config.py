@@ -154,3 +154,16 @@ def test_invalid_machine():
 
     with pytest.raises(vol.Invalid):
         assert vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_watchdog_url():
+    """Test Valid watchdog options."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    for test_options in (
+        "tcp://[HOST]:[PORT:8123]",
+        "http://[HOST]:[PORT:8080]/health",
+        "https://[HOST]:[PORT:80]/",
+    ):
+        config["watchdog"] = test_options
+        assert vd.SCHEMA_ADDON_CONFIG(config)

@@ -122,7 +122,7 @@ class Supervisor(CoreSysAttributes):
                 self.sys_updater.image_supervisor, version
             )
         except DockerAPIError as err:
-            _LOGGER.error("Update of Supervisor fails!")
+            _LOGGER.error("Update of Supervisor failed!")
             raise SupervisorUpdateError() from err
         else:
             self.sys_config.version = version
@@ -160,4 +160,4 @@ class Supervisor(CoreSysAttributes):
         try:
             await self.instance.retag()
         except DockerAPIError:
-            _LOGGER.error("Repairing of Supervisor fails")
+            _LOGGER.error("Repairing of Supervisor failed")

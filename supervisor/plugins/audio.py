@@ -155,7 +155,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.update(version, image=self.sys_updater.image_audio)
         except DockerAPIError as err:
-            _LOGGER.error("Audio update fails")
+            _LOGGER.error("Audio update failed")
             raise AudioUpdateError() from err
         else:
             self.version = version
@@ -226,7 +226,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.install(self.version)
         except DockerAPIError:
-            _LOGGER.error("Repairing of Audio fails")
+            _LOGGER.error("Repairing of Audio failed")
 
     def pulse_client(self, input_profile=None, output_profile=None) -> str:
         """Generate an /etc/pulse/client.conf data."""

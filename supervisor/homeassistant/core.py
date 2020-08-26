@@ -163,7 +163,7 @@ class HomeAssistantCore(CoreSysAttributes):
                     to_version, image=self.sys_updater.image_homeassistant
                 )
             except DockerAPIError as err:
-                _LOGGER.warning("Update Home Assistant image fails")
+                _LOGGER.warning("Update Home Assistant image failed")
                 raise HomeAssistantUpdateError() from err
             else:
                 self.sys_homeassistant.version = self.instance.version
@@ -185,7 +185,7 @@ class HomeAssistantCore(CoreSysAttributes):
 
         # Update going wrong, revert it
         if self.error_state and rollback:
-            _LOGGER.critical("HomeAssistant update fails -> rollback!")
+            _LOGGER.critical("HomeAssistant update failed -> rollback!")
             # Make a copy of the current log file if it exsist
             logfile = self.sys_config.path_homeassistant / "home-assistant.log"
             if logfile.exists():
@@ -288,12 +288,12 @@ class HomeAssistantCore(CoreSysAttributes):
         """
         return self.instance.is_running()
 
-    def is_fails(self) -> Awaitable[bool]:
-        """Return True if a Docker container is fails state.
+    def is_failed(self) -> Awaitable[bool]:
+        """Return True if a Docker container is failed state.
 
         Return a coroutine.
         """
-        return self.instance.is_fails()
+        return self.instance.is_failed()
 
     @property
     def in_progress(self) -> bool:
@@ -408,4 +408,4 @@ class HomeAssistantCore(CoreSysAttributes):
         try:
             await self.instance.install(self.sys_homeassistant.version)
         except DockerAPIError:
-            _LOGGER.error("Repairing of Home Assistant fails")
+            _LOGGER.error("Repairing of Home Assistant failed")

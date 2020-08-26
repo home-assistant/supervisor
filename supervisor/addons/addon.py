@@ -1,4 +1,5 @@
 """Init file for Supervisor add-ons."""
+import asyncio
 from contextlib import suppress
 from copy import deepcopy
 from ipaddress import IPv4Address
@@ -11,6 +12,7 @@ import tarfile
 from tempfile import TemporaryDirectory
 from typing import Any, Awaitable, Dict, List, Optional
 
+import aiohttp
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -35,9 +37,9 @@ from ..const import (
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
+    ATTR_WATCHDOG,
     DNS_SUFFIX,
-    STATE_STARTED,
-    STATE_STOPPED,
+    AddonState,
 )
 from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
@@ -50,6 +52,7 @@ from ..exceptions import (
     HostAppArmorError,
     JsonFileError,
 )
+from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from ..utils.tar import atomic_contents_add, secure_path
@@ -64,7 +67,14 @@ RE_WEBUI = re.compile(
     r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$"
 )
 
+RE_WATCHDOG = re.compile(
+    r"^(?:(?P<s_prefix>https?|tcp)|\[PROTO:(?P<t_proto>\w+)\])"
+    r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$"
+)
+
 RE_OLD_AUDIO = re.compile(r"\d+,\d+")
+
+WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
 
 
 class Addon(AddonModel):
@@ -74,11 +84,23 @@ class Addon(AddonModel):
         """Initialize data holder."""
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
+        self.state: AddonState = AddonState.UNKNOWN
+
+    @property
+    def in_progress(self) -> bool:
+        """Return True if a task is in progress."""
+        return self.instance.in_progress
 
     async def load(self) -> None:
         """Async initialize of object."""
         with suppress(DockerAPIError):
             await self.instance.attach(tag=self.version)
+
+            # Evaluate state
+            if await self.instance.is_running():
+                self.state = AddonState.STARTED
+            else:
+                self.state = AddonState.STOPPED
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -156,6 +178,16 @@ class Addon(AddonModel):
         self.persist[ATTR_AUTO_UPDATE] = value
 
     @property
+    def watchdog(self) -> bool:
+        """Return True if watchdog is enable."""
+        return self.persist[ATTR_WATCHDOG]
+
+    @watchdog.setter
+    def watchdog(self, value: bool) -> None:
+        """Set watchdog enable/disable."""
+        self.persist[ATTR_WATCHDOG] = value
+
+    @property
     def uuid(self) -> str:
         """Return an API token for this add-on."""
         return self.persist[ATTR_UUID]
@@ -230,8 +262,6 @@ class Addon(AddonModel):
         if not url:
             return None
         webui = RE_WEBUI.match(url)
-        if not webui:
-            return None
 
         # extract arguments
         t_port = webui.group("t_port")
@@ -244,10 +274,6 @@ class Addon(AddonModel):
             port = t_port
         else:
             port = self.ports.get(f"{t_port}/tcp", t_port)
-
-        # for interface config or port lists
-        if isinstance(port, (tuple, list)):
-            port = port[-1]
 
         # lookup the correct protocol from config
         if t_proto:
@@ -352,6 +378,48 @@ class Addon(AddonModel):
     def save_persist(self) -> None:
         """Save data of add-on."""
         self.sys_addons.data.save_data()
+
+    async def watchdog_application(self) -> bool:
+        """Return True if application is running."""
+        url = super().watchdog
+        if not url:
+            return True
+        application = RE_WATCHDOG.match(url)
+
+        # extract arguments
+        t_port = application.group("t_port")
+        t_proto = application.group("t_proto")
+        s_prefix = application.group("s_prefix") or ""
+        s_suffix = application.group("s_suffix") or ""
+
+        # search host port for this docker port
+        if self.host_network:
+            port = self.ports.get(f"{t_port}/tcp", t_port)
+        else:
+            port = t_port
+
+        # TCP monitoring
+        if s_prefix == "tcp":
+            return await self.sys_run_in_executor(check_port, self.ip_address, port)
+
+        # lookup the correct protocol from config
+        if t_proto:
+            proto = "https" if self.options.get(t_proto) else "http"
+        else:
+            proto = s_prefix
+
+        # Make HTTP request
+        try:
+            url = f"{proto}://{self.ip_address}:{port}{s_suffix}"
+            async with self.sys_websession_ssl.get(
+                url, timeout=WATCHDOG_TIMEOUT
+            ) as req:
+                if req.status < 300:
+                    return True
+        except (asyncio.TimeoutError, aiohttp.ClientError):
+            pass
+
+        return False
 
     async def write_options(self) -> None:
         """Return True if add-on options is written to data."""
@@ -462,12 +530,6 @@ class Addon(AddonModel):
             return False
         return True
 
-    async def state(self) -> str:
-        """Return running state of add-on."""
-        if await self.instance.is_running():
-            return STATE_STARTED
-        return STATE_STOPPED
-
     async def start(self) -> None:
         """Set options and start add-on."""
         if await self.instance.is_running():
@@ -490,6 +552,8 @@ class Addon(AddonModel):
             await self.instance.run()
         except DockerAPIError as err:
             raise AddonsError() from err
+        else:
+            self.state = AddonState.STARTED
 
     async def stop(self) -> None:
         """Stop add-on."""
@@ -497,6 +561,8 @@ class Addon(AddonModel):
             return await self.instance.stop()
         except DockerAPIError as err:
             raise AddonsError() from err
+        else:
+            self.state = AddonState.STOPPED
 
     async def restart(self) -> None:
         """Restart add-on."""
@@ -510,6 +576,13 @@ class Addon(AddonModel):
         Return a coroutine.
         """
         return self.instance.logs()
+
+    def is_running(self) -> Awaitable[bool]:
+        """Return True if Docker container is running.
+
+        Return a coroutine.
+        """
+        return self.instance.is_running()
 
     async def stats(self) -> DockerStats:
         """Return stats of container."""
@@ -548,7 +621,7 @@ class Addon(AddonModel):
                 ATTR_USER: self.persist,
                 ATTR_SYSTEM: self.data,
                 ATTR_VERSION: self.version,
-                ATTR_STATE: await self.state(),
+                ATTR_STATE: self.state,
             }
 
             # Store local configs/state
@@ -683,7 +756,7 @@ class Addon(AddonModel):
                     raise AddonsError() from err
 
             # Run add-on
-            if data[ATTR_STATE] == STATE_STARTED:
+            if data[ATTR_STATE] == AddonState.STARTED:
                 return await self.start()
 
         _LOGGER.info("Finish restore for add-on %s", self.slug)

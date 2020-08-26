@@ -71,7 +71,7 @@ class Core(CoreSysAttributes):
         elif self.sys_config.version != self.sys_supervisor.version:
             self.healthy = False
             _LOGGER.error(
-                "Update %s of Supervisor %s fails!",
+                "Update %s of Supervisor %s failed!",
                 self.sys_config.version,
                 self.sys_supervisor.version,
             )
@@ -245,7 +245,7 @@ class Core(CoreSysAttributes):
         # Stage 1
         try:
             async with async_timeout.timeout(10):
-                await asyncio.wait([self.sys_api.stop()])
+                await asyncio.wait([self.sys_api.stop(), self.sys_scheduler.shutdown()])
         except asyncio.TimeoutError:
             _LOGGER.warning("Stage 1: Force Shutdown!")
 

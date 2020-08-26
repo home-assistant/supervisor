@@ -609,7 +609,8 @@ Get all available add-ons.
   "ingress_entry": "null|/api/hassio_ingress/slug",
   "ingress_url": "null|/api/hassio_ingress/slug/entry.html",
   "ingress_port": "null|int",
-  "ingress_panel": "null|bool"
+  "ingress_panel": "null|bool",
+  "watchdog": "null|bool"
 }
 ```
 
@@ -629,7 +630,8 @@ Get all available add-ons.
   "options": {},
   "audio_output": "null|0,0",
   "audio_input": "null|0,0",
-  "ingress_panel": "bool"
+  "ingress_panel": "bool",
+  "watchdog": "bool"
 }
 ```
 

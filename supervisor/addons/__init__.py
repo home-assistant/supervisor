@@ -5,7 +5,7 @@ import logging
 import tarfile
 from typing import Dict, List, Optional, Union
 
-from ..const import BOOT_AUTO, STATE_STARTED, AddonStartup
+from ..const import BOOT_AUTO, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     AddonsError,
@@ -108,7 +108,7 @@ class AddonManager(CoreSysAttributes):
         """Shutdown addons."""
         tasks: List[Addon] = []
         for addon in self.installed:
-            if await addon.state() != STATE_STARTED or addon.startup != stage:
+            if addon.state != AddonState.STARTED or addon.startup != stage:
                 continue
             tasks.append(addon)
 
@@ -176,6 +176,8 @@ class AddonManager(CoreSysAttributes):
             await addon.instance.remove()
         except DockerAPIError as err:
             raise AddonsError() from err
+        else:
+            addon.state = AddonState.UNKNOWN
 
         await addon.remove_data()
 
@@ -238,7 +240,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsNotSupportedError()
 
         # Update instance
-        last_state = await addon.state()
+        last_state: AddonState = addon.state
         try:
             await addon.instance.update(store.version, store.image)
 
@@ -255,7 +257,7 @@ class AddonManager(CoreSysAttributes):
         await addon.install_apparmor()
 
         # restore state
-        if last_state == STATE_STARTED:
+        if last_state == AddonState.STARTED:
             await addon.start()
 
     async def rebuild(self, slug: str) -> None:
@@ -279,7 +281,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsNotSupportedError()
 
         # remove docker container but not addon config
-        last_state = await addon.state()
+        last_state: AddonState = addon.state
         try:
             await addon.instance.remove()
             await addon.instance.install(addon.version)
@@ -290,7 +292,7 @@ class AddonManager(CoreSysAttributes):
             _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
 
         # restore state
-        if last_state == STATE_STARTED:
+        if last_state == AddonState.STARTED:
             await addon.start()
 
     async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:

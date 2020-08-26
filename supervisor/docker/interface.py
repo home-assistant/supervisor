@@ -405,22 +405,24 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.error("Can't read stats from %s: %s", self.name, err)
             raise DockerAPIError() from err
 
-    def is_fails(self) -> Awaitable[bool]:
+    def is_failed(self) -> Awaitable[bool]:
         """Return True if Docker is failing state.
 
         Return a Future.
         """
-        return self.sys_run_in_executor(self._is_fails)
+        return self.sys_run_in_executor(self._is_failed)
 
-    def _is_fails(self) -> bool:
+    def _is_failed(self) -> bool:
         """Return True if Docker is failing state.
 
         Need run inside executor.
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-        except (docker.errors.DockerException, requests.RequestException):
+        except docker.errors.NotFound:
             return False
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerAPIError() from err
 
         # container is not running
         if docker_container.status != "exited":
