@@ -128,7 +128,7 @@ class APIProxy(CoreSysAttributes):
                 raise APIError()
 
             # Auth session
-            await self.sys_homeassistant.ensure_access_token()
+            await self.sys_homeassistant.api.ensure_access_token()
             await client.send_json(
                 {
                     "type": "auth",
