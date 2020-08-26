@@ -127,7 +127,8 @@ class Core(CoreSysAttributes):
             if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:
                 self.supported = False
                 _LOGGER.error(
-                    "Detected unsupported OS: %s", self.sys_host.info.operating_system,
+                    "Detected unsupported OS: %s",
+                    self.sys_host.info.operating_system,
                 )
 
         # Check all DBUS connectivity

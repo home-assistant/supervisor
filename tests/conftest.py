@@ -49,7 +49,8 @@ def dbus() -> DBus:
         return load_fixture(fixture)
 
     with patch("supervisor.utils.gdbus.DBus._send", new=mock_send), patch(
-        "supervisor.dbus.interface.DBusInterface.is_connected", return_value=True,
+        "supervisor.dbus.interface.DBusInterface.is_connected",
+        return_value=True,
     ), patch("supervisor.utils.gdbus.DBus.get_properties", new=mock_get_properties):
 
         dbus_obj = DBus(DBUS_NAME_NM, DBUS_OBJECT_BASE)
@@ -80,9 +81,11 @@ async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSy
     with patch("supervisor.bootstrap.initialize_system_data"), patch(
         "supervisor.bootstrap.setup_diagnostics"
     ), patch(
-        "supervisor.bootstrap.fetch_timezone", return_value="Europe/Zurich",
+        "supervisor.bootstrap.fetch_timezone",
+        return_value="Europe/Zurich",
     ), patch(
-        "aiohttp.ClientSession", return_value=TestClient.session,
+        "aiohttp.ClientSession",
+        return_value=TestClient.session,
     ):
         coresys_obj = await initialize_coresys()
 

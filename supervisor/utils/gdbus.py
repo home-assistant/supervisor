@@ -45,7 +45,9 @@ MAP_GDBUS_ERROR: Dict[str, Any] = {
 }
 
 # Commands for dbus
-INTROSPECT: str = "gdbus introspect --system --dest {bus} " "--object-path {object} --xml"
+INTROSPECT: str = (
+    "gdbus introspect --system --dest {bus} " "--object-path {object} --xml"
+)
 CALL: str = (
     "gdbus call --system --dest {bus} --object-path {object} "
     "--method {method} {args}"
