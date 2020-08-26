@@ -14,14 +14,14 @@ from ..coresys import CoreSys, CoreSysAttributes
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-@attr.s
+@attr.s(slots=True)
 class _Task:
     """Task object."""
 
     id: UUID = attr.ib()
-    coro_callback: Callable[..., Awaitable[None]] = attr.ib()
-    interval: Union[float, time] = attr.ib()
-    repeat: bool = attr.ib()
+    coro_callback: Callable[..., Awaitable[None]] = attr.ib(eq=False)
+    interval: Union[float, time] = attr.ib(eq=False)
+    repeat: bool = attr.ib(eq=False)
     job: Optional[asyncio.tasks.Task] = attr.ib(eq=False)
     next: Optional[asyncio.TimerHandle] = attr.ib(eq=False)
 
