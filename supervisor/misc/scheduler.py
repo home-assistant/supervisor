@@ -52,7 +52,7 @@ class Scheduler(CoreSysAttributes):
 
         return task.id
 
-    def _run_task(self, task: _Task):
+    def _run_task(self, task: _Task) -> None:
         """Run a scheduled task."""
 
         async def _wrap_task():
@@ -68,7 +68,7 @@ class Scheduler(CoreSysAttributes):
 
         task.job = self.sys_create_task(_wrap_task())
 
-    def _schedule_task(self, task: _Task):
+    def _schedule_task(self, task: _Task) -> None:
         """Schedule a task on loop."""
         if isinstance(task.interval, (int, float)):
             task.next = self.sys_loop.call_later(task.interval, self._run_task, task)
