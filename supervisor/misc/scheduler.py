@@ -64,7 +64,7 @@ class Scheduler(CoreSysAttributes):
                 if task.repeat and self.sys_core.state != CoreStates.STOPPING:
                     self._schedule_task(task)
                 else:
-                    self._tasks.remove(task.id)
+                    self._tasks.remove(task)
 
         task.job = self.sys_create_task(_wrap_task())
 
