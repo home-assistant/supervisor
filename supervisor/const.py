@@ -279,9 +279,6 @@ WANT_SERVICE = "want"
 BOOT_AUTO = "auto"
 BOOT_MANUAL = "manual"
 
-STATE_STARTED = "started"
-STATE_STOPPED = "stopped"
-STATE_NONE = "none"
 
 MAP_CONFIG = "config"
 MAP_SSL = "ssl"
@@ -374,6 +371,14 @@ class AddonStages(str, Enum):
     STABLE = "stable"
     EXPERIMENTAL = "experimental"
     DEPRECATED = "deprecated"
+
+
+class AddonState(str, Enum):
+    """State of add-on."""
+
+    STARTED = "started"
+    STOPPED = "stopped"
+    UNKNOWN = "unknown"
 
 
 class UpdateChannels(str, Enum):

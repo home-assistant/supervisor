@@ -39,8 +39,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
-    STATE_STARTED,
-    STATE_STOPPED,
+    AddonState,
 )
 from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
@@ -531,11 +530,11 @@ class Addon(AddonModel):
         """
         return self.instance.is_failed()
 
-    async def state(self) -> str:
+    async def state(self) -> AddonState:
         """Return running state of add-on."""
         if await self.instance.is_running():
-            return STATE_STARTED
-        return STATE_STOPPED
+            return AddonState.STARTED
+        return AddonState.STOPPED
 
     async def start(self) -> None:
         """Set options and start add-on."""
@@ -752,7 +751,7 @@ class Addon(AddonModel):
                     raise AddonsError() from err
 
             # Run add-on
-            if data[ATTR_STATE] == STATE_STARTED:
+            if data[ATTR_STATE] == AddonState.STARTED:
                 return await self.start()
 
         _LOGGER.info("Finish restore for add-on %s", self.slug)

@@ -1,6 +1,7 @@
 """A collection of tasks."""
 import logging
 
+from ..const import AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
     AddonsError,
@@ -37,7 +38,7 @@ RUN_WATCHDOG_CLI_DOCKER = 40
 RUN_WATCHDOG_MULTICAST_DOCKER = 50
 
 RUN_WATCHDOG_ADDON_DOCKER = 30
-RUN_WATCHDOG_ADDON_API = 90
+RUN_WATCHDOG_ADDON_APPLICATON = 90
 
 
 class Tasks(CoreSysAttributes):
@@ -132,6 +133,11 @@ class Tasks(CoreSysAttributes):
         self.jobs.add(
             self.sys_scheduler.register_task(
                 self._watchdog_addon_docker, RUN_WATCHDOG_ADDON_DOCKER
+            )
+        )
+        self.jobs.add(
+            self.sys_scheduler.register_task(
+                self._watchdog_addon_application, RUN_WATCHDOG_ADDON_APPLICATON
             )
         )
 
@@ -346,3 +352,35 @@ class Tasks(CoreSysAttributes):
             except AddonsError as err:
                 _LOGGER.error("Watchdog %s reanimation failed!", addon.slug)
                 self.sys_capture_exception(err)
+
+    async def _watchdog_addon_application(self):
+        """Check running state of the application and start if they is hangs."""
+        for addon in self.sys_addons.installed:
+            # if watchdog need looking for
+            if not addon.watchdog or await addon.state() != AddonState.STARTED:
+                continue
+
+            # Init cache data
+            retry_scan = self._cache.get(addon.slug, 0)
+
+            # if Addon have running actions / Application work
+            if addon.in_progress or await addon.watchdog_application():
+                continue
+
+            # Look like we run into a problem
+            retry_scan += 1
+            if retry_scan == 1:
+                self._cache[addon.slug] = retry_scan
+                _LOGGER.warning(
+                    "Watchdog miss application response from %s", addon.slug
+                )
+                return
+
+            _LOGGER.warning("Watchdog found a problem with %s application!", addon.slug)
+            try:
+                await addon.restart()
+            except AddonsError as err:
+                _LOGGER.error("Watchdog %s reanimation failed!", addon.slug)
+                self.sys_capture_exception(err)
+            finally:
+                self._cache[addon.slug] = 0

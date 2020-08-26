@@ -93,7 +93,7 @@ from ..const import (
     CONTENT_TYPE_PNG,
     CONTENT_TYPE_TEXT,
     REQUEST_FROM,
-    STATE_NONE,
+    AddonState,
 )
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
@@ -215,7 +215,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_MACHINE: addon.supported_machine,
             ATTR_HOMEASSISTANT: addon.homeassistant_version,
             ATTR_URL: addon.url,
-            ATTR_STATE: STATE_NONE,
+            ATTR_STATE: AddonState.UNKNOWN,
             ATTR_DETACHED: addon.is_detached,
             ATTR_AVAILABLE: addon.available,
             ATTR_BUILD: addon.need_build,
