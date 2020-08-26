@@ -108,7 +108,7 @@ class AddonManager(CoreSysAttributes):
         """Shutdown addons."""
         tasks: List[Addon] = []
         for addon in self.installed:
-            if await addon.state() != AddonState.STARTED or addon.startup != stage:
+            if addon.state != AddonState.STARTED or addon.startup != stage:
                 continue
             tasks.append(addon)
 
@@ -238,7 +238,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsNotSupportedError()
 
         # Update instance
-        last_state: AddonState = await addon.state()
+        last_state: AddonState = addon.state
         try:
             await addon.instance.update(store.version, store.image)
 
@@ -279,7 +279,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsNotSupportedError()
 
         # remove docker container but not addon config
-        last_state: AddonState = await addon.state()
+        last_state: AddonState = addon.state
         try:
             await addon.instance.remove()
             await addon.instance.install(addon.version)

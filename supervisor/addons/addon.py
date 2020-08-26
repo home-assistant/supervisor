@@ -84,6 +84,12 @@ class Addon(AddonModel):
         """Initialize data holder."""
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
+        self._state: AddonState = AddonState.UNKNOWN
+
+    @property
+    def state(self) -> AddonState:
+        """Return running state of add-on."""
+        return self._state
 
     @property
     def in_progress(self) -> bool:
@@ -94,6 +100,12 @@ class Addon(AddonModel):
         """Async initialize of object."""
         with suppress(DockerAPIError):
             await self.instance.attach(tag=self.version)
+
+            # Evaluate state
+            if await self.instance.is_running():
+                self._state = AddonState.STARTED
+            else:
+                self._state = AddonState.STOPPED
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -530,12 +542,6 @@ class Addon(AddonModel):
         """
         return self.instance.is_failed()
 
-    async def state(self) -> AddonState:
-        """Return running state of add-on."""
-        if await self.instance.is_running():
-            return AddonState.STARTED
-        return AddonState.STOPPED
-
     async def start(self) -> None:
         """Set options and start add-on."""
         if await self.instance.is_running():
@@ -558,6 +564,8 @@ class Addon(AddonModel):
             await self.instance.run()
         except DockerAPIError as err:
             raise AddonsError() from err
+        else:
+            self._state = AddonState.STARTED
 
     async def stop(self) -> None:
         """Stop add-on."""
@@ -565,6 +573,8 @@ class Addon(AddonModel):
             return await self.instance.stop()
         except DockerAPIError as err:
             raise AddonsError() from err
+        else:
+            self._state = AddonState.STOPPED
 
     async def restart(self) -> None:
         """Restart add-on."""
@@ -578,6 +588,13 @@ class Addon(AddonModel):
         Return a coroutine.
         """
         return self.instance.logs()
+
+    def is_running(self) -> Awaitable[bool]:
+        """Return True if Docker container is running.
+
+        Return a coroutine.
+        """
+        return self.instance.is_running()
 
     async def stats(self) -> DockerStats:
         """Return stats of container."""
@@ -616,7 +633,7 @@ class Addon(AddonModel):
                 ATTR_USER: self.persist,
                 ATTR_SYSTEM: self.data,
                 ATTR_VERSION: self.version,
-                ATTR_STATE: await self.state(),
+                ATTR_STATE: self.state,
             }
 
             # Store local configs/state

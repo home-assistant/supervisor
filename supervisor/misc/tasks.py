@@ -339,11 +339,11 @@ class Tasks(CoreSysAttributes):
         """Check running state  of Docker and start if they is close."""
         for addon in self.sys_addons.installed:
             # if watchdog need looking for
-            if not addon.watchdog or not await addon.is_failed():
+            if not addon.watchdog or await addon.is_running():
                 continue
 
             # if Addon have running actions
-            if addon.in_progress:
+            if addon.in_progress or addon.state != AddonState.STARTED:
                 continue
 
             _LOGGER.warning("Watchdog found a problem with %s!", addon.slug)
@@ -357,7 +357,7 @@ class Tasks(CoreSysAttributes):
         """Check running state of the application and start if they is hangs."""
         for addon in self.sys_addons.installed:
             # if watchdog need looking for
-            if not addon.watchdog or await addon.state() != AddonState.STARTED:
+            if not addon.watchdog or addon.state != AddonState.STARTED:
                 continue
 
             # Init cache data

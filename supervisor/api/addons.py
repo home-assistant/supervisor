@@ -263,7 +263,7 @@ class APIAddons(CoreSysAttributes):
         if isinstance(addon, Addon) and addon.is_installed:
             data.update(
                 {
-                    ATTR_STATE: await addon.state(),
+                    ATTR_STATE: addon.state,
                     ATTR_WEBUI: addon.webui,
                     ATTR_INGRESS_ENTRY: addon.ingress_entry,
                     ATTR_INGRESS_URL: addon.ingress_url,
