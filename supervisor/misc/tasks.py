@@ -30,15 +30,17 @@ RUN_RELOAD_UPDATER = 7200
 RUN_RELOAD_INGRESS = 930
 
 RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
-RUN_WATCHDOG_HOMEASSISTANT_API = 300
+RUN_WATCHDOG_HOMEASSISTANT_API = 120
 
-RUN_WATCHDOG_DNS_DOCKER = 20
-RUN_WATCHDOG_AUDIO_DOCKER = 30
-RUN_WATCHDOG_CLI_DOCKER = 40
-RUN_WATCHDOG_MULTICAST_DOCKER = 50
+RUN_WATCHDOG_DNS_DOCKER = 30
+RUN_WATCHDOG_AUDIO_DOCKER = 60
+RUN_WATCHDOG_CLI_DOCKER = 60
+RUN_WATCHDOG_MULTICAST_DOCKER = 60
 
 RUN_WATCHDOG_ADDON_DOCKER = 30
-RUN_WATCHDOG_ADDON_APPLICATON = 90
+RUN_WATCHDOG_ADDON_APPLICATON = 120
+
+RUN_REFRESH_ADDON = 15
 
 
 class Tasks(CoreSysAttributes):
@@ -47,99 +49,55 @@ class Tasks(CoreSysAttributes):
     def __init__(self, coresys):
         """Initialize Tasks."""
         self.coresys = coresys
-        self.jobs = set()
         self._cache = {}
 
     async def load(self):
         """Add Tasks to scheduler."""
         # Update
-        self.jobs.add(
-            self.sys_scheduler.register_task(self._update_addons, RUN_UPDATE_ADDONS)
-        )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._update_supervisor, RUN_UPDATE_SUPERVISOR
-            )
-        )
-        self.jobs.add(
-            self.sys_scheduler.register_task(self._update_cli, RUN_UPDATE_CLI)
-        )
-        self.jobs.add(
-            self.sys_scheduler.register_task(self._update_dns, RUN_UPDATE_DNS)
-        )
-        self.jobs.add(
-            self.sys_scheduler.register_task(self._update_audio, RUN_UPDATE_AUDIO)
-        )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._update_multicast, RUN_UPDATE_MULTICAST
-            )
-        )
+        self.sys_scheduler.register_task(self._update_addons, RUN_UPDATE_ADDONS)
+        self.sys_scheduler.register_task(self._update_supervisor, RUN_UPDATE_SUPERVISOR)
+        self.sys_scheduler.register_task(self._update_cli, RUN_UPDATE_CLI)
+        self.sys_scheduler.register_task(self._update_dns, RUN_UPDATE_DNS)
+        self.sys_scheduler.register_task(self._update_audio, RUN_UPDATE_AUDIO)
+        self.sys_scheduler.register_task(self._update_multicast, RUN_UPDATE_MULTICAST)
 
         # Reload
-        self.jobs.add(
-            self.sys_scheduler.register_task(self.sys_store.reload, RUN_RELOAD_ADDONS)
+        self.sys_scheduler.register_task(self.sys_store.reload, RUN_RELOAD_ADDONS)
+        self.sys_scheduler.register_task(self.sys_updater.reload, RUN_RELOAD_UPDATER)
+        self.sys_scheduler.register_task(
+            self.sys_snapshots.reload, RUN_RELOAD_SNAPSHOTS
         )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self.sys_updater.reload, RUN_RELOAD_UPDATER
-            )
-        )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self.sys_snapshots.reload, RUN_RELOAD_SNAPSHOTS
-            )
-        )
-        self.jobs.add(
-            self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
-        )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self.sys_ingress.reload, RUN_RELOAD_INGRESS
-            )
-        )
+        self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
+        self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
 
         # Watchdog
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._watchdog_homeassistant_docker, RUN_WATCHDOG_HOMEASSISTANT_DOCKER
-            )
+        self.sys_scheduler.register_task(
+            self._watchdog_homeassistant_docker, RUN_WATCHDOG_HOMEASSISTANT_DOCKER
         )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._watchdog_homeassistant_api, RUN_WATCHDOG_HOMEASSISTANT_API
-            )
+        self.sys_scheduler.register_task(
+            self._watchdog_homeassistant_api, RUN_WATCHDOG_HOMEASSISTANT_API
         )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._watchdog_dns_docker, RUN_WATCHDOG_DNS_DOCKER
-            )
+        self.sys_scheduler.register_task(
+            self._watchdog_dns_docker, RUN_WATCHDOG_DNS_DOCKER
         )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._watchdog_audio_docker, RUN_WATCHDOG_AUDIO_DOCKER
-            )
+        self.sys_scheduler.register_task(
+            self._watchdog_audio_docker, RUN_WATCHDOG_AUDIO_DOCKER
         )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._watchdog_cli_docker, RUN_WATCHDOG_CLI_DOCKER
-            )
+        self.sys_scheduler.register_task(
+            self._watchdog_cli_docker, RUN_WATCHDOG_CLI_DOCKER
         )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._watchdog_multicast_docker, RUN_WATCHDOG_MULTICAST_DOCKER
-            )
+        self.sys_scheduler.register_task(
+            self._watchdog_multicast_docker, RUN_WATCHDOG_MULTICAST_DOCKER
         )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._watchdog_addon_docker, RUN_WATCHDOG_ADDON_DOCKER
-            )
+        self.sys_scheduler.register_task(
+            self._watchdog_addon_docker, RUN_WATCHDOG_ADDON_DOCKER
         )
-        self.jobs.add(
-            self.sys_scheduler.register_task(
-                self._watchdog_addon_application, RUN_WATCHDOG_ADDON_APPLICATON
-            )
+        self.sys_scheduler.register_task(
+            self._watchdog_addon_application, RUN_WATCHDOG_ADDON_APPLICATON
         )
+
+        # Refresh
+        self.sys_scheduler.register_task(self._refresh_addon, RUN_REFRESH_ADDON)
 
         _LOGGER.info("All core tasks are scheduled")
 
@@ -384,3 +342,17 @@ class Tasks(CoreSysAttributes):
                 self.sys_capture_exception(err)
             finally:
                 self._cache[addon.slug] = 0
+
+    async def _refresh_addon(self) -> None:
+        """Refresh addon state."""
+        for addon in self.sys_addons.installed:
+            # if watchdog need looking for
+            if addon.watchdog or addon.state != AddonState.STARTED:
+                continue
+
+            # if Addon have running actions
+            if addon.in_progress or await addon.is_running():
+                continue
+
+            # Adjust state
+            addon.state = AddonState.STOPPED
