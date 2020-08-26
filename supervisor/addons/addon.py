@@ -98,9 +98,9 @@ class Addon(AddonModel):
 
             # Evaluate state
             if await self.instance.is_running():
-                self._state = AddonState.STARTED
+                self.state = AddonState.STARTED
             else:
-                self._state = AddonState.STOPPED
+                self.state = AddonState.STOPPED
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -553,7 +553,7 @@ class Addon(AddonModel):
         except DockerAPIError as err:
             raise AddonsError() from err
         else:
-            self._state = AddonState.STARTED
+            self.state = AddonState.STARTED
 
     async def stop(self) -> None:
         """Stop add-on."""
@@ -562,7 +562,7 @@ class Addon(AddonModel):
         except DockerAPIError as err:
             raise AddonsError() from err
         else:
-            self._state = AddonState.STOPPED
+            self.state = AddonState.STOPPED
 
     async def restart(self) -> None:
         """Restart add-on."""

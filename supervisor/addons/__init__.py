@@ -177,7 +177,7 @@ class AddonManager(CoreSysAttributes):
         except DockerAPIError as err:
             raise AddonsError() from err
         else:
-            addon.state == AddonState.UNKNOWN
+            addon.state = AddonState.UNKNOWN
 
         await addon.remove_data()
 
