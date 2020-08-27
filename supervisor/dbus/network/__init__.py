@@ -67,18 +67,17 @@ class NetworkManager(DBusInterface):
 
             await interface.connect(self.dbus, connection)
 
-            if (
-                interface.connection.type
-                not in [
-                    DBUS_ATTR_TYPE_ETH,
-                    DBUS_ATTR_TYPE_WIFI,
-                ]
-                or not interface.connection.ip4_config
-            ):
+            if interface.connection.type not in [
+                DBUS_ATTR_TYPE_ETH,
+                DBUS_ATTR_TYPE_WIFI,
+            ]:
                 continue
             try:
                 await interface.connection.update_information()
             except (IndexError, DBusFatalError):
+                continue
+
+            if not interface.connection.ip4_config:
                 continue
 
             if interface.connection.object_path == data.get(

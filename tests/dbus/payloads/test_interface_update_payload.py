@@ -1,9 +1,12 @@
 """Test interface update payload."""
+import pytest
+
 from supervisor.dbus.payloads.interface_update import interface_update_payload
 from supervisor.utils.gdbus import DBus
 
 
-def test_interface_update_payload(network_interface):
+@pytest.mark.asyncio
+async def test_interface_update_payload(network_interface):
     """Test interface update payload."""
     assert (
         interface_update_payload(network_interface, **{"method": "auto"})
