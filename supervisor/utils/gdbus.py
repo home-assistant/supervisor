@@ -22,7 +22,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # Use to convert GVariant into json
 RE_GVARIANT_TYPE: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
-    r"string|objectpath|signature|@[asviumodf\{\}]+) "
+    r"string|objectpath|signature|@[asviumodfy\{\}\(\)]+) "
 )
 RE_GVARIANT_VARIANT: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(<|>)")
 RE_GVARIANT_STRING_ESC: re.Pattern[Any] = re.compile(
@@ -45,7 +45,9 @@ MAP_GDBUS_ERROR: Dict[str, Any] = {
 }
 
 # Commands for dbus
-INTROSPECT: str = "gdbus introspect --system --dest {bus} " "--object-path {object} --xml"
+INTROSPECT: str = (
+    "gdbus introspect --system --dest {bus} " "--object-path {object} --xml"
+)
 CALL: str = (
     "gdbus call --system --dest {bus} --object-path {object} "
     "--method {method} {args}"
@@ -73,7 +75,7 @@ class DBus:
         # pylint: disable=protected-access
         await self._init_proxy()
 
-        _LOGGER.info("Connect to dbus: %s - %s", bus_name, object_path)
+        _LOGGER.debug("Connect to dbus: %s - %s", bus_name, object_path)
         return self
 
     async def _init_proxy(self) -> None:
@@ -89,7 +91,7 @@ class DBus:
         except ET.ParseError as err:
             _LOGGER.error("Can't parse introspect data: %s", err)
             _LOGGER.debug("Introspect %s on %s", self.bus_name, self.object_path)
-            raise DBusParseError()
+            raise DBusParseError() from err
 
         # Read available methods
         for interface in xml.findall("./interface"):
@@ -137,7 +139,7 @@ class DBus:
         except json.JSONDecodeError as err:
             _LOGGER.error("Can't parse '%s': %s", json_raw, err)
             _LOGGER.debug("GVariant data: '%s'", raw)
-            raise DBusParseError()
+            raise DBusParseError() from err
 
     @staticmethod
     def gvariant_args(args: List[Any]) -> str:
@@ -167,7 +169,7 @@ class DBus:
         )
 
         # Run command
-        _LOGGER.info("Call %s on %s", method, self.object_path)
+        _LOGGER.debug("Call %s on %s", method, self.object_path)
         data = await self._send(command)
 
         # Parse and return data
@@ -177,9 +179,9 @@ class DBus:
         """Read all properties from interface."""
         try:
             return (await self.call_dbus(DBUS_METHOD_GETALL, interface))[0]
-        except IndexError:
+        except IndexError as err:
             _LOGGER.error("No attributes returned for %s", interface)
-            raise DBusFatalError
+            raise DBusFatalError() from err
 
     async def _send(self, command: List[str]) -> str:
         """Send command over dbus."""
@@ -196,7 +198,7 @@ class DBus:
             data, error = await proc.communicate()
         except OSError as err:
             _LOGGER.error("DBus fatal error: %s", err)
-            raise DBusFatalError()
+            raise DBusFatalError() from err
 
         # Success?
         if proc.returncode == 0:
@@ -294,18 +296,18 @@ class DBusSignalWrapper:
     async def __anext__(self):
         """Get next data."""
         if not self._proc:
-            raise StopAsyncIteration()
+            raise StopAsyncIteration() from None
 
         # Read signals
         while True:
             try:
                 data = await self._proc.stdout.readline()
             except asyncio.TimeoutError:
-                raise StopAsyncIteration()
+                raise StopAsyncIteration() from None
 
             # Program close
             if not data:
-                raise StopAsyncIteration()
+                raise StopAsyncIteration() from None
 
             # Extract metadata
             match = RE_MONITOR_OUTPUT.match(data.decode())
@@ -321,5 +323,5 @@ class DBusSignalWrapper:
 
             try:
                 return self.dbus.parse_gvariant(data)
-            except DBusParseError:
-                raise StopAsyncIteration()
+            except DBusParseError as err:
+                raise StopAsyncIteration() from err

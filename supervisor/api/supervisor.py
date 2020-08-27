@@ -41,7 +41,7 @@ from ..const import (
     CONTENT_TYPE_BINARY,
     SUPERVISOR_VERSION,
     LogLevel,
-    UpdateChannels,
+    UpdateChannel,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
@@ -54,7 +54,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
     {
-        vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannels),
+        vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannel),
         vol.Optional(ATTR_ADDONS_REPOSITORIES): repositories,
         vol.Optional(ATTR_TIMEZONE): validate_timezone,
         vol.Optional(ATTR_WAIT_BOOT): wait_boot,
@@ -86,7 +86,7 @@ class APISupervisor(CoreSysAttributes):
                     ATTR_NAME: addon.name,
                     ATTR_SLUG: addon.slug,
                     ATTR_DESCRIPTON: addon.description,
-                    ATTR_STATE: await addon.state(),
+                    ATTR_STATE: addon.state,
                     ATTR_VERSION: addon.latest_version,
                     ATTR_INSTALLED: addon.version,
                     ATTR_REPOSITORY: addon.repository,
@@ -176,7 +176,9 @@ class APISupervisor(CoreSysAttributes):
     def reload(self, request: web.Request) -> Awaitable[None]:
         """Reload add-ons, configuration, etc."""
         return asyncio.shield(
-            asyncio.wait([self.sys_updater.reload(), self.sys_secrets.reload()])
+            asyncio.wait(
+                [self.sys_updater.reload(), self.sys_homeassistant.secrets.reload()]
+            )
         )
 
     @api_process

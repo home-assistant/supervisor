@@ -140,9 +140,9 @@ class HassOS(CoreSysAttributes):
             await self.sys_dbus.rauc.install(ext_ota)
             completed = await self.sys_dbus.rauc.signal_completed()
 
-        except DBusError:
+        except DBusError as err:
             _LOGGER.error("Rauc communication error")
-            raise HassOSUpdateError()
+            raise HassOSUpdateError() from err
 
         finally:
             int_ota.unlink()
@@ -153,9 +153,9 @@ class HassOS(CoreSysAttributes):
             self.sys_create_task(self.sys_host.control.reboot())
             return
 
-        # Update fails
+        # Update failed
         await self.sys_dbus.rauc.update()
-        _LOGGER.error("HassOS update fails with: %s", self.sys_dbus.rauc.last_error)
+        _LOGGER.error("HassOS update failed with: %s", self.sys_dbus.rauc.last_error)
         raise HassOSUpdateError()
 
     async def mark_healthy(self) -> None:

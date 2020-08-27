@@ -156,13 +156,13 @@ class Ingress(JsonConfig, CoreSysAttributes):
 
     async def update_hass_panel(self, addon: Addon):
         """Return True if Home Assistant up and running."""
-        if not await self.sys_homeassistant.is_running():
+        if not await self.sys_homeassistant.core.is_running():
             _LOGGER.debug("Ignore panel update on Core")
             return
 
         # Update UI
         method = "post" if addon.ingress_panel else "delete"
-        async with self.sys_homeassistant.make_request(
+        async with self.sys_homeassistant.api.make_request(
             method, f"api/hassio_push/panel/{addon.slug}"
         ) as resp:
             if resp.status in (200, 201):

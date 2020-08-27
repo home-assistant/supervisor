@@ -5,7 +5,7 @@ import logging
 import tarfile
 from typing import Dict, List, Optional, Union
 
-from ..const import BOOT_AUTO, STATE_STARTED, AddonStartup
+from ..const import BOOT_AUTO, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     AddonsError,
@@ -108,7 +108,7 @@ class AddonManager(CoreSysAttributes):
         """Shutdown addons."""
         tasks: List[Addon] = []
         for addon in self.installed:
-            if await addon.state() != STATE_STARTED or addon.startup != stage:
+            if addon.state != AddonState.STARTED or addon.startup != stage:
                 continue
             tasks.append(addon)
 
@@ -153,9 +153,9 @@ class AddonManager(CoreSysAttributes):
 
         try:
             await addon.instance.install(store.version, store.image)
-        except DockerAPIError:
+        except DockerAPIError as err:
             self.data.uninstall(addon)
-            raise AddonsError()
+            raise AddonsError() from err
         else:
             self.local[slug] = addon
 
@@ -174,8 +174,10 @@ class AddonManager(CoreSysAttributes):
 
         try:
             await addon.instance.remove()
-        except DockerAPIError:
-            raise AddonsError()
+        except DockerAPIError as err:
+            raise AddonsError() from err
+        else:
+            addon.state = AddonState.UNKNOWN
 
         await addon.remove_data()
 
@@ -238,15 +240,15 @@ class AddonManager(CoreSysAttributes):
             raise AddonsNotSupportedError()
 
         # Update instance
-        last_state = await addon.state()
+        last_state: AddonState = addon.state
         try:
             await addon.instance.update(store.version, store.image)
 
             # Cleanup
             with suppress(DockerAPIError):
                 await addon.instance.cleanup()
-        except DockerAPIError:
-            raise AddonsError()
+        except DockerAPIError as err:
+            raise AddonsError() from err
         else:
             self.data.update(store)
             _LOGGER.info("Add-on '%s' successfully updated", slug)
@@ -255,7 +257,7 @@ class AddonManager(CoreSysAttributes):
         await addon.install_apparmor()
 
         # restore state
-        if last_state == STATE_STARTED:
+        if last_state == AddonState.STARTED:
             await addon.start()
 
     async def rebuild(self, slug: str) -> None:
@@ -279,18 +281,18 @@ class AddonManager(CoreSysAttributes):
             raise AddonsNotSupportedError()
 
         # remove docker container but not addon config
-        last_state = await addon.state()
+        last_state: AddonState = addon.state
         try:
             await addon.instance.remove()
             await addon.instance.install(addon.version)
-        except DockerAPIError:
-            raise AddonsError()
+        except DockerAPIError as err:
+            raise AddonsError() from err
         else:
             self.data.update(store)
             _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
 
         # restore state
-        if last_state == STATE_STARTED:
+        if last_state == AddonState.STARTED:
             await addon.start()
 
     async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:

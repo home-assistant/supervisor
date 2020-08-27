@@ -13,7 +13,7 @@ def valid_discovery_service(service):
     """Validate service name."""
     service_file = Path(__file__).parent.joinpath(f"services/{service}.py")
     if not service_file.exists():
-        raise vol.Invalid(f"Service {service} not found")
+        raise vol.Invalid(f"Service {service} not found") from None
     return service
 
 
@@ -22,7 +22,7 @@ def valid_discovery_config(service, config):
     try:
         service_mod = import_module(f".services.{service}", "supervisor.discovery")
     except ImportError:
-        raise vol.Invalid(f"Service {service} not found")
+        raise vol.Invalid(f"Service {service} not found") from None
 
     return service_mod.SCHEMA(config)
 

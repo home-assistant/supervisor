@@ -61,11 +61,12 @@ from ..const import (
     ATTR_USB,
     ATTR_VERSION,
     ATTR_VIDEO,
+    ATTR_WATCHDOG,
     ATTR_WEBUI,
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
-    AddonStages,
+    AddonStage,
     AddonStartup,
 )
 from ..coresys import CoreSys, CoreSysAttributes
@@ -206,7 +207,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_ADVANCED]
 
     @property
-    def stage(self) -> AddonStages:
+    def stage(self) -> AddonStage:
         """Return stage mode of add-on."""
         return self.data[ATTR_STAGE]
 
@@ -247,6 +248,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def webui(self) -> Optional[str]:
         """Return URL to webui or None."""
         return self.data.get(ATTR_WEBUI)
+
+    @property
+    def watchdog(self) -> Optional[str]:
+        """Return URL to for watchdog or None."""
+        return self.data.get(ATTR_WATCHDOG)
 
     @property
     def ingress_port(self) -> Optional[int]:

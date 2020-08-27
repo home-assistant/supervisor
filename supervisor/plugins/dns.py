@@ -25,7 +25,6 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.dns import DockerDNS
 from ..docker.stats import DockerStats
 from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
-from ..misc.forwarder import DNSForward
 from ..utils.json import JsonConfig
 from ..validate import dns_url
 from .validate import SCHEMA_DNS_CONFIG
@@ -53,7 +52,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_DNS, SCHEMA_DNS_CONFIG)
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
-        self.forwarder: DNSForward = DNSForward()
         self.coredns_template: Optional[jinja2.Template] = None
         self.resolv_template: Optional[jinja2.Template] = None
 
@@ -141,9 +139,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.image = self.instance.image
             self.save_data()
 
-        # Start DNS forwarder
-        self.sys_create_task(self.forwarder.start(self.sys_docker.network.dns))
-
         # Initialize CoreDNS Template
         try:
             self.coredns_template = jinja2.Template(COREDNS_TMPL.read_text())
@@ -163,10 +158,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Update supervisor
         self._write_resolv(HOST_RESOLV)
-
-    async def unload(self) -> None:
-        """Unload DNS forwarder."""
-        await self.forwarder.stop()
 
     async def install(self) -> None:
         """Install CoreDNS."""
@@ -205,9 +196,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         # Update
         try:
             await self.instance.update(version, image=self.sys_updater.image_dns)
-        except DockerAPIError:
-            _LOGGER.error("CoreDNS update fails")
-            raise CoreDNSUpdateError()
+        except DockerAPIError as err:
+            _LOGGER.error("CoreDNS update failed")
+            raise CoreDNSUpdateError() from err
         else:
             self.version = version
             self.image = self.sys_updater.image_dns
@@ -226,9 +217,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Restart CoreDNS plugin")
         try:
             await self.instance.restart()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't start CoreDNS plugin")
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     async def start(self) -> None:
         """Run CoreDNS."""
@@ -238,18 +229,18 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Start CoreDNS plugin")
         try:
             await self.instance.run()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't start CoreDNS plugin")
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
         _LOGGER.info("Stop CoreDNS plugin")
         try:
             await self.instance.stop()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't stop CoreDNS plugin")
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     async def reset(self) -> None:
         """Reset DNS and hosts."""
@@ -316,7 +307,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.corefile.write_text(data)
         except OSError as err:
             _LOGGER.error("Can't update corefile: %s", err)
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     def _init_hosts(self) -> None:
         """Import hosts entry."""
@@ -340,7 +331,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                     hosts.write(f"{entry.ip_address!s} {' '.join(entry.names)}\n")
         except OSError as err:
             _LOGGER.error("Can't write hosts file: %s", err)
-            raise CoreDNSError()
+            raise CoreDNSError() from err
 
     def add_host(self, ipv4: IPv4Address, names: List[str], write: bool = True) -> None:
         """Add a new host entry."""
@@ -403,8 +394,8 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """Return stats of CoreDNS."""
         try:
             return await self.instance.stats()
-        except DockerAPIError:
-            raise CoreDNSError()
+        except DockerAPIError as err:
+            raise CoreDNSError() from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
@@ -413,12 +404,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """
         return self.instance.is_running()
 
-    def is_fails(self) -> Awaitable[bool]:
-        """Return True if a Docker container is fails state.
+    def is_failed(self) -> Awaitable[bool]:
+        """Return True if a Docker container is failed state.
 
         Return a coroutine.
         """
-        return self.instance.is_fails()
+        return self.instance.is_failed()
 
     async def repair(self) -> None:
         """Repair CoreDNS plugin."""
@@ -429,7 +420,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.install(self.version)
         except DockerAPIError:
-            _LOGGER.error("Repairing of CoreDNS fails")
+            _LOGGER.error("Repairing of CoreDNS failed")
 
     def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""

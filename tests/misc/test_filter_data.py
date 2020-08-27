@@ -1,7 +1,7 @@
 """Test sentry data filter."""
 from unittest.mock import patch
 
-from supervisor.const import SUPERVISOR_VERSION, CoreStates
+from supervisor.const import SUPERVISOR_VERSION, CoreState
 from supervisor.exceptions import AddonConfigurationError
 from supervisor.misc.filter import filter_data
 
@@ -41,10 +41,10 @@ def test_not_started(coresys):
     coresys.config.diagnostics = True
     coresys.core.supported = True
 
-    coresys.core.state = CoreStates.INITIALIZE
+    coresys.core.state = CoreState.INITIALIZE
     assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
 
-    coresys.core.state = CoreStates.SETUP
+    coresys.core.state = CoreState.SETUP
     assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
 
 
@@ -53,7 +53,7 @@ def test_defaults(coresys):
     coresys.config.diagnostics = True
     coresys.supported = True
 
-    coresys.core.state = CoreStates.RUNNING
+    coresys.core.state = CoreState.RUNNING
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
         filtered = filter_data(coresys, SAMPLE_EVENT, {})
 
@@ -81,7 +81,7 @@ def test_sanitize(coresys):
     coresys.config.diagnostics = True
     coresys.supported = True
 
-    coresys.core.state = CoreStates.RUNNING
+    coresys.core.state = CoreState.RUNNING
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
         filtered = filter_data(coresys, event, {})
 

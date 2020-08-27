@@ -4,7 +4,7 @@ import re
 
 from aiohttp import hdrs
 
-from ..const import ENV_SUPERVISOR_DEV, HEADER_TOKEN_OLD, CoreStates
+from ..const import ENV_SUPERVISOR_DEV, HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
 from ..exceptions import AddonConfigurationError
 
@@ -35,7 +35,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
         return None
 
     # Not full startup - missing information
-    if coresys.core.state in (CoreStates.INITIALIZE, CoreStates.SETUP):
+    if coresys.core.state in (CoreState.INITIALIZE, CoreState.SETUP):
         return event
 
     # List installed addons

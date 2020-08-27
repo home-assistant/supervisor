@@ -24,7 +24,7 @@ from .const import (
     SOCKET_DOCKER,
     SUPERVISOR_VERSION,
     LogLevel,
-    UpdateChannels,
+    UpdateChannel,
 )
 from .core import Core
 from .coresys import CoreSys
@@ -37,7 +37,6 @@ from .ingress import Ingress
 from .misc.filter import filter_data
 from .misc.hwmon import HwMonitor
 from .misc.scheduler import Scheduler
-from .misc.secrets import SecretsManager
 from .misc.tasks import Tasks
 from .plugins import PluginManager
 from .services import ServiceManager
@@ -74,7 +73,6 @@ async def initialize_coresys() -> CoreSys:
     coresys.discovery = Discovery(coresys)
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
-    coresys.secrets = SecretsManager(coresys)
     coresys.scheduler = Scheduler(coresys)
 
     # diagnostics
@@ -172,7 +170,7 @@ def initialize_system_data(coresys: CoreSys) -> None:
     # Check if ENV is in development mode
     if bool(os.environ.get(ENV_SUPERVISOR_DEV, 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
-        coresys.updater.channel = UpdateChannels.DEV
+        coresys.updater.channel = UpdateChannel.DEV
         coresys.config.logging = LogLevel.DEBUG
         coresys.config.debug = True
 
@@ -236,10 +234,6 @@ def check_environment() -> None:
     # check docker socket
     if not SOCKET_DOCKER.is_socket():
         _LOGGER.critical("Can't find Docker socket!")
-
-    # check socat exec
-    if not shutil.which("socat"):
-        _LOGGER.critical("Can't find socat!")
 
     # check socat exec
     if not shutil.which("gdbus"):

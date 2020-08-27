@@ -20,7 +20,7 @@ from .const import (
     ATTR_SUPERVISOR,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
-    UpdateChannels,
+    UpdateChannel,
 )
 from .coresys import CoreSysAttributes
 from .exceptions import HassioUpdaterError
@@ -133,12 +133,12 @@ class Updater(JsonConfig, CoreSysAttributes):
         )
 
     @property
-    def channel(self) -> UpdateChannels:
+    def channel(self) -> UpdateChannel:
         """Return upstream channel of Supervisor instance."""
         return self._data[ATTR_CHANNEL]
 
     @channel.setter
-    def channel(self, value: UpdateChannels):
+    def channel(self, value: UpdateChannel):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
 
@@ -158,11 +158,11 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
-            raise HassioUpdaterError()
+            raise HassioUpdaterError() from err
 
         except json.JSONDecodeError as err:
             _LOGGER.warning("Can't parse versions from %s: %s", url, err)
-            raise HassioUpdaterError()
+            raise HassioUpdaterError() from err
 
         # data valid?
         if not data or data.get(ATTR_CHANNEL) != self.channel:
@@ -196,7 +196,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         except KeyError as err:
             _LOGGER.warning("Can't process version data: %s", err)
-            raise HassioUpdaterError()
+            raise HassioUpdaterError() from err
 
         else:
             self.save_data()

@@ -1,0 +1,29 @@
+{
+  "Devices": ["/org/freedesktop/NetworkManager/Devices/1"],
+  "AllDevices": [
+    "/org/freedesktop/NetworkManager/Devices/1",
+    "/org/freedesktop/NetworkManager/Devices/2"
+  ],
+  "Checkpoints": [],
+  "NetworkingEnabled": true,
+  "WirelessEnabled": true,
+  "WirelessHardwareEnabled": true,
+  "WwanEnabled": true,
+  "WwanHardwareEnabled": true,
+  "WimaxEnabled": false,
+  "WimaxHardwareEnabled": false,
+  "ActiveConnections": ["/org/freedesktop/NetworkManager/ActiveConnection/1"],
+  "PrimaryConnection": "/org/freedesktop/NetworkManager/ActiveConnection/1",
+  "PrimaryConnectionType": "802-3-ethernet",
+  "Metered": 4,
+  "ActivatingConnection": "/",
+  "Startup": false,
+  "Version": "1.22.10",
+  "Capabilities": [1],
+  "State": 70,
+  "Connectivity": 4,
+  "ConnectivityCheckAvailable": true,
+  "ConnectivityCheckEnabled": true,
+  "ConnectivityCheckUri": "http://connectivity-check.ubuntu.com/",
+  "GlobalDnsConfiguration": {}
+}

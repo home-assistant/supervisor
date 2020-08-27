@@ -5,7 +5,7 @@ import logging
 
 import async_timeout
 
-from .const import SOCKET_DBUS, SUPERVISED_SUPPORTED_OS, AddonStartup, CoreStates
+from .const import SOCKET_DBUS, SUPERVISED_SUPPORTED_OS, AddonStartup, CoreState
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     DockerAPIError,
@@ -23,7 +23,7 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
-        self.state: CoreStates = CoreStates.INITIALIZE
+        self.state: CoreState = CoreState.INITIALIZE
         self.healthy: bool = True
         self.supported: bool = True
 
@@ -71,14 +71,14 @@ class Core(CoreSysAttributes):
         elif self.sys_config.version != self.sys_supervisor.version:
             self.healthy = False
             _LOGGER.error(
-                "Update %s of Supervisor %s fails!",
+                "Update %s of Supervisor %s failed!",
                 self.sys_config.version,
                 self.sys_supervisor.version,
             )
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
-        self.state = CoreStates.SETUP
+        self.state = CoreState.SETUP
 
         # Load DBus
         await self.sys_dbus.load()
@@ -122,24 +122,22 @@ class Core(CoreSysAttributes):
         # Load ingress
         await self.sys_ingress.load()
 
-        # Load secrets
-        await self.sys_secrets.load()
-
         # Check supported OS
         if not self.sys_hassos.available:
             if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:
                 self.supported = False
                 _LOGGER.error(
-                    "Detected unsupported OS: %s", self.sys_host.info.operating_system,
+                    "Detected unsupported OS: %s",
+                    self.sys_host.info.operating_system,
                 )
 
         # Check all DBUS connectivity
         if not self.sys_dbus.hostname.is_connected:
             self.supported = False
             _LOGGER.error("Hostname DBUS is not connected")
-        if not self.sys_dbus.nmi_dns.is_connected:
+        if not self.sys_dbus.network.is_connected:
             self.supported = False
-            _LOGGER.error("NetworkManager DNS DBUS is not connected")
+            _LOGGER.error("NetworkManager  is not connected")
         if not self.sys_dbus.systemd.is_connected:
             self.supported = False
             _LOGGER.error("Systemd DBUS is not connected")
@@ -154,7 +152,7 @@ class Core(CoreSysAttributes):
 
     async def start(self):
         """Start Supervisor orchestration."""
-        self.state = CoreStates.STARTUP
+        self.state = CoreState.STARTUP
         await self.sys_api.start()
 
         # Check if system is healthy
@@ -176,6 +174,7 @@ class Core(CoreSysAttributes):
                     _LOGGER.warning("Ignore Supervisor updates!")
                 else:
                     await self.sys_supervisor.update()
+                    return
             except SupervisorUpdateError as err:
                 _LOGGER.critical(
                     "Can't update supervisor! This will break some Add-ons or affect "
@@ -204,10 +203,10 @@ class Core(CoreSysAttributes):
             # run HomeAssistant
             if (
                 self.sys_homeassistant.boot
-                and not await self.sys_homeassistant.is_running()
+                and not await self.sys_homeassistant.core.is_running()
             ):
                 with suppress(HomeAssistantError):
-                    await self.sys_homeassistant.start()
+                    await self.sys_homeassistant.core.start()
             else:
                 _LOGGER.info("Skip start of Home Assistant")
 
@@ -223,7 +222,7 @@ class Core(CoreSysAttributes):
 
             # If landingpage / run upgrade in background
             if self.sys_homeassistant.version == "landingpage":
-                self.sys_create_task(self.sys_homeassistant.install())
+                self.sys_create_task(self.sys_homeassistant.core.install())
 
             # Start observe the host Hardware
             await self.sys_hwmonitor.load()
@@ -233,21 +232,21 @@ class Core(CoreSysAttributes):
             self.sys_create_task(self.sys_updater.reload())
 
             _LOGGER.info("Supervisor is up and running")
-            self.state = CoreStates.RUNNING
+            self.state = CoreState.RUNNING
 
     async def stop(self):
         """Stop a running orchestration."""
         # store new last boot / prevent time adjustments
-        if self.state == CoreStates.RUNNING:
+        if self.state == CoreState.RUNNING:
             self._update_last_boot()
 
         # don't process scheduler anymore
-        self.state = CoreStates.STOPPING
+        self.state = CoreState.STOPPING
 
         # Stage 1
         try:
             async with async_timeout.timeout(10):
-                await asyncio.wait([self.sys_api.stop()])
+                await asyncio.wait([self.sys_api.stop(), self.sys_scheduler.shutdown()])
         except asyncio.TimeoutError:
             _LOGGER.warning("Stage 1: Force Shutdown!")
 
@@ -259,7 +258,6 @@ class Core(CoreSysAttributes):
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
-                        self.sys_plugins.unload(),
                         self.sys_hwmonitor.unload(),
                     ]
                 )
@@ -271,15 +269,15 @@ class Core(CoreSysAttributes):
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
         # don't process scheduler anymore
-        if self.state == CoreStates.RUNNING:
-            self.state = CoreStates.STOPPING
+        if self.state == CoreState.RUNNING:
+            self.state = CoreState.STOPPING
 
         # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(AddonStartup.APPLICATION)
 
         # Close Home Assistant
         with suppress(HassioError):
-            await self.sys_homeassistant.stop()
+            await self.sys_homeassistant.core.stop()
 
         # Shutdown System Add-ons
         await self.sys_addons.shutdown(AddonStartup.SERVICES)
@@ -287,7 +285,7 @@ class Core(CoreSysAttributes):
         await self.sys_addons.shutdown(AddonStartup.INITIALIZE)
 
         # Shutdown all Plugins
-        if self.state == CoreStates.STOPPING:
+        if self.state == CoreState.STOPPING:
             await self.sys_plugins.shutdown()
 
     def _update_last_boot(self):
@@ -305,7 +303,7 @@ class Core(CoreSysAttributes):
 
         # Restore core functionality
         await self.sys_addons.repair()
-        await self.sys_homeassistant.repair()
+        await self.sys_homeassistant.core.repair()
 
         # Tag version for latest
         await self.sys_supervisor.repair()

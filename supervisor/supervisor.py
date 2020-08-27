@@ -87,7 +87,7 @@ class Supervisor(CoreSysAttributes):
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch AppArmor profile: %s", err)
-            raise SupervisorError()
+            raise SupervisorError() from err
 
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
             profile_file = Path(tmp_dir, "apparmor.txt")
@@ -95,15 +95,15 @@ class Supervisor(CoreSysAttributes):
                 profile_file.write_text(data)
             except OSError as err:
                 _LOGGER.error("Can't write temporary profile: %s", err)
-                raise SupervisorError()
+                raise SupervisorError() from err
 
             try:
                 await self.sys_host.apparmor.load_profile(
                     "hassio-supervisor", profile_file
                 )
-            except HostAppArmorError:
+            except HostAppArmorError as err:
                 _LOGGER.error("Can't update AppArmor profile!")
-                raise SupervisorError()
+                raise SupervisorError() from err
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update Home Assistant version."""
@@ -121,9 +121,9 @@ class Supervisor(CoreSysAttributes):
             await self.instance.update_start_tag(
                 self.sys_updater.image_supervisor, version
             )
-        except DockerAPIError:
-            _LOGGER.error("Update of Supervisor fails!")
-            raise SupervisorUpdateError()
+        except DockerAPIError as err:
+            _LOGGER.error("Update of Supervisor failed!")
+            raise SupervisorUpdateError() from err
         else:
             self.sys_config.version = version
             self.sys_config.save_data()
@@ -148,8 +148,8 @@ class Supervisor(CoreSysAttributes):
         """Return stats of Supervisor."""
         try:
             return await self.instance.stats()
-        except DockerAPIError:
-            raise SupervisorError()
+        except DockerAPIError as err:
+            raise SupervisorError() from err
 
     async def repair(self):
         """Repair local Supervisor data."""
@@ -160,4 +160,4 @@ class Supervisor(CoreSysAttributes):
         try:
             await self.instance.retag()
         except DockerAPIError:
-            _LOGGER.error("Repairing of Supervisor fails")
+            _LOGGER.error("Repairing of Supervisor failed")

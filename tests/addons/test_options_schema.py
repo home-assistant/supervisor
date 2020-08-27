@@ -34,32 +34,38 @@ def test_simple_schema(coresys):
 def test_complex_schema_list(coresys):
     """Test with complex list schema."""
     assert validate_options(
-        coresys, {"name": "str", "password": "password", "extend": ["str"]},
+        coresys,
+        {"name": "str", "password": "password", "extend": ["str"]},
     )({"name": "Pascal", "password": "1234", "extend": ["test", "blu"]})
 
     with pytest.raises(vol.error.Invalid):
         validate_options(
-            coresys, {"name": "str", "password": "password", "extend": ["str"]},
+            coresys,
+            {"name": "str", "password": "password", "extend": ["str"]},
         )({"name": "Pascal", "password": "1234", "extend": ["test", 1]})
 
     with pytest.raises(vol.error.Invalid):
         validate_options(
-            coresys, {"name": "str", "password": "password", "extend": ["str"]},
+            coresys,
+            {"name": "str", "password": "password", "extend": ["str"]},
         )({"name": "Pascal", "password": "1234", "extend": "test"})
 
 
 def test_complex_schema_dict(coresys):
     """Test with complex dict schema."""
     assert validate_options(
-        coresys, {"name": "str", "password": "password", "extend": {"test": "int"}},
+        coresys,
+        {"name": "str", "password": "password", "extend": {"test": "int"}},
     )({"name": "Pascal", "password": "1234", "extend": {"test": 1}})
 
     with pytest.raises(vol.error.Invalid):
         validate_options(
-            coresys, {"name": "str", "password": "password", "extend": {"test": "int"}},
+            coresys,
+            {"name": "str", "password": "password", "extend": {"test": "int"}},
         )({"name": "Pascal", "password": "1234", "extend": {"wrong": 1}})
 
     with pytest.raises(vol.error.Invalid):
         validate_options(
-            coresys, {"name": "str", "password": "password", "extend": ["str"]},
+            coresys,
+            {"name": "str", "password": "password", "extend": ["str"]},
         )({"name": "Pascal", "password": "1234", "extend": "test"})

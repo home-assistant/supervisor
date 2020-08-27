@@ -14,8 +14,7 @@ RUN \
         libffi \
         libpulse \
         musl \
-        openssl \
-        socat
+        openssl
 
 ARG BUILD_ARCH
 WORKDIR /usr/src

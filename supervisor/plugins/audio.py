@@ -154,9 +154,9 @@ class Audio(JsonConfig, CoreSysAttributes):
 
         try:
             await self.instance.update(version, image=self.sys_updater.image_audio)
-        except DockerAPIError:
-            _LOGGER.error("Audio update fails")
-            raise AudioUpdateError()
+        except DockerAPIError as err:
+            _LOGGER.error("Audio update failed")
+            raise AudioUpdateError() from err
         else:
             self.version = version
             self.image = self.sys_updater.image_audio
@@ -174,27 +174,27 @@ class Audio(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Restart Audio plugin")
         try:
             await self.instance.restart()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't start Audio plugin")
-            raise AudioError()
+            raise AudioError() from err
 
     async def start(self) -> None:
         """Run CoreDNS."""
         _LOGGER.info("Start Audio plugin")
         try:
             await self.instance.run()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't start Audio plugin")
-            raise AudioError()
+            raise AudioError() from err
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
         _LOGGER.info("Stop Audio plugin")
         try:
             await self.instance.stop()
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Can't stop Audio plugin")
-            raise AudioError()
+            raise AudioError() from err
 
     def logs(self) -> Awaitable[bytes]:
         """Get CoreDNS docker logs.
@@ -207,8 +207,8 @@ class Audio(JsonConfig, CoreSysAttributes):
         """Return stats of CoreDNS."""
         try:
             return await self.instance.stats()
-        except DockerAPIError:
-            raise AudioError()
+        except DockerAPIError as err:
+            raise AudioError() from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
@@ -226,7 +226,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         try:
             await self.instance.install(self.version)
         except DockerAPIError:
-            _LOGGER.error("Repairing of Audio fails")
+            _LOGGER.error("Repairing of Audio failed")
 
     def pulse_client(self, input_profile=None, output_profile=None) -> str:
         """Generate an /etc/pulse/client.conf data."""

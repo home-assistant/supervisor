@@ -228,5 +228,5 @@ class Hardware:
         if proc.returncode == 0:
             return
 
-        _LOGGER.warning("udevadm device triggering fails!")
+        _LOGGER.warning("udevadm device triggering failed!")
         raise HardwareNotSupportedError()

@@ -84,7 +84,10 @@ def test_create_pure_tar():
         temp_tar = temp.joinpath("backup.tar")
         with SecureTarFile(temp_tar, "w") as tar_file:
             atomic_contents_add(
-                tar_file, temp_orig, excludes=[], arcname=".",
+                tar_file,
+                temp_orig,
+                excludes=[],
+                arcname=".",
             )
 
         assert temp_tar.exists()
@@ -117,7 +120,10 @@ def test_create_ecrypted_tar():
         temp_tar = temp.joinpath("backup.tar")
         with SecureTarFile(temp_tar, "w", key=key) as tar_file:
             atomic_contents_add(
-                tar_file, temp_orig, excludes=[], arcname=".",
+                tar_file,
+                temp_orig,
+                excludes=[],
+                arcname=".",
             )
 
         assert temp_tar.exists()

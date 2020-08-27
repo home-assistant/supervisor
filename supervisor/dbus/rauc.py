@@ -1,25 +1,25 @@
 """D-Bus interface for rauc."""
-from enum import Enum
 import logging
 from typing import Optional
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
+from .const import (
+    DBUS_ATTR_BOOT_SLOT,
+    DBUS_ATTR_COMPATIBLE,
+    DBUS_ATTR_LAST_ERROR,
+    DBUS_ATTR_OPERATION,
+    DBUS_ATTR_VARIANT,
+    DBUS_NAME_RAUC,
+    DBUS_NAME_RAUC_INSTALLER,
+    DBUS_NAME_RAUC_INSTALLER_COMPLETED,
+    DBUS_OBJECT_BASE,
+    RaucState,
+)
 from .interface import DBusInterface
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-DBUS_NAME = "de.pengutronix.rauc"
-DBUS_OBJECT = "/"
-
-
-class RaucState(str, Enum):
-    """Rauc slot states."""
-
-    GOOD = "good"
-    BAD = "bad"
-    ACTIVE = "active"
 
 
 class Rauc(DBusInterface):
@@ -36,7 +36,7 @@ class Rauc(DBusInterface):
     async def connect(self):
         """Connect to D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME, DBUS_OBJECT)
+            self.dbus = await DBus.connect(DBUS_NAME_RAUC, DBUS_OBJECT_BASE)
         except DBusError:
             _LOGGER.warning("Can't connect to rauc")
         except DBusInterfaceError:
@@ -89,7 +89,7 @@ class Rauc(DBusInterface):
 
         Return a coroutine.
         """
-        return self.dbus.wait_signal(f"{DBUS_NAME}.Installer.Completed")
+        return self.dbus.wait_signal(DBUS_NAME_RAUC_INSTALLER_COMPLETED)
 
     @dbus_connected
     def mark(self, state: RaucState, slot_identifier: str):
@@ -102,13 +102,13 @@ class Rauc(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        data = await self.dbus.get_properties(f"{DBUS_NAME}.Installer")
+        data = await self.dbus.get_properties(DBUS_NAME_RAUC_INSTALLER)
         if not data:
             _LOGGER.warning("Can't get properties for rauc")
             return
 
-        self._operation = data.get("Operation")
-        self._last_error = data.get("LastError")
-        self._compatible = data.get("Compatible")
-        self._variant = data.get("Variant")
-        self._boot_slot = data.get("BootSlot")
+        self._operation = data.get(DBUS_ATTR_OPERATION)
+        self._last_error = data.get(DBUS_ATTR_LAST_ERROR)
+        self._compatible = data.get(DBUS_ATTR_COMPATIBLE)
+        self._variant = data.get(DBUS_ATTR_VARIANT)
+        self._boot_slot = data.get(DBUS_ATTR_BOOT_SLOT)

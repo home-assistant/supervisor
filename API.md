@@ -442,6 +442,65 @@ Proxy to Home Assistant Core websocket.
 }
 ```
 
+### Network
+
+Network operations over the API
+
+#### GET `/network/info`
+
+Get network information
+
+```json
+{
+  "interfaces": {
+    "enp0s31f6": {
+      "ip_address": "192.168.2.148/24",
+      "gateway": "192.168.2.1",
+      "id": "Wired connection 1",
+      "type": "802-3-ethernet",
+      "nameservers": ["192.168.2.1"],
+      "method": "static",
+      "primary": true
+    }
+  }
+}
+```
+
+#### GET `/network/{interface}/info`
+
+Get information for a single interface
+
+```json
+{
+  "ip_address": "192.168.2.148/24",
+  "gateway": "192.168.2.1",
+  "id": "Wired connection 1",
+  "type": "802-3-ethernet",
+  "nameservers": ["192.168.2.1"],
+  "method": "dhcp",
+  "primary": true
+}
+```
+
+#### POST `/network/{interface}/update`
+
+Update information for a single interface
+
+**Options:**
+
+| Option    | Description                                                            |
+| --------- | ---------------------------------------------------------------------- |
+| `address` | The new IP address for the interface in the X.X.X.X/XX format          |
+| `dns`     | Comma seperated list of DNS servers to use                             |
+| `gateway` | The gateway the interface should use                                   |
+| `method`  | Set if the interface should use DHCP or not, can be `dhcp` or `static` |
+
+_All options are optional._
+
+**NB!: If you change the `address` or `gateway` you may need to reconnect to the new address**
+
+The result will be a updated object.
+
 ### RESTful for API add-ons
 
 If an add-on will call itself, you can use `/addons/self/...`.
@@ -550,7 +609,8 @@ Get all available add-ons.
   "ingress_entry": "null|/api/hassio_ingress/slug",
   "ingress_url": "null|/api/hassio_ingress/slug/entry.html",
   "ingress_port": "null|int",
-  "ingress_panel": "null|bool"
+  "ingress_panel": "null|bool",
+  "watchdog": "null|bool"
 }
 ```
 
@@ -570,7 +630,8 @@ Get all available add-ons.
   "options": {},
   "audio_output": "null|0,0",
   "audio_input": "null|0,0",
-  "ingress_panel": "bool"
+  "ingress_panel": "bool",
+  "watchdog": "bool"
 }
 ```
 

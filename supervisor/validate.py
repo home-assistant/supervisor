@@ -39,7 +39,7 @@ from .const import (
     ATTR_WATCHDOG,
     SUPERVISOR_VERSION,
     LogLevel,
-    UpdateChannels,
+    UpdateChannel,
 )
 from .utils.validate import validate_timezone
 
@@ -64,19 +64,19 @@ def version_tag(value: Union[str, None, int, float]) -> Optional[str]:
         value = str(value)
         pkg_version.parse(value)
     except (pkg_version.InvalidVersion, TypeError):
-        raise vol.Invalid(f"Invalid version format {value}")
+        raise vol.Invalid(f"Invalid version format {value}") from None
     return value
 
 
 def dns_url(url: str) -> str:
     """Take a DNS url (str) and validates that it matches the scheme dns://<ip address>."""
     if not url.lower().startswith("dns://"):
-        raise vol.Invalid("Doesn't start with dns://")
+        raise vol.Invalid("Doesn't start with dns://") from None
     address: str = url[6:]  # strip the dns:// off
     try:
         ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
     except ValueError:
-        raise vol.Invalid(f"Invalid DNS URL: {url}")
+        raise vol.Invalid(f"Invalid DNS URL: {url}") from None
     return url
 
 
@@ -87,7 +87,7 @@ def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
     data = RE_REPOSITORY.match(repository)
     if not data:
-        raise vol.Invalid("No valid repository format!")
+        raise vol.Invalid("No valid repository format!") from None
 
     # Validate URL
     # pylint: disable=no-value-for-parameter
@@ -99,18 +99,9 @@ def validate_repository(repository: str) -> str:
 # pylint: disable=no-value-for-parameter
 repositories = vol.All([validate_repository], vol.Unique())
 
-
-DOCKER_PORTS = vol.Schema(
-    {
-        vol.All(vol.Coerce(str), vol.Match(r"^\d+(?:/tcp|/udp)?$")): vol.Maybe(
-            network_port
-        )
-    }
-)
-
-DOCKER_PORTS_DESCRIPTION = vol.Schema(
-    {vol.All(vol.Coerce(str), vol.Match(r"^\d+(?:/tcp|/udp)?$")): vol.Coerce(str)}
-)
+docker_port = vol.All(str, vol.Match(r"^\d+(?:/tcp|/udp)?$"))
+docker_ports = vol.Schema({docker_port: vol.Maybe(network_port)})
+docker_ports_description = vol.Schema({docker_port: vol.Coerce(str)})
 
 
 # pylint: disable=no-value-for-parameter
@@ -137,8 +128,8 @@ SCHEMA_HASS_CONFIG = vol.Schema(
 
 SCHEMA_UPDATER_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_CHANNEL, default=UpdateChannels.STABLE): vol.Coerce(
-            UpdateChannels
+        vol.Optional(ATTR_CHANNEL, default=UpdateChannel.STABLE): vol.Coerce(
+            UpdateChannel
         ),
         vol.Optional(ATTR_HOMEASSISTANT): vol.All(version_tag, str),
         vol.Optional(ATTR_SUPERVISOR): vol.All(version_tag, str),

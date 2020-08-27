@@ -18,6 +18,7 @@ from .host import APIHost
 from .info import APIInfo
 from .ingress import APIIngress
 from .multicast import APIMulticast
+from .network import APINetwork
 from .os import APIOS
 from .proxy import APIProxy
 from .security import SecurityMiddleware
@@ -54,6 +55,7 @@ class RestAPI(CoreSysAttributes):
         self._register_os()
         self._register_cli()
         self._register_multicast()
+        self._register_network()
         self._register_hardware()
         self._register_homeassistant()
         self._register_proxy()
@@ -86,6 +88,24 @@ class RestAPI(CoreSysAttributes):
                 web.post("/host/services/{service}/start", api_host.service_start),
                 web.post("/host/services/{service}/restart", api_host.service_restart),
                 web.post("/host/services/{service}/reload", api_host.service_reload),
+            ]
+        )
+
+    def _register_network(self) -> None:
+        """Register network functions."""
+        api_network = APINetwork()
+        api_network.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/network/info", api_network.info),
+                web.get(
+                    "/network/interface/{interface}/info", api_network.interface_info
+                ),
+                web.post(
+                    "/network/interface/{interface}/update",
+                    api_network.interface_update,
+                ),
             ]
         )
 
