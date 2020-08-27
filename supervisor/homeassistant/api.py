@@ -26,7 +26,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         self.access_token: Optional[str] = None
         self._access_token_expires: Optional[datetime] = None
 
-    async def _ensure_access_token(self) -> None:
+    async def ensure_access_token(self) -> None:
         """Ensure there is an access token."""
         if (
             self.access_token is not None
@@ -75,7 +75,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             headers[hdrs.CONTENT_TYPE] = content_type
 
         for _ in (1, 2):
-            await self._ensure_access_token()
+            await self.ensure_access_token()
             headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
 
             try:
