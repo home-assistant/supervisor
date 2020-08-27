@@ -69,7 +69,7 @@ class HostManager(CoreSysAttributes):
                 [HostFeature.REBOOT, HostFeature.SHUTDOWN, HostFeature.SERVICES]
             )
 
-        if self.sys_dbus.network.is_connected:
+        if self.sys_dbus.network.is_connected and self.sys_dbus.network.interfaces:
             features.append(HostFeature.NETWORK)
 
         if self.sys_dbus.hostname.is_connected:
