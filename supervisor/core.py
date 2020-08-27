@@ -5,7 +5,7 @@ import logging
 
 import async_timeout
 
-from .const import SOCKET_DBUS, SUPERVISED_SUPPORTED_OS, AddonStartup, CoreStates
+from .const import SOCKET_DBUS, SUPERVISED_SUPPORTED_OS, AddonStartup, CoreState
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     DockerAPIError,
@@ -23,7 +23,7 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
-        self.state: CoreStates = CoreStates.INITIALIZE
+        self.state: CoreState = CoreState.INITIALIZE
         self.healthy: bool = True
         self.supported: bool = True
 
@@ -78,7 +78,7 @@ class Core(CoreSysAttributes):
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
-        self.state = CoreStates.SETUP
+        self.state = CoreState.SETUP
 
         # Load DBus
         await self.sys_dbus.load()
@@ -152,7 +152,7 @@ class Core(CoreSysAttributes):
 
     async def start(self):
         """Start Supervisor orchestration."""
-        self.state = CoreStates.STARTUP
+        self.state = CoreState.STARTUP
         await self.sys_api.start()
 
         # Check if system is healthy
@@ -232,16 +232,16 @@ class Core(CoreSysAttributes):
             self.sys_create_task(self.sys_updater.reload())
 
             _LOGGER.info("Supervisor is up and running")
-            self.state = CoreStates.RUNNING
+            self.state = CoreState.RUNNING
 
     async def stop(self):
         """Stop a running orchestration."""
         # store new last boot / prevent time adjustments
-        if self.state == CoreStates.RUNNING:
+        if self.state == CoreState.RUNNING:
             self._update_last_boot()
 
         # don't process scheduler anymore
-        self.state = CoreStates.STOPPING
+        self.state = CoreState.STOPPING
 
         # Stage 1
         try:
@@ -269,8 +269,8 @@ class Core(CoreSysAttributes):
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
         # don't process scheduler anymore
-        if self.state == CoreStates.RUNNING:
-            self.state = CoreStates.STOPPING
+        if self.state == CoreState.RUNNING:
+            self.state = CoreState.STOPPING
 
         # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(AddonStartup.APPLICATION)
@@ -285,7 +285,7 @@ class Core(CoreSysAttributes):
         await self.sys_addons.shutdown(AddonStartup.INITIALIZE)
 
         # Shutdown all Plugins
-        if self.state == CoreStates.STOPPING:
+        if self.state == CoreState.STOPPING:
             await self.sys_plugins.shutdown()
 
     def _update_last_boot(self):

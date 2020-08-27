@@ -20,7 +20,7 @@ from .const import (
     ATTR_SUPERVISOR,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
-    UpdateChannels,
+    UpdateChannel,
 )
 from .coresys import CoreSysAttributes
 from .exceptions import HassioUpdaterError
@@ -133,12 +133,12 @@ class Updater(JsonConfig, CoreSysAttributes):
         )
 
     @property
-    def channel(self) -> UpdateChannels:
+    def channel(self) -> UpdateChannel:
         """Return upstream channel of Supervisor instance."""
         return self._data[ATTR_CHANNEL]
 
     @channel.setter
-    def channel(self, value: UpdateChannels):
+    def channel(self, value: UpdateChannel):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
 

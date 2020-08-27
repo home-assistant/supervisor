@@ -3,7 +3,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreStates
+from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils.dt import utcnow
@@ -126,7 +126,7 @@ class SnapshotManager(CoreSysAttributes):
         snapshot = self._create_snapshot(name, SNAPSHOT_FULL, password)
         _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
         try:
-            self.sys_core.state = CoreStates.FREEZE
+            self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
@@ -148,7 +148,7 @@ class SnapshotManager(CoreSysAttributes):
             return snapshot
 
         finally:
-            self.sys_core.state = CoreStates.RUNNING
+            self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
     async def do_snapshot_partial(
@@ -165,7 +165,7 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Partial-Snapshot %s start", snapshot.slug)
         try:
-            self.sys_core.state = CoreStates.FREEZE
+            self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
@@ -197,7 +197,7 @@ class SnapshotManager(CoreSysAttributes):
             return snapshot
 
         finally:
-            self.sys_core.state = CoreStates.RUNNING
+            self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
     async def do_restore_full(self, snapshot, password=None):
@@ -216,7 +216,7 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
         try:
-            self.sys_core.state = CoreStates.FREEZE
+            self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
@@ -269,7 +269,7 @@ class SnapshotManager(CoreSysAttributes):
             return True
 
         finally:
-            self.sys_core.state = CoreStates.RUNNING
+            self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
     async def do_restore_partial(
@@ -289,7 +289,7 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Partial-Restore %s start", snapshot.slug)
         try:
-            self.sys_core.state = CoreStates.FREEZE
+            self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
@@ -343,5 +343,5 @@ class SnapshotManager(CoreSysAttributes):
             return True
 
         finally:
-            self.sys_core.state = CoreStates.RUNNING
+            self.sys_core.state = CoreState.RUNNING
             self.lock.release()

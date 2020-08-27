@@ -87,7 +87,7 @@ from ..const import (
     PRIVILEGED_ALL,
     ROLE_ALL,
     ROLE_DEFAULT,
-    AddonStages,
+    AddonStage,
     AddonStartup,
     AddonState,
 )
@@ -196,7 +196,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Required(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
         vol.Optional(ATTR_INIT, default=True): vol.Boolean(),
         vol.Optional(ATTR_ADVANCED, default=False): vol.Boolean(),
-        vol.Optional(ATTR_STAGE, default=AddonStages.STABLE): vol.Coerce(AddonStages),
+        vol.Optional(ATTR_STAGE, default=AddonStage.STABLE): vol.Coerce(AddonStage),
         vol.Optional(ATTR_PORTS): docker_ports,
         vol.Optional(ATTR_PORTS_DESCRIPTION): docker_ports_description,
         vol.Optional(ATTR_WATCHDOG): vol.Match(

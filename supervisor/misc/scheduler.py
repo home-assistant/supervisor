@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 import async_timeout
 import attr
 
-from ..const import CoreStates
+from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -58,10 +58,10 @@ class Scheduler(CoreSysAttributes):
         async def _wrap_task():
             """Run schedule task and reschedule."""
             try:
-                if self.sys_core.state == CoreStates.RUNNING:
+                if self.sys_core.state == CoreState.RUNNING:
                     await task.coro_callback()
             finally:
-                if task.repeat and self.sys_core.state != CoreStates.STOPPING:
+                if task.repeat and self.sys_core.state != CoreState.STOPPING:
                     self._schedule_task(task)
                 else:
                     self._tasks.remove(task)

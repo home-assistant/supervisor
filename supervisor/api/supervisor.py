@@ -41,7 +41,7 @@ from ..const import (
     CONTENT_TYPE_BINARY,
     SUPERVISOR_VERSION,
     LogLevel,
-    UpdateChannels,
+    UpdateChannel,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
@@ -54,7 +54,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
     {
-        vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannels),
+        vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannel),
         vol.Optional(ATTR_ADDONS_REPOSITORIES): repositories,
         vol.Optional(ATTR_TIMEZONE): validate_timezone,
         vol.Optional(ATTR_WAIT_BOOT): wait_boot,
