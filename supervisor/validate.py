@@ -39,7 +39,7 @@ from .const import (
     ATTR_WATCHDOG,
     SUPERVISOR_VERSION,
     LogLevel,
-    UpdateChannels,
+    UpdateChannel,
 )
 from .utils.validate import validate_timezone
 
@@ -128,8 +128,8 @@ SCHEMA_HASS_CONFIG = vol.Schema(
 
 SCHEMA_UPDATER_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_CHANNEL, default=UpdateChannels.STABLE): vol.Coerce(
-            UpdateChannels
+        vol.Optional(ATTR_CHANNEL, default=UpdateChannel.STABLE): vol.Coerce(
+            UpdateChannel
         ),
         vol.Optional(ATTR_HOMEASSISTANT): vol.All(version_tag, str),
         vol.Optional(ATTR_SUPERVISOR): vol.All(version_tag, str),

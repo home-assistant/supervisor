@@ -359,7 +359,7 @@ class AddonStartup(str, Enum):
     ONCE = "once"
 
 
-class AddonStages(str, Enum):
+class AddonStage(str, Enum):
     """Stage types of add-on."""
 
     STABLE = "stable"
@@ -373,9 +373,10 @@ class AddonState(str, Enum):
     STARTED = "started"
     STOPPED = "stopped"
     UNKNOWN = "unknown"
+    ERROR = "error"
 
 
-class UpdateChannels(str, Enum):
+class UpdateChannel(str, Enum):
     """Core supported update channels."""
 
     STABLE = "stable"
@@ -383,7 +384,7 @@ class UpdateChannels(str, Enum):
     DEV = "dev"
 
 
-class CoreStates(str, Enum):
+class CoreState(str, Enum):
     """Represent current loading state."""
 
     INITIALIZE = "initialize"

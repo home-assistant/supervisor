@@ -24,7 +24,7 @@ from .const import (
     SOCKET_DOCKER,
     SUPERVISOR_VERSION,
     LogLevel,
-    UpdateChannels,
+    UpdateChannel,
 )
 from .core import Core
 from .coresys import CoreSys
@@ -170,7 +170,7 @@ def initialize_system_data(coresys: CoreSys) -> None:
     # Check if ENV is in development mode
     if bool(os.environ.get(ENV_SUPERVISOR_DEV, 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
-        coresys.updater.channel = UpdateChannels.DEV
+        coresys.updater.channel = UpdateChannel.DEV
         coresys.config.logging = LogLevel.DEBUG
         coresys.config.debug = True
 

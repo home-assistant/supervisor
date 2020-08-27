@@ -66,7 +66,7 @@ from ..const import (
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
-    AddonStages,
+    AddonStage,
     AddonStartup,
 )
 from ..coresys import CoreSys, CoreSysAttributes
@@ -207,7 +207,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_ADVANCED]
 
     @property
-    def stage(self) -> AddonStages:
+    def stage(self) -> AddonStage:
         """Return stage mode of add-on."""
         return self.data[ATTR_STAGE]
 

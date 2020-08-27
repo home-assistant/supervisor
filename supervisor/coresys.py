@@ -8,7 +8,7 @@ import aiohttp
 import sentry_sdk
 
 from .config import CoreConfig
-from .const import UpdateChannels
+from .const import UpdateChannel
 from .docker import DockerAPI
 from .misc.hardware import Hardware
 
@@ -86,7 +86,7 @@ class CoreSys:
         """Return True if we run dev mode."""
         if self._updater is None:
             return False
-        return self._updater.channel == UpdateChannels.DEV
+        return self._updater.channel == UpdateChannel.DEV
 
     @property
     def loop(self) -> asyncio.BaseEventLoop:
