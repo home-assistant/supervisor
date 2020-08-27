@@ -357,3 +357,52 @@ def test_networkmanager_binary_data():
             "proxy": {},
         }
     ]
+
+    raw = "({'802-11-wireless': {'mac-address-blacklist': <@as []>, 'mac-address': <[byte 0xca, 0x0b, 0x61, 0x00, 0xd8, 0xbd]>, 'mode': <'infrastructure'>, 'security': <'802-11-wireless-security'>, 'seen-bssids': <['7C:2E:BD:98:1B:06']>, 'ssid': <[byte 0x4e, 0x45, 0x54, 0x54]>}, 'connection': {'id': <'NETT'>, 'interface-name': <'wlan0'>, 'permissions': <@as []>, 'timestamp': <uint64 1598526799>, 'type': <'802-11-wireless'>, 'uuid': <'13f9af79-a6e9-4e07-9353-165ad57bf1a8'>}, 'ipv6': {'address-data': <@aa{sv} []>, 'addresses': <@a(ayuay) []>, 'dns': <@aay []>, 'dns-search': <@as []>, 'method': <'auto'>, 'route-data': <@aa{sv} []>, 'routes': <@a(ayuayu) []>}, '802-11-wireless-security': {'auth-alg': <'open'>, 'key-mgmt': <'wpa-psk'>}, 'ipv4': {'address-data': <@aa{sv} []>, 'addresses': <@aau []>, 'dns': <@au []>, 'dns-search': <@as []>, 'method': <'auto'>, 'route-data': <@aa{sv} []>, 'routes': <@aau []>}, 'proxy': {}},)"
+
+    data = DBus.parse_gvariant(raw)
+
+    assert (
+        data
+        == [
+            {
+                "802-11-wireless": {
+                    "mac-address": [202, 11, 97, 0, 216, 189],
+                    "mac-address-blacklist": [],
+                    "mode": "infrastructure",
+                    "security": "802-11-wireless-security",
+                    "seen-bssids": ["7C:2E:BD:98:1B:06"],
+                    "ssid": "NETT",
+                },
+                "802-11-wireless-security": {"auth-alg": "open", "key-mgmt": "wpa-psk"},
+                "connection": {
+                    "id": "NETT",
+                    "interface-name": "wlan0",
+                    "permissions": [],
+                    "timestamp": 1598526799,
+                    "type": "802-11-wireless",
+                    "uuid": "13f9af79-a6e9-4e07-9353-165ad57bf1a8",
+                },
+                "ipv4": {
+                    "address-data": [],
+                    "addresses": [],
+                    "dns": [],
+                    "dns-search": [],
+                    "method": "auto",
+                    "route-data": [],
+                    "routes": [],
+                },
+                "ipv6": {
+                    "address-data": [],
+                    "addresses": [],
+                    "dns": [],
+                    "dns-search": [],
+                    "method": "auto",
+                    "route-data": [],
+                    "routes": [],
+                },
+                "proxy": {},
+            }
+        ]
+        == {}
+    )

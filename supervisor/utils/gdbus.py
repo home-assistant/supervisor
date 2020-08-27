@@ -58,6 +58,17 @@ MONITOR: str = "gdbus monitor --system --dest {bus}"
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
 
 
+def _convert_bytes(value: str) -> str:
+    """Convert bytes to string or byte-array."""
+    data: bytes = bytes(int(char, 0) for char in value.split(", "))
+    try:
+        text = data.decode()
+    except UnicodeDecodeError:
+        return f"<[{', '.join(str(char) for char in data)}]>"
+
+    return f"<'{text}'>"
+
+
 class DBus:
     """DBus handler."""
 
@@ -113,7 +124,7 @@ class DBus:
         """Parse GVariant input to python."""
         # Process first string
         json_raw = RE_GVARIANT_BINARY.sub(
-            lambda x: f"<'{bytes([int(char, 0) for char in x.group(1).split(', ')]).decode()}'>",
+            lambda x: _convert_bytes(x.group(1)),
             raw,
         )
         json_raw = RE_GVARIANT_STRING_ESC.sub(
