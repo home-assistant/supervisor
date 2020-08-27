@@ -31,6 +31,7 @@ RE_GVARIANT_STRING_ESC: re.Pattern[Any] = re.compile(
 RE_GVARIANT_STRING: re.Pattern[Any] = re.compile(
     r"(?<=(?: |{|\[|\(|<))'(.*?)'(?=(?:|]|}|,|\)|>))"
 )
+RE_GVARIANT_BINARY: re.Pattern[Any] = re.compile(r"<\[byte (.*?)\]>")
 RE_GVARIANT_TUPLE_O: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(\()")
 RE_GVARIANT_TUPLE_C: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(,?\))"
@@ -111,8 +112,12 @@ class DBus:
     def parse_gvariant(raw: str) -> Any:
         """Parse GVariant input to python."""
         # Process first string
+        json_raw = RE_GVARIANT_BINARY.sub(
+            lambda x: f"<'{bytes([int(char, 0) for char in x.group(1).split(', ')]).decode()}'>",
+            raw,
+        )
         json_raw = RE_GVARIANT_STRING_ESC.sub(
-            lambda x: x.group(0).replace('"', '\\"'), raw
+            lambda x: x.group(0).replace('"', '\\"'), json_raw
         )
         json_raw = RE_GVARIANT_STRING.sub(r'"\1"', json_raw)
 
