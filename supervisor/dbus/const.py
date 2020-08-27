@@ -48,8 +48,6 @@ DBUS_ATTR_STATE = "State"
 DBUS_ATTR_STATIC_HOSTNAME = "StaticHostname"
 DBUS_ATTR_STATIC_OPERATING_SYSTEM_CPE_NAME = "OperatingSystemCPEName"
 DBUS_ATTR_TYPE = "Type"
-DBUS_ATTR_TYPE_ETH = "802-3-ethernet"
-DBUS_ATTR_TYPE_WIFI = "802-11-wireless"
 DBUS_ATTR_UUID = "Uuid"
 DBUS_ATTR_VARIANT = "Variant"
 
@@ -74,3 +72,10 @@ class InterfaceMethodSimple(str, Enum):
 
     DHCP = "dhcp"
     STATIC = "static"
+
+
+class ConnectionType(str, Enum):
+    """Connection type."""
+
+    ETHERNET = "802-3-ethernet"
+    WIRELESS = "802-11-wireless"
