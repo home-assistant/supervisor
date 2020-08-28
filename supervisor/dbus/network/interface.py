@@ -1,5 +1,4 @@
 """NetworkInterface object for Network Manager."""
-from ...const import ATTR_ADDRESS, ATTR_DNS, ATTR_GATEWAY, ATTR_METHOD, ATTR_PREFIX
 from ...utils.gdbus import DBus
 from ..const import (
     DBUS_NAME_CONNECTION_ACTIVE,
@@ -7,8 +6,8 @@ from ..const import (
     DBUS_OBJECT_BASE,
     InterfaceMethod,
 )
+from ..payloads.interface_update import interface_update_payload
 from .connection import NetworkConnection
-from .utils import ip2int
 
 
 class NetworkInterface:
@@ -85,42 +84,9 @@ class NetworkInterface:
 
     async def update_settings(self, **kwargs) -> None:
         """Update IP configuration used for this interface."""
-        if kwargs.get(ATTR_DNS):
-            kwargs[ATTR_DNS] = [ip2int(x.strip()) for x in kwargs[ATTR_DNS]]
+        payload = interface_update_payload(self, **kwargs)
 
-        if kwargs.get(ATTR_METHOD):
-            kwargs[ATTR_METHOD] = (
-                InterfaceMethod.MANUAL
-                if kwargs[ATTR_METHOD] == "static"
-                else InterfaceMethod.AUTO
-            )
-
-        if kwargs.get(ATTR_ADDRESS):
-            if "/" in kwargs[ATTR_ADDRESS]:
-                kwargs[ATTR_PREFIX] = kwargs[ATTR_ADDRESS].split("/")[-1]
-                kwargs[ATTR_ADDRESS] = kwargs[ATTR_ADDRESS].split("/")[0]
-            kwargs[ATTR_METHOD] = InterfaceMethod.MANUAL
-
-        await self.connection.settings.dbus.Settings.Connection.Update(
-            f"""{{
-                    'connection':
-                        {{
-                            'id': <'{self.id}'>,
-                            'type': <'{self.type}'>
-                        }},
-                    'ipv4':
-                        {{
-                            'method': <'{kwargs.get(ATTR_METHOD, self.method)}'>,
-                            'dns': <[{",".join([f"uint32 {x}" for x in kwargs.get(ATTR_DNS, self.nameservers)])}]>,
-                            'address-data': <[
-                                {{
-                                    'address': <'{kwargs.get(ATTR_ADDRESS, self.ip_address)}'>,
-                                    'prefix': <uint32 {kwargs.get(ATTR_PREFIX, self.prefix)}>
-                                }}]>,
-                            'gateway': <'{kwargs.get(ATTR_GATEWAY, self.gateway)}'>
-                                }}
-                }}"""
-        )
+        await self.connection.settings.dbus.Settings.Connection.Update(payload)
 
         await self.nm_dbus.ActivateConnection(
             self.connection.settings.dbus.object_path,

@@ -93,6 +93,6 @@ class APINetwork(CoreSysAttributes):
             self.sys_host.network.interfaces[req_interface].update_settings(**args)
         )
 
-        await asyncio.shield(self.sys_host.network.update())
+        await asyncio.shield(self.sys_host.reload())
 
         return await asyncio.shield(self.interface_info(request))

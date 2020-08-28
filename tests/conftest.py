@@ -11,6 +11,7 @@ from supervisor.bootstrap import initialize_coresys
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import DBUS_NAME_NM, DBUS_OBJECT_BASE
 from supervisor.dbus.network import NetworkManager
+from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.docker import DockerAPI
 from supervisor.utils.gdbus import DBus
 
@@ -124,3 +125,12 @@ async def api_client(aiohttp_client, coresys):
     api.webapp = web.Application()
     await api.load()
     yield await aiohttp_client(api.webapp)
+
+
+@pytest.fixture
+async def network_interface(dbus):
+    """Fixture for a network interface."""
+    interface = NetworkInterface()
+    await interface.connect(dbus, "/org/freedesktop/NetworkManager/ActiveConnection/1")
+    await interface.connection.update_information()
+    yield interface
