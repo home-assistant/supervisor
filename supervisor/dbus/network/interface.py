@@ -6,7 +6,7 @@ from ..const import (
     DBUS_OBJECT_BASE,
     InterfaceMethod,
 )
-from ..payloads.interface_update import interface_update_payload
+from ..payloads.generate import interface_update_payload
 from .connection import NetworkConnection
 
 
