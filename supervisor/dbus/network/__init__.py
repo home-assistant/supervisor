@@ -73,7 +73,7 @@ class NetworkManager(DBusInterface):
                 continue
             try:
                 await interface.connection.update_information()
-            except (IndexError, DBusFatalError):
+            except (IndexError, DBusFatalError, KeyError):
                 continue
 
             if not interface.connection.ip4_config:
