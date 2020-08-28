@@ -36,6 +36,8 @@ setup(
         "supervisor.addons",
         "supervisor.api",
         "supervisor.dbus",
+        "supervisor.dbus.payloads",
+        "supervisor.dbus.network",
         "supervisor.discovery",
         "supervisor.discovery.services",
         "supervisor.services",

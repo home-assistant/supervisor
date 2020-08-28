@@ -31,6 +31,7 @@ RE_GVARIANT_STRING_ESC: re.Pattern[Any] = re.compile(
 RE_GVARIANT_STRING: re.Pattern[Any] = re.compile(
     r"(?<=(?: |{|\[|\(|<))'(.*?)'(?=(?:|]|}|,|\)|>))"
 )
+RE_GVARIANT_BINARY: re.Pattern[Any] = re.compile(r"<\[byte (.*?)\]>")
 RE_GVARIANT_TUPLE_O: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(\()")
 RE_GVARIANT_TUPLE_C: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(,?\))"
@@ -55,6 +56,17 @@ CALL: str = (
 MONITOR: str = "gdbus monitor --system --dest {bus}"
 
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
+
+
+def _convert_bytes(value: str) -> str:
+    """Convert bytes to string or byte-array."""
+    data: bytes = bytes(int(char, 0) for char in value.split(", "))
+    try:
+        text = data.decode()
+    except UnicodeDecodeError:
+        return f"<[{', '.join(str(char) for char in data)}]>"
+
+    return f"<'{text}'>"
 
 
 class DBus:
@@ -111,8 +123,12 @@ class DBus:
     def parse_gvariant(raw: str) -> Any:
         """Parse GVariant input to python."""
         # Process first string
+        json_raw = RE_GVARIANT_BINARY.sub(
+            lambda x: _convert_bytes(x.group(1)),
+            raw,
+        )
         json_raw = RE_GVARIANT_STRING_ESC.sub(
-            lambda x: x.group(0).replace('"', '\\"'), raw
+            lambda x: x.group(0).replace('"', '\\"'), json_raw
         )
         json_raw = RE_GVARIANT_STRING.sub(r'"\1"', json_raw)
 

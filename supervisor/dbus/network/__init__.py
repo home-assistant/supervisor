@@ -2,13 +2,14 @@
 import logging
 from typing import Dict, Optional
 
-from ...exceptions import DBusError, DBusInterfaceError
+from ...exceptions import DBusError, DBusFatalError, DBusInterfaceError
 from ...utils.gdbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_CONNECTIONS,
     DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_NAME_NM,
     DBUS_OBJECT_NM,
+    ConnectionType,
 )
 from ..interface import DBusInterface
 from ..utils import dbus_connected
@@ -65,11 +66,17 @@ class NetworkManager(DBusInterface):
 
             await interface.connect(self.dbus, connection)
 
-            if not interface.connection.default:
+            if interface.connection.type not in [
+                ConnectionType.ETHERNET,
+                ConnectionType.WIRELESS,
+            ]:
                 continue
             try:
                 await interface.connection.update_information()
-            except IndexError:
+            except (IndexError, DBusFatalError, KeyError):
+                continue
+
+            if not interface.connection.ip4_config:
                 continue
 
             if interface.connection.object_path == data.get(

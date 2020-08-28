@@ -72,3 +72,10 @@ class InterfaceMethodSimple(str, Enum):
 
     DHCP = "dhcp"
     STATIC = "static"
+
+
+class ConnectionType(str, Enum):
+    """Connection type."""
+
+    ETHERNET = "802-3-ethernet"
+    WIRELESS = "802-11-wireless"

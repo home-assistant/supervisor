@@ -1,0 +1,26 @@
+{
+    'connection':
+        {
+            'id': <'{{interface.id}}'>,
+            'type': <'{{interface.type}}'>
+        },
+
+{% if options.get("method") == "auto" %}
+    'ipv4':
+        {
+            'method': <'auto'>
+        }
+{% else %}
+    'ipv4':
+        {
+            'method': <'manual'>,
+            'dns': <[uint32 {{ options.get("dns", interface.nameservers) | list | join(",") }}]>,
+            'address-data': <[
+                {
+                    'address': <'{{ options.get("address", interface.ip_address) }}'>,
+                    'prefix': <uint32 {{ options.get("prefix", interface.prefix) }}>
+                }]>,
+            'gateway': <'{{ options.get("gateway", interface.gateway) }}'>
+        }
+{% endif %}
+}
