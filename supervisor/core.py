@@ -45,6 +45,10 @@ class Core(CoreSysAttributes):
             _LOGGER.error(
                 "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
             )
+        elif not self.sys_supervisor.instance.privileged:
+            self.supported = False
+            self.healthy = False
+            _LOGGER.error("Supervisor does not run in Privileged mode.")
 
         if self.sys_docker.info.check_requirements():
             self.supported = False
