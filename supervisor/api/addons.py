@@ -5,6 +5,7 @@ from typing import Any, Awaitable, Dict, List
 
 from aiohttp import web
 import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from ..addons import AnyAddon
 from ..addons.addon import Addon
@@ -314,6 +315,15 @@ class APIAddons(CoreSysAttributes):
             addon.watchdog = body[ATTR_WATCHDOG]
 
         addon.save_persist()
+
+    @api_process
+    async def options_validate(self, request: web.Request) -> None:
+        """Validate user options for add-on."""
+        addon = self._extract_addon_installed(request)
+        try:
+            addon.schema(addon.options)
+        except vol.Invalid as ex:
+            raise APIError(humanize_error(addon.options, ex)) from None
 
     @api_process
     async def security(self, request: web.Request) -> None:

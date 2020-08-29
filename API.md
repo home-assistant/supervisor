@@ -619,6 +619,7 @@ Get all available add-ons.
 - GET `/addons/{addon}/changelog`
 - GET `/addons/{addon}/documentation`
 - POST `/addons/{addon}/options`
+- POST `/addons/{addon}/options/validate`
 
 ```json
 {
