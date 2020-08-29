@@ -6,10 +6,13 @@ from typing import Optional
 
 import pyudev
 
+from ..const import HostFeature
 from ..coresys import CoreSys, CoreSysAttributes
 from ..utils import AsyncCallFilter
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+INSTALLER_REPO = "https://github.com/home-assistant/supervised-installer"
 
 
 class HwMonitor(CoreSysAttributes):
@@ -30,6 +33,11 @@ class HwMonitor(CoreSysAttributes):
         except OSError:
             self.sys_core.healthy = False
             _LOGGER.critical("Not privileged to run udev monitor!")
+            if HostFeature.HASSOS not in self.coresys.host.supported_features:
+                _LOGGER.error(
+                    "This is most likely due to running an old installation, run the installation script again to fix this %s",
+                    INSTALLER_REPO,
+                )
         else:
             self.observer.start()
             _LOGGER.info("Started Supervisor hardware monitor")
