@@ -387,7 +387,7 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     # Lookup secret
     if str(value).startswith("!secret "):
         secret: str = value.partition(" ")[2]
-        value = coresys.secrets.get(secret)
+        value = coresys.homeassistant.secrets.get(secret)
         if value is None:
             raise vol.Invalid(f"Unknown secret {secret}") from None
 
