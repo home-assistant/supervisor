@@ -1,11 +1,21 @@
 """Test sentry data filter."""
+import os
 from unittest.mock import patch
+
+import pytest
 
 from supervisor.const import SUPERVISOR_VERSION, CoreState
 from supervisor.exceptions import AddonConfigurationError
 from supervisor.misc.filter import filter_data
 
-SAMPLE_EVENT = {"sample": "event"}
+SAMPLE_EVENT = {"sample": "event", "extra": {"Test": "123"}}
+
+
+@pytest.fixture
+def sys_env(autouse=True):
+    """Fixture to inject hassio env."""
+    with patch.dict(os.environ, {"Test": "123"}):
+        yield
 
 
 def test_ignored_exception(coresys):

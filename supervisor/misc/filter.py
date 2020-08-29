@@ -34,6 +34,8 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     if not coresys.config.diagnostics or not coresys.core.supported or dev_env:
         return None
 
+    event.setdefault("extra", {}).update({"os.environ": dict(os.environ)})
+
     # Not full startup - missing information
     if coresys.core.state in (CoreState.INITIALIZE, CoreState.SETUP):
         return event

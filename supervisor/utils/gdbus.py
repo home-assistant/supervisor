@@ -153,8 +153,7 @@ class DBus:
         try:
             return json.loads(json_raw)
         except json.JSONDecodeError as err:
-            _LOGGER.error("Can't parse '%s': %s", json_raw, err)
-            _LOGGER.debug("GVariant data: '%s'", raw)
+            _LOGGER.critical("Can't parse '%s': '%s' - %s", json_raw, raw, err)
             raise DBusParseError() from err
 
     @staticmethod
