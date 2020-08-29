@@ -149,9 +149,10 @@ class Core(CoreSysAttributes):
         # Check if image names from denylist exist
         try:
             if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
-                self.coresys.supported = False
+                self.supported = False
                 self.healthy = False
-        except DockerAPIError:
+        except DockerAPIError as err:
+            self.sys_capture_exception(err)
             self.healthy = False
 
     async def start(self):
