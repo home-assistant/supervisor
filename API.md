@@ -491,7 +491,7 @@ Update information for a single interface
 | Option    | Description                                                            |
 | --------- | ---------------------------------------------------------------------- |
 | `address` | The new IP address for the interface in the X.X.X.X/XX format          |
-| `dns`     | Comma seperated list of DNS servers to use                             |
+| `dns`     | List of DNS servers to use                             |
 | `gateway` | The gateway the interface should use                                   |
 | `method`  | Set if the interface should use DHCP or not, can be `dhcp` or `static` |
 
