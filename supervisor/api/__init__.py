@@ -268,6 +268,9 @@ class RestAPI(CoreSysAttributes):
                 web.post("/addons/{addon}/restart", api_addons.restart),
                 web.post("/addons/{addon}/update", api_addons.update),
                 web.post("/addons/{addon}/options", api_addons.options),
+                web.post(
+                    "/addons/{addon}/options/validate", api_addons.options_validate
+                ),
                 web.post("/addons/{addon}/rebuild", api_addons.rebuild),
                 web.get("/addons/{addon}/logs", api_addons.logs),
                 web.get("/addons/{addon}/icon", api_addons.icon),
