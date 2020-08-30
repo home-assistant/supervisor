@@ -1,6 +1,5 @@
 """Init file for Supervisor util for RESTful API."""
 import json
-import logging
 from typing import Any, Dict, List, Optional
 
 from aiohttp import web
@@ -19,8 +18,7 @@ from ..const import (
     RESULT_OK,
 )
 from ..exceptions import APIError, APIForbidden, HassioError
-
-_LOGGER: logging.Logger = logging.getLogger(__name__)
+from ..utils.log_format import format_message
 
 
 def excract_supervisor_token(request: web.Request) -> Optional[str]:
@@ -61,8 +59,10 @@ def api_process(method):
             answer = await method(api, *args, **kwargs)
         except (APIError, APIForbidden) as err:
             return api_return_error(message=str(err))
-        except HassioError:
-            return api_return_error(message="Unknown Error, see logs")
+        except HassioError as err:
+            return api_return_error(
+                message=str(err) if err else "Unknown Error, see logs"
+            )
 
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
@@ -103,7 +103,7 @@ def api_process_raw(content):
 def api_return_error(message: Optional[str] = None) -> web.Response:
     """Return an API error message."""
     return web.json_response(
-        {JSON_RESULT: RESULT_ERROR, JSON_MESSAGE: message}, status=400
+        {JSON_RESULT: RESULT_ERROR, JSON_MESSAGE: format_message(message)}, status=400
     )
 
 
