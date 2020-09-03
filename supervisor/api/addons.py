@@ -62,6 +62,7 @@ from ..const import (
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
+    ATTR_MESSAGE,
     ATTR_NAME,
     ATTR_NETWORK,
     ATTR_NETWORK_DESCRIPTION,
@@ -84,6 +85,7 @@ from ..const import (
     ATTR_UDEV,
     ATTR_URL,
     ATTR_USB,
+    ATTR_VALID,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_VIDEO,
@@ -322,12 +324,12 @@ class APIAddons(CoreSysAttributes):
     async def options_validate(self, request: web.Request) -> None:
         """Validate user options for add-on."""
         addon = self._extract_addon_installed(request)
-        data = {"message": "", "valid": True}
+        data = {ATTR_MESSAGE: "", ATTR_VALID: True}
         try:
             addon.schema(addon.options)
         except vol.Invalid as ex:
-            data["message"] = humanize_error(addon.options, ex)
-            data["valid"] = False
+            data[ATTR_MESSAGE] = humanize_error(addon.options, ex)
+            data[ATTR_VALID] = False
 
         return data
 
