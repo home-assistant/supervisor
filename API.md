@@ -466,7 +466,7 @@ Get network information
 }
 ```
 
-#### GET `/network/{interface}/info`
+#### GET `/network/interface/{interface}/info`
 
 Get information for a single interface
 
@@ -482,7 +482,7 @@ Get information for a single interface
 }
 ```
 
-#### POST `/network/{interface}/update`
+#### POST `/network/interface/{interface}/update`
 
 Update information for a single interface
 
