@@ -466,7 +466,7 @@ Get network information
 }
 ```
 
-#### GET `/network/{interface}/info`
+#### GET `/network/interface/{interface}/info`
 
 Get information for a single interface
 
@@ -482,7 +482,7 @@ Get information for a single interface
 }
 ```
 
-#### POST `/network/{interface}/update`
+#### POST `/network/interface/{interface}/update`
 
 Update information for a single interface
 
@@ -491,7 +491,7 @@ Update information for a single interface
 | Option    | Description                                                            |
 | --------- | ---------------------------------------------------------------------- |
 | `address` | The new IP address for the interface in the X.X.X.X/XX format          |
-| `dns`     | List of DNS servers to use                             |
+| `dns`     | List of DNS servers to use                                             |
 | `gateway` | The gateway the interface should use                                   |
 | `method`  | Set if the interface should use DHCP or not, can be `dhcp` or `static` |
 
