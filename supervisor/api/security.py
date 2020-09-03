@@ -74,19 +74,20 @@ ADDONS_ROLE_ACCESS = {
     ),
     ROLE_MANAGER: re.compile(
         r"^(?:"
-        r"|/audio/.*"
-        r"|/dns/.*"
-        r"|/cli/.*"
-        r"|/multicast/.*"
+        r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
+        r"|/audio/.+"
+        r"|/cli/.+"
+        r"|/dns/.+"
         r"|/core/.+"
+        r"|/hardware/.+"
+        r"|/hassos/.+"
         r"|/homeassistant/.+"
         r"|/host/.+"
-        r"|/hardware/.+"
+        r"|/multicast/.+"
+        r"|/network/.+"
         r"|/os/.+"
-        r"|/hassos/.+"
-        r"|/supervisor/.+"
-        r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
         r"|/snapshots.*"
+        r"|/supervisor/.+"
         r")$"
     ),
     ROLE_ADMIN: re.compile(
