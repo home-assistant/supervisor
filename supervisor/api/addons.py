@@ -322,10 +322,12 @@ class APIAddons(CoreSysAttributes):
     async def options_validate(self, request: web.Request) -> None:
         """Validate user options for add-on."""
         addon = self._extract_addon_installed(request)
+        data = {"message": ""}
         try:
             addon.schema(addon.options)
         except vol.Invalid as ex:
-            raise APIError(humanize_error(addon.options, ex)) from None
+            data["message"] = humanize_error(addon.options, ex)
+        return data
 
     @api_process
     async def security(self, request: web.Request) -> None:
