@@ -187,7 +187,9 @@ class Addon(AddonModel):
     def watchdog(self, value: bool) -> None:
         """Set watchdog enable/disable."""
         if value and self.startup == AddonStartup.ONCE:
-            _LOGGER.warning("Ignoring watchdog for %s because startup type is 'once'", self.slug)
+            _LOGGER.warning(
+                "Ignoring watchdog for %s because startup type is 'once'", self.slug
+            )
         else:
             self.persist[ATTR_WATCHDOG] = value
 
