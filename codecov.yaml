@@ -7,3 +7,5 @@ coverage:
         target: 40
         threshold: 0.09
 comment: false
+github_checks:
+    annotations: false
