@@ -39,6 +39,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
+    AddonStartup,
     AddonState,
 )
 from ..coresys import CoreSys
@@ -185,7 +186,12 @@ class Addon(AddonModel):
     @watchdog.setter
     def watchdog(self, value: bool) -> None:
         """Set watchdog enable/disable."""
-        self.persist[ATTR_WATCHDOG] = value
+        if value and self.startup == AddonStartup.ONCE:
+            _LOGGER.warning(
+                "Ignoring watchdog for %s because startup type is 'once'", self.slug
+            )
+        else:
+            self.persist[ATTR_WATCHDOG] = value
 
     @property
     def uuid(self) -> str:
