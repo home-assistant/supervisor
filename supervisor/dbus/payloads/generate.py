@@ -3,8 +3,8 @@ from pathlib import Path
 
 import jinja2
 
-from ...const import ATTR_ADDRESS, ATTR_DNS, ATTR_METHOD, ATTR_PREFIX
-from ..const import InterfaceMethod
+from ...const import ATTR_ADDRESS, ATTR_DNS, ATTR_METHOD, ATTR_PREFIX, ATTR_SSID
+from ..const import ConnectionType, InterfaceMethod
 from ..network.utils import ip2int
 
 INTERFACE_UPDATE_TEMPLATE: Path = (
@@ -30,5 +30,16 @@ def interface_update_payload(interface, **kwargs) -> str:
             kwargs[ATTR_PREFIX] = kwargs[ATTR_ADDRESS].split("/")[-1]
             kwargs[ATTR_ADDRESS] = kwargs[ATTR_ADDRESS].split("/")[0]
         kwargs[ATTR_METHOD] = InterfaceMethod.MANUAL
+
+    if interface.type == ConnectionType.WIRELESS:
+        kwargs[ATTR_SSID] = ", ".join(
+            [
+                f"0x{x}"
+                for x in interface.connection.wireless.properties[ATTR_SSID]
+                .encode()
+                .hex(",")
+                .split(",")
+            ]
+        )
 
     return template.render(interface=interface, options=kwargs)
