@@ -63,7 +63,7 @@ class PluginManager(CoreSysAttributes):
             try:
                 await plugin.load()
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't load plugin %s", type(plugin).__name__)
+                _LOGGER.warning("Can't load plugin %s: %s", type(plugin).__name__, err)
                 self.sys_capture_exception(err)
 
         # Check requirements
@@ -97,7 +97,9 @@ class PluginManager(CoreSysAttributes):
                     required_version,
                 )
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't update plugin %s", type(plugin).__name__)
+                _LOGGER.warning(
+                    "Can't update plugin %s: %s", type(plugin).__name__, err
+                )
                 self.sys_capture_exception(err)
 
     async def repair(self) -> None:
@@ -123,5 +125,5 @@ class PluginManager(CoreSysAttributes):
             try:
                 await plugin.stop()
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't stop plugin %s", type(plugin).__name__)
+                _LOGGER.warning("Can't stop plugin %s: %s", type(plugin).__name__, err)
                 self.sys_capture_exception(err)

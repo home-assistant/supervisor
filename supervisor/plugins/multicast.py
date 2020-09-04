@@ -70,7 +70,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
         try:
             # Evaluate Version if we lost this information
             if not self.version:
-                self.version = await self.instance.get_latest_version(key=int)
+                self.version = await self.instance.get_latest_version()
 
             await self.instance.attach(tag=self.version)
         except DockerAPIError:
