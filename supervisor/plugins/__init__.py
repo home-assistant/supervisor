@@ -15,10 +15,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class PluginManager(CoreSysAttributes):
     """Manage supported function for plugins."""
 
-    required_cli: int = 25
+    required_cli: int = 26
     required_dns: int = 9
-    required_audio: int = 16
-    required_multicast: int = 2
+    required_audio: int = 17
+    required_multicast: int = 3
 
     def __init__(self, coresys: CoreSys):
         """Initialize plugin manager."""
