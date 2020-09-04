@@ -5,6 +5,7 @@ from typing import Any, Awaitable, Dict, List
 
 from aiohttp import web
 import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from ..addons import AnyAddon
 from ..addons.addon import Addon
@@ -61,6 +62,7 @@ from ..const import (
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
+    ATTR_MESSAGE,
     ATTR_NAME,
     ATTR_NETWORK,
     ATTR_NETWORK_DESCRIPTION,
@@ -77,11 +79,13 @@ from ..const import (
     ATTR_SLUG,
     ATTR_SOURCE,
     ATTR_STAGE,
+    ATTR_STARTUP,
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_UDEV,
     ATTR_URL,
     ATTR_USB,
+    ATTR_VALID,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_VIDEO,
@@ -249,6 +253,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_AUDIO: addon.with_audio,
             ATTR_AUDIO_INPUT: None,
             ATTR_AUDIO_OUTPUT: None,
+            ATTR_STARTUP: addon.startup,
             ATTR_SERVICES: _pretty_services(addon),
             ATTR_DISCOVERY: addon.discovery,
             ATTR_IP_ADDRESS: None,
@@ -314,6 +319,19 @@ class APIAddons(CoreSysAttributes):
             addon.watchdog = body[ATTR_WATCHDOG]
 
         addon.save_persist()
+
+    @api_process
+    async def options_validate(self, request: web.Request) -> None:
+        """Validate user options for add-on."""
+        addon = self._extract_addon_installed(request)
+        data = {ATTR_MESSAGE: "", ATTR_VALID: True}
+        try:
+            addon.schema(addon.options)
+        except vol.Invalid as ex:
+            data[ATTR_MESSAGE] = humanize_error(addon.options, ex)
+            data[ATTR_VALID] = False
+
+        return data
 
     @api_process
     async def security(self, request: web.Request) -> None:

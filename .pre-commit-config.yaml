@@ -6,6 +6,8 @@ repos:
         args:
           - --safe
           - --quiet
+          - --target-version
+          - py38
         files: ^((supervisor|tests)/.+)?[^/]+\.py$
   - repo: https://gitlab.com/pycqa/flake8
     rev: 3.8.3

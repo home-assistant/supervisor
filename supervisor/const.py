@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "238"
+SUPERVISOR_VERSION = "239"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor.txt"
@@ -195,6 +195,7 @@ ATTR_MAP = "map"
 ATTR_MEMORY_LIMIT = "memory_limit"
 ATTR_MEMORY_PERCENT = "memory_percent"
 ATTR_MEMORY_USAGE = "memory_usage"
+ATTR_MESSAGE = "message"
 ATTR_METHOD = "method"
 ATTR_METHODS = ["dhcp", "static"]
 ATTR_MODE = "mode"
@@ -262,6 +263,7 @@ ATTR_USB = "usb"
 ATTR_USER = "user"
 ATTR_USERNAME = "username"
 ATTR_UUID = "uuid"
+ATTR_VALID = "valid"
 ATTR_VALUE = "value"
 ATTR_VERSION = "version"
 ATTR_VERSION_LATEST = "version_latest"

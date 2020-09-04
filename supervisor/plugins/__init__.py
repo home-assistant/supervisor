@@ -2,6 +2,8 @@
 import asyncio
 import logging
 
+from packaging.version import LegacyVersion, parse as pkg_parse
+
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError
 from .audio import Audio
@@ -15,10 +17,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class PluginManager(CoreSysAttributes):
     """Manage supported function for plugins."""
 
-    required_cli: int = 25
-    required_dns: int = 9
-    required_audio: int = 16
-    required_multicast: int = 2
+    required_cli: LegacyVersion = pkg_parse("26")
+    required_dns: LegacyVersion = pkg_parse("9")
+    required_audio: LegacyVersion = pkg_parse("17")
+    required_multicast: LegacyVersion = pkg_parse("3")
 
     def __init__(self, coresys: CoreSys):
         """Initialize plugin manager."""
@@ -61,7 +63,7 @@ class PluginManager(CoreSysAttributes):
             try:
                 await plugin.load()
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't load plugin %s", type(plugin).__name__)
+                _LOGGER.warning("Can't load plugin %s: %s", type(plugin).__name__, err)
                 self.sys_capture_exception(err)
 
         # Check requirements
@@ -73,18 +75,16 @@ class PluginManager(CoreSysAttributes):
         ):
             # Check if need an update
             try:
-                if int(plugin.version) >= required_version:
+                if pkg_parse(plugin.version) >= required_version:
                     continue
-            except (TypeError, ValueError):
-                if plugin.version == "dev":
-                    continue
+            except TypeError:
                 _LOGGER.warning(
                     "Somethings going wrong with requirements on %s",
                     type(plugin).__name__,
                 )
 
             _LOGGER.info(
-                "Requirement need update for %s - %i",
+                "Requirement need update for %s - %s",
                 type(plugin).__name__,
                 required_version,
             )
@@ -92,12 +92,14 @@ class PluginManager(CoreSysAttributes):
                 await plugin.update(version=str(required_version))
             except HassioError:
                 _LOGGER.error(
-                    "Can't update %s to %i but it's a reuirement, the Supervisor is not health now!",
+                    "Can't update %s to %s but it's a reuirement, the Supervisor is not health now!",
                     type(plugin).__name__,
                     required_version,
                 )
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't update plugin %s", type(plugin).__name__)
+                _LOGGER.warning(
+                    "Can't update plugin %s: %s", type(plugin).__name__, err
+                )
                 self.sys_capture_exception(err)
 
     async def repair(self) -> None:
@@ -123,5 +125,5 @@ class PluginManager(CoreSysAttributes):
             try:
                 await plugin.stop()
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't stop plugin %s", type(plugin).__name__)
+                _LOGGER.warning("Can't stop plugin %s: %s", type(plugin).__name__, err)
                 self.sys_capture_exception(err)
