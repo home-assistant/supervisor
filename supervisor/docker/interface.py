@@ -5,6 +5,7 @@ import logging
 from typing import Any, Awaitable, Dict, List, Optional
 
 import docker
+from packaging import version as pkg_version
 import requests
 
 from . import CommandReturn
@@ -431,12 +432,12 @@ class DockerInterface(CoreSysAttributes):
         # Check return value
         return int(docker_container.attrs["State"]["ExitCode"]) != 0
 
-    def get_latest_version(self, key: Any = int) -> Awaitable[str]:
-        """Return latest version of local Home Asssistant image."""
-        return self.sys_run_in_executor(self._get_latest_version, key)
+    def get_latest_version(self) -> Awaitable[str]:
+        """Return latest version of local image."""
+        return self.sys_run_in_executor(self._get_latest_version)
 
-    def _get_latest_version(self, key: Any = int) -> str:
-        """Return latest version of local Home Asssistant image.
+    def _get_latest_version(self) -> str:
+        """Return latest version of local image.
 
         Need run inside executor.
         """
@@ -446,8 +447,8 @@ class DockerInterface(CoreSysAttributes):
                 for tag in image.tags:
                     version = tag.partition(":")[2]
                     try:
-                        key(version)
-                    except (AttributeError, ValueError):
+                        pkg_version.parse(version)
+                    except (TypeError, pkg_version.InvalidVersion):
                         continue
                     available_version.append(version)
 
@@ -461,5 +462,5 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.debug("Found %s versions: %s", self.image, available_version)
 
         # Sort version and return latest version
-        available_version.sort(key=key, reverse=True)
+        available_version.sort(key=pkg_version.parse, reverse=True)
         return available_version[0]
