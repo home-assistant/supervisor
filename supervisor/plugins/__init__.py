@@ -2,7 +2,7 @@
 import asyncio
 import logging
 
-from packaging import version as pkg_version
+from packaging.version import LegacyVersion, parse as pkg_parse
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError
@@ -17,10 +17,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class PluginManager(CoreSysAttributes):
     """Manage supported function for plugins."""
 
-    required_cli: pkg_version.Version = pkg_version.parse("26")
-    required_dns: pkg_version.Version = pkg_version.parse("9")
-    required_audio: pkg_version.Version = pkg_version.parse("17")
-    required_multicast: pkg_version.Version = pkg_version.parse("3")
+    required_cli: LegacyVersion = pkg_parse("26")
+    required_dns: LegacyVersion = pkg_parse("9")
+    required_audio: LegacyVersion = pkg_parse("17")
+    required_multicast: LegacyVersion = pkg_parse("3")
 
     def __init__(self, coresys: CoreSys):
         """Initialize plugin manager."""
@@ -75,7 +75,7 @@ class PluginManager(CoreSysAttributes):
         ):
             # Check if need an update
             try:
-                if pkg_version.parse(plugin.version) >= required_version:
+                if pkg_parse(plugin.version) >= required_version:
                     continue
             except TypeError:
                 _LOGGER.warning(
