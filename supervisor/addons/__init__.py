@@ -359,11 +359,17 @@ class AddonManager(CoreSysAttributes):
         """Sync add-ons DNS names."""
         # Update hosts
         for addon in self.installed:
-            if not await addon.instance.is_running():
-                continue
-            self.sys_plugins.dns.add_host(
-                ipv4=addon.ip_address, names=[addon.hostname], write=False
-            )
+            try:
+                if not await addon.instance.is_running():
+                    continue
+            except DockerAPIError as err:
+                _LOGGER.warning("Add-on %s is corrupt: %s", addon.slug, err)
+                self.sys_core.healthy = False
+                self.sys_capture_exception(err)
+            else:
+                self.sys_plugins.dns.add_host(
+                    ipv4=addon.ip_address, names=[addon.hostname], write=False
+                )
 
         # Write hosts files
         with suppress(CoreDNSError):
