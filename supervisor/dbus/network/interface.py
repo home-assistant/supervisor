@@ -4,6 +4,7 @@ from ..const import (
     DBUS_NAME_CONNECTION_ACTIVE,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
+    ConnectionType,
     InterfaceMethod,
 )
 from ..payloads.generate import interface_update_payload
@@ -49,7 +50,7 @@ class NetworkInterface:
         return self.connection.ip4_config.address_data.prefix
 
     @property
-    def type(self) -> str:
+    def type(self) -> ConnectionType:
         """Return the interface type."""
         return self.connection.type
 

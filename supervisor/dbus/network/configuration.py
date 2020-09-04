@@ -60,3 +60,11 @@ class NetworkDevice:
     ip4_address: int = attr.ib()
     device_type: int = attr.ib()
     real: bool = attr.ib()
+
+
+@attr.s
+class WirelessProperties:
+    """WirelessProperties object for Network Manager."""
+
+    properties: dict = attr.ib()
+    security: dict = attr.ib()

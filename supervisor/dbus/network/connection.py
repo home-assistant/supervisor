@@ -4,6 +4,8 @@ from typing import Optional
 from ...const import ATTR_ADDRESS, ATTR_IPV4, ATTR_METHOD, ATTR_PREFIX
 from ...utils.gdbus import DBus
 from ..const import (
+    DBUS_ATTR_802_WIRELESS,
+    DBUS_ATTR_802_WIRELESS_SECURITY,
     DBUS_ATTR_ADDRESS_DATA,
     DBUS_ATTR_CONNECTION,
     DBUS_ATTR_DEFAULT,
@@ -23,6 +25,7 @@ from ..const import (
     DBUS_NAME_IP4CONFIG,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
+    ConnectionType,
 )
 from .configuration import (
     AddressData,
@@ -30,6 +33,7 @@ from .configuration import (
     NetworkAttributes,
     NetworkDevice,
     NetworkSettings,
+    WirelessProperties,
 )
 
 
@@ -44,6 +48,7 @@ class NetworkConnection(NetworkAttributes):
         self._settings: Optional[NetworkSettings] = None
         self._ip4_config: Optional[IpConfiguration] = None
         self._device: Optional[NetworkDevice]
+        self._wireless: Optional[WirelessProperties] = None
         self.primary: bool = False
 
     @property
@@ -82,6 +87,13 @@ class NetworkConnection(NetworkAttributes):
         return self._properties[DBUS_ATTR_UUID]
 
     @property
+    def wireless(self) -> str:
+        """Return wireless properties if any."""
+        if self.type != ConnectionType.WIRELESS:
+            return None
+        return self._wireless
+
+    @property
     def state(self) -> int:
         """
         Return the state of the connection.
@@ -117,6 +129,11 @@ class NetworkConnection(NetworkAttributes):
                 ip4_data.get(DBUS_ATTR_ADDRESS_DATA)[0].get(ATTR_ADDRESS),
                 ip4_data.get(DBUS_ATTR_ADDRESS_DATA)[0].get(ATTR_PREFIX),
             ),
+        )
+
+        self._wireless = WirelessProperties(
+            data.get(DBUS_ATTR_802_WIRELESS, {}),
+            data.get(DBUS_ATTR_802_WIRELESS_SECURITY, {}),
         )
 
         self._device = NetworkDevice(
