@@ -53,8 +53,8 @@ class HomeAssistantCore(CoreSysAttributes):
         try:
             # Evaluate Version if we lost this information
             if not self.sys_homeassistant.version:
-                self.sys_homeassistant.version = await self.instance.get_latest_version(
-                    key=pkg_version.parse
+                self.sys_homeassistant.version = (
+                    await self.instance.get_latest_version()
                 )
 
             await self.instance.attach(tag=self.sys_homeassistant.version)
