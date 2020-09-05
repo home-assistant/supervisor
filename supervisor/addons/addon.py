@@ -558,7 +558,7 @@ class Addon(AddonModel):
             await self.instance.run()
         except DockerAPIError as err:
             self.state = AddonState.ERROR
-            raise AddonsError(err) from None
+            raise AddonsError(err) from err
         else:
             self.state = AddonState.STARTED
 
