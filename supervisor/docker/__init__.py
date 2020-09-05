@@ -149,7 +149,7 @@ class DockerAPI:
             container.start()
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't start %s: %s", name, err)
-            raise DockerAPIError(err) from None
+            raise DockerAPIError(err) from err
 
         # Update metadata
         with suppress(docker.errors.DockerException, requests.RequestException):

@@ -308,7 +308,7 @@ class Tasks(CoreSysAttributes):
             try:
                 await addon.start()
             except AddonsError as err:
-                _LOGGER.error("Watchdog %s reanimation failed!", addon.slug)
+                _LOGGER.error("Watchdog %s reanimation failed with %s", addon.slug, err)
                 self.sys_capture_exception(err)
 
     async def _watchdog_addon_application(self):
@@ -338,7 +338,7 @@ class Tasks(CoreSysAttributes):
             try:
                 await addon.restart()
             except AddonsError as err:
-                _LOGGER.error("Watchdog %s reanimation failed!", addon.slug)
+                _LOGGER.error("Watchdog %s reanimation failed with %s", addon.slug, err)
                 self.sys_capture_exception(err)
             finally:
                 self._cache[addon.slug] = 0
