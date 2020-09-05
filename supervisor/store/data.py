@@ -77,6 +77,7 @@ class StoreData(CoreSysAttributes):
         try:
             addon_list = path.glob("**/config.json")
         except OSError as err:
+            self.sys_core.healthy = False
             _LOGGER.critical(
                 "Can't process %s because of Filesystem issues: %s", repository, err
             )
