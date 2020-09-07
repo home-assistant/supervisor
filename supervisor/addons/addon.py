@@ -87,6 +87,10 @@ class Addon(AddonModel):
         self.instance: DockerAddon = DockerAddon(coresys, self)
         self.state: AddonState = AddonState.UNKNOWN
 
+    def __repr__(self) -> str:
+        """Return internal representation."""
+        return f"<Addon: {self.slug}>"
+
     @property
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
