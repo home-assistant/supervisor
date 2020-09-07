@@ -32,4 +32,4 @@ async def test_interface_update_payload_wireless(network_interface):
     )
     assert DBus.parse_gvariant(data)["ipv4"]["method"] == "manual"
     assert DBus.parse_gvariant(data)["ipv4"]["address-data"][0]["address"] == "1.1.1.1"
-    assert DBus.parse_gvariant(data)["802-11-wireless"]["ssid"] == "NETT"
+    assert DBus.parse_gvariant(data)["802-11-wireless"]["ssid"] == [78, 69, 84, 84]

@@ -1,7 +1,7 @@
 """Connection object for Network Manager."""
 from typing import Optional
 
-from ...const import ATTR_ADDRESS, ATTR_IPV4, ATTR_METHOD, ATTR_PREFIX
+from ...const import ATTR_ADDRESS, ATTR_IPV4, ATTR_METHOD, ATTR_PREFIX, ATTR_SSID
 from ...utils.gdbus import DBus
 from ..const import (
     DBUS_ATTR_802_WIRELESS,
@@ -134,6 +134,7 @@ class NetworkConnection(NetworkAttributes):
         self._wireless = WirelessProperties(
             data.get(DBUS_ATTR_802_WIRELESS, {}),
             data.get(DBUS_ATTR_802_WIRELESS_SECURITY, {}),
+            bytes(data.get(DBUS_ATTR_802_WIRELESS, {}).get(ATTR_SSID, [])).decode(),
         )
 
         self._device = NetworkDevice(
