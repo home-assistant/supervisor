@@ -35,10 +35,7 @@ def interface_update_payload(interface, **kwargs) -> str:
         kwargs[ATTR_SSID] = ", ".join(
             [
                 f"0x{x}"
-                for x in interface.connection.wireless.properties[ATTR_SSID]
-                .encode()
-                .hex(",")
-                .split(",")
+                for x in interface.connection.wireless.ssid.encode().hex(",").split(",")
             ]
         )
 

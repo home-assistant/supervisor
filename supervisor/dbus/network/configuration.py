@@ -68,3 +68,4 @@ class WirelessProperties:
 
     properties: dict = attr.ib()
     security: dict = attr.ib()
+    ssid: str = attr.ib()
