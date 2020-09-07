@@ -240,20 +240,26 @@ def check_environment() -> None:
         _LOGGER.critical("Can't find gdbus!")
 
 
-def reg_signal(loop) -> None:
+def reg_signal(loop, coresys: CoreSys) -> None:
     """Register SIGTERM and SIGKILL to stop system."""
     try:
-        loop.add_signal_handler(signal.SIGTERM, lambda: loop.call_soon(loop.stop))
+        loop.add_signal_handler(
+            signal.SIGTERM, lambda: loop.create_task(coresys.core.stop())
+        )
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGTERM")
 
     try:
-        loop.add_signal_handler(signal.SIGHUP, lambda: loop.call_soon(loop.stop))
+        loop.add_signal_handler(
+            signal.SIGHUP, lambda: loop.create_task(coresys.core.stop())
+        )
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGHUP")
 
     try:
-        loop.add_signal_handler(signal.SIGINT, lambda: loop.call_soon(loop.stop))
+        loop.add_signal_handler(
+            signal.SIGINT, lambda: loop.create_task(coresys.core.stop())
+        )
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGINT")
 

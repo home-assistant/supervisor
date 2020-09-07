@@ -241,8 +241,10 @@ class Core(CoreSysAttributes):
     async def stop(self):
         """Stop a running orchestration."""
         # store new last boot / prevent time adjustments
-        if self.state == CoreState.RUNNING:
+        if self.state in (CoreState.RUNNING, CoreState.SHUTDOWN):
             self._update_last_boot()
+        if self.state in (CoreState.STOPPING, CoreState.CLOSE):
+            return
 
         # don't process scheduler anymore
         self.state = CoreState.STOPPING
@@ -269,12 +271,14 @@ class Core(CoreSysAttributes):
             _LOGGER.warning("Stage 2: Force Shutdown!")
 
         _LOGGER.info("Supervisor is down")
+        self.state = CoreState.CLOSE
+        self.sys_loop.stop()
 
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
-            self.state = CoreState.STOPPING
+            self.state = CoreState.SHUTDOWN
 
         # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(AddonStartup.APPLICATION)
@@ -289,7 +293,7 @@ class Core(CoreSysAttributes):
         await self.sys_addons.shutdown(AddonStartup.INITIALIZE)
 
         # Shutdown all Plugins
-        if self.state == CoreState.STOPPING:
+        if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
             await self.sys_plugins.shutdown()
 
     def _update_last_boot(self):
