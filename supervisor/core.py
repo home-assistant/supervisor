@@ -276,6 +276,7 @@ class Core(CoreSysAttributes):
 
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
+        # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
             self.state = CoreState.SHUTDOWN
 
