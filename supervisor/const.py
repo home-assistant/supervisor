@@ -395,7 +395,9 @@ class CoreState(str, Enum):
     STARTUP = "startup"
     RUNNING = "running"
     FREEZE = "freeze"
+    SHUTDOWN = "shutdown"
     STOPPING = "stopping"
+    CLOSE = "close"
 
 
 class LogLevel(str, Enum):
