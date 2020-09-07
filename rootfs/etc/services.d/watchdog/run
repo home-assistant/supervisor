@@ -1,0 +1,33 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start Watchdog service
+# ==============================================================================
+declare failed_count=0
+declare supervisor_state
+
+
+while [[ failed_count -lt 2 ]];
+do
+    sleep 300
+    supervisor_state="$(cat /run/supervisor)"
+
+    if [[ "${supervisor_state}" = "running"  ]]; then
+
+        # Check API
+        if curl -f -q -X POST http://localhost/supervisor/ping; then
+            failed_count=0
+        else
+            bashio::log.warn "Maybe found an issue on API healthy"
+            ((failed_count++))
+        fi
+
+    elif [[  "close stopping" = *"${supervisor_state}"* ]]; then
+        bashio::log.warn "Maybe found an issue on shutdown"
+        ((failed_count++))
+    else
+        failed_count=0
+    fi
+
+done
+
+basio::exit.nok "Watchdog detect issue with Supervisor - take container down!"
