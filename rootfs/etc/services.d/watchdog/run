@@ -15,15 +15,15 @@ do
     if [[ "${supervisor_state}" = "running"  ]]; then
 
         # Check API
-        if curl -f -q -X POST http://localhost/supervisor/ping; then
+        if curl -f -s -X GET http://localhost/supervisor/ping; then
             failed_count=0
         else
-            bashio::log.warn "Maybe found an issue on API healthy"
+            bashio::log.warning "Maybe found an issue on API healthy"
             ((failed_count++))
         fi
 
     elif [[  "close stopping" = *"${supervisor_state}"* ]]; then
-        bashio::log.warn "Maybe found an issue on shutdown"
+        bashio::log.warning "Maybe found an issue on shutdown"
         ((failed_count++))
     else
         failed_count=0
