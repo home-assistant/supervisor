@@ -5,7 +5,6 @@ import logging
 import sys
 
 from supervisor import bootstrap
-from supervisor.const import CoreState
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -54,10 +53,6 @@ if __name__ == "__main__":
         _LOGGER.info("Run Supervisor")
         loop.run_forever()
     finally:
-        if coresys.core.state != CoreState.CLOSE:
-            _LOGGER.info("Stopping Supervisor")
-            loop.run_until_complete(coresys.core.stop())
-        executor.shutdown(wait=False)
         loop.close()
 
     _LOGGER.info("Close Supervisor")
