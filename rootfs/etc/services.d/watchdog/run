@@ -15,7 +15,7 @@ do
     if [[ "${supervisor_state}" = "running"  ]]; then
 
         # Check API
-        if curl -f -s -X GET http://localhost/supervisor/ping > /dev/null; then
+        if bashio::supervisor.ping; then
             failed_count=0
         else
             bashio::log.warning "Maybe found an issue on API healthy"
