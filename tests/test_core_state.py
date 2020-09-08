@@ -7,6 +7,8 @@ import pytest
 
 from supervisor.const import CoreState
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def run_dir():
