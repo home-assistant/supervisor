@@ -258,7 +258,7 @@ class SnapshotManager(CoreSysAttributes):
                 # finish homeassistant task
                 _LOGGER.info("Restore %s wait until homeassistant ready", snapshot.slug)
                 await task_hass
-                await self.sys_homeassistant.start()
+                await self.sys_homeassistant.core.start()
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
@@ -327,7 +327,7 @@ class SnapshotManager(CoreSysAttributes):
 
                 # Do we need start HomeAssistant?
                 if not await self.sys_homeassistant.core.is_running():
-                    await self.sys_homeassistant.start()
+                    await self.sys_homeassistant.core.start()
 
                 # Check If we can access to API / otherwise restart
                 if not await self.sys_homeassistant.api.check_api_state():
