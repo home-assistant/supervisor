@@ -145,8 +145,11 @@ class APISupervisor(CoreSysAttributes):
 
         self.sys_updater.save_data()
         self.sys_config.save_data()
-        self.reload()
 
+        # Reload the supervisor after options changed
+        await asyncio.shield(self.reload())
+
+        # Return the changed data
         return await self.info()
 
     @api_process
