@@ -2,10 +2,17 @@
 import asyncio
 from contextlib import suppress
 import logging
+from typing import Optional
 
 import async_timeout
 
-from .const import SOCKET_DBUS, SUPERVISED_SUPPORTED_OS, AddonStartup, CoreState
+from .const import (
+    RUN_SUPERVISOR_STATE,
+    SOCKET_DBUS,
+    SUPERVISED_SUPPORTED_OS,
+    AddonStartup,
+    CoreState,
+)
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     DockerAPIError,
@@ -23,12 +30,31 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
-        self.state: CoreState = CoreState.INITIALIZE
         self.healthy: bool = True
         self.supported: bool = True
 
+        self._state: Optional[CoreState] = None
+
+    @property
+    def state(self) -> CoreState:
+        """Return state of the core."""
+        return self._state
+
+    @state.setter
+    def state(self, new_state: CoreState) -> None:
+        """Set core into new state."""
+        try:
+            RUN_SUPERVISOR_STATE.write_text(new_state.value)
+        except OSError as err:
+            _LOGGER.warning("Can't update supervisor state %s: %s", new_state, err)
+        finally:
+            self._state = new_state
+
     async def connect(self):
         """Connect Supervisor container."""
+        self.state = CoreState.INITIALIZE
+
+        # Load information from container
         await self.sys_supervisor.load()
 
         # If host docker is supported?

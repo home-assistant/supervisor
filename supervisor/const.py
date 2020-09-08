@@ -32,6 +32,7 @@ FILE_HASSIO_UPDATER = Path(SUPERVISOR_DATA, "updater.json")
 MACHINE_ID = Path("/etc/machine-id")
 SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 SOCKET_DOCKER = Path("/run/docker.sock")
+RUN_SUPERVISOR_STATE = Path("/run/supervisor")
 
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
