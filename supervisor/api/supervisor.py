@@ -145,6 +145,9 @@ class APISupervisor(CoreSysAttributes):
 
         self.sys_updater.save_data()
         self.sys_config.save_data()
+        self.reload()
+
+        return await self.info()
 
     @api_process
     async def stats(self, request: web.Request) -> Dict[str, Any]:
