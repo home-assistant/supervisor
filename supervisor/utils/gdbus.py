@@ -10,6 +10,8 @@ from signal import SIGINT
 from typing import Any, Dict, List, Optional, Set
 import xml.etree.ElementTree as ET
 
+import sentry_sdk
+
 from ..exceptions import (
     DBusFatalError,
     DBusInterfaceError,
@@ -31,7 +33,7 @@ RE_GVARIANT_STRING_ESC: re.Pattern[Any] = re.compile(
 RE_GVARIANT_STRING: re.Pattern[Any] = re.compile(
     r"(?<=(?: |{|\[|\(|<))'(.*?)'(?=(?:|]|}|,|\)|>))"
 )
-RE_GVARIANT_BINARY: re.Pattern[Any] = re.compile(r"<\[byte (.*?)\]>")
+RE_GVARIANT_BINARY: re.Pattern[Any] = re.compile(r"\[byte (.*?)\]")
 RE_GVARIANT_TUPLE_O: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(\()")
 RE_GVARIANT_TUPLE_C: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(,?\))"
@@ -61,12 +63,7 @@ DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
 def _convert_bytes(value: str) -> str:
     """Convert bytes to string or byte-array."""
     data: bytes = bytes(int(char, 0) for char in value.split(", "))
-    try:
-        text = data.decode()
-    except UnicodeDecodeError:
-        return f"<[{', '.join(str(char) for char in data)}]>"
-
-    return f"<'{text}'>"
+    return f"[{', '.join(str(char) for char in data)}]"
 
 
 class DBus:
@@ -153,7 +150,8 @@ class DBus:
         try:
             return json.loads(json_raw)
         except json.JSONDecodeError as err:
-            _LOGGER.critical("Can't parse '%s': '%s' - %s", json_raw, raw, err)
+            _LOGGER.error("Can't parse '%s': '%s' - %s", json_raw, raw, err)
+            sentry_sdk.capture_exception(err)
             raise DBusParseError() from err
 
     @staticmethod

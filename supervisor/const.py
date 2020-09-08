@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "240"
+SUPERVISOR_VERSION = "241"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor.txt"
@@ -32,6 +32,7 @@ FILE_HASSIO_UPDATER = Path(SUPERVISOR_DATA, "updater.json")
 MACHINE_ID = Path("/etc/machine-id")
 SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 SOCKET_DOCKER = Path("/run/docker.sock")
+RUN_SUPERVISOR_STATE = Path("/run/supervisor")
 
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
@@ -395,7 +396,9 @@ class CoreState(str, Enum):
     STARTUP = "startup"
     RUNNING = "running"
     FREEZE = "freeze"
+    SHUTDOWN = "shutdown"
     STOPPING = "stopping"
+    CLOSE = "close"
 
 
 class LogLevel(str, Enum):

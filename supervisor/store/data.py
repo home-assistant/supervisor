@@ -75,7 +75,12 @@ class StoreData(CoreSysAttributes):
     def _read_addons_folder(self, path, repository):
         """Read data from add-ons folder."""
         try:
-            addon_list = path.glob("**/config.json")
+            # Generate a list without artefact, safe for corruptions
+            addon_list = [
+                addon
+                for addon in path.glob("**/config.json")
+                if ".git" not in addon.parts
+            ]
         except OSError as err:
             self.sys_core.healthy = False
             _LOGGER.critical(
@@ -85,10 +90,6 @@ class StoreData(CoreSysAttributes):
             return
 
         for addon in addon_list:
-            # Ingore git artefacts
-            if ".git" in addon.parts:
-                continue
-
             try:
                 addon_config = read_json_file(addon)
             except JsonFileError:

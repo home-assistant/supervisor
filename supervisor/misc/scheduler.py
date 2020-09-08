@@ -61,7 +61,10 @@ class Scheduler(CoreSysAttributes):
                 if self.sys_core.state == CoreState.RUNNING:
                     await task.coro_callback()
             finally:
-                if task.repeat and self.sys_core.state != CoreState.STOPPING:
+                if task.repeat and self.sys_core.state not in (
+                    CoreState.STOPPING,
+                    CoreState.CLOSE,
+                ):
                     self._schedule_task(task)
                 else:
                     self._tasks.remove(task)

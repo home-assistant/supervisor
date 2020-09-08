@@ -47,15 +47,12 @@ if __name__ == "__main__":
     loop.run_until_complete(coresys.core.setup())
 
     loop.call_soon_threadsafe(loop.create_task, coresys.core.start())
-    loop.call_soon_threadsafe(bootstrap.reg_signal, loop)
+    loop.call_soon_threadsafe(bootstrap.reg_signal, loop, coresys)
 
     try:
         _LOGGER.info("Run Supervisor")
         loop.run_forever()
     finally:
-        _LOGGER.info("Stopping Supervisor")
-        loop.run_until_complete(coresys.core.stop())
-        executor.shutdown(wait=False)
         loop.close()
 
     _LOGGER.info("Close Supervisor")

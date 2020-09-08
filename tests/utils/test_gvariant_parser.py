@@ -325,7 +325,7 @@ def test_networkmanager_binary_data():
                 "mode": "infrastructure",
                 "security": "802-11-wireless-security",
                 "seen-bssids": ["7C:2E:BD:98:1B:06"],
-                "ssid": "NETT",
+                "ssid": [78, 69, 84, 84],
             },
             "connection": {
                 "id": "NETT",
@@ -370,7 +370,7 @@ def test_networkmanager_binary_data():
                 "mode": "infrastructure",
                 "security": "802-11-wireless-security",
                 "seen-bssids": ["7C:2E:BD:98:1B:06"],
-                "ssid": "NETT",
+                "ssid": [78, 69, 84, 84],
             },
             "802-11-wireless-security": {"auth-alg": "open", "key-mgmt": "wpa-psk"},
             "connection": {
@@ -400,5 +400,25 @@ def test_networkmanager_binary_data():
                 "routes": [],
             },
             "proxy": {},
+        }
+    ]
+
+
+def test_v6():
+    """Test IPv6 Property."""
+    raw = "({'addresses': <[([byte 0x20, 0x01, 0x04, 0x70, 0x79, 0x2d, 0x00, 0x01, 0x00, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10], uint32 64, [byte 0x20, 0x01, 0x04, 0x70, 0x79, 0x2d, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01])]>, 'dns': <[[byte 0x20, 0x01, 0x04, 0x70, 0x79, 0x2d, 0x00, 0x01, 0x00, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05]]>})"
+
+    data = DBus.parse_gvariant(raw)
+
+    assert data == [
+        {
+            "addresses": [
+                [
+                    [32, 1, 4, 112, 121, 45, 0, 1, 0, 18, 0, 0, 0, 0, 0, 16],
+                    64,
+                    [32, 1, 4, 112, 121, 45, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+                ]
+            ],
+            "dns": [[32, 1, 4, 112, 121, 45, 0, 1, 0, 18, 0, 0, 0, 0, 0, 5]],
         }
     ]

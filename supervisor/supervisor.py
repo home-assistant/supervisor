@@ -124,7 +124,7 @@ class Supervisor(CoreSysAttributes):
 
         with suppress(SupervisorError):
             await self.update_apparmor()
-        self.sys_loop.call_later(5, self.sys_loop.stop)
+        self.sys_create_task(self.sys_core.stop())
 
     @property
     def in_progress(self) -> bool:
