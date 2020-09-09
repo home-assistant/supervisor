@@ -19,6 +19,7 @@ from ..const import (
     MAP_ADDONS,
     MAP_BACKUP,
     MAP_CONFIG,
+    MAP_MEDIA,
     MAP_SHARE,
     MAP_SSL,
     SECURITY_DISABLE,
@@ -265,6 +266,16 @@ class DockerAddon(DockerInterface):
                     str(self.sys_config.path_extern_share): {
                         "bind": "/share",
                         "mode": addon_mapping[MAP_SHARE],
+                    }
+                }
+            )
+
+        if MAP_MEDIA in addon_mapping:
+            volumes.update(
+                {
+                    str(self.sys_config.path_extern_media): {
+                        "bind": "/media",
+                        "mode": addon_mapping[MAP_MEDIA],
                     }
                 }
             )
