@@ -335,29 +335,33 @@ class DockerInterface(CoreSysAttributes):
 
         # Cleanup Current
         try:
-            for image in self.sys_docker.images.list(name=self.image):
-                if origin.id == image.id:
-                    continue
-
-                with suppress(docker.errors.DockerException, requests.RequestException):
-                    _LOGGER.info("Cleanup images: %s", image.tags)
-                    self.sys_docker.images.remove(image.id, force=True)
+            images_list = self.sys_docker.images.list(name=self.image)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
             raise DockerAPIError() from err
+
+        for image in images_list:
+            if origin.id == image.id:
+                continue
+
+            with suppress(docker.errors.DockerException, requests.RequestException):
+                _LOGGER.info("Cleanup images: %s", image.tags)
+                self.sys_docker.images.remove(image.id, force=True)
 
         # Cleanup Old
         if not old_image or self.image == old_image:
             return
 
         try:
-            for image in self.sys_docker.images.list(name=old_image):
-                with suppress(docker.errors.DockerException, requests.RequestException):
-                    _LOGGER.info("Cleanup images: %s", image.tags)
-                    self.sys_docker.images.remove(image.id, force=True)
+            images_list = self.sys_docker.images.list(name=old_image)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
             raise DockerAPIError() from err
+
+        for image in images_list:
+            with suppress(docker.errors.DockerException, requests.RequestException):
+                _LOGGER.info("Cleanup images: %s", image.tags)
+                self.sys_docker.images.remove(image.id, force=True)
 
     @process_lock
     def restart(self) -> Awaitable[None]:
