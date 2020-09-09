@@ -329,8 +329,6 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             origin = self.sys_docker.images.get(f"{self.image}:{self.version}")
-        except docker.errors.NotFound:
-            return
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
             raise DockerAPIError() from err
