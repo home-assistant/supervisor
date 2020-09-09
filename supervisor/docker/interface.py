@@ -329,27 +329,37 @@ class DockerInterface(CoreSysAttributes):
         """
         try:
             origin = self.sys_docker.images.get(f"{self.image}:{self.version}")
+        except docker.errors.NotFound:
+            return
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
             raise DockerAPIError() from err
 
         # Cleanup Current
-        for image in self.sys_docker.images.list(name=self.image):
-            if origin.id == image.id:
-                continue
+        try:
+            for image in self.sys_docker.images.list(name=self.image):
+                if origin.id == image.id:
+                    continue
 
-            with suppress(docker.errors.DockerException, requests.RequestException):
-                _LOGGER.info("Cleanup images: %s", image.tags)
-                self.sys_docker.images.remove(image.id, force=True)
+                with suppress(docker.errors.DockerException, requests.RequestException):
+                    _LOGGER.info("Cleanup images: %s", image.tags)
+                    self.sys_docker.images.remove(image.id, force=True)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
+            raise DockerAPIError() from err
 
         # Cleanup Old
         if not old_image or self.image == old_image:
             return
 
-        for image in self.sys_docker.images.list(name=old_image):
-            with suppress(docker.errors.DockerException, requests.RequestException):
-                _LOGGER.info("Cleanup images: %s", image.tags)
-                self.sys_docker.images.remove(image.id, force=True)
+        try:
+            for image in self.sys_docker.images.list(name=old_image):
+                with suppress(docker.errors.DockerException, requests.RequestException):
+                    _LOGGER.info("Cleanup images: %s", image.tags)
+                    self.sys_docker.images.remove(image.id, force=True)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
+            raise DockerAPIError() from err
 
     @process_lock
     def restart(self) -> Awaitable[None]:
