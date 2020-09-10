@@ -74,9 +74,13 @@ def dns_url(url: str) -> str:
         raise vol.Invalid("Doesn't start with dns://") from None
     address: str = url[6:]  # strip the dns:// off
     try:
-        ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
+        ip = ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
     except ValueError:
         raise vol.Invalid(f"Invalid DNS URL: {url}") from None
+
+    # Currently only IPv4 work with docker network
+    if ip.version != 4:
+        raise vol.Invalid(f"Only IPv4 is working for DNS: {url}") from None
     return url
 
 
