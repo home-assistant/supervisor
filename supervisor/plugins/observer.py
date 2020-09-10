@@ -161,15 +161,6 @@ class Observer(CoreSysAttributes, JsonConfig):
             _LOGGER.error("Can't start observer plugin")
             raise ObserverError() from err
 
-    async def stop(self) -> None:
-        """Stop observer."""
-        _LOGGER.info("Stop observer plugin")
-        try:
-            await self.instance.stop()
-        except DockerAPIError as err:
-            _LOGGER.error("Can't stop observer plugin")
-            raise ObserverError() from err
-
     async def stats(self) -> DockerStats:
         """Return stats of observer."""
         try:
