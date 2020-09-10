@@ -22,6 +22,7 @@ RUN_UPDATE_CLI = 28100
 RUN_UPDATE_DNS = 30100
 RUN_UPDATE_AUDIO = 30200
 RUN_UPDATE_MULTICAST = 30300
+RUN_UPDATE_OBSERVER = 30400
 
 RUN_RELOAD_ADDONS = 10800
 RUN_RELOAD_SNAPSHOTS = 72000
@@ -60,6 +61,7 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(self._update_dns, RUN_UPDATE_DNS)
         self.sys_scheduler.register_task(self._update_audio, RUN_UPDATE_AUDIO)
         self.sys_scheduler.register_task(self._update_multicast, RUN_UPDATE_MULTICAST)
+        self.sys_scheduler.register_task(self._update_observer, RUN_UPDATE_OBSERVER)
 
         # Reload
         self.sys_scheduler.register_task(self.sys_store.reload, RUN_RELOAD_ADDONS)
@@ -224,6 +226,14 @@ class Tasks(CoreSysAttributes):
 
         _LOGGER.info("Found new PulseAudio plugin version")
         await self.sys_plugins.audio.update()
+
+    async def _update_observer(self):
+        """Check and run update of Observer plugin."""
+        if not self.sys_plugins.observer.need_update:
+            return
+
+        _LOGGER.info("Found new Observer plugin version")
+        await self.sys_plugins.observer.update()
 
     async def _update_multicast(self):
         """Check and run update of multicast."""

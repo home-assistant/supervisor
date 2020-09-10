@@ -19,6 +19,7 @@ from .info import APIInfo
 from .ingress import APIIngress
 from .multicast import APIMulticast
 from .network import APINetwork
+from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
 from .security import SecurityMiddleware
@@ -54,6 +55,7 @@ class RestAPI(CoreSysAttributes):
         self._register_host()
         self._register_os()
         self._register_cli()
+        self._register_observer()
         self._register_multicast()
         self._register_network()
         self._register_hardware()
@@ -132,6 +134,19 @@ class RestAPI(CoreSysAttributes):
                 web.get("/cli/info", api_cli.info),
                 web.get("/cli/stats", api_cli.stats),
                 web.post("/cli/update", api_cli.update),
+            ]
+        )
+
+    def _register_observer(self) -> None:
+        """Register Observer functions."""
+        api_observer = APIObserver()
+        api_observer.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/observer/info", api_observer.info),
+                web.get("/observer/stats", api_observer.stats),
+                web.post("/observer/update", api_observer.update),
             ]
         )
 

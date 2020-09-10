@@ -7,12 +7,13 @@ from contextlib import suppress
 import logging
 from typing import Awaitable, Optional
 
-from ..const import ATTR_IMAGE, ATTR_VERSION, FILE_HASSIO_MULTICAST
+from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.multicast import DockerMulticast
 from ..docker.stats import DockerStats
 from ..exceptions import DockerAPIError, MulticastError, MulticastUpdateError
 from ..utils.json import JsonConfig
+from .const import FILE_HASSIO_MULTICAST
 from .validate import SCHEMA_MULTICAST_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

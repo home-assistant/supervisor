@@ -17,6 +17,7 @@ from .const import (
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
     ATTR_MULTICAST,
+    ATTR_OBSERVER,
     ATTR_SUPERVISOR,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
@@ -80,6 +81,11 @@ class Updater(JsonConfig, CoreSysAttributes):
         return self._data.get(ATTR_AUDIO)
 
     @property
+    def version_observer(self) -> Optional[str]:
+        """Return latest version of Observer."""
+        return self._data.get(ATTR_OBSERVER)
+
+    @property
     def version_multicast(self) -> Optional[str]:
         """Return latest version of Multicast."""
         return self._data.get(ATTR_MULTICAST)
@@ -122,6 +128,15 @@ class Updater(JsonConfig, CoreSysAttributes):
         if ATTR_AUDIO not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_AUDIO].format(arch=self.sys_arch.supervisor)
+
+    @property
+    def image_observer(self) -> Optional[str]:
+        """Return latest version of Observer."""
+        if ATTR_OBSERVER not in self._data[ATTR_IMAGE]:
+            return None
+        return self._data[ATTR_IMAGE][ATTR_OBSERVER].format(
+            arch=self.sys_arch.supervisor
+        )
 
     @property
     def image_multicast(self) -> Optional[str]:
@@ -184,6 +199,7 @@ class Updater(JsonConfig, CoreSysAttributes):
             self._data[ATTR_CLI] = data["cli"]
             self._data[ATTR_DNS] = data["dns"]
             self._data[ATTR_AUDIO] = data["audio"]
+            self._data[ATTR_OBSERVER] = data["observer"]
             self._data[ATTR_MULTICAST] = data["multicast"]
 
             # Update images for that versions
@@ -192,6 +208,7 @@ class Updater(JsonConfig, CoreSysAttributes):
             self._data[ATTR_IMAGE][ATTR_AUDIO] = data["image"]["audio"]
             self._data[ATTR_IMAGE][ATTR_CLI] = data["image"]["cli"]
             self._data[ATTR_IMAGE][ATTR_DNS] = data["image"]["dns"]
+            self._data[ATTR_IMAGE][ATTR_OBSERVER] = data["image"]["observer"]
             self._data[ATTR_IMAGE][ATTR_MULTICAST] = data["image"]["multicast"]
 
         except KeyError as err:

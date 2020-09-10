@@ -11,12 +11,13 @@ from typing import Awaitable, Optional
 
 import jinja2
 
-from ..const import ATTR_IMAGE, ATTR_VERSION, FILE_HASSIO_AUDIO
+from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.audio import DockerAudio
 from ..docker.stats import DockerStats
 from ..exceptions import AudioError, AudioUpdateError, DockerAPIError
 from ..utils.json import JsonConfig
+from .const import FILE_HASSIO_AUDIO
 from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

@@ -13,20 +13,14 @@ import attr
 import jinja2
 import voluptuous as vol
 
-from ..const import (
-    ATTR_IMAGE,
-    ATTR_SERVERS,
-    ATTR_VERSION,
-    DNS_SUFFIX,
-    FILE_HASSIO_DNS,
-    LogLevel,
-)
+from ..const import ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.dns import DockerDNS
 from ..docker.stats import DockerStats
 from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
 from ..utils.json import JsonConfig
 from ..validate import dns_url
+from .const import FILE_HASSIO_DNS
 from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
