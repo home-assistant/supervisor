@@ -62,6 +62,10 @@ class DockerHomeAssistant(DockerInterface):
                     "bind": "/share",
                     "mode": "rw",
                 },
+                str(self.sys_config.path_extern_media): {
+                    "bind": "/media",
+                    "mode": "rw",
+                },
             }
         )
 

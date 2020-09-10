@@ -41,6 +41,7 @@ TMP_DATA = PurePath("tmp")
 APPARMOR_DATA = PurePath("apparmor")
 DNS_DATA = PurePath("dns")
 AUDIO_DATA = PurePath("audio")
+MEDIA_DATA = PurePath("media")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
@@ -257,6 +258,16 @@ class CoreConfig(JsonConfig):
     def path_dns(self) -> Path:
         """Return dns path inside supervisor."""
         return Path(SUPERVISOR_DATA, DNS_DATA)
+
+    @property
+    def path_media(self) -> Path:
+        """Return root media data folder."""
+        return Path(SUPERVISOR_DATA, MEDIA_DATA)
+
+    @property
+    def path_extern_media(self) -> PurePath:
+        """Return root media data folder external for Docker."""
+        return PurePath(self.path_extern_supervisor, MEDIA_DATA)
 
     @property
     def addons_repositories(self) -> List[str]:
