@@ -10,6 +10,7 @@ from ..exceptions import (
     CoreDNSError,
     HomeAssistantError,
     MulticastError,
+    ObserverError,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ RUN_WATCHDOG_HOMEASSISTANT_API = 120
 RUN_WATCHDOG_DNS_DOCKER = 30
 RUN_WATCHDOG_AUDIO_DOCKER = 60
 RUN_WATCHDOG_CLI_DOCKER = 60
+RUN_WATCHDOG_OBSERVER_DOCKER = 60
 RUN_WATCHDOG_MULTICAST_DOCKER = 60
 
 RUN_WATCHDOG_ADDON_DOCKER = 30
@@ -87,6 +89,9 @@ class Tasks(CoreSysAttributes):
         )
         self.sys_scheduler.register_task(
             self._watchdog_cli_docker, RUN_WATCHDOG_CLI_DOCKER
+        )
+        self.sys_scheduler.register_task(
+            self._watchdog_observer_docker, RUN_WATCHDOG_OBSERVER_DOCKER
         )
         self.sys_scheduler.register_task(
             self._watchdog_multicast_docker, RUN_WATCHDOG_MULTICAST_DOCKER
@@ -287,6 +292,21 @@ class Tasks(CoreSysAttributes):
             await self.sys_plugins.cli.start()
         except CliError:
             _LOGGER.error("Watchdog cli reanimation failed!")
+
+    async def _watchdog_observer_docker(self):
+        """Check running state of Docker and start if they is close."""
+        # if observer plugin is active
+        if (
+            await self.sys_plugins.observer.is_running()
+            or self.sys_plugins.observer.in_progress
+        ):
+            return
+        _LOGGER.warning("Watchdog found a problem with observer plugin!")
+
+        try:
+            await self.sys_plugins.observer.start()
+        except ObserverError:
+            _LOGGER.error("Watchdog observer reanimation failed!")
 
     async def _watchdog_multicast_docker(self):
         """Check running state of Docker and start if they is close."""
