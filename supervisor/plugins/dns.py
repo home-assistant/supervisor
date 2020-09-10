@@ -413,8 +413,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Repair CoreDNS %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Repairing of CoreDNS failed")
+            self.sys_capture_exception(err)
 
     def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""

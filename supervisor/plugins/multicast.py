@@ -206,5 +206,6 @@ class Multicast(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Repair Multicast %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Repairing of Multicast failed")
+            self.sys_capture_exception(err)

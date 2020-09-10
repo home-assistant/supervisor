@@ -193,5 +193,6 @@ class HaCli(CoreSysAttributes, JsonConfig):
         _LOGGER.info("Repair HA cli %s", self.version)
         try:
             await self.instance.install(self.version, latest=True)
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Repairing of HA cli failed")
+            self.sys_capture_exception(err)

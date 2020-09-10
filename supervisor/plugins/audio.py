@@ -226,8 +226,9 @@ class Audio(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Repair Audio %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Repairing of Audio failed")
+            self.sys_capture_exception(err)
 
     def pulse_client(self, input_profile=None, output_profile=None) -> str:
         """Generate an /etc/pulse/client.conf data."""

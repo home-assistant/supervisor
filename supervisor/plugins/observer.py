@@ -12,7 +12,7 @@ from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.observer import DockerObserver
 from ..docker.stats import DockerStats
-from ..exceptions import DockerAPIError, observerError, observerUpdateError
+from ..exceptions import DockerAPIError, ObserverError, ObserverUpdateError
 from ..utils.json import JsonConfig
 from .const import FILE_HASSIO_OBSERVER
 from .validate import SCHEMA_OBSERVER_CONFIG
@@ -86,7 +86,7 @@ class Observer(CoreSysAttributes, JsonConfig):
             )
 
             # Install observer
-            with suppress(observerError):
+            with suppress(ObserverError):
                 await self.install()
         else:
             self.version = self.instance.version
@@ -94,7 +94,7 @@ class Observer(CoreSysAttributes, JsonConfig):
             self.save_data()
 
         # Run Observer
-        with suppress(observerError):
+        with suppress(ObserverError):
             if not await self.instance.is_running():
                 await self.start()
 
@@ -133,7 +133,7 @@ class Observer(CoreSysAttributes, JsonConfig):
             await self.instance.update(version, image=self.sys_updater.image_observer)
         except DockerAPIError as err:
             _LOGGER.error("HA observer update failed")
-            raise observerUpdateError() from err
+            raise ObserverUpdateError() from err
         else:
             self.version = version
             self.image = self.sys_updater.image_observer
@@ -159,7 +159,7 @@ class Observer(CoreSysAttributes, JsonConfig):
             await self.instance.run()
         except DockerAPIError as err:
             _LOGGER.error("Can't start observer plugin")
-            raise observerError() from err
+            raise ObserverError() from err
 
     async def stop(self) -> None:
         """Stop observer."""
@@ -168,14 +168,14 @@ class Observer(CoreSysAttributes, JsonConfig):
             await self.instance.stop()
         except DockerAPIError as err:
             _LOGGER.error("Can't stop observer plugin")
-            raise observerError() from err
+            raise ObserverError() from err
 
     async def stats(self) -> DockerStats:
         """Return stats of observer."""
         try:
             return await self.instance.stats()
         except DockerAPIError as err:
-            raise observerError() from err
+            raise ObserverError() from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
@@ -192,5 +192,6 @@ class Observer(CoreSysAttributes, JsonConfig):
         _LOGGER.info("Repair HA observer %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Repairing of HA observer failed")
+            self.sys_capture_exception(err)
