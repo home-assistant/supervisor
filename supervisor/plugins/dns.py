@@ -13,20 +13,14 @@ import attr
 import jinja2
 import voluptuous as vol
 
-from ..const import (
-    ATTR_IMAGE,
-    ATTR_SERVERS,
-    ATTR_VERSION,
-    DNS_SUFFIX,
-    FILE_HASSIO_DNS,
-    LogLevel,
-)
+from ..const import ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.dns import DockerDNS
 from ..docker.stats import DockerStats
 from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
 from ..utils.json import JsonConfig
 from ..validate import dns_url
+from .const import FILE_HASSIO_DNS
 from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -322,6 +316,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             write=False,
         )
         self.add_host(self.sys_docker.network.dns, ["dns"], write=False)
+        self.add_host(self.sys_docker.network.observer, ["observer"], write=False)
 
     def write_hosts(self) -> None:
         """Write hosts from memory to file."""
@@ -419,8 +414,9 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Repair CoreDNS %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Repairing of CoreDNS failed")
+            self.sys_capture_exception(err)
 
     def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""

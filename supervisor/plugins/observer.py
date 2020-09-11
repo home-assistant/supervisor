@@ -1,6 +1,6 @@
-"""Home Assistant cli plugin.
+"""Home Assistant observer plugin.
 
-Code: https://github.com/home-assistant/plugin-cli
+Code: https://github.com/home-assistant/plugin-observer
 """
 import asyncio
 from contextlib import suppress
@@ -10,60 +10,60 @@ from typing import Awaitable, Optional
 
 from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
-from ..docker.cli import DockerCli
+from ..docker.observer import DockerObserver
 from ..docker.stats import DockerStats
-from ..exceptions import CliError, CliUpdateError, DockerAPIError
+from ..exceptions import DockerAPIError, ObserverError, ObserverUpdateError
 from ..utils.json import JsonConfig
-from .const import FILE_HASSIO_CLI
-from .validate import SCHEMA_CLI_CONFIG
+from .const import FILE_HASSIO_OBSERVER
+from .validate import SCHEMA_OBSERVER_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class HaCli(CoreSysAttributes, JsonConfig):
-    """HA cli interface inside supervisor."""
+class Observer(CoreSysAttributes, JsonConfig):
+    """Supervisor observer instance."""
 
     def __init__(self, coresys: CoreSys):
-        """Initialize cli handler."""
-        super().__init__(FILE_HASSIO_CLI, SCHEMA_CLI_CONFIG)
+        """Initialize observer handler."""
+        super().__init__(FILE_HASSIO_OBSERVER, SCHEMA_OBSERVER_CONFIG)
         self.coresys: CoreSys = coresys
-        self.instance: DockerCli = DockerCli(coresys)
+        self.instance: DockerObserver = DockerObserver(coresys)
 
     @property
     def version(self) -> Optional[str]:
-        """Return version of cli."""
+        """Return version of observer."""
         return self._data.get(ATTR_VERSION)
 
     @version.setter
     def version(self, value: str) -> None:
-        """Set current version of cli."""
+        """Set current version of observer."""
         self._data[ATTR_VERSION] = value
 
     @property
     def image(self) -> str:
-        """Return current image of cli."""
+        """Return current image of observer."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-cli"
+        return f"homeassistant/{self.sys_arch.supervisor}-hassio-observer"
 
     @image.setter
     def image(self, value: str) -> None:
-        """Return current image of cli."""
+        """Return current image of observer."""
         self._data[ATTR_IMAGE] = value
 
     @property
     def latest_version(self) -> str:
-        """Return version of latest cli."""
-        return self.sys_updater.version_cli
+        """Return version of latest observer."""
+        return self.sys_updater.version_observer
 
     @property
     def need_update(self) -> bool:
-        """Return true if a cli update is available."""
+        """Return true if a observer update is available."""
         return self.version != self.latest_version
 
     @property
-    def supervisor_token(self) -> str:
-        """Return an access token for the Supervisor API."""
+    def access_token(self) -> str:
+        """Return an access token for the Observer API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
 
     @property
@@ -72,8 +72,8 @@ class HaCli(CoreSysAttributes, JsonConfig):
         return self.instance.in_progress
 
     async def load(self) -> None:
-        """Load cli setup."""
-        # Check cli state
+        """Load observer setup."""
+        # Check observer state
         try:
             # Evaluate Version if we lost this information
             if not self.version:
@@ -81,102 +81,92 @@ class HaCli(CoreSysAttributes, JsonConfig):
 
             await self.instance.attach(tag=self.version)
         except DockerAPIError:
-            _LOGGER.info("No cli plugin Docker image %s found.", self.instance.image)
+            _LOGGER.info(
+                "No observer plugin Docker image %s found.", self.instance.image
+            )
 
-            # Install cli
-            with suppress(CliError):
+            # Install observer
+            with suppress(ObserverError):
                 await self.install()
         else:
             self.version = self.instance.version
             self.image = self.instance.image
             self.save_data()
 
-        # Run CLI
-        with suppress(CliError):
+        # Run Observer
+        with suppress(ObserverError):
             if not await self.instance.is_running():
                 await self.start()
 
     async def install(self) -> None:
-        """Install cli."""
-        _LOGGER.info("Setup cli plugin")
+        """Install observer."""
+        _LOGGER.info("Setup observer plugin")
         while True:
-            # read audio tag and install it
+            # read observer tag and install it
             if not self.latest_version:
                 await self.sys_updater.reload()
 
             if self.latest_version:
                 with suppress(DockerAPIError):
                     await self.instance.install(
-                        self.latest_version,
-                        image=self.sys_updater.image_cli,
-                        latest=True,
+                        self.latest_version, image=self.sys_updater.image_observer
                     )
                     break
-            _LOGGER.warning("Error on install cli plugin. Retry in 30sec")
+            _LOGGER.warning("Error on install observer plugin. Retry in 30sec")
             await asyncio.sleep(30)
 
-        _LOGGER.info("cli plugin now installed")
+        _LOGGER.info("observer plugin now installed")
         self.version = self.instance.version
-        self.image = self.sys_updater.image_cli
+        self.image = self.sys_updater.image_observer
         self.save_data()
 
     async def update(self, version: Optional[str] = None) -> None:
-        """Update local HA cli."""
+        """Update local HA observer."""
         version = version or self.latest_version
         old_image = self.image
 
         if version == self.version:
-            _LOGGER.warning("Version %s is already installed for cli", version)
+            _LOGGER.warning("Version %s is already installed for observer", version)
             return
 
         try:
-            await self.instance.update(
-                version, image=self.sys_updater.image_cli, latest=True
-            )
+            await self.instance.update(version, image=self.sys_updater.image_observer)
         except DockerAPIError as err:
-            _LOGGER.error("HA cli update failed")
-            raise CliUpdateError() from err
+            _LOGGER.error("HA observer update failed")
+            raise ObserverUpdateError() from err
         else:
             self.version = version
-            self.image = self.sys_updater.image_cli
+            self.image = self.sys_updater.image_observer
             self.save_data()
 
         # Cleanup
         with suppress(DockerAPIError):
             await self.instance.cleanup(old_image=old_image)
 
-        # Start cli
+        # Start observer
         await self.start()
 
     async def start(self) -> None:
-        """Run cli."""
+        """Run observer."""
         # Create new API token
-        self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
-        self.save_data()
+        if not self.access_token:
+            self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
+            self.save_data()
 
         # Start Instance
-        _LOGGER.info("Start cli plugin")
+        _LOGGER.info("Start observer plugin")
         try:
             await self.instance.run()
         except DockerAPIError as err:
-            _LOGGER.error("Can't start cli plugin")
-            raise CliError() from err
-
-    async def stop(self) -> None:
-        """Stop cli."""
-        _LOGGER.info("Stop cli plugin")
-        try:
-            await self.instance.stop()
-        except DockerAPIError as err:
-            _LOGGER.error("Can't stop cli plugin")
-            raise CliError() from err
+            _LOGGER.error("Can't start observer plugin")
+            raise ObserverError() from err
 
     async def stats(self) -> DockerStats:
-        """Return stats of cli."""
+        """Return stats of observer."""
         try:
             return await self.instance.stats()
         except DockerAPIError as err:
-            raise CliError() from err
+            raise ObserverError() from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
@@ -186,13 +176,13 @@ class HaCli(CoreSysAttributes, JsonConfig):
         return self.instance.is_running()
 
     async def repair(self) -> None:
-        """Repair cli container."""
+        """Repair observer container."""
         if await self.instance.exists():
             return
 
-        _LOGGER.info("Repair HA cli %s", self.version)
+        _LOGGER.info("Repair HA observer %s", self.version)
         try:
-            await self.instance.install(self.version, latest=True)
+            await self.instance.install(self.version)
         except DockerAPIError as err:
-            _LOGGER.error("Repairing of HA cli failed")
+            _LOGGER.error("Repairing of HA observer failed")
             self.sys_capture_exception(err)

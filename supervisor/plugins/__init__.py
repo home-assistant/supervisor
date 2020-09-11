@@ -10,6 +10,7 @@ from .audio import Audio
 from .cli import HaCli
 from .dns import CoreDNS
 from .multicast import Multicast
+from .observer import Observer
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class PluginManager(CoreSysAttributes):
     required_cli: LegacyVersion = pkg_parse("26")
     required_dns: LegacyVersion = pkg_parse("9")
     required_audio: LegacyVersion = pkg_parse("17")
+    required_observer: LegacyVersion = pkg_parse("1")
     required_multicast: LegacyVersion = pkg_parse("3")
 
     def __init__(self, coresys: CoreSys):
@@ -29,6 +31,7 @@ class PluginManager(CoreSysAttributes):
         self._cli: HaCli = HaCli(coresys)
         self._dns: CoreDNS = CoreDNS(coresys)
         self._audio: Audio = Audio(coresys)
+        self._observer: Observer = Observer(coresys)
         self._multicast: Multicast = Multicast(coresys)
 
     @property
@@ -47,6 +50,11 @@ class PluginManager(CoreSysAttributes):
         return self._audio
 
     @property
+    def observer(self) -> Observer:
+        """Return observer handler."""
+        return self._observer
+
+    @property
     def multicast(self) -> Multicast:
         """Return multicast handler."""
         return self._multicast
@@ -58,6 +66,7 @@ class PluginManager(CoreSysAttributes):
             self.dns,
             self.audio,
             self.cli,
+            self.observer,
             self.multicast,
         ):
             try:
@@ -71,6 +80,7 @@ class PluginManager(CoreSysAttributes):
             (self._audio, self.required_audio),
             (self._dns, self.required_dns),
             (self._cli, self.required_cli),
+            (self._observer, self.required_observer),
             (self._multicast, self.required_multicast),
         ):
             # Check if need an update
@@ -109,6 +119,7 @@ class PluginManager(CoreSysAttributes):
                 self.dns.repair(),
                 self.audio.repair(),
                 self.cli.repair(),
+                self.observer.repair(),
                 self.multicast.repair(),
             ]
         )

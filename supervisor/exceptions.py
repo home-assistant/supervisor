@@ -65,6 +65,17 @@ class CliUpdateError(CliError):
     """Error on update of a HA cli."""
 
 
+# Observer
+
+
+class ObserverError(HassioError):
+    """General Observer exception."""
+
+
+class ObserverUpdateError(ObserverError):
+    """Error on update of a Observer."""
+
+
 # Multicast
 
 

@@ -11,12 +11,13 @@ from typing import Awaitable, Optional
 
 import jinja2
 
-from ..const import ATTR_IMAGE, ATTR_VERSION, FILE_HASSIO_AUDIO
+from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.audio import DockerAudio
 from ..docker.stats import DockerStats
 from ..exceptions import AudioError, AudioUpdateError, DockerAPIError
 from ..utils.json import JsonConfig
+from .const import FILE_HASSIO_AUDIO
 from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -225,8 +226,9 @@ class Audio(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Repair Audio %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError:
+        except DockerAPIError as err:
             _LOGGER.error("Repairing of Audio failed")
+            self.sys_capture_exception(err)
 
     def pulse_client(self, input_profile=None, output_profile=None) -> str:
         """Generate an /etc/pulse/client.conf data."""

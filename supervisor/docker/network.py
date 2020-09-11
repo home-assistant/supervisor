@@ -69,6 +69,11 @@ class DockerNetwork:
         """Return cli of the network."""
         return DOCKER_NETWORK_MASK[5]
 
+    @property
+    def observer(self) -> IPv4Address:
+        """Return observer of the network."""
+        return DOCKER_NETWORK_MASK[6]
+
     def _get_network(self) -> docker.models.networks.Network:
         """Get supervisor network."""
         try:

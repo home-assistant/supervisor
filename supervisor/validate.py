@@ -26,6 +26,7 @@ from .const import (
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_MULTICAST,
+    ATTR_OBSERVER,
     ATTR_PORT,
     ATTR_PORTS,
     ATTR_REFRESH_TOKEN,
@@ -141,6 +142,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_CLI): vol.All(version_tag, str),
         vol.Optional(ATTR_DNS): vol.All(version_tag, str),
         vol.Optional(ATTR_AUDIO): vol.All(version_tag, str),
+        vol.Optional(ATTR_OBSERVER): vol.All(version_tag, str),
         vol.Optional(ATTR_MULTICAST): vol.All(version_tag, str),
         vol.Optional(ATTR_IMAGE, default=dict): vol.Schema(
             {
@@ -149,6 +151,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
                 vol.Optional(ATTR_CLI): docker_image,
                 vol.Optional(ATTR_DNS): docker_image,
                 vol.Optional(ATTR_AUDIO): docker_image,
+                vol.Optional(ATTR_OBSERVER): docker_image,
                 vol.Optional(ATTR_MULTICAST): docker_image,
             },
             extra=vol.REMOVE_EXTRA,
