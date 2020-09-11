@@ -50,13 +50,11 @@ OBSERVER_CHECK = re.compile(
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
     r"|/addons/self/(?!security|update)[^/]+"
-    r"|/secrets/.+"
     r"|/info"
     r"|/hardware/trigger"
     r"|/services.*"
     r"|/discovery.*"
     r"|/auth"
-    r"|/host/info"
     r")$"
 )
 
