@@ -39,17 +39,22 @@ NO_SECURITY_CHECK = re.compile(
     r")$"
 )
 
+# Observer allow API calls
+OBSERVER_CHECK = re.compile(
+    r"^(?:"
+    r"|/[^/]+/info"
+    r")$"
+)
+
 # Can called by every add-on
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
     r"|/addons/self/(?!security|update)[^/]+"
-    r"|/secrets/.+"
     r"|/info"
     r"|/hardware/trigger"
     r"|/services.*"
     r"|/discovery.*"
     r"|/auth"
-    r"|/host/info"
     r")$"
 )
 
@@ -95,7 +100,7 @@ ADDONS_ROLE_ACCESS = {
     ),
 }
 
-# fmt: off
+# fmt: on
 
 
 class SecurityMiddleware(CoreSysAttributes):
@@ -135,6 +140,14 @@ class SecurityMiddleware(CoreSysAttributes):
         if supervisor_token == self.sys_plugins.cli.supervisor_token:
             _LOGGER.debug("%s access from Host", request.path)
             request_from = self.sys_host
+
+        # Observer
+        if supervisor_token == self.sys_plugins.observer.supervisor_token:
+            if not OBSERVER_CHECK.match(request.url):
+                _LOGGER.warning("%s invalid Observer access", request.path)
+                raise HTTPForbidden()
+            _LOGGER.debug("%s access from Observer", request.path)
+            request_from = self.sys_plugins.observer
 
         # Add-on
         addon = None

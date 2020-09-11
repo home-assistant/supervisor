@@ -15,17 +15,18 @@ from ..addons.build import AddonBuild
 from ..const import (
     ENV_TIME,
     ENV_TOKEN,
-    ENV_TOKEN_OLD,
+    ENV_TOKEN_HASSIO,
     MAP_ADDONS,
     MAP_BACKUP,
     MAP_CONFIG,
+    MAP_MEDIA,
     MAP_SHARE,
     MAP_SSL,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
 )
 from ..coresys import CoreSys
-from ..exceptions import DockerAPIError
+from ..exceptions import CoreDNSError, DockerAPIError
 from ..utils import process_lock
 from .interface import DockerInterface
 
@@ -118,7 +119,7 @@ class DockerAddon(DockerInterface):
             **addon_env,
             ENV_TIME: self.sys_config.timezone,
             ENV_TOKEN: self.addon.supervisor_token,
-            ENV_TOKEN_OLD: self.addon.supervisor_token,
+            ENV_TOKEN_HASSIO: self.addon.supervisor_token,
         }
 
     @property
@@ -269,6 +270,16 @@ class DockerAddon(DockerInterface):
                 }
             )
 
+        if MAP_MEDIA in addon_mapping:
+            volumes.update(
+                {
+                    str(self.sys_config.path_extern_media): {
+                        "bind": "/media",
+                        "mode": addon_mapping[MAP_MEDIA],
+                    }
+                }
+            )
+
         # Init other hardware mappings
 
         # GPIO support
@@ -368,7 +379,13 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
 
         # Write data to DNS server
-        self.sys_plugins.dns.add_host(ipv4=self.ip_address, names=[self.addon.hostname])
+        try:
+            self.sys_plugins.dns.add_host(
+                ipv4=self.ip_address, names=[self.addon.hostname]
+            )
+        except CoreDNSError as err:
+            _LOGGER.warning("Can't update DNS for %s", self.name)
+            self.sys_capture_exception(err)
 
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
@@ -494,5 +511,9 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         if self.ip_address != NO_ADDDRESS:
-            self.sys_plugins.dns.delete_host(self.addon.hostname)
+            try:
+                self.sys_plugins.dns.delete_host(self.addon.hostname)
+            except CoreDNSError as err:
+                _LOGGER.warning("Can't update DNS for %s", self.name)
+                self.sys_capture_exception(err)
         super()._stop(remove_container)

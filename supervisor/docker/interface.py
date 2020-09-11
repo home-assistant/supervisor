@@ -334,7 +334,13 @@ class DockerInterface(CoreSysAttributes):
             raise DockerAPIError() from err
 
         # Cleanup Current
-        for image in self.sys_docker.images.list(name=self.image):
+        try:
+            images_list = self.sys_docker.images.list(name=self.image)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
+            raise DockerAPIError() from err
+
+        for image in images_list:
             if origin.id == image.id:
                 continue
 
@@ -346,7 +352,13 @@ class DockerInterface(CoreSysAttributes):
         if not old_image or self.image == old_image:
             return
 
-        for image in self.sys_docker.images.list(name=old_image):
+        try:
+            images_list = self.sys_docker.images.list(name=old_image)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
+            raise DockerAPIError() from err
+
+        for image in images_list:
             with suppress(docker.errors.DockerException, requests.RequestException):
                 _LOGGER.info("Cleanup images: %s", image.tags)
                 self.sys_docker.images.remove(image.id, force=True)

@@ -3,7 +3,7 @@ from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
 
-SUPERVISOR_VERSION = "242"
+SUPERVISOR_VERSION = "243"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor.txt"
@@ -17,15 +17,11 @@ URL_HASSOS_OTA = (
 SUPERVISOR_DATA = Path("/data")
 
 FILE_HASSIO_ADDONS = Path(SUPERVISOR_DATA, "addons.json")
-FILE_HASSIO_AUDIO = Path(SUPERVISOR_DATA, "audio.json")
 FILE_HASSIO_AUTH = Path(SUPERVISOR_DATA, "auth.json")
-FILE_HASSIO_CLI = Path(SUPERVISOR_DATA, "cli.json")
 FILE_HASSIO_CONFIG = Path(SUPERVISOR_DATA, "config.json")
 FILE_HASSIO_DISCOVERY = Path(SUPERVISOR_DATA, "discovery.json")
-FILE_HASSIO_DNS = Path(SUPERVISOR_DATA, "dns.json")
 FILE_HASSIO_HOMEASSISTANT = Path(SUPERVISOR_DATA, "homeassistant.json")
 FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
-FILE_HASSIO_MULTICAST = Path(SUPERVISOR_DATA, "multicast.json")
 FILE_HASSIO_SERVICES = Path(SUPERVISOR_DATA, "services.json")
 FILE_HASSIO_UPDATER = Path(SUPERVISOR_DATA, "updater.json")
 
@@ -74,7 +70,7 @@ HEADER_TOKEN_OLD = "X-Hassio-Key"
 
 ENV_TIME = "TZ"
 ENV_TOKEN = "SUPERVISOR_TOKEN"
-ENV_TOKEN_OLD = "HASSIO_TOKEN"
+ENV_TOKEN_HASSIO = "HASSIO_TOKEN"
 
 ENV_HOMEASSISTANT_REPOSITORY = "HOMEASSISTANT_REPOSITORY"
 ENV_SUPERVISOR_DEV = "SUPERVISOR_DEV"
@@ -275,6 +271,7 @@ ATTR_VPN = "vpn"
 ATTR_WAIT_BOOT = "wait_boot"
 ATTR_WATCHDOG = "watchdog"
 ATTR_WEBUI = "webui"
+ATTR_OBSERVER = "observer"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
@@ -289,6 +286,7 @@ MAP_SSL = "ssl"
 MAP_ADDONS = "addons"
 MAP_BACKUP = "backup"
 MAP_SHARE = "share"
+MAP_MEDIA = "media"
 
 ARCH_ARMHF = "armhf"
 ARCH_ARMV7 = "armv7"
@@ -305,6 +303,7 @@ FOLDER_HOMEASSISTANT = "homeassistant"
 FOLDER_SHARE = "share"
 FOLDER_ADDONS = "addons/local"
 FOLDER_SSL = "ssl"
+FOLDER_MEDIA = "media"
 
 SNAPSHOT_FULL = "full"
 SNAPSHOT_PARTIAL = "partial"

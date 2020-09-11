@@ -851,6 +851,8 @@ return:
   "hassos": "null|version",
   "docker": "version",
   "hostname": "name",
+  "operating_system": "HassOS XY|Ubuntu 16.4|null",
+  "features": ["shutdown", "reboot", "hostname", "services", "hassos"],
   "machine": "type",
   "arch": "arch",
   "supported_arch": ["arch1", "arch2"],
@@ -932,6 +934,41 @@ return:
 ```
 
 - GET `/cli/stats`
+
+```json
+{
+  "cpu_percent": 0.0,
+  "memory_usage": 283123,
+  "memory_limit": 329392,
+  "memory_percent": 1.4,
+  "network_tx": 0,
+  "network_rx": 0,
+  "blk_read": 0,
+  "blk_write": 0
+}
+```
+
+### Observer
+
+- GET `/observer/info`
+
+```json
+{
+  "host": "ip-address",
+  "version": "1",
+  "version_latest": "2"
+}
+```
+
+- POST `/observer/update`
+
+```json
+{
+  "version": "VERSION"
+}
+```
+
+- GET `/observer/stats`
 
 ```json
 {

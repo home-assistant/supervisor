@@ -35,3 +35,13 @@ SCHEMA_MULTICAST_CONFIG = vol.Schema(
     {vol.Optional(ATTR_VERSION): version_tag, vol.Optional(ATTR_IMAGE): docker_image},
     extra=vol.REMOVE_EXTRA,
 )
+
+
+SCHEMA_OBSERVER_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_VERSION): version_tag,
+        vol.Optional(ATTR_IMAGE): docker_image,
+        vol.Optional(ATTR_ACCESS_TOKEN): token,
+    },
+    extra=vol.REMOVE_EXTRA,
+)

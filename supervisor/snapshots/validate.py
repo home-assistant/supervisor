@@ -26,6 +26,7 @@ from ..const import (
     CRYPTO_AES128,
     FOLDER_ADDONS,
     FOLDER_HOMEASSISTANT,
+    FOLDER_MEDIA,
     FOLDER_SHARE,
     FOLDER_SSL,
     SNAPSHOT_FULL,
@@ -33,7 +34,13 @@ from ..const import (
 )
 from ..validate import docker_image, network_port, repositories, version_tag
 
-ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
+ALL_FOLDERS = [
+    FOLDER_HOMEASSISTANT,
+    FOLDER_SHARE,
+    FOLDER_ADDONS,
+    FOLDER_SSL,
+    FOLDER_MEDIA,
+]
 
 
 def unique_addons(addons_list):

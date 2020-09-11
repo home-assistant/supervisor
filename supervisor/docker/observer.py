@@ -1,4 +1,4 @@
-"""HA Cli docker object."""
+"""Observer docker object."""
 import logging
 
 from ..const import ENV_TIME, ENV_TOKEN
@@ -7,21 +7,21 @@ from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-CLI_DOCKER_NAME: str = "hassio_cli"
+OBSERVER_DOCKER_NAME: str = "hassio_observer"
 
 
-class DockerCli(DockerInterface, CoreSysAttributes):
-    """Docker Supervisor wrapper for HA cli."""
+class DockerObserver(DockerInterface, CoreSysAttributes):
+    """Docker Supervisor wrapper for observer plugin."""
 
     @property
     def image(self):
-        """Return name of HA cli image."""
-        return self.sys_plugins.cli.image
+        """Return name of observer image."""
+        return self.sys_plugins.observer.image
 
     @property
     def name(self) -> str:
         """Return name of Docker container."""
-        return CLI_DOCKER_NAME
+        return OBSERVER_DOCKER_NAME
 
     def _run(self) -> None:
         """Run Docker image.
@@ -37,28 +37,26 @@ class DockerCli(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            entrypoint=["/init"],
-            command=["/bin/bash", "-c", "sleep infinity"],
-            version=self.sys_plugins.cli.version,
+            version=self.sys_plugins.observer.version,
             init=False,
-            ipv4=self.sys_docker.network.cli,
+            ipv4=self.sys_docker.network.observer,
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
-            extra_hosts={
-                "supervisor": self.sys_docker.network.supervisor,
-                "observer": self.sys_docker.network.observer,
-            },
+            restart_policy={"Name": "always"},
+            extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={
                 ENV_TIME: self.sys_config.timezone,
-                ENV_TOKEN: self.sys_plugins.cli.supervisor_token,
+                ENV_TOKEN: self.sys_plugins.observer.supervisor_token,
             },
+            volumes={"/run/docker.sock": {"bind": "/run/docker.sock", "mode": "ro"}},
+            ports={"80/tcp": 4357},
         )
 
         self._meta = docker_container.attrs
         _LOGGER.info(
-            "Start CLI %s with version %s - %s",
+            "Start Observer %s with version %s - %s",
             self.image,
             self.version,
-            self.sys_docker.network.cli,
+            self.sys_docker.network.observer,
         )

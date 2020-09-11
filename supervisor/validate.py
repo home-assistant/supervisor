@@ -26,6 +26,7 @@ from .const import (
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_MULTICAST,
+    ATTR_OBSERVER,
     ATTR_PORT,
     ATTR_PORTS,
     ATTR_REFRESH_TOKEN,
@@ -74,9 +75,13 @@ def dns_url(url: str) -> str:
         raise vol.Invalid("Doesn't start with dns://") from None
     address: str = url[6:]  # strip the dns:// off
     try:
-        ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
+        ip = ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
     except ValueError:
         raise vol.Invalid(f"Invalid DNS URL: {url}") from None
+
+    # Currently only IPv4 work with docker network
+    if ip.version != 4:
+        raise vol.Invalid(f"Only IPv4 is working for DNS: {url}") from None
     return url
 
 
@@ -137,6 +142,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_CLI): vol.All(version_tag, str),
         vol.Optional(ATTR_DNS): vol.All(version_tag, str),
         vol.Optional(ATTR_AUDIO): vol.All(version_tag, str),
+        vol.Optional(ATTR_OBSERVER): vol.All(version_tag, str),
         vol.Optional(ATTR_MULTICAST): vol.All(version_tag, str),
         vol.Optional(ATTR_IMAGE, default=dict): vol.Schema(
             {
@@ -145,6 +151,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
                 vol.Optional(ATTR_CLI): docker_image,
                 vol.Optional(ATTR_DNS): docker_image,
                 vol.Optional(ATTR_AUDIO): docker_image,
+                vol.Optional(ATTR_OBSERVER): docker_image,
                 vol.Optional(ATTR_MULTICAST): docker_image,
             },
             extra=vol.REMOVE_EXTRA,

@@ -26,8 +26,9 @@ async def test_dns_url_v4_good():
 
 def test_dns_url_v6_good():
     """Test the DNS validator with known-good ipv6 DNS URLs."""
-    for url in DNS_GOOD_V6:
-        assert validate.dns_url(url)
+    with pytest.raises(vol.error.Invalid):
+        for url in DNS_GOOD_V6:
+            assert validate.dns_url(url)
 
 
 def test_dns_server_list_v4():
@@ -37,16 +38,19 @@ def test_dns_server_list_v4():
 
 def test_dns_server_list_v6():
     """Test a list with v6 addresses."""
-    assert validate.dns_server_list(DNS_GOOD_V6)
+    with pytest.raises(vol.error.Invalid):
+        assert validate.dns_server_list(DNS_GOOD_V6)
 
 
 def test_dns_server_list_combined():
     """Test a list with both v4 and v6 addresses."""
     combined = DNS_GOOD_V4 + DNS_GOOD_V6
     # test the matches
-    assert validate.dns_server_list(combined)
+    with pytest.raises(vol.error.Invalid):
+        validate.dns_server_list(combined)
     # test max_length is OK still
-    assert validate.dns_server_list(combined)
+    with pytest.raises(vol.error.Invalid):
+        validate.dns_server_list(combined)
     # test that it fails when the list is too long
     with pytest.raises(vol.error.Invalid):
         validate.dns_server_list(combined + combined + combined + combined)
@@ -72,6 +76,7 @@ def test_version_complex():
     """Test version simple with good version."""
     for version in (
         "landingpage",
+        "dev",
         "1c002dd",
         "1.1.1",
         "1.0",

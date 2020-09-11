@@ -164,6 +164,11 @@ def initialize_system_data(coresys: CoreSys) -> None:
         _LOGGER.info("Create Supervisor audio folder %s", config.path_audio)
         config.path_audio.mkdir()
 
+    # Media folder
+    if not config.path_media.is_dir():
+        _LOGGER.info("Create Supervisor media folder %s", config.path_media)
+        config.path_media.mkdir()
+
     # Update log level
     coresys.config.modify_log_level()
 
