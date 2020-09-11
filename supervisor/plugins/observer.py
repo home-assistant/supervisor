@@ -62,7 +62,7 @@ class Observer(CoreSysAttributes, JsonConfig):
         return self.version != self.latest_version
 
     @property
-    def access_token(self) -> str:
+    def supervisor_token(self) -> str:
         """Return an access token for the Observer API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
 
@@ -149,7 +149,7 @@ class Observer(CoreSysAttributes, JsonConfig):
     async def start(self) -> None:
         """Run observer."""
         # Create new API token
-        if not self.access_token:
+        if not self.supervisor_token:
             self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
             self.save_data()
 

@@ -15,7 +15,7 @@ from ..addons.build import AddonBuild
 from ..const import (
     ENV_TIME,
     ENV_TOKEN,
-    ENV_TOKEN_OLD,
+    ENV_TOKEN_HASSIO,
     MAP_ADDONS,
     MAP_BACKUP,
     MAP_CONFIG,
@@ -119,7 +119,7 @@ class DockerAddon(DockerInterface):
             **addon_env,
             ENV_TIME: self.sys_config.timezone,
             ENV_TOKEN: self.addon.supervisor_token,
-            ENV_TOKEN_OLD: self.addon.supervisor_token,
+            ENV_TOKEN_HASSIO: self.addon.supervisor_token,
         }
 
     @property
