@@ -78,7 +78,7 @@ def _convert_bytes_string(value: str) -> str:
     """Convert bytes to string or byte-array."""
     data = RE_BIN_STRING_OCT.sub(lambda x: chr(int(x.group(1), 8)), value)
     data = RE_BIN_STRING_HEX.sub(lambda x: chr(int(f"0x{x.group(1)}", 0)), data)
-    return f"[{', '.join(str(char) for char in [char for char in data.encode()])}]"
+    return f"[{', '.join(str(char) for char in list(char for char in data.encode()))}]"
 
 
 class DBus:
