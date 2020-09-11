@@ -1,7 +1,7 @@
 """Observer docker object."""
 import logging
 
-from ..const import ENV_OBSERVER, ENV_TIME
+from ..const import ENV_TIME, ENV_TOKEN
 from ..coresys import CoreSysAttributes
 from .interface import DockerInterface
 
@@ -47,7 +47,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={
                 ENV_TIME: self.sys_config.timezone,
-                ENV_OBSERVER: self.sys_plugins.observer.access_token,
+                ENV_TOKEN: self.sys_plugins.observer.supervisor_token,
             },
             volumes={"/run/docker.sock": {"bind": "/run/docker.sock", "mode": "ro"}},
             ports={"80/tcp": 4357},

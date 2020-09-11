@@ -1,7 +1,7 @@
 """HA Cli docker object."""
 import logging
 
-from ..const import ENV_OBSERVER, ENV_TIME, ENV_TOKEN
+from ..const import ENV_TIME, ENV_TOKEN
 from ..coresys import CoreSysAttributes
 from .interface import DockerInterface
 
@@ -52,7 +52,6 @@ class DockerCli(DockerInterface, CoreSysAttributes):
             environment={
                 ENV_TIME: self.sys_config.timezone,
                 ENV_TOKEN: self.sys_plugins.cli.supervisor_token,
-                ENV_OBSERVER: self.sys_plugins.observer.access_token,
             },
         )
 
