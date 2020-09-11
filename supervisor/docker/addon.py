@@ -383,8 +383,9 @@ class DockerAddon(DockerInterface):
             self.sys_plugins.dns.add_host(
                 ipv4=self.ip_address, names=[self.addon.hostname]
             )
-        except CoreDNSError:
+        except CoreDNSError as err:
             _LOGGER.warning("Can't update DNS for %s", self.name)
+            self.sys_capture_exception(err)
 
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
@@ -512,6 +513,7 @@ class DockerAddon(DockerInterface):
         if self.ip_address != NO_ADDDRESS:
             try:
                 self.sys_plugins.dns.delete_host(self.addon.hostname)
-            except CoreDNSError:
+            except CoreDNSError as err:
                 _LOGGER.warning("Can't update DNS for %s", self.name)
+                self.sys_capture_exception(err)
         super()._stop(remove_container)
