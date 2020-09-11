@@ -102,7 +102,7 @@ class Observer(CoreSysAttributes, JsonConfig):
         """Install observer."""
         _LOGGER.info("Setup observer plugin")
         while True:
-            # read audio tag and install it
+            # read observer tag and install it
             if not self.latest_version:
                 await self.sys_updater.reload()
 
