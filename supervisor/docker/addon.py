@@ -384,7 +384,7 @@ class DockerAddon(DockerInterface):
                 ipv4=self.ip_address, names=[self.addon.hostname]
             )
         except CoreDNSError:
-            _LOGGER.waring("Can't update DNS for %s", self.name)
+            _LOGGER.warning("Can't update DNS for %s", self.name)
 
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
