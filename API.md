@@ -851,6 +851,8 @@ return:
   "hassos": "null|version",
   "docker": "version",
   "hostname": "name",
+  "operating_system": "HassOS XY|Ubuntu 16.4|null",
+  "features": ["shutdown", "reboot", "hostname", "services", "hassos"],
   "machine": "type",
   "arch": "arch",
   "supported_arch": ["arch1", "arch2"],
