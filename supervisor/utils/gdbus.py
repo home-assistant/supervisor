@@ -33,11 +33,19 @@ RE_GVARIANT_STRING_ESC: re.Pattern[Any] = re.compile(
 RE_GVARIANT_STRING: re.Pattern[Any] = re.compile(
     r"(?<=(?: |{|\[|\(|<))'(.*?)'(?=(?:|]|}|,|\)|>))"
 )
-RE_GVARIANT_BINARY: re.Pattern[Any] = re.compile(r"\[byte (.*?)\]")
+RE_GVARIANT_BINARY: re.Pattern[Any] = re.compile(
+    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|\[byte (.*?)\]"
+)
+RE_GVARIANT_BINARY_STRING: re.Pattern[Any] = re.compile(
+    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|<?b\'(.*?)\'>?"
+)
 RE_GVARIANT_TUPLE_O: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(\()")
 RE_GVARIANT_TUPLE_C: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(,?\))"
 )
+
+RE_BIN_STRING_OCT: re.Pattern[Any] = re.compile(r"\\\\(\d{3})")
+RE_BIN_STRING_HEX: re.Pattern[Any] = re.compile(r"\\\\x(\d{2})")
 
 RE_MONITOR_OUTPUT: re.Pattern[Any] = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
 
@@ -64,6 +72,13 @@ def _convert_bytes(value: str) -> str:
     """Convert bytes to string or byte-array."""
     data: bytes = bytes(int(char, 0) for char in value.split(", "))
     return f"[{', '.join(str(char) for char in data)}]"
+
+
+def _convert_bytes_string(value: str) -> str:
+    """Convert bytes to string or byte-array."""
+    data = RE_BIN_STRING_OCT.sub(lambda x: chr(int(x.group(1), 8)), value)
+    data = RE_BIN_STRING_HEX.sub(lambda x: chr(int(f"0x{x.group(1)}", 0)), data)
+    return f"[{', '.join(str(char) for char in [char for char in data.encode()])}]"
 
 
 class DBus:
@@ -120,14 +135,22 @@ class DBus:
     def parse_gvariant(raw: str) -> Any:
         """Parse GVariant input to python."""
         # Process first string
-        json_raw = RE_GVARIANT_BINARY.sub(
-            lambda x: _convert_bytes(x.group(1)),
-            raw,
-        )
         json_raw = RE_GVARIANT_STRING_ESC.sub(
-            lambda x: x.group(0).replace('"', '\\"'), json_raw
+            lambda x: x.group(0).replace('"', '\\"'), raw
         )
         json_raw = RE_GVARIANT_STRING.sub(r'"\1"', json_raw)
+
+        # Handle Bytes
+        json_raw = RE_GVARIANT_BINARY.sub(
+            lambda x: x.group(0) if not x.group(1) else _convert_bytes(x.group(1)),
+            json_raw,
+        )
+        json_raw = RE_GVARIANT_BINARY_STRING.sub(
+            lambda x: x.group(0)
+            if not x.group(1)
+            else _convert_bytes_string(x.group(1)),
+            json_raw,
+        )
 
         # Remove complex type handling
         json_raw: str = RE_GVARIANT_TYPE.sub(
