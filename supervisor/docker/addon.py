@@ -26,7 +26,7 @@ from ..const import (
     SECURITY_PROFILE,
 )
 from ..coresys import CoreSys
-from ..exceptions import DockerAPIError
+from ..exceptions import CoreDNSError, DockerAPIError
 from ..utils import process_lock
 from .interface import DockerInterface
 
@@ -379,7 +379,12 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
 
         # Write data to DNS server
-        self.sys_plugins.dns.add_host(ipv4=self.ip_address, names=[self.addon.hostname])
+        try:
+            self.sys_plugins.dns.add_host(
+                ipv4=self.ip_address, names=[self.addon.hostname]
+            )
+        except CoreDNSError:
+            _LOGGER.waring("Can't update DNS for %s", self.name)
 
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
@@ -505,5 +510,8 @@ class DockerAddon(DockerInterface):
         Need run inside executor.
         """
         if self.ip_address != NO_ADDDRESS:
-            self.sys_plugins.dns.delete_host(self.addon.hostname)
+            try:
+                self.sys_plugins.dns.delete_host(self.addon.hostname)
+            except CoreDNSError:
+                _LOGGER.warning("Can't update DNS for %s", self.name)
         super()._stop(remove_container)
