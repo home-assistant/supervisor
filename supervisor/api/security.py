@@ -91,6 +91,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/multicast/.+"
         r"|/network/.+"
         r"|/os/.+"
+        r"|/observer/.+"
         r"|/snapshots.*"
         r"|/supervisor/.+"
         r")$"
