@@ -59,7 +59,7 @@ MAP_GDBUS_ERROR: Dict[str, Any] = {
 INTROSPECT: str = "gdbus introspect --system --dest {bus} --object-path {object} --xml"
 CALL: str = "gdbus call --system --dest {bus} --object-path {object} --timeout 10 --method {method} {args}"
 MONITOR: str = "gdbus monitor --system --dest {bus}"
-WAIT: str = "gdbus wait --system --activate {bus} --timeout 10 {bus}"
+WAIT: str = "gdbus wait --system --activate {bus} --timeout 5 {bus}"
 
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
 
@@ -102,7 +102,7 @@ class DBus:
         """Read interface data."""
         # Wait for dbus object to be available after restart
         command_wait = shlex.split(WAIT.format(bus=self.bus_name))
-        await self._send(command_wait)
+        await self._send(command_wait, silent=True)
 
         # Introspect object & Parse XML
         command_introspect = shlex.split(
@@ -218,7 +218,7 @@ class DBus:
             _LOGGER.error("No attributes returned for %s", interface)
             raise DBusFatalError() from err
 
-    async def _send(self, command: List[str]) -> str:
+    async def _send(self, command: List[str], silent=False) -> str:
         """Send command over dbus."""
         # Run command
         _LOGGER.debug("Send dbus command: %s", command)
@@ -236,7 +236,7 @@ class DBus:
             raise DBusFatalError() from err
 
         # Success?
-        if proc.returncode == 0:
+        if proc.returncode == 0 or silent:
             return data.decode()
 
         # Filter error
