@@ -952,36 +952,36 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/observer/info`
 
-```json
-{
-  "host": "ip-address",
-  "version": "1",
-  "version_latest": "2"
-}
-```
+  ```json
+  {
+    "host": "ip-address",
+    "version": "1",
+    "version_latest": "2"
+  }
+  ```
 
 - POST `/observer/update`
 
-```json
-{
-  "version": "VERSION"
-}
-```
+  ```json
+  {
+    "version": "VERSION"
+  }
+  ```
 
 - GET `/observer/stats`
 
-```json
-{
-  "cpu_percent": 0.0,
-  "memory_usage": 283123,
-  "memory_limit": 329392,
-  "memory_percent": 1.4,
-  "network_tx": 0,
-  "network_rx": 0,
-  "blk_read": 0,
-  "blk_write": 0
-}
-```
+  ```json
+  {
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "memory_percent": 1.4,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
+  }
+  ```
 
 ### Multicast
 
