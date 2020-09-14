@@ -101,7 +101,7 @@ class DBus:
     async def _init_proxy(self) -> None:
         """Read interface data."""
         # Wait for dbus object to be available after restart
-        command_wait = shlex.split(WAIT.format(bus=self.dbus_name))
+        command_wait = shlex.split(WAIT.format(bus=self.bus_name))
         await self._send(command_wait)
 
         # Introspect object & Parse XML
