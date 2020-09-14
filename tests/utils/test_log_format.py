@@ -1,7 +1,7 @@
 """Tests for message formater."""
 import pytest
 
-from supervisor.exceptions import APIError
+from supervisor.exceptions import FormatError
 from supervisor.utils.log_format import format_message
 
 
@@ -17,5 +17,5 @@ def test_format_message():
 def test_exeption():
     """Tests the exception handling."""
     message = b"byte"
-    with pytest.raises(APIError):
+    with pytest.raises(FormatError):
         assert format_message(message) == message
