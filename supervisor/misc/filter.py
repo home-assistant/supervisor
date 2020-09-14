@@ -71,6 +71,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "dns": coresys.plugins.dns.version,
                 "docker": coresys.docker.info.version,
                 "multicast": coresys.plugins.multicast.version,
+                "observer": coresys.plugins.observer.version,
                 "os": coresys.hassos.version,
                 "supervisor": coresys.supervisor.version,
             },
