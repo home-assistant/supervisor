@@ -1227,9 +1227,9 @@ We support:
 
 * POST `/auth/reset`
 
-```json
-{
-  "username": "xy",
-  "password": "new-password"
-}
-```
+  ```json
+  {
+    "username": "xy",
+    "password": "new-password"
+  }
+  ```
