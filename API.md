@@ -770,17 +770,17 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/services`
 
-```json
-{
-  "services": [
-    {
-      "slug": "name",
-      "available": "bool",
-      "providers": "list"
-    }
-  ]
-}
-```
+  ```json
+  {
+    "services": [
+      {
+        "slug": "name",
+        "available": "bool",
+        "providers": "list"
+      }
+    ]
+  }
+  ```
 
 #### MQTT
 
