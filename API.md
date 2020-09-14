@@ -987,20 +987,20 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/multicast/info`
 
-```json
-{
-  "version": "1",
-  "version_latest": "2"
-}
-```
+  ```json
+  {
+    "version": "1",
+    "version_latest": "2"
+  }
+  ```
 
 - POST `/multicast/update`
 
-```json
-{
-  "version": "VERSION"
-}
-```
+  ```json
+  {
+    "version": "VERSION"
+  }
+  ```
 
 - POST `/multicast/restart`
 
@@ -1008,18 +1008,18 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/multicast/stats`
 
-```json
-{
-  "cpu_percent": 0.0,
-  "memory_usage": 283123,
-  "memory_limit": 329392,
-  "memory_percent": 1.4,
-  "network_tx": 0,
-  "network_rx": 0,
-  "blk_read": 0,
-  "blk_write": 0
-}
-```
+  ```json
+  {
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "memory_percent": 1.4,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
+  }
+  ```
 
 ### Audio
 
