@@ -720,49 +720,49 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/discovery`
 
-```json
-{
-  "discovery": [
-    {
-      "addon": "slug",
-      "service": "name",
-      "uuid": "uuid",
-      "config": {}
+  ```json
+  {
+    "discovery": [
+      {
+        "addon": "slug",
+        "service": "name",
+        "uuid": "uuid",
+        "config": {}
+      }
+    ],
+    "services": {
+      "ozw": ["core_zwave"]
     }
-  ],
-  "services": {
-    "ozw": ["core_zwave"]
   }
-}
-```
+  ```
 
 - GET `/discovery/{UUID}`
 
-```json
-{
-  "addon": "slug",
-  "service": "name",
-  "uuid": "uuid",
-  "config": {}
-}
-```
+  ```json
+  {
+    "addon": "slug",
+    "service": "name",
+    "uuid": "uuid",
+    "config": {}
+  }
+  ```
 
 - POST `/discovery`
 
-```json
-{
-  "service": "name",
-  "config": {}
-}
-```
+  ```json
+  {
+    "service": "name",
+    "config": {}
+  }
+  ```
 
-return:
+  return:
 
-```json
-{
-  "uuid": "uuid"
-}
-```
+  ```json
+  {
+    "uuid": "uuid"
+  }
+  ```
 
 - DEL `/discovery/{UUID}`
 
