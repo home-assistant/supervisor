@@ -52,6 +52,7 @@ RE_MONITOR_OUTPUT: re.Pattern[Any] = re.compile(r".+?: (?P<signal>[^ ].+) (?P<da
 # Map GDBus to errors
 MAP_GDBUS_ERROR: Dict[str, Any] = {
     "GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown": DBusInterfaceError,
+    "GDBus.Error:org.freedesktop.DBus.Error.Spawn.ChildExited": DBusFatalError,
     "No such file or directory": DBusNotConnectedError,
 }
 
