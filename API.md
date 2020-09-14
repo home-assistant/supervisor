@@ -686,35 +686,35 @@ To reset customized network/audio/options, set it `null`.
 
 - POST `/ingress/session`
 
-Create a new session for access to the ingress service.
+  Create a new session for access to the ingress service.
 
-```json
-{
-  "session": "token"
-}
-```
+  ```json
+  {
+    "session": "token"
+  }
+  ```
 
 - GET `/ingress/panels`
 
-Return a list of enabled panels.
+  Return a list of enabled panels.
 
-```json
-{
-  "panels": {
-    "addon_slug": {
-      "enable": "boolean",
-      "icon": "mdi:...",
-      "title": "title",
-      "admin": "boolean"
+  ```json
+  {
+    "panels": {
+      "addon_slug": {
+        "enable": "boolean",
+        "icon": "mdi:...",
+        "title": "title",
+        "admin": "boolean"
+      }
     }
   }
-}
-```
+  ```
 
 - VIEW `/ingress/{token}`
 
-Ingress WebUI for this add-on. The add-on need support for the Home Assistant
-authentication system. Needs an ingress session as cookie.
+  Ingress WebUI for this add-on. The add-on needs support for the Home Assistant
+  authentication system. Needs an ingress session as cookie.
 
 ### discovery
 
