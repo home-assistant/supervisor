@@ -228,15 +228,11 @@ class AppArmorInvalidError(AppArmorError):
     """AppArmor profile validate error."""
 
 
-# util
+# util/json
 
 
 class JsonFileError(HassioError):
     """Invalid json file."""
-
-
-class FormatError(HassioError):
-    """The format is not correct."""
 
 
 # docker/api
