@@ -867,31 +867,31 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/dns/info`
 
-```json
-{
-  "host": "ip-address",
-  "version": "1",
-  "version_latest": "2",
-  "servers": ["dns://8.8.8.8"],
-  "locals": ["dns://xy"]
-}
-```
+  ```json
+  {
+    "host": "ip-address",
+    "version": "1",
+    "version_latest": "2",
+    "servers": ["dns://8.8.8.8"],
+    "locals": ["dns://xy"]
+  }
+  ```
 
 - POST `/dns/options`
 
-```json
-{
-  "servers": ["dns://8.8.8.8"]
-}
-```
+  ```json
+  {
+    "servers": ["dns://8.8.8.8"]
+  }
+  ```
 
 - POST `/dns/update`
 
-```json
-{
-  "version": "VERSION"
-}
-```
+  ```json
+  {
+    "version": "VERSION"
+  }
+  ```
 
 - POST `/dns/restart`
 
@@ -901,18 +901,18 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/dns/stats`
 
-```json
-{
-  "cpu_percent": 0.0,
-  "memory_usage": 283123,
-  "memory_limit": 329392,
-  "memory_percent": 1.4,
-  "network_tx": 0,
-  "network_rx": 0,
-  "blk_read": 0,
-  "blk_write": 0
-}
-```
+  ```json
+  {
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "memory_percent": 1.4,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
+  }
+  ```
 
 ### CLI
 
