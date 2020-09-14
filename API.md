@@ -1025,92 +1025,92 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/audio/info`
 
-```json
-{
-  "host": "ip-address",
-  "version": "1",
-  "latest_version": "2",
-  "audio": {
-    "card": [
-      {
-        "name": "...",
-        "index": 1,
-        "driver": "...",
-        "profiles": [
-          {
-            "name": "...",
-            "description": "...",
-            "active": false
-          }
-        ]
-      }
-    ],
-    "input": [
-      {
-        "name": "...",
-        "index": 0,
-        "description": "...",
-        "volume": 0.3,
-        "mute": false,
-        "default": false,
-        "card": "null|int",
-        "applications": [
-          {
-            "name": "...",
-            "index": 0,
-            "stream_index": 0,
-            "stream_type": "INPUT",
-            "volume": 0.3,
-            "mute": false,
-            "addon": ""
-          }
-        ]
-      }
-    ],
-    "output": [
-      {
-        "name": "...",
-        "index": 0,
-        "description": "...",
-        "volume": 0.3,
-        "mute": false,
-        "default": false,
-        "card": "null|int",
-        "applications": [
-          {
-            "name": "...",
-            "index": 0,
-            "stream_index": 0,
-            "stream_type": "OUTPUT",
-            "volume": 0.3,
-            "mute": false,
-            "addon": ""
-          }
-        ]
-      }
-    ],
-    "application": [
-      {
-        "name": "...",
-        "index": 0,
-        "stream_index": 0,
-        "stream_type": "OUTPUT",
-        "volume": 0.3,
-        "mute": false,
-        "addon": ""
-      }
-    ]
+  ```json
+  {
+    "host": "ip-address",
+    "version": "1",
+    "latest_version": "2",
+    "audio": {
+      "card": [
+        {
+          "name": "...",
+          "index": 1,
+          "driver": "...",
+          "profiles": [
+            {
+              "name": "...",
+              "description": "...",
+              "active": false
+            }
+          ]
+        }
+      ],
+      "input": [
+        {
+          "name": "...",
+          "index": 0,
+          "description": "...",
+          "volume": 0.3,
+          "mute": false,
+          "default": false,
+          "card": "null|int",
+          "applications": [
+            {
+              "name": "...",
+              "index": 0,
+              "stream_index": 0,
+              "stream_type": "INPUT",
+              "volume": 0.3,
+              "mute": false,
+              "addon": ""
+            }
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "...",
+          "index": 0,
+          "description": "...",
+          "volume": 0.3,
+          "mute": false,
+          "default": false,
+          "card": "null|int",
+          "applications": [
+            {
+              "name": "...",
+              "index": 0,
+              "stream_index": 0,
+              "stream_type": "OUTPUT",
+              "volume": 0.3,
+              "mute": false,
+              "addon": ""
+            }
+          ]
+        }
+      ],
+      "application": [
+        {
+          "name": "...",
+          "index": 0,
+          "stream_index": 0,
+          "stream_type": "OUTPUT",
+          "volume": 0.3,
+          "mute": false,
+          "addon": ""
+        }
+      ]
+    }
   }
-}
-```
+  ```
 
 - POST `/audio/update`
 
-```json
-{
-  "version": "VERSION"
-}
-```
+  ```json
+  {
+    "version": "VERSION"
+  }
+  ```
 
 - POST `/audio/restart`
 
@@ -1120,97 +1120,97 @@ To reset customized network/audio/options, set it `null`.
 
 - POST `/audio/volume/input`
 
-```json
-{
-  "index": "...",
-  "volume": 0.5
-}
-```
+  ```json
+  {
+    "index": "...",
+    "volume": 0.5
+  }
+  ```
 
 - POST `/audio/volume/output`
 
-```json
-{
-  "index": "...",
-  "volume": 0.5
-}
-```
+  ```json
+  {
+    "index": "...",
+    "volume": 0.5
+  }
+  ```
 
 - POST `/audio/volume/{output|input}/application`
 
-```json
-{
-  "index": "...",
-  "volume": 0.5
-}
-```
+  ```json
+  {
+    "index": "...",
+    "volume": 0.5
+  }
+  ```
 
 - POST `/audio/mute/input`
 
-```json
-{
-  "index": "...",
-  "active": false
-}
-```
+  ```json
+  {
+    "index": "...",
+    "active": false
+  }
+  ```
 
 - POST `/audio/mute/output`
 
-```json
-{
-  "index": "...",
-  "active": false
-}
-```
+  ```json
+  {
+    "index": "...",
+    "active": false
+  }
+  ```
 
 - POST `/audio/mute/{output|input}/application`
 
-```json
-{
-  "index": "...",
-  "active": false
-}
-```
+  ```json
+  {
+    "index": "...",
+    "active": false
+  }
+  ```
 
 - POST `/audio/default/input`
 
-```json
-{
-  "name": "..."
-}
-```
+  ```json
+  {
+    "name": "..."
+  }
+  ```
 
 - POST `/audio/default/output`
 
-```json
-{
-  "name": "..."
-}
-```
+  ```json
+  {
+    "name": "..."
+  }
+  ```
 
 - POST `/audio/profile`
 
-```json
-{
-  "card": "...",
-  "name": "..."
-}
-```
+  ```json
+  {
+    "card": "...",
+    "name": "..."
+  }
+  ```
 
 - GET `/audio/stats`
 
-```json
-{
-  "cpu_percent": 0.0,
-  "memory_usage": 283123,
-  "memory_limit": 329392,
-  "memory_percent": 1.4,
-  "network_tx": 0,
-  "network_rx": 0,
-  "blk_read": 0,
-  "blk_write": 0
-}
-```
+  ```json
+  {
+    "cpu_percent": 0.0,
+    "memory_usage": 283123,
+    "memory_limit": 329392,
+    "memory_percent": 1.4,
+    "network_tx": 0,
+    "network_rx": 0,
+    "blk_read": 0,
+    "blk_write": 0
+  }
+  ```
 
 ### Authentication/SSO API
 
