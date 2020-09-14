@@ -56,14 +56,10 @@ MAP_GDBUS_ERROR: Dict[str, Any] = {
 }
 
 # Commands for dbus
-INTROSPECT: str = (
-    "gdbus introspect --system --dest {bus} " "--object-path {object} --xml"
-)
-CALL: str = (
-    "gdbus call --system --dest {bus} --object-path {object} "
-    "--method {method} {args}"
-)
+INTROSPECT: str = "gdbus introspect --system --dest {bus} --object-path {object} --xml"
+CALL: str = "gdbus call --system --dest {bus} --object-path {object} --timeout 10 --method {method} {args}"
 MONITOR: str = "gdbus monitor --system --dest {bus}"
+WAIT: str = "gdbus wait --system --activate {bus} --timeout 10 {bus}"
 
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
 
@@ -104,12 +100,15 @@ class DBus:
 
     async def _init_proxy(self) -> None:
         """Read interface data."""
-        command = shlex.split(
+        # Wait for dbus object to be available after restart
+        command_wait = shlex.split(WAIT.format(bus=self.dbus_name))
+        await self._send(command_wait)
+
+        # Introspect object & Parse XML
+        command_introspect = shlex.split(
             INTROSPECT.format(bus=self.bus_name, object=self.object_path)
         )
-
-        # Parse XML
-        data = await self._send(command)
+        data = await self._send(command_introspect)
         try:
             xml = ET.fromstring(data)
         except ET.ParseError as err:
@@ -248,7 +247,7 @@ class DBus:
             raise exception()
 
         # General
-        _LOGGER.error("DBus return error: %s", error.strip())
+        _LOGGER.error("DBus return: %s", error.strip())
         raise DBusFatalError()
 
     def attach_signals(self, filters=None):
