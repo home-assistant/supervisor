@@ -844,24 +844,24 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/info`
 
-```json
-{
-  "supervisor": "version",
-  "homeassistant": "version",
-  "hassos": "null|version",
-  "docker": "version",
-  "hostname": "name",
-  "operating_system": "HassOS XY|Ubuntu 16.4|null",
-  "features": ["shutdown", "reboot", "hostname", "services", "hassos"],
-  "machine": "type",
-  "arch": "arch",
-  "supported_arch": ["arch1", "arch2"],
-  "supported": "bool",
-  "channel": "stable|beta|dev",
-  "logging": "debug|info|warning|error|critical",
-  "timezone": "Europe/Zurich"
-}
-```
+  ```json
+  {
+    "supervisor": "version",
+    "homeassistant": "version",
+    "hassos": "null|version",
+    "docker": "version",
+    "hostname": "name",
+    "operating_system": "HassOS XY|Ubuntu 16.4|null",
+    "features": ["shutdown", "reboot", "hostname", "services", "hassos"],
+    "machine": "type",
+    "arch": "arch",
+    "supported_arch": ["arch1", "arch2"],
+    "supported": "bool",
+    "channel": "stable|beta|dev",
+    "logging": "debug|info|warning|error|critical",
+    "timezone": "Europe/Zurich"
+  }
+  ```
 
 ### DNS
 
