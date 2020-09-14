@@ -786,30 +786,30 @@ To reset customized network/audio/options, set it `null`.
 
 - GET `/services/mqtt`
 
-```json
-{
-  "addon": "name",
-  "host": "xy",
-  "port": "8883",
-  "ssl": "bool",
-  "username": "optional",
-  "password": "optional",
-  "protocol": "3.1.1"
-}
-```
+  ```json
+  {
+    "addon": "name",
+    "host": "xy",
+    "port": "8883",
+    "ssl": "bool",
+    "username": "optional",
+    "password": "optional",
+    "protocol": "3.1.1"
+  }
+  ```
 
 - POST `/services/mqtt`
 
-```json
-{
-  "host": "xy",
-  "port": "8883",
-  "ssl": "bool|optional",
-  "username": "optional",
-  "password": "optional",
-  "protocol": "3.1.1"
-}
-```
+  ```json
+  {
+    "host": "xy",
+    "port": "8883",
+    "ssl": "bool|optional",
+    "username": "optional",
+    "password": "optional",
+    "protocol": "3.1.1"
+  }
+  ```
 
 - DEL `/services/mqtt`
 
