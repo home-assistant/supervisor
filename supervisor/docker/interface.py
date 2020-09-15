@@ -11,7 +11,7 @@ import requests
 from . import CommandReturn
 from ..const import LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DockerAPIError
+from ..exceptions import DockerAPIError, DockerRequestError
 from ..utils import process_lock
 from .stats import DockerStats
 
@@ -146,8 +146,10 @@ class DockerInterface(CoreSysAttributes):
             docker_container = self.sys_docker.containers.get(self.name)
         except docker.errors.NotFound:
             return False
-        except (docker.errors.DockerException, requests.RequestException) as err:
+        except docker.errors.DockerException as err:
             raise DockerAPIError() from err
+        except requests.RequestException as err:
+            raise DockerRequestError() from err
 
         return docker_container.status == "running"
 
@@ -470,6 +472,9 @@ class DockerInterface(CoreSysAttributes):
         except (docker.errors.DockerException, ValueError) as err:
             _LOGGER.debug("No version found for %s", self.image)
             raise DockerAPIError() from err
+        except requests.RequestException as err:
+            _LOGGER.warning("Communication issues with dockerd on Host: %s", err)
+            raise DockerRequestError() from err
         else:
             _LOGGER.debug("Found %s versions: %s", self.image, available_version)
 
