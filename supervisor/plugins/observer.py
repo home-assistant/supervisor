@@ -12,7 +12,7 @@ from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.observer import DockerObserver
 from ..docker.stats import DockerStats
-from ..exceptions import DockerAPIError, ObserverError, ObserverUpdateError
+from ..exceptions import DockerError, ObserverError, ObserverUpdateError
 from ..utils.json import JsonConfig
 from .const import FILE_HASSIO_OBSERVER
 from .validate import SCHEMA_OBSERVER_CONFIG
@@ -80,7 +80,7 @@ class Observer(CoreSysAttributes, JsonConfig):
                 self.version = await self.instance.get_latest_version()
 
             await self.instance.attach(tag=self.version)
-        except DockerAPIError:
+        except DockerError:
             _LOGGER.info(
                 "No observer plugin Docker image %s found.", self.instance.image
             )
@@ -107,7 +107,7 @@ class Observer(CoreSysAttributes, JsonConfig):
                 await self.sys_updater.reload()
 
             if self.latest_version:
-                with suppress(DockerAPIError):
+                with suppress(DockerError):
                     await self.instance.install(
                         self.latest_version, image=self.sys_updater.image_observer
                     )
@@ -131,7 +131,7 @@ class Observer(CoreSysAttributes, JsonConfig):
 
         try:
             await self.instance.update(version, image=self.sys_updater.image_observer)
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("HA observer update failed")
             raise ObserverUpdateError() from err
         else:
@@ -140,7 +140,7 @@ class Observer(CoreSysAttributes, JsonConfig):
             self.save_data()
 
         # Cleanup
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             await self.instance.cleanup(old_image=old_image)
 
         # Start observer
@@ -157,7 +157,7 @@ class Observer(CoreSysAttributes, JsonConfig):
         _LOGGER.info("Start observer plugin")
         try:
             await self.instance.run()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't start observer plugin")
             raise ObserverError() from err
 
@@ -165,7 +165,7 @@ class Observer(CoreSysAttributes, JsonConfig):
         """Return stats of observer."""
         try:
             return await self.instance.stats()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise ObserverError() from err
 
     def is_running(self) -> Awaitable[bool]:
@@ -183,6 +183,6 @@ class Observer(CoreSysAttributes, JsonConfig):
         _LOGGER.info("Repair HA observer %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Repairing of HA observer failed")
             self.sys_capture_exception(err)

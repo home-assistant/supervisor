@@ -11,7 +11,7 @@ from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.multicast import DockerMulticast
 from ..docker.stats import DockerStats
-from ..exceptions import DockerAPIError, MulticastError, MulticastUpdateError
+from ..exceptions import DockerError, MulticastError, MulticastUpdateError
 from ..utils.json import JsonConfig
 from .const import FILE_HASSIO_MULTICAST
 from .validate import SCHEMA_MULTICAST_CONFIG
@@ -74,7 +74,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
                 self.version = await self.instance.get_latest_version()
 
             await self.instance.attach(tag=self.version)
-        except DockerAPIError:
+        except DockerError:
             _LOGGER.info(
                 "No Multicast plugin Docker image %s found.", self.instance.image
             )
@@ -103,7 +103,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
                 await self.sys_updater.reload()
 
             if self.latest_version:
-                with suppress(DockerAPIError):
+                with suppress(DockerError):
                     await self.instance.install(
                         self.latest_version, image=self.sys_updater.image_multicast
                     )
@@ -128,7 +128,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
         # Update
         try:
             await self.instance.update(version, image=self.sys_updater.image_multicast)
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Multicast update failed")
             raise MulticastUpdateError() from err
         else:
@@ -137,7 +137,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
             self.save_data()
 
         # Cleanup
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             await self.instance.cleanup(old_image=old_image)
 
         # Start Multicast plugin
@@ -148,7 +148,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Restart Multicast plugin")
         try:
             await self.instance.restart()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't start Multicast plugin")
             raise MulticastError() from err
 
@@ -157,7 +157,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Start Multicast plugin")
         try:
             await self.instance.run()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't start Multicast plugin")
             raise MulticastError() from err
 
@@ -166,7 +166,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Stop Multicast plugin")
         try:
             await self.instance.stop()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't stop Multicast plugin")
             raise MulticastError() from err
 
@@ -181,7 +181,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
         """Return stats of Multicast."""
         try:
             return await self.instance.stats()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise MulticastError() from err
 
     def is_running(self) -> Awaitable[bool]:
@@ -206,6 +206,6 @@ class Multicast(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Repair Multicast %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Repairing of Multicast failed")
             self.sys_capture_exception(err)

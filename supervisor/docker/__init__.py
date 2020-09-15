@@ -11,7 +11,7 @@ from packaging import version as pkg_version
 import requests
 
 from ..const import DNS_SUFFIX, DOCKER_IMAGE_DENYLIST, SOCKET_DOCKER
-from ..exceptions import DockerAPIError
+from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
 from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -129,27 +129,36 @@ class DockerAPI:
             container = self.docker.containers.create(
                 f"{image}:{version}", use_config_proxy=False, **kwargs
             )
-        except (docker.errors.DockerException, requests.RequestException) as err:
+        except docker.errors.NotFound as err:
+            _LOGGER.error("Image %s not exists for %s", image, name)
+            raise DockerNotFound() from err
+        except docker.errors.DockerException as err:
             _LOGGER.error("Can't create container from %s: %s", name, err)
             raise DockerAPIError() from err
+        except requests.RequestException as err:
+            _LOGGER.error("Dockerd connection issue for %s: %s", name, err)
+            raise DockerRequestError() from err
 
         # Attach network
         if not network_mode:
             alias = [hostname] if hostname else None
             try:
                 self.network.attach_container(container, alias=alias, ipv4=ipv4)
-            except DockerAPIError:
+            except DockerError:
                 _LOGGER.warning("Can't attach %s to hassio-net!", name)
             else:
-                with suppress(DockerAPIError):
+                with suppress(DockerError):
                     self.network.detach_default_bridge(container)
 
         # Run container
         try:
             container.start()
-        except (docker.errors.DockerException, requests.RequestException) as err:
+        except docker.errors.DockerException as err:
             _LOGGER.error("Can't start %s: %s", name, err)
-            raise DockerAPIError(err) from err
+            raise DockerAPIError() from err
+        except requests.RequestException as err:
+            _LOGGER.error("Dockerd connection issue for %s: %s", name, err)
+            raise DockerRequestError() from err
 
         # Update metadata
         with suppress(docker.errors.DockerException, requests.RequestException):
@@ -187,7 +196,7 @@ class DockerAPI:
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't execute command: %s", err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         finally:
             # cleanup container
@@ -249,7 +258,7 @@ class DockerAPI:
                         denied_images.add(image_name)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         if not denied_images:
             return False
