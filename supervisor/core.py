@@ -15,7 +15,7 @@ from .const import (
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
-    DockerAPIError,
+    DockerError,
     HassioError,
     HomeAssistantError,
     SupervisorUpdateError,
@@ -177,7 +177,7 @@ class Core(CoreSysAttributes):
             if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
                 self.supported = False
                 self.healthy = False
-        except DockerAPIError:
+        except DockerError:
             self.healthy = False
 
     async def start(self):

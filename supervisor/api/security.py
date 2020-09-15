@@ -90,6 +90,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/host/.+"
         r"|/multicast/.+"
         r"|/network/.+"
+        r"|/observer/.+"
         r"|/os/.+"
         r"|/snapshots.*"
         r"|/supervisor/.+"

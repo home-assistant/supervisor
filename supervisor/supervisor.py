@@ -14,7 +14,7 @@ from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
 from .exceptions import (
-    DockerAPIError,
+    DockerError,
     HostAppArmorError,
     SupervisorError,
     SupervisorUpdateError,
@@ -35,10 +35,10 @@ class Supervisor(CoreSysAttributes):
         """Prepare Home Assistant object."""
         try:
             await self.instance.attach(tag="latest")
-        except DockerAPIError:
+        except DockerError:
             _LOGGER.critical("Can't setup Supervisor Docker container!")
 
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             await self.instance.cleanup()
 
     @property
@@ -115,7 +115,7 @@ class Supervisor(CoreSysAttributes):
             await self.instance.update_start_tag(
                 self.sys_updater.image_supervisor, version
             )
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Update of Supervisor failed!")
             raise SupervisorUpdateError() from err
         else:
@@ -142,7 +142,7 @@ class Supervisor(CoreSysAttributes):
         """Return stats of Supervisor."""
         try:
             return await self.instance.stats()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise SupervisorError() from err
 
     async def repair(self):
@@ -153,5 +153,5 @@ class Supervisor(CoreSysAttributes):
         _LOGGER.info("Repair Supervisor %s", self.version)
         try:
             await self.instance.retag()
-        except DockerAPIError:
+        except DockerError:
             _LOGGER.error("Repairing of Supervisor failed")

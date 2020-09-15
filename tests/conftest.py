@@ -44,7 +44,10 @@ def dbus() -> DBus:
     async def mock_get_properties(_, interface):
         return load_json_fixture(f"{interface.replace('.', '_')}.json")
 
-    async def mock_send(_, command):
+    async def mock_send(_, command, silent=False):
+        if silent:
+            return ""
+
         filetype = "xml" if "--xml" in command else "fixture"
         fixture = f"{command[6].replace('/', '_')[1:]}.{filetype}"
         return load_fixture(fixture)

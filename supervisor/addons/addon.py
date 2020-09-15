@@ -39,6 +39,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
+    AddonBoot,
     AddonStartup,
     AddonState,
 )
@@ -49,7 +50,8 @@ from ..exceptions import (
     AddonConfigurationError,
     AddonsError,
     AddonsNotSupportedError,
-    DockerAPIError,
+    DockerError,
+    DockerRequestError,
     HostAppArmorError,
     JsonFileError,
 )
@@ -98,7 +100,7 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             await self.instance.attach(tag=self.version)
 
             # Evaluate state
@@ -163,12 +165,12 @@ class Addon(AddonModel):
         self.persist[ATTR_OPTIONS] = {} if value is None else deepcopy(value)
 
     @property
-    def boot(self) -> bool:
+    def boot(self) -> AddonBoot:
         """Return boot config with prio local settings."""
         return self.persist.get(ATTR_BOOT, super().boot)
 
     @boot.setter
-    def boot(self, value: bool) -> None:
+    def boot(self, value: AddonBoot) -> None:
         """Store user boot options."""
         self.persist[ATTR_BOOT] = value
 
@@ -560,7 +562,10 @@ class Addon(AddonModel):
         # Start Add-on
         try:
             await self.instance.run()
-        except DockerAPIError as err:
+        except DockerRequestError as err:
+            self.state = AddonState.STOPPED
+            raise AddonsError() from err
+        except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError(err) from err
         else:
@@ -570,7 +575,9 @@ class Addon(AddonModel):
         """Stop add-on."""
         try:
             return await self.instance.stop()
-        except DockerAPIError as err:
+        except DockerRequestError as err:
+            raise AddonsError() from err
+        except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError() from err
         else:
@@ -600,7 +607,7 @@ class Addon(AddonModel):
         """Return stats of container."""
         try:
             return await self.instance.stats()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise AddonsError() from err
 
     async def write_stdin(self, data) -> None:
@@ -614,7 +621,7 @@ class Addon(AddonModel):
 
         try:
             return await self.instance.write_stdin(data)
-        except DockerAPIError as err:
+        except DockerError as err:
             raise AddonsError() from err
 
     async def snapshot(self, tar_file: tarfile.TarFile) -> None:
@@ -626,7 +633,7 @@ class Addon(AddonModel):
             if self.need_build:
                 try:
                     await self.instance.export_image(temp_path.joinpath("image.tar"))
-                except DockerAPIError as err:
+                except DockerError as err:
                     raise AddonsError() from err
 
             data = {
@@ -728,18 +735,18 @@ class Addon(AddonModel):
 
                 image_file = Path(temp, "image.tar")
                 if image_file.is_file():
-                    with suppress(DockerAPIError):
+                    with suppress(DockerError):
                         await self.instance.import_image(image_file)
                 else:
-                    with suppress(DockerAPIError):
+                    with suppress(DockerError):
                         await self.instance.install(version, restore_image)
                         await self.instance.cleanup()
             elif self.instance.version != version or self.legacy:
                 _LOGGER.info("Restore/Update image for addon %s", self.slug)
-                with suppress(DockerAPIError):
+                with suppress(DockerError):
                     await self.instance.update(version, restore_image)
             else:
-                with suppress(DockerAPIError):
+                with suppress(DockerError):
                     await self.instance.stop()
 
             # Restore data

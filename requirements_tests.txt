@@ -1,6 +1,6 @@
 black==20.8b1
 codecov==2.1.9
-coverage==5.2.1
+coverage==5.3
 flake8-docstrings==1.5.0
 flake8==3.8.3
 pre-commit==2.7.1
@@ -10,5 +10,5 @@ pytest-aiohttp==0.3.0
 pytest-asyncio==0.12.0 # NB!: Versions over 0.12.0 breaks pytest-aiohttp (https://github.com/aio-libs/pytest-aiohttp/issues/16)
 pytest-cov==2.10.1
 pytest-timeout==1.4.2
-pytest==6.0.1
+pytest==6.0.2
 pyupgrade==2.7.2

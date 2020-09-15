@@ -7,7 +7,7 @@ import docker
 import requests
 
 from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_HASSIO, LABEL_MACHINE, MACHINE_ID
-from ..exceptions import DockerAPIError
+from ..exceptions import DockerError
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -177,7 +177,7 @@ class DockerHomeAssistant(DockerInterface):
         except docker.errors.NotFound:
             return False
         except (docker.errors.DockerException, requests.RequestException):
-            return DockerAPIError()
+            return DockerError()
 
         # we run on an old image, stop and start it
         if docker_container.image.id != docker_image.id:
