@@ -91,12 +91,11 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
-    BOOT_AUTO,
-    BOOT_MANUAL,
     CONTENT_TYPE_BINARY,
     CONTENT_TYPE_PNG,
     CONTENT_TYPE_TEXT,
     REQUEST_FROM,
+    AddonBoot,
     AddonState,
 )
 from ..coresys import CoreSysAttributes
@@ -112,7 +111,7 @@ SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
     {
-        vol.Optional(ATTR_BOOT): vol.In([BOOT_AUTO, BOOT_MANUAL]),
+        vol.Optional(ATTR_BOOT): vol.Coerce(AddonBoot),
         vol.Optional(ATTR_NETWORK): vol.Maybe(docker_ports),
         vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
         vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(vol.Coerce(str)),
