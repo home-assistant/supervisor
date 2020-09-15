@@ -5,13 +5,16 @@ import logging
 import tarfile
 from typing import Dict, List, Optional, Union
 
-from ..const import BOOT_AUTO, AddonStartup, AddonState
+from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
+    AddonConfigurationError,
     AddonsError,
     AddonsNotSupportedError,
     CoreDNSError,
     DockerAPIError,
+    DockerNotFound,
+    DockerRequestError,
     HomeAssistantAPIError,
     HostAppArmorError,
 )
@@ -84,7 +87,7 @@ class AddonManager(CoreSysAttributes):
         """Boot add-ons with mode auto."""
         tasks: List[Addon] = []
         for addon in self.installed:
-            if addon.boot != BOOT_AUTO or addon.startup != stage:
+            if addon.boot != AddonBoot.AUTO or addon.startup != stage:
                 continue
             tasks.append(addon)
 
@@ -98,9 +101,15 @@ class AddonManager(CoreSysAttributes):
         for addon in tasks:
             try:
                 await addon.start()
+            except (AddonConfigurationError, DockerRequestError, DockerNotFound):
+                addon.boot = AddonBoot.MANUAL
+                addon.save_persist()
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't start Add-on %s: %s", addon.slug, err)
                 self.sys_capture_exception(err)
+            else:
+                continue
+
+            _LOGGER.warning("Can't start Add-on %s", addon.slug)
 
         await asyncio.sleep(self.sys_config.wait_boot)
 

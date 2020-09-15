@@ -242,6 +242,14 @@ class DockerAPIError(HassioError):
     """Docker API error."""
 
 
+class DockerRequestError(DockerAPIError):
+    """Dockerd OS issues."""
+
+
+class DockerNotFound(DockerAPIError):
+    """Docker object don't Exists."""
+
+
 # Hardware
 
 

@@ -39,6 +39,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
+    AddonBoot,
     AddonStartup,
     AddonState,
 )
@@ -163,12 +164,12 @@ class Addon(AddonModel):
         self.persist[ATTR_OPTIONS] = {} if value is None else deepcopy(value)
 
     @property
-    def boot(self) -> bool:
+    def boot(self) -> AddonBoot:
         """Return boot config with prio local settings."""
         return self.persist.get(ATTR_BOOT, super().boot)
 
     @boot.setter
-    def boot(self, value: bool) -> None:
+    def boot(self, value: AddonBoot) -> None:
         """Store user boot options."""
         self.persist[ATTR_BOOT] = value
 

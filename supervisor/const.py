@@ -277,9 +277,6 @@ PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
 WANT_SERVICE = "want"
 
-BOOT_AUTO = "auto"
-BOOT_MANUAL = "manual"
-
 
 MAP_CONFIG = "config"
 MAP_SSL = "ssl"
@@ -350,6 +347,13 @@ CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
 
 SUPERVISED_SUPPORTED_OS = ["Debian GNU/Linux 10 (buster)"]
+
+
+class AddonBoot(str, Enum):
+    """Boot mode for the add-on."""
+
+    AUTO = "auto"
+    MANUAL = "manual"
 
 
 class AddonStartup(str, Enum):
