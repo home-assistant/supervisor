@@ -44,6 +44,7 @@ class SnapshotManager(CoreSysAttributes):
         # set general data
         snapshot.store_homeassistant()
         snapshot.store_repositories()
+        snapshot.store_dockerconfig()
 
         return snapshot
 
@@ -238,6 +239,10 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Restore %s run Repositories", snapshot.slug)
                 await snapshot.restore_repositories()
 
+                # Restore docker config
+                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                await snapshot.restore_dockerconfig()
+
                 # Delete delta add-ons
                 _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
                 for addon in self.sys_addons.installed:
@@ -297,6 +302,7 @@ class SnapshotManager(CoreSysAttributes):
                 if FOLDER_HOMEASSISTANT in folders:
                     await self.sys_homeassistant.core.stop()
                     snapshot.restore_homeassistant()
+                    snapshot.restore_dockerconfig()
 
                 # Process folders
                 if folders:

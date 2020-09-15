@@ -1233,3 +1233,31 @@ We support:
     "password": "new-password"
   }
   ```
+
+### Docker Registries
+
+You can configure password-protected Docker registries that can be used as a
+source when pulling add-ons.
+
+- GET `/docker/registries`
+
+  ```json
+  {
+    "hostname": {
+      "username": "..."
+    }
+  }
+  ```
+
+- POST `/docker/registries`
+
+  ```json
+    {
+      "{hostname}": {
+        "username": "...",
+        "password": "...",
+      }
+    }
+```
+
+- POST `/docker/registries/{hostname}/remove`

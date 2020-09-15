@@ -10,8 +10,16 @@ import docker
 from packaging import version as pkg_version
 import requests
 
-from ..const import DNS_SUFFIX, DOCKER_IMAGE_DENYLIST, SOCKET_DOCKER
+from ..const import (
+    ATTR_REGISTRIES,
+    DNS_SUFFIX,
+    DOCKER_IMAGE_DENYLIST,
+    FILE_HASSIO_DOCKER,
+    SOCKET_DOCKER,
+)
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
+from ..utils.json import JsonConfig
+from ..validate import SCHEMA_DOCKER_CONFIG
 from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -64,6 +72,19 @@ class DockerInfo:
         return self.storage != "overlay2" or self.logging != "journald"
 
 
+class DockerConfig(JsonConfig):
+    """Home Assistant core object for Docker configuration."""
+
+    def __init__(self):
+        """Initialize the JSON configuration."""
+        super().__init__(FILE_HASSIO_DOCKER, SCHEMA_DOCKER_CONFIG)
+
+    @property
+    def registries(self) -> Dict[str, Any]:
+        """Return credentials for docker registries."""
+        return self._data[ATTR_REGISTRIES]
+
+
 class DockerAPI:
     """Docker Supervisor wrapper.
 
@@ -77,6 +98,7 @@ class DockerAPI:
         )
         self.network: DockerNetwork = DockerNetwork(self.docker)
         self._info: DockerInfo = DockerInfo.new(self.docker.info())
+        self.config: DockerConfig = DockerConfig()
 
     @property
     def images(self) -> docker.models.images.ImageCollection:
