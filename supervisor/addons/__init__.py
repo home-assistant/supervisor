@@ -101,7 +101,9 @@ class AddonManager(CoreSysAttributes):
         for addon in tasks:
             try:
                 await addon.start()
-            except (AddonConfigurationError, DockerRequestError, DockerNotFound):
+            except DockerRequestError:
+                pass
+            except (AddonConfigurationError, DockerAPIError, DockerNotFound):
                 addon.boot = AddonBoot.MANUAL
                 addon.save_persist()
             except Exception as err:  # pylint: disable=broad-except
