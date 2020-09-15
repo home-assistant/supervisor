@@ -11,7 +11,7 @@ import requests
 from . import CommandReturn
 from ..const import LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DockerAPIError, DockerRequestError
+from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
 from ..utils import process_lock
 from .stats import DockerStats
 
@@ -108,11 +108,11 @@ class DockerInterface(CoreSysAttributes):
                     "Available space in /data is: %s GiB",
                     free_space,
                 )
-            raise DockerAPIError() from err
+            raise DockerError() from err
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Unknown error with %s:%s -> %s", image, tag, err)
             self.sys_capture_exception(err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
         else:
             self._meta = docker_image.attrs
 
@@ -172,7 +172,7 @@ class DockerInterface(CoreSysAttributes):
 
         # Successfull?
         if not self._meta:
-            raise DockerAPIError()
+            raise DockerError()
         _LOGGER.info("Attach to %s with version %s", self.image, self.version)
 
     @process_lock
@@ -202,7 +202,7 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.NotFound:
             return
         except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         if docker_container.status == "running":
             _LOGGER.info("Stop %s application", self.name)
@@ -228,14 +228,14 @@ class DockerInterface(CoreSysAttributes):
             docker_container = self.sys_docker.containers.get(self.name)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("%s not found for starting up", self.name)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         _LOGGER.info("Start %s", self.name)
         try:
             docker_container.start()
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't start %s: %s", self.name, err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
     @process_lock
     def remove(self) -> Awaitable[None]:
@@ -248,7 +248,7 @@ class DockerInterface(CoreSysAttributes):
         Needs run inside executor.
         """
         # Cleanup container
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             self._stop()
 
         _LOGGER.info("Remove image %s with latest and %s", self.image, self.version)
@@ -264,7 +264,7 @@ class DockerInterface(CoreSysAttributes):
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't remove image %s: %s", self.image, err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         self._meta = None
 
@@ -292,7 +292,7 @@ class DockerInterface(CoreSysAttributes):
         self._install(tag, image=image, latest=latest)
 
         # Stop container & cleanup
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             self._stop()
 
     def logs(self) -> Awaitable[bytes]:
@@ -333,14 +333,14 @@ class DockerInterface(CoreSysAttributes):
             origin = self.sys_docker.images.get(f"{self.image}:{self.version}")
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         # Cleanup Current
         try:
             images_list = self.sys_docker.images.list(name=self.image)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         for image in images_list:
             if origin.id == image.id:
@@ -358,7 +358,7 @@ class DockerInterface(CoreSysAttributes):
             images_list = self.sys_docker.images.list(name=old_image)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         for image in images_list:
             with suppress(docker.errors.DockerException, requests.RequestException):
@@ -378,14 +378,14 @@ class DockerInterface(CoreSysAttributes):
         try:
             container = self.sys_docker.containers.get(self.name)
         except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         _LOGGER.info("Restart %s", self.image)
         try:
             container.restart(timeout=self.timeout)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't restart %s: %s", self.image, err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
     @process_lock
     def execute_command(self, command: str) -> Awaitable[CommandReturn]:
@@ -411,14 +411,14 @@ class DockerInterface(CoreSysAttributes):
         try:
             docker_container = self.sys_docker.containers.get(self.name)
         except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         try:
             stats = docker_container.stats(stream=False)
             return DockerStats(stats)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't read stats from %s: %s", self.name, err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
     def is_failed(self) -> Awaitable[bool]:
         """Return True if Docker is failing state.
@@ -437,7 +437,7 @@ class DockerInterface(CoreSysAttributes):
         except docker.errors.NotFound:
             return False
         except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         # container is not running
         if docker_container.status != "exited":
@@ -471,7 +471,7 @@ class DockerInterface(CoreSysAttributes):
 
         except (docker.errors.DockerException, ValueError) as err:
             _LOGGER.debug("No version found for %s", self.image)
-            raise DockerAPIError() from err
+            raise DockerNotFound() from err
         except requests.RequestException as err:
             _LOGGER.warning("Communication issues with dockerd on Host: %s", err)
             raise DockerRequestError() from err

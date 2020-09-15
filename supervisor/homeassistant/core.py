@@ -15,7 +15,7 @@ from packaging import version as pkg_version
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.homeassistant import DockerHomeAssistant
 from ..docker.stats import DockerStats
-from ..exceptions import DockerAPIError, HomeAssistantError, HomeAssistantUpdateError
+from ..exceptions import DockerError, HomeAssistantError, HomeAssistantUpdateError
 from ..utils import convert_to_ascii, process_lock
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 )
 
             await self.instance.attach(tag=self.sys_homeassistant.version)
-        except DockerAPIError:
+        except DockerError:
             _LOGGER.info(
                 "No Home Assistant Docker image %s found.", self.sys_homeassistant.image
             )
@@ -85,7 +85,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 await self.instance.install(
                     LANDINGPAGE, image=self.sys_updater.image_homeassistant
                 )
-            except DockerAPIError:
+            except DockerError:
                 _LOGGER.warning("Fails install landingpage, retry after 30sec")
                 await asyncio.sleep(30)
             except Exception as err:  # pylint: disable=broad-except
@@ -117,7 +117,7 @@ class HomeAssistantCore(CoreSysAttributes):
                         tag, image=self.sys_updater.image_homeassistant
                     )
                     break
-                except DockerAPIError:
+                except DockerError:
                     pass
                 except Exception as err:  # pylint: disable=broad-except
                     self.sys_capture_exception(err)
@@ -138,7 +138,7 @@ class HomeAssistantCore(CoreSysAttributes):
             _LOGGER.error("Can't start Home Assistant!")
 
         # Cleanup
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             await self.instance.cleanup()
 
     @process_lock
@@ -162,7 +162,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 await self.instance.update(
                     to_version, image=self.sys_updater.image_homeassistant
                 )
-            except DockerAPIError as err:
+            except DockerError as err:
                 _LOGGER.warning("Update Home Assistant image failed")
                 raise HomeAssistantUpdateError() from err
             else:
@@ -175,7 +175,7 @@ class HomeAssistantCore(CoreSysAttributes):
 
             # Successfull - last step
             self.sys_homeassistant.save_data()
-            with suppress(DockerAPIError):
+            with suppress(DockerError):
                 await self.instance.cleanup(old_image=old_image)
 
         # Update Home Assistant
@@ -212,7 +212,7 @@ class HomeAssistantCore(CoreSysAttributes):
 
         try:
             await self.instance.run()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise HomeAssistantError() from err
 
         await self._block_till_run(self.sys_homeassistant.version)
@@ -228,7 +228,7 @@ class HomeAssistantCore(CoreSysAttributes):
         if await self.instance.is_initialize():
             try:
                 await self.instance.start()
-            except DockerAPIError as err:
+            except DockerError as err:
                 raise HomeAssistantError() from err
 
             await self._block_till_run(self.sys_homeassistant.version)
@@ -244,7 +244,7 @@ class HomeAssistantCore(CoreSysAttributes):
         """
         try:
             return await self.instance.stop(remove_container=False)
-        except DockerAPIError as err:
+        except DockerError as err:
             raise HomeAssistantError() from err
 
     @process_lock
@@ -252,7 +252,7 @@ class HomeAssistantCore(CoreSysAttributes):
         """Restart Home Assistant Docker."""
         try:
             await self.instance.restart()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise HomeAssistantError() from err
 
         await self._block_till_run(self.sys_homeassistant.version)
@@ -260,7 +260,7 @@ class HomeAssistantCore(CoreSysAttributes):
     @process_lock
     async def rebuild(self) -> None:
         """Rebuild Home Assistant Docker container."""
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             await self.instance.stop()
         await self._start()
 
@@ -278,7 +278,7 @@ class HomeAssistantCore(CoreSysAttributes):
         """
         try:
             return await self.instance.stats()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise HomeAssistantError() from err
 
     def is_running(self) -> Awaitable[bool]:
@@ -407,5 +407,5 @@ class HomeAssistantCore(CoreSysAttributes):
         # Pull image
         try:
             await self.instance.install(self.sys_homeassistant.version)
-        except DockerAPIError:
+        except DockerError:
             _LOGGER.error("Repairing of Home Assistant failed")

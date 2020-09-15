@@ -238,15 +238,19 @@ class JsonFileError(HassioError):
 # docker/api
 
 
-class DockerAPIError(HassioError):
+class DockerError(HassioError):
+    """Docker API/Transport errors."""
+
+
+class DockerAPIError(DockerError):
     """Docker API error."""
 
 
-class DockerRequestError(DockerAPIError):
+class DockerRequestError(DockerError):
     """Dockerd OS issues."""
 
 
-class DockerNotFound(DockerAPIError):
+class DockerNotFound(DockerError):
     """Docker object don't Exists."""
 
 

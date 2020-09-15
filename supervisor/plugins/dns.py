@@ -17,7 +17,7 @@ from ..const import ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.dns import DockerDNS
 from ..docker.stats import DockerStats
-from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerAPIError
+from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerError
 from ..utils.json import JsonConfig
 from ..validate import dns_url
 from .const import FILE_HASSIO_DNS
@@ -120,7 +120,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 self.version = await self.instance.get_latest_version()
 
             await self.instance.attach(tag=self.version)
-        except DockerAPIError:
+        except DockerError:
             _LOGGER.info(
                 "No CoreDNS plugin Docker image %s found.", self.instance.image
             )
@@ -162,7 +162,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 await self.sys_updater.reload()
 
             if self.latest_version:
-                with suppress(DockerAPIError):
+                with suppress(DockerError):
                     await self.instance.install(
                         self.latest_version, image=self.sys_updater.image_dns
                     )
@@ -190,7 +190,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         # Update
         try:
             await self.instance.update(version, image=self.sys_updater.image_dns)
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("CoreDNS update failed")
             raise CoreDNSUpdateError() from err
         else:
@@ -199,7 +199,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.save_data()
 
         # Cleanup
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             await self.instance.cleanup(old_image=old_image)
 
         # Start CoreDNS
@@ -211,7 +211,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Restart CoreDNS plugin")
         try:
             await self.instance.restart()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't start CoreDNS plugin")
             raise CoreDNSError() from err
 
@@ -223,7 +223,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Start CoreDNS plugin")
         try:
             await self.instance.run()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't start CoreDNS plugin")
             raise CoreDNSError() from err
 
@@ -232,7 +232,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Stop CoreDNS plugin")
         try:
             await self.instance.stop()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't stop CoreDNS plugin")
             raise CoreDNSError() from err
 
@@ -389,7 +389,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         """Return stats of CoreDNS."""
         try:
             return await self.instance.stats()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise CoreDNSError() from err
 
     def is_running(self) -> Awaitable[bool]:
@@ -414,7 +414,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Repair CoreDNS %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Repairing of CoreDNS failed")
             self.sys_capture_exception(err)
 

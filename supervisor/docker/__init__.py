@@ -11,7 +11,7 @@ from packaging import version as pkg_version
 import requests
 
 from ..const import DNS_SUFFIX, DOCKER_IMAGE_DENYLIST, SOCKET_DOCKER
-from ..exceptions import DockerAPIError, DockerNotFound, DockerRequestError
+from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
 from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -144,10 +144,10 @@ class DockerAPI:
             alias = [hostname] if hostname else None
             try:
                 self.network.attach_container(container, alias=alias, ipv4=ipv4)
-            except DockerAPIError:
+            except DockerError:
                 _LOGGER.warning("Can't attach %s to hassio-net!", name)
             else:
-                with suppress(DockerAPIError):
+                with suppress(DockerError):
                     self.network.detach_default_bridge(container)
 
         # Run container
@@ -196,7 +196,7 @@ class DockerAPI:
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't execute command: %s", err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         finally:
             # cleanup container
@@ -258,7 +258,7 @@ class DockerAPI:
                         denied_images.add(image_name)
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
-            raise DockerAPIError() from err
+            raise DockerError() from err
 
         if not denied_images:
             return False

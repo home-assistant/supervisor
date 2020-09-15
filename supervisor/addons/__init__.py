@@ -13,6 +13,7 @@ from ..exceptions import (
     AddonsNotSupportedError,
     CoreDNSError,
     DockerAPIError,
+    DockerError,
     DockerNotFound,
     DockerRequestError,
     HomeAssistantAPIError,
@@ -164,7 +165,7 @@ class AddonManager(CoreSysAttributes):
 
         try:
             await addon.instance.install(store.version, store.image)
-        except DockerAPIError as err:
+        except DockerError as err:
             self.data.uninstall(addon)
             raise AddonsError() from err
         else:
@@ -185,7 +186,7 @@ class AddonManager(CoreSysAttributes):
 
         try:
             await addon.instance.remove()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise AddonsError() from err
         else:
             addon.state = AddonState.UNKNOWN
@@ -256,9 +257,9 @@ class AddonManager(CoreSysAttributes):
             await addon.instance.update(store.version, store.image)
 
             # Cleanup
-            with suppress(DockerAPIError):
+            with suppress(DockerError):
                 await addon.instance.cleanup()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise AddonsError() from err
         else:
             self.data.update(store)
@@ -296,7 +297,7 @@ class AddonManager(CoreSysAttributes):
         try:
             await addon.instance.remove()
             await addon.instance.install(addon.version)
-        except DockerAPIError as err:
+        except DockerError as err:
             raise AddonsError() from err
         else:
             self.data.update(store)
@@ -348,7 +349,7 @@ class AddonManager(CoreSysAttributes):
                 self.sys_docker.network.stale_cleanup, addon.instance.name
             )
 
-            with suppress(DockerAPIError, KeyError):
+            with suppress(DockerError, KeyError):
                 # Need pull a image again
                 if not addon.need_build:
                     await addon.instance.install(addon.version, addon.image)
@@ -373,7 +374,7 @@ class AddonManager(CoreSysAttributes):
             try:
                 if not await addon.instance.is_running():
                     continue
-            except DockerAPIError as err:
+            except DockerError as err:
                 _LOGGER.warning("Add-on %s is corrupt: %s", addon.slug, err)
                 self.sys_core.healthy = False
                 self.sys_capture_exception(err)

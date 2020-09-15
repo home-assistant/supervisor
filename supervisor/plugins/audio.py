@@ -15,7 +15,7 @@ from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.audio import DockerAudio
 from ..docker.stats import DockerStats
-from ..exceptions import AudioError, AudioUpdateError, DockerAPIError
+from ..exceptions import AudioError, AudioUpdateError, DockerError
 from ..utils.json import JsonConfig
 from .const import FILE_HASSIO_AUDIO
 from .validate import SCHEMA_AUDIO_CONFIG
@@ -92,7 +92,7 @@ class Audio(JsonConfig, CoreSysAttributes):
                 self.version = await self.instance.get_latest_version()
 
             await self.instance.attach(tag=self.version)
-        except DockerAPIError:
+        except DockerError:
             _LOGGER.info("No Audio plugin Docker image %s found.", self.instance.image)
 
             # Install PulseAudio
@@ -131,7 +131,7 @@ class Audio(JsonConfig, CoreSysAttributes):
                 await self.sys_updater.reload()
 
             if self.latest_version:
-                with suppress(DockerAPIError):
+                with suppress(DockerError):
                     await self.instance.install(
                         self.latest_version, image=self.sys_updater.image_audio
                     )
@@ -155,7 +155,7 @@ class Audio(JsonConfig, CoreSysAttributes):
 
         try:
             await self.instance.update(version, image=self.sys_updater.image_audio)
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Audio update failed")
             raise AudioUpdateError() from err
         else:
@@ -164,7 +164,7 @@ class Audio(JsonConfig, CoreSysAttributes):
             self.save_data()
 
         # Cleanup
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             await self.instance.cleanup(old_image=old_image)
 
         # Start Audio
@@ -175,7 +175,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Restart Audio plugin")
         try:
             await self.instance.restart()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't start Audio plugin")
             raise AudioError() from err
 
@@ -184,7 +184,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Start Audio plugin")
         try:
             await self.instance.run()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't start Audio plugin")
             raise AudioError() from err
 
@@ -193,7 +193,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Stop Audio plugin")
         try:
             await self.instance.stop()
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Can't stop Audio plugin")
             raise AudioError() from err
 
@@ -208,7 +208,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         """Return stats of CoreDNS."""
         try:
             return await self.instance.stats()
-        except DockerAPIError as err:
+        except DockerError as err:
             raise AudioError() from err
 
     def is_running(self) -> Awaitable[bool]:
@@ -226,7 +226,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Repair Audio %s", self.version)
         try:
             await self.instance.install(self.version)
-        except DockerAPIError as err:
+        except DockerError as err:
             _LOGGER.error("Repairing of Audio failed")
             self.sys_capture_exception(err)
 
