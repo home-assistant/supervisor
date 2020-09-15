@@ -51,6 +51,7 @@ from ..exceptions import (
     AddonsError,
     AddonsNotSupportedError,
     DockerError,
+    DockerRequestError,
     HostAppArmorError,
     JsonFileError,
 )
@@ -561,6 +562,9 @@ class Addon(AddonModel):
         # Start Add-on
         try:
             await self.instance.run()
+        except DockerRequestError as err:
+            self.state = AddonState.STOPPED
+            raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError(err) from err
@@ -571,6 +575,8 @@ class Addon(AddonModel):
         """Stop add-on."""
         try:
             return await self.instance.stop()
+        except DockerRequestError as err:
+            raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError() from err
