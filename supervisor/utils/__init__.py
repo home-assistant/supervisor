@@ -5,7 +5,7 @@ from ipaddress import IPv4Address
 import logging
 import re
 import socket
-from typing import Optional
+from typing import Any, Optional
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -107,3 +107,17 @@ def check_port(address: IPv4Address, port: int) -> bool:
     except OSError:
         pass
     return False
+
+
+def check_exception_chain(err: Exception, object_type: Any) -> bool:
+    """Check if exception chain include sub exception.
+
+    It's not full recursive because we need mostly only access to the latest.
+    """
+    if issubclass(type(err), object_type):
+        return True
+
+    if not err.__context__:
+        return False
+
+    return check_exception_chain(err.__context__, object_type)

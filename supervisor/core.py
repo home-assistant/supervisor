@@ -93,7 +93,7 @@ class Core(CoreSysAttributes):
             self.sys_config.version == "dev"
             or self.sys_supervisor.instance.version == "dev"
         ):
-            self.supported = False
+            self.healthy = False
             _LOGGER.warning(
                 "Found a development supervisor outside dev channel (%s)",
                 self.sys_updater.channel,

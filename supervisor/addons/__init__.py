@@ -15,11 +15,11 @@ from ..exceptions import (
     DockerAPIError,
     DockerError,
     DockerNotFound,
-    DockerRequestError,
     HomeAssistantAPIError,
     HostAppArmorError,
 )
 from ..store.addon import AddonStore
+from ..utils import check_exception_chain
 from .addon import Addon
 from .data import AddonsData
 
@@ -102,11 +102,13 @@ class AddonManager(CoreSysAttributes):
         for addon in tasks:
             try:
                 await addon.start()
-            except DockerRequestError:
-                pass
-            except (AddonConfigurationError, DockerAPIError, DockerNotFound):
-                addon.boot = AddonBoot.MANUAL
-                addon.save_persist()
+            except AddonsError as err:
+                # Check if there is an system/user issue
+                if check_exception_chain(
+                    err, (DockerAPIError, DockerNotFound, AddonConfigurationError)
+                ):
+                    addon.boot = AddonBoot.MANUAL
+                    addon.save_persist()
             except Exception as err:  # pylint: disable=broad-except
                 self.sys_capture_exception(err)
             else:
