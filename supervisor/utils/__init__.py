@@ -114,7 +114,7 @@ def check_exception_chain(err: Exception, object_type: Any) -> bool:
 
     It's not full recursive because we need mostly only access to the latest.
     """
-    if issubclass(err, object_type):
+    if issubclass(type(err), object_type):
         return True
 
     if not err.__context__:
