@@ -5,8 +5,6 @@ import logging
 import tarfile
 from typing import Dict, List, Optional, Union
 
-from supervisor.utils import check_exception_chain
-
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -21,6 +19,7 @@ from ..exceptions import (
     HostAppArmorError,
 )
 from ..store.addon import AddonStore
+from ..utils import check_exception_chain
 from .addon import Addon
 from .data import AddonsData
 
