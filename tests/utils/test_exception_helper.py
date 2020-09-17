@@ -12,6 +12,15 @@ def test_simple_chain_exception():
         assert check_exception_chain(err, ValueError)
 
 
+def test_simple_chain_exception_not():
+    """Test simple chain of excepiton."""
+
+    try:
+        raise ValueError()
+    except ValueError as err:
+        assert not check_exception_chain(err, KeyError)
+
+
 def test_simple_nested_chain_exception():
     """Test simple nested chain of excepiton."""
 
