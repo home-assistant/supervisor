@@ -58,7 +58,7 @@ class HomeAssistantSecrets(CoreSysAttributes):
                 k: v for k, v in data.items() if isinstance(v, (bool, float, int, str))
             }
 
-        except YAMLError as err:
+        except (YAMLError, AttributeError) as err:
             _LOGGER.error("Can't process Home Assistant secrets: %s", err)
         else:
             _LOGGER.debug("Reload Home Assistant secrets: %s", len(self.secrets))
