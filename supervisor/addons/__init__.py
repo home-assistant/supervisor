@@ -5,6 +5,8 @@ import logging
 import tarfile
 from typing import Dict, List, Optional, Union
 
+from supervisor.utils import check_exception_chain
+
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -15,7 +17,6 @@ from ..exceptions import (
     DockerAPIError,
     DockerError,
     DockerNotFound,
-    DockerRequestError,
     HomeAssistantAPIError,
     HostAppArmorError,
 )
@@ -102,11 +103,13 @@ class AddonManager(CoreSysAttributes):
         for addon in tasks:
             try:
                 await addon.start()
-            except DockerRequestError:
-                pass
-            except (AddonConfigurationError, DockerAPIError, DockerNotFound):
-                addon.boot = AddonBoot.MANUAL
-                addon.save_persist()
+            except AddonsError as err:
+                # Check if there is an system/user issue
+                if check_exception_chain(
+                    err, (DockerAPIError, DockerNotFound, AddonConfigurationError)
+                ):
+                    addon.boot = AddonBoot.MANUAL
+                    addon.save_persist()
             except Exception as err:  # pylint: disable=broad-except
                 self.sys_capture_exception(err)
             else:
