@@ -141,3 +141,12 @@ async def network_interface(dbus):
     await interface.connect(dbus, "/org/freedesktop/NetworkManager/ActiveConnection/1")
     await interface.connection.update_information()
     yield interface
+
+
+@pytest.fixture
+def store_manager(coresys: CoreSys):
+    """Fixture for the store manager."""
+    sm_obj = coresys.store
+    sm_obj.repositories = set(coresys.config.addons_repositories)
+    with patch("supervisor.store.data.StoreData.update", return_value=MagicMock()):
+        yield sm_obj
