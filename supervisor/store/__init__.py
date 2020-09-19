@@ -73,10 +73,12 @@ class StoreManager(CoreSysAttributes):
                 # Verify that it is a add-on repository
                 repository_file = Path(repository.git.path, "repository.json")
                 try:
-                    SCHEMA_REPOSITORY_CONFIG(read_json_file(repository_file))
+                    await self.sys_run_in_executor(
+                        SCHEMA_REPOSITORY_CONFIG, read_json_file(repository_file)
+                    )
                 except (JsonFileError, vol.Invalid) as err:
                     _LOGGER.error("%s is not a valid add-on repository. %s", url, err)
-                    repository.remove()
+                    await self.sys_run_in_executor(repository.remove)
                     return
 
                 self.sys_config.add_addon_repository(url)
