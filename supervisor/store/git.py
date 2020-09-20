@@ -94,7 +94,7 @@ class GitRepo(CoreSysAttributes):
     async def pull(self):
         """Pull Git add-on repo."""
         if self.lock.locked():
-            _LOGGER.warning("It is already a task in progress")
+            _LOGGER.warning("There is already a task in progress")
             return False
 
         async with self.lock:
@@ -131,8 +131,8 @@ class GitRepo(CoreSysAttributes):
     async def _remove(self):
         """Remove a repository."""
         if self.lock.locked():
-            _LOGGER.warning("It is already a task in progress")
-            return False
+            _LOGGER.warning("There is already a task in progress")
+            return
 
         if not self.path.is_dir():
             return
