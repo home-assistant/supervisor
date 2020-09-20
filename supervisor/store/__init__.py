@@ -78,7 +78,7 @@ class StoreManager(CoreSysAttributes):
                     )
                 except (JsonFileError, vol.Invalid) as err:
                     _LOGGER.error("%s is not a valid add-on repository. %s", url, err)
-                    await self.sys_run_in_executor(repository.remove)
+                    await repository.remove()
                     return
 
                 self.sys_config.add_addon_repository(url)
@@ -91,7 +91,7 @@ class StoreManager(CoreSysAttributes):
 
         # del new repository
         for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
-            self.repositories.pop(url).remove()
+            await self.repositories.pop(url).remove()
             self.sys_config.drop_addon_repository(url)
 
         # update data
