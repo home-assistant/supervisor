@@ -142,6 +142,10 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
             await asyncio.shield(self.sys_store.update_repositories(new))
+            if sorted(body[ATTR_ADDONS_REPOSITORIES]) != sorted(
+                self.sys_config.addons_repositories
+            ):
+                raise APIError("Not a valid add-on repository")
 
         self.sys_updater.save_data()
         self.sys_config.save_data()

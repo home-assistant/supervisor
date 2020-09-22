@@ -94,7 +94,7 @@ class GitRepo(CoreSysAttributes):
     async def pull(self):
         """Pull Git add-on repo."""
         if self.lock.locked():
-            _LOGGER.warning("It is already a task in progress")
+            _LOGGER.warning("There is already a task in progress")
             return False
 
         async with self.lock:
@@ -128,8 +128,12 @@ class GitRepo(CoreSysAttributes):
 
             return True
 
-    def _remove(self):
+    async def _remove(self):
         """Remove a repository."""
+        if self.lock.locked():
+            _LOGGER.warning("There is already a task in progress")
+            return
+
         if not self.path.is_dir():
             return
 
@@ -137,7 +141,9 @@ class GitRepo(CoreSysAttributes):
             """Log error."""
             _LOGGER.warning("Can't remove %s", path)
 
-        shutil.rmtree(self.path, onerror=log_err)
+        await self.sys_run_in_executor(
+            ft.partial(shutil.rmtree, self.path, onerror=log_err)
+        )
 
 
 class GitRepoHassIO(GitRepo):
@@ -157,7 +163,7 @@ class GitRepoCustom(GitRepo):
 
         super().__init__(coresys, path, url)
 
-    def remove(self):
+    async def remove(self):
         """Remove a custom repository."""
         _LOGGER.info("Remove custom add-on repository %s", self.url)
-        self._remove()
+        await self._remove()
