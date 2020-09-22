@@ -60,6 +60,11 @@ class NetworkInterface:
         return self.connection.id
 
     @property
+    def uuid(self) -> str:
+        """Return the interface uuid."""
+        return self.connection.uuid
+
+    @property
     def method(self) -> InterfaceMethod:
         """Return the interface method."""
         return InterfaceMethod(self.connection.ip4_config.method)
