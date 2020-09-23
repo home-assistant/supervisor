@@ -203,9 +203,6 @@ class APISnapshots(CoreSysAttributes):
                 self.sys_snapshots.import_snapshot(tar_file)
             )
 
-        # Cleanup tmpdir
-        await self.sys_run_in_executor(temp_dir.cleanup)
-
         if snapshot:
             return {ATTR_SLUG: snapshot.slug}
         return False
