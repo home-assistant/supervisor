@@ -180,29 +180,39 @@ class APISnapshots(CoreSysAttributes):
     @api_process
     async def upload(self, request):
         """Upload a snapshot file."""
-        with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp_dir:
-            tar_file = Path(temp_dir, "snapshot.tar")
-            reader = await request.multipart()
-            contents = await reader.next()
-            try:
-                with tar_file.open("wb") as snapshot:
-                    while True:
-                        chunk = await contents.read_chunk()
-                        if not chunk:
-                            break
-                        snapshot.write(chunk)
+        chunks = []
+        temp_dir = TemporaryDirectory(dir=str(self.sys_config.path_tmp))
 
-            except OSError as err:
-                _LOGGER.error("Can't write new snapshot file: %s", err)
-                return False
+        def _write_chunks():
+            """Write chunks to tempfile and return the filepath."""
+            tar_file = Path(temp_dir.name, "snapshot.tar")
+            with tar_file.open("wb") as snapshot:
+                for chunk in chunks:
+                    snapshot.write(chunk)
+            return tar_file
 
-            except asyncio.CancelledError:
-                return False
+        reader = await request.multipart()
+        contents = await reader.next()
+        try:
+            while True:
+                chunk = await contents.read_chunk()
+                if not chunk:
+                    break
+                chunks.append(chunk)
 
-            snapshot = await asyncio.shield(
-                self.sys_snapshots.import_snapshot(tar_file)
-            )
-
-            if snapshot:
-                return {ATTR_SLUG: snapshot.slug}
+        except OSError as err:
+            _LOGGER.error("Can't write new snapshot file: %s", err)
             return False
+
+        except asyncio.CancelledError:
+            return False
+
+        tar_file = await self.sys_run_in_executor(_write_chunks)
+        snapshot = await asyncio.shield(self.sys_snapshots.import_snapshot(tar_file))
+
+        # Cleanup tmpdir
+        await self.sys_run_in_executor(temp_dir.cleanup)
+
+        if snapshot:
+            return {ATTR_SLUG: snapshot.slug}
+        return False
