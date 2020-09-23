@@ -182,11 +182,15 @@ class APISnapshots(CoreSysAttributes):
         """Upload a snapshot file."""
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp_dir:
             tar_file = Path(temp_dir, "snapshot.tar")
-
+            reader = await request.multipart()
+            contents = await reader.next()
             try:
                 with tar_file.open("wb") as snapshot:
-                    async for data in request.content.iter_any():
-                        snapshot.write(data)
+                    while True:
+                        chunk = await contents.read_chunk()
+                        if not chunk:
+                            break
+                        snapshot.write(chunk)
 
             except OSError as err:
                 _LOGGER.error("Can't write new snapshot file: %s", err)
