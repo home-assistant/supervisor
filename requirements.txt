@@ -4,7 +4,7 @@ attrs==20.2.0
 cchardet==2.1.6
 colorlog==4.2.1
 cpe==1.2.1
-cryptography==3.1
+cryptography==3.1.1
 debugpy==1.0.0rc2
 docker==4.3.1
 gitpython==3.1.8
