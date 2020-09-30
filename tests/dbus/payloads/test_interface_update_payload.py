@@ -18,6 +18,10 @@ async def test_interface_update_payload_ethernet(network_interface):
     assert DBus.parse_gvariant(data)["ipv4"]["method"] == "manual"
     assert DBus.parse_gvariant(data)["ipv4"]["address-data"][0]["address"] == "1.1.1.1"
     assert DBus.parse_gvariant(data)["ipv4"]["dns"] == [16843009, 16777217]
+    assert (
+        DBus.parse_gvariant(data)["connection"]["uuid"]
+        == "0c23631e-2118-355c-bbb0-8943229cb0d6"
+    )
 
 
 @pytest.mark.asyncio

@@ -339,7 +339,7 @@ class DockerInterface(CoreSysAttributes):
         try:
             images_list = self.sys_docker.images.list(name=self.image)
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
+            _LOGGER.warning("Corrupt docker overlayfs found: %s", err)
             raise DockerError() from err
 
         for image in images_list:
@@ -357,7 +357,7 @@ class DockerInterface(CoreSysAttributes):
         try:
             images_list = self.sys_docker.images.list(name=old_image)
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.waring("Corrupt docker overlayfs found: %s", err)
+            _LOGGER.warning("Corrupt docker overlayfs found: %s", err)
             raise DockerError() from err
 
         for image in images_list:

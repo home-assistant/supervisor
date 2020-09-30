@@ -43,3 +43,15 @@ def test_list_nested_chain_exception():
             raise KeyError() from err
     except KeyError as err:
         assert check_exception_chain(err, (ValueError, OSError))
+
+
+def test_list_nested_chain_exception_not():
+    """Test list nested chain of excepiton."""
+
+    try:
+        try:
+            raise ValueError()
+        except ValueError as err:
+            raise KeyError() from err
+    except KeyError as err:
+        assert not check_exception_chain(err, (AssertionError, OSError))
