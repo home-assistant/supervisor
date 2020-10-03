@@ -138,7 +138,7 @@ class Snapshot(CoreSysAttributes):
     @property
     def docker(self):
         """Return snapshot Docker config data."""
-        return self._data[ATTR_DOCKER]
+        return self._data.get(ATTR_DOCKER) is not None
 
     @docker.setter
     def docker(self, value):
@@ -510,13 +510,14 @@ class Snapshot(CoreSysAttributes):
 
     def restore_dockerconfig(self):
         """Restore the configuration for Docker."""
-        self.sys_docker.config.registries.update(
-            {
-                registry: {
-                    ATTR_USERNAME: credentials[ATTR_USERNAME],
-                    ATTR_PASSWORD: self._decrypt_data(credentials[ATTR_PASSWORD]),
+        if ATTR_REGISTRIES in self.docker:
+            self.sys_docker.config.registries.update(
+                {
+                    registry: {
+                        ATTR_USERNAME: credentials[ATTR_USERNAME],
+                        ATTR_PASSWORD: self._decrypt_data(credentials[ATTR_PASSWORD]),
+                    }
+                    for registry, credentials in self.docker[ATTR_REGISTRIES].items()
                 }
-                for registry, credentials in self.docker[ATTR_REGISTRIES].items()
-            }
-        )
-        self.sys_docker.config.save_data()
+            )
+            self.sys_docker.config.save_data()
