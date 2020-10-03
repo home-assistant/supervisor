@@ -235,13 +235,13 @@ class SnapshotManager(CoreSysAttributes):
                     self.sys_homeassistant.core.update(snapshot.homeassistant_version)
                 )
 
-                # Restore repositories
-                _LOGGER.info("Restore %s run Repositories", snapshot.slug)
-                await snapshot.restore_repositories()
-
                 # Restore docker config
                 _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
                 await snapshot.restore_dockerconfig()
+
+                # Restore repositories
+                _LOGGER.info("Restore %s run Repositories", snapshot.slug)
+                await snapshot.restore_repositories()
 
                 # Delete delta add-ons
                 _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
