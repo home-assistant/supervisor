@@ -82,7 +82,7 @@ class DockerConfig(JsonConfig):
     @property
     def registries(self) -> Dict[str, Any]:
         """Return credentials for docker registries."""
-        return self._data[ATTR_REGISTRIES]
+        return self._data.get(ATTR_REGISTRIES, {})
 
 
 class DockerAPI:
