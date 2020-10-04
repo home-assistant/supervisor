@@ -228,16 +228,16 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Restore %s run folders", snapshot.slug)
                 await snapshot.restore_folders()
 
+                # Restore docker config
+                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                snapshot.restore_dockerconfig()
+
                 # Start homeassistant restore
                 _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
                 task_hass = self.sys_create_task(
                     self.sys_homeassistant.core.update(snapshot.homeassistant_version)
                 )
-
-                # Restore docker config
-                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
-                await snapshot.restore_dockerconfig()
 
                 # Restore repositories
                 _LOGGER.info("Restore %s run Repositories", snapshot.slug)
@@ -298,6 +298,10 @@ class SnapshotManager(CoreSysAttributes):
             await self.lock.acquire()
 
             async with snapshot:
+                # Restore docker config
+                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                snapshot.restore_dockerconfig()
+
                 # Stop Home-Assistant for config restore
                 if FOLDER_HOMEASSISTANT in folders:
                     await self.sys_homeassistant.core.stop()
@@ -317,10 +321,6 @@ class SnapshotManager(CoreSysAttributes):
                             snapshot.homeassistant_version
                         )
                     )
-
-                # Restore docker config
-                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
-                snapshot.restore_dockerconfig()
 
                 if addons:
                     _LOGGER.info("Restore %s run Repositories", snapshot.slug)
