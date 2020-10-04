@@ -1237,7 +1237,7 @@ We support:
 ### Docker Registries
 
 You can configure password-protected Docker registries that can be used as a
-source when pulling add-ons.
+source when pulling docker images.
 
 - GET `/docker/registries`
 
