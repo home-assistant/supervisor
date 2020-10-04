@@ -302,7 +302,6 @@ class SnapshotManager(CoreSysAttributes):
                 if FOLDER_HOMEASSISTANT in folders:
                     await self.sys_homeassistant.core.stop()
                     snapshot.restore_homeassistant()
-                    snapshot.restore_dockerconfig()
 
                 # Process folders
                 if folders:
@@ -318,6 +317,10 @@ class SnapshotManager(CoreSysAttributes):
                             snapshot.homeassistant_version
                         )
                     )
+
+                # Restore docker config
+                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                snapshot.restore_dockerconfig()
 
                 if addons:
                     _LOGGER.info("Restore %s run Repositories", snapshot.slug)
