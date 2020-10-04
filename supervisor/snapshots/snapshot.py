@@ -138,7 +138,7 @@ class Snapshot(CoreSysAttributes):
     @property
     def docker(self):
         """Return snapshot Docker config data."""
-        return self._data.get(ATTR_DOCKER) is not None
+        return self._data.get(ATTR_DOCKER, {})
 
     @docker.setter
     def docker(self, value):
