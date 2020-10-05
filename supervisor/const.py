@@ -380,7 +380,9 @@ class AddonState(str, Enum):
     """State of add-on."""
 
     STARTED = "started"
+    STARTING = "starting"
     STOPPED = "stopped"
+    STOPPING = "stopping"
     UNKNOWN = "unknown"
     ERROR = "error"
 

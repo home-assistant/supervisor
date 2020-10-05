@@ -561,6 +561,7 @@ class Addon(AddonModel):
 
         # Start Add-on
         try:
+            self.state = AddonState.STARTING
             await self.instance.run()
         except DockerRequestError as err:
             self.state = AddonState.STOPPED
@@ -568,20 +569,21 @@ class Addon(AddonModel):
         except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError(err) from err
-        else:
-            self.state = AddonState.STARTED
+
+        self.state = AddonState.STARTED
 
     async def stop(self) -> None:
         """Stop add-on."""
         try:
-            return await self.instance.stop()
+            self.state = AddonState.STOPPING
+            result = await self.instance.stop()
+            self.state = AddonState.STOPPED
+            return result
         except DockerRequestError as err:
             raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError() from err
-        else:
-            self.state = AddonState.STOPPED
 
     async def restart(self) -> None:
         """Restart add-on."""

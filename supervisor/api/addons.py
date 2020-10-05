@@ -390,6 +390,8 @@ class APIAddons(CoreSysAttributes):
     def update(self, request: web.Request) -> Awaitable[None]:
         """Update add-on."""
         addon: Addon = self._extract_addon_installed(request)
+        if addon.state in [AddonState.STARTING, AddonState.STOPPING]:
+            raise APIError(f"Add-on is {addon.state }")
         return asyncio.shield(addon.update())
 
     @api_process
