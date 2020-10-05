@@ -44,6 +44,7 @@ class SnapshotManager(CoreSysAttributes):
         # set general data
         snapshot.store_homeassistant()
         snapshot.store_repositories()
+        snapshot.store_dockerconfig()
 
         return snapshot
 
@@ -227,6 +228,10 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Restore %s run folders", snapshot.slug)
                 await snapshot.restore_folders()
 
+                # Restore docker config
+                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                snapshot.restore_dockerconfig()
+
                 # Start homeassistant restore
                 _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
@@ -293,6 +298,10 @@ class SnapshotManager(CoreSysAttributes):
             await self.lock.acquire()
 
             async with snapshot:
+                # Restore docker config
+                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                snapshot.restore_dockerconfig()
+
                 # Stop Home-Assistant for config restore
                 if FOLDER_HOMEASSISTANT in folders:
                     await self.sys_homeassistant.core.stop()
