@@ -6,6 +6,7 @@ from aiohttp import web
 from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.addons.addon import Addon
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.coresys import CoreSys
@@ -150,3 +151,19 @@ def store_manager(coresys: CoreSys):
     sm_obj.repositories = set(coresys.config.addons_repositories)
     with patch("supervisor.store.data.StoreData.update", return_value=MagicMock()):
         yield sm_obj
+
+
+@pytest.fixture
+def addon(coresys: CoreSys):
+    """Add-on fixture."""
+    addon_obj = Addon(coresys, "test_addon")
+    addon_obj.instance = MagicMock()
+    addon_obj.sys_addons.local = {addon_obj.slug: addon_obj}
+    addon_obj.sys_addons.store = {addon_obj.slug: addon_obj}
+    addon_obj.sys_addons.data._data = {
+        "user": {addon_obj.slug: {"version": "1.0.0"}},
+        "system": {},
+    }
+    addon_obj.sys_store.data.addons = {addon_obj.slug: {}}
+
+    yield addon_obj

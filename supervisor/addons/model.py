@@ -69,8 +69,10 @@ from ..const import (
     AddonBoot,
     AddonStage,
     AddonStartup,
+    AddonState,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import AddonsError
 from .validate import RE_SERVICE, RE_VOLUME, schema_ui_options, validate_options
 
 Data = Dict[str, Any]
@@ -83,6 +85,7 @@ class AddonModel(CoreSysAttributes, ABC):
         """Initialize data holder."""
         self.coresys: CoreSys = coresys
         self.slug: str = slug
+        self.state: AddonState = AddonState.UNKNOWN
 
     @property
     @abstractmethod
@@ -585,6 +588,10 @@ class AddonModel(CoreSysAttributes, ABC):
 
     def update(self) -> Awaitable[None]:
         """Update this add-on."""
+        if self.state in [AddonState.STARTING, AddonState.STOPPING]:
+            raise AddonsError(
+                f"Add-on is {self.state }, this is not a valid state for updates"
+            )
         return self.sys_addons.update(self.slug)
 
     def rebuild(self) -> Awaitable[None]:

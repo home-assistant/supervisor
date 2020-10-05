@@ -87,7 +87,6 @@ class Addon(AddonModel):
         """Initialize data holder."""
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
-        self.state: AddonState = AddonState.UNKNOWN
 
     def __repr__(self) -> str:
         """Return internal representation."""
