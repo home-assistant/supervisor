@@ -71,15 +71,13 @@ def test_is_exclude_by_filter_bad():
 
 def test_create_pure_tar(tmp_path):
     """Test to create a tar file without encryption."""
-    temp = Path(tmp_path)
-
     # Prepair test folder
-    temp_orig = temp.joinpath("orig")
+    temp_orig = tmp_path.joinpath("orig")
     fixture_data = Path(__file__).parents[1].joinpath("fixtures/tar_data")
     shutil.copytree(fixture_data, temp_orig, symlinks=True)
 
     # Create Tarfile
-    temp_tar = temp.joinpath("backup.tar")
+    temp_tar = tmp_path.joinpath("backup.tar")
     with SecureTarFile(temp_tar, "w") as tar_file:
         atomic_contents_add(
             tar_file,
@@ -91,7 +89,7 @@ def test_create_pure_tar(tmp_path):
     assert temp_tar.exists()
 
     # Restore
-    temp_new = temp.joinpath("new")
+    temp_new = tmp_path.joinpath("new")
     with SecureTarFile(temp_tar, "r") as tar_file:
         tar_file.extractall(path=temp_new, members=tar_file)
 
@@ -110,16 +108,15 @@ def test_create_pure_tar(tmp_path):
 
 def test_create_ecrypted_tar(tmp_path):
     """Test to create a tar file with encryption."""
-    temp = Path(tmp_path)
     key = os.urandom(16)
 
     # Prepair test folder
-    temp_orig = temp.joinpath("orig")
+    temp_orig = tmp_path.joinpath("orig")
     fixture_data = Path(__file__).parents[1].joinpath("fixtures/tar_data")
     shutil.copytree(fixture_data, temp_orig, symlinks=True)
 
     # Create Tarfile
-    temp_tar = temp.joinpath("backup.tar")
+    temp_tar = tmp_path.joinpath("backup.tar")
     with SecureTarFile(temp_tar, "w", key=key) as tar_file:
         atomic_contents_add(
             tar_file,
@@ -131,7 +128,7 @@ def test_create_ecrypted_tar(tmp_path):
     assert temp_tar.exists()
 
     # Restore
-    temp_new = temp.joinpath("new")
+    temp_new = tmp_path.joinpath("new")
     with SecureTarFile(temp_tar, "r", key=key) as tar_file:
         tar_file.extractall(path=temp_new, members=tar_file)
 
