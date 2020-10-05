@@ -101,7 +101,12 @@ def test_create_pure_tar():
         assert temp_new.joinpath("test_symlink").is_symlink()
         assert temp_new.joinpath("test1").is_dir()
         assert temp_new.joinpath("test1/script.sh").is_file()
-        assert oct(temp_new.joinpath("test1/script.sh").stat().st_mode)[-3:] == "775"
+
+        # 775 is correct for local, but in GitHub action it's 755, both is fine
+        assert oct(temp_new.joinpath("test1/script.sh").stat().st_mode)[-3:] in [
+            "755",
+            "775",
+        ]
         assert temp_new.joinpath("README.md").is_file()
 
 
@@ -137,5 +142,10 @@ def test_create_ecrypted_tar():
         assert temp_new.joinpath("test_symlink").is_symlink()
         assert temp_new.joinpath("test1").is_dir()
         assert temp_new.joinpath("test1/script.sh").is_file()
-        assert oct(temp_new.joinpath("test1/script.sh").stat().st_mode)[-3:] == "775"
+
+        # 775 is correct for local, but in GitHub action it's 755, both is fine
+        assert oct(temp_new.joinpath("test1/script.sh").stat().st_mode)[-3:] in [
+            "755",
+            "775",
+        ]
         assert temp_new.joinpath("README.md").is_file()
