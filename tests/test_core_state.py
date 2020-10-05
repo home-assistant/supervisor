@@ -1,6 +1,5 @@
 """Testing handling with CoreState."""
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import pytest
@@ -11,12 +10,10 @@ from supervisor.const import CoreState
 
 
 @pytest.fixture
-def run_dir():
+def run_dir(tmp_path):
     """Fixture to inject hassio env."""
-    with patch(
-        "supervisor.core.RUN_SUPERVISOR_STATE"
-    ) as mock_run, TemporaryDirectory() as tmp_run:
-        tmp_state = Path(tmp_run, "supervisor")
+    with patch("supervisor.core.RUN_SUPERVISOR_STATE") as mock_run:
+        tmp_state = Path(tmp_path, "supervisor")
         mock_run.write_text = tmp_state.write_text
         yield tmp_state
 
