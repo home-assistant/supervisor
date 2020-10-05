@@ -27,13 +27,16 @@ from .const import (
     ATTR_LOGGING,
     ATTR_MULTICAST,
     ATTR_OBSERVER,
+    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PORTS,
     ATTR_REFRESH_TOKEN,
+    ATTR_REGISTRIES,
     ATTR_SESSION,
     ATTR_SSL,
     ATTR_SUPERVISOR,
     ATTR_TIMEZONE,
+    ATTR_USERNAME,
     ATTR_UUID,
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
@@ -45,6 +48,7 @@ from .const import (
 from .utils.validate import validate_timezone
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
+RE_REGISTRY = re.compile(r"^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$")
 
 # pylint: disable=no-value-for-parameter
 # pylint: disable=invalid-name
@@ -178,6 +182,20 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
         vol.Optional(ATTR_DIAGNOSTICS, default=None): vol.Maybe(vol.Boolean()),
     },
     extra=vol.REMOVE_EXTRA,
+)
+
+
+SCHEMA_DOCKER_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_REGISTRIES, default=dict): vol.Schema(
+            {
+                vol.All(str, vol.Match(RE_REGISTRY)): {
+                    vol.Required(ATTR_USERNAME): str,
+                    vol.Required(ATTR_PASSWORD): str,
+                }
+            }
+        )
+    }
 )
 
 

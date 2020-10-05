@@ -12,6 +12,7 @@ from .auth import APIAuth
 from .cli import APICli
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
+from .docker import APIDocker
 from .hardware import APIHardware
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
@@ -71,6 +72,7 @@ class RestAPI(CoreSysAttributes):
         self._register_auth()
         self._register_dns()
         self._register_audio()
+        self._register_docker()
 
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
@@ -407,6 +409,21 @@ class RestAPI(CoreSysAttributes):
         """Register panel for Home Assistant."""
         panel_dir = Path(__file__).parent.joinpath("panel")
         self.webapp.add_routes([web.static("/app", panel_dir)])
+
+    def _register_docker(self) -> None:
+        """Register docker configuration functions."""
+        api_docker = APIDocker()
+        api_docker.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/docker/registries", api_docker.registries),
+                web.post("/docker/registries", api_docker.create_registry),
+                web.post(
+                    "/docker/registries/{hostname}/remove", api_docker.remove_registry
+                ),
+            ]
+        )
 
     async def start(self) -> None:
         """Run RESTful API webserver."""

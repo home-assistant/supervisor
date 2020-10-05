@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import suppress
 import logging
+import re
 from typing import Any, Awaitable, Dict, List, Optional
 
 import docker
@@ -9,13 +10,15 @@ from packaging import version as pkg_version
 import requests
 
 from . import CommandReturn
-from ..const import LABEL_ARCH, LABEL_VERSION
+from ..const import ATTR_PASSWORD, ATTR_USERNAME, LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
 from ..utils import process_lock
 from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
 
 
 class DockerInterface(CoreSysAttributes):
@@ -84,6 +87,17 @@ class DockerInterface(CoreSysAttributes):
         """Pull docker image."""
         return self.sys_run_in_executor(self._install, tag, image, latest)
 
+    def _docker_login(self, hostname: str) -> None:
+        """Try to log in to the registry if there are credentials available."""
+        if hostname in self.sys_docker.config.registries:
+            credentials = self.sys_docker.config.registries[hostname]
+
+            self.sys_docker.docker.login(
+                registry=hostname,
+                username=credentials[ATTR_USERNAME],
+                password=credentials[ATTR_PASSWORD],
+            )
+
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
     ) -> None:
@@ -95,6 +109,10 @@ class DockerInterface(CoreSysAttributes):
 
         _LOGGER.info("Pull image %s tag %s.", image, tag)
         try:
+            # If the image name contains a path to a registry, try to log in
+            path = IMAGE_WITH_HOST.match(image)
+            if path:
+                self._docker_login(path.group(1))
             docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
             if latest:
                 _LOGGER.info("Tag image %s with version %s as latest", image, tag)
