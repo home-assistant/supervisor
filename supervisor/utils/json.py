@@ -18,6 +18,7 @@ def write_json_file(jsonfile: Path, data: Any) -> None:
     """Write a JSON file."""
     try:
         jsonfile.write_text(json.dumps(data, indent=2))
+        jsonfile.chmod(0o600)
     except (OSError, ValueError, TypeError) as err:
         _LOGGER.error("Can't write %s: %s", jsonfile, err)
         raise JsonFileError() from err
