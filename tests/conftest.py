@@ -31,8 +31,19 @@ def docker() -> DockerAPI:
         "supervisor.docker.DockerAPI.api", return_value=MagicMock()
     ), patch(
         "supervisor.docker.DockerAPI.images.list", return_value=images
+    ), patch(
+        "supervisor.docker.DockerAPI.info",
+        return_value=MagicMock(),
+    ), patch(
+        "supervisor.docker.DockerConfig",
+        return_value=MagicMock(),
     ):
         docker_obj = DockerAPI()
+        docker_obj.info.logging = "journald"
+        docker_obj.info.storage = "overlay2"
+        docker_obj.info.version = "1.0.0"
+
+        docker_obj.config.registries = {}
 
         yield docker_obj
 
@@ -105,6 +116,9 @@ async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSy
     coresys_obj._dbus = dbus
     coresys_obj._dbus.network = network_manager
 
+    # Mock docker
+    coresys_obj._docker = docker
+
     yield coresys_obj
 
 
@@ -126,7 +140,7 @@ def sys_supervisor():
 
 
 @pytest.fixture
-async def api_client(aiohttp_client, coresys):
+async def api_client(aiohttp_client, coresys: CoreSys):
     """Fixture for RestAPI client."""
     api = RestAPI(coresys)
     api.webapp = web.Application()

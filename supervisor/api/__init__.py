@@ -52,27 +52,27 @@ class RestAPI(CoreSysAttributes):
 
     async def load(self) -> None:
         """Register REST API Calls."""
-        self._register_supervisor()
-        self._register_host()
-        self._register_os()
+        self._register_addons()
+        self._register_audio()
+        self._register_auth()
         self._register_cli()
-        self._register_observer()
-        self._register_multicast()
-        self._register_network()
+        self._register_discovery()
+        self._register_dns()
+        self._register_docker()
         self._register_hardware()
         self._register_homeassistant()
-        self._register_proxy()
-        self._register_panel()
-        self._register_addons()
-        self._register_ingress()
-        self._register_snapshots()
-        self._register_discovery()
-        self._register_services()
+        self._register_host()
         self._register_info()
-        self._register_auth()
-        self._register_dns()
-        self._register_audio()
-        self._register_docker()
+        self._register_ingress()
+        self._register_multicast()
+        self._register_network()
+        self._register_observer()
+        self._register_os()
+        self._register_panel()
+        self._register_proxy()
+        self._register_services()
+        self._register_snapshots()
+        self._register_supervisor()
 
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
@@ -417,6 +417,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                web.get("/docker/info", api_docker.info),
                 web.get("/docker/registries", api_docker.registries),
                 web.post("/docker/registries", api_docker.create_registry),
                 web.post(
