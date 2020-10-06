@@ -17,7 +17,14 @@ from ..const import (
     RESULT_ERROR,
     RESULT_OK,
 )
-from ..exceptions import APIError, APIForbidden, HassioError
+from ..exceptions import (
+    APIError,
+    APIForbidden,
+    DockerAPIError,
+    DockerRequestError,
+    HassioError,
+)
+from ..utils import check_exception_chain
 from ..utils.log_format import format_message
 
 
@@ -57,12 +64,8 @@ def api_process(method):
         """Return API information."""
         try:
             answer = await method(api, *args, **kwargs)
-        except (APIError, APIForbidden) as err:
-            return api_return_error(message=str(err))
-        except HassioError as err:
-            return api_return_error(
-                message=str(err) if err else "Unknown Error, see logs"
-            )
+        except (APIError, APIForbidden, HassioError) as err:
+            return api_return_error(error=err)
 
         if isinstance(answer, dict):
             return api_return_ok(data=answer)
@@ -100,10 +103,17 @@ def api_process_raw(content):
     return wrap_method
 
 
-def api_return_error(message: Optional[str] = None) -> web.Response:
+def api_return_error(error: Optional[Any] = None) -> web.Response:
     """Return an API error message."""
+    message = str(error)
+    if check_exception_chain(error, (DockerRequestError, DockerAPIError)):
+        message = format_message(message)
     return web.json_response(
-        {JSON_RESULT: RESULT_ERROR, JSON_MESSAGE: format_message(message)}, status=400
+        {
+            JSON_RESULT: RESULT_ERROR,
+            JSON_MESSAGE: message or "Unknown error, see supervisor logs",
+        },
+        status=400,
     )
 
 
