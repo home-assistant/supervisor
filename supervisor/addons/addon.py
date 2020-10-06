@@ -567,7 +567,7 @@ class Addon(AddonModel):
             raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
-            raise AddonsError(err) from err
+            raise AddonsError() from err
         else:
             self.state = AddonState.STARTED
 

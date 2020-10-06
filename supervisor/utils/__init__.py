@@ -121,3 +121,14 @@ def check_exception_chain(err: Exception, object_type: Any) -> bool:
         return False
 
     return check_exception_chain(err.__context__, object_type)
+
+
+def get_message_from_exception_chain(err: Exception) -> str:
+    """Get the first message from the exception chain."""
+    if str(err):
+        return str(err)
+
+    if not err.__context__:
+        return ""
+
+    return get_message_from_exception_chain(err.__context__)
