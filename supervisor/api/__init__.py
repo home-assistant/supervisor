@@ -420,9 +420,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/docker/info", api_docker.info),
                 web.get("/docker/registries", api_docker.registries),
                 web.post("/docker/registries", api_docker.create_registry),
-                web.post(
-                    "/docker/registries/{hostname}/remove", api_docker.remove_registry
-                ),
+                web.delete("/docker/registries/{hostname}", api_docker.remove_registry),
             ]
         )
 
