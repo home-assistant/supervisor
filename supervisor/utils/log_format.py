@@ -6,7 +6,9 @@ import sentry_sdk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-RE_BIND_FAILED = re.compile(r".*Bind for.*:(\d*) failed: port is already allocated.*")
+RE_BIND_FAILED = re.compile(
+    r".*[listen tcp|Bind for].*(?:[0-9]{1,3}\.){3}[0-9]{1,3}:(\d*).*[bind|failed]:[address already in use|port is already allocated].*"
+)
 
 
 def format_message(message: str) -> str:
