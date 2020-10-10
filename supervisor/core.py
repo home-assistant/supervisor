@@ -12,6 +12,7 @@ from .const import (
     SUPERVISED_SUPPORTED_OS,
     AddonStartup,
     CoreState,
+    HostFeature,
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
@@ -161,16 +162,21 @@ class Core(CoreSysAttributes):
                     self.sys_host.info.operating_system,
                 )
 
-        # Check all DBUS connectivity
-        if not self.sys_dbus.hostname.is_connected:
+        # Check Host features
+        if HostFeature.NETWORK not in self.sys_host.supported_features:
             self.supported = False
-            _LOGGER.error("Hostname DBUS is not connected")
-        if not self.sys_dbus.network.is_connected:
+            _LOGGER.error("NetworkManager is not correct working")
+        if any(
+            feature not in self.sys_host.supported_features
+            for feature in (
+                HostFeature.HOSTNAME,
+                HostFeature.SERVICES,
+                HostFeature.SHUTDOWN,
+                HostFeature.REBOOT,
+            )
+        ):
             self.supported = False
-            _LOGGER.error("NetworkManager  is not connected")
-        if not self.sys_dbus.systemd.is_connected:
-            self.supported = False
-            _LOGGER.error("Systemd DBUS is not connected")
+            _LOGGER.error("Systemd is not correct working")
 
         # Check if image names from denylist exist
         try:
