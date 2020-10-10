@@ -163,11 +163,11 @@ class Core(CoreSysAttributes):
                 )
 
         # Check Host features
-        if HostFeature.NETWORK not in self.sys_host.features:
+        if HostFeature.NETWORK not in self.sys_host.supported_features:
             self.supported = False
             _LOGGER.error("NetworkManager is not correct working")
         if any(
-            feature not in self.sys_host.features
+            feature not in self.sys_host.supported_features
             for feature in (
                 HostFeature.HOSTNAME,
                 HostFeature.SERVICES,
