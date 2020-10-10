@@ -165,13 +165,18 @@ class Core(CoreSysAttributes):
         # Check Host features
         if HostFeature.NETWORK not in self.sys_host.features:
             self.supported = False
-            _LOGGER.error("NetworkManager is not working")
-        if (
-            not self.sys_dbus.systemd.is_connected
-            or self.sys_dbus.hostname.is_connected
+            _LOGGER.error("NetworkManager is not correct working")
+        if any(
+            feature not in self.sys_host.features
+            for feature in (
+                HostFeature.HOSTNAME,
+                HostFeature.SERVICES,
+                HostFeature.SHUTDOWN,
+                HostFeature.REBOOT,
+            )
         ):
             self.supported = False
-            _LOGGER.error("Systemd DBUS is not connected")
+            _LOGGER.error("Systemd is not correct working")
 
         # Check if image names from denylist exist
         try:
