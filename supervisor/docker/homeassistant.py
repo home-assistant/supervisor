@@ -1,13 +1,13 @@
 """Init file for Supervisor Docker object."""
-from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
 from typing import Awaitable, Dict, Optional
 
 import docker
+import requests
 
-from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_OLD, LABEL_MACHINE
-from ..exceptions import DockerAPIError
+from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_HASSIO, LABEL_MACHINE, MACHINE_ID
+from ..exceptions import DockerError
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Return Volumes for the mount."""
-        volumes = {}
+        volumes = {"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}}
 
         # Add folders
         volumes.update(
@@ -62,8 +62,16 @@ class DockerHomeAssistant(DockerInterface):
                     "bind": "/share",
                     "mode": "rw",
                 },
+                str(self.sys_config.path_extern_media): {
+                    "bind": "/media",
+                    "mode": "rw",
+                },
             }
         )
+
+        # Machine ID
+        if MACHINE_ID.exists():
+            volumes.update({str(MACHINE_ID): {"bind": str(MACHINE_ID), "mode": "ro"}})
 
         # Configuration Audio
         volumes.update(
@@ -94,8 +102,7 @@ class DockerHomeAssistant(DockerInterface):
             return
 
         # Cleanup
-        with suppress(DockerAPIError):
-            self._stop()
+        self._stop()
 
         # Create & Run container
         docker_container = self.sys_docker.run(
@@ -108,12 +115,16 @@ class DockerHomeAssistant(DockerInterface):
             init=False,
             network_mode="host",
             volumes=self.volumes,
+            extra_hosts={
+                "supervisor": self.sys_docker.network.supervisor,
+                "observer": self.sys_docker.network.observer,
+            },
             environment={
                 "HASSIO": self.sys_docker.network.supervisor,
                 "SUPERVISOR": self.sys_docker.network.supervisor,
-                ENV_TIME: self.sys_timezone,
+                ENV_TIME: self.sys_config.timezone,
                 ENV_TOKEN: self.sys_homeassistant.supervisor_token,
-                ENV_TOKEN_OLD: self.sys_homeassistant.supervisor_token,
+                ENV_TOKEN_HASSIO: self.sys_homeassistant.supervisor_token,
             },
         )
 
@@ -146,7 +157,7 @@ class DockerHomeAssistant(DockerInterface):
                     "mode": "ro",
                 },
             },
-            environment={ENV_TIME: self.sys_timezone},
+            environment={ENV_TIME: self.sys_config.timezone},
         )
 
     def is_initialize(self) -> Awaitable[bool]:
@@ -163,8 +174,10 @@ class DockerHomeAssistant(DockerInterface):
             docker_image = self.sys_docker.images.get(
                 f"{self.image}:{self.sys_homeassistant.version}"
             )
-        except docker.errors.DockerException:
+        except docker.errors.NotFound:
             return False
+        except (docker.errors.DockerException, requests.RequestException):
+            return DockerError()
 
         # we run on an old image, stop and start it
         if docker_container.image.id != docker_image.id:

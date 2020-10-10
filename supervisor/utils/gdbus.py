@@ -10,6 +10,8 @@ from signal import SIGINT
 from typing import Any, Dict, List, Optional, Set
 import xml.etree.ElementTree as ET
 
+import sentry_sdk
+
 from ..exceptions import (
     DBusFatalError,
     DBusInterfaceError,
@@ -22,7 +24,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # Use to convert GVariant into json
 RE_GVARIANT_TYPE: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(boolean|byte|int16|uint16|int32|uint32|handle|int64|uint64|double|"
-    r"string|objectpath|signature|@[asviumodf\{\}]+) "
+    r"string|objectpath|signature|@[asviumodfy\{\}\(\)]+) "
 )
 RE_GVARIANT_VARIANT: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(<|>)")
 RE_GVARIANT_STRING_ESC: re.Pattern[Any] = re.compile(
@@ -31,28 +33,49 @@ RE_GVARIANT_STRING_ESC: re.Pattern[Any] = re.compile(
 RE_GVARIANT_STRING: re.Pattern[Any] = re.compile(
     r"(?<=(?: |{|\[|\(|<))'(.*?)'(?=(?:|]|}|,|\)|>))"
 )
+RE_GVARIANT_BINARY: re.Pattern[Any] = re.compile(
+    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|\[byte (.*?)\]"
+)
+RE_GVARIANT_BINARY_STRING: re.Pattern[Any] = re.compile(
+    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|<?b\'(.*?)\'>?"
+)
 RE_GVARIANT_TUPLE_O: re.Pattern[Any] = re.compile(r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(\()")
 RE_GVARIANT_TUPLE_C: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|(,?\))"
 )
+
+RE_BIN_STRING_OCT: re.Pattern[Any] = re.compile(r"\\\\(\d{3})")
+RE_BIN_STRING_HEX: re.Pattern[Any] = re.compile(r"\\\\x(\d{2})")
 
 RE_MONITOR_OUTPUT: re.Pattern[Any] = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
 
 # Map GDBus to errors
 MAP_GDBUS_ERROR: Dict[str, Any] = {
     "GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown": DBusInterfaceError,
+    "GDBus.Error:org.freedesktop.DBus.Error.Spawn.ChildExited": DBusFatalError,
     "No such file or directory": DBusNotConnectedError,
 }
 
 # Commands for dbus
-INTROSPECT: str = "gdbus introspect --system --dest {bus} " "--object-path {object} --xml"
-CALL: str = (
-    "gdbus call --system --dest {bus} --object-path {object} "
-    "--method {method} {args}"
-)
+INTROSPECT: str = "gdbus introspect --system --dest {bus} --object-path {object} --xml"
+CALL: str = "gdbus call --system --dest {bus} --object-path {object} --timeout 10 --method {method} {args}"
 MONITOR: str = "gdbus monitor --system --dest {bus}"
+WAIT: str = "gdbus wait --system --activate {bus} --timeout 5 {bus}"
 
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
+
+
+def _convert_bytes(value: str) -> str:
+    """Convert bytes to string or byte-array."""
+    data: bytes = bytes(int(char, 0) for char in value.split(", "))
+    return f"[{', '.join(str(char) for char in data)}]"
+
+
+def _convert_bytes_string(value: str) -> str:
+    """Convert bytes to string or byte-array."""
+    data = RE_BIN_STRING_OCT.sub(lambda x: chr(int(x.group(1), 8)), value)
+    data = RE_BIN_STRING_HEX.sub(lambda x: chr(int(f"0x{x.group(1)}", 0)), data)
+    return f"[{', '.join(str(char) for char in list(char for char in data.encode()))}]"
 
 
 class DBus:
@@ -73,23 +96,26 @@ class DBus:
         # pylint: disable=protected-access
         await self._init_proxy()
 
-        _LOGGER.info("Connect to dbus: %s - %s", bus_name, object_path)
+        _LOGGER.debug("Connect to dbus: %s - %s", bus_name, object_path)
         return self
 
     async def _init_proxy(self) -> None:
         """Read interface data."""
-        command = shlex.split(
+        # Wait for dbus object to be available after restart
+        command_wait = shlex.split(WAIT.format(bus=self.bus_name))
+        await self._send(command_wait, silent=True)
+
+        # Introspect object & Parse XML
+        command_introspect = shlex.split(
             INTROSPECT.format(bus=self.bus_name, object=self.object_path)
         )
-
-        # Parse XML
-        data = await self._send(command)
+        data = await self._send(command_introspect)
         try:
             xml = ET.fromstring(data)
         except ET.ParseError as err:
             _LOGGER.error("Can't parse introspect data: %s", err)
             _LOGGER.debug("Introspect %s on %s", self.bus_name, self.object_path)
-            raise DBusParseError() from None
+            raise DBusParseError() from err
 
         # Read available methods
         for interface in xml.findall("./interface"):
@@ -114,6 +140,18 @@ class DBus:
         )
         json_raw = RE_GVARIANT_STRING.sub(r'"\1"', json_raw)
 
+        # Handle Bytes
+        json_raw = RE_GVARIANT_BINARY.sub(
+            lambda x: x.group(0) if not x.group(1) else _convert_bytes(x.group(1)),
+            json_raw,
+        )
+        json_raw = RE_GVARIANT_BINARY_STRING.sub(
+            lambda x: x.group(0)
+            if not x.group(1)
+            else _convert_bytes_string(x.group(1)),
+            json_raw,
+        )
+
         # Remove complex type handling
         json_raw: str = RE_GVARIANT_TYPE.sub(
             lambda x: x.group(0) if not x.group(1) else "", json_raw
@@ -135,9 +173,9 @@ class DBus:
         try:
             return json.loads(json_raw)
         except json.JSONDecodeError as err:
-            _LOGGER.error("Can't parse '%s': %s", json_raw, err)
-            _LOGGER.debug("GVariant data: '%s'", raw)
-            raise DBusParseError() from None
+            _LOGGER.error("Can't parse '%s': '%s' - %s", json_raw, raw, err)
+            sentry_sdk.capture_exception(err)
+            raise DBusParseError() from err
 
     @staticmethod
     def gvariant_args(args: List[Any]) -> str:
@@ -167,7 +205,7 @@ class DBus:
         )
 
         # Run command
-        _LOGGER.info("Call %s on %s", method, self.object_path)
+        _LOGGER.debug("Call %s on %s", method, self.object_path)
         data = await self._send(command)
 
         # Parse and return data
@@ -177,11 +215,11 @@ class DBus:
         """Read all properties from interface."""
         try:
             return (await self.call_dbus(DBUS_METHOD_GETALL, interface))[0]
-        except IndexError:
+        except IndexError as err:
             _LOGGER.error("No attributes returned for %s", interface)
-            raise DBusFatalError from None
+            raise DBusFatalError() from err
 
-    async def _send(self, command: List[str]) -> str:
+    async def _send(self, command: List[str], silent=False) -> str:
         """Send command over dbus."""
         # Run command
         _LOGGER.debug("Send dbus command: %s", command)
@@ -196,10 +234,10 @@ class DBus:
             data, error = await proc.communicate()
         except OSError as err:
             _LOGGER.error("DBus fatal error: %s", err)
-            raise DBusFatalError() from None
+            raise DBusFatalError() from err
 
         # Success?
-        if proc.returncode == 0:
+        if proc.returncode == 0 or silent:
             return data.decode()
 
         # Filter error
@@ -210,7 +248,7 @@ class DBus:
             raise exception()
 
         # General
-        _LOGGER.error("DBus return error: %s", error.strip())
+        _LOGGER.error("DBus return: %s", error.strip())
         raise DBusFatalError()
 
     def attach_signals(self, filters=None):
@@ -294,7 +332,7 @@ class DBusSignalWrapper:
     async def __anext__(self):
         """Get next data."""
         if not self._proc:
-            raise StopAsyncIteration()
+            raise StopAsyncIteration() from None
 
         # Read signals
         while True:
@@ -305,7 +343,7 @@ class DBusSignalWrapper:
 
             # Program close
             if not data:
-                raise StopAsyncIteration()
+                raise StopAsyncIteration() from None
 
             # Extract metadata
             match = RE_MONITOR_OUTPUT.match(data.decode())
@@ -321,5 +359,5 @@ class DBusSignalWrapper:
 
             try:
                 return self.dbus.parse_gvariant(data)
-            except DBusParseError:
-                raise StopAsyncIteration() from None
+            except DBusParseError as err:
+                raise StopAsyncIteration() from err

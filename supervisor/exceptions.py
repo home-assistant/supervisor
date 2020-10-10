@@ -65,6 +65,17 @@ class CliUpdateError(CliError):
     """Error on update of a HA cli."""
 
 
+# Observer
+
+
+class ObserverError(HassioError):
+    """General Observer exception."""
+
+
+class ObserverUpdateError(ObserverError):
+    """Error on update of a Observer."""
+
+
 # Multicast
 
 
@@ -105,6 +116,10 @@ class AddonsError(HassioError):
     """Addons exception."""
 
 
+class AddonConfigurationError(AddonsError):
+    """Error with add-on configuration."""
+
+
 class AddonsNotSupportedError(HassioNotSupportedError):
     """Addons don't support a function."""
 
@@ -131,7 +146,7 @@ class AuthError(HassioError):
 
 
 class AuthPasswordResetError(HassioError):
-    """Auth error if password reset fails."""
+    """Auth error if password reset failed."""
 
 
 # Host
@@ -146,11 +161,11 @@ class HostNotSupportedError(HassioNotSupportedError):
 
 
 class HostServiceError(HostError):
-    """Host service functions fails."""
+    """Host service functions failed."""
 
 
 class HostAppArmorError(HostError):
-    """Host apparmor functions fails."""
+    """Host apparmor functions failed."""
 
 
 # API
@@ -223,8 +238,20 @@ class JsonFileError(HassioError):
 # docker/api
 
 
-class DockerAPIError(HassioError):
+class DockerError(HassioError):
+    """Docker API/Transport errors."""
+
+
+class DockerAPIError(DockerError):
     """Docker API error."""
+
+
+class DockerRequestError(DockerError):
+    """Dockerd OS issues."""
+
+
+class DockerNotFound(DockerError):
+    """Docker object don't Exists."""
 
 
 # Hardware

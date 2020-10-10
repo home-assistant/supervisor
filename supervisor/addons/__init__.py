@@ -5,17 +5,21 @@ import logging
 import tarfile
 from typing import Dict, List, Optional, Union
 
-from ..const import BOOT_AUTO, STATE_STARTED, AddonStartup
+from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
+    AddonConfigurationError,
     AddonsError,
     AddonsNotSupportedError,
     CoreDNSError,
     DockerAPIError,
+    DockerError,
+    DockerNotFound,
     HomeAssistantAPIError,
     HostAppArmorError,
 )
 from ..store.addon import AddonStore
+from ..utils import check_exception_chain
 from .addon import Addon
 from .data import AddonsData
 
@@ -45,7 +49,7 @@ class AddonManager(CoreSysAttributes):
         """Return a list of all installed add-ons."""
         return list(self.local.values())
 
-    def get(self, addon_slug: str) -> Optional[AnyAddon]:
+    def get(self, addon_slug: str, local_only: bool = False) -> Optional[AnyAddon]:
         """Return an add-on from slug.
 
         Prio:
@@ -54,7 +58,9 @@ class AddonManager(CoreSysAttributes):
         """
         if addon_slug in self.local:
             return self.local[addon_slug]
-        return self.store.get(addon_slug)
+        if not local_only:
+            return self.store.get(addon_slug)
+        return None
 
     def from_token(self, token: str) -> Optional[Addon]:
         """Return an add-on from Supervisor token."""
@@ -82,7 +88,7 @@ class AddonManager(CoreSysAttributes):
         """Boot add-ons with mode auto."""
         tasks: List[Addon] = []
         for addon in self.installed:
-            if addon.boot != BOOT_AUTO or addon.startup != stage:
+            if addon.boot != AddonBoot.AUTO or addon.startup != stage:
                 continue
             tasks.append(addon)
 
@@ -96,8 +102,19 @@ class AddonManager(CoreSysAttributes):
         for addon in tasks:
             try:
                 await addon.start()
+            except AddonsError as err:
+                # Check if there is an system/user issue
+                if check_exception_chain(
+                    err, (DockerAPIError, DockerNotFound, AddonConfigurationError)
+                ):
+                    addon.boot = AddonBoot.MANUAL
+                    addon.save_persist()
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't start Add-on %s: %s", addon.slug, err)
+                self.sys_capture_exception(err)
+            else:
+                continue
+
+            _LOGGER.warning("Can't start Add-on %s", addon.slug)
 
         await asyncio.sleep(self.sys_config.wait_boot)
 
@@ -105,7 +122,7 @@ class AddonManager(CoreSysAttributes):
         """Shutdown addons."""
         tasks: List[Addon] = []
         for addon in self.installed:
-            if await addon.state() != STATE_STARTED or addon.startup != stage:
+            if addon.state != AddonState.STARTED or addon.startup != stage:
                 continue
             tasks.append(addon)
 
@@ -121,6 +138,7 @@ class AddonManager(CoreSysAttributes):
                 await addon.stop()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't stop Add-on %s: %s", addon.slug, err)
+                self.sys_capture_exception(err)
 
     async def install(self, slug: str) -> None:
         """Install an add-on."""
@@ -149,12 +167,17 @@ class AddonManager(CoreSysAttributes):
 
         try:
             await addon.instance.install(store.version, store.image)
-        except DockerAPIError:
+        except DockerError as err:
             self.data.uninstall(addon)
-            raise AddonsError() from None
+            raise AddonsError() from err
         else:
             self.local[slug] = addon
-            _LOGGER.info("Add-on '%s' successfully installed", slug)
+
+        # Reload ingress tokens
+        if addon.with_ingress:
+            await self.sys_ingress.reload()
+
+        _LOGGER.info("Add-on '%s' successfully installed", slug)
 
     async def uninstall(self, slug: str) -> None:
         """Remove an add-on."""
@@ -165,8 +188,10 @@ class AddonManager(CoreSysAttributes):
 
         try:
             await addon.instance.remove()
-        except DockerAPIError:
-            raise AddonsError() from None
+        except DockerError as err:
+            raise AddonsError() from err
+        else:
+            addon.state = AddonState.UNKNOWN
 
         await addon.remove_data()
 
@@ -186,7 +211,9 @@ class AddonManager(CoreSysAttributes):
                 await self.sys_ingress.update_hass_panel(addon)
 
         # Cleanup Ingress dynamic port assignment
-        self.sys_ingress.del_dynamic_port(slug)
+        if addon.with_ingress:
+            self.sys_create_task(self.sys_ingress.reload())
+            self.sys_ingress.del_dynamic_port(slug)
 
         # Cleanup discovery data
         for message in self.sys_discovery.list_messages:
@@ -227,15 +254,15 @@ class AddonManager(CoreSysAttributes):
             raise AddonsNotSupportedError()
 
         # Update instance
-        last_state = await addon.state()
+        last_state: AddonState = addon.state
         try:
             await addon.instance.update(store.version, store.image)
 
             # Cleanup
-            with suppress(DockerAPIError):
+            with suppress(DockerError):
                 await addon.instance.cleanup()
-        except DockerAPIError:
-            raise AddonsError() from None
+        except DockerError as err:
+            raise AddonsError() from err
         else:
             self.data.update(store)
             _LOGGER.info("Add-on '%s' successfully updated", slug)
@@ -244,7 +271,7 @@ class AddonManager(CoreSysAttributes):
         await addon.install_apparmor()
 
         # restore state
-        if last_state == STATE_STARTED:
+        if last_state == AddonState.STARTED:
             await addon.start()
 
     async def rebuild(self, slug: str) -> None:
@@ -268,18 +295,18 @@ class AddonManager(CoreSysAttributes):
             raise AddonsNotSupportedError()
 
         # remove docker container but not addon config
-        last_state = await addon.state()
+        last_state: AddonState = addon.state
         try:
             await addon.instance.remove()
             await addon.instance.install(addon.version)
-        except DockerAPIError:
-            raise AddonsError() from None
+        except DockerError as err:
+            raise AddonsError() from err
         else:
             self.data.update(store)
             _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
 
         # restore state
-        if last_state == STATE_STARTED:
+        if last_state == AddonState.STARTED:
             await addon.start()
 
     async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:
@@ -300,6 +327,7 @@ class AddonManager(CoreSysAttributes):
 
         # Update ingress
         if addon.with_ingress:
+            await self.sys_ingress.reload()
             with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
 
@@ -323,7 +351,7 @@ class AddonManager(CoreSysAttributes):
                 self.sys_docker.network.stale_cleanup, addon.instance.name
             )
 
-            with suppress(DockerAPIError, KeyError):
+            with suppress(DockerError, KeyError):
                 # Need pull a image again
                 if not addon.need_build:
                     await addon.instance.install(addon.version, addon.image)
@@ -345,11 +373,17 @@ class AddonManager(CoreSysAttributes):
         """Sync add-ons DNS names."""
         # Update hosts
         for addon in self.installed:
-            if not await addon.instance.is_running():
-                continue
-            self.sys_plugins.dns.add_host(
-                ipv4=addon.ip_address, names=[addon.hostname], write=False
-            )
+            try:
+                if not await addon.instance.is_running():
+                    continue
+            except DockerError as err:
+                _LOGGER.warning("Add-on %s is corrupt: %s", addon.slug, err)
+                self.sys_core.healthy = False
+                self.sys_capture_exception(err)
+            else:
+                self.sys_plugins.dns.add_host(
+                    ipv4=addon.ip_address, names=[addon.hostname], write=False
+                )
 
         # Write hosts files
         with suppress(CoreDNSError):

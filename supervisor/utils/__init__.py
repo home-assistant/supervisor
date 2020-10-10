@@ -5,10 +5,11 @@ from ipaddress import IPv4Address
 import logging
 import re
 import socket
-from typing import Optional
+from typing import Any, Optional
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-RE_STRING = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
+
+RE_STRING: re.Pattern = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 
 
 def convert_to_ascii(raw: bytes) -> str:
@@ -106,3 +107,28 @@ def check_port(address: IPv4Address, port: int) -> bool:
     except OSError:
         pass
     return False
+
+
+def check_exception_chain(err: Exception, object_type: Any) -> bool:
+    """Check if exception chain include sub exception.
+
+    It's not full recursive because we need mostly only access to the latest.
+    """
+    if issubclass(type(err), object_type):
+        return True
+
+    if not err.__context__:
+        return False
+
+    return check_exception_chain(err.__context__, object_type)
+
+
+def get_message_from_exception_chain(err: Exception) -> str:
+    """Get the first message from the exception chain."""
+    if str(err):
+        return str(err)
+
+    if not err.__context__:
+        return ""
+
+    return get_message_from_exception_chain(err.__context__)

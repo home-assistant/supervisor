@@ -18,6 +18,7 @@ from .const import (
     ATTR_CLI,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
+    ATTR_DIAGNOSTICS,
     ATTR_DNS,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
@@ -25,24 +26,29 @@ from .const import (
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_MULTICAST,
+    ATTR_OBSERVER,
+    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PORTS,
     ATTR_REFRESH_TOKEN,
+    ATTR_REGISTRIES,
     ATTR_SESSION,
     ATTR_SSL,
     ATTR_SUPERVISOR,
     ATTR_TIMEZONE,
+    ATTR_USERNAME,
     ATTR_UUID,
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     SUPERVISOR_VERSION,
     LogLevel,
-    UpdateChannels,
+    UpdateChannel,
 )
 from .utils.validate import validate_timezone
 
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
+RE_REGISTRY = re.compile(r"^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$")
 
 # pylint: disable=no-value-for-parameter
 # pylint: disable=invalid-name
@@ -54,38 +60,32 @@ sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
 
 
-def simple_version(value: Union[str, int, None]) -> Optional[str]:
+def version_tag(value: Union[str, None, int, float]) -> Optional[str]:
     """Validate main version handling."""
-    if not isinstance(value, (str, int)):
-        return None
-    elif isinstance(value, int):
-        return str(value)
-    elif value.isnumeric() or value == "dev":
-        return value
-    return None
-
-
-def complex_version(value: Union[str, None]) -> Optional[str]:
-    """Validate main version handling."""
-    if not isinstance(value, str):
+    if value is None:
         return None
 
     try:
+        value = str(value)
         pkg_version.parse(value)
-    except pkg_version.InvalidVersion:
-        raise vol.Invalid(f"Invalid version format {value}")
+    except (pkg_version.InvalidVersion, TypeError):
+        raise vol.Invalid(f"Invalid version format {value}") from None
     return value
 
 
 def dns_url(url: str) -> str:
     """Take a DNS url (str) and validates that it matches the scheme dns://<ip address>."""
     if not url.lower().startswith("dns://"):
-        raise vol.Invalid("Doesn't start with dns://")
+        raise vol.Invalid("Doesn't start with dns://") from None
     address: str = url[6:]  # strip the dns:// off
     try:
-        ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
+        ip = ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
     except ValueError:
-        raise vol.Invalid(f"Invalid DNS URL: {url}")
+        raise vol.Invalid(f"Invalid DNS URL: {url}") from None
+
+    # Currently only IPv4 work with docker network
+    if ip.version != 4:
+        raise vol.Invalid(f"Only IPv4 is working for DNS: {url}") from None
     return url
 
 
@@ -96,7 +96,7 @@ def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
     data = RE_REPOSITORY.match(repository)
     if not data:
-        raise vol.Invalid("No valid repository format!")
+        raise vol.Invalid("No valid repository format!") from None
 
     # Validate URL
     # pylint: disable=no-value-for-parameter
@@ -108,25 +108,16 @@ def validate_repository(repository: str) -> str:
 # pylint: disable=no-value-for-parameter
 repositories = vol.All([validate_repository], vol.Unique())
 
-
-DOCKER_PORTS = vol.Schema(
-    {
-        vol.All(vol.Coerce(str), vol.Match(r"^\d+(?:/tcp|/udp)?$")): vol.Maybe(
-            network_port
-        )
-    }
-)
-
-DOCKER_PORTS_DESCRIPTION = vol.Schema(
-    {vol.All(vol.Coerce(str), vol.Match(r"^\d+(?:/tcp|/udp)?$")): vol.Coerce(str)}
-)
+docker_port = vol.All(str, vol.Match(r"^\d+(?:/tcp|/udp)?$"))
+docker_ports = vol.Schema({docker_port: vol.Maybe(network_port)})
+docker_ports_description = vol.Schema({docker_port: vol.Coerce(str)})
 
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
-        vol.Optional(ATTR_VERSION): complex_version,
+        vol.Optional(ATTR_VERSION): version_tag,
         vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
@@ -146,16 +137,17 @@ SCHEMA_HASS_CONFIG = vol.Schema(
 
 SCHEMA_UPDATER_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_CHANNEL, default=UpdateChannels.STABLE): vol.Coerce(
-            UpdateChannels
+        vol.Optional(ATTR_CHANNEL, default=UpdateChannel.STABLE): vol.Coerce(
+            UpdateChannel
         ),
-        vol.Optional(ATTR_HOMEASSISTANT): complex_version,
-        vol.Optional(ATTR_SUPERVISOR): simple_version,
-        vol.Optional(ATTR_HASSOS): complex_version,
-        vol.Optional(ATTR_CLI): simple_version,
-        vol.Optional(ATTR_DNS): simple_version,
-        vol.Optional(ATTR_AUDIO): simple_version,
-        vol.Optional(ATTR_MULTICAST): simple_version,
+        vol.Optional(ATTR_HOMEASSISTANT): vol.All(version_tag, str),
+        vol.Optional(ATTR_SUPERVISOR): vol.All(version_tag, str),
+        vol.Optional(ATTR_HASSOS): vol.All(version_tag, str),
+        vol.Optional(ATTR_CLI): vol.All(version_tag, str),
+        vol.Optional(ATTR_DNS): vol.All(version_tag, str),
+        vol.Optional(ATTR_AUDIO): vol.All(version_tag, str),
+        vol.Optional(ATTR_OBSERVER): vol.All(version_tag, str),
+        vol.Optional(ATTR_MULTICAST): vol.All(version_tag, str),
         vol.Optional(ATTR_IMAGE, default=dict): vol.Schema(
             {
                 vol.Optional(ATTR_HOMEASSISTANT): docker_image,
@@ -163,6 +155,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
                 vol.Optional(ATTR_CLI): docker_image,
                 vol.Optional(ATTR_DNS): docker_image,
                 vol.Optional(ATTR_AUDIO): docker_image,
+                vol.Optional(ATTR_OBSERVER): docker_image,
                 vol.Optional(ATTR_MULTICAST): docker_image,
             },
             extra=vol.REMOVE_EXTRA,
@@ -177,7 +170,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_TIMEZONE, default="UTC"): validate_timezone,
         vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
-        vol.Optional(ATTR_VERSION, default=SUPERVISOR_VERSION): simple_version,
+        vol.Optional(ATTR_VERSION, default=SUPERVISOR_VERSION): version_tag,
         vol.Optional(
             ATTR_ADDONS_CUSTOM_LIST,
             default=["https://github.com/hassio-addons/repository"],
@@ -186,8 +179,23 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
         vol.Optional(ATTR_LOGGING, default=LogLevel.INFO): vol.Coerce(LogLevel),
         vol.Optional(ATTR_DEBUG, default=False): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK, default=False): vol.Boolean(),
+        vol.Optional(ATTR_DIAGNOSTICS, default=None): vol.Maybe(vol.Boolean()),
     },
     extra=vol.REMOVE_EXTRA,
+)
+
+
+SCHEMA_DOCKER_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_REGISTRIES, default=dict): vol.Schema(
+            {
+                vol.All(str, vol.Match(RE_REGISTRY)): {
+                    vol.Required(ATTR_USERNAME): str,
+                    vol.Required(ATTR_PASSWORD): str,
+                }
+            }
+        )
+    }
 )
 
 

@@ -3,7 +3,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreStates
+from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils.dt import utcnow
@@ -44,6 +44,7 @@ class SnapshotManager(CoreSysAttributes):
         # set general data
         snapshot.store_homeassistant()
         snapshot.store_repositories()
+        snapshot.store_dockerconfig()
 
         return snapshot
 
@@ -126,7 +127,7 @@ class SnapshotManager(CoreSysAttributes):
         snapshot = self._create_snapshot(name, SNAPSHOT_FULL, password)
         _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
         try:
-            self.sys_core.state = CoreStates.FREEZE
+            self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
@@ -148,7 +149,7 @@ class SnapshotManager(CoreSysAttributes):
             return snapshot
 
         finally:
-            self.sys_core.state = CoreStates.RUNNING
+            self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
     async def do_snapshot_partial(
@@ -165,7 +166,7 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Partial-Snapshot %s start", snapshot.slug)
         try:
-            self.sys_core.state = CoreStates.FREEZE
+            self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
@@ -197,7 +198,7 @@ class SnapshotManager(CoreSysAttributes):
             return snapshot
 
         finally:
-            self.sys_core.state = CoreStates.RUNNING
+            self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
     async def do_restore_full(self, snapshot, password=None):
@@ -216,7 +217,7 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
         try:
-            self.sys_core.state = CoreStates.FREEZE
+            self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
@@ -227,11 +228,15 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Restore %s run folders", snapshot.slug)
                 await snapshot.restore_folders()
 
+                # Restore docker config
+                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                snapshot.restore_dockerconfig()
+
                 # Start homeassistant restore
                 _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
                 task_hass = self.sys_create_task(
-                    self.sys_homeassistant.update(snapshot.homeassistant_version)
+                    self.sys_homeassistant.core.update(snapshot.homeassistant_version)
                 )
 
                 # Restore repositories
@@ -258,7 +263,7 @@ class SnapshotManager(CoreSysAttributes):
                 # finish homeassistant task
                 _LOGGER.info("Restore %s wait until homeassistant ready", snapshot.slug)
                 await task_hass
-                await self.sys_homeassistant.start()
+                await self.sys_homeassistant.core.start()
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
@@ -269,7 +274,7 @@ class SnapshotManager(CoreSysAttributes):
             return True
 
         finally:
-            self.sys_core.state = CoreStates.RUNNING
+            self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
     async def do_restore_partial(
@@ -289,13 +294,17 @@ class SnapshotManager(CoreSysAttributes):
 
         _LOGGER.info("Partial-Restore %s start", snapshot.slug)
         try:
-            self.sys_core.state = CoreStates.FREEZE
+            self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
+                # Restore docker config
+                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                snapshot.restore_dockerconfig()
+
                 # Stop Home-Assistant for config restore
                 if FOLDER_HOMEASSISTANT in folders:
-                    await self.sys_homeassistant.stop()
+                    await self.sys_homeassistant.core.stop()
                     snapshot.restore_homeassistant()
 
                 # Process folders
@@ -308,7 +317,9 @@ class SnapshotManager(CoreSysAttributes):
                 if homeassistant:
                     _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
                     task_hass = self.sys_create_task(
-                        self.sys_homeassistant.update(snapshot.homeassistant_version)
+                        self.sys_homeassistant.core.update(
+                            snapshot.homeassistant_version
+                        )
                     )
 
                 if addons:
@@ -324,13 +335,13 @@ class SnapshotManager(CoreSysAttributes):
                     await task_hass
 
                 # Do we need start HomeAssistant?
-                if not await self.sys_homeassistant.is_running():
-                    await self.sys_homeassistant.start()
+                if not await self.sys_homeassistant.core.is_running():
+                    await self.sys_homeassistant.core.start()
 
                 # Check If we can access to API / otherwise restart
-                if not await self.sys_homeassistant.check_api_state():
+                if not await self.sys_homeassistant.api.check_api_state():
                     _LOGGER.warning("Need restart HomeAssistant for API")
-                    await self.sys_homeassistant.restart()
+                    await self.sys_homeassistant.core.restart()
 
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
@@ -341,5 +352,5 @@ class SnapshotManager(CoreSysAttributes):
             return True
 
         finally:
-            self.sys_core.state = CoreStates.RUNNING
+            self.sys_core.state = CoreState.RUNNING
             self.lock.release()

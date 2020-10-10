@@ -39,11 +39,17 @@ NO_SECURITY_CHECK = re.compile(
     r")$"
 )
 
+# Observer allow API calls
+OBSERVER_CHECK = re.compile(
+    r"^(?:"
+    r"|/[^/]+/info"
+    r")$"
+)
+
 # Can called by every add-on
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
     r"|/addons/self/(?!security|update)[^/]+"
-    r"|/secrets/.+"
     r"|/info"
     r"|/hardware/trigger"
     r"|/services.*"
@@ -73,19 +79,22 @@ ADDONS_ROLE_ACCESS = {
     ),
     ROLE_MANAGER: re.compile(
         r"^(?:"
-        r"|/audio/.*"
-        r"|/dns/.*"
-        r"|/cli/.*"
-        r"|/multicast/.*"
+        r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
+        r"|/audio/.+"
+        r"|/cli/.+"
         r"|/core/.+"
+        r"|/dns/.+"
+        r"|/docker/.+"
+        r"|/hardware/.+"
+        r"|/hassos/.+"
         r"|/homeassistant/.+"
         r"|/host/.+"
-        r"|/hardware/.+"
+        r"|/multicast/.+"
+        r"|/network/.+"
+        r"|/observer/.+"
         r"|/os/.+"
-        r"|/hassos/.+"
-        r"|/supervisor/.+"
-        r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
         r"|/snapshots.*"
+        r"|/supervisor/.+"
         r")$"
     ),
     ROLE_ADMIN: re.compile(
@@ -93,7 +102,7 @@ ADDONS_ROLE_ACCESS = {
     ),
 }
 
-# fmt: off
+# fmt: on
 
 
 class SecurityMiddleware(CoreSysAttributes):
@@ -130,10 +139,17 @@ class SecurityMiddleware(CoreSysAttributes):
             request_from = self.sys_homeassistant
 
         # Host
-        # Remove machine_id handling later if all use new CLI
-        if supervisor_token in (self.sys_machine_id, self.sys_plugins.cli.supervisor_token):
+        if supervisor_token == self.sys_plugins.cli.supervisor_token:
             _LOGGER.debug("%s access from Host", request.path)
             request_from = self.sys_host
+
+        # Observer
+        if supervisor_token == self.sys_plugins.observer.supervisor_token:
+            if not OBSERVER_CHECK.match(request.url):
+                _LOGGER.warning("%s invalid Observer access", request.path)
+                raise HTTPForbidden()
+            _LOGGER.debug("%s access from Observer", request.path)
+            request_from = self.sys_plugins.observer
 
         # Add-on
         addon = None

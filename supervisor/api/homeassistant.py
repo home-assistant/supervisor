@@ -33,7 +33,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..validate import complex_version, docker_image, network_port
+from ..validate import docker_image, network_port, version_tag
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ SCHEMA_OPTIONS = vol.Schema(
     }
 )
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): complex_version})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 
 
 class APIHomeAssistant(CoreSysAttributes):
@@ -117,7 +117,7 @@ class APIHomeAssistant(CoreSysAttributes):
     @api_process
     async def stats(self, request: web.Request) -> Dict[Any, str]:
         """Return resource information."""
-        stats = await self.sys_homeassistant.stats()
+        stats = await self.sys_homeassistant.core.stats()
         if not stats:
             raise APIError("No stats available")
 
@@ -138,36 +138,36 @@ class APIHomeAssistant(CoreSysAttributes):
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_homeassistant.latest_version)
 
-        await asyncio.shield(self.sys_homeassistant.update(version))
+        await asyncio.shield(self.sys_homeassistant.core.update(version))
 
     @api_process
     def stop(self, request: web.Request) -> Awaitable[None]:
         """Stop Home Assistant."""
-        return asyncio.shield(self.sys_homeassistant.stop())
+        return asyncio.shield(self.sys_homeassistant.core.stop())
 
     @api_process
     def start(self, request: web.Request) -> Awaitable[None]:
         """Start Home Assistant."""
-        return asyncio.shield(self.sys_homeassistant.start())
+        return asyncio.shield(self.sys_homeassistant.core.start())
 
     @api_process
     def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart Home Assistant."""
-        return asyncio.shield(self.sys_homeassistant.restart())
+        return asyncio.shield(self.sys_homeassistant.core.restart())
 
     @api_process
     def rebuild(self, request: web.Request) -> Awaitable[None]:
         """Rebuild Home Assistant."""
-        return asyncio.shield(self.sys_homeassistant.rebuild())
+        return asyncio.shield(self.sys_homeassistant.core.rebuild())
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return Home Assistant Docker logs."""
-        return self.sys_homeassistant.logs()
+        return self.sys_homeassistant.core.logs()
 
     @api_process
     async def check(self, request: web.Request) -> None:
         """Check configuration of Home Assistant."""
-        result = await self.sys_homeassistant.check_config()
+        result = await self.sys_homeassistant.core.check_config()
         if not result.valid:
             raise APIError(result.log)

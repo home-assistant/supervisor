@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.7
+FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.8
 
 WORKDIR /workspaces
 
@@ -43,9 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies from requirements.txt if it exists
 COPY requirements.txt requirements_tests.txt ./
-RUN pip3 install -r requirements.txt -r requirements_tests.txt \
+RUN pip3 install -U setuptools pip \
+    && pip3 install -r requirements.txt -r requirements_tests.txt \
     && pip3 install tox \
     && rm -f requirements.txt requirements_tests.txt
-
-# Set the default shell to bash instead of sh
-ENV SHELL /bin/bash

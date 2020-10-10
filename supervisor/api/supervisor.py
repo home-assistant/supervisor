@@ -17,6 +17,8 @@ from ..const import (
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DESCRIPTON,
+    ATTR_DIAGNOSTICS,
+    ATTR_HEALTHY,
     ATTR_ICON,
     ATTR_INSTALLED,
     ATTR_IP_ADDRESS,
@@ -31,6 +33,7 @@ from ..const import (
     ATTR_REPOSITORY,
     ATTR_SLUG,
     ATTR_STATE,
+    ATTR_SUPPORTED,
     ATTR_TIMEZONE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
@@ -38,12 +41,12 @@ from ..const import (
     CONTENT_TYPE_BINARY,
     SUPERVISOR_VERSION,
     LogLevel,
-    UpdateChannels,
+    UpdateChannel,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
-from ..validate import repositories, simple_version, wait_boot
+from ..validate import repositories, version_tag, wait_boot
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -51,17 +54,18 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
     {
-        vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannels),
+        vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannel),
         vol.Optional(ATTR_ADDONS_REPOSITORIES): repositories,
         vol.Optional(ATTR_TIMEZONE): validate_timezone,
         vol.Optional(ATTR_WAIT_BOOT): wait_boot,
         vol.Optional(ATTR_LOGGING): vol.Coerce(LogLevel),
         vol.Optional(ATTR_DEBUG): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK): vol.Boolean(),
+        vol.Optional(ATTR_DIAGNOSTICS): vol.Boolean(),
     }
 )
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): simple_version})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 
 
 class APISupervisor(CoreSysAttributes):
@@ -82,7 +86,7 @@ class APISupervisor(CoreSysAttributes):
                     ATTR_NAME: addon.name,
                     ATTR_SLUG: addon.slug,
                     ATTR_DESCRIPTON: addon.description,
-                    ATTR_STATE: await addon.state(),
+                    ATTR_STATE: addon.state,
                     ATTR_VERSION: addon.latest_version,
                     ATTR_INSTALLED: addon.version,
                     ATTR_REPOSITORY: addon.repository,
@@ -96,10 +100,15 @@ class APISupervisor(CoreSysAttributes):
             ATTR_VERSION_LATEST: self.sys_updater.version_supervisor,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_ARCH: self.sys_supervisor.arch,
+            ATTR_SUPPORTED: self.sys_core.supported,
+            ATTR_HEALTHY: self.sys_core.healthy,
             ATTR_IP_ADDRESS: str(self.sys_supervisor.ip_address),
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_TIMEZONE: self.sys_config.timezone,
             ATTR_LOGGING: self.sys_config.logging,
+            ATTR_DEBUG: self.sys_config.debug,
+            ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
+            ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
         }
@@ -124,12 +133,19 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_DEBUG_BLOCK in body:
             self.sys_config.debug_block = body[ATTR_DEBUG_BLOCK]
 
+        if ATTR_DIAGNOSTICS in body:
+            self.sys_config.diagnostics = body[ATTR_DIAGNOSTICS]
+
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
             await asyncio.shield(self.sys_store.update_repositories(new))
+            if sorted(body[ATTR_ADDONS_REPOSITORIES]) != sorted(
+                self.sys_config.addons_repositories
+            ):
+                raise APIError("Not a valid add-on repository")
 
         self.sys_updater.save_data()
         self.sys_config.save_data()
@@ -164,7 +180,9 @@ class APISupervisor(CoreSysAttributes):
     def reload(self, request: web.Request) -> Awaitable[None]:
         """Reload add-ons, configuration, etc."""
         return asyncio.shield(
-            asyncio.wait([self.sys_updater.reload(), self.sys_secrets.reload()])
+            asyncio.wait(
+                [self.sys_updater.reload(), self.sys_homeassistant.secrets.reload()]
+            )
         )
 
     @api_process

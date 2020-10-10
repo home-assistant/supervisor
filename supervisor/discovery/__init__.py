@@ -79,7 +79,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
             config = valid_discovery_config(service, config)
         except vol.Invalid as err:
             _LOGGER.error("Invalid discovery %s config", humanize_error(config, err))
-            raise DiscoveryError() from None
+            raise DiscoveryError() from err
 
         # Create message
         message = Message(addon.slug, service, config)
@@ -117,7 +117,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
 
     async def _push_discovery(self, message: Message, command: str) -> None:
         """Send a discovery request."""
-        if not await self.sys_homeassistant.check_api_state():
+        if not await self.sys_homeassistant.api.check_api_state():
             _LOGGER.info("Discovery %s message ignore", message.uuid)
             return
 
@@ -125,7 +125,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
         data.pop(ATTR_CONFIG)
 
         with suppress(HomeAssistantAPIError):
-            async with self.sys_homeassistant.make_request(
+            async with self.sys_homeassistant.api.make_request(
                 command,
                 f"api/hassio_push/discovery/{message.uuid}",
                 json=data,

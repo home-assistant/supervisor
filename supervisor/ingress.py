@@ -28,8 +28,8 @@ class Ingress(JsonConfig, CoreSysAttributes):
     def get(self, token: str) -> Optional[Addon]:
         """Return addon they have this ingress token."""
         if token not in self.tokens:
-            self._update_token_list()
-        return self.sys_addons.get(self.tokens.get(token))
+            return None
+        return self.sys_addons.get(self.tokens[token], local_only=True)
 
     @property
     def sessions(self) -> Dict[str, float]:
@@ -61,6 +61,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
     async def reload(self) -> None:
         """Reload/Validate sessions."""
         self._cleanup_sessions()
+        self._update_token_list()
 
     async def unload(self) -> None:
         """Shutdown sessions."""
@@ -76,7 +77,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
             try:
                 valid_dt = utc_from_timestamp(valid)
             except OverflowError:
-                _LOGGER.warning("Session timestamp %f is invalid!", valid_dt)
+                _LOGGER.warning("Session timestamp %f is invalid!", valid)
                 continue
 
             if valid_dt < now:
@@ -114,7 +115,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
         try:
             valid_until = utc_from_timestamp(self.sessions[session])
         except OverflowError:
-            _LOGGER.warning("Session timestamp %f is invalid!", valid_until)
+            _LOGGER.warning("Session timestamp %f is invalid!", self.sessions[session])
             return False
 
         # Is still valid?
@@ -155,13 +156,13 @@ class Ingress(JsonConfig, CoreSysAttributes):
 
     async def update_hass_panel(self, addon: Addon):
         """Return True if Home Assistant up and running."""
-        if not await self.sys_homeassistant.is_running():
+        if not await self.sys_homeassistant.core.is_running():
             _LOGGER.debug("Ignore panel update on Core")
             return
 
         # Update UI
         method = "post" if addon.ingress_panel else "delete"
-        async with self.sys_homeassistant.make_request(
+        async with self.sys_homeassistant.api.make_request(
             method, f"api/hassio_push/panel/{addon.slug}"
         ) as resp:
             if resp.status in (200, 201):

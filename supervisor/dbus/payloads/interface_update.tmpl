@@ -1,0 +1,41 @@
+{
+    'connection':
+        {
+            'id': <'{{interface.id}}'>,
+            'type': <'{{interface.type}}'>,
+            'uuid': <'{{interface.uuid}}'>
+        },
+
+{% if options.get("method") == "auto" %}
+    'ipv4':
+        {
+            'method': <'auto'>
+        }
+{% else %}
+    'ipv4':
+        {
+            'method': <'manual'>,
+            'dns': <[uint32 {{ options.get("dns", interface.nameservers) | list | join(",") }}]>,
+            'address-data': <[
+                {
+                    'address': <'{{ options.get("address", interface.ip_address) }}'>,
+                    'prefix': <uint32 {{ options.get("prefix", interface.prefix) }}>
+                }]>,
+            'gateway': <'{{ options.get("gateway", interface.gateway) }}'>
+        }
+{% endif %}
+{% if interface.type == "802-11-wireless" %}
+    ,
+    '802-11-wireless':
+        {
+            'security': <'802-11-wireless-security'>,
+            'ssid': <[byte {{ options.ssid }}]>
+
+        },
+    '802-11-wireless-security':
+        {
+            'auth-alg': <'{{ interface.connection.wireless.security['auth-alg'] }}'>,
+            'key-mgmt': <'{{ interface.connection.wireless.security['key-mgmt'] }}'>
+        }
+{% endif %}
+}

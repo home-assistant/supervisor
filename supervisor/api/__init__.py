@@ -12,12 +12,15 @@ from .auth import APIAuth
 from .cli import APICli
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
+from .docker import APIDocker
 from .hardware import APIHardware
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .info import APIInfo
 from .ingress import APIIngress
 from .multicast import APIMulticast
+from .network import APINetwork
+from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
 from .security import SecurityMiddleware
@@ -49,24 +52,27 @@ class RestAPI(CoreSysAttributes):
 
     async def load(self) -> None:
         """Register REST API Calls."""
-        self._register_supervisor()
-        self._register_host()
-        self._register_os()
+        self._register_addons()
+        self._register_audio()
+        self._register_auth()
         self._register_cli()
-        self._register_multicast()
+        self._register_discovery()
+        self._register_dns()
+        self._register_docker()
         self._register_hardware()
         self._register_homeassistant()
-        self._register_proxy()
-        self._register_panel()
-        self._register_addons()
-        self._register_ingress()
-        self._register_snapshots()
-        self._register_discovery()
-        self._register_services()
+        self._register_host()
         self._register_info()
-        self._register_auth()
-        self._register_dns()
-        self._register_audio()
+        self._register_ingress()
+        self._register_multicast()
+        self._register_network()
+        self._register_observer()
+        self._register_os()
+        self._register_panel()
+        self._register_proxy()
+        self._register_services()
+        self._register_snapshots()
+        self._register_supervisor()
 
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
@@ -86,6 +92,24 @@ class RestAPI(CoreSysAttributes):
                 web.post("/host/services/{service}/start", api_host.service_start),
                 web.post("/host/services/{service}/restart", api_host.service_restart),
                 web.post("/host/services/{service}/reload", api_host.service_reload),
+            ]
+        )
+
+    def _register_network(self) -> None:
+        """Register network functions."""
+        api_network = APINetwork()
+        api_network.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/network/info", api_network.info),
+                web.get(
+                    "/network/interface/{interface}/info", api_network.interface_info
+                ),
+                web.post(
+                    "/network/interface/{interface}/update",
+                    api_network.interface_update,
+                ),
             ]
         )
 
@@ -112,6 +136,19 @@ class RestAPI(CoreSysAttributes):
                 web.get("/cli/info", api_cli.info),
                 web.get("/cli/stats", api_cli.stats),
                 web.post("/cli/update", api_cli.update),
+            ]
+        )
+
+    def _register_observer(self) -> None:
+        """Register Observer functions."""
+        api_observer = APIObserver()
+        api_observer.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/observer/info", api_observer.info),
+                web.get("/observer/stats", api_observer.stats),
+                web.post("/observer/update", api_observer.update),
             ]
         )
 
@@ -248,6 +285,9 @@ class RestAPI(CoreSysAttributes):
                 web.post("/addons/{addon}/restart", api_addons.restart),
                 web.post("/addons/{addon}/update", api_addons.update),
                 web.post("/addons/{addon}/options", api_addons.options),
+                web.post(
+                    "/addons/{addon}/options/validate", api_addons.options_validate
+                ),
                 web.post("/addons/{addon}/rebuild", api_addons.rebuild),
                 web.get("/addons/{addon}/logs", api_addons.logs),
                 web.get("/addons/{addon}/icon", api_addons.icon),
@@ -369,6 +409,20 @@ class RestAPI(CoreSysAttributes):
         """Register panel for Home Assistant."""
         panel_dir = Path(__file__).parent.joinpath("panel")
         self.webapp.add_routes([web.static("/app", panel_dir)])
+
+    def _register_docker(self) -> None:
+        """Register docker configuration functions."""
+        api_docker = APIDocker()
+        api_docker.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/docker/info", api_docker.info),
+                web.get("/docker/registries", api_docker.registries),
+                web.post("/docker/registries", api_docker.create_registry),
+                web.delete("/docker/registries/{hostname}", api_docker.remove_registry),
+            ]
+        )
 
     async def start(self) -> None:
         """Run RESTful API webserver."""

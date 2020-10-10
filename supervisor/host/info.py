@@ -51,6 +51,27 @@ class InfoCenter(CoreSysAttributes):
         """Return local CPE."""
         return self.sys_dbus.hostname.cpe
 
+    @property
+    def total_space(self) -> float:
+        """Return total space (GiB) on disk for supervisor data directory."""
+        return self.coresys.hardware.get_disk_total_space(
+            self.coresys.config.path_supervisor
+        )
+
+    @property
+    def used_space(self) -> float:
+        """Return used space (GiB) on disk for supervisor data directory."""
+        return self.coresys.hardware.get_disk_used_space(
+            self.coresys.config.path_supervisor
+        )
+
+    @property
+    def free_space(self) -> float:
+        """Return available space (GiB) on disk for supervisor data directory."""
+        return self.coresys.hardware.get_disk_free_space(
+            self.coresys.config.path_supervisor
+        )
+
     async def get_dmesg(self) -> bytes:
         """Return host dmesg output."""
         proc = await asyncio.create_subprocess_shell(
@@ -62,7 +83,7 @@ class InfoCenter(CoreSysAttributes):
             stdout, _ = await proc.communicate()
         except OSError as err:
             _LOGGER.error("Can't read kernel log: %s", err)
-            raise HostError()
+            raise HostError() from err
 
         return stdout
 

@@ -8,6 +8,7 @@ from ..const import (
     ATTR_BOOT,
     ATTR_CRYPTO,
     ATTR_DATE,
+    ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
@@ -26,14 +27,27 @@ from ..const import (
     CRYPTO_AES128,
     FOLDER_ADDONS,
     FOLDER_HOMEASSISTANT,
+    FOLDER_MEDIA,
     FOLDER_SHARE,
     FOLDER_SSL,
     SNAPSHOT_FULL,
     SNAPSHOT_PARTIAL,
 )
-from ..validate import complex_version, docker_image, network_port, repositories
+from ..validate import (
+    SCHEMA_DOCKER_CONFIG,
+    docker_image,
+    network_port,
+    repositories,
+    version_tag,
+)
 
-ALL_FOLDERS = [FOLDER_HOMEASSISTANT, FOLDER_SHARE, FOLDER_ADDONS, FOLDER_SSL]
+ALL_FOLDERS = [
+    FOLDER_HOMEASSISTANT,
+    FOLDER_SHARE,
+    FOLDER_ADDONS,
+    FOLDER_SSL,
+    FOLDER_MEDIA,
+]
 
 
 def unique_addons(addons_list):
@@ -41,7 +55,7 @@ def unique_addons(addons_list):
     single = {addon[ATTR_SLUG] for addon in addons_list}
 
     if len(single) != len(addons_list):
-        raise vol.Invalid("Invalid addon list on snapshot!")
+        raise vol.Invalid("Invalid addon list on snapshot!") from None
     return addons_list
 
 
@@ -58,7 +72,7 @@ SCHEMA_SNAPSHOT = vol.Schema(
         vol.Inclusive(ATTR_CRYPTO, "encrypted"): CRYPTO_AES128,
         vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema(
             {
-                vol.Optional(ATTR_VERSION): complex_version,
+                vol.Optional(ATTR_VERSION): version_tag,
                 vol.Optional(ATTR_IMAGE): docker_image,
                 vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
                 vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
@@ -77,6 +91,7 @@ SCHEMA_SNAPSHOT = vol.Schema(
             },
             extra=vol.REMOVE_EXTRA,
         ),
+        vol.Optional(ATTR_DOCKER, default=dict): SCHEMA_DOCKER_CONFIG,
         vol.Optional(ATTR_FOLDERS, default=list): vol.All(
             [vol.In(ALL_FOLDERS)], vol.Unique()
         ),

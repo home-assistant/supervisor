@@ -21,18 +21,22 @@ from ..const import (
     ATTR_BOOT,
     ATTR_CRYPTO,
     ATTR_DATE,
+    ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
     ATTR_NAME,
+    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PROTECTED,
     ATTR_REFRESH_TOKEN,
+    ATTR_REGISTRIES,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
     ATTR_SSL,
     ATTR_TYPE,
+    ATTR_USERNAME,
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
@@ -130,6 +134,16 @@ class Snapshot(CoreSysAttributes):
     def homeassistant(self):
         """Return snapshot Home Assistant data."""
         return self._data[ATTR_HOMEASSISTANT]
+
+    @property
+    def docker(self):
+        """Return snapshot Docker config data."""
+        return self._data.get(ATTR_DOCKER, {})
+
+    @docker.setter
+    def docker(self, value):
+        """Set the Docker config data."""
+        self._data[ATTR_DOCKER] = value
 
     @property
     def size(self):
@@ -481,3 +495,29 @@ class Snapshot(CoreSysAttributes):
         Return a coroutine.
         """
         return self.sys_store.update_repositories(self.repositories)
+
+    def store_dockerconfig(self):
+        """Store the configuration for Docker."""
+        self.docker = {
+            ATTR_REGISTRIES: {
+                registry: {
+                    ATTR_USERNAME: credentials[ATTR_USERNAME],
+                    ATTR_PASSWORD: self._encrypt_data(credentials[ATTR_PASSWORD]),
+                }
+                for registry, credentials in self.sys_docker.config.registries.items()
+            }
+        }
+
+    def restore_dockerconfig(self):
+        """Restore the configuration for Docker."""
+        if ATTR_REGISTRIES in self.docker:
+            self.sys_docker.config.registries.update(
+                {
+                    registry: {
+                        ATTR_USERNAME: credentials[ATTR_USERNAME],
+                        ATTR_PASSWORD: self._decrypt_data(credentials[ATTR_PASSWORD]),
+                    }
+                    for registry, credentials in self.docker[ATTR_REGISTRIES].items()
+                }
+            )
+            self.sys_docker.config.save_data()

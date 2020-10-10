@@ -8,9 +8,18 @@ from typing import Any, Dict, Optional
 import attr
 import docker
 from packaging import version as pkg_version
+import requests
 
-from ..const import DNS_SUFFIX, SOCKET_DOCKER
-from ..exceptions import DockerAPIError
+from ..const import (
+    ATTR_REGISTRIES,
+    DNS_SUFFIX,
+    DOCKER_IMAGE_DENYLIST,
+    FILE_HASSIO_DOCKER,
+    SOCKET_DOCKER,
+)
+from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
+from ..utils.json import JsonConfig
+from ..validate import SCHEMA_DOCKER_CONFIG
 from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -60,6 +69,21 @@ class DockerInfo:
         if self.logging != "journald":
             _LOGGER.error("Docker logging driver %s is not supported!", self.logging)
 
+        return self.storage != "overlay2" or self.logging != "journald"
+
+
+class DockerConfig(JsonConfig):
+    """Home Assistant core object for Docker configuration."""
+
+    def __init__(self):
+        """Initialize the JSON configuration."""
+        super().__init__(FILE_HASSIO_DOCKER, SCHEMA_DOCKER_CONFIG)
+
+    @property
+    def registries(self) -> Dict[str, Any]:
+        """Return credentials for docker registries."""
+        return self._data.get(ATTR_REGISTRIES, {})
+
 
 class DockerAPI:
     """Docker Supervisor wrapper.
@@ -74,6 +98,7 @@ class DockerAPI:
         )
         self.network: DockerNetwork = DockerNetwork(self.docker)
         self._info: DockerInfo = DockerInfo.new(self.docker.info())
+        self.config: DockerConfig = DockerConfig()
 
     @property
     def images(self) -> docker.models.images.ImageCollection:
@@ -126,19 +151,25 @@ class DockerAPI:
             container = self.docker.containers.create(
                 f"{image}:{version}", use_config_proxy=False, **kwargs
             )
+        except docker.errors.NotFound as err:
+            _LOGGER.error("Image %s not exists for %s", image, name)
+            raise DockerNotFound() from err
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't create container from %s: %s", name, err)
-            raise DockerAPIError() from None
+            raise DockerAPIError() from err
+        except requests.RequestException as err:
+            _LOGGER.error("Dockerd connection issue for %s: %s", name, err)
+            raise DockerRequestError() from err
 
         # Attach network
         if not network_mode:
             alias = [hostname] if hostname else None
             try:
                 self.network.attach_container(container, alias=alias, ipv4=ipv4)
-            except DockerAPIError:
+            except DockerError:
                 _LOGGER.warning("Can't attach %s to hassio-net!", name)
             else:
-                with suppress(DockerAPIError):
+                with suppress(DockerError):
                     self.network.detach_default_bridge(container)
 
         # Run container
@@ -146,10 +177,13 @@ class DockerAPI:
             container.start()
         except docker.errors.DockerException as err:
             _LOGGER.error("Can't start %s: %s", name, err)
-            raise DockerAPIError() from None
+            raise DockerAPIError() from err
+        except requests.RequestException as err:
+            _LOGGER.error("Dockerd connection issue for %s: %s", name, err)
+            raise DockerRequestError() from err
 
         # Update metadata
-        with suppress(docker.errors.DockerException):
+        with suppress(docker.errors.DockerException, requests.RequestException):
             container.reload()
 
         return container
@@ -182,13 +216,13 @@ class DockerAPI:
             result = container.wait()
             output = container.logs(stdout=stdout, stderr=stderr)
 
-        except docker.errors.DockerException as err:
+        except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't execute command: %s", err)
-            raise DockerAPIError() from None
+            raise DockerError() from err
 
         finally:
             # cleanup container
-            with suppress(docker.errors.DockerException):
+            with suppress(docker.errors.DockerException, requests.RequestException):
                 container.remove(force=True)
 
         return CommandReturn(result.get("StatusCode"), output)
@@ -230,3 +264,29 @@ class DockerAPI:
             _LOGGER.debug("Networks prune: %s", output)
         except docker.errors.APIError as err:
             _LOGGER.warning("Error for networks prune: %s", err)
+
+    def check_denylist_images(self) -> bool:
+        """Return a boolean if the host has images in the denylist."""
+        denied_images = set()
+
+        try:
+            for image in self.images.list():
+                for tag in image.tags:
+                    image_name = tag.split(":")[0]
+                    if (
+                        image_name in DOCKER_IMAGE_DENYLIST
+                        and image_name not in denied_images
+                    ):
+                        denied_images.add(image_name)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
+            raise DockerError() from err
+
+        if not denied_images:
+            return False
+
+        _LOGGER.error(
+            "Found images: '%s' which are not supported, remove these from the host!",
+            ", ".join(denied_images),
+        )
+        return True

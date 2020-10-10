@@ -9,6 +9,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class AddonStore(AddonModel):
     """Hold data for add-on inside Supervisor."""
 
+    def __repr__(self) -> str:
+        """Return internal representation."""
+        return f"<Store: {self.slug}>"
+
     @property
     def data(self) -> Data:
         """Return add-on data/config."""

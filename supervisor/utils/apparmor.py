@@ -22,7 +22,7 @@ def get_profile_name(profile_file):
                 profiles.add(match.group(1))
     except OSError as err:
         _LOGGER.error("Can't read AppArmor profile: %s", err)
-        raise AppArmorFileError()
+        raise AppArmorFileError() from err
 
     if len(profiles) != 1:
         _LOGGER.error("To many profiles inside file: %s", profiles)
@@ -54,7 +54,7 @@ def adjust_profile(profile_name, profile_file, profile_new):
                     profile_data.append(line.replace(org_profile, profile_name))
     except OSError as err:
         _LOGGER.error("Can't adjust origin profile: %s", err)
-        raise AppArmorFileError()
+        raise AppArmorFileError() from err
 
     # Write into new file
     try:
@@ -62,4 +62,4 @@ def adjust_profile(profile_name, profile_file, profile_new):
             profile.writelines(profile_data)
     except OSError as err:
         _LOGGER.error("Can't write new profile: %s", err)
-        raise AppArmorFileError()
+        raise AppArmorFileError() from err

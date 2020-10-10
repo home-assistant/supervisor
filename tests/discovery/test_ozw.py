@@ -10,7 +10,8 @@ def test_good_config():
     """Test good zwave mqtt config."""
 
     valid_discovery_config(
-        "ozw", {"host": "test", "port": 3812, "username": "bla", "password": "test"},
+        "ozw",
+        {"host": "test", "port": 3812, "username": "bla", "password": "test"},
     )
 
 

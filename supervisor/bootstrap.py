@@ -6,6 +6,9 @@ import shutil
 import signal
 
 from colorlog import ColoredFormatter
+import sentry_sdk
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from .addons import AddonManager
 from .api import RestAPI
@@ -13,12 +16,15 @@ from .arch import CpuArch
 from .auth import Auth
 from .const import (
     ENV_HOMEASSISTANT_REPOSITORY,
+    ENV_SUPERVISOR_DEV,
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
+    MACHINE_ID,
     SOCKET_DOCKER,
+    SUPERVISOR_VERSION,
     LogLevel,
-    UpdateChannels,
+    UpdateChannel,
 )
 from .core import Core
 from .coresys import CoreSys
@@ -28,9 +34,9 @@ from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
 from .ingress import Ingress
+from .misc.filter import filter_data
 from .misc.hwmon import HwMonitor
 from .misc.scheduler import Scheduler
-from .misc.secrets import SecretsManager
 from .misc.tasks import Tasks
 from .plugins import PluginManager
 from .services import ServiceManager
@@ -41,9 +47,6 @@ from .updater import Updater
 from .utils.dt import fetch_timezone
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-
-MACHINE_ID = Path("/etc/machine-id")
 
 
 async def initialize_coresys() -> CoreSys:
@@ -70,8 +73,10 @@ async def initialize_coresys() -> CoreSys:
     coresys.discovery = Discovery(coresys)
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
-    coresys.secrets = SecretsManager(coresys)
     coresys.scheduler = Scheduler(coresys)
+
+    # diagnostics
+    setup_diagnostics(coresys)
 
     # bootstrap config
     initialize_system_data(coresys)
@@ -159,13 +164,18 @@ def initialize_system_data(coresys: CoreSys) -> None:
         _LOGGER.info("Create Supervisor audio folder %s", config.path_audio)
         config.path_audio.mkdir()
 
+    # Media folder
+    if not config.path_media.is_dir():
+        _LOGGER.info("Create Supervisor media folder %s", config.path_media)
+        config.path_media.mkdir()
+
     # Update log level
     coresys.config.modify_log_level()
 
     # Check if ENV is in development mode
-    if bool(os.environ.get("SUPERVISOR_DEV", 0)):
+    if bool(os.environ.get(ENV_SUPERVISOR_DEV, 0)):
         _LOGGER.warning("SUPERVISOR_DEV is set")
-        coresys.updater.channel = UpdateChannels.DEV
+        coresys.updater.channel = UpdateChannel.DEV
         coresys.config.logging = LogLevel.DEBUG
         coresys.config.debug = True
 
@@ -231,28 +241,30 @@ def check_environment() -> None:
         _LOGGER.critical("Can't find Docker socket!")
 
     # check socat exec
-    if not shutil.which("socat"):
-        _LOGGER.critical("Can't find socat!")
-
-    # check socat exec
     if not shutil.which("gdbus"):
         _LOGGER.critical("Can't find gdbus!")
 
 
-def reg_signal(loop) -> None:
+def reg_signal(loop, coresys: CoreSys) -> None:
     """Register SIGTERM and SIGKILL to stop system."""
     try:
-        loop.add_signal_handler(signal.SIGTERM, lambda: loop.call_soon(loop.stop))
+        loop.add_signal_handler(
+            signal.SIGTERM, lambda: loop.create_task(coresys.core.stop())
+        )
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGTERM")
 
     try:
-        loop.add_signal_handler(signal.SIGHUP, lambda: loop.call_soon(loop.stop))
+        loop.add_signal_handler(
+            signal.SIGHUP, lambda: loop.create_task(coresys.core.stop())
+        )
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGHUP")
 
     try:
-        loop.add_signal_handler(signal.SIGINT, lambda: loop.call_soon(loop.stop))
+        loop.add_signal_handler(
+            signal.SIGINT, lambda: loop.create_task(coresys.core.stop())
+        )
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGINT")
 
@@ -262,11 +274,27 @@ def supervisor_debugger(coresys: CoreSys) -> None:
     if not coresys.config.debug:
         return
     # pylint: disable=import-outside-toplevel
-    import ptvsd
+    import debugpy
 
     _LOGGER.info("Initialize Supervisor debugger")
 
-    ptvsd.enable_attach(address=("0.0.0.0", 33333), redirect_output=True)
+    debugpy.listen(("0.0.0.0", 33333))
     if coresys.config.debug_block:
         _LOGGER.info("Wait until debugger is attached")
-        ptvsd.wait_for_attach()
+        debugpy.wait_for_client()
+
+
+def setup_diagnostics(coresys: CoreSys) -> None:
+    """Sentry diagnostic backend."""
+    sentry_logging = LoggingIntegration(
+        level=logging.WARNING, event_level=logging.CRITICAL
+    )
+
+    _LOGGER.info("Initialize Supervisor Sentry")
+    sentry_sdk.init(
+        dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
+        before_send=lambda event, hint: filter_data(coresys, event, hint),
+        max_breadcrumbs=30,
+        integrations=[AioHttpIntegration(), sentry_logging],
+        release=SUPERVISOR_VERSION,
+    )

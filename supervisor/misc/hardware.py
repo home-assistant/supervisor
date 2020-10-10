@@ -4,7 +4,8 @@ from datetime import datetime
 import logging
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Optional, Set
+import shutil
+from typing import Any, Dict, List, Optional, Set, Union
 
 import attr
 import pyudev
@@ -30,13 +31,15 @@ RE_TTY: re.Pattern = re.compile(r"tty[A-Z]+")
 RE_VIDEO_DEVICES = re.compile(r"^(?:vchiq|cec\d+|video\d+)")
 
 
-@attr.s(frozen=True)
+@attr.s(slots=True, frozen=True)
 class Device:
     """Represent a device."""
 
     name: str = attr.ib()
     path: Path = attr.ib()
+    subsystem: str = attr.ib()
     links: List[Path] = attr.ib()
+    attributes: Dict[str, str] = attr.ib()
 
 
 class Hardware:
@@ -61,7 +64,9 @@ class Hardware:
                 Device(
                     device.sys_name,
                     Path(device.device_node),
+                    device.subsystem,
                     [Path(node) for node in device.device_links],
+                    {attr: device.properties[attr] for attr in device.properties},
                 )
             )
 
@@ -80,28 +85,30 @@ class Hardware:
         return dev_list
 
     @property
-    def serial_devices(self) -> Set[str]:
+    def serial_devices(self) -> List[Device]:
         """Return all serial and connected devices."""
-        dev_list: Set[str] = set()
-        for device in self.context.list_devices(subsystem="tty"):
-            if "ID_VENDOR" in device.properties or RE_TTY.search(device.device_node):
-                dev_list.add(device.device_node)
+        dev_list: List[Device] = []
+        for device in self.devices:
+            if device.subsystem != "tty" or (
+                "ID_VENDOR" not in device.attributes
+                and not RE_TTY.search(str(device.path))
+            ):
+                continue
+
+            # Cleanup not usable device links
+            for link in device.links.copy():
+                if link.match("/dev/serial/by-id/*"):
+                    continue
+                device.links.remove(link)
+
+            dev_list.append(device)
 
         return dev_list
 
     @property
-    def serial_by_id(self) -> Set[str]:
-        """Return all /dev/serial/by-id for serial devices."""
-        dev_list: Set[str] = set()
-        for device in self.context.list_devices(subsystem="tty"):
-            if "ID_VENDOR" in device.properties or RE_TTY.search(device.device_node):
-                # Add /dev/serial/by-id devlink for current device
-                for dev_link in device.device_links:
-                    if not dev_link.startswith("/dev/serial/by-id"):
-                        continue
-                    dev_list.add(dev_link)
-
-        return dev_list
+    def usb_devices(self) -> List[Device]:
+        """Return all usb and connected devices."""
+        return [device for device in self.devices if device.subsystem == "usb"]
 
     @property
     def input_devices(self) -> Set[str]:
@@ -114,12 +121,13 @@ class Hardware:
         return dev_list
 
     @property
-    def disk_devices(self) -> Set[str]:
+    def disk_devices(self) -> List[Device]:
         """Return all disk devices."""
-        dev_list: Set[str] = set()
-        for device in self.context.list_devices(subsystem="block"):
-            if "ID_NAME" in device.properties:
-                dev_list.add(device.device_node)
+        dev_list: List[Device] = []
+        for device in self.devices:
+            if device.subsystem != "block" or "ID_NAME" not in device.attributes:
+                continue
+            dev_list.append(device)
 
         return dev_list
 
@@ -195,6 +203,21 @@ class Hardware:
 
         return datetime.utcfromtimestamp(int(found.group(1)))
 
+    def get_disk_total_space(self, path: Union[str, Path]) -> float:
+        """Return total space (GiB) on disk for path."""
+        total, _, _ = shutil.disk_usage(path)
+        return round(total / (1024.0 ** 3), 1)
+
+    def get_disk_used_space(self, path: Union[str, Path]) -> float:
+        """Return used space (GiB) on disk for path."""
+        _, used, _ = shutil.disk_usage(path)
+        return round(used / (1024.0 ** 3), 1)
+
+    def get_disk_free_space(self, path: Union[str, Path]) -> float:
+        """Return free space (GiB) on disk for path."""
+        _, _, free = shutil.disk_usage(path)
+        return round(free / (1024.0 ** 3), 1)
+
     async def udev_trigger(self) -> None:
         """Trigger a udev reload."""
         proc = await asyncio.create_subprocess_shell(
@@ -205,5 +228,5 @@ class Hardware:
         if proc.returncode == 0:
             return
 
-        _LOGGER.warning("udevadm device triggering fails!")
+        _LOGGER.warning("udevadm device triggering failed!")
         raise HardwareNotSupportedError()

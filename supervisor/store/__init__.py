@@ -1,10 +1,17 @@
 """Add-on Store handler."""
 import asyncio
 import logging
+from pathlib import Path
 from typing import Dict, List
+
+import voluptuous as vol
+
+from supervisor.store.validate import SCHEMA_REPOSITORY_CONFIG
+from supervisor.utils.json import read_json_file
 
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import JsonFileError
 from .addon import AddonStore
 from .data import StoreData
 from .repository import Repository
@@ -60,11 +67,23 @@ class StoreManager(CoreSysAttributes):
             if not await repository.load():
                 _LOGGER.error("Can't load from repository %s", url)
                 return
-            self.repositories[url] = repository
 
             # don't add built-in repository to config
             if url not in BUILTIN_REPOSITORIES:
+                # Verify that it is a add-on repository
+                repository_file = Path(repository.git.path, "repository.json")
+                try:
+                    await self.sys_run_in_executor(
+                        SCHEMA_REPOSITORY_CONFIG, read_json_file(repository_file)
+                    )
+                except (JsonFileError, vol.Invalid) as err:
+                    _LOGGER.error("%s is not a valid add-on repository. %s", url, err)
+                    await repository.remove()
+                    return
+
                 self.sys_config.add_addon_repository(url)
+
+            self.repositories[url] = repository
 
         tasks = [_add_repository(url) for url in new_rep - old_rep]
         if tasks:
@@ -72,7 +91,7 @@ class StoreManager(CoreSysAttributes):
 
         # del new repository
         for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
-            self.repositories.pop(url).remove()
+            await self.repositories.pop(url).remove()
             self.sys_config.drop_addon_repository(url)
 
         # update data

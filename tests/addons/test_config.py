@@ -70,3 +70,100 @@ def test_valid_basic_build():
     config = load_json_fixture("basic-build-config.json")
 
     vd.SCHEMA_BUILD_CONFIG(config)
+
+
+def test_valid_machine():
+    """Validate valid machine config."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    config["machine"] = [
+        "intel-nuc",
+        "odroid-c2",
+        "odroid-n2",
+        "odroid-xu",
+        "qemuarm-64",
+        "qemuarm",
+        "qemux86-64",
+        "qemux86",
+        "raspberrypi",
+        "raspberrypi2",
+        "raspberrypi3-64",
+        "raspberrypi3",
+        "raspberrypi4-64",
+        "raspberrypi4",
+        "tinker",
+    ]
+
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    config["machine"] = [
+        "!intel-nuc",
+        "!odroid-c2",
+        "!odroid-n2",
+        "!odroid-xu",
+        "!qemuarm-64",
+        "!qemuarm",
+        "!qemux86-64",
+        "!qemux86",
+        "!raspberrypi",
+        "!raspberrypi2",
+        "!raspberrypi3-64",
+        "!raspberrypi3",
+        "!raspberrypi4-64",
+        "!raspberrypi4",
+        "!tinker",
+    ]
+
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    config["machine"] = [
+        "odroid-n2",
+        "!odroid-xu",
+        "qemuarm-64",
+        "!qemuarm",
+        "qemux86-64",
+        "qemux86",
+        "raspberrypi",
+        "raspberrypi4-64",
+        "raspberrypi4",
+        "!tinker",
+    ]
+
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_invalid_machine():
+    """Validate invalid machine config."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    config["machine"] = [
+        "intel-nuc",
+        "raspberrypi3",
+        "raspberrypi4-64",
+        "raspberrypi4",
+        "tinkerxy",
+    ]
+
+    with pytest.raises(vol.Invalid):
+        assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    config["machine"] = [
+        "intel-nuc",
+        "intel-nuc",
+    ]
+
+    with pytest.raises(vol.Invalid):
+        assert vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_watchdog_url():
+    """Test Valid watchdog options."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    for test_options in (
+        "tcp://[HOST]:[PORT:8123]",
+        "http://[HOST]:[PORT:8080]/health",
+        "https://[HOST]:[PORT:80]/",
+    ):
+        config["watchdog"] = test_options
+        assert vd.SCHEMA_ADDON_CONFIG(config)

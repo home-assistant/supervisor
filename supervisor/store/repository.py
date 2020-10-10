@@ -67,9 +67,9 @@ class Repository(CoreSysAttributes):
             return await self.git.pull()
         return True
 
-    def remove(self):
+    async def remove(self):
         """Remove add-on repository."""
         if self.slug in (REPOSITORY_CORE, REPOSITORY_LOCAL):
             raise APIError("Can't remove built-in repositories!")
 
-        self.git.remove()
+        await self.git.remove()

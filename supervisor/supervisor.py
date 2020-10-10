@@ -14,7 +14,7 @@ from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
 from .exceptions import (
-    DockerAPIError,
+    DockerError,
     HostAppArmorError,
     SupervisorError,
     SupervisorUpdateError,
@@ -35,17 +35,11 @@ class Supervisor(CoreSysAttributes):
         """Prepare Home Assistant object."""
         try:
             await self.instance.attach(tag="latest")
-        except DockerAPIError:
+        except DockerError:
             _LOGGER.critical("Can't setup Supervisor Docker container!")
 
-        with suppress(DockerAPIError):
+        with suppress(DockerError):
             await self.instance.cleanup()
-
-        # Check privileged mode
-        if not self.instance.privileged:
-            _LOGGER.error(
-                "Supervisor does not run in Privileged mode. Hassio runs with limited functionality!"
-            )
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -87,7 +81,7 @@ class Supervisor(CoreSysAttributes):
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch AppArmor profile: %s", err)
-            raise SupervisorError() from None
+            raise SupervisorError() from err
 
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
             profile_file = Path(tmp_dir, "apparmor.txt")
@@ -95,15 +89,15 @@ class Supervisor(CoreSysAttributes):
                 profile_file.write_text(data)
             except OSError as err:
                 _LOGGER.error("Can't write temporary profile: %s", err)
-                raise SupervisorError() from None
+                raise SupervisorError() from err
 
             try:
                 await self.sys_host.apparmor.load_profile(
                     "hassio-supervisor", profile_file
                 )
-            except HostAppArmorError:
+            except HostAppArmorError as err:
                 _LOGGER.error("Can't update AppArmor profile!")
-                raise SupervisorError() from None
+                raise SupervisorError() from err
 
     async def update(self, version: Optional[str] = None) -> None:
         """Update Home Assistant version."""
@@ -121,16 +115,16 @@ class Supervisor(CoreSysAttributes):
             await self.instance.update_start_tag(
                 self.sys_updater.image_supervisor, version
             )
-        except DockerAPIError:
-            _LOGGER.error("Update of Supervisor fails!")
-            raise SupervisorUpdateError() from None
+        except DockerError as err:
+            _LOGGER.error("Update of Supervisor failed!")
+            raise SupervisorUpdateError() from err
         else:
             self.sys_config.version = version
             self.sys_config.save_data()
 
         with suppress(SupervisorError):
             await self.update_apparmor()
-        self.sys_loop.call_later(5, self.sys_loop.stop)
+        self.sys_create_task(self.sys_core.stop())
 
     @property
     def in_progress(self) -> bool:
@@ -148,8 +142,8 @@ class Supervisor(CoreSysAttributes):
         """Return stats of Supervisor."""
         try:
             return await self.instance.stats()
-        except DockerAPIError:
-            raise SupervisorError() from None
+        except DockerError as err:
+            raise SupervisorError() from err
 
     async def repair(self):
         """Repair local Supervisor data."""
@@ -159,5 +153,5 @@ class Supervisor(CoreSysAttributes):
         _LOGGER.info("Repair Supervisor %s", self.version)
         try:
             await self.instance.retag()
-        except DockerAPIError:
-            _LOGGER.error("Repairing of Supervisor fails")
+        except DockerError:
+            _LOGGER.error("Repairing of Supervisor failed")

@@ -62,12 +62,12 @@ class Auth(JsonConfig, CoreSysAttributes):
         _LOGGER.info("Auth request from %s for %s", addon.slug, username)
 
         # Check API state
-        if not await self.sys_homeassistant.check_api_state():
+        if not await self.sys_homeassistant.api.check_api_state():
             _LOGGER.info("Home Assistant not running, check cache")
             return self._check_cache(username, password)
 
         try:
-            async with self.sys_homeassistant.make_request(
+            async with self.sys_homeassistant.api.make_request(
                 "post",
                 "api/hassio_auth",
                 json={
@@ -93,7 +93,7 @@ class Auth(JsonConfig, CoreSysAttributes):
     async def change_password(self, username: str, password: str) -> None:
         """Change user password login."""
         try:
-            async with self.sys_homeassistant.make_request(
+            async with self.sys_homeassistant.api.make_request(
                 "post",
                 "api/hassio_auth/password_reset",
                 json={ATTR_USERNAME: username, ATTR_PASSWORD: password},

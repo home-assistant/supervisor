@@ -58,13 +58,16 @@ from ..const import (
     ATTR_TMPFS,
     ATTR_UDEV,
     ATTR_URL,
+    ATTR_USB,
     ATTR_VERSION,
     ATTR_VIDEO,
+    ATTR_WATCHDOG,
     ATTR_WEBUI,
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
-    AddonStages,
+    AddonBoot,
+    AddonStage,
     AddonStartup,
 )
 from ..coresys import CoreSys, CoreSysAttributes
@@ -107,7 +110,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_OPTIONS]
 
     @property
-    def boot(self) -> bool:
+    def boot(self) -> AddonBoot:
         """Return boot config with prio local settings."""
         return self.data[ATTR_BOOT]
 
@@ -205,7 +208,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_ADVANCED]
 
     @property
-    def stage(self) -> AddonStages:
+    def stage(self) -> AddonStage:
         """Return stage mode of add-on."""
         return self.data[ATTR_STAGE]
 
@@ -246,6 +249,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def webui(self) -> Optional[str]:
         """Return URL to webui or None."""
         return self.data.get(ATTR_WEBUI)
+
+    @property
+    def watchdog(self) -> Optional[str]:
+        """Return URL to for watchdog or None."""
+        return self.data.get(ATTR_WATCHDOG)
 
     @property
     def ingress_port(self) -> Optional[int]:
@@ -291,11 +299,6 @@ class AddonModel(CoreSysAttributes, ABC):
     def devices(self) -> List[str]:
         """Return devices of add-on."""
         return self.data.get(ATTR_DEVICES, [])
-
-    @property
-    def auto_uart(self) -> bool:
-        """Return True if we should map all UART device."""
-        return self.data[ATTR_AUTO_UART]
 
     @property
     def tmpfs(self) -> Optional[str]:
@@ -375,6 +378,16 @@ class AddonModel(CoreSysAttributes, ABC):
     def with_gpio(self) -> bool:
         """Return True if the add-on access to GPIO interface."""
         return self.data[ATTR_GPIO]
+
+    @property
+    def with_usb(self) -> bool:
+        """Return True if the add-on need USB access."""
+        return self.data[ATTR_USB]
+
+    @property
+    def with_uart(self) -> bool:
+        """Return True if we should map all UART device."""
+        return self.data[ATTR_AUTO_UART]
 
     @property
     def with_udev(self) -> bool:
@@ -535,7 +548,9 @@ class AddonModel(CoreSysAttributes, ABC):
 
         # Machine / Hardware
         machine = config.get(ATTR_MACHINE)
-        if machine and self.sys_machine not in machine:
+        if machine and f"!{self.sys_machine}" in machine:
+            return False
+        elif machine and self.sys_machine not in machine:
             return False
 
         # Home Assistant

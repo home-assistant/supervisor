@@ -5,9 +5,10 @@ import asyncio
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
 
 import aiohttp
+import sentry_sdk
 
 from .config import CoreConfig
-from .const import UpdateChannels
+from .const import UpdateChannel
 from .docker import DockerAPI
 from .misc.hardware import Hardware
 
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from .hassos import HassOS
     from .misc.scheduler import Scheduler
     from .misc.hwmon import HwMonitor
-    from .misc.secrets import SecretsManager
     from .misc.tasks import Tasks
     from .homeassistant import HomeAssistant
     from .host import HostManager
@@ -43,7 +43,7 @@ class CoreSys:
 
     def __init__(self):
         """Initialize coresys."""
-        # Static attributes
+        # Static attributes protected
         self._machine_id: Optional[str] = None
         self._machine: Optional[str] = None
 
@@ -75,7 +75,6 @@ class CoreSys:
         self._dbus: Optional[DBusManager] = None
         self._hassos: Optional[HassOS] = None
         self._services: Optional[ServiceManager] = None
-        self._secrets: Optional[SecretsManager] = None
         self._scheduler: Optional[Scheduler] = None
         self._store: Optional[StoreManager] = None
         self._discovery: Optional[Discovery] = None
@@ -87,12 +86,7 @@ class CoreSys:
         """Return True if we run dev mode."""
         if self._updater is None:
             return False
-        return self._updater.channel == UpdateChannels.DEV
-
-    @property
-    def timezone(self) -> str:
-        """Return timezone."""
-        return self._config.timezone
+        return self._updater.channel == UpdateChannel.DEV
 
     @property
     def loop(self) -> asyncio.BaseEventLoop:
@@ -249,20 +243,6 @@ class CoreSys:
         if self._updater:
             raise RuntimeError("Updater already set!")
         self._updater = value
-
-    @property
-    def secrets(self) -> SecretsManager:
-        """Return SecretsManager object."""
-        if self._secrets is None:
-            raise RuntimeError("SecretsManager not set!")
-        return self._secrets
-
-    @secrets.setter
-    def secrets(self, value: SecretsManager) -> None:
-        """Set a Updater object."""
-        if self._secrets:
-            raise RuntimeError("SecretsManager already set!")
-        self._secrets = value
 
     @property
     def addons(self) -> AddonManager:
@@ -459,16 +439,6 @@ class CoreSysAttributes:
         return self.coresys.dev
 
     @property
-    def sys_timezone(self) -> str:
-        """Return timezone."""
-        return self.coresys.timezone
-
-    @property
-    def sys_machine_id(self) -> Optional[str]:
-        """Return timezone."""
-        return self.coresys.machine_id
-
-    @property
     def sys_loop(self) -> asyncio.BaseEventLoop:
         """Return loop object."""
         return self.coresys.loop
@@ -544,11 +514,6 @@ class CoreSysAttributes:
         return self.coresys.updater
 
     @property
-    def sys_secrets(self) -> SecretsManager:
-        """Return SecretsManager object."""
-        return self.coresys.secrets
-
-    @property
     def sys_addons(self) -> AddonManager:
         """Return AddonManager object."""
         return self.coresys.addons
@@ -612,3 +577,7 @@ class CoreSysAttributes:
     def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
         """Create an async task."""
         return self.sys_loop.create_task(coroutine)
+
+    def sys_capture_exception(self, err: Exception) -> None:
+        """Capture a exception."""
+        sentry_sdk.capture_exception(err)
