@@ -12,6 +12,7 @@ from .const import (
     SUPERVISED_SUPPORTED_OS,
     AddonStartup,
     CoreState,
+    HostFeature,
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
@@ -161,14 +162,14 @@ class Core(CoreSysAttributes):
                     self.sys_host.info.operating_system,
                 )
 
-        # Check all DBUS connectivity
-        if not self.sys_dbus.hostname.is_connected:
+        # Check Host features
+        if HostFeature.NETWORK not in self.sys_host.features:
             self.supported = False
-            _LOGGER.error("Hostname DBUS is not connected")
-        if not self.sys_dbus.network.is_connected:
-            self.supported = False
-            _LOGGER.error("NetworkManager  is not connected")
-        if not self.sys_dbus.systemd.is_connected:
+            _LOGGER.error("NetworkManager is not working")
+        if (
+            not self.sys_dbus.systemd.is_connected
+            or self.sys_dbus.hostname.is_connected
+        ):
             self.supported = False
             _LOGGER.error("Systemd DBUS is not connected")
 
