@@ -326,7 +326,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/snapshots/new/partial", api_snapshots.snapshot_partial),
                 web.post("/snapshots/new/upload", api_snapshots.upload),
                 web.get("/snapshots/{snapshot}/info", api_snapshots.info),
-                web.post("/snapshots/{snapshot}/remove", api_snapshots.remove),
+                web.delete("/snapshots/{snapshot}", api_snapshots.remove),
                 web.post(
                     "/snapshots/{snapshot}/restore/full", api_snapshots.restore_full
                 ),
@@ -335,6 +335,8 @@ class RestAPI(CoreSysAttributes):
                     api_snapshots.restore_partial,
                 ),
                 web.get("/snapshots/{snapshot}/download", api_snapshots.download),
+                # Old, remove at end of 2020
+                web.post("/snapshots/{snapshot}/remove", api_snapshots.remove),
             ]
         )
 
