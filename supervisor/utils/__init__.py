@@ -1,5 +1,6 @@
 """Tools file for Supervisor."""
 import asyncio
+from contextvars import ContextVar
 from datetime import datetime
 from ipaddress import IPv4Address
 import logging
@@ -7,9 +8,13 @@ import re
 import socket
 from typing import Any, Optional
 
+from .job_monitor import JobMonitor
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_STRING: re.Pattern = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
+
+job_monitor: ContextVar[JobMonitor] = ContextVar("job_monitor")
 
 
 def convert_to_ascii(raw: bytes) -> str:
@@ -29,6 +34,8 @@ def process_lock(method):
             return False
 
         async with api.lock:
+            job_monitor.set(JobMonitor(api))
+
             return await method(api, *args, **kwargs)
 
     return wrap_api

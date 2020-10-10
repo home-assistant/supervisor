@@ -12,14 +12,8 @@ import requests
 from . import CommandReturn
 from ..const import ATTR_PASSWORD, ATTR_USERNAME, LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import (
-    DockerAPIError,
-    DockerError,
-    DockerNotFound,
-    DockerRequestError,
-    HomeAssistantAPIError,
-)
-from ..utils import process_lock
+from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
+from ..utils import job_monitor, process_lock
 from .stats import DockerStats
 from .utils import PullProgress
 
@@ -142,13 +136,14 @@ class DockerInterface(CoreSysAttributes):
             self._meta = docker_image.attrs
 
     def _pull_with_progress(self, image, tag):
+        monitor = job_monitor.get()
         progress = PullProgress(self.name)
         try:
             status = progress.status()
-            self._send_progress(status)
+            monitor.send_progress(status)
             pull_log = self.sys_docker.api.pull(image, tag, stream=True, decode=True)
             for status in progress.process_log(pull_log):
-                self._send_progress(status)
+                monitor.send_progress(status)
 
             return self.sys_docker.images.get(
                 "{0}{2}{1}".format(
@@ -157,20 +152,8 @@ class DockerInterface(CoreSysAttributes):
             )
         except docker.errors.APIError as err:
             status = progress.done()
-            self._send_progress(status)
+            monitor.send_progress(status)
             raise err
-
-    def _send_progress(self, status):
-        asyncio.run_coroutine_threadsafe(
-            self._async_send_progress(status), self.sys_loop,
-        )
-
-    async def _async_send_progress(self, status) -> None:
-        with suppress(HomeAssistantAPIError):
-            async with self.sys_homeassistant.make_request(
-                "post", "api/events/hassio_progress", json=status, timeout=2,
-            ):
-                pass
 
     def exists(self) -> Awaitable[bool]:
         """Return True if Docker image exists in local repository."""
