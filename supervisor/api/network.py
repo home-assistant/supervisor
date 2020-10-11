@@ -39,6 +39,7 @@ SCHEMA_UPDATE = vol.Schema(
 def interface_information(interface: NetworkInterface) -> dict:
     """Return a dict with information of a interface to be used in th API."""
     return {
+        ATTR_INTERFACE: interface.name,
         ATTR_IP_ADDRESS: f"{interface.ip_address}/{interface.prefix}",
         ATTR_GATEWAY: interface.gateway,
         ATTR_ID: interface.id,
