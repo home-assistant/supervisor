@@ -2,9 +2,11 @@
 import asyncio
 import logging
 from pathlib import Path
+import re
 from tempfile import TemporaryDirectory
 
 from aiohttp import web
+from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
 from ..const import (
@@ -175,6 +177,9 @@ class APISnapshots(CoreSysAttributes):
         _LOGGER.info("Download snapshot %s", snapshot.slug)
         response = web.FileResponse(snapshot.tarfile)
         response.content_type = CONTENT_TYPE_TAR
+        response.headers[
+            CONTENT_DISPOSITION
+        ] = f"attachment; filename={re.sub('[^A-Za-z0-9]+', '_', snapshot.name)}.tar"
         return response
 
     @api_process
