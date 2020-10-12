@@ -111,6 +111,10 @@ class Core(CoreSysAttributes):
         """Start setting up supervisor orchestration."""
         self.state = CoreState.SETUP
 
+        # rest api views
+        await self.sys_api.load()
+        await self.sys_api.start()
+
         # Load DBus
         await self.sys_dbus.load()
 
@@ -137,9 +141,6 @@ class Core(CoreSysAttributes):
 
         # Load Add-ons
         await self.sys_addons.load()
-
-        # rest api views
-        await self.sys_api.load()
 
         # load last available data
         await self.sys_snapshots.load()
@@ -189,7 +190,6 @@ class Core(CoreSysAttributes):
     async def start(self):
         """Start Supervisor orchestration."""
         self.state = CoreState.STARTUP
-        await self.sys_api.start()
 
         # Check if system is healthy
         if not self.supported:

@@ -97,11 +97,15 @@ def api_process_raw(content):
     return wrap_method
 
 
-def api_return_error(error: Optional[Any] = None) -> web.Response:
+def api_return_error(
+    error: Optional[Exception] = None, message: Optional[str] = None
+) -> web.Response:
     """Return an API error message."""
-    message = get_message_from_exception_chain(error)
-    if check_exception_chain(error, DockerAPIError):
-        message = format_message(message)
+    if error and not message:
+        message = get_message_from_exception_chain(error)
+        if check_exception_chain(error, DockerAPIError):
+            message = format_message(message)
+
     return web.json_response(
         {
             JSON_RESULT: RESULT_ERROR,
