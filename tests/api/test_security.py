@@ -33,6 +33,17 @@ async def test_api_security_system_initialize(api_system, coresys: CoreSys):
 
 
 @pytest.mark.asyncio
+async def test_api_security_system_setup(api_system, coresys: CoreSys):
+    """Test security."""
+    coresys.core.state = CoreState.SETUP
+
+    resp = await api_system.get("/supervisor/ping")
+    result = await resp.json()
+    assert resp.status == 400
+    assert result["result"] == "error"
+
+
+@pytest.mark.asyncio
 async def test_api_security_system_running(api_system, coresys: CoreSys):
     """Test security."""
     coresys.core.state = CoreState.RUNNING
@@ -42,9 +53,9 @@ async def test_api_security_system_running(api_system, coresys: CoreSys):
 
 
 @pytest.mark.asyncio
-async def test_api_security_system_setup(api_system, coresys: CoreSys):
+async def test_api_security_system_startup(api_system, coresys: CoreSys):
     """Test security."""
-    coresys.core.state = CoreState.SETUP
+    coresys.core.state = CoreState.STARTUP
 
     resp = await api_system.get("/supervisor/ping")
     assert resp.status == 200
