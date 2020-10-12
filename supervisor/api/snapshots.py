@@ -32,6 +32,7 @@ from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_RESTORE_PARTIAL = vol.Schema(
@@ -179,7 +180,7 @@ class APISnapshots(CoreSysAttributes):
         response.content_type = CONTENT_TYPE_TAR
         response.headers[
             CONTENT_DISPOSITION
-        ] = f"attachment; filename={re.sub('[^A-Za-z0-9]+', '_', snapshot.name)}.tar"
+        ] = f"attachment; filename={RE_SLUGIFY_NAME.sub('_', snapshot.name)}.tar"
         return response
 
     @api_process
