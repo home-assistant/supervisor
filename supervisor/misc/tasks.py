@@ -42,6 +42,7 @@ RUN_WATCHDOG_MULTICAST_DOCKER = 60
 
 RUN_WATCHDOG_ADDON_DOCKER = 30
 RUN_WATCHDOG_ADDON_APPLICATON = 120
+RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
 RUN_REFRESH_ADDON = 15
 
@@ -92,6 +93,9 @@ class Tasks(CoreSysAttributes):
         )
         self.sys_scheduler.register_task(
             self._watchdog_observer_docker, RUN_WATCHDOG_OBSERVER_DOCKER
+        )
+        self.sys_scheduler.register_task(
+            self._watchdog_observer_application, RUN_WATCHDOG_OBSERVER_APPLICATION
         )
         self.sys_scheduler.register_task(
             self._watchdog_multicast_docker, RUN_WATCHDOG_MULTICAST_DOCKER
@@ -301,10 +305,25 @@ class Tasks(CoreSysAttributes):
             or self.sys_plugins.observer.in_progress
         ):
             return
-        _LOGGER.warning("Watchdog found a problem with observer plugin!")
+        _LOGGER.warning("Watchdog/Docker found a problem with observer plugin!")
 
         try:
             await self.sys_plugins.observer.start()
+        except ObserverError:
+            _LOGGER.error("Watchdog observer reanimation failed!")
+
+    async def _watchdog_observer_application(self):
+        """Check running state of application and rebuild if they is not response."""
+        # if observer plugin is active
+        if (
+            self.sys_plugins.observer.in_progress
+            or await self.sys_plugins.observer.check_system_runtime()
+        ):
+            return
+        _LOGGER.warning("Watchdog/Application found a problem with observer plugin!")
+
+        try:
+            await self.sys_plugins.observer.rebuild()
         except ObserverError:
             _LOGGER.error("Watchdog observer reanimation failed!")
 

@@ -8,6 +8,8 @@ import logging
 import secrets
 from typing import Awaitable, Optional
 
+import aiohttp
+
 from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.observer import DockerObserver
@@ -174,6 +176,26 @@ class Observer(CoreSysAttributes, JsonConfig):
         Return a coroutine.
         """
         return self.instance.is_running()
+
+    async def rebuild(self) -> None:
+        """Rebuild Observer Docker container."""
+        with suppress(DockerError):
+            await self.instance.stop()
+        await self.start()
+
+    async def check_system_runtime(self) -> bool:
+        """Check if the observer is running."""
+        try:
+            timeout = aiohttp.ClientTimeout(total=5)
+            async with self.sys_websession.get(
+                f"http://{self.sys_docker.network.observer!s}/ping", timeout=timeout
+            ) as request:
+                if request.status == 200:
+                    return True
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            pass
+
+        return False
 
     async def repair(self) -> None:
         """Repair observer container."""
