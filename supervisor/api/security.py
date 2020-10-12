@@ -2,7 +2,7 @@
 import logging
 import re
 
-from aiohttp.web import middleware
+from aiohttp.web import Request, RequestHandler, Response, middleware
 from aiohttp.web_exceptions import HTTPForbidden, HTTPUnauthorized
 
 from ..const import (
@@ -12,9 +12,10 @@ from ..const import (
     ROLE_DEFAULT,
     ROLE_HOMEASSISTANT,
     ROLE_MANAGER,
+    CoreState,
 )
-from ..coresys import CoreSysAttributes
-from .utils import excract_supervisor_token
+from ..coresys import CoreSys, CoreSysAttributes
+from .utils import api_return_error, excract_supervisor_token
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -108,12 +109,30 @@ ADDONS_ROLE_ACCESS = {
 class SecurityMiddleware(CoreSysAttributes):
     """Security middleware functions."""
 
-    def __init__(self, coresys):
+    def __init__(self, coresys: CoreSys):
         """Initialize security middleware."""
-        self.coresys = coresys
+        self.coresys: CoreSys = coresys
 
     @middleware
-    async def token_validation(self, request, handler):
+    async def system_validation(
+        self, request: Request, handler: RequestHandler
+    ) -> Response:
+        """Check if core is ready to response."""
+        if self.sys_core.state not in (
+            CoreState.STARTUP,
+            CoreState.RUNNING,
+            CoreState.FREEZE,
+        ):
+            return api_return_error(
+                message=f"System is not ready with state: {self.sys_core.state.value}"
+            )
+
+        return await handler(request)
+
+    @middleware
+    async def token_validation(
+        self, request: Request, handler: RequestHandler
+    ) -> Response:
         """Check security access of this layer."""
         request_from = None
         supervisor_token = excract_supervisor_token(request)

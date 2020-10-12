@@ -1,4 +1,5 @@
 """Common test functions."""
+from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
@@ -164,3 +165,12 @@ def store_manager(coresys: CoreSys):
     sm_obj.repositories = set(coresys.config.addons_repositories)
     with patch("supervisor.store.data.StoreData.update", return_value=MagicMock()):
         yield sm_obj
+
+
+@pytest.fixture
+def run_dir(tmp_path):
+    """Fixture to inject hassio env."""
+    with patch("supervisor.core.RUN_SUPERVISOR_STATE") as mock_run:
+        tmp_state = Path(tmp_path, "supervisor")
+        mock_run.write_text = tmp_state.write_text
+        yield tmp_state
