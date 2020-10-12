@@ -20,6 +20,10 @@ class HomeAssistantUpdateError(HomeAssistantError):
     """Error on update of a Home Assistant."""
 
 
+class HomeAssistantCrashError(HomeAssistantError):
+    """Error on crash of a Home Assistant startup."""
+
+
 class HomeAssistantAPIError(HomeAssistantError):
     """Home Assistant API exception."""
 

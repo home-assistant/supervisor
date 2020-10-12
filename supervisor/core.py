@@ -18,6 +18,7 @@ from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     DockerError,
     HassioError,
+    HomeAssistantCrashError,
     HomeAssistantError,
     SupervisorUpdateError,
 )
@@ -241,8 +242,16 @@ class Core(CoreSysAttributes):
                 self.sys_homeassistant.boot
                 and not await self.sys_homeassistant.core.is_running()
             ):
-                with suppress(HomeAssistantError):
+                try:
                     await self.sys_homeassistant.core.start()
+                except HomeAssistantCrashError as err:
+                    _LOGGER.warning("Can't start Home Assistant Core - rebuild")
+                    self.sys_capture_exception(err)
+
+                    with suppress(HomeAssistantError):
+                        await self.sys_homeassistant.core.rebuild()
+                except HomeAssistantError as err:
+                    self.sys_capture_exception(err)
             else:
                 _LOGGER.info("Skip start of Home Assistant")
 
