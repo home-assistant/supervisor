@@ -44,6 +44,8 @@ RUN_WATCHDOG_ADDON_DOCKER = 30
 RUN_WATCHDOG_ADDON_APPLICATON = 120
 RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
+RUN_WATCHDOG_STORAGE = 3600
+
 RUN_REFRESH_ADDON = 15
 
 
@@ -106,6 +108,9 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(
             self._watchdog_addon_application, RUN_WATCHDOG_ADDON_APPLICATON
         )
+        self.sys_scheduler.register_task(
+            self.sys_host.check_free_space, RUN_WATCHDOG_STORAGE
+        )
 
         # Refresh
         self.sys_scheduler.register_task(self._refresh_addon, RUN_REFRESH_ADDON)
@@ -127,6 +132,10 @@ class Tasks(CoreSysAttributes):
                 )
                 continue
 
+            if self.sys_host.info.free_space < 1:
+                _LOGGER.warning("Free space is less than 1GB, pausing add-on updates")
+                return
+
             # Run Add-on update sequential
             # avoid issue on slow IO
             _LOGGER.info("Add-on auto update process %s", addon.slug)
@@ -143,6 +152,10 @@ class Tasks(CoreSysAttributes):
         # don't perform an update on dev channel
         if self.sys_dev:
             _LOGGER.warning("Ignore Supervisor update on dev channel!")
+            return
+
+        if self.sys_host.info.free_space < 1:
+            _LOGGER.warning("Free space is less than 1GB, pausing supervisor update")
             return
 
         _LOGGER.info("Found new Supervisor version")

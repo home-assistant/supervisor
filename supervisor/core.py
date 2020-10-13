@@ -192,6 +192,9 @@ class Core(CoreSysAttributes):
         except DockerError:
             self.healthy = False
 
+        # Check free space
+        await self.sys_host.check_free_space()
+
     async def start(self):
         """Start Supervisor orchestration."""
         self.state = CoreState.STARTUP
