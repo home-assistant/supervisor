@@ -39,6 +39,7 @@ from .misc.hwmon import HwMonitor
 from .misc.scheduler import Scheduler
 from .misc.tasks import Tasks
 from .plugins import PluginManager
+from .resolution import ResolutionManager
 from .services import ServiceManager
 from .snapshots import SnapshotManager
 from .store import StoreManager
@@ -54,6 +55,7 @@ async def initialize_coresys() -> CoreSys:
     coresys = CoreSys()
 
     # Initialize core objects
+    coresys.resolution = ResolutionManager(coresys)
     coresys.core = Core(coresys)
     coresys.plugins = PluginManager(coresys)
     coresys.arch = CpuArch(coresys)

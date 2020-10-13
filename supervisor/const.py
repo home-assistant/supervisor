@@ -261,6 +261,7 @@ ATTR_TOTP = "totp"
 ATTR_TYPE = "type"
 ATTR_UDEV = "udev"
 ATTR_UNSAVED = "unsaved"
+ATTR_UNSUPPORTED = "unsupported"
 ATTR_URL = "url"
 ATTR_USB = "usb"
 ATTR_USER = "user"
@@ -428,3 +429,17 @@ class HostFeature(str, Enum):
     REBOOT = "reboot"
     SERVICES = "services"
     SHUTDOWN = "shutdown"
+
+
+class UnsupportedReason(str, Enum):
+    """Reasons for unsupported status."""
+
+    CONTAINER = "container"
+    DBUS = "dbus"
+    DOCKER_CONFIGURATION = "docker_configuration"
+    DOCKER_VERSION = "docker_version"
+    LXC = "lxc"
+    NETWORK_MANAGER = "network_manager"
+    OS = "os"
+    PRIVILEGED = "privileged"
+    SYSTEMD = "systemd"

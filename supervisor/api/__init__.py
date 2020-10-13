@@ -23,6 +23,7 @@ from .network import APINetwork
 from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
+from .resolution import APIResoulution
 from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots
@@ -73,6 +74,7 @@ class RestAPI(CoreSysAttributes):
         self._register_os()
         self._register_panel()
         self._register_proxy()
+        self._register_resolution()
         self._register_services()
         self._register_snapshots()
         self._register_supervisor()
@@ -189,6 +191,13 @@ class RestAPI(CoreSysAttributes):
         api_info.coresys = self.coresys
 
         self.webapp.add_routes([web.get("/info", api_info.info)])
+
+    def _register_resolution(self) -> None:
+        """Register info functions."""
+        api_resolution = APIResoulution()
+        api_resolution.coresys = self.coresys
+
+        self.webapp.add_routes([web.get("/resolution", api_resolution.base)])
 
     def _register_auth(self) -> None:
         """Register auth functions."""

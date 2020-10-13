@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from .store import StoreManager
     from .updater import Updater
     from .plugins import PluginManager
+    from .resolution import ResolutionManager
 
 
 T = TypeVar("T")
@@ -80,6 +81,7 @@ class CoreSys:
         self._discovery: Optional[Discovery] = None
         self._hwmonitor: Optional[HwMonitor] = None
         self._plugins: Optional[PluginManager] = None
+        self._resolution: Optional[ResolutionManager] = None
 
     @property
     def dev(self) -> bool:
@@ -399,6 +401,20 @@ class CoreSys:
         self._hassos = value
 
     @property
+    def resolution(self) -> ResolutionManager:
+        """Return resolution manager object."""
+        if self._resolution is None:
+            raise RuntimeError("resolution manager not set!")
+        return self._resolution
+
+    @resolution.setter
+    def resolution(self, value: ResolutionManager) -> None:
+        """Set a resolution manager object."""
+        if self._resolution:
+            raise RuntimeError("resolution manager already set!")
+        self._resolution = value
+
+    @property
     def machine(self) -> Optional[str]:
         """Return machine type string."""
         return self._machine
@@ -567,6 +583,11 @@ class CoreSysAttributes:
     def sys_hassos(self) -> HassOS:
         """Return HassOS object."""
         return self.coresys.hassos
+
+    @property
+    def sys_resolution(self) -> ResolutionManager:
+        """Return Resolution manager object."""
+        return self.coresys.resolution
 
     def sys_run_in_executor(
         self, funct: Callable[..., T], *args: Any
