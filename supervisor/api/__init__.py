@@ -5,8 +5,6 @@ from typing import Optional
 
 from aiohttp import web
 
-from supervisor.api.resolution import APIResoulution
-
 from ..coresys import CoreSys, CoreSysAttributes
 from .addons import APIAddons
 from .audio import APIAudio
@@ -25,6 +23,7 @@ from .network import APINetwork
 from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
+from .resolution import APIResoulution
 from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots

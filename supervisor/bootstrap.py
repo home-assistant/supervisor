@@ -10,8 +10,6 @@ import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
-from supervisor.resolution import ResolutionManager
-
 from .addons import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
@@ -41,6 +39,7 @@ from .misc.hwmon import HwMonitor
 from .misc.scheduler import Scheduler
 from .misc.tasks import Tasks
 from .plugins import PluginManager
+from .resolution import ResolutionManager
 from .services import ServiceManager
 from .snapshots import SnapshotManager
 from .store import StoreManager
