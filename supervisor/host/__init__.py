@@ -108,7 +108,7 @@ class HostManager(CoreSysAttributes):
     async def check_free_space(self):
         """Check free space."""
         free = self.sys_host.info.free_space
-        if free > 600 or not await self.sys_homeassistant.core.is_running():
+        if free > 1 or not await self.sys_homeassistant.core.is_running():
             return
 
         _LOGGER.warning("Available space is less than 1GB! (%sGB)", free)
