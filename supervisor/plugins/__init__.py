@@ -21,7 +21,7 @@ class PluginManager(CoreSysAttributes):
     required_cli: LegacyVersion = pkg_parse("26")
     required_dns: LegacyVersion = pkg_parse("9")
     required_audio: LegacyVersion = pkg_parse("17")
-    required_observer: LegacyVersion = pkg_parse("2")
+    required_observer: LegacyVersion = pkg_parse("2020.10.1")
     required_multicast: LegacyVersion = pkg_parse("3")
 
     def __init__(self, coresys: CoreSys):
