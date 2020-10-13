@@ -10,6 +10,8 @@ import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
+from supervisor.resolution import ResolutionManager
+
 from .addons import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
@@ -54,6 +56,7 @@ async def initialize_coresys() -> CoreSys:
     coresys = CoreSys()
 
     # Initialize core objects
+    coresys.resolution = ResolutionManager(coresys)
     coresys.core = Core(coresys)
     coresys.plugins = PluginManager(coresys)
     coresys.arch = CpuArch(coresys)

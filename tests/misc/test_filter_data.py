@@ -33,7 +33,7 @@ def test_diagnostics_disabled(coresys):
 def test_not_supported(coresys):
     """Test if not supported."""
     coresys.config.diagnostics = True
-    coresys.core.unsupported.append(UnsupportedReason.DOCKER_VERSION)
+    coresys.resolution.unsupported = UnsupportedReason.DOCKER_VERSION
     assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 

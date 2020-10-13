@@ -2,7 +2,7 @@
 import asyncio
 from contextlib import suppress
 import logging
-from typing import List, Optional
+from typing import Optional
 
 import async_timeout
 
@@ -34,8 +34,6 @@ class Core(CoreSysAttributes):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
         self.healthy: bool = True
-        self.unsupported: List[UnsupportedReason] = []
-
         self._state: Optional[CoreState] = None
 
     @property
@@ -46,7 +44,7 @@ class Core(CoreSysAttributes):
     @property
     def supported(self) -> CoreState:
         """Return true if the installation is supported."""
-        return len(self.unsupported) == 0
+        return len(self.sys_resolution.unsupported) == 0
 
     @state.setter
     def state(self, new_state: CoreState) -> None:
@@ -67,29 +65,29 @@ class Core(CoreSysAttributes):
 
         # If host docker is supported?
         if not self.sys_docker.info.supported_version:
-            self.unsupported.append(UnsupportedReason.DOCKER_VERSION)
+            self.sys_resolution.unsupported = UnsupportedReason.DOCKER_VERSION
             self.healthy = False
             _LOGGER.error(
                 "Docker version %s is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
         elif self.sys_docker.info.inside_lxc:
-            self.unsupported.append(UnsupportedReason.LXC)
+            self.sys_resolution.unsupported = UnsupportedReason.LXC
             self.healthy = False
             _LOGGER.error(
                 "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
             )
         elif not self.sys_supervisor.instance.privileged:
-            self.unsupported.append(UnsupportedReason.PRIVILEGED)
+            self.sys_resolution.unsupported = UnsupportedReason.PRIVILEGED
             self.healthy = False
             _LOGGER.error("Supervisor does not run in Privileged mode.")
 
         if self.sys_docker.info.check_requirements():
-            self.unsupported.append(UnsupportedReason.DOCKER_CONFIGURATION)
+            self.sys_resolution.unsupported = UnsupportedReason.DOCKER_CONFIGURATION
 
         # Dbus available
         if not SOCKET_DBUS.exists():
-            self.unsupported.append(UnsupportedReason.DBUS)
+            self.sys_resolution.unsupported = UnsupportedReason.DBUS
             _LOGGER.error(
                 "DBus is required for Home Assistant. This system is not supported!"
             )
@@ -164,7 +162,7 @@ class Core(CoreSysAttributes):
         # Check supported OS
         if not self.sys_hassos.available:
             if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:
-                self.unsupported.append(UnsupportedReason.OS)
+                self.sys_resolution.unsupported = UnsupportedReason.OS
                 _LOGGER.error(
                     "Detected unsupported OS: %s",
                     self.sys_host.info.operating_system,
@@ -172,7 +170,7 @@ class Core(CoreSysAttributes):
 
         # Check Host features
         if HostFeature.NETWORK not in self.sys_host.supported_features:
-            self.unsupported.append(UnsupportedReason.NETWORK_MANAGER)
+            self.sys_resolution.unsupported = UnsupportedReason.NETWORK_MANAGER
             _LOGGER.error("NetworkManager is not correct working")
         if any(
             feature not in self.sys_host.supported_features
@@ -183,13 +181,13 @@ class Core(CoreSysAttributes):
                 HostFeature.REBOOT,
             )
         ):
-            self.unsupported.append(UnsupportedReason.SYSTEMD)
+            self.sys_resolution.unsupported = UnsupportedReason.SYSTEMD
             _LOGGER.error("Systemd is not correct working")
 
         # Check if image names from denylist exist
         try:
             if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
-                self.unsupported.append(UnsupportedReason.CONTAINER)
+                self.sys_resolution.unsupported = UnsupportedReason.CONTAINER
                 self.healthy = False
         except DockerError:
             self.healthy = False

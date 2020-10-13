@@ -19,7 +19,6 @@ from ..const import (
     ATTR_SUPPORTED,
     ATTR_SUPPORTED_ARCH,
     ATTR_TIMEZONE,
-    ATTR_UNSUPPORTED,
 )
 from ..coresys import CoreSysAttributes
 from .utils import api_process
@@ -45,7 +44,6 @@ class APIInfo(CoreSysAttributes):
             ATTR_ARCH: self.sys_arch.default,
             ATTR_SUPPORTED_ARCH: self.sys_arch.supported,
             ATTR_SUPPORTED: self.sys_core.supported,
-            ATTR_UNSUPPORTED: self.sys_core.unsupported,
             ATTR_CHANNEL: self.sys_updater.channel,
             ATTR_LOGGING: self.sys_config.logging,
             ATTR_TIMEZONE: self.sys_config.timezone,
