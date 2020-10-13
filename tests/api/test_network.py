@@ -18,6 +18,16 @@ async def test_api_network_interface_info(api_client):
     resp = await api_client.get(f"/network/interface/{TEST_INTERFACE}/info")
     result = await resp.json()
     assert result["data"]["ip_address"] == "192.168.2.148/24"
+    assert result["data"]["interface"] == TEST_INTERFACE
+
+
+@pytest.mark.asyncio
+async def test_api_network_interface_info_default(api_client):
+    """Test network manager default api."""
+    resp = await api_client.get("/network/interface/default/info")
+    result = await resp.json()
+    assert result["data"]["ip_address"] == "192.168.2.148/24"
+    assert result["data"]["interface"] == TEST_INTERFACE
 
 
 @pytest.mark.asyncio
