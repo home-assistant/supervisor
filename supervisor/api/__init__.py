@@ -43,7 +43,10 @@ class RestAPI(CoreSysAttributes):
         self.security: SecurityMiddleware = SecurityMiddleware(coresys)
         self.webapp: web.Application = web.Application(
             client_max_size=MAX_CLIENT_SIZE,
-            middlewares=[self.security.token_validation],
+            middlewares=[
+                self.security.system_validation,
+                self.security.token_validation,
+            ],
         )
 
         # service stuff

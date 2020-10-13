@@ -109,7 +109,6 @@ class HaCli(CoreSysAttributes, JsonConfig):
                     await self.instance.install(
                         self.latest_version,
                         image=self.sys_updater.image_cli,
-                        latest=True,
                     )
                     break
             _LOGGER.warning("Error on install cli plugin. Retry in 30sec")
@@ -130,9 +129,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
             return
 
         try:
-            await self.instance.update(
-                version, image=self.sys_updater.image_cli, latest=True
-            )
+            await self.instance.update(version, image=self.sys_updater.image_cli)
         except DockerError as err:
             _LOGGER.error("HA cli update failed")
             raise CliUpdateError() from err
@@ -192,7 +189,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
 
         _LOGGER.info("Repair HA cli %s", self.version)
         try:
-            await self.instance.install(self.version, latest=True)
+            await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repairing of HA cli failed")
             self.sys_capture_exception(err)

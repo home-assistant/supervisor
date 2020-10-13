@@ -1,4 +1,4 @@
-aiohttp==3.6.2
+aiohttp==3.6.3
 async_timeout==3.0.1
 attrs==20.2.0
 brotlipy==0.7.0

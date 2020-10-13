@@ -15,7 +15,12 @@ from packaging import version as pkg_version
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.homeassistant import DockerHomeAssistant
 from ..docker.stats import DockerStats
-from ..exceptions import DockerError, HomeAssistantError, HomeAssistantUpdateError
+from ..exceptions import (
+    DockerError,
+    HomeAssistantCrashError,
+    HomeAssistantError,
+    HomeAssistantUpdateError,
+)
 from ..utils import convert_to_ascii, process_lock
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -392,7 +397,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 break
 
         self._error_state = True
-        raise HomeAssistantError()
+        raise HomeAssistantCrashError()
 
     async def repair(self):
         """Repair local Home Assistant data."""

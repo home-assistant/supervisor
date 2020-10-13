@@ -19,6 +19,7 @@ from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     DockerError,
     HassioError,
+    HomeAssistantCrashError,
     HomeAssistantError,
     SupervisorUpdateError,
 )
@@ -117,6 +118,10 @@ class Core(CoreSysAttributes):
         """Start setting up supervisor orchestration."""
         self.state = CoreState.SETUP
 
+        # rest api views
+        await self.sys_api.load()
+        await self.sys_api.start()
+
         # Load DBus
         await self.sys_dbus.load()
 
@@ -143,9 +148,6 @@ class Core(CoreSysAttributes):
 
         # Load Add-ons
         await self.sys_addons.load()
-
-        # rest api views
-        await self.sys_api.load()
 
         # load last available data
         await self.sys_snapshots.load()
@@ -195,7 +197,6 @@ class Core(CoreSysAttributes):
     async def start(self):
         """Start Supervisor orchestration."""
         self.state = CoreState.STARTUP
-        await self.sys_api.start()
 
         # Check if system is healthy
         if not self.supported:
@@ -247,8 +248,16 @@ class Core(CoreSysAttributes):
                 self.sys_homeassistant.boot
                 and not await self.sys_homeassistant.core.is_running()
             ):
-                with suppress(HomeAssistantError):
+                try:
                     await self.sys_homeassistant.core.start()
+                except HomeAssistantCrashError as err:
+                    _LOGGER.warning("Can't start Home Assistant Core - rebuild")
+                    self.sys_capture_exception(err)
+
+                    with suppress(HomeAssistantError):
+                        await self.sys_homeassistant.core.rebuild()
+                except HomeAssistantError as err:
+                    self.sys_capture_exception(err)
             else:
                 _LOGGER.info("Skip start of Home Assistant")
 
