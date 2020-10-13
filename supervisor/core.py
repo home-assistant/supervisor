@@ -2,7 +2,7 @@
 import asyncio
 from contextlib import suppress
 import logging
-from typing import Optional
+from typing import List, Optional
 
 import async_timeout
 
@@ -13,6 +13,7 @@ from .const import (
     AddonStartup,
     CoreState,
     HostFeature,
+    UnsupportedReason,
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
@@ -32,7 +33,7 @@ class Core(CoreSysAttributes):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
         self.healthy: bool = True
-        self.supported: bool = True
+        self.unsupported: List[UnsupportedReason] = []
 
         self._state: Optional[CoreState] = None
 
@@ -40,6 +41,11 @@ class Core(CoreSysAttributes):
     def state(self) -> CoreState:
         """Return state of the core."""
         return self._state
+
+    @property
+    def supported(self) -> CoreState:
+        """Return true if the installation is supported."""
+        return len(self.unsupported) == 0
 
     @state.setter
     def state(self, new_state: CoreState) -> None:
@@ -60,29 +66,29 @@ class Core(CoreSysAttributes):
 
         # If host docker is supported?
         if not self.sys_docker.info.supported_version:
-            self.supported = False
+            self.unsupported.append(UnsupportedReason.DOCKER_VERSION)
             self.healthy = False
             _LOGGER.error(
                 "Docker version %s is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
         elif self.sys_docker.info.inside_lxc:
-            self.supported = False
+            self.unsupported.append(UnsupportedReason.LXC)
             self.healthy = False
             _LOGGER.error(
                 "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
             )
         elif not self.sys_supervisor.instance.privileged:
-            self.supported = False
+            self.unsupported.append(UnsupportedReason.PRIVILEGED)
             self.healthy = False
             _LOGGER.error("Supervisor does not run in Privileged mode.")
 
         if self.sys_docker.info.check_requirements():
-            self.supported = False
+            self.unsupported.append(UnsupportedReason.DOCKER_CONFIGURATION)
 
         # Dbus available
         if not SOCKET_DBUS.exists():
-            self.supported = False
+            self.unsupported.append(UnsupportedReason.DBUS)
             _LOGGER.error(
                 "DBus is required for Home Assistant. This system is not supported!"
             )
@@ -156,7 +162,7 @@ class Core(CoreSysAttributes):
         # Check supported OS
         if not self.sys_hassos.available:
             if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:
-                self.supported = False
+                self.unsupported.append(UnsupportedReason.OS)
                 _LOGGER.error(
                     "Detected unsupported OS: %s",
                     self.sys_host.info.operating_system,
@@ -164,7 +170,7 @@ class Core(CoreSysAttributes):
 
         # Check Host features
         if HostFeature.NETWORK not in self.sys_host.supported_features:
-            self.supported = False
+            self.unsupported.append(UnsupportedReason.NETWORK_MANAGER)
             _LOGGER.error("NetworkManager is not correct working")
         if any(
             feature not in self.sys_host.supported_features
@@ -175,13 +181,13 @@ class Core(CoreSysAttributes):
                 HostFeature.REBOOT,
             )
         ):
-            self.supported = False
+            self.unsupported.append(UnsupportedReason.SYSTEMD)
             _LOGGER.error("Systemd is not correct working")
 
         # Check if image names from denylist exist
         try:
             if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
-                self.supported = False
+                self.unsupported.append(UnsupportedReason.CONTAINER)
                 self.healthy = False
         except DockerError:
             self.healthy = False
