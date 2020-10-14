@@ -37,7 +37,7 @@ class ResolutionStorage(CoreSysAttributes):
             self.sys_resolution.suggestions = Suggestion.CREATE_FULL_SNAPSHOT
 
     def clean_full_snapshots(self):
-        """Clean out old snapshots."""
+        """Clean out all old full snapshots, but keep the most recent."""
         full_snapshots = [
             x for x in self.sys_snapshots.list_snapshots if x.sys_type == "full"
         ]
@@ -46,5 +46,5 @@ class ResolutionStorage(CoreSysAttributes):
             return
 
         _LOGGER.info("Starting removal of old full snapshots")
-        for snapshot in full_snapshots.sort(key=lambda x: x.date, reverse=True)[:-1]:
+        for snapshot in sorted(full_snapshots, key=lambda x: x.date)[:-1]:
             self.sys_snapshots.remove(snapshot)

@@ -2,7 +2,7 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import List
+from typing import Set
 
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
@@ -24,7 +24,7 @@ class SnapshotManager(CoreSysAttributes):
         self.lock = asyncio.Lock()
 
     @property
-    def list_snapshots(self) -> List[Snapshot]:
+    def list_snapshots(self) -> Set[Snapshot]:
         """Return a list of all snapshot object."""
         return set(self.snapshots_obj.values())
 
@@ -140,8 +140,9 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Snapshot %s store folders", snapshot.slug)
                 await snapshot.store_folders()
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception as excep:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
+            print(excep)
             return None
 
         else:
