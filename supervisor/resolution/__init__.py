@@ -113,5 +113,9 @@ class ResolutionManager(CoreSysAttributes):
 
     async def dismiss_suggestion(self, suggestion: Suggestion) -> None:
         """Dismiss suggested action."""
-        self._suggestions.remove(suggestion)
-        self._dismissed_suggestions.append(suggestion)
+        if suggestion not in self.suggestions:
+            _LOGGER.warning("Suggestion %s is not valid", suggestion)
+            return
+
+        if suggestion not in self._dismissed_suggestions:
+            self._dismissed_suggestions.append(suggestion)
