@@ -24,7 +24,7 @@ class ResolutionNotify(CoreSysAttributes):
         """Create persistant notifications about issues."""
         if (
             not self.sys_resolution.issues
-            or not self.sys_homeassistant.core.is_running()
+            or not self.sys_homeassistant.api.check_api_state()
         ):
             return
 
