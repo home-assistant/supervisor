@@ -23,10 +23,19 @@ class APIResoulution(CoreSysAttributes):
         }
 
     @api_process
-    async def suggestion(self, request: web.Request) -> None:
+    async def apply_suggestion(self, request: web.Request) -> None:
         """Apply suggestion."""
         try:
             suggestion = Suggestion(request.match_info.get("suggestion"))
             await self.sys_resolution.apply_suggestion(suggestion)
+        except ValueError:
+            raise APIError("Suggestion is not valid") from None
+
+    @api_process
+    async def dismiss_suggestion(self, request: web.Request) -> None:
+        """Dismiss suggestion."""
+        try:
+            suggestion = Suggestion(request.match_info.get("suggestion"))
+            await self.sys_resolution.dismiss_suggestion(suggestion)
         except ValueError:
             raise APIError("Suggestion is not valid") from None
