@@ -12,6 +12,7 @@ from ..exceptions import (
     MulticastError,
     ObserverError,
 )
+from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -127,6 +128,11 @@ class Tasks(CoreSysAttributes):
                 )
                 continue
 
+            if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
+                _LOGGER.warning("Not enough free space, pausing add-on updates")
+                self.sys_resolution.issues = IssueType.FREE_SPACE
+                return
+
             # Run Add-on update sequential
             # avoid issue on slow IO
             _LOGGER.info("Add-on auto update process %s", addon.slug)
@@ -143,6 +149,11 @@ class Tasks(CoreSysAttributes):
         # don't perform an update on dev channel
         if self.sys_dev:
             _LOGGER.warning("Ignore Supervisor update on dev channel!")
+            return
+
+        if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
+            _LOGGER.warning("Not enough free space, pausing supervisor update")
+            self.sys_resolution.issues = IssueType.FREE_SPACE
             return
 
         _LOGGER.info("Found new Supervisor version")

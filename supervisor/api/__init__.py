@@ -197,7 +197,16 @@ class RestAPI(CoreSysAttributes):
         api_resolution = APIResoulution()
         api_resolution.coresys = self.coresys
 
-        self.webapp.add_routes([web.get("/resolution", api_resolution.base)])
+        self.webapp.add_routes(
+            [
+                web.get("/resolution", api_resolution.base),
+                web.post("/resolution/{suggestion}", api_resolution.apply_suggestion),
+                web.post(
+                    "/resolution/{suggestion}/dismiss",
+                    api_resolution.dismiss_suggestion,
+                ),
+            ]
+        )
 
     def _register_auth(self) -> None:
         """Register auth functions."""

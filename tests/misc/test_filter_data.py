@@ -4,9 +4,10 @@ from unittest.mock import patch
 
 import pytest
 
-from supervisor.const import SUPERVISOR_VERSION, CoreState, UnsupportedReason
+from supervisor.const import SUPERVISOR_VERSION, CoreState
 from supervisor.exceptions import AddonConfigurationError
 from supervisor.misc.filter import filter_data
+from supervisor.resolution.const import UnsupportedReason
 
 SAMPLE_EVENT = {"sample": "event", "extra": {"Test": "123"}}
 
