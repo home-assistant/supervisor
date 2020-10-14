@@ -1,6 +1,6 @@
 """Supervisor resolution center."""
 import logging
-from typing import List, Optional
+from typing import List
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..resolution.const import UnsupportedReason
@@ -17,8 +17,8 @@ class ResolutionManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Resolution manager."""
         self.coresys: CoreSys = coresys
-        self._storage: Optional[ResolutionStorage] = None
-        self._notify: Optional[ResolutionNotify] = None
+        self._notify = ResolutionNotify(coresys)
+        self._storage = ResolutionStorage(coresys)
         self._dismissed_suggestions: List[Suggestion] = []
         self._suggestions: List[Suggestion] = []
         self._issues: List[IssueType] = []
@@ -67,21 +67,8 @@ class ResolutionManager(CoreSysAttributes):
         if reason not in self._unsupported:
             self._unsupported.append(reason)
 
-    def clear(self, collection: str) -> None:
-        """Clear the contents of the collection."""
-        if collection == "issues":
-            self._issues = []
-        elif collection == "suggestions":
-            self._suggestions = []
-        elif collection == "unsupported":
-            self._unsupported = []
-
     async def load(self):
         """Load the resoulution manager."""
-        # Initialize sub objects
-        self._notify = ResolutionNotify(self.coresys)
-        self._storage = ResolutionStorage(self.coresys)
-
         # Initial healthcheck when the manager is loaded
         await self.healthcheck()
 
