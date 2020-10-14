@@ -126,6 +126,9 @@ class Core(CoreSysAttributes):
         # Load Host
         await self.sys_host.load()
 
+        # Load Resoulution
+        await self.sys_resolution.load()
+
         # Load Plugins container
         await self.sys_plugins.load()
 
@@ -191,9 +194,6 @@ class Core(CoreSysAttributes):
                 self.healthy = False
         except DockerError:
             self.healthy = False
-
-        # Check free space
-        await self.sys_host.check_free_space()
 
     async def start(self):
         """Start Supervisor orchestration."""

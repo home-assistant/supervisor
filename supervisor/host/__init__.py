@@ -4,7 +4,7 @@ import logging
 
 from ..const import HostFeature
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError, HomeAssistantAPIError, PulseAudioError
+from ..exceptions import HassioError, PulseAudioError
 from .apparmor import AppArmorControl
 from .control import SystemControl
 from .info import InfoCenter
@@ -104,27 +104,3 @@ class HostManager(CoreSysAttributes):
             await self.apparmor.load()
         except HassioError as err:
             _LOGGER.warning("Load host AppArmor on start failed: %s", err)
-
-    async def check_free_space(self):
-        """Check free space."""
-        free = self.sys_host.info.free_space
-        if free > 1 or not await self.sys_homeassistant.core.is_running():
-            return
-
-        _LOGGER.warning("Available space is less than 1GB! (%sGB)", free)
-        try:
-            async with self.sys_homeassistant.api.make_request(
-                "post",
-                "api/services/persistent_notification/create",
-                json={
-                    "title": "Available space is less than 1GB!",
-                    "message": f"Available space is {free}GB, see https://www.home-assistant.io/more-info/free-space for more information.",
-                    "notification_id": "supervisor_free_space",
-                },
-            ) as resp:
-                if resp.status in (200, 201):
-                    _LOGGER.debug("Sucessfully created persistent_notification")
-                else:
-                    _LOGGER.error("Can't create persistant notification")
-        except HomeAssistantAPIError:
-            _LOGGER.error("Can't create persistant notification")

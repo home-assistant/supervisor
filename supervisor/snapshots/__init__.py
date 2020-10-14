@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from pathlib import Path
+from typing import List
 
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
@@ -23,7 +24,7 @@ class SnapshotManager(CoreSysAttributes):
         self.lock = asyncio.Lock()
 
     @property
-    def list_snapshots(self):
+    def list_snapshots(self) -> List[Snapshot]:
         """Return a list of all snapshot object."""
         return set(self.snapshots_obj.values())
 
