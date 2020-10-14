@@ -1,11 +1,11 @@
 """Supervisor resolution center."""
-from typing import List
+from typing import List, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..resolution.const import UnsupportedReason
 from .const import SCHEDULED_HEALTHCHECK, IssueType, Suggestions
-from .free_space import check_free_space
-from .notify import create_notifications
+from .free_space import ResolutionStorage
+from .notify import ResolutionNotify
 
 
 class ResolutionManager(CoreSysAttributes):
@@ -14,9 +14,21 @@ class ResolutionManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Resolution manager."""
         self.coresys: CoreSys = coresys
+        self._storage: Optional[ResolutionStorage] = None
+        self._notify: Optional[ResolutionNotify] = None
         self._suggestions: List[Suggestions] = []
         self._issues: List[IssueType] = []
         self._unsupported: List[UnsupportedReason] = []
+
+    @property
+    def storage(self) -> ResolutionStorage:
+        """Return the ResolutionStorage class."""
+        return self._storage
+
+    @property
+    def notify(self) -> ResolutionNotify:
+        """Return the ResolutionNotify class."""
+        return self._notify
 
     @property
     def issues(self) -> List[IssueType]:
@@ -62,6 +74,10 @@ class ResolutionManager(CoreSysAttributes):
 
     async def load(self):
         """Load the resoulution manager."""
+        # Initialize sub objects
+        self._notify = ResolutionNotify(self.coresys)
+        self._storage = ResolutionStorage(self.coresys)
+
         # Initial healthcheck when the manager is loaded
         await self.healthcheck()
 
@@ -71,7 +87,7 @@ class ResolutionManager(CoreSysAttributes):
     async def healthcheck(self):
         """Scheduled task to check for known issues."""
         # Check free space
-        self.sys_run_in_executor(check_free_space, self.coresys)
+        self.sys_run_in_executor(self.storage.check_free_space)
 
         # Create notification for any known issues
-        await create_notifications(self.coresys)
+        await self.notify.issue_notifications()
