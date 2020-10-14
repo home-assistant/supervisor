@@ -1,8 +1,8 @@
 """Tests for resolution manager."""
 
 
-from supervisor.const import UnsupportedReason
 from supervisor.coresys import CoreSys
+from supervisor.resolution.const import UnsupportedReason
 
 
 def test_properies(coresys: CoreSys):

@@ -13,7 +13,6 @@ from .const import (
     AddonStartup,
     CoreState,
     HostFeature,
-    UnsupportedReason,
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
@@ -23,6 +22,7 @@ from .exceptions import (
     HomeAssistantError,
     SupervisorUpdateError,
 )
+from .resolution.const import UnsupportedReason
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

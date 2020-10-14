@@ -1,8 +1,8 @@
 """Supervisor resolution center."""
 from typing import List
 
-from ..const import UnsupportedReason
 from ..coresys import CoreSys, CoreSysAttributes
+from ..resolution.const import UnsupportedReason
 from .const import SCHEDULED_HEALTHCHECK, IssueType, Suggestions
 from .free_space import check_free_space
 from .notify import create_notifications

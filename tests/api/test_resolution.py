@@ -1,7 +1,8 @@
 """Test Resolution API."""
 import pytest
 
-from supervisor.const import ATTR_UNSUPPORTED, UnsupportedReason
+from supervisor.const import ATTR_UNSUPPORTED
+from supervisor.resolution.const import UnsupportedReason
 
 
 @pytest.mark.asyncio

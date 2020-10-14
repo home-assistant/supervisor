@@ -3,6 +3,22 @@ from enum import Enum
 
 SCHEDULED_HEALTHCHECK = 3600
 
+MINIMUM_FREE_SPACE_THRESHOLD = 1
+
+
+class UnsupportedReason(str, Enum):
+    """Reasons for unsupported status."""
+
+    CONTAINER = "container"
+    DBUS = "dbus"
+    DOCKER_CONFIGURATION = "docker_configuration"
+    DOCKER_VERSION = "docker_version"
+    LXC = "lxc"
+    NETWORK_MANAGER = "network_manager"
+    OS = "os"
+    PRIVILEGED = "privileged"
+    SYSTEMD = "systemd"
+
 
 class IssueType(str, Enum):
     """Issue type."""
