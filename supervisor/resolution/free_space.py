@@ -32,6 +32,10 @@ class ResolutionStorage(CoreSysAttributes):
         ):
             self.sys_resolution.suggestions = Suggestion.CLEAR_FULL_SNAPSHOT
 
+        elif len(self.sys_snapshots.list_snapshots) == 0:
+            # No snapshots, let's suggest the user to create one!
+            self.sys_resolution.suggestions = Suggestion.CREATE_FULL_SNAPSHOT
+
     def clean_full_snapshots(self):
         """Clean out old snapshots."""
         full_snapshots = [

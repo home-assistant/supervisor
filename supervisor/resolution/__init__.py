@@ -105,7 +105,7 @@ class ResolutionManager(CoreSysAttributes):
             self.storage.clean_full_snapshots()
 
         elif suggestion == Suggestion.CREATE_FULL_SNAPSHOT:
-            self.sys_snapshots.do_snapshot_full()
+            await self.sys_snapshots.do_snapshot_full()
 
         self._suggestions.remove(suggestion)
         await self.healthcheck()
