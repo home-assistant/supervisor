@@ -1,8 +1,6 @@
 """A collection of tasks."""
 import logging
 
-from supervisor.resolution.const import IssueType
-
 from ..const import AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
@@ -14,6 +12,7 @@ from ..exceptions import (
     MulticastError,
     ObserverError,
 )
+from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -129,8 +128,9 @@ class Tasks(CoreSysAttributes):
                 )
                 continue
 
-            if IssueType.FREE_SPACE in self.sys_resolution.issues:
+            if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
                 _LOGGER.warning("Not enough free space, pausing add-on updates")
+                self.sys_resolution.issues = IssueType.FREE_SPACE
                 return
 
             # Run Add-on update sequential
@@ -151,8 +151,9 @@ class Tasks(CoreSysAttributes):
             _LOGGER.warning("Ignore Supervisor update on dev channel!")
             return
 
-        if IssueType.FREE_SPACE in self.sys_resolution.issues:
+        if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
             _LOGGER.warning("Not enough free space, pausing supervisor update")
+            self.sys_resolution.issues = IssueType.FREE_SPACE
             return
 
         _LOGGER.info("Found new Supervisor version")

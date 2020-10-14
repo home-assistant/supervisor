@@ -126,9 +126,6 @@ class Core(CoreSysAttributes):
         # Load Host
         await self.sys_host.load()
 
-        # Load Resoulution
-        await self.sys_resolution.load()
-
         # Load Plugins container
         await self.sys_plugins.load()
 
@@ -161,6 +158,9 @@ class Core(CoreSysAttributes):
 
         # Load ingress
         await self.sys_ingress.load()
+
+        # Load Resoulution
+        await self.sys_resolution.load()
 
         # Check supported OS
         if not self.sys_hassos.available:
