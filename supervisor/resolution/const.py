@@ -27,8 +27,8 @@ class IssueType(str, Enum):
     FREE_SPACE = "free_space"
 
 
-class Suggestions(str, Enum):
+class Suggestion(str, Enum):
     """Sugestion."""
 
     CLEAR_FULL_SNAPSHOT = "clear_full_snapshot"
-    CREATE_SNAPSHOT = "create_snapshot"
+    CREATE_FULL_SNAPSHOT = "create_full_snapshot"

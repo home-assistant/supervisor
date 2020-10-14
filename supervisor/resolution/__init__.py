@@ -1,11 +1,14 @@
 """Supervisor resolution center."""
+import logging
 from typing import List, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..resolution.const import UnsupportedReason
-from .const import SCHEDULED_HEALTHCHECK, IssueType, Suggestions
+from .const import SCHEDULED_HEALTHCHECK, IssueType, Suggestion
 from .free_space import ResolutionStorage
 from .notify import ResolutionNotify
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class ResolutionManager(CoreSysAttributes):
@@ -16,7 +19,7 @@ class ResolutionManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._storage: Optional[ResolutionStorage] = None
         self._notify: Optional[ResolutionNotify] = None
-        self._suggestions: List[Suggestions] = []
+        self._suggestions: List[Suggestion] = []
         self._issues: List[IssueType] = []
         self._unsupported: List[UnsupportedReason] = []
 
@@ -42,12 +45,12 @@ class ResolutionManager(CoreSysAttributes):
             self._issues.append(issue)
 
     @property
-    def suggestions(self) -> List[Suggestions]:
+    def suggestions(self) -> List[Suggestion]:
         """Return a list of suggestions that can handled."""
         return self._suggestions
 
     @suggestions.setter
-    def suggestions(self, suggestion: Suggestions) -> None:
+    def suggestions(self, suggestion: Suggestion) -> None:
         """Add suggestion."""
         if suggestion not in self._suggestions:
             self._suggestions.append(suggestion)
@@ -91,3 +94,18 @@ class ResolutionManager(CoreSysAttributes):
 
         # Create notification for any known issues
         await self.notify.issue_notifications()
+
+    async def apply_suggestion(self, suggestion: Suggestion) -> None:
+        """Apply suggested action."""
+        if suggestion not in self._suggestions:
+            _LOGGER.warning("Suggestion %s is not valid", suggestion)
+            return
+
+        if suggestion == Suggestion.CLEAR_FULL_SNAPSHOT:
+            self.storage.clean_full_snapshots()
+
+        elif suggestion == Suggestion.CREATE_FULL_SNAPSHOT:
+            self.sys_snapshots.do_snapshot_full()
+
+        self._suggestions.remove(suggestion)
+        await self.healthcheck()

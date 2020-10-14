@@ -6,7 +6,7 @@ from .const import (
     MINIMUM_FREE_SPACE_THRESHOLD,
     MINIMUM_FULL_SNAPSHOTS,
     IssueType,
-    Suggestions,
+    Suggestion,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class ResolutionStorage(CoreSysAttributes):
             len([x for x in self.sys_snapshots.list_snapshots if x.sys_type == "full"])
             >= MINIMUM_FULL_SNAPSHOTS
         ):
-            self.sys_resolution.suggestions = Suggestions.CLEAR_FULL_SNAPSHOT
+            self.sys_resolution.suggestions = Suggestion.CLEAR_FULL_SNAPSHOT
 
     def clean_full_snapshots(self):
         """Clean out old snapshots."""
