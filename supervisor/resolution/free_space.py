@@ -1,6 +1,7 @@
 """Helpers to check and fix issues with free space."""
 import logging
 
+from ..const import SNAPSHOT_FULL
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import (
     MINIMUM_FREE_SPACE_THRESHOLD,
@@ -27,7 +28,13 @@ class ResolutionStorage(CoreSysAttributes):
         self.sys_resolution.issues = IssueType.FREE_SPACE
 
         if (
-            len([x for x in self.sys_snapshots.list_snapshots if x.sys_type == "full"])
+            len(
+                [
+                    x
+                    for x in self.sys_snapshots.list_snapshots
+                    if x.sys_type == SNAPSHOT_FULL
+                ]
+            )
             >= MINIMUM_FULL_SNAPSHOTS
         ):
             self.sys_resolution.suggestions = Suggestion.CLEAR_FULL_SNAPSHOT
@@ -39,7 +46,7 @@ class ResolutionStorage(CoreSysAttributes):
     def clean_full_snapshots(self):
         """Clean out all old full snapshots, but keep the most recent."""
         full_snapshots = [
-            x for x in self.sys_snapshots.list_snapshots if x.sys_type == "full"
+            x for x in self.sys_snapshots.list_snapshots if x.sys_type == SNAPSHOT_FULL
         ]
 
         if len(full_snapshots) < MINIMUM_FULL_SNAPSHOTS:

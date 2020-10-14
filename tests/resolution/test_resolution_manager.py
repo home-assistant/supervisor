@@ -1,7 +1,13 @@
 """Tests for resolution manager."""
 from pathlib import Path
 
-from supervisor.const import ATTR_DATE, ATTR_SLUG, ATTR_TYPE
+from supervisor.const import (
+    ATTR_DATE,
+    ATTR_SLUG,
+    ATTR_TYPE,
+    SNAPSHOT_FULL,
+    SNAPSHOT_PARTIAL,
+)
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import UnsupportedReason
 from supervisor.snapshots.snapshot import Snapshot
@@ -28,7 +34,9 @@ async def test_clear_snapshots(coresys: CoreSys, tmp_path):
         snapshot._data = {  # pylint: disable=protected-access
             ATTR_SLUG: slug,
             ATTR_DATE: utcnow().isoformat(),
-            ATTR_TYPE: "partial" if "1" in slug or "5" in slug else "full",
+            ATTR_TYPE: SNAPSHOT_PARTIAL
+            if "1" in slug or "5" in slug
+            else SNAPSHOT_FULL,
         }
         coresys.snapshots.snapshots_obj[snapshot.slug] = snapshot
 
@@ -36,11 +44,17 @@ async def test_clear_snapshots(coresys: CoreSys, tmp_path):
 
     assert newest_full_snapshot in coresys.snapshots.list_snapshots
     assert (
-        len([x for x in coresys.snapshots.list_snapshots if x.sys_type == "full"]) == 3
+        len(
+            [x for x in coresys.snapshots.list_snapshots if x.sys_type == SNAPSHOT_FULL]
+        )
+        == 3
     )
 
     coresys.resolution.storage.clean_full_snapshots()
     assert newest_full_snapshot in coresys.snapshots.list_snapshots
     assert (
-        len([x for x in coresys.snapshots.list_snapshots if x.sys_type == "full"]) == 1
+        len(
+            [x for x in coresys.snapshots.list_snapshots if x.sys_type == SNAPSHOT_FULL]
+        )
+        == 1
     )
