@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 from aiohttp import web
 
-from ..const import ATTR_UNSUPPORTED
+from ..const import ATTR_ISSUES, ATTR_SUGGESTIONS, ATTR_UNSUPPORTED
 from ..coresys import CoreSysAttributes
 from .utils import api_process
 
@@ -14,4 +14,8 @@ class APIResoulution(CoreSysAttributes):
     @api_process
     async def base(self, request: web.Request) -> Dict[str, Any]:
         """Return network information."""
-        return {ATTR_UNSUPPORTED: self.sys_resolution.unsupported}
+        return {
+            ATTR_UNSUPPORTED: self.sys_resolution.unsupported,
+            ATTR_SUGGESTIONS: self.sys_resolution.suggestions,
+            ATTR_ISSUES: self.sys_resolution.issues,
+        }
