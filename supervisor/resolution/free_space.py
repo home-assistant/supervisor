@@ -6,9 +6,11 @@ from ..coresys import CoreSys, CoreSysAttributes
 from .const import (
     MINIMUM_FREE_SPACE_THRESHOLD,
     MINIMUM_FULL_SNAPSHOTS,
+    ContextType,
     IssueType,
-    Suggestion,
+    SuggestionType,
 )
+from .type import Issue, Suggestion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ class ResolutionStorage(CoreSysAttributes):
         if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
             return
 
-        self.sys_resolution.issues = IssueType.FREE_SPACE
+        self.sys_resolution.issues = Issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
 
         if (
             len(
@@ -37,11 +39,15 @@ class ResolutionStorage(CoreSysAttributes):
             )
             >= MINIMUM_FULL_SNAPSHOTS
         ):
-            self.sys_resolution.suggestions = Suggestion.CLEAR_FULL_SNAPSHOT
+            self.sys_resolution.suggestions = Suggestion(
+                SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
+            )
 
         elif len(self.sys_snapshots.list_snapshots) == 0:
             # No snapshots, let's suggest the user to create one!
-            self.sys_resolution.suggestions = Suggestion.CREATE_FULL_SNAPSHOT
+            self.sys_resolution.suggestions = Suggestion(
+                SuggestionType.CREATE_FULL_SNAPSHOT, ContextType.SYSTEM
+            )
 
     def clean_full_snapshots(self):
         """Clean out all old full snapshots, but keep the most recent."""

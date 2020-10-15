@@ -22,7 +22,8 @@ from .exceptions import (
     HomeAssistantError,
     SupervisorUpdateError,
 )
-from .resolution.const import UnsupportedReason
+from .resolution.const import ContextType, IssueType, UnsupportedReason
+from .resolution.type import Issue
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -107,6 +108,9 @@ class Core(CoreSysAttributes):
                 self.sys_updater.channel,
             )
         elif self.sys_config.version != self.sys_supervisor.version:
+            self.sys_resolution.issue = Issue(
+                IssueType.UPDATE_FAILS, ContextType.SUPERVISOR
+            )
             self.healthy = False
             _LOGGER.error(
                 "Update '%s' of Supervisor '%s' failed!",

@@ -6,7 +6,7 @@ from aiohttp import web
 from ..const import ATTR_ISSUES, ATTR_SUGGESTIONS, ATTR_UNSUPPORTED
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..resolution.const import Suggestion
+from ..resolution.const import SuggestionType
 from .utils import api_process
 
 
@@ -26,16 +26,16 @@ class APIResoulution(CoreSysAttributes):
     async def apply_suggestion(self, request: web.Request) -> None:
         """Apply suggestion."""
         try:
-            suggestion = Suggestion(request.match_info.get("suggestion"))
+            suggestion = SuggestionType(request.match_info.get("suggestion"))
             await self.sys_resolution.apply_suggestion(suggestion)
         except ValueError:
-            raise APIError("Suggestion is not valid") from None
+            raise APIError("SuggestionType is not valid") from None
 
     @api_process
     async def dismiss_suggestion(self, request: web.Request) -> None:
         """Dismiss suggestion."""
         try:
-            suggestion = Suggestion(request.match_info.get("suggestion"))
+            suggestion = SuggestionType(request.match_info.get("suggestion"))
             await self.sys_resolution.dismiss_suggestion(suggestion)
         except ValueError:
-            raise APIError("Suggestion is not valid") from None
+            raise APIError("SuggestionType is not valid") from None

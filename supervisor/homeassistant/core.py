@@ -21,6 +21,8 @@ from ..exceptions import (
     HomeAssistantError,
     HomeAssistantUpdateError,
 )
+from ..resolution.const import ContextType, IssueType
+from ..resolution.type import Issue
 from ..utils import convert_to_ascii, process_lock
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -191,6 +193,10 @@ class HomeAssistantCore(CoreSysAttributes):
         # Update going wrong, revert it
         if self.error_state and rollback:
             _LOGGER.critical("HomeAssistant update failed -> rollback!")
+            self.sys_resolution.issue = Issue(
+                IssueType.UPDATE_ROLLBACK, ContextType.CORE
+            )
+
             # Make a copy of the current log file if it exsist
             logfile = self.sys_config.path_homeassistant / "home-assistant.log"
             if logfile.exists():
@@ -204,6 +210,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 )
             await _update(rollback)
         else:
+            self.sys_resolution.issue = Issue(IssueType.UPDATE_FAILS, ContextType.CORE)
             raise HomeAssistantUpdateError()
 
     async def _start(self) -> None:
