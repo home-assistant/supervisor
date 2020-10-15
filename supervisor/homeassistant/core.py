@@ -193,7 +193,7 @@ class HomeAssistantCore(CoreSysAttributes):
         # Update going wrong, revert it
         if self.error_state and rollback:
             _LOGGER.critical("HomeAssistant update failed -> rollback!")
-            self.sys_resolution.issue = Issue(
+            self.sys_resolution.issues = Issue(
                 IssueType.UPDATE_ROLLBACK, ContextType.CORE
             )
 
@@ -210,7 +210,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 )
             await _update(rollback)
         else:
-            self.sys_resolution.issue = Issue(IssueType.UPDATE_FAILS, ContextType.CORE)
+            self.sys_resolution.issues = Issue(IssueType.UPDATE_FAILS, ContextType.CORE)
             raise HomeAssistantUpdateError()
 
     async def _start(self) -> None:

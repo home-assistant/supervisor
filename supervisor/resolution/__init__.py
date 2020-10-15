@@ -94,7 +94,7 @@ class ResolutionManager(CoreSysAttributes):
 
     async def apply_suggestion(self, suggestion: Suggestion) -> None:
         """Apply suggested action."""
-        if suggestion not in self._suggestions:
+        if suggestion not in self.suggestions:
             _LOGGER.warning("Suggestion %s is not valid", suggestion.uuid)
             raise ResolutionError()
 
@@ -109,7 +109,7 @@ class ResolutionManager(CoreSysAttributes):
 
     async def dismiss_suggestion(self, suggestion: Suggestion) -> None:
         """Dismiss suggested action."""
-        if suggestion not in self._suggestions:
+        if suggestion not in self.suggestions:
             _LOGGER.warning("Suggestion %s is not valid", suggestion.uuid)
             raise ResolutionError()
         self._suggestions.remove(suggestion)
