@@ -4,10 +4,16 @@ from typing import List, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError
-from .const import SCHEDULED_HEALTHCHECK, SuggestionType, UnsupportedReason
+from .const import (
+    SCHEDULED_HEALTHCHECK,
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnsupportedReason,
+)
+from .data import Issue, Suggestion
 from .free_space import ResolutionStorage
 from .notify import ResolutionNotify
-from .type import Issue, Suggestion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -75,6 +81,22 @@ class ResolutionManager(CoreSysAttributes):
                 continue
             return suggestion
         return None
+
+    def create_issue(
+        self,
+        issue: IssueType,
+        context: ContextType,
+        reference: Optional[str] = None,
+        suggestions: Optional[List[SuggestionType]] = None,
+    ) -> None:
+        """Create issues and suggestion."""
+        self.issues = Issue(issue, context, reference)
+        if not suggestions:
+            return
+
+        # Add suggestions
+        for suggestion in suggestions:
+            self.suggestions = Suggestion(suggestion, context, reference)
 
     async def load(self):
         """Load the resoulution manager."""
