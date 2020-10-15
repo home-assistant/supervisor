@@ -11,7 +11,7 @@ class ContextType(str, Enum):
     """Place where somethings was happening."""
 
     SYSTEM = "system"
-    SUPERVISOR = "SUPERVISOR"
+    SUPERVISOR = "supervisor"
     ADDON = "addon"
     CORE = "core"
     OS = "os"
