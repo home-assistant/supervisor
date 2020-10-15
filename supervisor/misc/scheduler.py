@@ -99,7 +99,7 @@ class Scheduler(CoreSysAttributes):
         running: List[asyncio.tasks.Task] = []
 
         # Cancel next task / get running list
-        _LOGGER.info("Shutdown scheduled tasks")
+        _LOGGER.info("Shutting down scheduled tasks")
         for task in self._tasks:
             if task.next:
                 task.next.cancel()

@@ -167,7 +167,7 @@ class Updater(JsonConfig, CoreSysAttributes):
         machine = self.sys_machine or "default"
 
         try:
-            _LOGGER.info("Fetch update data from %s", url)
+            _LOGGER.info("Fetching update data from %s", url)
             async with self.sys_websession.get(url, timeout=10) as request:
                 data = await request.json(content_type=None)
 

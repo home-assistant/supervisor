@@ -89,12 +89,12 @@ class PluginManager(CoreSysAttributes):
                     continue
             except TypeError:
                 _LOGGER.warning(
-                    "Somethings going wrong with requirements on %s",
+                    "Unexpected issue while checking requirements for %s",
                     type(plugin).__name__,
                 )
 
             _LOGGER.info(
-                "Requirement need update for %s - %s",
+                "%s does not have the required version %s, updating",
                 type(plugin).__name__,
                 required_version,
             )
@@ -102,7 +102,7 @@ class PluginManager(CoreSysAttributes):
                 await plugin.update(version=str(required_version))
             except HassioError:
                 _LOGGER.error(
-                    "Can't update %s to %s but it's a reuirement, the Supervisor is not health now!",
+                    "Can't update %s to %s but it's a reuirement, the Supervisor is now in an unhealthy state!",
                     type(plugin).__name__,
                     required_version,
                 )

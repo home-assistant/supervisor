@@ -53,5 +53,5 @@ class DBusManager(CoreSysAttributes):
             await self.network.connect()
         except DBusNotConnectedError:
             _LOGGER.error(
-                "No DBus support from Host. Disabled any kind of host control!"
+                "No D-Bus support on Host. Disabled any kind of host control!"
             )

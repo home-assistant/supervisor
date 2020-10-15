@@ -41,7 +41,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         if Path("/dev/snd").exists():
             volumes.update({"/dev/snd": {"bind": "/dev/snd", "mode": "rw"}})
         else:
-            _LOGGER.warning("Kernel have no audio support in")
+            _LOGGER.warning("Kernel have no audio support")
 
         return volumes
 
@@ -72,7 +72,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
 
         self._meta = docker_container.attrs
         _LOGGER.info(
-            "Start Audio %s with version %s - %s",
+            "Starting Audio %s with version %s - %s",
             self.image,
             self.version,
             self.sys_docker.network.audio,

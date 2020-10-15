@@ -463,7 +463,7 @@ class Addon(AddonModel):
         if not self.path_data.is_dir():
             return
 
-        _LOGGER.info("Remove add-on data folder %s", self.path_data)
+        _LOGGER.info("Removing add-on data folder %s", self.path_data)
         await remove_data(self.path_data)
 
     def write_pulse(self) -> None:
@@ -545,7 +545,7 @@ class Addon(AddonModel):
     async def start(self) -> None:
         """Set options and start add-on."""
         if await self.instance.is_running():
-            _LOGGER.warning("%s already running!", self.slug)
+            _LOGGER.warning("%s is already running!", self.slug)
             return
 
         # Access Token
@@ -676,7 +676,7 @@ class Addon(AddonModel):
                     )
 
             try:
-                _LOGGER.info("Build snapshot for add-on %s", self.slug)
+                _LOGGER.info("Building snapshot for add-on %s", self.slug)
                 await self.sys_run_in_executor(_write_tarfile)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
@@ -731,7 +731,7 @@ class Addon(AddonModel):
             # Check version / restore image
             version = data[ATTR_VERSION]
             if not await self.instance.exists():
-                _LOGGER.info("Restore/Install image for addon %s", self.slug)
+                _LOGGER.info("Restore/Install of image for addon %s", self.slug)
 
                 image_file = Path(temp, "image.tar")
                 if image_file.is_file():
@@ -742,7 +742,7 @@ class Addon(AddonModel):
                         await self.instance.install(version, restore_image)
                         await self.instance.cleanup()
             elif self.instance.version != version or self.legacy:
-                _LOGGER.info("Restore/Update image for addon %s", self.slug)
+                _LOGGER.info("Restore/Update of image for addon %s", self.slug)
                 with suppress(DockerError):
                     await self.instance.update(version, restore_image)
             else:
@@ -754,7 +754,7 @@ class Addon(AddonModel):
                 """Restore data."""
                 shutil.copytree(Path(temp, "data"), self.path_data, symlinks=True)
 
-            _LOGGER.info("Restore data for addon %s", self.slug)
+            _LOGGER.info("Restoring data for addon %s", self.slug)
             if self.path_data.is_dir():
                 await remove_data(self.path_data)
             try:
@@ -778,4 +778,4 @@ class Addon(AddonModel):
             if data[ATTR_STATE] == AddonState.STARTED:
                 return await self.start()
 
-        _LOGGER.info("Finish restore for add-on %s", self.slug)
+        _LOGGER.info("Finished restore for add-on %s", self.slug)

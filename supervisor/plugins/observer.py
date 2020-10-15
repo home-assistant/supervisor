@@ -102,7 +102,7 @@ class Observer(CoreSysAttributes, JsonConfig):
 
     async def install(self) -> None:
         """Install observer."""
-        _LOGGER.info("Setup observer plugin")
+        _LOGGER.info("Running setup for observer plugin")
         while True:
             # read observer tag and install it
             if not self.latest_version:
@@ -156,7 +156,7 @@ class Observer(CoreSysAttributes, JsonConfig):
             self.save_data()
 
         # Start Instance
-        _LOGGER.info("Start observer plugin")
+        _LOGGER.info("Starting observer plugin")
         try:
             await self.instance.run()
         except DockerError as err:
@@ -202,9 +202,9 @@ class Observer(CoreSysAttributes, JsonConfig):
         if await self.instance.exists():
             return
 
-        _LOGGER.info("Repair HA observer %s", self.version)
+        _LOGGER.info("Repairing HA observer %s", self.version)
         try:
             await self.instance.install(self.version)
         except DockerError as err:
-            _LOGGER.error("Repairing of HA observer failed")
+            _LOGGER.error("Repair of HA observer failed")
             self.sys_capture_exception(err)

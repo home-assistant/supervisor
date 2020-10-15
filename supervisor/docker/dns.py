@@ -52,7 +52,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
 
         self._meta = docker_container.attrs
         _LOGGER.info(
-            "Start DNS %s with version %s - %s",
+            "Starting DNS %s with version %s - %s",
             self.image,
             self.version,
             self.sys_docker.network.dns,

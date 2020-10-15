@@ -56,7 +56,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
         self._update_token_list()
         self._cleanup_sessions()
 
-        _LOGGER.info("Load %d ingress session", len(self.sessions))
+        _LOGGER.info("Loaded %d ingress sessions", len(self.sessions))
 
     async def reload(self) -> None:
         """Reload/Validate sessions."""
@@ -157,7 +157,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
     async def update_hass_panel(self, addon: Addon):
         """Return True if Home Assistant up and running."""
         if not await self.sys_homeassistant.core.is_running():
-            _LOGGER.debug("Ignore panel update on Core")
+            _LOGGER.debug("Ignoring panel update on Core")
             return
 
         # Update UI

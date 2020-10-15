@@ -51,14 +51,14 @@ class CpuArch(CoreSysAttributes):
         try:
             arch_data = read_json_file(ARCH_JSON)
         except JsonFileError:
-            _LOGGER.warning("Can't read arch json")
+            _LOGGER.warning("Can't read arch json file from %s", ARCH_JSON)
             return
 
         native_support = self.detect_cpu()
 
         # Evaluate current CPU/Platform
         if not self.sys_machine or self.sys_machine not in arch_data:
-            _LOGGER.warning("Can't detect underlay machine type!")
+            _LOGGER.warning("Can't detect the machine type!")
             self._default_arch = native_support
             self._supported_arch.append(self.default)
             return

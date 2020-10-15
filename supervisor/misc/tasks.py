@@ -130,6 +130,7 @@ class Tasks(CoreSysAttributes):
 
             if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
                 _LOGGER.warning("Not enough free space, pausing add-on updates")
+                _LOGGER.info("Aviable free space is %s", self.sys_host.info.free_space)
                 self.sys_resolution.issues = IssueType.FREE_SPACE
                 return
 
@@ -148,15 +149,19 @@ class Tasks(CoreSysAttributes):
 
         # don't perform an update on dev channel
         if self.sys_dev:
-            _LOGGER.warning("Ignore Supervisor update on dev channel!")
+            _LOGGER.warning("Ignore Supervisor updates on dev channel!")
             return
 
         if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
             _LOGGER.warning("Not enough free space, pausing supervisor update")
+            _LOGGER.info("Aviable free space is %s", self.sys_host.info.free_space)
             self.sys_resolution.issues = IssueType.FREE_SPACE
             return
 
-        _LOGGER.info("Found new Supervisor version")
+        _LOGGER.info(
+            "Found new Supervisor version %s, updating",
+            self.sys_supervisor.latest_version,
+        )
         await self.sys_supervisor.update()
 
     async def _watchdog_homeassistant_docker(self):
@@ -180,7 +185,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_homeassistant.core.start()
         except HomeAssistantError as err:
-            _LOGGER.error("Watchdog Home Assistant reanimation failed!")
+            _LOGGER.error("Home Assistant watchdog reanimation failed!")
             self.sys_capture_exception(err)
 
     async def _watchdog_homeassistant_api(self):
@@ -218,7 +223,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_homeassistant.core.restart()
         except HomeAssistantError as err:
-            _LOGGER.error("Watchdog Home Assistant reanimation failed!")
+            _LOGGER.error("Home Assistant watchdog reanimation failed!")
             self.sys_capture_exception(err)
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
@@ -228,7 +233,9 @@ class Tasks(CoreSysAttributes):
         if not self.sys_plugins.cli.need_update:
             return
 
-        _LOGGER.info("Found new cli version")
+        _LOGGER.info(
+            "Found new cli version %s, updating", self.sys_plugins.cli.latest_version
+        )
         await self.sys_plugins.cli.update()
 
     async def _update_dns(self):
@@ -236,7 +243,10 @@ class Tasks(CoreSysAttributes):
         if not self.sys_plugins.dns.need_update:
             return
 
-        _LOGGER.info("Found new CoreDNS plugin version")
+        _LOGGER.info(
+            "Found new CoreDNS plugin version %s, updating",
+            self.sys_plugins.dns.latest_version,
+        )
         await self.sys_plugins.dns.update()
 
     async def _update_audio(self):
@@ -244,7 +254,10 @@ class Tasks(CoreSysAttributes):
         if not self.sys_plugins.audio.need_update:
             return
 
-        _LOGGER.info("Found new PulseAudio plugin version")
+        _LOGGER.info(
+            "Found new PulseAudio plugin version %s, updating",
+            self.sys_plugins.audio.latest_version,
+        )
         await self.sys_plugins.audio.update()
 
     async def _update_observer(self):
@@ -252,7 +265,10 @@ class Tasks(CoreSysAttributes):
         if not self.sys_plugins.observer.need_update:
             return
 
-        _LOGGER.info("Found new Observer plugin version")
+        _LOGGER.info(
+            "Found new Observer plugin version %s, updating",
+            self.sys_plugins.observer.latest_version,
+        )
         await self.sys_plugins.observer.update()
 
     async def _update_multicast(self):
@@ -260,7 +276,10 @@ class Tasks(CoreSysAttributes):
         if not self.sys_plugins.multicast.need_update:
             return
 
-        _LOGGER.info("Found new Multicast version")
+        _LOGGER.info(
+            "Found new Multicast version %s, updating",
+            self.sys_plugins.multicast.latest_version,
+        )
         await self.sys_plugins.multicast.update()
 
     async def _watchdog_dns_docker(self):
@@ -272,14 +291,14 @@ class Tasks(CoreSysAttributes):
 
         # Reset of failed
         if await self.sys_plugins.dns.is_failed():
-            _LOGGER.error("CoreDNS plugin is in failed state / Reset config")
+            _LOGGER.error("CoreDNS plugin is in failed state, resetting configuration")
             await self.sys_plugins.dns.reset()
             await self.sys_plugins.dns.loop_detection()
 
         try:
             await self.sys_plugins.dns.start()
         except CoreDNSError:
-            _LOGGER.error("Watchdog CoreDNS reanimation failed!")
+            _LOGGER.error("CoreDNS watchdog reanimation failed!")
 
     async def _watchdog_audio_docker(self):
         """Check running state of Docker and start if they is close."""
@@ -294,7 +313,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_plugins.audio.start()
         except AudioError:
-            _LOGGER.error("Watchdog PulseAudio reanimation failed!")
+            _LOGGER.error("PulseAudio watchdog reanimation failed!")
 
     async def _watchdog_cli_docker(self):
         """Check running state of Docker and start if they is close."""
@@ -306,7 +325,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_plugins.cli.start()
         except CliError:
-            _LOGGER.error("Watchdog cli reanimation failed!")
+            _LOGGER.error("CLI watchdog reanimation failed!")
 
     async def _watchdog_observer_docker(self):
         """Check running state of Docker and start if they is close."""
@@ -321,7 +340,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_plugins.observer.start()
         except ObserverError:
-            _LOGGER.error("Watchdog observer reanimation failed!")
+            _LOGGER.error("Observer watchdog reanimation failed!")
 
     async def _watchdog_observer_application(self):
         """Check running state of application and rebuild if they is not response."""
@@ -336,7 +355,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_plugins.observer.rebuild()
         except ObserverError:
-            _LOGGER.error("Watchdog observer reanimation failed!")
+            _LOGGER.error("Observer watchdog reanimation failed!")
 
     async def _watchdog_multicast_docker(self):
         """Check running state of Docker and start if they is close."""
@@ -351,7 +370,7 @@ class Tasks(CoreSysAttributes):
         try:
             await self.sys_plugins.multicast.start()
         except MulticastError:
-            _LOGGER.error("Watchdog Multicast reanimation failed!")
+            _LOGGER.error("Multicast watchdog reanimation failed!")
 
     async def _watchdog_addon_docker(self):
         """Check running state  of Docker and start if they is close."""
@@ -368,7 +387,7 @@ class Tasks(CoreSysAttributes):
             try:
                 await addon.start()
             except AddonsError as err:
-                _LOGGER.error("Watchdog %s reanimation failed with %s", addon.slug, err)
+                _LOGGER.error("%s watchdog reanimation failed with %s", addon.slug, err)
                 self.sys_capture_exception(err)
 
     async def _watchdog_addon_application(self):
@@ -398,7 +417,7 @@ class Tasks(CoreSysAttributes):
             try:
                 await addon.restart()
             except AddonsError as err:
-                _LOGGER.error("Watchdog %s reanimation failed with %s", addon.slug, err)
+                _LOGGER.error("%s watchdog reanimation failed with %s", addon.slug, err)
                 self.sys_capture_exception(err)
             finally:
                 self._cache[addon.slug] = 0

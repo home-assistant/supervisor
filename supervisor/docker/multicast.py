@@ -49,5 +49,5 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
 
         self._meta = docker_container.attrs
         _LOGGER.info(
-            "Start Multicast %s with version %s - Host", self.image, self.version
+            "Starting Multicast %s with version %s - Host", self.image, self.version
         )

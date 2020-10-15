@@ -96,7 +96,7 @@ async def initialize_coresys() -> CoreSys:
         coresys.machine = os.environ[ENV_SUPERVISOR_MACHINE]
     elif os.environ.get(ENV_HOMEASSISTANT_REPOSITORY):
         coresys.machine = os.environ[ENV_HOMEASSISTANT_REPOSITORY][14:-14]
-    _LOGGER.info("Setup coresys for machine: %s", coresys.machine)
+    _LOGGER.debug("Seting up coresys for machine: %s", coresys.machine)
 
     return coresys
 
@@ -107,68 +107,73 @@ def initialize_system_data(coresys: CoreSys) -> None:
 
     # Home Assistant configuration folder
     if not config.path_homeassistant.is_dir():
-        _LOGGER.info(
-            "Create Home Assistant configuration folder %s", config.path_homeassistant
+        _LOGGER.debug(
+            "Creating Home Assistant configuration folder at '%s'",
+            config.path_homeassistant,
         )
         config.path_homeassistant.mkdir()
 
     # Supervisor ssl folder
     if not config.path_ssl.is_dir():
-        _LOGGER.info("Create Supervisor SSL/TLS folder %s", config.path_ssl)
+        _LOGGER.debug("Creating Supervisor SSL/TLS folder at '%s'", config.path_ssl)
         config.path_ssl.mkdir()
 
     # Supervisor addon data folder
     if not config.path_addons_data.is_dir():
-        _LOGGER.info("Create Supervisor Add-on data folder %s", config.path_addons_data)
+        _LOGGER.info(
+            "Creating Supervisor Add-on data folder at '%s'", config.path_addons_data
+        )
         config.path_addons_data.mkdir(parents=True)
 
     if not config.path_addons_local.is_dir():
-        _LOGGER.info(
-            "Create Supervisor Add-on local repository folder %s",
+        _LOGGER.debug(
+            "Creating Supervisor Add-on local repository folder at '%s'",
             config.path_addons_local,
         )
         config.path_addons_local.mkdir(parents=True)
 
     if not config.path_addons_git.is_dir():
-        _LOGGER.info(
-            "Create Supervisor Add-on git repositories folder %s",
+        _LOGGER.debug(
+            "Creating Supervisor Add-on git repositories folder at '%s'",
             config.path_addons_git,
         )
         config.path_addons_git.mkdir(parents=True)
 
     # Supervisor tmp folder
     if not config.path_tmp.is_dir():
-        _LOGGER.info("Create Supervisor temp folder %s", config.path_tmp)
+        _LOGGER.debug("Creating Supervisor temp folder at '%s'", config.path_tmp)
         config.path_tmp.mkdir(parents=True)
 
     # Supervisor backup folder
     if not config.path_backup.is_dir():
-        _LOGGER.info("Create Supervisor backup folder %s", config.path_backup)
+        _LOGGER.debug("Creating Supervisor backup folder at '%s'", config.path_backup)
         config.path_backup.mkdir()
 
     # Share folder
     if not config.path_share.is_dir():
-        _LOGGER.info("Create Supervisor share folder %s", config.path_share)
+        _LOGGER.debug("Creating Supervisor share folder at '%s'", config.path_share)
         config.path_share.mkdir()
 
     # Apparmor folder
     if not config.path_apparmor.is_dir():
-        _LOGGER.info("Create Supervisor Apparmor folder %s", config.path_apparmor)
+        _LOGGER.debug(
+            "Creating Supervisor Apparmor folder at '%s'", config.path_apparmor
+        )
         config.path_apparmor.mkdir()
 
     # DNS folder
     if not config.path_dns.is_dir():
-        _LOGGER.info("Create Supervisor DNS folder %s", config.path_dns)
+        _LOGGER.debug("Creating Supervisor DNS folder at '%s'", config.path_dns)
         config.path_dns.mkdir()
 
     # Audio folder
     if not config.path_audio.is_dir():
-        _LOGGER.info("Create Supervisor audio folder %s", config.path_audio)
+        _LOGGER.debug("Creating Supervisor audio folder at '%s'", config.path_audio)
         config.path_audio.mkdir()
 
     # Media folder
     if not config.path_media.is_dir():
-        _LOGGER.info("Create Supervisor media folder %s", config.path_media)
+        _LOGGER.debug("Creating Supervisor media folder at '%s'", config.path_media)
         config.path_media.mkdir()
 
     # Update log level
@@ -176,7 +181,7 @@ def initialize_system_data(coresys: CoreSys) -> None:
 
     # Check if ENV is in development mode
     if bool(os.environ.get(ENV_SUPERVISOR_DEV, 0)):
-        _LOGGER.warning("SUPERVISOR_DEV is set")
+        _LOGGER.warning("Environment variables 'SUPERVISOR_DEV' is set")
         coresys.updater.channel = UpdateChannel.DEV
         coresys.config.logging = LogLevel.DEBUG
         coresys.config.debug = True
@@ -192,7 +197,7 @@ def migrate_system_env(coresys: CoreSys) -> None:
         try:
             old_build.rmdir()
         except OSError:
-            _LOGGER.warning("Can't cleanup old Add-on build directory")
+            _LOGGER.error("Can't cleanup old Add-on build directory at '%s'", old_build)
 
 
 def initialize_logging() -> None:
@@ -228,7 +233,7 @@ def check_environment() -> None:
         try:
             os.environ[key]
         except KeyError:
-            _LOGGER.critical("Can't find %s in env!", key)
+            _LOGGER.critical("Can't find '%s' environment variable!", key)
 
     # Check Machine info
     if not os.environ.get(ENV_HOMEASSISTANT_REPOSITORY) and not os.environ.get(
@@ -278,11 +283,11 @@ def supervisor_debugger(coresys: CoreSys) -> None:
     # pylint: disable=import-outside-toplevel
     import debugpy
 
-    _LOGGER.info("Initialize Supervisor debugger")
+    _LOGGER.info("Initializing Supervisor debugger")
 
     debugpy.listen(("0.0.0.0", 33333))
     if coresys.config.debug_block:
-        _LOGGER.info("Wait until debugger is attached")
+        _LOGGER.debug("Wait until debugger is attached")
         debugpy.wait_for_client()
 
 
@@ -292,7 +297,7 @@ def setup_diagnostics(coresys: CoreSys) -> None:
         level=logging.WARNING, event_level=logging.CRITICAL
     )
 
-    _LOGGER.info("Initialize Supervisor Sentry")
+    _LOGGER.info("Initializing Supervisor Sentry")
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
         before_send=lambda event, hint: filter_data(coresys, event, hint),

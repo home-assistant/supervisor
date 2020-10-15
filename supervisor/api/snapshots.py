@@ -175,7 +175,7 @@ class APISnapshots(CoreSysAttributes):
         """Download a snapshot file."""
         snapshot = self._extract_snapshot(request)
 
-        _LOGGER.info("Download snapshot %s", snapshot.slug)
+        _LOGGER.info("Downloading snapshot %s", snapshot.slug)
         response = web.FileResponse(snapshot.tarfile)
         response.content_type = CONTENT_TYPE_TAR
         response.headers[

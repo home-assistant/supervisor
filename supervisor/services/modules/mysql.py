@@ -65,7 +65,8 @@ class MySQLService(ServiceInterface):
         """Write the data into service object."""
         if self.enabled:
             _LOGGER.error(
-                "There is already a MySQL in use from %s", self._data[ATTR_ADDON]
+                "There is already a MySQL service in use from %s",
+                self._data[ATTR_ADDON],
             )
             raise ServicesError()
 

@@ -129,7 +129,9 @@ class DockerHomeAssistant(DockerInterface):
         )
 
         self._meta = docker_container.attrs
-        _LOGGER.info("Start homeassistant %s with version %s", self.image, self.version)
+        _LOGGER.info(
+            "Starting Home Assistant %s with version %s", self.image, self.version
+        )
 
     def _execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command.
