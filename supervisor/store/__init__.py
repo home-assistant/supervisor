@@ -65,7 +65,7 @@ class StoreManager(CoreSysAttributes):
             """Add a repository."""
             repository = Repository(self.coresys, url)
             if not await repository.load():
-                _LOGGER.error("Can't load from repository %s", url)
+                _LOGGER.error("Can't load data from repository %s", url)
                 return
 
             # don't add built-in repository to config

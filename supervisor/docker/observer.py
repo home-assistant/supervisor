@@ -57,7 +57,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
 
         self._meta = docker_container.attrs
         _LOGGER.info(
-            "Start Observer %s with version %s - %s",
+            "Starting Observer %s with version %s - %s",
             self.image,
             self.version,
             self.sys_docker.network.observer,

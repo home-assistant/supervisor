@@ -139,7 +139,7 @@ class SecurityMiddleware(CoreSysAttributes):
 
         # Blacklist
         if BLACKLIST.match(request.path):
-            _LOGGER.warning("%s is blacklisted!", request.path)
+            _LOGGER.error("%s is blacklisted!", request.path)
             raise HTTPForbidden()
 
         # Ignore security check

@@ -136,7 +136,7 @@ class Audio(JsonConfig, CoreSysAttributes):
                         self.latest_version, image=self.sys_updater.image_audio
                     )
                     break
-            _LOGGER.warning("Error on install Audio plugin. Retry in 30sec")
+            _LOGGER.warning("Error on installing Audio plugin, retrying in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("Audio plugin now installed")
@@ -172,7 +172,7 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     async def restart(self) -> None:
         """Restart Audio plugin."""
-        _LOGGER.info("Restart Audio plugin")
+        _LOGGER.info("Restarting Audio plugin")
         try:
             await self.instance.restart()
         except DockerError as err:
@@ -181,7 +181,7 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     async def start(self) -> None:
         """Run CoreDNS."""
-        _LOGGER.info("Start Audio plugin")
+        _LOGGER.info("Starting Audio plugin")
         try:
             await self.instance.run()
         except DockerError as err:
@@ -190,7 +190,7 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
-        _LOGGER.info("Stop Audio plugin")
+        _LOGGER.info("Stopping Audio plugin")
         try:
             await self.instance.stop()
         except DockerError as err:
@@ -223,11 +223,11 @@ class Audio(JsonConfig, CoreSysAttributes):
         if await self.instance.exists():
             return
 
-        _LOGGER.info("Repair Audio %s", self.version)
+        _LOGGER.info("Repairing Audio %s", self.version)
         try:
             await self.instance.install(self.version)
         except DockerError as err:
-            _LOGGER.error("Repairing of Audio failed")
+            _LOGGER.error("Repair of Audio failed")
             self.sys_capture_exception(err)
 
     def pulse_client(self, input_profile=None, output_profile=None) -> str:

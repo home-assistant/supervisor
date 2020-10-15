@@ -89,7 +89,7 @@ class InfoCenter(CoreSysAttributes):
 
     async def update(self):
         """Update properties over dbus."""
-        _LOGGER.info("Update local host information")
+        _LOGGER.info("Updating local host information")
         try:
             await self.sys_dbus.hostname.update()
         except DBusError:

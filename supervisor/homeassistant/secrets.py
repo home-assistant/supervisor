@@ -34,7 +34,7 @@ class HomeAssistantSecrets(CoreSysAttributes):
         """Load secrets on start."""
         await self._read_secrets()
 
-        _LOGGER.info("Load Home Assistant secrets: %s", len(self.secrets))
+        _LOGGER.info("Loading Home Assistant secrets: %s", len(self.secrets))
 
     async def reload(self) -> None:
         """Reload secrets."""
@@ -61,4 +61,4 @@ class HomeAssistantSecrets(CoreSysAttributes):
         except (YAMLError, AttributeError) as err:
             _LOGGER.error("Can't process Home Assistant secrets: %s", err)
         else:
-            _LOGGER.debug("Reload Home Assistant secrets: %s", len(self.secrets))
+            _LOGGER.debug("Reloading Home Assistant secrets: %s", len(self.secrets))

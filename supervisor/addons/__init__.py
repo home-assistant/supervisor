@@ -93,7 +93,7 @@ class AddonManager(CoreSysAttributes):
             tasks.append(addon)
 
         # Evaluate add-ons which need to be started
-        _LOGGER.info("Phase '%s' start %d add-ons", stage, len(tasks))
+        _LOGGER.info("Phase '%s' starting %d add-ons", stage, len(tasks))
         if not tasks:
             return
 
@@ -127,7 +127,7 @@ class AddonManager(CoreSysAttributes):
             tasks.append(addon)
 
         # Evaluate add-ons which need to be stopped
-        _LOGGER.info("Phase '%s' stop %d add-ons", stage, len(tasks))
+        _LOGGER.info("Phase '%s' stopping %d add-ons", stage, len(tasks))
         if not tasks:
             return
 
@@ -159,7 +159,9 @@ class AddonManager(CoreSysAttributes):
         addon = Addon(self.coresys, slug)
 
         if not addon.path_data.is_dir():
-            _LOGGER.info("Create Home Assistant add-on data folder %s", addon.path_data)
+            _LOGGER.info(
+                "Creating Home Assistant add-on data folder %s", addon.path_data
+            )
             addon.path_data.mkdir()
 
         # Setup/Fix AppArmor profile

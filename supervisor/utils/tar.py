@@ -136,7 +136,7 @@ def secure_path(tar: tarfile.TarFile) -> Generator[tarfile.TarInfo, None, None]:
                 raise ValueError()
             Path("/fake", file_path).resolve().relative_to("/fake")
         except (ValueError, RuntimeError):
-            _LOGGER.warning("Issue with file %s", file_path)
+            _LOGGER.warning("Found issue with file %s", file_path)
             continue
         else:
             yield member
@@ -148,7 +148,7 @@ def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
     for exclude in exclude_list:
         if not path.match(exclude):
             continue
-        _LOGGER.debug("Ignore %s because of %s", path, exclude)
+        _LOGGER.debug("Ignoring %s because of %s", path, exclude)
         return True
 
     return False

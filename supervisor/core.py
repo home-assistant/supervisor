@@ -52,7 +52,9 @@ class Core(CoreSysAttributes):
         try:
             RUN_SUPERVISOR_STATE.write_text(new_state.value)
         except OSError as err:
-            _LOGGER.warning("Can't update supervisor state %s: %s", new_state, err)
+            _LOGGER.warning(
+                "Can't update the Supervisor state to %s: %s", new_state, err
+            )
         finally:
             self._state = new_state
 
@@ -68,7 +70,7 @@ class Core(CoreSysAttributes):
             self.sys_resolution.unsupported = UnsupportedReason.DOCKER_VERSION
             self.healthy = False
             _LOGGER.error(
-                "Docker version %s is not supported by Supervisor!",
+                "Docker version '%s' is not supported by Supervisor!",
                 self.sys_docker.info.version,
             )
         elif self.sys_docker.info.inside_lxc:
@@ -89,7 +91,7 @@ class Core(CoreSysAttributes):
         if not SOCKET_DBUS.exists():
             self.sys_resolution.unsupported = UnsupportedReason.DBUS
             _LOGGER.error(
-                "DBus is required for Home Assistant. This system is not supported!"
+                "D-Bus is required for Home Assistant. This system is not supported!"
             )
 
         # Check supervisor version/update
@@ -101,13 +103,13 @@ class Core(CoreSysAttributes):
         ):
             self.healthy = False
             _LOGGER.warning(
-                "Found a development supervisor outside dev channel (%s)",
+                "Found a development Supervisor outside dev channel (%s)",
                 self.sys_updater.channel,
             )
         elif self.sys_config.version != self.sys_supervisor.version:
             self.healthy = False
             _LOGGER.error(
-                "Update %s of Supervisor %s failed!",
+                "Update '%s' of Supervisor '%s' failed!",
                 self.sys_config.version,
                 self.sys_supervisor.version,
             )
@@ -174,7 +176,7 @@ class Core(CoreSysAttributes):
         # Check Host features
         if HostFeature.NETWORK not in self.sys_host.supported_features:
             self.sys_resolution.unsupported = UnsupportedReason.NETWORK_MANAGER
-            _LOGGER.error("NetworkManager is not correct working")
+            _LOGGER.error("NetworkManager is not correctly configured")
         if any(
             feature not in self.sys_host.supported_features
             for feature in (
@@ -185,7 +187,7 @@ class Core(CoreSysAttributes):
             )
         ):
             self.sys_resolution.unsupported = UnsupportedReason.SYSTEMD
-            _LOGGER.error("Systemd is not correct working")
+            _LOGGER.error("Systemd is not correctly working")
 
         # Check if image names from denylist exist
         try:
@@ -201,7 +203,7 @@ class Core(CoreSysAttributes):
 
         # Check if system is healthy
         if not self.supported:
-            _LOGGER.critical("System running in a unsupported environment!")
+            _LOGGER.warning("System running in a unsupported environment!")
         if not self.healthy:
             _LOGGER.critical(
                 "System running in a unhealthy state and need manual intervention!"
@@ -215,13 +217,13 @@ class Core(CoreSysAttributes):
         if self.sys_supervisor.need_update:
             try:
                 if self.sys_dev or not self.healthy:
-                    _LOGGER.warning("Ignore Supervisor updates!")
+                    _LOGGER.warning("Ignoring Supervisor updates!")
                 else:
                     await self.sys_supervisor.update()
                     return
             except SupervisorUpdateError as err:
                 _LOGGER.critical(
-                    "Can't update supervisor! This will break some Add-ons or affect "
+                    "Can't update Supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )
                 self.sys_capture_exception(err)
@@ -232,7 +234,7 @@ class Core(CoreSysAttributes):
         try:
             # HomeAssistant is already running / supervisor have only reboot
             if self.sys_hardware.last_boot == self.sys_config.last_boot:
-                _LOGGER.info("Supervisor reboot detected")
+                _LOGGER.debug("Supervisor reboot detected")
                 return
 
             # reset register services / discovery
@@ -252,7 +254,7 @@ class Core(CoreSysAttributes):
                 try:
                     await self.sys_homeassistant.core.start()
                 except HomeAssistantCrashError as err:
-                    _LOGGER.warning("Can't start Home Assistant Core - rebuild")
+                    _LOGGER.error("Can't start Home Assistant Core - rebuiling")
                     self.sys_capture_exception(err)
 
                     with suppress(HomeAssistantError):
@@ -260,7 +262,7 @@ class Core(CoreSysAttributes):
                 except HomeAssistantError as err:
                     self.sys_capture_exception(err)
             else:
-                _LOGGER.info("Skip start of Home Assistant")
+                _LOGGER.debug("Skiping start of Home Assistant")
 
             # start addon mark as application
             await self.sys_addons.boot(AddonStartup.APPLICATION)
@@ -283,8 +285,8 @@ class Core(CoreSysAttributes):
             self.sys_create_task(self.sys_host.reload())
             self.sys_create_task(self.sys_updater.reload())
 
-            _LOGGER.info("Supervisor is up and running")
             self.state = CoreState.RUNNING
+            _LOGGER.info("Supervisor is up and running")
 
     async def stop(self):
         """Stop a running orchestration."""
@@ -318,8 +320,8 @@ class Core(CoreSysAttributes):
         except asyncio.TimeoutError:
             _LOGGER.warning("Stage 2: Force Shutdown!")
 
-        _LOGGER.info("Supervisor is down")
         self.state = CoreState.CLOSE
+        _LOGGER.info("Supervisor is down")
         self.sys_loop.stop()
 
     async def shutdown(self):
@@ -351,7 +353,7 @@ class Core(CoreSysAttributes):
 
     async def repair(self):
         """Repair system integrity."""
-        _LOGGER.info("Start repairing of Supervisor Environment")
+        _LOGGER.info("Starting repair of Supervisor Environment")
         await self.sys_run_in_executor(self.sys_docker.repair)
 
         # Fix plugins
@@ -363,4 +365,4 @@ class Core(CoreSysAttributes):
 
         # Tag version for latest
         await self.sys_supervisor.repair()
-        _LOGGER.info("Finished repairing of Supervisor Environment")
+        _LOGGER.info("Finished repair of Supervisor Environment")
