@@ -42,7 +42,7 @@ async def test_api_resolution_dismiss_suggestion(coresys: CoreSys, api_client):
     )
 
     assert SuggestionType.CLEAR_FULL_SNAPSHOT == coresys.resolution.suggestions[-1].type
-    await coresys.resolution.dismiss_suggestion(clear_snapshot)
+    await api_client.delete(f"/resolution/suggestion/{clear_snapshot.uuid}")
     assert clear_snapshot not in coresys.resolution.suggestions
 
 
@@ -57,8 +57,8 @@ async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
     )
 
     with patch("supervisor.snapshots.SnapshotManager", return_value=MagicMock()):
-        await coresys.resolution.apply_suggestion(clear_snapshot)
-        await coresys.resolution.apply_suggestion(create_snapshot)
+        await api_client.post(f"/resolution/suggestion/{clear_snapshot.uuid}")
+        await api_client.post(f"/resolution/suggestion/{create_snapshot.uuid}")
 
         assert clear_snapshot not in coresys.resolution.suggestions
         assert create_snapshot not in coresys.resolution.suggestions
