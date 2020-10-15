@@ -376,7 +376,9 @@ class DockerAddon(DockerInterface):
         )
 
         self._meta = docker_container.attrs
-        _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
+        _LOGGER.info(
+            "Starting Docker add-on %s with version %s", self.image, self.version
+        )
 
         # Write data to DNS server
         try:

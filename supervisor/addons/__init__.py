@@ -348,7 +348,7 @@ class AddonManager(CoreSysAttributes):
             return
 
         for addon in needs_repair:
-            _LOGGER.info("Start repair for add-on: %s", addon.slug)
+            _LOGGER.info("Repairing for add-on: %s", addon.slug)
             await self.sys_run_in_executor(
                 self.sys_docker.network.stale_cleanup, addon.instance.name
             )

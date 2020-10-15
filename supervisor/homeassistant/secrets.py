@@ -34,7 +34,7 @@ class HomeAssistantSecrets(CoreSysAttributes):
         """Load secrets on start."""
         await self._read_secrets()
 
-        _LOGGER.info("Loading Home Assistant secrets: %s", len(self.secrets))
+        _LOGGER.info("Loaded %s Home Assistant secrets", len(self.secrets))
 
     async def reload(self) -> None:
         """Reload secrets."""

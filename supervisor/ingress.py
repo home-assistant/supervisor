@@ -56,7 +56,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
         self._update_token_list()
         self._cleanup_sessions()
 
-        _LOGGER.info("Loading %d ingress sessions", len(self.sessions))
+        _LOGGER.info("Loaded %d ingress sessions", len(self.sessions))
 
     async def reload(self) -> None:
         """Reload/Validate sessions."""

@@ -107,7 +107,7 @@ class StoreManager(CoreSysAttributes):
         del_addons = set(self.sys_addons.store) - all_addons
 
         _LOGGER.info(
-            "Load add-ons from store: %d all - %d new - %d remove",
+            "Loading add-ons from store: %d all - %d new - %d remove",
             len(all_addons),
             len(add_addons),
             len(del_addons),

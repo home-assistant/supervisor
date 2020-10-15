@@ -51,7 +51,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
             discovery = Message(**message)
             messages[discovery.uuid] = discovery
 
-        _LOGGER.info("Loading %d messages", len(messages))
+        _LOGGER.info("Loaded %d messages", len(messages))
         self.message_obj = messages
 
     def save(self) -> None:

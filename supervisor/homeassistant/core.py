@@ -102,7 +102,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 break
 
         # Start landingpage
-        _LOGGER.info("Start HomeAssistant landingpage")
+        _LOGGER.info("Starting HomeAssistant landingpage")
         with suppress(HomeAssistantError):
             await self._start()
 
