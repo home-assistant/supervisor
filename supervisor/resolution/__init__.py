@@ -3,7 +3,7 @@ import logging
 from typing import List, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import ResolutionError
+from ..exceptions import ResolutionError, ResolutionNotFound
 from .const import (
     SCHEDULED_HEALTHCHECK,
     ContextType,
@@ -74,13 +74,13 @@ class ResolutionManager(CoreSysAttributes):
         if reason not in self._unsupported:
             self._unsupported.append(reason)
 
-    def get_suggestion(self, uuid: str) -> Optional[Suggestion]:
+    def get_suggestion(self, uuid: str) -> Suggestion:
         """Return suggestion with uuid or None."""
         for suggestion in self._suggestions:
             if suggestion.uuid != uuid:
                 continue
             return suggestion
-        return None
+        raise ResolutionNotFound()
 
     def create_issue(
         self,

@@ -2,11 +2,11 @@
 from typing import Any, Dict
 
 from aiohttp import web
+import attr
 
 from ..const import ATTR_ISSUES, ATTR_SUGGESTIONS, ATTR_UNSUPPORTED
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
-from ..resolution.const import SuggestionType
+from ..exceptions import APIError, ResolutionNotFound
 from .utils import api_process
 
 
@@ -18,24 +18,31 @@ class APIResoulution(CoreSysAttributes):
         """Return network information."""
         return {
             ATTR_UNSUPPORTED: self.sys_resolution.unsupported,
-            ATTR_SUGGESTIONS: self.sys_resolution.suggestions,
-            ATTR_ISSUES: self.sys_resolution.issues,
+            ATTR_SUGGESTIONS: [
+                attr.asdict(suggestion)
+                for suggestion in self.sys_resolution.suggestions
+            ],
+            ATTR_ISSUES: [attr.asdict(issue) for issue in self.sys_resolution.issues],
         }
 
     @api_process
     async def apply_suggestion(self, request: web.Request) -> None:
         """Apply suggestion."""
         try:
-            suggestion = SuggestionType(request.match_info.get("suggestion"))
+            suggestion = self.sys_resolution.get_suggestion(
+                request.match_info.get("suggestion")
+            )
             await self.sys_resolution.apply_suggestion(suggestion)
-        except ValueError:
-            raise APIError("SuggestionType is not valid") from None
+        except ResolutionNotFound:
+            raise APIError("Suggestion uuid is not valid") from None
 
     @api_process
     async def dismiss_suggestion(self, request: web.Request) -> None:
         """Dismiss suggestion."""
         try:
-            suggestion = SuggestionType(request.match_info.get("suggestion"))
+            suggestion = self.sys_resolution.get_suggestion(
+                request.match_info.get("suggestion")
+            )
             await self.sys_resolution.dismiss_suggestion(suggestion)
-        except ValueError:
-            raise APIError("SuggestionType is not valid") from None
+        except ResolutionNotFound:
+            raise APIError("Suggestion uuid is not valid") from None

@@ -277,3 +277,7 @@ class PulseAudioError(HassioError):
 
 class ResolutionError(HassioError):
     """Raise if an error is happning on resoltuion."""
+
+
+class ResolutionNotFound(ResolutionError):
+    """Raise if suggestion/issue was not found."""
