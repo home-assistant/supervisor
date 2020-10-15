@@ -37,7 +37,7 @@ class IssueType(str, Enum):
     FREE_SPACE = "free_space"
     CORRUPT_DOCKER = "corrupt_docker"
     MISSING_IMAGE = "missing_image"
-    UPDATE_FAILS = "update_fails"
+    UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"
 
 
