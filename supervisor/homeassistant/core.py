@@ -209,7 +209,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 )
             await _update(rollback)
         else:
-            self.sys_resolution.create_issue(IssueType.UPDATE_FAILS, ContextType.CORE)
+            self.sys_resolution.create_issue(IssueType.UPDATE_FAILED, ContextType.CORE)
             raise HomeAssistantUpdateError()
 
     async def _start(self) -> None:
