@@ -5,43 +5,63 @@ import pytest
 
 from supervisor.const import ATTR_ISSUES, ATTR_SUGGESTIONS, ATTR_UNSUPPORTED
 from supervisor.coresys import CoreSys
-from supervisor.resolution.const import IssueType, SuggestionType, UnsupportedReason
+from supervisor.exceptions import ResolutionError
+from supervisor.resolution.const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnsupportedReason,
+)
+from supervisor.resolution.data import Suggestion
 
 
 @pytest.mark.asyncio
 async def test_api_resolution_base(coresys: CoreSys, api_client):
     """Test resolution manager api."""
     coresys.resolution.unsupported = UnsupportedReason.OS
-    coresys.resolution.suggestions = SuggestionType.CLEAR_FULL_SNAPSHOT
-    coresys.resolution.issues = IssueType.FREE_SPACE
+    coresys.resolution.suggestions = Suggestion(
+        SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
+    )
+    coresys.resolution.create_issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
+
     resp = await api_client.get("/resolution")
     result = await resp.json()
     assert UnsupportedReason.OS in result["data"][ATTR_UNSUPPORTED]
-    assert SuggestionType.CLEAR_FULL_SNAPSHOT in result["data"][ATTR_SUGGESTIONS]
-    assert IssueType.FREE_SPACE in result["data"][ATTR_ISSUES]
+    assert (
+        SuggestionType.CLEAR_FULL_SNAPSHOT
+        == result["data"][ATTR_SUGGESTIONS][-1]["type"]
+    )
+    assert IssueType.FREE_SPACE == result["data"][ATTR_ISSUES][-1]["type"]
 
 
 @pytest.mark.asyncio
 async def test_api_resolution_dismiss_suggestion(coresys: CoreSys, api_client):
     """Test resolution manager suggestion apply api."""
-    coresys.resolution.suggestions = SuggestionType.CLEAR_FULL_SNAPSHOT
+    coresys.resolution.suggestions = clear_snapshot = Suggestion(
+        SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
+    )
 
-    assert SuggestionType.CLEAR_FULL_SNAPSHOT in coresys.resolution.suggestions
-    await coresys.resolution.dismiss_suggestion(SuggestionType.CLEAR_FULL_SNAPSHOT)
-    assert SuggestionType.CLEAR_FULL_SNAPSHOT not in coresys.resolution.suggestions
+    assert SuggestionType.CLEAR_FULL_SNAPSHOT == coresys.resolution.suggestions[-1].type
+    await coresys.resolution.dismiss_suggestion(clear_snapshot)
+    assert clear_snapshot not in coresys.resolution.suggestions
 
 
 @pytest.mark.asyncio
 async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
     """Test resolution manager suggestion apply api."""
-    coresys.resolution.suggestions = SuggestionType.CLEAR_FULL_SNAPSHOT
-    coresys.resolution.suggestions = SuggestionType.CREATE_FULL_SNAPSHOT
+    coresys.resolution.suggestions = clear_snapshot = Suggestion(
+        SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
+    )
+    coresys.resolution.suggestions = create_snapshot = Suggestion(
+        SuggestionType.CREATE_FULL_SNAPSHOT, ContextType.SYSTEM
+    )
 
     with patch("supervisor.snapshots.SnapshotManager", return_value=MagicMock()):
-        await coresys.resolution.apply_suggestion(SuggestionType.CLEAR_FULL_SNAPSHOT)
-        await coresys.resolution.apply_suggestion(SuggestionType.CREATE_FULL_SNAPSHOT)
+        await coresys.resolution.apply_suggestion(clear_snapshot)
+        await coresys.resolution.apply_suggestion(create_snapshot)
 
-        assert SuggestionType.CLEAR_FULL_SNAPSHOT not in coresys.resolution.suggestions
-        assert SuggestionType.CREATE_FULL_SNAPSHOT not in coresys.resolution.suggestions
+        assert clear_snapshot not in coresys.resolution.suggestions
+        assert create_snapshot not in coresys.resolution.suggestions
 
-    await coresys.resolution.apply_suggestion(SuggestionType.CLEAR_FULL_SNAPSHOT)
+    with pytest.raises(ResolutionError):
+        await coresys.resolution.apply_suggestion(clear_snapshot)
