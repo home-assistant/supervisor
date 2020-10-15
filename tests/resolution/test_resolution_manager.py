@@ -1,5 +1,8 @@
 """Tests for resolution manager."""
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from supervisor.const import (
     ATTR_DATE,
@@ -9,7 +12,9 @@ from supervisor.const import (
     SNAPSHOT_PARTIAL,
 )
 from supervisor.coresys import CoreSys
-from supervisor.resolution.const import UnsupportedReason
+from supervisor.exceptions import ResolutionError
+from supervisor.resolution.const import ContextType, SuggestionType, UnsupportedReason
+from supervisor.resolution.data import Suggestion
 from supervisor.snapshots.snapshot import Snapshot
 from supervisor.utils.dt import utcnow
 from supervisor.utils.tar import SecureTarFile
@@ -58,3 +63,36 @@ async def test_clear_snapshots(coresys: CoreSys, tmp_path):
         )
         == 1
     )
+
+
+@pytest.mark.asyncio
+async def test_api_resolution_dismiss_suggestion(coresys: CoreSys, api_client):
+    """Test resolution manager suggestion apply api."""
+    coresys.resolution.suggestions = clear_snapshot = Suggestion(
+        SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
+    )
+
+    assert SuggestionType.CLEAR_FULL_SNAPSHOT == coresys.resolution.suggestions[-1].type
+    await coresys.resolution.dismiss_suggestion(clear_snapshot)
+    assert clear_snapshot not in coresys.resolution.suggestions
+
+
+@pytest.mark.asyncio
+async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
+    """Test resolution manager suggestion apply api."""
+    coresys.resolution.suggestions = clear_snapshot = Suggestion(
+        SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
+    )
+    coresys.resolution.suggestions = create_snapshot = Suggestion(
+        SuggestionType.CREATE_FULL_SNAPSHOT, ContextType.SYSTEM
+    )
+
+    with patch("supervisor.snapshots.SnapshotManager", return_value=MagicMock()):
+        await coresys.resolution.apply_suggestion(clear_snapshot)
+        await coresys.resolution.apply_suggestion(create_snapshot)
+
+        assert clear_snapshot not in coresys.resolution.suggestions
+        assert create_snapshot not in coresys.resolution.suggestions
+
+    with pytest.raises(ResolutionError):
+        await coresys.resolution.apply_suggestion(clear_snapshot)
