@@ -14,7 +14,7 @@ class APIResoulution(CoreSysAttributes):
     """Handle REST API for resoulution."""
 
     @api_process
-    async def base(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return network information."""
         return {
             ATTR_UNSUPPORTED: self.sys_resolution.unsupported,

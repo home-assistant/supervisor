@@ -24,7 +24,7 @@ async def test_api_resolution_base(coresys: CoreSys, api_client):
     )
     coresys.resolution.create_issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
 
-    resp = await api_client.get("/resolution")
+    resp = await api_client.get("/resolution/info")
     result = await resp.json()
     assert UnsupportedReason.OS in result["data"][ATTR_UNSUPPORTED]
     assert (
