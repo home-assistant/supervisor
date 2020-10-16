@@ -1,10 +1,17 @@
 """Supervisor resolution center."""
 import logging
-from typing import List
+from typing import List, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..resolution.const import UnsupportedReason
-from .const import SCHEDULED_HEALTHCHECK, IssueType, Suggestion
+from ..exceptions import ResolutionError, ResolutionNotFound
+from .const import (
+    SCHEDULED_HEALTHCHECK,
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnsupportedReason,
+)
+from .data import Issue, Suggestion
 from .free_space import ResolutionStorage
 from .notify import ResolutionNotify
 
@@ -19,9 +26,9 @@ class ResolutionManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._notify = ResolutionNotify(coresys)
         self._storage = ResolutionStorage(coresys)
-        self._dismissed_suggestions: List[Suggestion] = []
+
         self._suggestions: List[Suggestion] = []
-        self._issues: List[IssueType] = []
+        self._issues: List[Issue] = []
         self._unsupported: List[UnsupportedReason] = []
 
     @property
@@ -35,12 +42,12 @@ class ResolutionManager(CoreSysAttributes):
         return self._notify
 
     @property
-    def issues(self) -> List[IssueType]:
+    def issues(self) -> List[Issue]:
         """Return a list of issues."""
         return self._issues
 
     @issues.setter
-    def issues(self, issue: IssueType) -> None:
+    def issues(self, issue: Issue) -> None:
         """Add issues."""
         if issue not in self._issues:
             self._issues.append(issue)
@@ -48,7 +55,7 @@ class ResolutionManager(CoreSysAttributes):
     @property
     def suggestions(self) -> List[Suggestion]:
         """Return a list of suggestions that can handled."""
-        return [x for x in self._suggestions if x not in self._dismissed_suggestions]
+        return self._suggestions
 
     @suggestions.setter
     def suggestions(self, suggestion: Suggestion) -> None:
@@ -66,6 +73,38 @@ class ResolutionManager(CoreSysAttributes):
         """Add a reason for unsupported."""
         if reason not in self._unsupported:
             self._unsupported.append(reason)
+
+    def get_suggestion(self, uuid: str) -> Suggestion:
+        """Return suggestion with uuid."""
+        for suggestion in self._suggestions:
+            if suggestion.uuid != uuid:
+                continue
+            return suggestion
+        raise ResolutionNotFound()
+
+    def get_issue(self, uuid: str) -> Issue:
+        """Return issue with uuid."""
+        for issue in self._issues:
+            if issue.uuid != uuid:
+                continue
+            return issue
+        raise ResolutionNotFound()
+
+    def create_issue(
+        self,
+        issue: IssueType,
+        context: ContextType,
+        reference: Optional[str] = None,
+        suggestions: Optional[List[SuggestionType]] = None,
+    ) -> None:
+        """Create issues and suggestion."""
+        self.issues = Issue(issue, context, reference)
+        if not suggestions:
+            return
+
+        # Add suggestions
+        for suggestion in suggestions:
+            self.suggestions = Suggestion(suggestion, context, reference)
 
     async def load(self):
         """Load the resoulution manager."""
@@ -85,14 +124,14 @@ class ResolutionManager(CoreSysAttributes):
 
     async def apply_suggestion(self, suggestion: Suggestion) -> None:
         """Apply suggested action."""
-        if suggestion not in self.suggestions:
-            _LOGGER.warning("Suggestion %s is not valid", suggestion)
-            return
+        if suggestion not in self._suggestions:
+            _LOGGER.warning("Suggestion %s is not valid", suggestion.uuid)
+            raise ResolutionError()
 
-        if suggestion == Suggestion.CLEAR_FULL_SNAPSHOT:
+        if suggestion.type == SuggestionType.CLEAR_FULL_SNAPSHOT:
             self.storage.clean_full_snapshots()
 
-        elif suggestion == Suggestion.CREATE_FULL_SNAPSHOT:
+        elif suggestion.type == SuggestionType.CREATE_FULL_SNAPSHOT:
             await self.sys_snapshots.do_snapshot_full()
 
         self._suggestions.remove(suggestion)
@@ -100,9 +139,14 @@ class ResolutionManager(CoreSysAttributes):
 
     async def dismiss_suggestion(self, suggestion: Suggestion) -> None:
         """Dismiss suggested action."""
-        if suggestion not in self.suggestions:
-            _LOGGER.warning("Suggestion %s is not valid", suggestion)
-            return
+        if suggestion not in self._suggestions:
+            _LOGGER.warning("The UUID %s is not valid suggestion", suggestion.uuid)
+            raise ResolutionError()
+        self._suggestions.remove(suggestion)
 
-        if suggestion not in self._dismissed_suggestions:
-            self._dismissed_suggestions.append(suggestion)
+    async def dismiss_issue(self, issue: Issue) -> None:
+        """Dismiss suggested action."""
+        if issue not in self._issues:
+            _LOGGER.warning("The UUID %s is not a valid issue", issue.uuid)
+            raise ResolutionError()
+        self._issues.remove(issue)

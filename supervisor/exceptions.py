@@ -270,3 +270,14 @@ class HardwareNotSupportedError(HassioNotSupportedError):
 
 class PulseAudioError(HassioError):
     """Raise if an sound error is happening."""
+
+
+# Resolution
+
+
+class ResolutionError(HassioError):
+    """Raise if an error is happning on resoltuion."""
+
+
+class ResolutionNotFound(ResolutionError):
+    """Raise if suggestion/issue was not found."""

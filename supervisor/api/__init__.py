@@ -200,10 +200,17 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/resolution", api_resolution.base),
-                web.post("/resolution/{suggestion}", api_resolution.apply_suggestion),
                 web.post(
-                    "/resolution/{suggestion}/dismiss",
+                    "/resolution/suggestion/{suggestion}",
+                    api_resolution.apply_suggestion,
+                ),
+                web.delete(
+                    "/resolution/suggestion/{suggestion}",
                     api_resolution.dismiss_suggestion,
+                ),
+                web.delete(
+                    "/resolution/issue/{issue}",
+                    api_resolution.dismiss_issue,
                 ),
             ]
         )

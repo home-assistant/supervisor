@@ -19,6 +19,7 @@ from .exceptions import (
     SupervisorError,
     SupervisorUpdateError,
 )
+from .resolution.const import ContextType, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -117,6 +118,9 @@ class Supervisor(CoreSysAttributes):
             )
         except DockerError as err:
             _LOGGER.error("Update of Supervisor failed!")
+            self.sys_resolution.create_issue(
+                IssueType.UPDATE_FAILED, ContextType.SUPERVISOR
+            )
             raise SupervisorUpdateError() from err
         else:
             self.sys_config.version = version

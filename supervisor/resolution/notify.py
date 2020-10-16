@@ -28,11 +28,11 @@ class ResolutionNotify(CoreSysAttributes):
         ):
             return
 
-        issues = []
+        messages = []
 
         for issue in self.sys_resolution.issues:
-            if issue == IssueType.FREE_SPACE:
-                issues.append(
+            if issue.type == IssueType.FREE_SPACE:
+                messages.append(
                     {
                         "title": "Available space is less than 1GB!",
                         "message": f"Available space is {self.sys_host.info.free_space}GB, see https://www.home-assistant.io/more-info/free-space for more information.",
@@ -40,12 +40,12 @@ class ResolutionNotify(CoreSysAttributes):
                     }
                 )
 
-        for issue in issues:
+        for message in messages:
             try:
                 async with self.sys_homeassistant.api.make_request(
                     "post",
                     "api/services/persistent_notification/create",
-                    json=issue,
+                    json=message,
                 ) as resp:
                     if resp.status in (200, 201):
                         _LOGGER.debug("Sucessfully created persistent_notification")
