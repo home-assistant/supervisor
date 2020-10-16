@@ -147,6 +147,6 @@ class ResolutionManager(CoreSysAttributes):
     async def dismiss_issue(self, issue: Issue) -> None:
         """Dismiss suggested action."""
         if issue not in self._issues:
-            _LOGGER.warning("Issue %s is not valid", issue.uuid)
+            _LOGGER.warning("The UUID %s is not a valid issue", issue.uuid)
             raise ResolutionError()
         self._issues.remove(issue)
