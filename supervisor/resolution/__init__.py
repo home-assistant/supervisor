@@ -76,7 +76,7 @@ class ResolutionManager(CoreSysAttributes):
 
     def get_suggestion(self, uuid: str) -> Suggestion:
         """Return suggestion with uuid or None."""
-        for suggestion in self.suggestions:
+        for suggestion in self._suggestions:
             if suggestion.uuid != uuid:
                 continue
             return suggestion
