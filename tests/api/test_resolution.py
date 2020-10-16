@@ -1,5 +1,5 @@
 """Test Resolution API."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -56,12 +56,14 @@ async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
         SuggestionType.CREATE_FULL_SNAPSHOT, ContextType.SYSTEM
     )
 
-    with patch("supervisor.snapshots.SnapshotManager", return_value=MagicMock()):
-        await api_client.post(f"/resolution/suggestion/{clear_snapshot.uuid}")
-        await api_client.post(f"/resolution/suggestion/{create_snapshot.uuid}")
+    mock_snapshots = AsyncMock()
+    coresys.snapshots.do_snapshot_full = mock_snapshots
 
-        assert clear_snapshot not in coresys.resolution.suggestions
-        assert create_snapshot not in coresys.resolution.suggestions
+    await api_client.post(f"/resolution/suggestion/{clear_snapshot.uuid}")
+    await api_client.post(f"/resolution/suggestion/{create_snapshot.uuid}")
+
+    assert clear_snapshot not in coresys.resolution.suggestions
+    assert create_snapshot not in coresys.resolution.suggestions
 
     with pytest.raises(ResolutionError):
         await coresys.resolution.apply_suggestion(clear_snapshot)
