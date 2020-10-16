@@ -34,7 +34,7 @@ class APIResoulution(CoreSysAttributes):
             )
             await self.sys_resolution.apply_suggestion(suggestion)
         except ResolutionNotFound:
-            raise APIError(""The supplied UUID is not a valid suggestion"") from None
+            raise APIError("The supplied UUID is not a valid suggestion") from None
 
     @api_process
     async def dismiss_suggestion(self, request: web.Request) -> None:
