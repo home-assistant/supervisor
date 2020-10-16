@@ -57,13 +57,18 @@ async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
     )
 
     mock_snapshots = AsyncMock()
+    mock_health = AsyncMock()
     coresys.snapshots.do_snapshot_full = mock_snapshots
+    coresys.resolution.healthcheck = mock_health
 
     await api_client.post(f"/resolution/suggestion/{clear_snapshot.uuid}")
     await api_client.post(f"/resolution/suggestion/{create_snapshot.uuid}")
 
     assert clear_snapshot not in coresys.resolution.suggestions
     assert create_snapshot not in coresys.resolution.suggestions
+
+    assert mock_snapshots.called
+    assert mock_health.called
 
     with pytest.raises(ResolutionError):
         await coresys.resolution.apply_suggestion(clear_snapshot)
