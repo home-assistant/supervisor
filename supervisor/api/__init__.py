@@ -199,7 +199,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                web.get("/resolution", api_resolution.base),
+                web.get("/resolution/info", api_resolution.info),
                 web.post(
                     "/resolution/suggestion/{suggestion}",
                     api_resolution.apply_suggestion,
