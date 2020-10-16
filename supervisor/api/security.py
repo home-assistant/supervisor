@@ -44,6 +44,7 @@ NO_SECURITY_CHECK = re.compile(
 OBSERVER_CHECK = re.compile(
     r"^(?:"
     r"|/[^/]+/info"
+    r"|/resolution.*"
     r")$"
 )
 
@@ -94,6 +95,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/network/.+"
         r"|/observer/.+"
         r"|/os/.+"
+        r"|/resolution.*"
         r"|/snapshots.*"
         r"|/supervisor/.+"
         r")$"
