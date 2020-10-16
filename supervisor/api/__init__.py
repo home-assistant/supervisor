@@ -208,6 +208,10 @@ class RestAPI(CoreSysAttributes):
                     "/resolution/suggestion/{suggestion}",
                     api_resolution.dismiss_suggestion,
                 ),
+                web.delete(
+                    "/resolution/issue/{issue}",
+                    api_resolution.dismiss_issue,
+                ),
             ]
         )
 

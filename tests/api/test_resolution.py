@@ -12,7 +12,7 @@ from supervisor.resolution.const import (
     SuggestionType,
     UnsupportedReason,
 )
-from supervisor.resolution.data import Suggestion
+from supervisor.resolution.data import Issue, Suggestion
 
 
 @pytest.mark.asyncio
@@ -65,3 +65,15 @@ async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
 
     with pytest.raises(ResolutionError):
         await coresys.resolution.apply_suggestion(clear_snapshot)
+
+
+@pytest.mark.asyncio
+async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client):
+    """Test resolution manager issue apply api."""
+    coresys.resolution.issues = updated_failed = Issue(
+        IssueType.UPDATE_FAILED, ContextType.SYSTEM
+    )
+
+    assert IssueType.UPDATE_FAILED == coresys.resolution.issues[-1].type
+    await api_client.delete(f"/resolution/issue/{updated_failed.uuid}")
+    assert updated_failed not in coresys.resolution.issues

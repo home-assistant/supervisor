@@ -75,11 +75,19 @@ class ResolutionManager(CoreSysAttributes):
             self._unsupported.append(reason)
 
     def get_suggestion(self, uuid: str) -> Suggestion:
-        """Return suggestion with uuid or None."""
+        """Return suggestion with uuid."""
         for suggestion in self._suggestions:
             if suggestion.uuid != uuid:
                 continue
             return suggestion
+        raise ResolutionNotFound()
+
+    def get_issue(self, uuid: str) -> Issue:
+        """Return issue with uuid."""
+        for issue in self._issues:
+            if issue.uuid != uuid:
+                continue
+            return issue
         raise ResolutionNotFound()
 
     def create_issue(
@@ -135,3 +143,10 @@ class ResolutionManager(CoreSysAttributes):
             _LOGGER.warning("Suggestion %s is not valid", suggestion.uuid)
             raise ResolutionError()
         self._suggestions.remove(suggestion)
+
+    async def dismiss_issue(self, issue: Issue) -> None:
+        """Dismiss suggested action."""
+        if issue not in self._issues:
+            _LOGGER.warning("Issue %s is not valid", issue.uuid)
+            raise ResolutionError()
+        self._issues.remove(issue)

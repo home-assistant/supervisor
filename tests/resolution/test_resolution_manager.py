@@ -13,8 +13,13 @@ from supervisor.const import (
 )
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionError
-from supervisor.resolution.const import ContextType, SuggestionType, UnsupportedReason
-from supervisor.resolution.data import Suggestion
+from supervisor.resolution.const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnsupportedReason,
+)
+from supervisor.resolution.data import Issue, Suggestion
 from supervisor.snapshots.snapshot import Snapshot
 from supervisor.utils.dt import utcnow
 from supervisor.utils.tar import SecureTarFile
@@ -66,7 +71,7 @@ async def test_clear_snapshots(coresys: CoreSys, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_api_resolution_dismiss_suggestion(coresys: CoreSys, api_client):
+async def test_resolution_dismiss_suggestion(coresys: CoreSys):
     """Test resolution manager suggestion apply api."""
     coresys.resolution.suggestions = clear_snapshot = Suggestion(
         SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
@@ -78,7 +83,7 @@ async def test_api_resolution_dismiss_suggestion(coresys: CoreSys, api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
+async def test_resolution_apply_suggestion(coresys: CoreSys):
     """Test resolution manager suggestion apply api."""
     coresys.resolution.suggestions = clear_snapshot = Suggestion(
         SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
@@ -96,3 +101,33 @@ async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
 
     with pytest.raises(ResolutionError):
         await coresys.resolution.apply_suggestion(clear_snapshot)
+
+
+@pytest.mark.asyncio
+async def test_resolution_dismiss_issue(coresys: CoreSys):
+    """Test resolution manager issue apply api."""
+    coresys.resolution.issues = updated_failed = Issue(
+        IssueType.UPDATE_FAILED, ContextType.SYSTEM
+    )
+
+    assert IssueType.UPDATE_FAILED == coresys.resolution.issues[-1].type
+    await coresys.resolution.dismiss_issue(updated_failed)
+    assert updated_failed not in coresys.resolution.issues
+
+
+@pytest.mark.asyncio
+async def test_resolution_create_issue_suggestion(coresys: CoreSys):
+    """Test resolution manager issue and suggestion."""
+    coresys.resolution.create_issue(
+        IssueType.UPDATE_ROLLBACK,
+        ContextType.CORE,
+        "slug",
+        [SuggestionType.SYSTEM_REPAIR],
+    )
+
+    assert IssueType.UPDATE_ROLLBACK == coresys.resolution.issues[-1].type
+    assert ContextType.CORE == coresys.resolution.issues[-1].context
+    assert coresys.resolution.issues[-1].reference == "slug"
+
+    assert SuggestionType.SYSTEM_REPAIR == coresys.resolution.suggestions[-1].type
+    assert ContextType.CORE == coresys.resolution.suggestions[-1].context

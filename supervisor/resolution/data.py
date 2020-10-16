@@ -7,7 +7,7 @@ import attr
 from .const import ContextType, IssueType, SuggestionType
 
 
-@attr.s(slots=True)
+@attr.s(frozen=True, slots=True)
 class Issue:
     """Represent an Issue."""
 
@@ -17,7 +17,7 @@ class Issue:
     uuid: UUID = attr.ib(factory=lambda: uuid4().hex, eq=False, init=False)
 
 
-@attr.s(slots=True)
+@attr.s(frozen=True, slots=True)
 class Suggestion:
     """Represent an Suggestion."""
 
