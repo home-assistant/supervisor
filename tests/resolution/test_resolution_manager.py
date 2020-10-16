@@ -93,11 +93,15 @@ async def test_resolution_apply_suggestion(coresys: CoreSys):
     )
 
     mock_snapshots = AsyncMock()
+    mock_health = AsyncMock()
     coresys.snapshots.do_snapshot_full = mock_snapshots
+    coresys.resolution.healthcheck = mock_health
 
     await coresys.resolution.apply_suggestion(clear_snapshot)
     await coresys.resolution.apply_suggestion(create_snapshot)
+
     assert mock_snapshots.called
+    assert mock_health.called
 
     assert clear_snapshot not in coresys.resolution.suggestions
     assert create_snapshot not in coresys.resolution.suggestions
