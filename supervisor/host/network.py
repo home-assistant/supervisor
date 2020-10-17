@@ -36,7 +36,7 @@ class NetworkManager(CoreSysAttributes):
 
     async def update(self):
         """Update properties over dbus."""
-        _LOGGER.info("Update local network information")
+        _LOGGER.info("Updating local network information")
         try:
             await self.sys_dbus.network.update()
         except DBusError:

@@ -37,7 +37,7 @@ class DockerNetwork:
             try:
                 containers.append(self.docker.containers.get(cid))
             except docker.errors.NotFound:
-                _LOGGER.warning("Docker network is corrupt! %s - run autofix", cid)
+                _LOGGER.warning("Docker network is corrupt! %s - running autofix", cid)
                 self.stale_cleanup(data.get("Name", cid))
             except (docker.errors.DockerException, requests.RequestException) as err:
                 _LOGGER.error("Unknown error with container lookup %s", err)
@@ -79,7 +79,7 @@ class DockerNetwork:
         try:
             return self.docker.networks.get(DOCKER_NETWORK)
         except docker.errors.NotFound:
-            _LOGGER.info("Can't find Supervisor network, create new network")
+            _LOGGER.info("Can't find Supervisor network, creating a new network")
 
         ipam_pool = docker.types.IPAMPool(
             subnet=str(DOCKER_NETWORK_MASK),

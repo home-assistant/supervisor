@@ -20,6 +20,10 @@ class HomeAssistantUpdateError(HomeAssistantError):
     """Error on update of a Home Assistant."""
 
 
+class HomeAssistantCrashError(HomeAssistantError):
+    """Error on crash of a Home Assistant startup."""
+
+
 class HomeAssistantAPIError(HomeAssistantError):
     """Home Assistant API exception."""
 
@@ -266,3 +270,14 @@ class HardwareNotSupportedError(HassioNotSupportedError):
 
 class PulseAudioError(HassioError):
     """Raise if an sound error is happening."""
+
+
+# Resolution
+
+
+class ResolutionError(HassioError):
+    """Raise if an error is happning on resoltuion."""
+
+
+class ResolutionNotFound(ResolutionError):
+    """Raise if suggestion/issue was not found."""

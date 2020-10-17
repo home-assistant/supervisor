@@ -155,7 +155,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def install(self) -> None:
         """Install CoreDNS."""
-        _LOGGER.info("Setup CoreDNS plugin")
+        _LOGGER.info("Running setup for CoreDNS plugin")
         while True:
             # read homeassistant tag and install it
             if not self.latest_version:
@@ -208,7 +208,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""
         self._write_corefile()
-        _LOGGER.info("Restart CoreDNS plugin")
+        _LOGGER.info("Restarting CoreDNS plugin")
         try:
             await self.instance.restart()
         except DockerError as err:
@@ -220,7 +220,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self._write_corefile()
 
         # Start Instance
-        _LOGGER.info("Start CoreDNS plugin")
+        _LOGGER.info("Starting CoreDNS plugin")
         try:
             await self.instance.run()
         except DockerError as err:
@@ -229,7 +229,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
-        _LOGGER.info("Stop CoreDNS plugin")
+        _LOGGER.info("Stopping CoreDNS plugin")
         try:
             await self.instance.stop()
         except DockerError as err:
@@ -258,7 +258,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Check the log for loop plugin output
         if b"plugin/loop: Loop" in log:
-            _LOGGER.error("Detect a DNS loop in local Network!")
+            _LOGGER.error("Detected a DNS loop in local Network!")
             self._loop = True
         else:
             self._loop = False
@@ -274,7 +274,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             local_dns = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
             servers = self.servers + local_dns
         else:
-            _LOGGER.warning("Ignore user DNS settings because of loop")
+            _LOGGER.warning("Ignoring user DNS settings because of loop")
 
         # Print some usefully debug data
         _LOGGER.debug(
@@ -290,7 +290,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
                 if server not in dns_servers:
                     dns_servers.append(server)
             except vol.Invalid:
-                _LOGGER.warning("Ignore invalid DNS Server: %s", server)
+                _LOGGER.warning("Ignoring invalid DNS Server: %s", server)
 
         # Generate config file
         data = self.coredns_template.render(
@@ -362,7 +362,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.debug("Can't remove Host entry: %s", host)
             return
 
-        _LOGGER.debug("Remove Host entry %s - %s", entry.ip_address, entry.names)
+        _LOGGER.debug("Removeing host entry %s - %s", entry.ip_address, entry.names)
         self._hosts.remove(entry)
 
         # Update hosts file
@@ -411,11 +411,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         if await self.instance.exists():
             return
 
-        _LOGGER.info("Repair CoreDNS %s", self.version)
+        _LOGGER.info("Repairing CoreDNS %s", self.version)
         try:
             await self.instance.install(self.version)
         except DockerError as err:
-            _LOGGER.error("Repairing of CoreDNS failed")
+            _LOGGER.error("Repair of CoreDNS failed")
             self.sys_capture_exception(err)
 
     def _write_resolv(self, resolv_conf: Path) -> None:

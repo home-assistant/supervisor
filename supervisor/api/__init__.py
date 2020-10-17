@@ -23,6 +23,7 @@ from .network import APINetwork
 from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
+from .resolution import APIResoulution
 from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots
@@ -43,7 +44,10 @@ class RestAPI(CoreSysAttributes):
         self.security: SecurityMiddleware = SecurityMiddleware(coresys)
         self.webapp: web.Application = web.Application(
             client_max_size=MAX_CLIENT_SIZE,
-            middlewares=[self.security.token_validation],
+            middlewares=[
+                self.security.system_validation,
+                self.security.token_validation,
+            ],
         )
 
         # service stuff
@@ -70,6 +74,7 @@ class RestAPI(CoreSysAttributes):
         self._register_os()
         self._register_panel()
         self._register_proxy()
+        self._register_resolution()
         self._register_services()
         self._register_snapshots()
         self._register_supervisor()
@@ -186,6 +191,29 @@ class RestAPI(CoreSysAttributes):
         api_info.coresys = self.coresys
 
         self.webapp.add_routes([web.get("/info", api_info.info)])
+
+    def _register_resolution(self) -> None:
+        """Register info functions."""
+        api_resolution = APIResoulution()
+        api_resolution.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/resolution/info", api_resolution.info),
+                web.post(
+                    "/resolution/suggestion/{suggestion}",
+                    api_resolution.apply_suggestion,
+                ),
+                web.delete(
+                    "/resolution/suggestion/{suggestion}",
+                    api_resolution.dismiss_suggestion,
+                ),
+                web.delete(
+                    "/resolution/issue/{issue}",
+                    api_resolution.dismiss_issue,
+                ),
+            ]
+        )
 
     def _register_auth(self) -> None:
         """Register auth functions."""
@@ -326,7 +354,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/snapshots/new/partial", api_snapshots.snapshot_partial),
                 web.post("/snapshots/new/upload", api_snapshots.upload),
                 web.get("/snapshots/{snapshot}/info", api_snapshots.info),
-                web.post("/snapshots/{snapshot}/remove", api_snapshots.remove),
+                web.delete("/snapshots/{snapshot}", api_snapshots.remove),
                 web.post(
                     "/snapshots/{snapshot}/restore/full", api_snapshots.restore_full
                 ),
@@ -335,6 +363,8 @@ class RestAPI(CoreSysAttributes):
                     api_snapshots.restore_partial,
                 ),
                 web.get("/snapshots/{snapshot}/download", api_snapshots.download),
+                # Old, remove at end of 2020
+                web.post("/snapshots/{snapshot}/remove", api_snapshots.remove),
             ]
         )
 
@@ -436,7 +466,7 @@ class RestAPI(CoreSysAttributes):
         except OSError as err:
             _LOGGER.critical("Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
         else:
-            _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
+            _LOGGER.info("Starting API on %s", self.sys_docker.network.supervisor)
 
     async def stop(self) -> None:
         """Stop RESTful API webserver."""
@@ -447,4 +477,4 @@ class RestAPI(CoreSysAttributes):
         await self._site.stop()
         await self._runner.cleanup()
 
-        _LOGGER.info("Stop API on %s", self.sys_docker.network.supervisor)
+        _LOGGER.info("Stopping API on %s", self.sys_docker.network.supervisor)

@@ -44,7 +44,7 @@ class GitRepo(CoreSysAttributes):
 
         async with self.lock:
             try:
-                _LOGGER.info("Load add-on %s repository", self.path)
+                _LOGGER.info("Loading add-on %s repository", self.path)
                 self.repo = await self.sys_run_in_executor(git.Repo, str(self.path))
 
             except (
@@ -73,7 +73,7 @@ class GitRepo(CoreSysAttributes):
             }
 
             try:
-                _LOGGER.info("Clone add-on %s repository", self.url)
+                _LOGGER.info("Cloneing add-on %s repository", self.url)
                 self.repo = await self.sys_run_in_executor(
                     ft.partial(
                         git.Repo.clone_from, self.url, str(self.path), **git_args
@@ -165,5 +165,5 @@ class GitRepoCustom(GitRepo):
 
     async def remove(self):
         """Remove a custom repository."""
-        _LOGGER.info("Remove custom add-on repository %s", self.url)
+        _LOGGER.info("Removing custom add-on repository %s", self.url)
         await self._remove()

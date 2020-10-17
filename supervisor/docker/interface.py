@@ -108,7 +108,7 @@ class DockerInterface(CoreSysAttributes):
         """
         image = image or self.image
 
-        _LOGGER.info("Pull image %s tag %s.", image, tag)
+        _LOGGER.info("Downloading docker image %s with tag %s.", image, tag)
         try:
             # If the image name contains a path to a registry, try to log in
             path = IMAGE_WITH_HOST.match(image)
@@ -116,7 +116,7 @@ class DockerInterface(CoreSysAttributes):
                 self._docker_login(path.group(1))
             docker_image = self._pull_with_progress(image, tag)
             if latest:
-                _LOGGER.info("Tag image %s with version %s as latest", image, tag)
+                _LOGGER.info("Tagging image %s with version %s as latest", image, tag)
                 docker_image.tag(image, tag="latest")
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
@@ -212,7 +212,7 @@ class DockerInterface(CoreSysAttributes):
         # Successfull?
         if not self._meta:
             raise DockerError()
-        _LOGGER.info("Attach to %s with version %s", self.image, self.version)
+        _LOGGER.info("Attaching to %s with version %s", self.image, self.version)
 
     @process_lock
     def run(self) -> Awaitable[None]:
@@ -244,13 +244,13 @@ class DockerInterface(CoreSysAttributes):
             raise DockerError() from err
 
         if docker_container.status == "running":
-            _LOGGER.info("Stop %s application", self.name)
+            _LOGGER.info("Stopping %s application", self.name)
             with suppress(docker.errors.DockerException, requests.RequestException):
                 docker_container.stop(timeout=self.timeout)
 
         if remove_container:
             with suppress(docker.errors.DockerException, requests.RequestException):
-                _LOGGER.info("Clean %s application", self.name)
+                _LOGGER.info("Cleaning %s application", self.name)
                 docker_container.remove(force=True)
 
     @process_lock
@@ -269,7 +269,7 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.error("%s not found for starting up", self.name)
             raise DockerError() from err
 
-        _LOGGER.info("Start %s", self.name)
+        _LOGGER.info("Starting %s", self.name)
         try:
             docker_container.start()
         except (docker.errors.DockerException, requests.RequestException) as err:
@@ -290,7 +290,7 @@ class DockerInterface(CoreSysAttributes):
         with suppress(DockerError):
             self._stop()
 
-        _LOGGER.info("Remove image %s with latest and %s", self.image, self.version)
+        _LOGGER.info("Removeing image %s with latest and %s", self.image, self.version)
 
         try:
             with suppress(docker.errors.ImageNotFound):
@@ -324,7 +324,7 @@ class DockerInterface(CoreSysAttributes):
         image = image or self.image
 
         _LOGGER.info(
-            "Update image %s:%s to %s:%s", self.image, self.version, image, tag
+            "Updateing image %s:%s to %s:%s", self.image, self.version, image, tag
         )
 
         # Update docker image
@@ -419,7 +419,7 @@ class DockerInterface(CoreSysAttributes):
         except (docker.errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
-        _LOGGER.info("Restart %s", self.image)
+        _LOGGER.info("Restarting %s", self.image)
         try:
             container.restart(timeout=self.timeout)
         except (docker.errors.DockerException, requests.RequestException) as err:

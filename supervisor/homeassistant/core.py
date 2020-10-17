@@ -15,7 +15,13 @@ from packaging import version as pkg_version
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.homeassistant import DockerHomeAssistant
 from ..docker.stats import DockerStats
-from ..exceptions import DockerError, HomeAssistantError, HomeAssistantUpdateError
+from ..exceptions import (
+    DockerError,
+    HomeAssistantCrashError,
+    HomeAssistantError,
+    HomeAssistantUpdateError,
+)
+from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -71,7 +77,7 @@ class HomeAssistantCore(CoreSysAttributes):
     @process_lock
     async def install_landingpage(self) -> None:
         """Install a landing page."""
-        _LOGGER.info("Setup HomeAssistant landingpage")
+        _LOGGER.info("Setting up Home Assistant landingpage")
         while True:
             if not self.sys_updater.image_homeassistant:
                 _LOGGER.warning(
@@ -97,14 +103,14 @@ class HomeAssistantCore(CoreSysAttributes):
                 break
 
         # Start landingpage
-        _LOGGER.info("Start HomeAssistant landingpage")
+        _LOGGER.info("Starting HomeAssistant landingpage")
         with suppress(HomeAssistantError):
             await self._start()
 
     @process_lock
     async def install(self) -> None:
         """Install a landing page."""
-        _LOGGER.info("Setup Home Assistant")
+        _LOGGER.info("Home Assistant setup")
         while True:
             # read homeassistant tag and install it
             if not self.sys_homeassistant.latest_version:
@@ -122,7 +128,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 except Exception as err:  # pylint: disable=broad-except
                     self.sys_capture_exception(err)
 
-            _LOGGER.warning("Error on install Home Assistant. Retry in 30sec")
+            _LOGGER.warning("Error on Home Assistant installation. Retry in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("Home Assistant docker now installed")
@@ -132,7 +138,7 @@ class HomeAssistantCore(CoreSysAttributes):
 
         # finishing
         try:
-            _LOGGER.info("Start Home Assistant")
+            _LOGGER.info("Starting Home Assistant")
             await self._start()
         except HomeAssistantError:
             _LOGGER.error("Can't start Home Assistant!")
@@ -157,13 +163,13 @@ class HomeAssistantCore(CoreSysAttributes):
         # process an update
         async def _update(to_version: str) -> None:
             """Run Home Assistant update."""
-            _LOGGER.info("Update Home Assistant to version %s", to_version)
+            _LOGGER.info("Updating Home Assistant to version %s", to_version)
             try:
                 await self.instance.update(
                     to_version, image=self.sys_updater.image_homeassistant
                 )
             except DockerError as err:
-                _LOGGER.warning("Update Home Assistant image failed")
+                _LOGGER.warning("Updating Home Assistant image failed")
                 raise HomeAssistantUpdateError() from err
             else:
                 self.sys_homeassistant.version = self.instance.version
@@ -171,7 +177,7 @@ class HomeAssistantCore(CoreSysAttributes):
 
             if running:
                 await self._start()
-            _LOGGER.info("Successful run Home Assistant %s", to_version)
+            _LOGGER.info("Successful started Home Assistant %s", to_version)
 
             # Successfull - last step
             self.sys_homeassistant.save_data()
@@ -186,6 +192,10 @@ class HomeAssistantCore(CoreSysAttributes):
         # Update going wrong, revert it
         if self.error_state and rollback:
             _LOGGER.critical("HomeAssistant update failed -> rollback!")
+            self.sys_resolution.create_issue(
+                IssueType.UPDATE_ROLLBACK, ContextType.CORE
+            )
+
             # Make a copy of the current log file if it exsist
             logfile = self.sys_config.path_homeassistant / "home-assistant.log"
             if logfile.exists():
@@ -199,6 +209,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 )
             await _update(rollback)
         else:
+            self.sys_resolution.create_issue(IssueType.UPDATE_FAILED, ContextType.CORE)
             raise HomeAssistantUpdateError()
 
     async def _start(self) -> None:
@@ -392,7 +403,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 break
 
         self._error_state = True
-        raise HomeAssistantError()
+        raise HomeAssistantCrashError()
 
     async def repair(self):
         """Repair local Home Assistant data."""

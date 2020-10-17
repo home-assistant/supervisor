@@ -53,7 +53,7 @@ class HassOS(CoreSysAttributes):
     def _check_host(self) -> None:
         """Check if HassOS is available."""
         if not self.available:
-            _LOGGER.error("No HassOS available")
+            _LOGGER.error("No Home Assistant Operating System available")
             raise HassOSNotSupportedError()
 
     async def _download_raucb(self, version: str) -> Path:
@@ -119,7 +119,9 @@ class HassOS(CoreSysAttributes):
         """
         self._check_host()
 
-        _LOGGER.info("Syncing configuration from USB with HassOS.")
+        _LOGGER.info(
+            "Synchronizing configuration from USB with Home Assistant Operating System."
+        )
         return self.sys_host.services.restart("hassos-config.service")
 
     async def update(self, version: Optional[str] = None) -> None:
@@ -149,13 +151,18 @@ class HassOS(CoreSysAttributes):
 
         # Update success
         if 0 in completed:
-            _LOGGER.info("Install HassOS %s success", version)
+            _LOGGER.info(
+                "Install of Home Assistant Operating System %s success", version
+            )
             self.sys_create_task(self.sys_host.control.reboot())
             return
 
         # Update failed
         await self.sys_dbus.rauc.update()
-        _LOGGER.error("HassOS update failed with: %s", self.sys_dbus.rauc.last_error)
+        _LOGGER.error(
+            "Home Assistant Operating System update failed with: %s",
+            self.sys_dbus.rauc.last_error,
+        )
         raise HassOSUpdateError()
 
     async def mark_healthy(self) -> None:

@@ -65,7 +65,7 @@ class StoreManager(CoreSysAttributes):
             """Add a repository."""
             repository = Repository(self.coresys, url)
             if not await repository.load():
-                _LOGGER.error("Can't load from repository %s", url)
+                _LOGGER.error("Can't load data from repository %s", url)
                 return
 
             # don't add built-in repository to config
@@ -107,7 +107,7 @@ class StoreManager(CoreSysAttributes):
         del_addons = set(self.sys_addons.store) - all_addons
 
         _LOGGER.info(
-            "Load add-ons from store: %d all - %d new - %d remove",
+            "Loading add-ons from store: %d all - %d new - %d remove",
             len(all_addons),
             len(add_addons),
             len(del_addons),

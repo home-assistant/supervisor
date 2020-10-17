@@ -339,7 +339,7 @@ class APIAddons(CoreSysAttributes):
         body: Dict[str, Any] = await api_validate(SCHEMA_SECURITY, request)
 
         if ATTR_PROTECTED in body:
-            _LOGGER.warning("Protected flag changing for %s!", addon.slug)
+            _LOGGER.warning("Changing protected flag for %s!", addon.slug)
             addon.protected = body[ATTR_PROTECTED]
 
         addon.save_persist()

@@ -167,7 +167,7 @@ class DockerAPI:
             try:
                 self.network.attach_container(container, alias=alias, ipv4=ipv4)
             except DockerError:
-                _LOGGER.warning("Can't attach %s to hassio-net!", name)
+                _LOGGER.warning("Can't attach %s to hassio-network!", name)
             else:
                 with suppress(DockerError):
                     self.network.detach_default_bridge(container)
@@ -202,7 +202,7 @@ class DockerAPI:
         stdout = kwargs.get("stdout", True)
         stderr = kwargs.get("stderr", True)
 
-        _LOGGER.info("Run command '%s' on %s", command, image)
+        _LOGGER.info("Runing command '%s' on %s", command, image)
         try:
             container = self.docker.containers.run(
                 f"{image}:{version}",

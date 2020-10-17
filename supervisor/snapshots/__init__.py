@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from pathlib import Path
+from typing import Set
 
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
@@ -23,7 +24,7 @@ class SnapshotManager(CoreSysAttributes):
         self.lock = asyncio.Lock()
 
     @property
-    def list_snapshots(self):
+    def list_snapshots(self) -> Set[Snapshot]:
         """Return a list of all snapshot object."""
         return set(self.snapshots_obj.values())
 
@@ -113,7 +114,7 @@ class SnapshotManager(CoreSysAttributes):
         snapshot = Snapshot(self.coresys, tar_origin)
         if not await snapshot.load():
             return None
-        _LOGGER.info("Success import %s", snapshot.slug)
+        _LOGGER.info("Successfully imported %s", snapshot.slug)
 
         self.snapshots_obj[snapshot.slug] = snapshot
         return snapshot
@@ -125,26 +126,27 @@ class SnapshotManager(CoreSysAttributes):
             return None
 
         snapshot = self._create_snapshot(name, SNAPSHOT_FULL, password)
-        _LOGGER.info("Full-Snapshot %s start", snapshot.slug)
+        _LOGGER.info("Creating new full-snapshot with slug %s", snapshot.slug)
         try:
             self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
                 # Snapshot add-ons
-                _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
+                _LOGGER.info("Snapshotting %s store Add-ons", snapshot.slug)
                 await snapshot.store_addons()
 
                 # Snapshot folders
-                _LOGGER.info("Snapshot %s store folders", snapshot.slug)
+                _LOGGER.info("Snapshotting %s store folders", snapshot.slug)
                 await snapshot.store_folders()
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception as excep:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
+            print(excep)
             return None
 
         else:
-            _LOGGER.info("Full-Snapshot %s done", snapshot.slug)
+            _LOGGER.info("Crating full-snapshot with slug %s completed", snapshot.slug)
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
 
@@ -164,7 +166,7 @@ class SnapshotManager(CoreSysAttributes):
         folders = folders or []
         snapshot = self._create_snapshot(name, SNAPSHOT_PARTIAL, password)
 
-        _LOGGER.info("Partial-Snapshot %s start", snapshot.slug)
+        _LOGGER.info("Creating new partial-snapshot with slug %s", snapshot.slug)
         try:
             self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
@@ -180,12 +182,12 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
                 if addon_list:
-                    _LOGGER.info("Snapshot %s store Add-ons", snapshot.slug)
+                    _LOGGER.info("Snapshotting %s store Add-ons", snapshot.slug)
                     await snapshot.store_addons(addon_list)
 
                 # Snapshot folders
                 if folders:
-                    _LOGGER.info("Snapshot %s store folders", snapshot.slug)
+                    _LOGGER.info("Snapshotting %s store folders", snapshot.slug)
                     await snapshot.store_folders(folders)
 
         except Exception:  # pylint: disable=broad-except
@@ -193,7 +195,9 @@ class SnapshotManager(CoreSysAttributes):
             return None
 
         else:
-            _LOGGER.info("Partial-Snapshot %s done", snapshot.slug)
+            _LOGGER.info(
+                "Crating partial-snapshot with slug %s completed", snapshot.slug
+            )
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
 
@@ -208,7 +212,7 @@ class SnapshotManager(CoreSysAttributes):
             return False
 
         if snapshot.sys_type != SNAPSHOT_FULL:
-            _LOGGER.error("Restore %s is only a partial snapshot!", snapshot.slug)
+            _LOGGER.error("%s is only a partial snapshot!", snapshot.slug)
             return False
 
         if snapshot.protected and not snapshot.set_password(password):
@@ -225,26 +229,26 @@ class SnapshotManager(CoreSysAttributes):
                 await self.sys_core.shutdown()
 
                 # Restore folders
-                _LOGGER.info("Restore %s run folders", snapshot.slug)
+                _LOGGER.info("Restoring %s folders", snapshot.slug)
                 await snapshot.restore_folders()
 
                 # Restore docker config
-                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                _LOGGER.info("Restoring %s Docker Config", snapshot.slug)
                 snapshot.restore_dockerconfig()
 
                 # Start homeassistant restore
-                _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
+                _LOGGER.info("Restoring %s Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
                 task_hass = self.sys_create_task(
                     self.sys_homeassistant.core.update(snapshot.homeassistant_version)
                 )
 
                 # Restore repositories
-                _LOGGER.info("Restore %s run Repositories", snapshot.slug)
+                _LOGGER.info("Restoring %s Repositories", snapshot.slug)
                 await snapshot.restore_repositories()
 
                 # Delete delta add-ons
-                _LOGGER.info("Restore %s remove add-ons", snapshot.slug)
+                _LOGGER.info("Removing add-ons not in the snapshot %s", snapshot.slug)
                 for addon in self.sys_addons.installed:
                     if addon.slug in snapshot.addon_list:
                         continue
@@ -299,7 +303,7 @@ class SnapshotManager(CoreSysAttributes):
 
             async with snapshot:
                 # Restore docker config
-                _LOGGER.info("Restore %s run Docker Config", snapshot.slug)
+                _LOGGER.info("Restoring %s Docker Config", snapshot.slug)
                 snapshot.restore_dockerconfig()
 
                 # Stop Home-Assistant for config restore
@@ -309,13 +313,13 @@ class SnapshotManager(CoreSysAttributes):
 
                 # Process folders
                 if folders:
-                    _LOGGER.info("Restore %s run folders", snapshot.slug)
+                    _LOGGER.info("Restoring %s folders", snapshot.slug)
                     await snapshot.restore_folders(folders)
 
                 # Process Home-Assistant
                 task_hass = None
                 if homeassistant:
-                    _LOGGER.info("Restore %s run Home-Assistant", snapshot.slug)
+                    _LOGGER.info("Restoring %s Home-Assistant", snapshot.slug)
                     task_hass = self.sys_create_task(
                         self.sys_homeassistant.core.update(
                             snapshot.homeassistant_version
@@ -323,10 +327,10 @@ class SnapshotManager(CoreSysAttributes):
                     )
 
                 if addons:
-                    _LOGGER.info("Restore %s run Repositories", snapshot.slug)
+                    _LOGGER.info("Restoring %s Repositories", snapshot.slug)
                     await snapshot.restore_repositories()
 
-                    _LOGGER.info("Restore %s old add-ons", snapshot.slug)
+                    _LOGGER.info("Restoring %s old add-ons", snapshot.slug)
                     await snapshot.restore_addons(addons)
 
                 # Make sure homeassistant run agen

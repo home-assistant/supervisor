@@ -225,7 +225,7 @@ class Snapshot(CoreSysAttributes):
     async def load(self):
         """Read snapshot.json from tar file."""
         if not self.tarfile.is_file():
-            _LOGGER.error("No tarfile %s", self.tarfile)
+            _LOGGER.error("No tarfile located at %s", self.tarfile)
             return False
 
         def _load_file():
@@ -321,7 +321,7 @@ class Snapshot(CoreSysAttributes):
             try:
                 await addon.snapshot(addon_file)
             except AddonsError:
-                _LOGGER.error("Can't make snapshot from %s", addon.slug)
+                _LOGGER.error("Can't create snapshot for %s", addon.slug)
                 return
 
             # Store to config
@@ -354,14 +354,14 @@ class Snapshot(CoreSysAttributes):
 
             # If exists inside snapshot
             if not addon_file.path.exists():
-                _LOGGER.error("Can't find snapshot for %s", addon_slug)
+                _LOGGER.error("Can't find snapshot %s", addon_slug)
                 return
 
             # Perform a restore
             try:
                 await self.sys_addons.restore(addon_slug, addon_file)
             except AddonsError:
-                _LOGGER.error("Can't restore snapshot for %s", addon_slug)
+                _LOGGER.error("Can't restore snapshot %s", addon_slug)
 
         # Save Add-ons sequential
         # avoid issue on slow IO

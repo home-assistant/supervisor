@@ -70,7 +70,7 @@ class JsonConfig:
             )
 
             # Reset data to default
-            _LOGGER.warning("Reset %s to default", self._file)
+            _LOGGER.warning("Resetting %s to default", self._file)
             self._data = self._schema(_DEFAULT)
 
     def save_data(self) -> None:
@@ -82,7 +82,7 @@ class JsonConfig:
             _LOGGER.error("Can't parse data: %s", humanize_error(self._data, ex))
 
             # Load last valid data
-            _LOGGER.warning("Reset %s to last version", self._file)
+            _LOGGER.warning("Resetting %s to last version", self._file)
             self._data = _DEFAULT
             self.read_data()
         else:

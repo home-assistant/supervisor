@@ -8,6 +8,8 @@ import logging
 import secrets
 from typing import Awaitable, Optional
 
+import aiohttp
+
 from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.observer import DockerObserver
@@ -100,7 +102,7 @@ class Observer(CoreSysAttributes, JsonConfig):
 
     async def install(self) -> None:
         """Install observer."""
-        _LOGGER.info("Setup observer plugin")
+        _LOGGER.info("Running setup for observer plugin")
         while True:
             # read observer tag and install it
             if not self.latest_version:
@@ -154,7 +156,7 @@ class Observer(CoreSysAttributes, JsonConfig):
             self.save_data()
 
         # Start Instance
-        _LOGGER.info("Start observer plugin")
+        _LOGGER.info("Starting observer plugin")
         try:
             await self.instance.run()
         except DockerError as err:
@@ -175,14 +177,34 @@ class Observer(CoreSysAttributes, JsonConfig):
         """
         return self.instance.is_running()
 
+    async def rebuild(self) -> None:
+        """Rebuild Observer Docker container."""
+        with suppress(DockerError):
+            await self.instance.stop()
+        await self.start()
+
+    async def check_system_runtime(self) -> bool:
+        """Check if the observer is running."""
+        try:
+            timeout = aiohttp.ClientTimeout(total=5)
+            async with self.sys_websession.get(
+                f"http://{self.sys_docker.network.observer!s}/ping", timeout=timeout
+            ) as request:
+                if request.status == 200:
+                    return True
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            pass
+
+        return False
+
     async def repair(self) -> None:
         """Repair observer container."""
         if await self.instance.exists():
             return
 
-        _LOGGER.info("Repair HA observer %s", self.version)
+        _LOGGER.info("Repairing HA observer %s", self.version)
         try:
             await self.instance.install(self.version)
         except DockerError as err:
-            _LOGGER.error("Repairing of HA observer failed")
+            _LOGGER.error("Repair of HA observer failed")
             self.sys_capture_exception(err)

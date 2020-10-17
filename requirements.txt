@@ -1,11 +1,12 @@
-aiohttp==3.6.2
+aiohttp==3.6.3
 async_timeout==3.0.1
 attrs==20.2.0
+brotlipy==0.7.0
 cchardet==2.1.6
 colorlog==4.4.0
 cpe==1.2.1
 cryptography==3.1
-debugpy==1.0.0rc2
+debugpy==1.0.0
 docker==4.3.1
 gitpython==3.1.9
 jinja2==2.11.2

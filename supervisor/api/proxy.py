@@ -124,7 +124,9 @@ class APIProxy(CoreSysAttributes):
 
             if data.get("type") != "auth_required":
                 # Invalid protocol
-                _LOGGER.error("Got unexpected response from HA WebSocket: %s", data)
+                _LOGGER.error(
+                    "Got unexpected response from Home Assistant WebSocket: %s", data
+                )
                 raise APIError()
 
             # Auth session
