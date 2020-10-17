@@ -1,29 +1,31 @@
 """Test Docker Utils."""
-
-import json
 import time
+from unittest.mock import MagicMock, call
 
 from supervisor.docker.utils import PullProgress
-
+from supervisor.utils import JobMonitor, job_monitor
 from tests.common import load_json_fixture
 
 
 def test_pull_progress():
     """Test PullProgress class."""
 
-    progress = PullProgress("test-object", 0.01)
-    events = []
-    for status in progress.process_log(_pull_log_stream()):
-        events.append(status)
+    job = JobMonitor(None)
+    job.send_progress = MagicMock()
+    job_monitor.set(job)
 
-    assert 5 <= len(events) <= 7
+    pull = PullProgress("test-object", 0.01)
+    pull.start()
+    for line in _pull_log_stream():
+        pull.process_log(line)
+    pull.done()
 
-    last = events.pop()
-    assert (
-        json.dumps(last) == '{"name": "test-object", '
-        '"downloading": {"current": 293486178, "total": 293486178}, '
-        '"extracting": {"current": 293486178, "total": 293486178}}'
-    )
+    assert 5 <= len(job.send_progress.mock_calls) <= 7
+
+    first = job.send_progress.mock_calls[0]
+    last = job.send_progress.mock_calls[-1]
+    assert first == call("test-object", None, None)
+    assert last == call("test-object", 1.0, 1.0)
 
 
 def _pull_log_stream():

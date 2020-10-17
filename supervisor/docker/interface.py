@@ -13,9 +13,8 @@ from . import CommandReturn
 from ..const import ATTR_PASSWORD, ATTR_USERNAME, LABEL_ARCH, LABEL_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
-from ..utils import job_monitor, process_lock
+from ..utils import process_lock
 from .stats import DockerStats
-from .utils import PullProgress
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -114,7 +113,7 @@ class DockerInterface(CoreSysAttributes):
             path = IMAGE_WITH_HOST.match(image)
             if path:
                 self._docker_login(path.group(1))
-            docker_image = self._pull_with_progress(image, tag)
+            docker_image = self.sys_docker.pull_image(image, tag, self.name)
             if latest:
                 _LOGGER.info("Tagging image %s with version %s as latest", image, tag)
                 docker_image.tag(image, tag="latest")
@@ -134,26 +133,6 @@ class DockerInterface(CoreSysAttributes):
             raise DockerError() from err
         else:
             self._meta = docker_image.attrs
-
-    def _pull_with_progress(self, image, tag):
-        monitor = job_monitor.get()
-        progress = PullProgress(self.name)
-        try:
-            status = progress.status()
-            monitor.send_progress(status)
-            pull_log = self.sys_docker.api.pull(image, tag, stream=True, decode=True)
-            for status in progress.process_log(pull_log):
-                monitor.send_progress(status)
-
-            return self.sys_docker.images.get(
-                "{0}{2}{1}".format(
-                    image, tag, "@" if tag.startswith("sha256:") else ":"
-                )
-            )
-        except docker.errors.APIError as err:
-            status = progress.done()
-            monitor.send_progress(status)
-            raise err
 
     def exists(self) -> Awaitable[bool]:
         """Return True if Docker image exists in local repository."""

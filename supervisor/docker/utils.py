@@ -1,6 +1,8 @@
 """Utils for Docker."""
 import time
 
+from ..utils import job_monitor
+
 
 class PullProgress:
     """Docker pull log progress listener."""
@@ -12,29 +14,34 @@ class PullProgress:
         self._next_push = 0
         self._downloading = Status()
         self._extracting = Status()
+        self._job_monitor = job_monitor.get()
 
-    def status(self):
-        """Get pull status."""
-        return {
-            "name": self._name,
-            "downloading": self._downloading.get(),
-            "extracting": self._extracting.get(),
-        }
+    def start(self):
+        """Send progress on start."""
+        self._next_push = time.time()
+        self._send_progress()
+
+    def process_log(self, line):
+        """Process pull log and yield current status."""
+        self._update(line)
+        now = time.time()
+        if self._next_push < now:
+            self._next_push = now + self._sleep
+            self._send_progress()
 
     def done(self):
         """Mark current pull as done and send this info to HA Core."""
         self._downloading.done_all()
         self._extracting.done_all()
-        return self.status()
+        self._send_progress()
 
-    def process_log(self, pull_log):
-        """Process pull log and yield current status."""
-        for msg in pull_log:
-            self._update(msg)
-            if self._next_push < time.time():
-                self._next_push = time.time() + self._sleep
-                yield self.status()
-        yield self.done()
+    def _send_progress(self):
+        if self._job_monitor:
+            self._job_monitor.send_progress(
+                self._name,
+                self._extracting.get(),
+                self._downloading.get(),
+            )
 
     def _update(self, data):
         try:
@@ -83,8 +90,8 @@ class Status:
             self._current[layer_id] = self._total[layer_id]
 
     def get(self):
-        """Return the current status as dict."""
-        return {
-            "current": sum(self._current.values()),
-            "total": sum(self._total.values()),
-        }
+        """Return the current status."""
+        total = sum(self._total.values())
+        if total == 0:
+            return None
+        return sum(self._current.values()) / total

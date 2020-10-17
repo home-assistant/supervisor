@@ -10,6 +10,7 @@ import docker
 from packaging import version as pkg_version
 import requests
 
+from .utils import PullProgress
 from ..const import (
     ATTR_REGISTRIES,
     DNS_SUFFIX,
@@ -290,3 +291,18 @@ class DockerAPI:
             ", ".join(denied_images),
         )
         return True
+
+    def pull_image(self, image, tag, container_name):
+        """Pull docker image and send progress events to core."""
+        pull = PullProgress(container_name)
+        try:
+            pull.start()
+            pull_log = self.api.pull(image, tag, stream=True, decode=True)
+            for line in pull_log:
+                pull.process_log(line)
+
+            return self.images.get("{0}{2}{1}".format(
+                image, tag, "@" if tag.startswith("sha256:") else ":"
+            ))
+        finally:
+            pull.done()

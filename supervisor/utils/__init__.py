@@ -14,7 +14,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_STRING: re.Pattern = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
 
-job_monitor: ContextVar[JobMonitor] = ContextVar("job_monitor")
+job_monitor: ContextVar[Optional[JobMonitor]] = ContextVar("job_monitor", default=None)
 
 
 def convert_to_ascii(raw: bytes) -> str:

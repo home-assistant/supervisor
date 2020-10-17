@@ -91,6 +91,9 @@ ENV/
 # pylint
 .pylint.d/
 
+#PyCharm
+.idea/
+
 # VS Code
 .vscode/*
 !.vscode/cSpell.json
