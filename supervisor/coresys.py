@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
 
 import aiohttp
@@ -593,7 +594,12 @@ class CoreSysAttributes:
         self, funct: Callable[..., T], *args: Any
     ) -> Coroutine[Any, Any, T]:
         """Add an job to the executor pool."""
-        return self.sys_loop.run_in_executor(None, funct, *args)
+        def funct_with_context():
+            return funct(*args)
+
+        current_context = contextvars.copy_context()
+
+        return self.sys_loop.run_in_executor(None, current_context.run, funct_with_context)
 
     def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
         """Create an async task."""
