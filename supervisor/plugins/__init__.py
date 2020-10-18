@@ -18,7 +18,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class PluginManager(CoreSysAttributes):
     """Manage supported function for plugins."""
 
-    required_cli: LegacyVersion = pkg_parse("26")
+    required_cli: LegacyVersion = pkg_parse("2020.10.0")
     required_dns: LegacyVersion = pkg_parse("9")
     required_audio: LegacyVersion = pkg_parse("17")
     required_observer: LegacyVersion = pkg_parse("2020.10.1")
