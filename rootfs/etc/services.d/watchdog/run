@@ -5,7 +5,7 @@
 declare failed_count=0
 declare supervisor_state
 
-bashio::log.info "Start local supervisor watchdog..."
+bashio::log.info "Starting local supervisor watchdog..."
 
 while [[ failed_count -lt 2 ]];
 do
@@ -31,4 +31,4 @@ do
 
 done
 
-basio::exit.nok "Watchdog detect issue with Supervisor - take container down!"
+basio::exit.nok "Watchdog detected issue with Supervisor - taking container down!"

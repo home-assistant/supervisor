@@ -220,7 +220,7 @@ class SoundControl(CoreSysAttributes):
     @AsyncThrottle(timedelta(seconds=10))
     async def update(self):
         """Update properties over dbus."""
-        _LOGGER.info("Update PulseAudio information")
+        _LOGGER.info("Updating PulseAudio information")
 
         def _update():
             try:

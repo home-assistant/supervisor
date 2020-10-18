@@ -26,10 +26,10 @@ class Auth(JsonConfig, CoreSysAttributes):
         password_h = self._rehash(password, username)
 
         if self._data.get(username_h) == password_h:
-            _LOGGER.info("Cache hit for %s", username)
+            _LOGGER.debug("Username '%s' is in cache", username)
             return True
 
-        _LOGGER.warning("No cache hit for %s", username)
+        _LOGGER.warning("Username '%s' not is in cache", username)
         return False
 
     def _update_cache(self, username: str, password: str) -> None:
@@ -59,11 +59,11 @@ class Auth(JsonConfig, CoreSysAttributes):
         if password is None:
             _LOGGER.error("None as password is not supported!")
             raise AuthError()
-        _LOGGER.info("Auth request from %s for %s", addon.slug, username)
+        _LOGGER.info("Auth request from '%s' for '%s'", addon.slug, username)
 
         # Check API state
         if not await self.sys_homeassistant.api.check_api_state():
-            _LOGGER.info("Home Assistant not running, check cache")
+            _LOGGER.debug("Home Assistant not running, checking cache")
             return self._check_cache(username, password)
 
         try:
@@ -78,11 +78,11 @@ class Auth(JsonConfig, CoreSysAttributes):
             ) as req:
 
                 if req.status == 200:
-                    _LOGGER.info("Success login from %s", username)
+                    _LOGGER.info("Successful login for '%s'", username)
                     self._update_cache(username, password)
                     return True
 
-                _LOGGER.warning("Wrong login from %s", username)
+                _LOGGER.warning("Unauthorized login for '%s'", username)
                 self._dismatch_cache(username, password)
                 return False
         except HomeAssistantAPIError:
@@ -99,10 +99,10 @@ class Auth(JsonConfig, CoreSysAttributes):
                 json={ATTR_USERNAME: username, ATTR_PASSWORD: password},
             ) as req:
                 if req.status == 200:
-                    _LOGGER.info("Success password reset %s", username)
+                    _LOGGER.info("Successful password reset for '%s'", username)
                     return
 
-                _LOGGER.warning("Unknown user %s for password reset", username)
+                _LOGGER.warning("The user '%s' is not registered", username)
         except HomeAssistantAPIError:
             _LOGGER.error("Can't request password reset on Home Assistant!")
 

@@ -2,9 +2,11 @@
 import asyncio
 import logging
 from pathlib import Path
+import re
 from tempfile import TemporaryDirectory
 
 from aiohttp import web
+from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
 from ..const import (
@@ -30,6 +32,7 @@ from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_RESTORE_PARTIAL = vol.Schema(
@@ -172,9 +175,12 @@ class APISnapshots(CoreSysAttributes):
         """Download a snapshot file."""
         snapshot = self._extract_snapshot(request)
 
-        _LOGGER.info("Download snapshot %s", snapshot.slug)
+        _LOGGER.info("Downloading snapshot %s", snapshot.slug)
         response = web.FileResponse(snapshot.tarfile)
         response.content_type = CONTENT_TYPE_TAR
+        response.headers[
+            CONTENT_DISPOSITION
+        ] = f"attachment; filename={RE_SLUGIFY_NAME.sub('_', snapshot.name)}.tar"
         return response
 
     @api_process

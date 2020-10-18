@@ -70,7 +70,9 @@ class MQTTService(ServiceInterface):
     def set_service_data(self, addon: Addon, data: Dict[str, Any]) -> None:
         """Write the data into service object."""
         if self.enabled:
-            _LOGGER.error("It is already a MQTT in use from %s", self._data[ATTR_ADDON])
+            _LOGGER.error(
+                "There is already a MQTT service in use from %s", self._data[ATTR_ADDON]
+            )
             raise ServicesError()
 
         self._data.update(data)

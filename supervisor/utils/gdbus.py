@@ -96,7 +96,7 @@ class DBus:
         # pylint: disable=protected-access
         await self._init_proxy()
 
-        _LOGGER.debug("Connect to dbus: %s - %s", bus_name, object_path)
+        _LOGGER.debug("Connect to D-Bus: %s - %s", bus_name, object_path)
         return self
 
     async def _init_proxy(self) -> None:
@@ -222,7 +222,7 @@ class DBus:
     async def _send(self, command: List[str], silent=False) -> str:
         """Send command over dbus."""
         # Run command
-        _LOGGER.debug("Send dbus command: %s", command)
+        _LOGGER.debug("Send D-Bus command: %s", command)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *command,
@@ -233,7 +233,7 @@ class DBus:
 
             data, error = await proc.communicate()
         except OSError as err:
-            _LOGGER.error("DBus fatal error: %s", err)
+            _LOGGER.critical("D-Bus fatal error: %s", err)
             raise DBusFatalError() from err
 
         # Success?
@@ -248,7 +248,7 @@ class DBus:
             raise exception()
 
         # General
-        _LOGGER.error("DBus return: %s", error.strip())
+        _LOGGER.error("D-Bus return: %s", error.strip())
         raise DBusFatalError()
 
     def attach_signals(self, filters=None):
@@ -277,7 +277,7 @@ class DBusCallWrapper:
 
     def __call__(self) -> None:
         """Catch this method from being called."""
-        _LOGGER.error("DBus method %s not exists!", self.interface)
+        _LOGGER.error("D-Bus method %s not exists!", self.interface)
         raise DBusFatalError()
 
     def __getattr__(self, name: str):
@@ -308,7 +308,7 @@ class DBusSignalWrapper:
 
     async def __aenter__(self):
         """Start monitor events."""
-        _LOGGER.info("Start dbus monitor on %s", self.dbus.bus_name)
+        _LOGGER.info("Starting dbus monitor on %s", self.dbus.bus_name)
         command = shlex.split(MONITOR.format(bus=self.dbus.bus_name))
         self._proc = await asyncio.create_subprocess_exec(
             *command,
@@ -321,7 +321,7 @@ class DBusSignalWrapper:
 
     async def __aexit__(self, exception_type, exception_value, traceback):
         """Stop monitor events."""
-        _LOGGER.info("Stop dbus monitor on %s", self.dbus.bus_name)
+        _LOGGER.info("Stopping dbus monitor on %s", self.dbus.bus_name)
         self._proc.send_signal(SIGINT)
         await self._proc.communicate()
 
@@ -354,7 +354,7 @@ class DBusSignalWrapper:
 
             # Filter signals?
             if self._signals and signal not in self._signals:
-                _LOGGER.debug("Skip event %s - %s", signal, data)
+                _LOGGER.debug("Skiping event %s - %s", signal, data)
                 continue
 
             try:

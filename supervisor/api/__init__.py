@@ -12,6 +12,7 @@ from .auth import APIAuth
 from .cli import APICli
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
+from .docker import APIDocker
 from .hardware import APIHardware
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
@@ -22,6 +23,7 @@ from .network import APINetwork
 from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
+from .resolution import APIResoulution
 from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots
@@ -42,7 +44,10 @@ class RestAPI(CoreSysAttributes):
         self.security: SecurityMiddleware = SecurityMiddleware(coresys)
         self.webapp: web.Application = web.Application(
             client_max_size=MAX_CLIENT_SIZE,
-            middlewares=[self.security.token_validation],
+            middlewares=[
+                self.security.system_validation,
+                self.security.token_validation,
+            ],
         )
 
         # service stuff
@@ -51,26 +56,28 @@ class RestAPI(CoreSysAttributes):
 
     async def load(self) -> None:
         """Register REST API Calls."""
-        self._register_supervisor()
-        self._register_host()
-        self._register_os()
+        self._register_addons()
+        self._register_audio()
+        self._register_auth()
         self._register_cli()
-        self._register_observer()
-        self._register_multicast()
-        self._register_network()
+        self._register_discovery()
+        self._register_dns()
+        self._register_docker()
         self._register_hardware()
         self._register_homeassistant()
-        self._register_proxy()
-        self._register_panel()
-        self._register_addons()
-        self._register_ingress()
-        self._register_snapshots()
-        self._register_discovery()
-        self._register_services()
+        self._register_host()
         self._register_info()
-        self._register_auth()
-        self._register_dns()
-        self._register_audio()
+        self._register_ingress()
+        self._register_multicast()
+        self._register_network()
+        self._register_observer()
+        self._register_os()
+        self._register_panel()
+        self._register_proxy()
+        self._register_resolution()
+        self._register_services()
+        self._register_snapshots()
+        self._register_supervisor()
 
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
@@ -184,6 +191,29 @@ class RestAPI(CoreSysAttributes):
         api_info.coresys = self.coresys
 
         self.webapp.add_routes([web.get("/info", api_info.info)])
+
+    def _register_resolution(self) -> None:
+        """Register info functions."""
+        api_resolution = APIResoulution()
+        api_resolution.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/resolution/info", api_resolution.info),
+                web.post(
+                    "/resolution/suggestion/{suggestion}",
+                    api_resolution.apply_suggestion,
+                ),
+                web.delete(
+                    "/resolution/suggestion/{suggestion}",
+                    api_resolution.dismiss_suggestion,
+                ),
+                web.delete(
+                    "/resolution/issue/{issue}",
+                    api_resolution.dismiss_issue,
+                ),
+            ]
+        )
 
     def _register_auth(self) -> None:
         """Register auth functions."""
@@ -324,7 +354,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/snapshots/new/partial", api_snapshots.snapshot_partial),
                 web.post("/snapshots/new/upload", api_snapshots.upload),
                 web.get("/snapshots/{snapshot}/info", api_snapshots.info),
-                web.post("/snapshots/{snapshot}/remove", api_snapshots.remove),
+                web.delete("/snapshots/{snapshot}", api_snapshots.remove),
                 web.post(
                     "/snapshots/{snapshot}/restore/full", api_snapshots.restore_full
                 ),
@@ -333,6 +363,8 @@ class RestAPI(CoreSysAttributes):
                     api_snapshots.restore_partial,
                 ),
                 web.get("/snapshots/{snapshot}/download", api_snapshots.download),
+                # Old, remove at end of 2020
+                web.post("/snapshots/{snapshot}/remove", api_snapshots.remove),
             ]
         )
 
@@ -408,6 +440,20 @@ class RestAPI(CoreSysAttributes):
         panel_dir = Path(__file__).parent.joinpath("panel")
         self.webapp.add_routes([web.static("/app", panel_dir)])
 
+    def _register_docker(self) -> None:
+        """Register docker configuration functions."""
+        api_docker = APIDocker()
+        api_docker.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/docker/info", api_docker.info),
+                web.get("/docker/registries", api_docker.registries),
+                web.post("/docker/registries", api_docker.create_registry),
+                web.delete("/docker/registries/{hostname}", api_docker.remove_registry),
+            ]
+        )
+
     async def start(self) -> None:
         """Run RESTful API webserver."""
         await self._runner.setup()
@@ -420,7 +466,7 @@ class RestAPI(CoreSysAttributes):
         except OSError as err:
             _LOGGER.critical("Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
         else:
-            _LOGGER.info("Start API on %s", self.sys_docker.network.supervisor)
+            _LOGGER.info("Starting API on %s", self.sys_docker.network.supervisor)
 
     async def stop(self) -> None:
         """Stop RESTful API webserver."""
@@ -431,4 +477,4 @@ class RestAPI(CoreSysAttributes):
         await self._site.stop()
         await self._runner.cleanup()
 
-        _LOGGER.info("Stop API on %s", self.sys_docker.network.supervisor)
+        _LOGGER.info("Stopping API on %s", self.sys_docker.network.supervisor)

@@ -7,6 +7,7 @@ import pytest
 from supervisor.const import SUPERVISOR_VERSION, CoreState
 from supervisor.exceptions import AddonConfigurationError
 from supervisor.misc.filter import filter_data
+from supervisor.resolution.const import UnsupportedReason
 
 SAMPLE_EVENT = {"sample": "event", "extra": {"Test": "123"}}
 
@@ -27,21 +28,19 @@ def test_ignored_exception(coresys):
 def test_diagnostics_disabled(coresys):
     """Test if diagnostics is disabled."""
     coresys.config.diagnostics = False
-    coresys.core.supported = True
     assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
 def test_not_supported(coresys):
     """Test if not supported."""
     coresys.config.diagnostics = True
-    coresys.core.supported = False
+    coresys.resolution.unsupported = UnsupportedReason.DOCKER_VERSION
     assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
 def test_is_dev(coresys):
     """Test if dev."""
     coresys.config.diagnostics = True
-    coresys.core.supported = True
     with patch("os.environ", return_value=[("ENV_SUPERVISOR_DEV", "1")]):
         assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
@@ -49,7 +48,6 @@ def test_is_dev(coresys):
 def test_not_started(coresys):
     """Test if supervisor not fully started."""
     coresys.config.diagnostics = True
-    coresys.core.supported = True
 
     coresys.core.state = CoreState.INITIALIZE
     assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
@@ -61,7 +59,6 @@ def test_not_started(coresys):
 def test_defaults(coresys):
     """Test event defaults."""
     coresys.config.diagnostics = True
-    coresys.supported = True
 
     coresys.core.state = CoreState.RUNNING
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
@@ -89,7 +86,6 @@ def test_sanitize(coresys):
         },
     }
     coresys.config.diagnostics = True
-    coresys.supported = True
 
     coresys.core.state = CoreState.RUNNING
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):

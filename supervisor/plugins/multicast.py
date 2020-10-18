@@ -96,7 +96,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
 
     async def install(self) -> None:
         """Install Multicast."""
-        _LOGGER.info("Setup Multicast plugin")
+        _LOGGER.info("Running setup for Multicast plugin")
         while True:
             # read homeassistant tag and install it
             if not self.latest_version:
@@ -111,7 +111,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
             _LOGGER.warning("Error on install Multicast plugin. Retry in 30sec")
             await asyncio.sleep(30)
 
-        _LOGGER.info("Multicast plugin now installed")
+        _LOGGER.info("Multicast plugin is now installed")
         self.version = self.instance.version
         self.image = self.sys_updater.image_multicast
         self.save_data()
@@ -145,7 +145,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
 
     async def restart(self) -> None:
         """Restart Multicast plugin."""
-        _LOGGER.info("Restart Multicast plugin")
+        _LOGGER.info("Restarting Multicast plugin")
         try:
             await self.instance.restart()
         except DockerError as err:
@@ -154,7 +154,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
 
     async def start(self) -> None:
         """Run Multicast."""
-        _LOGGER.info("Start Multicast plugin")
+        _LOGGER.info("Starting Multicast plugin")
         try:
             await self.instance.run()
         except DockerError as err:
@@ -163,7 +163,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
 
     async def stop(self) -> None:
         """Stop Multicast."""
-        _LOGGER.info("Stop Multicast plugin")
+        _LOGGER.info("Stopping Multicast plugin")
         try:
             await self.instance.stop()
         except DockerError as err:
@@ -203,9 +203,9 @@ class Multicast(JsonConfig, CoreSysAttributes):
         if await self.instance.exists():
             return
 
-        _LOGGER.info("Repair Multicast %s", self.version)
+        _LOGGER.info("Repairing Multicast %s", self.version)
         try:
             await self.instance.install(self.version)
         except DockerError as err:
-            _LOGGER.error("Repairing of Multicast failed")
+            _LOGGER.error("Repair of Multicast failed")
             self.sys_capture_exception(err)

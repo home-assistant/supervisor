@@ -347,7 +347,7 @@ class DockerAddon(DockerInterface):
 
         # Security check
         if not self.addon.protected:
-            _LOGGER.warning("%s run with disabled protected mode!", self.addon.name)
+            _LOGGER.warning("%s running with disabled protected mode!", self.addon.name)
 
         # Cleanup
         self._stop()
@@ -376,7 +376,9 @@ class DockerAddon(DockerInterface):
         )
 
         self._meta = docker_container.attrs
-        _LOGGER.info("Start Docker add-on %s with version %s", self.image, self.version)
+        _LOGGER.info(
+            "Starting Docker add-on %s with version %s", self.image, self.version
+        )
 
         # Write data to DNS server
         try:
@@ -406,7 +408,7 @@ class DockerAddon(DockerInterface):
         """
         build_env = AddonBuild(self.coresys, self.addon)
 
-        _LOGGER.info("Start build %s:%s", self.image, tag)
+        _LOGGER.info("Starting build for %s:%s", self.image, tag)
         try:
             image, log = self.sys_docker.images.build(
                 use_config_proxy=False, **build_env.get_docker_args(tag)
@@ -470,7 +472,7 @@ class DockerAddon(DockerInterface):
             raise DockerError() from err
 
         self._meta = docker_image.attrs
-        _LOGGER.info("Import image %s and version %s", tar_file, self.version)
+        _LOGGER.info("Importing image %s and version %s", tar_file, self.version)
 
         with suppress(DockerError):
             self._cleanup()

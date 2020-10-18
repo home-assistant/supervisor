@@ -19,6 +19,7 @@ from .exceptions import (
     SupervisorError,
     SupervisorUpdateError,
 )
+from .resolution.const import ContextType, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ class Supervisor(CoreSysAttributes):
         """Fetch last version and update profile."""
         url = URL_HASSIO_APPARMOR
         try:
-            _LOGGER.info("Fetch AppArmor profile %s", url)
+            _LOGGER.info("Fetching AppArmor profile %s", url)
             async with self.sys_websession.get(url, timeout=10) as request:
                 data = await request.text()
 
@@ -117,6 +118,9 @@ class Supervisor(CoreSysAttributes):
             )
         except DockerError as err:
             _LOGGER.error("Update of Supervisor failed!")
+            self.sys_resolution.create_issue(
+                IssueType.UPDATE_FAILED, ContextType.SUPERVISOR
+            )
             raise SupervisorUpdateError() from err
         else:
             self.sys_config.version = version
@@ -150,8 +154,8 @@ class Supervisor(CoreSysAttributes):
         if await self.instance.exists():
             return
 
-        _LOGGER.info("Repair Supervisor %s", self.version)
+        _LOGGER.info("Repairing Supervisor %s", self.version)
         try:
             await self.instance.retag()
         except DockerError:
-            _LOGGER.error("Repairing of Supervisor failed")
+            _LOGGER.error("Repair of Supervisor failed")

@@ -12,7 +12,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Sentry Release
-        uses: getsentry/action-release@v1.0.2
+        uses: getsentry/action-release@v1.1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}

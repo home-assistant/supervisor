@@ -26,7 +26,7 @@ class ServiceManager(CoreSysAttributes):
     def _check_dbus(self, unit=None):
         """Check available dbus connection."""
         if not self.sys_dbus.systemd.is_connected:
-            _LOGGER.error("No systemd dbus connection available")
+            _LOGGER.error("No systemd D-Bus connection available")
             raise HostNotSupportedError()
 
         if unit and not self.exists(unit):
@@ -37,28 +37,28 @@ class ServiceManager(CoreSysAttributes):
         """Start a service on host."""
         self._check_dbus(unit)
 
-        _LOGGER.info("Start local service %s", unit)
+        _LOGGER.info("Starting local service %s", unit)
         return self.sys_dbus.systemd.start_unit(unit, MOD_REPLACE)
 
     def stop(self, unit):
         """Stop a service on host."""
         self._check_dbus(unit)
 
-        _LOGGER.info("Stop local service %s", unit)
+        _LOGGER.info("Stopping local service %s", unit)
         return self.sys_dbus.systemd.stop_unit(unit, MOD_REPLACE)
 
     def reload(self, unit):
         """Reload a service on host."""
         self._check_dbus(unit)
 
-        _LOGGER.info("Reload local service %s", unit)
+        _LOGGER.info("Reloading local service %s", unit)
         return self.sys_dbus.systemd.reload_unit(unit, MOD_REPLACE)
 
     def restart(self, unit):
         """Restart a service on host."""
         self._check_dbus(unit)
 
-        _LOGGER.info("Restart local service %s", unit)
+        _LOGGER.info("Restarting local service %s", unit)
         return self.sys_dbus.systemd.restart_unit(unit, MOD_REPLACE)
 
     def exists(self, unit):
@@ -72,7 +72,7 @@ class ServiceManager(CoreSysAttributes):
         """Update properties over dbus."""
         self._check_dbus()
 
-        _LOGGER.info("Update service information")
+        _LOGGER.info("Updating service information")
         self._services.clear()
         try:
             systemd_units = await self.sys_dbus.systemd.list_units()

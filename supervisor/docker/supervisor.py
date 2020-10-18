@@ -44,7 +44,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
 
         self._meta = docker_container.attrs
         _LOGGER.info(
-            "Attach to Supervisor %s with version %s",
+            "Attaching to Supervisor %s with version %s",
             self.image,
             self.sys_supervisor.version,
         )
@@ -54,7 +54,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             return
 
         # Attach to network
-        _LOGGER.info("Connect Supervisor to hassio Network")
+        _LOGGER.info("Connecting Supervisor to hassio-network")
         self.sys_docker.network.attach_container(
             docker_container,
             alias=["supervisor"],
@@ -76,7 +76,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             docker_container.image.tag(self.image, tag=self.version)
             docker_container.image.tag(self.image, tag="latest")
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Can't retag supervisor version: %s", err)
+            _LOGGER.error("Can't retag Supervisor version: %s", err)
             raise DockerError() from err
 
     def update_start_tag(self, image: str, version: str) -> Awaitable[None]:

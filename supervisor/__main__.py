@@ -36,24 +36,24 @@ if __name__ == "__main__":
     executor = ThreadPoolExecutor(thread_name_prefix="SyncWorker")
     loop.set_default_executor(executor)
 
-    _LOGGER.info("Initialize Supervisor setup")
+    _LOGGER.info("Initializing Supervisor setup")
     coresys = loop.run_until_complete(bootstrap.initialize_coresys())
     loop.run_until_complete(coresys.core.connect())
 
     bootstrap.supervisor_debugger(coresys)
     bootstrap.migrate_system_env(coresys)
 
-    _LOGGER.info("Setup Supervisor")
+    _LOGGER.info("Setting up Supervisor")
     loop.run_until_complete(coresys.core.setup())
 
     loop.call_soon_threadsafe(loop.create_task, coresys.core.start())
     loop.call_soon_threadsafe(bootstrap.reg_signal, loop, coresys)
 
     try:
-        _LOGGER.info("Run Supervisor")
+        _LOGGER.info("Running Supervisor")
         loop.run_forever()
     finally:
         loop.close()
 
-    _LOGGER.info("Close Supervisor")
+    _LOGGER.info("Closing Supervisor")
     sys.exit(0)

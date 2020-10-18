@@ -8,6 +8,7 @@ from ..const import (
     ATTR_BOOT,
     ATTR_CRYPTO,
     ATTR_DATE,
+    ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
@@ -32,7 +33,13 @@ from ..const import (
     SNAPSHOT_FULL,
     SNAPSHOT_PARTIAL,
 )
-from ..validate import docker_image, network_port, repositories, version_tag
+from ..validate import (
+    SCHEMA_DOCKER_CONFIG,
+    docker_image,
+    network_port,
+    repositories,
+    version_tag,
+)
 
 ALL_FOLDERS = [
     FOLDER_HOMEASSISTANT,
@@ -84,6 +91,7 @@ SCHEMA_SNAPSHOT = vol.Schema(
             },
             extra=vol.REMOVE_EXTRA,
         ),
+        vol.Optional(ATTR_DOCKER, default=dict): SCHEMA_DOCKER_CONFIG,
         vol.Optional(ATTR_FOLDERS, default=list): vol.All(
             [vol.In(ALL_FOLDERS)], vol.Unique()
         ),

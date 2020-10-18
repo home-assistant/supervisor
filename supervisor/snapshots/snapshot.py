@@ -21,18 +21,22 @@ from ..const import (
     ATTR_BOOT,
     ATTR_CRYPTO,
     ATTR_DATE,
+    ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
     ATTR_NAME,
+    ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PROTECTED,
     ATTR_REFRESH_TOKEN,
+    ATTR_REGISTRIES,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
     ATTR_SSL,
     ATTR_TYPE,
+    ATTR_USERNAME,
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
@@ -132,6 +136,16 @@ class Snapshot(CoreSysAttributes):
         return self._data[ATTR_HOMEASSISTANT]
 
     @property
+    def docker(self):
+        """Return snapshot Docker config data."""
+        return self._data.get(ATTR_DOCKER, {})
+
+    @docker.setter
+    def docker(self, value):
+        """Set the Docker config data."""
+        self._data[ATTR_DOCKER] = value
+
+    @property
     def size(self):
         """Return snapshot size."""
         if not self.tarfile.is_file():
@@ -211,7 +225,7 @@ class Snapshot(CoreSysAttributes):
     async def load(self):
         """Read snapshot.json from tar file."""
         if not self.tarfile.is_file():
-            _LOGGER.error("No tarfile %s", self.tarfile)
+            _LOGGER.error("No tarfile located at %s", self.tarfile)
             return False
 
         def _load_file():
@@ -307,7 +321,7 @@ class Snapshot(CoreSysAttributes):
             try:
                 await addon.snapshot(addon_file)
             except AddonsError:
-                _LOGGER.error("Can't make snapshot from %s", addon.slug)
+                _LOGGER.error("Can't create snapshot for %s", addon.slug)
                 return
 
             # Store to config
@@ -340,14 +354,14 @@ class Snapshot(CoreSysAttributes):
 
             # If exists inside snapshot
             if not addon_file.path.exists():
-                _LOGGER.error("Can't find snapshot for %s", addon_slug)
+                _LOGGER.error("Can't find snapshot %s", addon_slug)
                 return
 
             # Perform a restore
             try:
                 await self.sys_addons.restore(addon_slug, addon_file)
             except AddonsError:
-                _LOGGER.error("Can't restore snapshot for %s", addon_slug)
+                _LOGGER.error("Can't restore snapshot %s", addon_slug)
 
         # Save Add-ons sequential
         # avoid issue on slow IO
@@ -481,3 +495,29 @@ class Snapshot(CoreSysAttributes):
         Return a coroutine.
         """
         return self.sys_store.update_repositories(self.repositories)
+
+    def store_dockerconfig(self):
+        """Store the configuration for Docker."""
+        self.docker = {
+            ATTR_REGISTRIES: {
+                registry: {
+                    ATTR_USERNAME: credentials[ATTR_USERNAME],
+                    ATTR_PASSWORD: self._encrypt_data(credentials[ATTR_PASSWORD]),
+                }
+                for registry, credentials in self.sys_docker.config.registries.items()
+            }
+        }
+
+    def restore_dockerconfig(self):
+        """Restore the configuration for Docker."""
+        if ATTR_REGISTRIES in self.docker:
+            self.sys_docker.config.registries.update(
+                {
+                    registry: {
+                        ATTR_USERNAME: credentials[ATTR_USERNAME],
+                        ATTR_PASSWORD: self._decrypt_data(credentials[ATTR_PASSWORD]),
+                    }
+                    for registry, credentials in self.docker[ATTR_REGISTRIES].items()
+                }
+            )
+            self.sys_docker.config.save_data()

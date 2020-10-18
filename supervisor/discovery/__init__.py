@@ -51,7 +51,7 @@ class Discovery(CoreSysAttributes, JsonConfig):
             discovery = Message(**message)
             messages[discovery.uuid] = discovery
 
-        _LOGGER.info("Load %d messages", len(messages))
+        _LOGGER.info("Loaded %d messages", len(messages))
         self.message_obj = messages
 
     def save(self) -> None:
@@ -96,7 +96,9 @@ class Discovery(CoreSysAttributes, JsonConfig):
                 return exists_msg
             break
 
-        _LOGGER.info("Send discovery to Home Assistant %s from %s", service, addon.slug)
+        _LOGGER.info(
+            "Sending discovery to Home Assistant %s from %s", service, addon.slug
+        )
         self.message_obj[message.uuid] = message
         self.save()
 
