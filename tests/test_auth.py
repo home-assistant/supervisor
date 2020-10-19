@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+# pylint: disable=protected-access
+
 
 @pytest.fixture(name="mock_auth_backend", autouse=True)
 def mock_auth_backend_fixture(coresys):
