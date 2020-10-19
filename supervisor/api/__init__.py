@@ -224,7 +224,7 @@ class RestAPI(CoreSysAttributes):
             [
                 web.post("/auth", api_auth.auth),
                 web.post("/auth/reset", api_auth.reset),
-                web.post("/auth/cache", api_auth.cache),
+                web.delete("/auth/cache", api_auth.cache),
             ]
         )
 
