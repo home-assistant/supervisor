@@ -61,11 +61,20 @@ class Auth(JsonConfig, CoreSysAttributes):
             raise AuthError()
         _LOGGER.info("Auth request from '%s' for '%s'", addon.slug, username)
 
+        # Get from cache
+        cache_hit = self._check_cache(username, password)
+
         # Check API state
         if not await self.sys_homeassistant.api.check_api_state():
             _LOGGER.debug("Home Assistant not running, checking cache")
-            return self._check_cache(username, password)
+            return cache_hit
 
+        # Home Assistant Core take over 1-2sec to validate it
+        # Let's use the cache and if they don't hit, we ask on core
+        if cache_hit:
+            return True
+
+        # Ask on Core
         try:
             async with self.sys_homeassistant.api.make_request(
                 "post",
