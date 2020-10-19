@@ -81,7 +81,7 @@ class Auth(JsonConfig, CoreSysAttributes):
             return await self._backend_login(addon, username, password)
 
         # Home Assistant Core take over 1-2sec to validate it
-        # Let's use the cache and if they don't hit, we ask on core
+        # Let's use the cache and update the cache in background
         if username not in self._running:
             self._running[username] = self.sys_create_task(
                 self._backend_login(addon, username, password)
