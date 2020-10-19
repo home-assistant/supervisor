@@ -1,6 +1,8 @@
 """Manage SSO for Add-ons with Home Assistant user."""
+import asyncio
 import hashlib
 import logging
+from typing import Dict, Optional
 
 from .addons.addon import Addon
 from .const import ATTR_ADDON, ATTR_PASSWORD, ATTR_USERNAME, FILE_HASSIO_AUTH
@@ -20,16 +22,21 @@ class Auth(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_AUTH, SCHEMA_AUTH_CONFIG)
         self.coresys: CoreSys = coresys
 
-    def _check_cache(self, username: str, password: str) -> bool:
+        self._running: Dict[str, asyncio.Task] = {}
+
+    def _check_cache(self, username: str, password: str) -> Optional[bool]:
         """Check password in cache."""
         username_h = self._rehash(username)
         password_h = self._rehash(password, username)
 
+        if username_h not in self._data:
+            _LOGGER.debug("Username '%s' not is in cache", username)
+            return None
+
+        # check cache
         if self._data.get(username_h) == password_h:
             _LOGGER.debug("Username '%s' is in cache", username)
             return True
-
-        _LOGGER.warning("Username '%s' not is in cache", username)
         return False
 
     def _update_cache(self, username: str, password: str) -> None:
@@ -61,11 +68,29 @@ class Auth(JsonConfig, CoreSysAttributes):
             raise AuthError()
         _LOGGER.info("Auth request from '%s' for '%s'", addon.slug, username)
 
+        # Get from cache
+        cache_hit = self._check_cache(username, password)
+
         # Check API state
         if not await self.sys_homeassistant.api.check_api_state():
             _LOGGER.debug("Home Assistant not running, checking cache")
-            return self._check_cache(username, password)
+            return cache_hit is True
 
+        # No cache hit
+        if cache_hit is None:
+            return await self._backend_login(addon, username, password)
+
+        # Home Assistant Core take over 1-2sec to validate it
+        # Let's use the cache and update the cache in background
+        if username not in self._running:
+            self._running[username] = self.sys_create_task(
+                self._backend_login(addon, username, password)
+            )
+
+        return cache_hit
+
+    async def _backend_login(self, addon: Addon, username: str, password: str) -> bool:
+        """Check username login on core."""
         try:
             async with self.sys_homeassistant.api.make_request(
                 "post",
@@ -87,6 +112,8 @@ class Auth(JsonConfig, CoreSysAttributes):
                 return False
         except HomeAssistantAPIError:
             _LOGGER.error("Can't request auth on Home Assistant!")
+        finally:
+            self._running.pop(username, None)
 
         raise AuthError()
 
