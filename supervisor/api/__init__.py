@@ -221,7 +221,11 @@ class RestAPI(CoreSysAttributes):
         api_auth.coresys = self.coresys
 
         self.webapp.add_routes(
-            [web.post("/auth", api_auth.auth), web.post("/auth/reset", api_auth.reset)]
+            [
+                web.post("/auth", api_auth.auth),
+                web.post("/auth/reset", api_auth.reset),
+                web.post("/auth/cache", api_auth.cache),
+            ]
         )
 
     def _register_supervisor(self) -> None:
