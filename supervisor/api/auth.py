@@ -86,3 +86,8 @@ class APIAuth(CoreSysAttributes):
         await asyncio.shield(
             self.sys_auth.change_password(body[ATTR_USERNAME], body[ATTR_PASSWORD])
         )
+
+    @api_process
+    async def cache(self, request: web.Request) -> None:
+        """Process cache reset request."""
+        self.sys_auth.reset_data()

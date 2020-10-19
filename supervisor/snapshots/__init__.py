@@ -98,8 +98,10 @@ class SnapshotManager(CoreSysAttributes):
 
         # Already exists?
         if snapshot.slug in self.snapshots_obj:
-            _LOGGER.error("Snapshot %s already exists!", snapshot.slug)
-            return None
+            _LOGGER.warning(
+                "Snapshot %s already exists! overwriting snapshot", snapshot.slug
+            )
+            self.remove(self.get(snapshot.slug))
 
         # Move snapshot to backup
         tar_origin = Path(self.sys_config.path_backup, f"{snapshot.slug}.tar")
