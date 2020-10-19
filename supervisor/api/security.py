@@ -82,6 +82,7 @@ ADDONS_ROLE_ACCESS = {
         r"^(?:"
         r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
         r"|/audio/.+"
+        r"|/auth/(?:reset|cache)"
         r"|/cli/.+"
         r"|/core/.+"
         r"|/dns/.+"
