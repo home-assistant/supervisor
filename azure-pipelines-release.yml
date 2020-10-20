@@ -17,57 +17,55 @@ resources:
   repositories:
     - repository: azure
       type: github
-      name: 'home-assistant/ci-azure'
-      endpoint: 'home-assistant'
-
+      name: "home-assistant/ci-azure"
+      endpoint: "home-assistant"
 
 stages:
-
-  - stage: 'Validate'
+  - stage: "Validate"
     jobs:
       - template: templates/azp-job-version.yaml@azure
         parameters:
           ignoreDev: true
 
-  - stage: 'Build'
+  - stage: "Build"
     jobs:
-      - job: 'ReleaseDocker'
-          timeoutInMinutes: 240
-          pool:
-            vmImage: 'ubuntu-latest'
-          strategy:
-            maxParallel: 5
-            matrix:
-              amd64:
-                buildArch: 'amd64'
-              i386:
-                buildArch: 'i386'
-              armhf:
-                buildArch: 'armhf'
-              armv7:
-                buildArch: 'armv7'
-              aarch64:
-                buildArch: 'aarch64'
+      - job: "ReleaseDocker"
+        timeoutInMinutes: 240
+        pool:
+          vmImage: "ubuntu-latest"
+        strategy:
+          maxParallel: 5
+          matrix:
+            amd64:
+              buildArch: "amd64"
+            i386:
+              buildArch: "i386"
+            armhf:
+              buildArch: "armhf"
+            armv7:
+              buildArch: "armv7"
+            aarch64:
+              buildArch: "aarch64"
           steps:
             - template: templates/azp-step-su-version.yaml@azure
             - script: |
                 docker login -u $(dockerUser) -p $(dockerPassword)
-              displayName: 'Docker hub login'
+              displayName: "Docker hub login"
             - script: docker pull homeassistant/amd64-builder:$(versionBuilder)
-              displayName: 'Install Builder'
+              displayName: "Install Builder"
             - script: |
                 sudo docker run --rm --privileged \
                     -v ~/.docker:/root/.docker \
                     -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
                     homeassistant/amd64-builder:$(versionBuilder) \
                     --generic $(supervisorRelease) "--$(buildArch)" -t /data
-              displayName: 'Build Release'
+              displayName: "Build Release"
 
-  - stage: 'Publish'
+  - stage: "Publish"
     jobs:
-      - job: 'ReleaseHassio'
+      - job: "ReleaseHassio"
         pool:
-          vmImage: 'ubuntu-latest'
+          vmImage: "ubuntu-latest"
         steps:
           - template: templates/azp-step-su-version.yaml@azure
           - script: |
@@ -79,7 +77,7 @@ stages:
               git config --global credential.helper store
 
               echo "https://$(githubToken):x-oauth-basic@github.com" > $HOME/.git-credentials
-            displayName: 'Install requirements'
+            displayName: "Install requirements"
           - script: |
               set -e
 
