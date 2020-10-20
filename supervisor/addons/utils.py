@@ -1,9 +1,7 @@
 """Util add-ons functions."""
 from __future__ import annotations
 
-import asyncio
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..const import (
@@ -82,20 +80,3 @@ def rating_security(addon: AddonModel) -> int:
         rating = 1
 
     return max(min(6, rating), 1)
-
-
-async def remove_data(folder: Path) -> None:
-    """Remove folder and reset privileged."""
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "rm", "-rf", str(folder), stdout=asyncio.subprocess.DEVNULL
-        )
-
-        _, error_msg = await proc.communicate()
-    except OSError as err:
-        error_msg = str(err)
-    else:
-        if proc.returncode == 0:
-            return
-
-    _LOGGER.error("Can't remove Add-on Data: %s", error_msg)

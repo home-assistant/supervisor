@@ -22,7 +22,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class Core(CoreSysAttributes):
     """Main object of Supervisor."""
 
-    def __init__(self, coresys: CoreSys):
+    def __init__(self, coresys: CoreSys) -> None:
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
         self._state: Optional[CoreState] = None
@@ -54,7 +54,7 @@ class Core(CoreSysAttributes):
         finally:
             self._state = new_state
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connect Supervisor container."""
         self.state = CoreState.INITIALIZE
 
@@ -78,7 +78,7 @@ class Core(CoreSysAttributes):
                 self.sys_supervisor.version,
             )
 
-    async def setup(self):
+    async def setup(self) -> None:
         """Start setting up supervisor orchestration."""
         self.state = CoreState.SETUP
 
@@ -129,7 +129,7 @@ class Core(CoreSysAttributes):
         # Evaluate the system
         await self.sys_resolution.evaluate.evaluate_system()
 
-    async def start(self):
+    async def start(self) -> None:
         """Start Supervisor orchestration."""
         self.state = CoreState.STARTUP
 
@@ -223,10 +223,10 @@ class Core(CoreSysAttributes):
             self.state = CoreState.RUNNING
             _LOGGER.info("Supervisor is up and running")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop a running orchestration."""
         # store new last boot / prevent time adjustments
-        if self.state in (CoreState.RUNNING, CoreState.SHUTDOWN):
+        if self.state in (CoreState.RUNNING, CoreState.SHUTDOWN, CoreState.FREEZE):
             self._update_last_boot()
         if self.state in (CoreState.STOPPING, CoreState.CLOSE):
             return
@@ -259,7 +259,7 @@ class Core(CoreSysAttributes):
         _LOGGER.info("Supervisor is down")
         self.sys_loop.stop()
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Shutdown all running containers in correct order."""
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
@@ -281,12 +281,12 @@ class Core(CoreSysAttributes):
         if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
             await self.sys_plugins.shutdown()
 
-    def _update_last_boot(self):
+    def _update_last_boot(self) -> None:
         """Update last boot time."""
         self.sys_config.last_boot = self.sys_hardware.last_boot
         self.sys_config.save_data()
 
-    async def repair(self):
+    async def repair(self) -> None:
         """Repair system integrity."""
         _LOGGER.info("Starting repair of Supervisor Environment")
         await self.sys_run_in_executor(self.sys_docker.repair)
@@ -301,3 +301,19 @@ class Core(CoreSysAttributes):
         # Tag version for latest
         await self.sys_supervisor.repair()
         _LOGGER.info("Finished repair of Supervisor Environment")
+
+    async def factory_reset(self) -> None:
+        """Reset the system as soft factory reset."""
+        _LOGGER.info("Starting factory reset of Supervisor Environment")
+        self.state = CoreState.FREEZE
+
+        await self.sys_plugins.factory_reset()
+        await self.sys_addons.factory_reset()
+        await self.sys_hassos.factory_reset()
+
+        await self.sys_homeassistant.factory_reset()
+
+        self.sys_config.reset_data()
+
+        # Restart Supervisor
+        self.sys_create_task(self.stop())

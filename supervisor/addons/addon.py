@@ -55,12 +55,11 @@ from ..exceptions import (
     HostAppArmorError,
     JsonFileError,
 )
-from ..utils import check_port
+from ..utils import check_port, remove_folder
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from ..utils.tar import atomic_contents_add, secure_path
 from .model import AddonModel, Data
-from .utils import remove_data
 from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -471,7 +470,7 @@ class Addon(AddonModel):
             return
 
         _LOGGER.info("Removing add-on data folder %s", self.path_data)
-        await remove_data(self.path_data)
+        await remove_folder(self.path_data)
 
     def write_pulse(self) -> None:
         """Write asound config to file and return True on success."""
@@ -763,7 +762,7 @@ class Addon(AddonModel):
 
             _LOGGER.info("Restoring data for addon %s", self.slug)
             if self.path_data.is_dir():
-                await remove_data(self.path_data)
+                await remove_folder(self.path_data)
             try:
                 await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:
