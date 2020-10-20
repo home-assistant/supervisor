@@ -11,8 +11,14 @@ trigger:
 pr: none
 variables:
   - name: versionBuilder
-    value: "7.0"
+    value: "7.2.0"
   - group: docker
+resources:
+  repositories:
+    - repository: azure
+      type: github
+      name: 'home-assistant/ci-azure'
+      endpoint: 'home-assistant'
 
 
 stages:
