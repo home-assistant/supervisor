@@ -97,15 +97,6 @@ class Core(CoreSysAttributes):
         # Check supervisor version/update
         if self.sys_dev:
             self.sys_config.version = self.sys_supervisor.version
-        elif (
-            self.sys_config.version == "dev"
-            or self.sys_supervisor.instance.version == "dev"
-        ):
-            self.healthy = False
-            _LOGGER.warning(
-                "Found a development Supervisor outside dev channel (%s)",
-                self.sys_updater.channel,
-            )
         elif self.sys_config.version != self.sys_supervisor.version:
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_ROLLBACK, ContextType.SUPERVISOR

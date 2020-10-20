@@ -280,6 +280,7 @@ ATTR_WAIT_BOOT = "wait_boot"
 ATTR_WATCHDOG = "watchdog"
 ATTR_WEBUI = "webui"
 ATTR_OBSERVER = "observer"
+ATTR_UPDATE_AVAILABLE = "update_available"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

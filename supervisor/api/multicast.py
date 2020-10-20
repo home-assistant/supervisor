@@ -15,6 +15,7 @@ from ..const import (
     ATTR_MEMORY_USAGE,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
+    ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     CONTENT_TYPE_BINARY,
@@ -38,6 +39,7 @@ class APIMulticast(CoreSysAttributes):
         return {
             ATTR_VERSION: self.sys_plugins.multicast.version,
             ATTR_VERSION_LATEST: self.sys_plugins.multicast.latest_version,
+            ATTR_UPDATE_AVAILABLE: self.sys_plugins.multicast.need_update,
         }
 
     @api_process

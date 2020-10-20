@@ -83,6 +83,7 @@ from ..const import (
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_UDEV,
+    ATTR_UPDATE_AVAILABLE,
     ATTR_URL,
     ATTR_USB,
     ATTR_VALID,
@@ -161,8 +162,12 @@ class APIAddons(CoreSysAttributes):
                 ATTR_DESCRIPTON: addon.description,
                 ATTR_ADVANCED: addon.advanced,
                 ATTR_STAGE: addon.stage,
-                ATTR_VERSION: addon.latest_version,
-                ATTR_INSTALLED: addon.version if addon.is_installed else None,
+                ATTR_VERSION: addon.version if addon.is_installed else None,
+                ATTR_VERSION_LATEST: addon.latest_version,
+                ATTR_UPDATE_AVAILABLE: addon.need_update
+                if addon.is_installed
+                else None,
+                ATTR_INSTALLED: addon.is_installed,
                 ATTR_AVAILABLE: addon.available,
                 ATTR_DETACHED: addon.is_detached,
                 ATTR_REPOSITORY: addon.repository,
@@ -209,6 +214,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_REPOSITORY: addon.repository,
             ATTR_VERSION: None,
             ATTR_VERSION_LATEST: addon.latest_version,
+            ATTR_UPDATE_AVAILABLE: None,
             ATTR_PROTECTED: addon.protected,
             ATTR_RATING: rating_security(addon),
             ATTR_BOOT: addon.boot,
@@ -278,6 +284,7 @@ class APIAddons(CoreSysAttributes):
                     ATTR_AUTO_UPDATE: addon.auto_update,
                     ATTR_IP_ADDRESS: str(addon.ip_address),
                     ATTR_VERSION: addon.version,
+                    ATTR_UPDATE_AVAILABLE: addon.need_update,
                     ATTR_WATCHDOG: addon.watchdog,
                 }
             )

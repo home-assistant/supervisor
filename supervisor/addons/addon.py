@@ -150,6 +150,11 @@ class Addon(AddonModel):
         return self.persist[ATTR_VERSION]
 
     @property
+    def need_update(self) -> bool:
+        """Return True if an update is available."""
+        return self.version != self.latest_version
+
+    @property
     def dns(self) -> List[str]:
         """Return list of DNS name for that add-on."""
         return [f"{self.hostname}.{DNS_SUFFIX}"]

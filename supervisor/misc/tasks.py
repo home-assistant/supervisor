@@ -120,7 +120,7 @@ class Tasks(CoreSysAttributes):
                 continue
 
             # Evaluate available updates
-            if addon.version == addon.latest_version:
+            if not addon.need_update:
                 continue
             if not addon.test_update_schema():
                 _LOGGER.warning(
@@ -151,7 +151,7 @@ class Tasks(CoreSysAttributes):
         if not self.sys_supervisor.need_update:
             return
 
-        # don't perform an update on dev channel
+        # don't perform an update on dev
         if self.sys_dev:
             _LOGGER.warning("Ignore Supervisor updates on dev channel!")
             return

@@ -7,6 +7,8 @@ import shutil
 from typing import Optional
 from uuid import UUID
 
+from packaging.version import parse as pkg_parse
+
 from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
@@ -216,6 +218,14 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def audio_input(self, value: Optional[str]):
         """Set audio input settings."""
         self._data[ATTR_AUDIO_INPUT] = value
+
+    @property
+    def need_update(self) -> bool:
+        """Return true if a Home Assistant update is available."""
+        try:
+            return pkg_parse(self.version) < pkg_parse(self.latest_version)
+        except (TypeError, ValueError):
+            return True
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
