@@ -269,7 +269,7 @@ class DockerInterface(CoreSysAttributes):
         with suppress(DockerError):
             self._stop()
 
-        _LOGGER.info("Removeing image %s with latest and %s", self.image, self.version)
+        _LOGGER.info("Removing image %s with latest and %s", self.image, self.version)
 
         try:
             with suppress(docker.errors.ImageNotFound):
@@ -303,7 +303,7 @@ class DockerInterface(CoreSysAttributes):
         image = image or self.image
 
         _LOGGER.info(
-            "Updateing image %s:%s to %s:%s", self.image, self.version, image, tag
+            "Updating image %s:%s to %s:%s", self.image, self.version, image, tag
         )
 
         # Update docker image

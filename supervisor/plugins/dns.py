@@ -362,7 +362,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.debug("Can't remove Host entry: %s", host)
             return
 
-        _LOGGER.debug("Removeing host entry %s - %s", entry.ip_address, entry.names)
+        _LOGGER.debug("Removing host entry %s - %s", entry.ip_address, entry.names)
         self._hosts.remove(entry)
 
         # Update hosts file
