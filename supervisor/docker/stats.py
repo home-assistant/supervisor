@@ -47,9 +47,9 @@ class DockerStats:
         )
 
        if system_delta > 0.0 and cpu_delta > 0.0:
-            self._cpu = (cpu_delta / system_delta) * 100.0
+           self._cpu = (cpu_delta / system_delta) * 100.0
        else:
-             self._cpu = 0.0
+           self._cpu = 0.0
 
     def _calc_network(self, networks):
         """Calculate Network IO stats."""
