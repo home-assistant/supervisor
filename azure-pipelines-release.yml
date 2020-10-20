@@ -44,7 +44,7 @@ stages:
           aarch64:
             buildArch: 'aarch64'
       steps:
-      - template: templates/azp-step-ha-version.yaml@azure
+      - template: templates/azp-step-su-version.yaml@azure
       - script: |
           docker login -u $(dockerUser) -p $(dockerPassword)
         displayName: 'Docker hub login'
@@ -64,7 +64,7 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
-    - template: templates/azp-step-ha-version.yaml@azure
+    - template: templates/azp-step-su-version.yaml@azure
     - script: |
         sudo apt-get install -y --no-install-recommends \
           git jq curl
