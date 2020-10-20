@@ -8,6 +8,7 @@ import voluptuous as vol
 from ..const import (
     ATTR_ADDRESS,
     ATTR_DNS,
+    ATTR_DOCKER,
     ATTR_GATEWAY,
     ATTR_ID,
     ATTR_INTERFACE,
@@ -17,7 +18,6 @@ from ..const import (
     ATTR_METHODS,
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
-    ATTR_SYSTEM,
     ATTR_TYPE,
     DOCKER_NETWORK,
     DOCKER_NETWORK_MASK,
@@ -69,7 +69,7 @@ class APINetwork(CoreSysAttributes):
 
         return {
             ATTR_INTERFACES: interfaces,
-            ATTR_SYSTEM: {
+            ATTR_DOCKER: {
                 ATTR_INTERFACE: DOCKER_NETWORK,
                 ATTR_ADDRESS: str(DOCKER_NETWORK_MASK),
                 ATTR_GATEWAY: str(self.sys_docker.network.gateway),
