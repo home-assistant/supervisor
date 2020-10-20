@@ -1,15 +1,22 @@
 """Test NetwrokInterface API."""
 import pytest
 
+from supervisor.const import DOCKER_NETWORK, DOCKER_NETWORK_MASK
+
 from tests.const import TEST_INTERFACE
 
 
 @pytest.mark.asyncio
-async def test_api_network_info(api_client):
+async def test_api_network_info(api_client, coresys):
     """Test network manager api."""
     resp = await api_client.get("/network/info")
     result = await resp.json()
     assert TEST_INTERFACE in result["data"]["interfaces"]
+
+    assert result["data"]["docker"]["interface"] == DOCKER_NETWORK
+    assert result["data"]["docker"]["address"] == str(DOCKER_NETWORK_MASK)
+    assert result["data"]["docker"]["dns"] == str(coresys.docker.network.dns)
+    assert result["data"]["docker"]["gateway"] == str(coresys.docker.network.gateway)
 
 
 @pytest.mark.asyncio
