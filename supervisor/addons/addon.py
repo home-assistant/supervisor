@@ -152,6 +152,8 @@ class Addon(AddonModel):
     @property
     def need_update(self) -> bool:
         """Return True if an update is available."""
+        if self.is_detached:
+            return False
         return self.version != self.latest_version
 
     @property
