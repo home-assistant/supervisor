@@ -12,12 +12,12 @@ from ..const import (
     ATTR_ID,
     ATTR_INTERFACE,
     ATTR_INTERFACES,
-    ATTR_INTERNAL,
     ATTR_IP_ADDRESS,
     ATTR_METHOD,
     ATTR_METHODS,
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
+    ATTR_SYSTEM,
     ATTR_TYPE,
     DOCKER_NETWORK,
     DOCKER_NETWORK_MASK,
@@ -69,7 +69,7 @@ class APINetwork(CoreSysAttributes):
 
         return {
             ATTR_INTERFACES: interfaces,
-            ATTR_INTERNAL: {
+            ATTR_SYSTEM: {
                 ATTR_INTERFACE: DOCKER_NETWORK,
                 ATTR_ADDRESS: DOCKER_NETWORK_MASK,
                 ATTR_GATEWAY: self.sys_docker.network.gateway,
