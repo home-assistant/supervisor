@@ -36,7 +36,6 @@ stages:
             buildArch: 'amd64'
           i386:
             buildArch: 'i386'
-            buildMachine: 'qemux86'
           armhf:
             buildArch: 'armhf'
           armv7:
