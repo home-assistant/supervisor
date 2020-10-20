@@ -166,7 +166,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_VERSION_LATEST: addon.latest_version,
                 ATTR_UPDATE_AVAILABLE: addon.need_update
                 if addon.is_installed
-                else None,
+                else False,
                 ATTR_INSTALLED: addon.is_installed,
                 ATTR_AVAILABLE: addon.available,
                 ATTR_DETACHED: addon.is_detached,
