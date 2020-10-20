@@ -74,6 +74,15 @@ class HomeAssistantCore(CoreSysAttributes):
             self.sys_homeassistant.image = self.instance.image
             self.sys_homeassistant.save_data()
 
+        # Start landingpage
+        if self.instance.version != LANDINGPAGE:
+            return
+
+        _LOGGER.info("Starting HomeAssistant landingpage")
+        if not await self.instance.is_running():
+            with suppress(HomeAssistantError):
+                await self._start()
+
     @process_lock
     async def install_landingpage(self) -> None:
         """Install a landing page."""
@@ -101,11 +110,6 @@ class HomeAssistantCore(CoreSysAttributes):
                 self.sys_homeassistant.image = self.sys_updater.image_homeassistant
                 self.sys_homeassistant.save_data()
                 break
-
-        # Start landingpage
-        _LOGGER.info("Starting HomeAssistant landingpage")
-        with suppress(HomeAssistantError):
-            await self._start()
 
     @process_lock
     async def install(self) -> None:
