@@ -8,6 +8,7 @@ import voluptuous as vol
 from ..const import (
     ATTR_ADDRESS,
     ATTR_DNS,
+    ATTR_DOCKER,
     ATTR_GATEWAY,
     ATTR_ID,
     ATTR_INTERFACE,
@@ -18,6 +19,8 @@ from ..const import (
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
     ATTR_TYPE,
+    DOCKER_NETWORK,
+    DOCKER_NETWORK_MASK,
 )
 from ..coresys import CoreSysAttributes
 from ..dbus.const import InterfaceMethodSimple
@@ -64,7 +67,15 @@ class APINetwork(CoreSysAttributes):
                 self.sys_host.network.interfaces[interface].name
             ] = interface_information(self.sys_host.network.interfaces[interface])
 
-        return {ATTR_INTERFACES: interfaces}
+        return {
+            ATTR_INTERFACES: interfaces,
+            ATTR_DOCKER: {
+                ATTR_INTERFACE: DOCKER_NETWORK,
+                ATTR_ADDRESS: str(DOCKER_NETWORK_MASK),
+                ATTR_GATEWAY: str(self.sys_docker.network.gateway),
+                ATTR_DNS: str(self.sys_docker.network.dns),
+            },
+        }
 
     @api_process
     async def interface_info(self, request: web.Request) -> Dict[str, Any]:
