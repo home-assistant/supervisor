@@ -1,14 +1,14 @@
 {
   "cpu_stats": {
     "cpu_usage": {
-      "total_usage": 180
+      "total_usage": 190
     },
     "system_cpu_usage": 200,
     "online_cpus": 24
   },
   "precpu_stats": {
     "cpu_usage": {
-      "total_usage": 90
+      "total_usage": 100
     },
     "system_cpu_usage": 100,
     "online_cpus": 24
