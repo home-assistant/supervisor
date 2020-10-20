@@ -1,0 +1,20 @@
+{
+  "cpu_stats": {
+    "cpu_usage": {
+      "total_usage": 180
+    },
+    "system_cpu_usage": 200,
+    "online_cpus": 24
+  },
+  "precpu_stats": {
+    "cpu_usage": {
+      "total_usage": 90
+    },
+    "system_cpu_usage": 100,
+    "online_cpus": 24
+  },
+  "memory_stats": {
+    "usage": 250000000,
+    "limit": 330000000000
+  }
+}
