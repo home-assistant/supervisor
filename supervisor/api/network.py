@@ -71,7 +71,7 @@ class APINetwork(CoreSysAttributes):
             ATTR_INTERFACES: interfaces,
             ATTR_SYSTEM: {
                 ATTR_INTERFACE: DOCKER_NETWORK,
-                ATTR_ADDRESS: DOCKER_NETWORK_MASK,
+                ATTR_ADDRESS: str(DOCKER_NETWORK_MASK),
                 ATTR_GATEWAY: self.sys_docker.network.gateway,
                 ATTR_DNS: self.sys_docker.network.dns,
             },
