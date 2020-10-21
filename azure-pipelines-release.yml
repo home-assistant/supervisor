@@ -57,19 +57,10 @@ stages:
               buildArch: "aarch64"
         steps:
           - template: templates/azp-step-su-version.yaml@azure
-          - script: |
-              docker login -u $(dockerUser) -p $(dockerPassword)
-            displayName: "Docker hub login"
-          - script: docker pull homeassistant/amd64-builder:$(versionBuilder)
-            displayName: "Install Builder"
-          - script: |
-              sudo docker run --rm --privileged \
-                  -v ~/.docker:/root/.docker \
-                  -v /run/docker.sock:/run/docker.sock:rw \
-                  -v $(pwd):/data:ro \
-                  homeassistant/amd64-builder:$(versionBuilder) \
-                    --generic $(supervisorRelease) "--$(buildArch)" -t /data
-            displayName: "Build Release"
+          - template: templates/azp-step-build-generic.yaml@azure
+            parameters:
+              buildArch: $(buildArch)
+              buildVersion: $(supervisorRelease)
 
   - stage: "Publish"
     jobs:
@@ -78,32 +69,8 @@ stages:
           vmImage: "ubuntu-latest"
         steps:
           - template: templates/azp-step-su-version.yaml@azure
-          - script: |
-              sudo apt-get install -y --no-install-recommends \
-                git jq curl
-
-              git config --global user.name "Pascal Vizeli"
-              git config --global user.email "pvizeli@syshack.ch"
-              git config --global credential.helper store
-
-              echo "https://$(githubToken):x-oauth-basic@github.com" > $HOME/.git-credentials
-          - script: |
-              set -e
-
-              version="$(supervisorRelease)"
-
-              git clone https://github.com/home-assistant/hassio-version
-              cd hassio-version
-
-              dev_version="$(jq --raw-output '.supervisor' dev.json)"
-              beta_version="$(jq --raw-output '.supervisor' beta.json)"
-
-              if [[ "$version" =~ dev ]]; then
-                sed -i "s|\"supervisor\": \"$dev_version\"|\"supervisor\": \"$version\"|g" dev.json
-              else
-                sed -i "s|\"supervisor\": \"$beta_version\"|\"supervisor\": \"$version\"|g" beta.json
-              fi
-
-              git commit -am "Bump Supervisor $version"
-              git push
-            displayName: "Update version files"
+           - template: templates/azp-step-version-push.yaml@azure
+            parameters:
+              jsonTag: supervisor
+              commitName: Supervisor
+              buildVersion: $(supervisorRelease)
