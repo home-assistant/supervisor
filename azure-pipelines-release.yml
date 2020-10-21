@@ -21,6 +21,7 @@ variables:
   - name: versionBuilder
     value: "7.2.0"
   - group: docker
+  - group: github
 resources:
   repositories:
     - repository: azure
@@ -76,12 +77,16 @@ stages:
         pool:
           vmImage: "ubuntu-latest"
         steps:
-          - template: templates/azp-step-git-init.yaml@azure
           - template: templates/azp-step-su-version.yaml@azure
           - script: |
               sudo apt-get install -y --no-install-recommends \
-                jq
-            displayName: "Install requirements"
+                git jq curl
+
+              git config --global user.name "Pascal Vizeli"
+              git config --global user.email "pvizeli@syshack.ch"
+              git config --global credential.helper store
+
+              echo "https://$(githubToken):x-oauth-basic@github.com" > $HOME/.git-credentials
           - script: |
               set -e
 
