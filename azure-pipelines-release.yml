@@ -10,8 +10,8 @@ trigger:
       - "*"
   paths:
     include:
-    - supervisor/*
-    - rootfs/*
+    - supervisor/
+    - rootfs/
     - requirements.txt
     - setup.py
     - Dockerfile
