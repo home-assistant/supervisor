@@ -64,7 +64,7 @@ stages:
           - script: |
               sudo docker run --rm --privileged \
                   -v ~/.docker:/root/.docker \
-                  -v /run/docker.sock:/run/docker.sock:rw
+                  -v /run/docker.sock:/run/docker.sock:rw \
                   -v $(pwd):/data:ro \
                   homeassistant/amd64-builder:$(versionBuilder) \
                     --generic $(supervisorRelease) "--$(buildArch)" -t /data
