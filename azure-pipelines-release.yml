@@ -77,15 +77,10 @@ stages:
           vmImage: "ubuntu-latest"
         steps:
           - template: templates/azp-step-su-version.yaml@azure
+          - template: templates/azp-step-git-init.yaml@azure
           - script: |
               sudo apt-get install -y --no-install-recommends \
-                git jq curl
-
-              git config --global user.name "Pascal Vizeli"
-              git config --global user.email "pvizeli@syshack.ch"
-              git config --global credential.helper store
-
-              echo "https://$(githubToken):x-oauth-basic@github.com" > $HOME/.git-credentials
+                jq
             displayName: "Install requirements"
           - script: |
               set -e
