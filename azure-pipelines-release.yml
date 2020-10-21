@@ -10,8 +10,8 @@ trigger:
       - "*"
   paths:
     include:
-    - supervisor/
-    - rootfs/
+    - supervisor/*
+    - rootfs/*
     - requirements.txt
     - setup.py
     - Dockerfile
@@ -69,7 +69,7 @@ stages:
           vmImage: "ubuntu-latest"
         steps:
           - template: templates/azp-step-su-version.yaml@azure
-           - template: templates/azp-step-version-push.yaml@azure
+          - template: templates/azp-step-version-push.yaml@azure
             parameters:
               jsonTag: supervisor
               commitName: Supervisor
