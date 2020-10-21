@@ -46,20 +46,20 @@ stages:
               buildArch: "armv7"
             aarch64:
               buildArch: "aarch64"
-          steps:
-            - template: templates/azp-step-su-version.yaml@azure
-            - script: |
-                docker login -u $(dockerUser) -p $(dockerPassword)
-              displayName: "Docker hub login"
-            - script: docker pull homeassistant/amd64-builder:$(versionBuilder)
-              displayName: "Install Builder"
-            - script: |
-                sudo docker run --rm --privileged \
-                    -v ~/.docker:/root/.docker \
-                    -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
-                    homeassistant/amd64-builder:$(versionBuilder) \
-                    --generic $(supervisorRelease) "--$(buildArch)" -t /data
-              displayName: "Build Release"
+        steps:
+          - template: templates/azp-step-su-version.yaml@azure
+          - script: |
+              docker login -u $(dockerUser) -p $(dockerPassword)
+            displayName: "Docker hub login"
+          - script: docker pull homeassistant/amd64-builder:$(versionBuilder)
+            displayName: "Install Builder"
+          - script: |
+              sudo docker run --rm --privileged \
+                  -v ~/.docker:/root/.docker \
+                  -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
+                  homeassistant/amd64-builder:$(versionBuilder) \
+                  --generic $(supervisorRelease) "--$(buildArch)" -t /data
+            displayName: "Build Release"
 
   - stage: "Publish"
     jobs:
