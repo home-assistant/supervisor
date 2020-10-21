@@ -210,7 +210,7 @@ class Core(CoreSysAttributes):
         # On release channel, try update itself
         if self.sys_supervisor.need_update:
             try:
-                if self.sys_dev or not self.healthy:
+                if not self.healthy:
                     _LOGGER.warning("Ignoring Supervisor updates!")
                 else:
                     await self.sys_supervisor.update()
