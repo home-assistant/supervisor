@@ -214,7 +214,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_REPOSITORY: addon.repository,
             ATTR_VERSION: None,
             ATTR_VERSION_LATEST: addon.latest_version,
-            ATTR_UPDATE_AVAILABLE: None,
+            ATTR_UPDATE_AVAILABLE: False,
             ATTR_PROTECTED: addon.protected,
             ATTR_RATING: rating_security(addon),
             ATTR_BOOT: addon.boot,
