@@ -76,8 +76,8 @@ stages:
         pool:
           vmImage: "ubuntu-latest"
         steps:
-          - template: templates/azp-step-su-version.yaml@azure
           - template: templates/azp-step-git-init.yaml@azure
+          - template: templates/azp-step-su-version.yaml@azure
           - script: |
               sudo apt-get install -y --no-install-recommends \
                 jq
