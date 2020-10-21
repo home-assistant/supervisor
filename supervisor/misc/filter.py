@@ -4,7 +4,7 @@ import re
 
 from aiohttp import hdrs
 
-from ..const import ENV_SUPERVISOR_DEV, HEADER_TOKEN_OLD, CoreState
+from ..const import HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
 from ..exceptions import AddonConfigurationError
 
@@ -22,8 +22,6 @@ def sanitize_url(url: str) -> str:
 
 def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     """Filter event data before sending to sentry."""
-    dev_env: bool = bool(os.environ.get(ENV_SUPERVISOR_DEV, 0))
-
     # Ignore some  exceptions
     if "exc_info" in hint:
         _, exc_value, _ = hint["exc_info"]
@@ -31,7 +29,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
             return None
 
     # Ignore issue if system is not supported or diagnostics is disabled
-    if not coresys.config.diagnostics or not coresys.core.supported or dev_env:
+    if not coresys.config.diagnostics or not coresys.core.supported or coresys.dev:
         return None
 
     event.setdefault("extra", {}).update({"os.environ": dict(os.environ)})

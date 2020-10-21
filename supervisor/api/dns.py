@@ -18,6 +18,7 @@ from ..const import (
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
     ATTR_SERVERS,
+    ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     CONTENT_TYPE_BINARY,
@@ -44,6 +45,7 @@ class APICoreDNS(CoreSysAttributes):
         return {
             ATTR_VERSION: self.sys_plugins.dns.version,
             ATTR_VERSION_LATEST: self.sys_plugins.dns.latest_version,
+            ATTR_UPDATE_AVAILABLE: self.sys_plugins.dns.need_update,
             ATTR_HOST: str(self.sys_docker.network.dns),
             ATTR_SERVERS: self.sys_plugins.dns.servers,
             ATTR_LOCALS: self.sys_host.network.dns_servers,

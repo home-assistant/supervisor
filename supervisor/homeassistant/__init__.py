@@ -217,6 +217,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Set audio input settings."""
         self._data[ATTR_AUDIO_INPUT] = value
 
+    @property
+    def need_update(self) -> bool:
+        """Return true if a Home Assistant update is available."""
+        return self.version != self.latest_version
+
     async def load(self) -> None:
         """Prepare Home Assistant object."""
         await asyncio.wait([self.secrets.load(), self.core.load()])

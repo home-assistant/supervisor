@@ -7,6 +7,8 @@ from contextlib import suppress
 import logging
 from typing import Awaitable, Optional
 
+from packaging.version import parse as pkg_parse
+
 from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.multicast import DockerMulticast
@@ -63,7 +65,10 @@ class Multicast(JsonConfig, CoreSysAttributes):
     @property
     def need_update(self) -> bool:
         """Return True if an update is available."""
-        return self.version != self.latest_version
+        try:
+            return pkg_parse(self.version) < pkg_parse(self.latest_version)
+        except (TypeError, ValueError):
+            return True
 
     async def load(self) -> None:
         """Load multicast setup."""

@@ -15,6 +15,7 @@ from ..const import (
     ATTR_MEMORY_USAGE,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
+    ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
 )
@@ -36,6 +37,7 @@ class APICli(CoreSysAttributes):
         return {
             ATTR_VERSION: self.sys_plugins.cli.version,
             ATTR_VERSION_LATEST: self.sys_plugins.cli.latest_version,
+            ATTR_UPDATE_AVAILABLE: self.sys_plugins.cli.need_update,
         }
 
     @api_process

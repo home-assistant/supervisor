@@ -25,6 +25,7 @@ from ..const import (
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
+    ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_WAIT_BOOT,
@@ -65,6 +66,7 @@ class APIHomeAssistant(CoreSysAttributes):
         return {
             ATTR_VERSION: self.sys_homeassistant.version,
             ATTR_VERSION_LATEST: self.sys_homeassistant.latest_version,
+            ATTR_UPDATE_AVAILABLE: self.sys_homeassistant.need_update,
             ATTR_MACHINE: self.sys_homeassistant.machine,
             ATTR_IP_ADDRESS: str(self.sys_homeassistant.ip_address),
             ATTR_ARCH: self.sys_homeassistant.arch,

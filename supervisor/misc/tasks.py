@@ -120,7 +120,7 @@ class Tasks(CoreSysAttributes):
                 continue
 
             # Evaluate available updates
-            if addon.version == addon.latest_version:
+            if not addon.need_update:
                 continue
             if not addon.test_update_schema():
                 _LOGGER.warning(
@@ -128,6 +128,7 @@ class Tasks(CoreSysAttributes):
                 )
                 continue
 
+            # Check free space
             if self.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD:
                 _LOGGER.warning(
                     "Not enough free space, pausing add-on updates - available space %f",
@@ -151,11 +152,7 @@ class Tasks(CoreSysAttributes):
         if not self.sys_supervisor.need_update:
             return
 
-        # don't perform an update on dev channel
-        if self.sys_dev:
-            _LOGGER.warning("Ignore Supervisor updates on dev channel!")
-            return
-
+        # Check free space
         if self.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD:
             _LOGGER.warning(
                 "Not enough free space, pausing supervisor update - available space %s",

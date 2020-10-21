@@ -24,3 +24,12 @@ The development of the Supervisor is not difficult but tricky.
 - Test your changes
 
 For small bugfixes or improvements, make a PR. For significant changes open a RFC first, please. Thanks.
+
+## Release
+
+Follow is the relase circle process:
+
+1. Merge master into dev / make sure version stay on dev
+2. Merge dev into master
+3. Bump the release on master
+4. Create a GitHub Release from master with the right version tag

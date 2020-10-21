@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
 
 import aiohttp
 import sentry_sdk
 
 from .config import CoreConfig
-from .const import UpdateChannel
+from .const import ENV_SUPERVISOR_DEV
 from .docker import DockerAPI
 from .misc.hardware import Hardware
 
@@ -86,9 +87,7 @@ class CoreSys:
     @property
     def dev(self) -> bool:
         """Return True if we run dev mode."""
-        if self._updater is None:
-            return False
-        return self._updater.channel == UpdateChannel.DEV
+        return bool(os.environ.get(ENV_SUPERVISOR_DEV, 0))
 
     @property
     def loop(self) -> asyncio.BaseEventLoop:

@@ -8,6 +8,8 @@ import logging
 import secrets
 from typing import Awaitable, Optional
 
+from packaging.version import parse as pkg_parse
+
 from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.cli import DockerCli
@@ -59,7 +61,10 @@ class HaCli(CoreSysAttributes, JsonConfig):
     @property
     def need_update(self) -> bool:
         """Return true if a cli update is available."""
-        return self.version != self.latest_version
+        try:
+            return pkg_parse(self.version) < pkg_parse(self.latest_version)
+        except (TypeError, ValueError):
+            return True
 
     @property
     def supervisor_token(self) -> str:

@@ -10,6 +10,7 @@ import shutil
 from typing import Awaitable, Optional
 
 import jinja2
+from packaging.version import parse as pkg_parse
 
 from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
@@ -81,7 +82,10 @@ class Audio(JsonConfig, CoreSysAttributes):
     @property
     def need_update(self) -> bool:
         """Return True if an update is available."""
-        return self.version != self.latest_version
+        try:
+            return pkg_parse(self.version) < pkg_parse(self.latest_version)
+        except (TypeError, ValueError):
+            return True
 
     async def load(self) -> None:
         """Load Audio setup."""

@@ -6,6 +6,7 @@ from typing import Awaitable, Optional
 
 import aiohttp
 from cpe import CPE
+from packaging.version import parse as pkg_parse
 
 from .const import URL_HASSOS_OTA
 from .coresys import CoreSys, CoreSysAttributes
@@ -43,7 +44,10 @@ class HassOS(CoreSysAttributes):
     @property
     def need_update(self) -> bool:
         """Return true if a HassOS update is available."""
-        return self.version != self.latest_version
+        try:
+            return pkg_parse(self.version) < pkg_parse(self.latest_version)
+        except (TypeError, ValueError):
+            return True
 
     @property
     def board(self) -> Optional[str]:

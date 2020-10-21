@@ -16,7 +16,6 @@ from .arch import CpuArch
 from .auth import Auth
 from .const import (
     ENV_HOMEASSISTANT_REPOSITORY,
-    ENV_SUPERVISOR_DEV,
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
@@ -180,7 +179,7 @@ def initialize_system_data(coresys: CoreSys) -> None:
     coresys.config.modify_log_level()
 
     # Check if ENV is in development mode
-    if bool(os.environ.get(ENV_SUPERVISOR_DEV, 0)):
+    if coresys.dev:
         _LOGGER.warning("Environment variables 'SUPERVISOR_DEV' is set")
         coresys.updater.channel = UpdateChannel.DEV
         coresys.config.logging = LogLevel.DEBUG

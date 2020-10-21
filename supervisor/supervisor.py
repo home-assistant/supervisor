@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from typing import Awaitable, Optional
 
 import aiohttp
+from packaging.version import parse as pkg_parse
 
 from .const import SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
 from .coresys import CoreSys, CoreSysAttributes
@@ -50,7 +51,13 @@ class Supervisor(CoreSysAttributes):
     @property
     def need_update(self) -> bool:
         """Return True if an update is available."""
-        return self.version != self.latest_version
+        if self.sys_dev:
+            return False
+
+        try:
+            return pkg_parse(self.version) < pkg_parse(self.latest_version)
+        except (TypeError, ValueError):
+            return True
 
     @property
     def version(self) -> str:
