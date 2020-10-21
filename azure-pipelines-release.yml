@@ -8,6 +8,14 @@ trigger:
   tags:
     include:
       - "*"
+  paths:
+    include:
+    - supervisor/*
+    - rootfs/*
+    - requirements.txt
+    - setup.py
+    - Dockerfile
+    - build.json
 pr: none
 variables:
   - name: versionBuilder
