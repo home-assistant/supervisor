@@ -4,8 +4,7 @@ name: CI
 on:
   push:
     branches:
-      - dev
-      - master
+      - main
   pull_request: ~
 
 env:

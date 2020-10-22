@@ -4,18 +4,18 @@ trigger:
   batch: true
   branches:
     include:
-      - dev
+      - main
   tags:
     include:
       - "*"
   paths:
     include:
-    - supervisor/*
-    - rootfs/*
-    - requirements.txt
-    - setup.py
-    - Dockerfile
-    - build.json
+      - supervisor/*
+      - rootfs/*
+      - requirements.txt
+      - setup.py
+      - Dockerfile
+      - build.json
 pr: none
 variables:
   - name: versionBuilder
