@@ -65,7 +65,7 @@ class PluginManager(CoreSysAttributes):
             try:
                 await plugin.load()
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't load plugin %s: %s", type(plugin).__name__, err)
+                _LOGGER.warning("Can't load plugin %s: %s", plugin.slug, err)
                 self.sys_resolution.create_issue(
                     IssueType.FATAL_ERROR,
                     ContextType.PLUGIN,
@@ -134,5 +134,5 @@ class PluginManager(CoreSysAttributes):
             try:
                 await plugin.stop()
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't stop plugin %s: %s", type(plugin).__name__, err)
+                _LOGGER.warning("Can't stop plugin %s: %s", plugin.slug, err)
                 self.sys_capture_exception(err)
