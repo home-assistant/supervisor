@@ -12,6 +12,7 @@ class ContextType(str, Enum):
 
     SYSTEM = "system"
     SUPERVISOR = "supervisor"
+    PLUGIN = "plugin"
     ADDON = "addon"
     CORE = "core"
     OS = "os"
@@ -39,6 +40,7 @@ class IssueType(str, Enum):
     MISSING_IMAGE = "missing_image"
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"
+    FATAL_ERROR = "fatal_error"
 
 
 class SuggestionType(str, Enum):
@@ -46,4 +48,5 @@ class SuggestionType(str, Enum):
 
     CLEAR_FULL_SNAPSHOT = "clear_full_snapshot"
     CREATE_FULL_SNAPSHOT = "create_full_snapshot"
-    SYSTEM_REPAIR = "system_repair"
+    EXECUTE_UPDATE = "execute_update"
+    EXECUTE_REPAIR = "execute_repair"

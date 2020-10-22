@@ -30,6 +30,8 @@ ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
 class Audio(JsonConfig, CoreSysAttributes):
     """Home Assistant core object for handle audio."""
 
+    slug: str = "audio"
+
     def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
         super().__init__(FILE_HASSIO_AUDIO, SCHEMA_AUDIO_CONFIG)

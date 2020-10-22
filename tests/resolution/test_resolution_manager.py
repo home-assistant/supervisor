@@ -129,12 +129,12 @@ async def test_resolution_create_issue_suggestion(coresys: CoreSys):
         IssueType.UPDATE_ROLLBACK,
         ContextType.CORE,
         "slug",
-        [SuggestionType.SYSTEM_REPAIR],
+        [SuggestionType.EXECUTE_REPAIR],
     )
 
     assert IssueType.UPDATE_ROLLBACK == coresys.resolution.issues[-1].type
     assert ContextType.CORE == coresys.resolution.issues[-1].context
     assert coresys.resolution.issues[-1].reference == "slug"
 
-    assert SuggestionType.SYSTEM_REPAIR == coresys.resolution.suggestions[-1].type
+    assert SuggestionType.EXECUTE_REPAIR == coresys.resolution.suggestions[-1].type
     assert ContextType.CORE == coresys.resolution.suggestions[-1].context
