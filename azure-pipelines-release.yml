@@ -30,11 +30,6 @@ resources:
       endpoint: "home-assistant"
 
 stages:
-  - stage: "Validate"
-    jobs:
-      - template: templates/azp-job-version.yaml@azure
-        parameters:
-          ignoreDev: true
 
   - stage: "Build"
     jobs:
