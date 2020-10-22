@@ -26,6 +26,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class Observer(CoreSysAttributes, JsonConfig):
     """Supervisor observer instance."""
 
+    slug: str = "observer"
+
     def __init__(self, coresys: CoreSys):
         """Initialize observer handler."""
         super().__init__(FILE_HASSIO_OBSERVER, SCHEMA_OBSERVER_CONFIG)

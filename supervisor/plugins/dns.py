@@ -42,6 +42,8 @@ class HostEntry:
 class CoreDNS(JsonConfig, CoreSysAttributes):
     """Home Assistant core object for handle it."""
 
+    slug: str = "dns"
+
     def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
         super().__init__(FILE_HASSIO_DNS, SCHEMA_DNS_CONFIG)

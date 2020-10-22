@@ -25,6 +25,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class HaCli(CoreSysAttributes, JsonConfig):
     """HA cli interface inside supervisor."""
 
+    slug: str = "cli"
+
     def __init__(self, coresys: CoreSys):
         """Initialize cli handler."""
         super().__init__(FILE_HASSIO_CLI, SCHEMA_CLI_CONFIG)
