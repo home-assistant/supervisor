@@ -147,13 +147,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         try:
             self.resolv_template = jinja2.Template(RESOLV_TMPL.read_text())
         except OSError as err:
-            _LOGGER.error("Can't read coredns.tmpl: %s", err)
+            _LOGGER.error("Can't read resolve.tmpl: %s", err)
 
         # Run CoreDNS
         with suppress(CoreDNSError):
-            if await self.instance.is_running():
-                await self.restart()
-            else:
+            if not await self.instance.is_running():
                 await self.start()
 
         # Update supervisor
