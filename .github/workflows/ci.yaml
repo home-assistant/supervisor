@@ -429,3 +429,18 @@ jobs:
           coverage xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1.0.14
+
+  build:
+    name: Check build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v2
+      - name: Build Supervisor
+        uses: home-assistant/builder@2020.10.0
+        with:
+          args: |
+            --test \
+            --all \
+            --target /data \
+            --generic ${{ github.sha }}
