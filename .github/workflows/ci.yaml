@@ -438,7 +438,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Build Supervisor
-        uses: home-assistant/builder@master
+        uses: home-assistant/builder@2020.10.0
         with:
           args: |
             --test \
