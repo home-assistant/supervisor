@@ -150,7 +150,7 @@ class Core(CoreSysAttributes):
             try:
                 await setup_task
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning(
+                _LOGGER.critical(
                     "Fatal error happening on load Task %s: %s", setup_task, err
                 )
                 self.healthy = False
