@@ -79,6 +79,8 @@ class RestAPI(CoreSysAttributes):
         self._register_snapshots()
         self._register_supervisor()
 
+        await self.start()
+
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
         api_host = APIHost()

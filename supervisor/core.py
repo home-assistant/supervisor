@@ -112,11 +112,9 @@ class Core(CoreSysAttributes):
         """Start setting up supervisor orchestration."""
         self.state = CoreState.SETUP
 
-        # rest api views
-        await self.sys_api.load()
-        await self.sys_api.start()
-
         setup_loads: List[Awaitable[None]] = [
+            # rest api views
+            self.sys_api.load(),
             # Load DBus
             self.sys_dbus.load(),
             # Load Host
