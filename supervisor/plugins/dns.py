@@ -150,8 +150,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
 
         # Run CoreDNS
+        # If running, restart to update config/hosts
+        # this get shipped with Supervisor
         with suppress(CoreDNSError):
-            if not await self.instance.is_running():
+            if await self.instance.is_running():
+                await self.restart()
+            else:
                 await self.start()
 
         # Update supervisor
