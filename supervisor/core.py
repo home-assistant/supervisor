@@ -2,7 +2,7 @@
 import asyncio
 from contextlib import suppress
 import logging
-from typing import Optional
+from typing import Awaitable, List, Optional
 
 import async_timeout
 
@@ -112,51 +112,49 @@ class Core(CoreSysAttributes):
         """Start setting up supervisor orchestration."""
         self.state = CoreState.SETUP
 
-        # rest api views
-        await self.sys_api.load()
-        await self.sys_api.start()
+        setup_loads: List[Awaitable[None]] = [
+            # rest api views
+            self.sys_api.load(),
+            # Load DBus
+            self.sys_dbus.load(),
+            # Load Host
+            self.sys_host.load(),
+            # Load Plugins container
+            self.sys_plugins.load(),
+            # load last available data
+            self.sys_updater.load(),
+            # Load Home Assistant
+            self.sys_homeassistant.load(),
+            # Load CPU/Arch
+            self.sys_arch.load(),
+            # Load HassOS
+            self.sys_hassos.load(),
+            # Load Stores
+            self.sys_store.load(),
+            # Load Add-ons
+            self.sys_addons.load(),
+            # load last available data
+            self.sys_snapshots.load(),
+            # load services
+            self.sys_services.load(),
+            # Load discovery
+            self.sys_discovery.load(),
+            # Load ingress
+            self.sys_ingress.load(),
+            # Load Resoulution
+            self.sys_resolution.load(),
+        ]
 
-        # Load DBus
-        await self.sys_dbus.load()
-
-        # Load Host
-        await self.sys_host.load()
-
-        # Load Plugins container
-        await self.sys_plugins.load()
-
-        # load last available data
-        await self.sys_updater.load()
-
-        # Load Home Assistant
-        await self.sys_homeassistant.load()
-
-        # Load CPU/Arch
-        await self.sys_arch.load()
-
-        # Load HassOS
-        await self.sys_hassos.load()
-
-        # Load Stores
-        await self.sys_store.load()
-
-        # Load Add-ons
-        await self.sys_addons.load()
-
-        # load last available data
-        await self.sys_snapshots.load()
-
-        # load services
-        await self.sys_services.load()
-
-        # Load discovery
-        await self.sys_discovery.load()
-
-        # Load ingress
-        await self.sys_ingress.load()
-
-        # Load Resoulution
-        await self.sys_resolution.load()
+        # Execute each load task in secure context
+        for setup_task in setup_loads:
+            try:
+                await setup_task
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.critical(
+                    "Fatal error happening on load Task %s: %s", setup_task, err
+                )
+                self.healthy = False
+                self.sys_capture_exception(err)
 
         # Check supported OS
         if not self.sys_hassos.available:
