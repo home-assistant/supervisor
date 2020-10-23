@@ -1,6 +1,6 @@
 """Common test functions."""
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp import web
@@ -148,6 +148,7 @@ async def api_client(aiohttp_client, coresys: CoreSys):
     """Fixture for RestAPI client."""
     api = RestAPI(coresys)
     api.webapp = web.Application()
+    api.start = AsyncMock()
     await api.load()
     yield await aiohttp_client(api.webapp)
 
