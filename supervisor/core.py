@@ -153,6 +153,7 @@ class Core(CoreSysAttributes):
                 _LOGGER.warning(
                     "Fatal error happening on load Task %s: %s", setup_task, err
                 )
+                self.healthy = False
                 self.sys_capture_exception(err)
 
         # Check supported OS
