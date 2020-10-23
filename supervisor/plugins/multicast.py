@@ -96,9 +96,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
 
         # Run Multicast plugin
         with suppress(MulticastError):
-            if await self.instance.is_running():
-                await self.restart()
-            else:
+            if not await self.instance.is_running():
                 await self.start()
 
     async def install(self) -> None:
