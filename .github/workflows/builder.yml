@@ -1,0 +1,72 @@
+name: Build supervisor
+
+on:
+  pull_request:
+    branches: ["main"]
+  release:
+    types: ["published"]
+  push:
+    branches: ["main"]
+    paths:
+      - "rootfs/**"
+      - "supervisor/**"
+      - build.json
+      - Dockerfile
+      - requirements.txt
+      - setup.py
+
+env:
+  BUILD_NAME: supervisor # This needs to match the key in the version file
+  BUILD_TYPE: supervisor # Can be plugin, core, supervisor or generic
+
+jobs:
+  build:
+    name: Build supervisor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        uses: home-assistant/actions/helpers/version@master
+        with:
+          type: ${{ env.BUILD_TYPE }}
+
+      - name: Initialize git
+        if: steps.version.outputs.publish == 'true'
+        uses: home-assistant/actions/helpers/git-init@master
+        with:
+          name: ${{ secrets.GIT_NAME }}
+          email: ${{ secrets.GIT_EMAIL }}
+          token: ${{ secrets.GIT_TOKEN }}
+
+      - name: Login to DockerHub
+        if: steps.version.outputs.publish == 'true'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set build arguments
+        if: steps.version.outputs.publish == 'false'
+        run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
+
+      - name: Build supervisor
+        uses: home-assistant/builder@2020.10.0
+        with:
+          args: |
+            $BUILD_ARGS \
+            --all \
+            --target /data \
+            --generic ${{ steps.version.outputs.version }}
+
+      - name: Update version file
+        if: steps.version.outputs.publish == 'true'
+        uses: home-assistant/actions/helpers/version-push@master
+        with:
+          key: ${{ env.BUILD_NAME }}
+          version: ${{ steps.version.outputs.version }}
+          channel: ${{ steps.version.outputs.channel }}
