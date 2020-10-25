@@ -16,18 +16,27 @@ on:
       - setup.py
 
 env:
-  BUILD_NAME: supervisor # This needs to match the key in the version file
-  BUILD_TYPE: supervisor # Can be plugin, core, supervisor or generic
+  BUILD_NAME: supervisor
+  BUILD_TYPE: supervisor
 
 jobs:
-  build:
-    name: Build supervisor
+  init:
+    name: Initialize build
     runs-on: ubuntu-latest
+    outputs:
+      architectures: ${{ steps.info.outputs.architectures }}
+      version: ${{ steps.version.outputs.version }}
+      channel: ${{ steps.version.outputs.channel }}
+      publish: ${{ steps.version.outputs.publish }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
+      - name: Get information
+        id: info
+        uses: home-assistant/actions/helpers/info@master
 
       - name: Get version
         id: version
@@ -35,23 +44,34 @@ jobs:
         with:
           type: ${{ env.BUILD_TYPE }}
 
-      - name: Initialize git
-        if: steps.version.outputs.publish == 'true'
-        uses: home-assistant/actions/helpers/git-init@master
+  build:
+    name: Build ${{ matrix.arch }} supervisor
+    needs: init
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: ${{ fromJson(needs.init.outputs.architectures) }}
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
         with:
-          name: ${{ secrets.GIT_NAME }}
-          email: ${{ secrets.GIT_EMAIL }}
-          token: ${{ secrets.GIT_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set version
+        if: needs.init.outputs.publish == 'true'
+        uses: home-assistant/actions/helpers/version@master
+        with:
+          type: ${{ env.BUILD_TYPE }}
 
       - name: Login to DockerHub
-        if: steps.version.outputs.publish == 'true'
+        if: needs.init.outputs.publish == 'true'
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set build arguments
-        if: steps.version.outputs.publish == 'false'
+        if: needs.init.outputs.publish == 'false'
         run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
 
       - name: Build supervisor
@@ -59,14 +79,31 @@ jobs:
         with:
           args: |
             $BUILD_ARGS \
-            --all \
+            --${{ matrix.arch }} \
             --target /data \
-            --generic ${{ steps.version.outputs.version }}
+            --generic ${{ needs.init.outputs.version }}
+
+  version:
+    name: Update version
+    needs: ["init", "build"]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        if: needs.init.outputs.publish == 'true'
+        uses: actions/checkout@v2
+
+      - name: Initialize git
+        if: needs.init.outputs.publish == 'true'
+        uses: home-assistant/actions/helpers/git-init@master
+        with:
+          name: ${{ secrets.GIT_NAME }}
+          email: ${{ secrets.GIT_EMAIL }}
+          token: ${{ secrets.GIT_TOKEN }}
 
       - name: Update version file
-        if: steps.version.outputs.publish == 'true'
+        if: needs.init.outputs.publish == 'true'
         uses: home-assistant/actions/helpers/version-push@master
         with:
           key: ${{ env.BUILD_NAME }}
-          version: ${{ steps.version.outputs.version }}
-          channel: ${{ steps.version.outputs.channel }}
+          version: ${{ needs.init.outputs.version }}
+          channel: ${{ needs.init.outputs.channel }}
