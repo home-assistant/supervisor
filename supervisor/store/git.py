@@ -53,7 +53,7 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't load %s repo: %s.", self.path, err)
-                self._remove()
+                await self._remove()
                 return False
 
             return True
