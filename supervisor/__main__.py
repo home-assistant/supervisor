@@ -9,25 +9,12 @@ from supervisor import bootstrap
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def initialize_event_loop():
-    """Attempt to use uvloop."""
-    try:
-        # pylint: disable=import-outside-toplevel
-        import uvloop
-
-        uvloop.install()
-    except ImportError:
-        pass
-
-    return asyncio.get_event_loop()
-
-
 # pylint: disable=invalid-name
 if __name__ == "__main__":
     bootstrap.initialize_logging()
 
     # Init async event loop
-    loop = initialize_event_loop()
+    loop = asyncio.get_event_loop()
 
     # Check if all information are available to setup Supervisor
     bootstrap.check_environment()
