@@ -18,15 +18,15 @@ from ..const import ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.dns import DockerDNS
 from ..docker.stats import DockerStats
-from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerError
-from ..utils.json import JsonConfig
+from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerError, JsonFileError
+from ..utils.json import JsonConfig, write_json_file
 from ..validate import dns_url
 from .const import FILE_HASSIO_DNS
 from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-COREDNS_TMPL: Path = Path(__file__).parents[1].joinpath("data/coredns.tmpl")
+HOSTS_TMPL: Path = Path(__file__).parents[1].joinpath("data/hosts.tmpl")
 RESOLV_TMPL: Path = Path(__file__).parents[1].joinpath("data/resolv.tmpl")
 HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
@@ -49,21 +49,38 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_DNS, SCHEMA_DNS_CONFIG)
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
-        self.coredns_template: Optional[jinja2.Template] = None
         self.resolv_template: Optional[jinja2.Template] = None
+        self.hosts_template: Optional[jinja2.Template] = None
 
         self._hosts: List[HostEntry] = []
         self._loop: bool = False
 
     @property
-    def corefile(self) -> Path:
-        """Return Path to corefile."""
-        return Path(self.sys_config.path_dns, "corefile")
-
-    @property
     def hosts(self) -> Path:
         """Return Path to corefile."""
         return Path(self.sys_config.path_dns, "hosts")
+
+    @property
+    def coredns_config(self) -> Path:
+        """Return Path to coredns config file."""
+        return Path(self.sys_config.path_dns, "coredns.json")
+
+    @property
+    def locals(self) -> List[str]:
+        """Return list of local system DNS servers."""
+        servers: List[str] = []
+
+        # Make sure, they are valid
+        for server in self.sys_host.network.dns_servers + ["dns://127.0.0.11"]:
+            if server in servers:
+                continue
+
+            # Add server
+            with suppress(vol.Invalid):
+                dns_url(server)
+                servers.append(server)
+
+        return servers
 
     @property
     def servers(self) -> List[str]:
@@ -141,21 +158,17 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
         # Initialize CoreDNS Template
         try:
-            self.coredns_template = jinja2.Template(COREDNS_TMPL.read_text())
-        except OSError as err:
-            _LOGGER.error("Can't read coredns.tmpl: %s", err)
-        try:
             self.resolv_template = jinja2.Template(RESOLV_TMPL.read_text())
         except OSError as err:
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
+        try:
+            self.hosts_template = jinja2.Template(HOSTS_TMPL.read_text())
+        except OSError as err:
+            _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
         # Run CoreDNS
-        # If running, restart to update config/hosts
-        # this get shipped with Supervisor
         with suppress(CoreDNSError):
-            if await self.instance.is_running():
-                await self.restart()
-            else:
+            if not await self.instance.is_running():
                 await self.start()
 
         # Update supervisor
@@ -215,7 +228,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""
-        self._write_corefile()
+        self._write_config()
         _LOGGER.info("Restarting CoreDNS plugin")
         try:
             await self.instance.restart()
@@ -225,7 +238,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def start(self) -> None:
         """Run CoreDNS."""
-        self._write_corefile()
+        self._write_config()
 
         # Start Instance
         _LOGGER.info("Starting CoreDNS plugin")
@@ -271,44 +284,39 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         else:
             self._loop = False
 
-    def _write_corefile(self) -> None:
+    def _write_config(self) -> None:
         """Write CoreDNS config."""
+        debug: bool = self.sys_config.logging == LogLevel.DEBUG
         dns_servers: List[str] = []
-        local_dns: List[str] = []
-        servers: List[str] = []
+        dns_locals: List[str] = []
 
         # Prepare DNS serverlist: Prio 1 Manual, Prio 2 Local, Prio 3 Fallback
         if not self._loop:
-            local_dns = self.sys_host.network.dns_servers or ["dns://127.0.0.11"]
-            servers = self.servers + local_dns
+            dns_servers = self.servers
+            dns_locals = self.locals
         else:
             _LOGGER.warning("Ignoring user DNS settings because of loop")
 
         # Print some usefully debug data
         _LOGGER.debug(
-            "config-dns = %s, local-dns = %s , backup-dns = CloudFlare DoT",
-            self.servers,
-            local_dns,
+            "config-dns = %s, local-dns = %s , backup-dns = CloudFlare DoT / debug: %s",
+            dns_servers,
+            dns_locals,
+            debug,
         )
 
-        # Make sure, they are valid
-        for server in servers:
-            try:
-                dns_url(server)
-                if server not in dns_servers:
-                    dns_servers.append(server)
-            except vol.Invalid:
-                _LOGGER.warning("Ignoring invalid DNS Server: %s", server)
-
-        # Generate config file
-        data = self.coredns_template.render(
-            locals=dns_servers, debug=self.sys_config.logging == LogLevel.DEBUG
-        )
-
+        # Write config to plugin
         try:
-            self.corefile.write_text(data)
-        except OSError as err:
-            _LOGGER.error("Can't update corefile: %s", err)
+            write_json_file(
+                self.coredns_config,
+                {
+                    "servers": dns_servers,
+                    "locals": dns_locals,
+                    "debug": debug,
+                },
+            )
+        except JsonFileError as err:
+            _LOGGER.error("Can't update coredns config: %s", err)
             raise CoreDNSError() from err
 
     def _init_hosts(self) -> None:
@@ -328,12 +336,13 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     def write_hosts(self) -> None:
         """Write hosts from memory to file."""
+        # Generate config file
+        data = self.hosts_template.render(entries=self._hosts)
+
         try:
-            with self.hosts.open("w") as hosts:
-                for entry in self._hosts:
-                    hosts.write(f"{entry.ip_address!s} {' '.join(entry.names)}\n")
+            self.hosts.write_text(data)
         except OSError as err:
-            _LOGGER.error("Can't write hosts file: %s", err)
+            _LOGGER.error("Can't update hosts: %s", err)
             raise CoreDNSError() from err
 
     def add_host(self, ipv4: IPv4Address, names: List[str], write: bool = True) -> None:
@@ -428,7 +437,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""
-        nameservers = [f"{self.sys_docker.network.dns!s}", "127.0.0.11"]
+        nameservers = [str(self.sys_docker.network.dns), "127.0.0.11"]
 
         # Read resolv config
         data = self.resolv_template.render(servers=nameservers)
