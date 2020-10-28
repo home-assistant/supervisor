@@ -5,7 +5,7 @@ brotlipy==0.7.0
 cchardet==2.1.6
 colorlog==4.4.0
 cpe==1.2.1
-cryptography==3.2
+cryptography==3.2.1
 debugpy==1.1.0
 docker==4.3.1
 gitpython==3.1.11
