@@ -71,7 +71,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         servers: List[str] = []
 
         # Make sure, they are valid
-        for server in self.sys_host.network.dns_servers + ["dns://127.0.0.11"]:
+        for server in self.sys_host.network.dns_servers:
             if server in servers:
                 continue
 
