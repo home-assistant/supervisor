@@ -3,8 +3,8 @@ name: Build wheels
 on:
   push:
     branches: ["master"]
-    paths:
-      - requirements.txt
+#    paths:
+#      - requirements.txt
 
 env:
   WHEELS_TAG: 3.8-alpine3.12
@@ -18,9 +18,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build wheels
-        uses: home-assistant/wheels@master
+        uses: home-assistant/wheels@action
         with:
           tag: ${{ env.WHEELS_TAG }}
+          arch: amd64
           wheels-host: ${{ sercrets.WHEELS_HOST }}
           wheels-key: ${{ sercrets.WHEELS_KEY }}
           apk: "build-base;libffi-dev;openssl-dev"
