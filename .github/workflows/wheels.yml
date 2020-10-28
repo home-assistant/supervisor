@@ -21,7 +21,7 @@ jobs:
         uses: home-assistant/wheels@action
         with:
           tag: ${{ env.WHEELS_TAG }}
-          arch: amd64
+          arch: armhf
           wheels-host: ${{ secrets.WHEELS_HOST }}
           wheels-key: ${{ secrets.WHEELS_KEY }}
           apk: "build-base;libffi-dev;openssl-dev"
