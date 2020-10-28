@@ -2,7 +2,7 @@ name: Build wheels
 
 on:
   push:
-    branches: ["master"]
+    branches: ["wheels"]
 #    paths:
 #      - requirements.txt
 
