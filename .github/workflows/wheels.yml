@@ -1,0 +1,28 @@
+name: Build wheels
+
+on:
+  push:
+    branches: ["master"]
+    paths:
+      - requirements.txt
+
+env:
+  WHEELS_TAG: 3.8-alpine3.12
+
+jobs:
+  build:
+    name: Build wheels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+
+      - name: Build wheels
+        uses: home-assistant/wheels@master
+        with:
+          tag: ${{ env.WHEELS_TAG }}
+          wheels-host: ${{ sercrets.WHEELS_HOST }}
+          wheels-key: ${{ sercrets.WHEELS_KEY }}
+          apk: "build-base;libffi-dev;openssl-dev"
+          skip-binary: aiohttp
+          requirements: "requirements.txt"
