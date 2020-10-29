@@ -190,6 +190,11 @@ class Tasks(CoreSysAttributes):
         except HomeAssistantError as err:
             _LOGGER.error("Home Assistant watchdog reanimation failed!")
             self.sys_capture_exception(err)
+        else:
+            return
+
+        _LOGGER.info("Repair Home Assistant Docker")
+        await self.sys_homeassistant.core.rebuild()
 
     async def _watchdog_homeassistant_api(self):
         """Create scheduler task for monitoring running state of API.
