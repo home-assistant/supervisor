@@ -26,6 +26,7 @@ from .network import DockerNetwork
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 MIN_SUPPORTED_DOCKER = "19.03.0"
+DOCKER_NETWORK_HOST = "host"
 
 
 @attr.s(frozen=True)
@@ -174,7 +175,7 @@ class DockerAPI:
                     self.network.detach_default_bridge(container)
         else:
             host_network: docker.models.networks.Network = self.docker.networks.get(
-                "host"
+                DOCKER_NETWORK_HOST
             )
 
             # Check if container is register on host
@@ -285,7 +286,7 @@ class DockerAPI:
 
         _LOGGER.info("Fix stale container on host network")
         try:
-            self.prune_networks("host")
+            self.prune_networks(DOCKER_NETWORK_HOST)
         except docker.errors.APIError as err:
             _LOGGER.warning("Error for networks host prune: %s", err)
 
