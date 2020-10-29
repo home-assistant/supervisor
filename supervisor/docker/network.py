@@ -108,10 +108,11 @@ class DockerNetwork:
         """
         ipv4_address = str(ipv4) if ipv4 else None
 
-        # Check stale Network
+        # Reload Network information
         with suppress(docker.errors.DockerException, requests.RequestException):
             self.network.reload()
 
+        # Check stale Network
         if container.name in (
             val.get("Name") for val in self.network.attrs.get("Containers", {}).values()
         ):
@@ -123,10 +124,6 @@ class DockerNetwork:
         except docker.errors.APIError as err:
             _LOGGER.error("Can't link container to hassio-net: %s", err)
             raise DockerError() from err
-
-        # Reload Network information
-        with suppress(docker.errors.DockerException, requests.RequestException):
-            self.network.reload()
 
     def detach_default_bridge(
         self, container: docker.models.containers.Container
