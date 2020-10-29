@@ -179,11 +179,13 @@ class DockerAPI:
             )
 
             # Check if container is register on host
+            # https://github.com/moby/moby/issues/23302
             if name in (
                 val.get("Name")
                 for val in host_network.attrs.get("Containers", {}).values()
             ):
-                host_network.disconnect(name, force=True)
+                with suppress(docker.errors.NotFound):
+                    host_network.disconnect(name, force=True)
 
         # Run container
         try:
