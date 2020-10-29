@@ -2,7 +2,7 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import docker
 import requests
@@ -42,13 +42,6 @@ class DockerNetwork:
                 _LOGGER.error("Unknown error with container lookup %s", err)
 
         return containers
-
-    @property
-    def containers_raw(self) -> Dict[str, Any]:
-        """Get a fresh raw container network list."""
-        with suppress(docker.errors.DockerException, requests.RequestException):
-            self.network.reload()
-        return self.network.network.attrs.get("Containers", {})
 
     @property
     def gateway(self) -> IPv4Address:
@@ -116,7 +109,12 @@ class DockerNetwork:
         ipv4_address = str(ipv4) if ipv4 else None
 
         # Check stale Network
-        if container.name in (val.get("Name") for val in self.containers_raw.values()):
+        with suppress(docker.errors.DockerException, requests.RequestException):
+            self.network.reload()
+
+        if container.name in (
+            val.get("Name") for val in self.network.attrs.get("Containers", {}).values()
+        ):
             self.stale_cleanup(container.name)
 
         # Attach Network

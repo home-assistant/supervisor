@@ -14,6 +14,7 @@ from ..const import (
     ATTR_REGISTRIES,
     DNS_SUFFIX,
     DOCKER_IMAGE_DENYLIST,
+    DOCKER_NETWORK,
     FILE_HASSIO_DOCKER,
     SOCKET_DOCKER,
 )
@@ -171,6 +172,17 @@ class DockerAPI:
             else:
                 with suppress(DockerError):
                     self.network.detach_default_bridge(container)
+        else:
+            host_network: docker.models.networks.Network = self.docker.networks.get(
+                "host"
+            )
+
+            # Check if container is register on host
+            if name in (
+                val.get("Name")
+                for val in host_network.attrs.get("Containers", {}).values()
+            ):
+                host_network.disconnect(name, force=True)
 
         # Run container
         try:
@@ -265,19 +277,38 @@ class DockerAPI:
         except docker.errors.APIError as err:
             _LOGGER.warning("Error for networks prune: %s", err)
 
-        _LOGGER.info("Fix stale container on networks")
-        for cid, data in self.network.containers_raw.items():
+        _LOGGER.info("Fix stale container on hassio network")
+        try:
+            self.prune_networks(DOCKER_NETWORK)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for networks prune: %s", err)
+
+        _LOGGER.info("Fix stale container on hassio network")
+        try:
+            self.prune_networks("host")
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for networks prune: %s", err)
+
+    def prune_networks(self, network_name: str) -> None:
+        """Prune stale container from network."""
+        network: docker.models.networks.Network = self.docker.networks.get(network_name)
+
+        for cid, data in network.attrs.get("Containers", {}):
             try:
                 self.docker.containers.get(cid)
                 continue
             except docker.errors.NotFound:
-                _LOGGER.debug("Docker network is corrupt on container: %s", cid)
+                _LOGGER.debug(
+                    "Docker network %s is corrupt on container: %s", network_name, cid
+                )
             except (docker.errors.DockerException, requests.RequestException):
-                _LOGGER.warning("Docker fatal error on container: %s", cid)
+                _LOGGER.warning(
+                    "Docker fatal error on container %s on %s", cid, network_name
+                )
                 continue
 
-            with suppress(DockerError):
-                self.network.stale_cleanup(data.get("Name", cid))
+            with suppress(docker.errors.DockerException, requests.RequestException):
+                network.disconnect(data.get("Name", cid), force=True)
 
     def check_denylist_images(self) -> bool:
         """Return a boolean if the host has images in the denylist."""
