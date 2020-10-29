@@ -218,6 +218,7 @@ class DockerAPI:
         stderr = kwargs.get("stderr", True)
 
         _LOGGER.info("Runing command '%s' on %s", command, image)
+        container = None
         try:
             container = self.docker.containers.run(
                 f"{image}:{version}",
@@ -237,8 +238,9 @@ class DockerAPI:
 
         finally:
             # cleanup container
-            with suppress(docker.errors.DockerException, requests.RequestException):
-                container.remove(force=True)
+            if container:
+                with suppress(docker.errors.DockerException, requests.RequestException):
+                    container.remove(force=True)
 
         return CommandReturn(result.get("StatusCode"), output)
 
@@ -293,7 +295,10 @@ class DockerAPI:
             _LOGGER.warning("Error for networks host prune: %s", err)
 
     def prune_networks(self, network_name: str) -> None:
-        """Prune stale container from network."""
+        """Prune stale container from network.
+
+        Fix: https://github.com/moby/moby/issues/23302
+        """
         network: docker.models.networks.Network = self.docker.networks.get(network_name)
 
         for cid, data in network.attrs.get("Containers", {}).items():
