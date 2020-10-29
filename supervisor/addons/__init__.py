@@ -349,10 +349,6 @@ class AddonManager(CoreSysAttributes):
 
         for addon in needs_repair:
             _LOGGER.info("Repairing for add-on: %s", addon.slug)
-            await self.sys_run_in_executor(
-                self.sys_docker.network.stale_cleanup, addon.instance.name
-            )
-
             with suppress(DockerError, KeyError):
                 # Need pull a image again
                 if not addon.need_build:

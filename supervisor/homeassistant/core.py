@@ -415,11 +415,6 @@ class HomeAssistantCore(CoreSysAttributes):
             return
 
         _LOGGER.info("Repair Home Assistant %s", self.sys_homeassistant.version)
-        await self.sys_run_in_executor(
-            self.sys_docker.network.stale_cleanup, self.instance.name
-        )
-
-        # Pull image
         try:
             await self.instance.install(self.sys_homeassistant.version)
         except DockerError:

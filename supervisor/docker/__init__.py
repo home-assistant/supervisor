@@ -265,6 +265,20 @@ class DockerAPI:
         except docker.errors.APIError as err:
             _LOGGER.warning("Error for networks prune: %s", err)
 
+        _LOGGER.info("Fix stale container on networks")
+        for cid, data in self.network.containers_raw.items():
+            try:
+                self.docker.containers.get(cid)
+                continue
+            except docker.errors.NotFound:
+                _LOGGER.debug("Docker network is corrupt on container: %s", cid)
+            except (docker.errors.DockerException, requests.RequestException):
+                _LOGGER.warning("Docker fatal error on container: %s", cid)
+                continue
+
+            with suppress(DockerError):
+                self.network.stale_cleanup(data.get("Name", cid))
+
     def check_denylist_images(self) -> bool:
         """Return a boolean if the host has images in the denylist."""
         denied_images = set()

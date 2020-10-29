@@ -232,6 +232,9 @@ class DockerInterface(CoreSysAttributes):
                 _LOGGER.info("Cleaning %s application", self.name)
                 docker_container.remove(force=True)
 
+            with suppress(DockerError):
+                self.sys_docker.network.stale_cleanup(self.name)
+
     @process_lock
     def start(self) -> Awaitable[None]:
         """Start Docker container."""

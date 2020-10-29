@@ -2,7 +2,7 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import docker
 import requests
@@ -33,16 +33,22 @@ class DockerNetwork:
     def containers(self) -> List[docker.models.containers.Container]:
         """Return of connected containers from network."""
         containers: List[docker.models.containers.Container] = []
-        for cid, data in self.network.attrs.get("Containers", {}).items():
+        for cid, _ in self.network.attrs.get("Containers", {}).items():
             try:
                 containers.append(self.docker.containers.get(cid))
             except docker.errors.NotFound:
-                _LOGGER.warning("Docker network is corrupt! %s - running autofix", cid)
-                self.stale_cleanup(data.get("Name", cid))
+                _LOGGER.warning("Docker network is corrupt! %s", cid)
             except (docker.errors.DockerException, requests.RequestException) as err:
                 _LOGGER.error("Unknown error with container lookup %s", err)
 
         return containers
+
+    @property
+    def containers_raw(self) -> Dict[str, Any]:
+        """Get a fresh raw container network list."""
+        with suppress(docker.errors.DockerException, requests.RequestException):
+            self.network.refresh()
+        return self.network.network.attrs.get("Containers", {})
 
     @property
     def gateway(self) -> IPv4Address:
@@ -115,7 +121,9 @@ class DockerNetwork:
             _LOGGER.error("Can't link container to hassio-net: %s", err)
             raise DockerError() from err
 
-        self.network.reload()
+        # Reload Network information
+        with suppress(docker.errors.DockerException, requests.RequestException):
+            self.network.reload()
 
     def detach_default_bridge(
         self, container: docker.models.containers.Container
@@ -140,5 +148,10 @@ class DockerNetwork:
 
         Fix: https://github.com/moby/moby/issues/23302
         """
-        with suppress(docker.errors.DockerException, requests.RequestException):
+        try:
             self.network.disconnect(container_name, force=True)
+            self.network.reload()
+        except docker.errors.NotFound:
+            pass
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerError() from err
