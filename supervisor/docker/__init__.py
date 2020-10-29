@@ -293,7 +293,7 @@ class DockerAPI:
         """Prune stale container from network."""
         network: docker.models.networks.Network = self.docker.networks.get(network_name)
 
-        for cid, data in network.attrs.get("Containers", {}):
+        for cid, data in network.attrs.get("Containers", {}).items():
             try:
                 self.docker.containers.get(cid)
                 continue
