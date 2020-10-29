@@ -115,6 +115,11 @@ class DockerNetwork:
         """
         ipv4_address = str(ipv4) if ipv4 else None
 
+        # Check style Network
+        if container.name in (val.get("Name") for val in self.containers_raw.values()):
+            self.stale_cleanup(container.name)
+
+        # Attach Network
         try:
             self.network.connect(container, aliases=alias, ipv4_address=ipv4_address)
         except docker.errors.APIError as err:
