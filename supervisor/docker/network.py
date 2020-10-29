@@ -47,7 +47,7 @@ class DockerNetwork:
     def containers_raw(self) -> Dict[str, Any]:
         """Get a fresh raw container network list."""
         with suppress(docker.errors.DockerException, requests.RequestException):
-            self.network.refresh()
+            self.network.reload()
         return self.network.network.attrs.get("Containers", {})
 
     @property
@@ -115,7 +115,7 @@ class DockerNetwork:
         """
         ipv4_address = str(ipv4) if ipv4 else None
 
-        # Check style Network
+        # Check stale Network
         if container.name in (val.get("Name") for val in self.containers_raw.values()):
             self.stale_cleanup(container.name)
 
