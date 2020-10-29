@@ -281,13 +281,13 @@ class DockerAPI:
         try:
             self.prune_networks(DOCKER_NETWORK)
         except docker.errors.APIError as err:
-            _LOGGER.warning("Error for networks prune: %s", err)
+            _LOGGER.warning("Error for networks hassio prune: %s", err)
 
-        _LOGGER.info("Fix stale container on hassio network")
+        _LOGGER.info("Fix stale container on host network")
         try:
             self.prune_networks("host")
         except docker.errors.APIError as err:
-            _LOGGER.warning("Error for networks prune: %s", err)
+            _LOGGER.warning("Error for networks host prune: %s", err)
 
     def prune_networks(self, network_name: str) -> None:
         """Prune stale container from network."""
