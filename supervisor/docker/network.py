@@ -153,7 +153,6 @@ class DockerNetwork:
         """
         try:
             self.network.disconnect(container_name, force=True)
-            self.network.reload()
         except docker.errors.NotFound:
             pass
         except (docker.errors.DockerException, requests.RequestException) as err:
