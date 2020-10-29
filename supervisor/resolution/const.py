@@ -41,6 +41,7 @@ class IssueType(str, Enum):
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"
     FATAL_ERROR = "fatal_error"
+    DNS_LOOP = "dns_loop"
 
 
 class SuggestionType(str, Enum):
@@ -50,3 +51,4 @@ class SuggestionType(str, Enum):
     CREATE_FULL_SNAPSHOT = "create_full_snapshot"
     EXECUTE_UPDATE = "execute_update"
     EXECUTE_REPAIR = "execute_repair"
+    EXECUTE_RESET = "execute_reset"

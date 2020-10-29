@@ -19,6 +19,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.dns import DockerDNS
 from ..docker.stats import DockerStats
 from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerError, JsonFileError
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import JsonConfig, write_json_file
 from ..validate import dns_url
 from .const import FILE_HASSIO_DNS
@@ -277,6 +278,12 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         if b"plugin/loop: Loop" in log:
             _LOGGER.error("Detected a DNS loop in local Network!")
             self._loop = True
+            self.sys_resolution.create_issue(
+                IssueType.DNS_LOOP,
+                ContextType.PLUGIN,
+                reference=self.slug,
+                suggestions=[SuggestionType.EXECUTE_RESET],
+            )
         else:
             self._loop = False
 
