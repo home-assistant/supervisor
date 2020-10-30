@@ -193,7 +193,7 @@ class Tasks(CoreSysAttributes):
         else:
             return
 
-        _LOGGER.info("Fix Home Assistant Container")
+        _LOGGER.info("Rebuilding the Home Assistant Container")
         await self.sys_homeassistant.core.rebuild()
 
     async def _watchdog_homeassistant_api(self):
