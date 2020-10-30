@@ -38,7 +38,7 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v2
 
-      - name: Build supervisor
+      - name: Build the Supervisor
         uses: home-assistant/builder@2020.10.0
         with:
           args: |
