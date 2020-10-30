@@ -38,6 +38,15 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v2
 
+      - name: Build supervisor
+        uses: home-assistant/builder@2020.10.0
+        with:
+          args: |
+            --test \
+            --amd64 \
+            --target /data \
+            --generic runner
+
       - name: Create the Supervisor
         run: |
           mkdir -p /tmp/supervisor/data
@@ -49,12 +58,11 @@ jobs:
             -v /run/dbus:/run/dbus \
             -v /tmp/supervisor/data:/data \
             -v /etc/machine-id:/etc/machine-id:ro \
-            -v ${{ github.workspace }}:/usr/src/supervisor \
             -e SUPERVISOR_SHARE="/tmp/supervisor/data" \
             -e SUPERVISOR_NAME=hassio_supervisor \
             -e SUPERVISOR_DEV=1 \
             -e SUPERVISOR_MACHINE="qemux86-64" \
-          homeassistant/amd64-hassio-supervisor:latest
+          homeassistant/amd64-hassio-supervisor:runner
 
       - name: Start the Supervisor
         run: docker start hassio_supervisor
