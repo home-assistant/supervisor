@@ -185,4 +185,8 @@ class DockerHomeAssistant(DockerInterface):
         if docker_container.image.id != docker_image.id:
             return False
 
+        # Check of correct state
+        if docker_container.status not in ("exited", "running", "created"):
+            return False
+
         return True
