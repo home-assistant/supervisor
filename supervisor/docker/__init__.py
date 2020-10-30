@@ -14,6 +14,7 @@ from ..const import (
     ATTR_REGISTRIES,
     DNS_SUFFIX,
     DOCKER_IMAGE_DENYLIST,
+    DOCKER_NETWORK,
     FILE_HASSIO_DOCKER,
     SOCKET_DOCKER,
 )
@@ -25,6 +26,7 @@ from .network import DockerNetwork
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 MIN_SUPPORTED_DOCKER = "19.03.0"
+DOCKER_NETWORK_HOST = "host"
 
 
 @attr.s(frozen=True)
@@ -171,6 +173,19 @@ class DockerAPI:
             else:
                 with suppress(DockerError):
                     self.network.detach_default_bridge(container)
+        else:
+            host_network: docker.models.networks.Network = self.docker.networks.get(
+                DOCKER_NETWORK_HOST
+            )
+
+            # Check if container is register on host
+            # https://github.com/moby/moby/issues/23302
+            if name in (
+                val.get("Name")
+                for val in host_network.attrs.get("Containers", {}).values()
+            ):
+                with suppress(docker.errors.NotFound):
+                    host_network.disconnect(name, force=True)
 
         # Run container
         try:
@@ -203,6 +218,7 @@ class DockerAPI:
         stderr = kwargs.get("stderr", True)
 
         _LOGGER.info("Runing command '%s' on %s", command, image)
+        container = None
         try:
             container = self.docker.containers.run(
                 f"{image}:{version}",
@@ -222,8 +238,9 @@ class DockerAPI:
 
         finally:
             # cleanup container
-            with suppress(docker.errors.DockerException, requests.RequestException):
-                container.remove(force=True)
+            if container:
+                with suppress(docker.errors.DockerException, requests.RequestException):
+                    container.remove(force=True)
 
         return CommandReturn(result.get("StatusCode"), output)
 
@@ -264,6 +281,42 @@ class DockerAPI:
             _LOGGER.debug("Networks prune: %s", output)
         except docker.errors.APIError as err:
             _LOGGER.warning("Error for networks prune: %s", err)
+
+        _LOGGER.info("Fix stale container on hassio network")
+        try:
+            self.prune_networks(DOCKER_NETWORK)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for networks hassio prune: %s", err)
+
+        _LOGGER.info("Fix stale container on host network")
+        try:
+            self.prune_networks(DOCKER_NETWORK_HOST)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for networks host prune: %s", err)
+
+    def prune_networks(self, network_name: str) -> None:
+        """Prune stale container from network.
+
+        Fix: https://github.com/moby/moby/issues/23302
+        """
+        network: docker.models.networks.Network = self.docker.networks.get(network_name)
+
+        for cid, data in network.attrs.get("Containers", {}).items():
+            try:
+                self.docker.containers.get(cid)
+                continue
+            except docker.errors.NotFound:
+                _LOGGER.debug(
+                    "Docker network %s is corrupt on container: %s", network_name, cid
+                )
+            except (docker.errors.DockerException, requests.RequestException):
+                _LOGGER.warning(
+                    "Docker fatal error on container %s on %s", cid, network_name
+                )
+                continue
+
+            with suppress(docker.errors.DockerException, requests.RequestException):
+                network.disconnect(data.get("Name", cid), force=True)
 
     def check_denylist_images(self) -> bool:
         """Return a boolean if the host has images in the denylist."""
