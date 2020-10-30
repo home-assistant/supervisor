@@ -1,3 +1,9 @@
+---
+name: Report a bug with the Supervisor
+about: Report an issue related to the Home Assistant Supervisor.
+labels: bug
+---
+
 <!-- READ THIS FIRST:
 - If you need additional help with this template please refer to https://www.home-assistant.io/help/reporting_issues/
 - This is for bugs only. Feature and enhancement requests should go in our community forum: https://community.home-assistant.io/c/feature-requests
