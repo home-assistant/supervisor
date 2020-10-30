@@ -131,9 +131,18 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Load DNS setup."""
-        self._init_hosts()
+        # Initialize CoreDNS Template
+        try:
+            self.resolv_template = jinja2.Template(RESOLV_TMPL.read_text())
+        except OSError as err:
+            _LOGGER.error("Can't read resolve.tmpl: %s", err)
+        try:
+            self.hosts_template = jinja2.Template(HOSTS_TMPL.read_text())
+        except OSError as err:
+            _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
         # Check CoreDNS state
+        self._init_hosts()
         try:
             # Evaluate Version if we lost this information
             if not self.version:
@@ -152,16 +161,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             self.version = self.instance.version
             self.image = self.instance.image
             self.save_data()
-
-        # Initialize CoreDNS Template
-        try:
-            self.resolv_template = jinja2.Template(RESOLV_TMPL.read_text())
-        except OSError as err:
-            _LOGGER.error("Can't read resolve.tmpl: %s", err)
-        try:
-            self.hosts_template = jinja2.Template(HOSTS_TMPL.read_text())
-        except OSError as err:
-            _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
         # Run CoreDNS
         with suppress(CoreDNSError):
