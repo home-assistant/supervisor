@@ -91,6 +91,12 @@ class Audio(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Load Audio setup."""
+        # Initialize Client Template
+        try:
+            self.client_template = jinja2.Template(PULSE_CLIENT_TMPL.read_text())
+        except OSError as err:
+            _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
+
         # Check Audio state
         try:
             # Evaluate Version if we lost this information
@@ -113,12 +119,6 @@ class Audio(JsonConfig, CoreSysAttributes):
         with suppress(AudioError):
             if not await self.instance.is_running():
                 await self.start()
-
-        # Initialize Client Template
-        try:
-            self.client_template = jinja2.Template(PULSE_CLIENT_TMPL.read_text())
-        except OSError as err:
-            _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
 
         # Setup default asound config
         asound = self.sys_config.path_audio.joinpath("asound")
