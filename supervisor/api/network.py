@@ -14,6 +14,8 @@ from ..const import (
     ATTR_INTERFACE,
     ATTR_INTERFACES,
     ATTR_IP_ADDRESS,
+    ATTR_IP_VERSION,
+    ATTR_IP_VERSIONS,
     ATTR_METHOD,
     ATTR_METHODS,
     ATTR_NAMESERVERS,
@@ -33,6 +35,7 @@ SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_ADDRESS): vol.Coerce(str),
         vol.Optional(ATTR_METHOD): vol.In(ATTR_METHODS),
+        vol.Optional(ATTR_IP_VERSION): vol.In(ATTR_IP_VERSIONS),
         vol.Optional(ATTR_GATEWAY): vol.Coerce(str),
         vol.Optional(ATTR_DNS): [str],
     }
