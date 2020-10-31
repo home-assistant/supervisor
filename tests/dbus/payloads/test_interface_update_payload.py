@@ -47,7 +47,7 @@ async def test_interface_update_disable_type_ethernet(network_interface):
     assert DBus.parse_gvariant(data)["ipv4"]["method"] == "disabled"
 
     data = interface_update_payload(
-        network_interface, **{"method": "disabled", "version": "ipv6"}
+        network_interface, **{"method": "disabled", "ip_version": "ipv6"}
     )
     assert DBus.parse_gvariant(data)["ipv6"]["method"] == "disabled"
 
@@ -61,7 +61,7 @@ async def test_interface_update_disable_type_wireless(network_interface):
     assert "802-11-wireless" not in DBus.parse_gvariant(data)
 
     data = interface_update_payload(
-        network_interface, **{"method": "disabled", "version": "ipv6"}
+        network_interface, **{"method": "disabled", "ip_version": "ipv6"}
     )
     assert DBus.parse_gvariant(data)["ipv6"]["method"] == "disabled"
     assert "802-11-wireless" not in DBus.parse_gvariant(data)

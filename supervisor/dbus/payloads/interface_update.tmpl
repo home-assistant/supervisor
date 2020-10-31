@@ -7,12 +7,12 @@
         },
 
 {% if options.get("method") == "auto" %}
-    '{{options.get("version", "ipv4")}}':
+    '{{options.get("ip_version", "ipv4")}}':
         {
             'method': <'auto'>
         }
 {% elif options.get("method") == "disabled" %}
-    '{{options.get("version", "ipv4")}}':
+    '{{options.get("ip_version", "ipv4")}}':
         {
             'method': <'disabled'>
         }
