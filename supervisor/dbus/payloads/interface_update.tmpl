@@ -7,9 +7,14 @@
         },
 
 {% if options.get("method") == "auto" %}
-    'ipv4':
+    '{{options.get("version", "ipv4")}}':
         {
             'method': <'auto'>
+        }
+{% elif options.get("method") == "disabled" %}
+    '{{options.get("version", "ipv4")}}':
+        {
+            'method': <'disabled'>
         }
 {% else %}
     'ipv4':
@@ -24,7 +29,7 @@
             'gateway': <'{{ options.get("gateway", interface.gateway) }}'>
         }
 {% endif %}
-{% if interface.type == "802-11-wireless" %}
+{% if interface.type == "802-11-wireless" and options.get("method") != "disabled" %}
     ,
     '802-11-wireless':
         {

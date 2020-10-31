@@ -67,6 +67,7 @@ class InterfaceMethod(str, Enum):
 
     AUTO = "auto"
     MANUAL = "manual"
+    DISABLED = "disabled"
 
 
 class InterfaceMethodSimple(str, Enum):

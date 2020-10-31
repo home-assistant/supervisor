@@ -22,6 +22,8 @@ def interface_update_payload(interface, **kwargs) -> str:
         kwargs[ATTR_METHOD] = (
             InterfaceMethod.MANUAL
             if kwargs[ATTR_METHOD] == "static"
+            else InterfaceMethod.DISABLED
+            if kwargs[ATTR_METHOD] == "disabled"
             else InterfaceMethod.AUTO
         )
 
