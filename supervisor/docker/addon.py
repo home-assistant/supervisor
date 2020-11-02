@@ -426,7 +426,7 @@ class DockerAddon(DockerInterface):
                     [
                         x["stream"]
                         for x in err.build_log  # pylint: disable=no-member
-                        if "stream" in x
+                        if isinstance(x, dict) and "stream" in x
                     ]
                 )
                 _LOGGER.error("Build log: \n%s", log)
