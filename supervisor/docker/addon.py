@@ -421,6 +421,15 @@ class DockerAddon(DockerInterface):
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't build %s:%s: %s", self.image, tag, err)
+            if hasattr(err, "build_log"):
+                log = "\n".join(
+                    [
+                        x["stream"]
+                        for x in err.build_log  # pylint: disable=no-member
+                        if "stream" in x
+                    ]
+                )
+                _LOGGER.error("Build log: \n%s", log)
             raise DockerError() from err
 
         _LOGGER.info("Build %s:%s done", self.image, tag)
