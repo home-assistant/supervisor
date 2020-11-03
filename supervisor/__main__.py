@@ -9,7 +9,7 @@ from supervisor import bootstrap
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-CONTAINER_OS_STARTUP_CHECK = Path("/run/os/startup")
+CONTAINER_OS_STARTUP_CHECK = Path("/run/os/startup-marker")
 
 
 def run_os_startup_check_cleanup() -> None:
