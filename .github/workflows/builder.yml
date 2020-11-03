@@ -92,7 +92,7 @@ jobs:
         run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
 
       - name: Build supervisor
-        uses: home-assistant/builder@2020.10.0
+        uses: home-assistant/builder@2020.11.0
         with:
           args: |
             $BUILD_ARGS \
@@ -134,7 +134,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build the Supervisor
-        uses: home-assistant/builder@2020.10.0
+        uses: home-assistant/builder@2020.11.0
         with:
           args: |
             --test \
