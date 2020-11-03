@@ -13,6 +13,7 @@ from .const import (
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_TIMEZONE,
+    ATTR_UPGRADE_TIMEOUT,
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ENV_SUPERVISOR_SHARE,
@@ -112,6 +113,16 @@ class CoreConfig(JsonConfig):
     def diagnostics(self, value: bool) -> None:
         """Set diagnostics settings."""
         self._data[ATTR_DIAGNOSTICS] = value
+
+    @property
+    def upgrade_timeout(self) -> int:
+        """Return current upgrade timeout value."""
+        return self._data.get(ATTR_UPGRADE_TIMEOUT, 600)
+
+    @upgrade_timeout.setter
+    def upgrade_timeout(self, value: bool) -> None:
+        """Set upgrade timeout value."""
+        self._data[ATTR_UPGRADE_TIMEOUT] = value
 
     @property
     def logging(self) -> LogLevel:

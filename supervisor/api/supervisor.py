@@ -35,6 +35,7 @@ from ..const import (
     ATTR_SUPPORTED,
     ATTR_TIMEZONE,
     ATTR_UPDATE_AVAILABLE,
+    ATTR_UPGRADE_TIMEOUT,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_WAIT_BOOT,
@@ -61,6 +62,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_DEBUG): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK): vol.Boolean(),
         vol.Optional(ATTR_DIAGNOSTICS): vol.Boolean(),
+        vol.Optional(ATTR_UPGRADE_TIMEOUT): vol.Coerce(int),
     }
 )
 
@@ -139,6 +141,9 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]
+
+        if ATTR_UPGRADE_TIMEOUT in body:
+            self.sys_config.upgrade_timeout = body[ATTR_UPGRADE_TIMEOUT]
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])

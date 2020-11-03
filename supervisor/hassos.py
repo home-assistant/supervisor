@@ -67,7 +67,7 @@ class HassOS(CoreSysAttributes):
 
         _LOGGER.info("Fetch OTA update from %s", url)
         try:
-            timeout = aiohttp.ClientTimeout(total=600)
+            timeout = aiohttp.ClientTimeout(total=self.sys_config.upgrade_timeout)
             async with self.sys_websession.get(url, timeout=timeout) as request:
                 if request.status != 200:
                     raise HassOSUpdateError()
