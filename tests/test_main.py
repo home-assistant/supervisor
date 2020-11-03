@@ -5,7 +5,7 @@ import supervisor.__main__ as main
 
 
 def test_write_state(tmp_path):
-    """Test write corestate to /run/supervisor."""
+    """Test startup-marker file cleanup."""
     test_file = Path(tmp_path, "test.file")
 
     test_file.touch()
