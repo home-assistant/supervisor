@@ -15,5 +15,5 @@ pulsectl==20.5.1
 pytz==2020.4
 pyudev==0.22.0
 ruamel.yaml==0.15.100
-sentry-sdk==0.19.1
+sentry-sdk==0.19.2
 voluptuous==0.12.0
