@@ -36,6 +36,7 @@ from .const import (
     ATTR_SSL,
     ATTR_SUPERVISOR,
     ATTR_TIMEZONE,
+    ATTR_UPGRADE_TIMEOUT,
     ATTR_USERNAME,
     ATTR_UUID,
     ATTR_VERSION,
@@ -180,6 +181,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
         vol.Optional(ATTR_DEBUG, default=False): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK, default=False): vol.Boolean(),
         vol.Optional(ATTR_DIAGNOSTICS, default=None): vol.Maybe(vol.Boolean()),
+        vol.Optional(ATTR_UPGRADE_TIMEOUT, default=600): vol.Coerce(int),
     },
     extra=vol.REMOVE_EXTRA,
 )

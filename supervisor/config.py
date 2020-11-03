@@ -117,7 +117,7 @@ class CoreConfig(JsonConfig):
     @property
     def upgrade_timeout(self) -> int:
         """Return current upgrade timeout value."""
-        return self._data.get(ATTR_UPGRADE_TIMEOUT, 600)
+        return self._data[ATTR_UPGRADE_TIMEOUT]
 
     @upgrade_timeout.setter
     def upgrade_timeout(self, value: bool) -> None:
