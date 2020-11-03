@@ -2,11 +2,14 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import logging
+from pathlib import Path
 import sys
 
 from supervisor import bootstrap
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+CONTAINER_OS_HEALTH = Path("/os/overlay/supervisor.health")
 
 
 # pylint: disable=invalid-name
@@ -29,6 +32,13 @@ if __name__ == "__main__":
 
     bootstrap.supervisor_debugger(coresys)
     bootstrap.migrate_system_env(coresys)
+
+    # Signal health startup for container
+    if CONTAINER_OS_HEALTH.exists():
+        try:
+            CONTAINER_OS_HEALTH.unlink()
+        except OSError as err:
+            _LOGGER.warning("Not able to remove the startup health file: %s", err)
 
     _LOGGER.info("Setting up Supervisor")
     loop.run_until_complete(coresys.core.setup())
