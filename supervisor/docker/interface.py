@@ -26,7 +26,6 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
 DOCKER_HUB = "hub.docker.com"
-DOCKER_HUB_REGISTRY = "https://index.docker.io/v1/"
 
 
 class DockerInterface(CoreSysAttributes):
@@ -110,12 +109,17 @@ class DockerInterface(CoreSysAttributes):
         # If no match assume "dockerhub" as registry
         elif DOCKER_HUB in self.sys_docker.config.registries:
             registry = DOCKER_HUB
-            credentials[ATTR_REGISTRY] = DOCKER_HUB_REGISTRY
 
         if registry:
             stored = self.sys_docker.config.registries[registry]
             credentials[ATTR_USERNAME] = stored[ATTR_USERNAME]
             credentials[ATTR_PASSWORD] = stored[ATTR_PASSWORD]
+
+            _LOGGER.debug(
+                "Logging in to %s as %s",
+                registry,
+                stored[ATTR_USERNAME],
+            )
 
         return credentials
 
@@ -128,11 +132,6 @@ class DockerInterface(CoreSysAttributes):
         if not credentials:
             return
 
-        _LOGGER.debug(
-            "Logging in to %s with %s",
-            credentials[ATTR_REGISTRY],
-            credentials[ATTR_USERNAME],
-        )
         self.sys_docker.docker.login(**credentials)
 
     def _install(

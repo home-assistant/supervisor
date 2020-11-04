@@ -1,7 +1,7 @@
 """Test docker login."""
 # pylint: disable=protected-access
 from supervisor.coresys import CoreSys
-from supervisor.docker.interface import DOCKER_HUB, DOCKER_HUB_REGISTRY, DockerInterface
+from supervisor.docker.interface import DOCKER_HUB, DockerInterface
 
 
 def test_no_credentials(coresys: CoreSys):
@@ -32,8 +32,9 @@ def test_matching_credentials(coresys: CoreSys):
         DOCKER_HUB: {"username": "Spongebob Squarepants", "password": "Password1!"},
     }
 
-    credentials = docker._get_credentials("ghcr.io/homeassistant")
+    credentials = docker._get_credentials("ghcr.io/homeassistant/amd64-supervisor")
     assert credentials["registry"] == "ghcr.io"
 
     credentials = docker._get_credentials("homeassistant/amd64-supervisor")
-    assert credentials["registry"] == DOCKER_HUB_REGISTRY
+    assert credentials["username"] == "Spongebob Squarepants"
+    assert "registry" not in credentials
