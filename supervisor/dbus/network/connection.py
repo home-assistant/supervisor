@@ -1,7 +1,16 @@
 """Connection object for Network Manager."""
+from ipaddress import ip_address
 from typing import Optional
 
-from ...const import ATTR_ADDRESS, ATTR_IPV4, ATTR_METHOD, ATTR_PREFIX, ATTR_SSID
+from ...const import (
+    ATTR_ADDRESS,
+    ATTR_GATEWAY,
+    ATTR_IPV4,
+    ATTR_IPV6,
+    ATTR_METHOD,
+    ATTR_PREFIX,
+    ATTR_SSID,
+)
 from ...utils.gdbus import DBus
 from ..const import (
     DBUS_ATTR_802_WIRELESS,
@@ -14,8 +23,9 @@ from ..const import (
     DBUS_ATTR_DEVICES,
     DBUS_ATTR_GATEWAY,
     DBUS_ATTR_ID,
-    DBUS_ATTR_IP4ADDRESS,
     DBUS_ATTR_IP4CONFIG,
+    DBUS_ATTR_IP6CONFIG,
+    DBUS_ATTR_NAMESERVER_DATA,
     DBUS_ATTR_NAMESERVERS,
     DBUS_ATTR_REAL,
     DBUS_ATTR_STATE,
@@ -23,12 +33,13 @@ from ..const import (
     DBUS_ATTR_UUID,
     DBUS_NAME_DEVICE,
     DBUS_NAME_IP4CONFIG,
+    DBUS_NAME_IP6CONFIG,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
     ConnectionType,
+    InterfaceMethod,
 )
 from .configuration import (
-    AddressData,
     IpConfiguration,
     NetworkAttributes,
     NetworkDevice,
@@ -47,7 +58,8 @@ class NetworkConnection(NetworkAttributes):
         self._settings_dbus: DBus = None
         self._settings: Optional[NetworkSettings] = None
         self._ip4_config: Optional[IpConfiguration] = None
-        self._device: Optional[NetworkDevice]
+        self._ip6_config: Optional[IpConfiguration] = None
+        self._device: Optional[NetworkDevice] = None
         self._wireless: Optional[WirelessProperties] = None
         self.primary: bool = False
 
@@ -78,8 +90,12 @@ class NetworkConnection(NetworkAttributes):
 
     @property
     def ip4_config(self) -> IpConfiguration:
-        """Return a ip configuration object for the connection."""
+        """Return a ip6 configuration object for the connection."""
         return self._ip4_config
+
+    def ip6_config(self) -> IpConfiguration:
+        """Return a ip6 configuration object for the connection."""
+        return self._ip6_config
 
     @property
     def uuid(self) -> str:
@@ -114,21 +130,42 @@ class NetworkConnection(NetworkAttributes):
             DBUS_NAME_NM, self._properties[DBUS_ATTR_DEVICES][0]
         )
         ip4 = await DBus.connect(DBUS_NAME_NM, self._properties[DBUS_ATTR_IP4CONFIG])
+        ip6 = await DBus.connect(DBUS_NAME_NM, self._properties[DBUS_ATTR_IP6CONFIG])
 
         data = (await settings.Settings.Connection.GetSettings())[0]
         device_data = await device.get_properties(DBUS_NAME_DEVICE)
         ip4_data = await ip4.get_properties(DBUS_NAME_IP4CONFIG)
+        ip6_data = await ip6.get_properties(DBUS_NAME_IP6CONFIG)
 
         self._settings = NetworkSettings(settings)
 
         self._ip4_config = IpConfiguration(
-            ip4_data.get(DBUS_ATTR_GATEWAY),
-            data[ATTR_IPV4].get(ATTR_METHOD),
-            ip4_data.get(DBUS_ATTR_NAMESERVERS),
-            AddressData(
-                ip4_data.get(DBUS_ATTR_ADDRESS_DATA)[0].get(ATTR_ADDRESS),
-                ip4_data.get(DBUS_ATTR_ADDRESS_DATA)[0].get(ATTR_PREFIX),
-            ),
+            ip_address(ip4_data[ATTR_GATEWAY])
+            if DBUS_ATTR_GATEWAY in ip4_data
+            else None,
+            InterfaceMethod[data[ATTR_IPV4].get(ATTR_METHOD)],
+            [
+                ip_address(nameserver[ATTR_ADDRESS])
+                for nameserver in ip4_data.get(DBUS_ATTR_NAMESERVER_DATA)
+            ],
+            [
+                ip_address(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
+                for address in ip4_data[DBUS_ATTR_ADDRESS_DATA]
+            ],
+        )
+        self._ip6_config = IpConfiguration(
+            ip_address(ip6_data[ATTR_GATEWAY])
+            if DBUS_ATTR_GATEWAY in ip4_data
+            else None,
+            InterfaceMethod[data[ATTR_IPV6].get(ATTR_METHOD)],
+            [
+                ip_address(bytes(nameserver))
+                for nameserver in ip6_data.get(DBUS_ATTR_NAMESERVERS)
+            ],
+            [
+                ip_address(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
+                for address in ip6_data[DBUS_ATTR_ADDRESS_DATA]
+            ],
         )
 
         self._wireless = WirelessProperties(
@@ -140,7 +177,6 @@ class NetworkConnection(NetworkAttributes):
         self._device = NetworkDevice(
             device,
             device_data.get(DBUS_ATTR_DEVICE_INTERFACE),
-            device_data.get(DBUS_ATTR_IP4ADDRESS),
             device_data.get(DBUS_ATTR_DEVICE_TYPE),
             device_data.get(DBUS_ATTR_REAL),
         )

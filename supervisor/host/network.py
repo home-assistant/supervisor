@@ -1,13 +1,45 @@
 """Info control for host."""
+from ipaddress import IPv4Address, IPv6Address
 import logging
-from typing import Dict, List
+from typing import List, Union
 
-from supervisor.dbus.network.interface import NetworkInterface
+import attr
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..dbus.const import ConnectionType
 from ..exceptions import DBusError, DBusNotConnectedError, HostNotSupportedError
+from .const import InterfaceMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+@attr.s(slots=True)
+class IpConfig:
+    """Represent a IP configuration."""
+
+    mode: InterfaceMode = attr.ib()
+    address: List[Union[IPv4Address, IPv6Address]] = attr.ib()
+    gateway: Union[IPv4Address, IPv6Address] = attr.ib()
+    nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
+
+
+@attr.s(slots=True)
+class Interface:
+    """Represent a host network interface."""
+
+    id: str = attr.ib()
+    interface: str = attr.ib()
+    primary: bool = attr.ib()
+    type: ConnectionType = attr.ib()
+    ipv4: IpConfig = attr.ib()
+    ipv6: IpConfig = attr.ib()
+
+
+MAP_NM_METHOD = {
+    "auto": InterfaceMode.DHCP,
+    "disabled": InterfaceMode.DISABLE,
+    None: InterfaceMode.STATIC,
+}
 
 
 class NetworkManager(CoreSysAttributes):
@@ -18,9 +50,30 @@ class NetworkManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
 
     @property
-    def interfaces(self) -> Dict[str, NetworkInterface]:
+    def interfaces(self) -> List[Interface]:
         """Return a dictionary of active interfaces."""
-        return self.sys_dbus.network.interfaces
+        interfaces: List[Interface] = []
+        for interface in self.sys_dbus.network.interfaces.values():
+            Interface(
+                interface.connection.id,
+                interface.connection.device.interface,
+                interface.connection.primary,
+                interface.connection.type,
+                IpConfig(
+                    MAP_NM_METHOD[interface.connection.ip4_config.method],
+                    interface.connection.ip4_config.address,
+                    interface.connection.ip4_config.gateway,
+                    interface.connection.ip4_config.nameservers,
+                ),
+                IpConfig(
+                    MAP_NM_METHOD[interface.connection.ip6_config.method],
+                    interface.connection.ip6_config.address,
+                    interface.connection.ip6_config.gateway,
+                    interface.connection.ip6_config.nameservers,
+                ),
+            )
+
+        return interfaces
 
     @property
     def dns_servers(self) -> List[str]:
@@ -32,7 +85,7 @@ class NetworkManager(CoreSysAttributes):
                 continue
             servers.extend(config.nameservers)
 
-        return [f"dns://{server}" for server in list(dict.fromkeys(servers))]
+        return list(dict.fromkeys(servers))
 
     async def update(self):
         """Update properties over dbus."""

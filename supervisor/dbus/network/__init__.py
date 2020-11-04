@@ -62,9 +62,9 @@ class NetworkManager(DBusInterface):
 
         self._interfaces = {}
         for connection in data.get(DBUS_ATTR_ACTIVE_CONNECTIONS, []):
-            interface = NetworkInterface()
+            interface = NetworkInterface(self.dbus)
 
-            await interface.connect(self.dbus, connection)
+            await interface.connect(connection)
 
             if interface.connection.type not in [
                 ConnectionType.ETHERNET,

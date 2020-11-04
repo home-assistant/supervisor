@@ -6,6 +6,7 @@ DBUS_NAME_DEVICE = "org.freedesktop.NetworkManager.Device"
 DBUS_NAME_DNS = "org.freedesktop.NetworkManager.DnsManager"
 DBUS_NAME_HOSTNAME = "org.freedesktop.hostname1"
 DBUS_NAME_IP4CONFIG = "org.freedesktop.NetworkManager.IP4Config"
+DBUS_NAME_IP6CONFIG = "org.freedesktop.NetworkManager.IP6Config"
 DBUS_NAME_NM = "org.freedesktop.NetworkManager"
 DBUS_NAME_RAUC = "de.pengutronix.rauc"
 DBUS_NAME_RAUC_INSTALLER = "de.pengutronix.rauc.Installer"
@@ -35,12 +36,13 @@ DBUS_ATTR_DEVICE_TYPE = "DeviceType"
 DBUS_ATTR_DEVICES = "Devices"
 DBUS_ATTR_GATEWAY = "Gateway"
 DBUS_ATTR_ID = "Id"
-DBUS_ATTR_IP4ADDRESS = "Ip4Address"
 DBUS_ATTR_IP4CONFIG = "Ip4Config"
+DBUS_ATTR_IP6CONFIG = "Ip6Config"
 DBUS_ATTR_KERNEL_RELEASE = "KernelRelease"
 DBUS_ATTR_LAST_ERROR = "LastError"
 DBUS_ATTR_MODE = "Mode"
 DBUS_ATTR_NAMESERVERS = "Nameservers"
+DBUS_ATTR_NAMESERVER_DATA = "NameserverDATA"
 DBUS_ATTR_OPERATING_SYSTEM_PRETTY_NAME = "OperatingSystemPrettyName"
 DBUS_ATTR_OPERATION = "Operation"
 DBUS_ATTR_PRIMARY_CONNECTION = "PrimaryConnection"
@@ -67,13 +69,6 @@ class InterfaceMethod(str, Enum):
 
     AUTO = "auto"
     MANUAL = "manual"
-
-
-class InterfaceMethodSimple(str, Enum):
-    """Interface method."""
-
-    DHCP = "dhcp"
-    STATIC = "static"
 
 
 class ConnectionType(str, Enum):

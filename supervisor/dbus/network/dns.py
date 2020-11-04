@@ -1,4 +1,5 @@
 """D-Bus interface for hostname."""
+from ipaddress import ip_address
 import logging
 from typing import List, Optional
 
@@ -75,7 +76,7 @@ class NetworkManagerDNS(DBusInterface):
         # Parse configuraton
         self._configuration = [
             DNSConfiguration(
-                config.get(ATTR_NAMESERVERS),
+                [ip_address(nameserver) for nameserver in config.get(ATTR_NAMESERVERS)],
                 config.get(ATTR_DOMAINS),
                 config.get(ATTR_INTERFACE),
                 config.get(ATTR_PRIORITY),

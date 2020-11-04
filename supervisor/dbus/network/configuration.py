@@ -1,9 +1,11 @@
 """NetworkConnection object4s for Network Manager."""
-from typing import List
+from ipaddress import IPv4Address, IPv6Address
+from typing import List, Optional, Union
 
 import attr
 
 from ...utils.gdbus import DBus
+from ..const import InterfaceMethod
 
 
 class NetworkAttributes:
@@ -15,54 +17,45 @@ class NetworkAttributes:
         self.object_path = object_path
 
 
-@attr.s
-class AddressData:
-    """AddressData object for Network Manager."""
-
-    address: str = attr.ib()
-    prefix: int = attr.ib()
-
-
-@attr.s
+@attr.s(slots=True)
 class IpConfiguration:
     """NetworkSettingsIPConfig object for Network Manager."""
 
-    gateway: str = attr.ib()
-    method: str = attr.ib()
-    nameservers: List[int] = attr.ib()
-    address_data: AddressData = attr.ib()
+    gateway: Optional[Union[IPv4Address, IPv6Address]] = attr.ib()
+    method: InterfaceMethod = attr.ib()
+    nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
+    address: List[Union[IPv4Address, IPv6Address]] = attr.ib()
 
 
-@attr.s
+@attr.s(slots=True)
 class DNSConfiguration:
     """DNS configuration Object."""
 
-    nameservers: List[str] = attr.ib()
+    nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
     domains: List[str] = attr.ib()
     interface: str = attr.ib()
     priority: int = attr.ib()
     vpn: bool = attr.ib()
 
 
-@attr.s
+@attr.s(slots=True)
 class NetworkSettings:
     """NetworkSettings object for Network Manager."""
 
     dbus: DBus = attr.ib()
 
 
-@attr.s
+@attr.s(slots=True)
 class NetworkDevice:
     """Device properties."""
 
     dbus: DBus = attr.ib()
     interface: str = attr.ib()
-    ip4_address: int = attr.ib()
     device_type: int = attr.ib()
     real: bool = attr.ib()
 
 
-@attr.s
+@attr.s(slots=True)
 class WirelessProperties:
     """WirelessProperties object for Network Manager."""
 
