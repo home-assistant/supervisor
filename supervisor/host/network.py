@@ -1,4 +1,6 @@
 """Info control for host."""
+from __future__ import annotations
+
 from ipaddress import IPv4Address, IPv6Address
 import logging
 from typing import List, Union
@@ -7,6 +9,7 @@ import attr
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import ConnectionType
+from ..dbus.network.interface import NetworkInterface
 from ..exceptions import DBusError, DBusNotConnectedError, HostNotSupportedError
 from .const import InterfaceMode
 
@@ -34,6 +37,28 @@ class Interface:
     ipv4: IpConfig = attr.ib()
     ipv6: IpConfig = attr.ib()
 
+    @staticmethod
+    def from_dbus_interface(inet: NetworkInterface) -> Interface:
+        """Concert a dbus interface into normal Interface."""
+        return Interface(
+            inet.connection.id,
+            inet.connection.device.interface,
+            inet.connection.primary,
+            inet.connection.type,
+            IpConfig(
+                MAP_NM_METHOD[inet.connection.ip4_config.method],
+                inet.connection.ip4_config.address,
+                inet.connection.ip4_config.gateway,
+                inet.connection.ip4_config.nameservers,
+            ),
+            IpConfig(
+                MAP_NM_METHOD[inet.connection.ip6_config.method],
+                inet.connection.ip6_config.address,
+                inet.connection.ip6_config.gateway,
+                inet.connection.ip6_config.nameservers,
+            ),
+        )
+
 
 MAP_NM_METHOD = {
     "auto": InterfaceMode.DHCP,
@@ -53,25 +78,8 @@ class NetworkManager(CoreSysAttributes):
     def interfaces(self) -> List[Interface]:
         """Return a dictionary of active interfaces."""
         interfaces: List[Interface] = []
-        for interface in self.sys_dbus.network.interfaces.values():
-            Interface(
-                interface.connection.id,
-                interface.connection.device.interface,
-                interface.connection.primary,
-                interface.connection.type,
-                IpConfig(
-                    MAP_NM_METHOD[interface.connection.ip4_config.method],
-                    interface.connection.ip4_config.address,
-                    interface.connection.ip4_config.gateway,
-                    interface.connection.ip4_config.nameservers,
-                ),
-                IpConfig(
-                    MAP_NM_METHOD[interface.connection.ip6_config.method],
-                    interface.connection.ip6_config.address,
-                    interface.connection.ip6_config.gateway,
-                    interface.connection.ip6_config.nameservers,
-                ),
-            )
+        for inet in self.sys_dbus.network.interfaces.values():
+            interfaces.append(Interface.from_dbus_interface(inet))
 
         return interfaces
 

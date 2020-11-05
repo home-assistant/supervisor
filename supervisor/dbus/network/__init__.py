@@ -84,4 +84,4 @@ class NetworkManager(DBusInterface):
             ):
                 interface.connection.primary = True
 
-            self._interfaces[interface.name] = interface
+            self._interfaces[interface.connection.device.interface] = interface
