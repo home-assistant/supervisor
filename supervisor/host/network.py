@@ -10,7 +10,12 @@ import attr
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import ConnectionType
 from ..dbus.network.interface import NetworkInterface
-from ..exceptions import DBusError, DBusNotConnectedError, HostNotSupportedError
+from ..exceptions import (
+    DBusError,
+    DBusNotConnectedError,
+    HostNetworkNotFound,
+    HostNotSupportedError,
+)
 from .const import InterfaceMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -95,6 +100,15 @@ class NetworkManager(CoreSysAttributes):
 
         return list(dict.fromkeys(servers))
 
+    def get(self, inet_name: str) -> Interface:
+        """Return interface from interface name."""
+        if inet_name in self.sys_dbus.network.interfaces:
+            raise HostNetworkNotFound()
+
+        return Interface.from_dbus_interface(
+            self.sys_dbus.network.interfaces[inet_name]
+        )
+
     async def update(self):
         """Update properties over dbus."""
         _LOGGER.info("Updating local network information")
@@ -105,3 +119,6 @@ class NetworkManager(CoreSysAttributes):
         except DBusNotConnectedError as err:
             _LOGGER.error("No hostname D-Bus connection available")
             raise HostNotSupportedError() from err
+
+    async def apply_changes(self, interface: Interface) -> None:
+        """Apply Interface changes to host."""

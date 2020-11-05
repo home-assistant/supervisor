@@ -172,6 +172,10 @@ class HostAppArmorError(HostError):
     """Host apparmor functions failed."""
 
 
+class HostNetworkNotFound(HostError):
+    """Return if host interface is not found."""
+
+
 # API
 
 
