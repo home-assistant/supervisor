@@ -10,7 +10,13 @@ from packaging import version as pkg_version
 import requests
 
 from . import CommandReturn
-from ..const import ATTR_PASSWORD, ATTR_USERNAME, LABEL_ARCH, LABEL_VERSION
+from ..const import (
+    ATTR_PASSWORD,
+    ATTR_REGISTRY,
+    ATTR_USERNAME,
+    LABEL_ARCH,
+    LABEL_VERSION,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
 from ..utils import process_lock
@@ -19,6 +25,7 @@ from .stats import DockerStats
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
+DOCKER_HUB = "hub.docker.com"
 
 
 class DockerInterface(CoreSysAttributes):
@@ -87,16 +94,45 @@ class DockerInterface(CoreSysAttributes):
         """Pull docker image."""
         return self.sys_run_in_executor(self._install, tag, image, latest)
 
-    def _docker_login(self, hostname: str) -> None:
-        """Try to log in to the registry if there are credentials available."""
-        if hostname in self.sys_docker.config.registries:
-            credentials = self.sys_docker.config.registries[hostname]
+    def _get_credentials(self, image: str) -> dict:
+        """Return a dictionay with credentials for docker login."""
+        registry = None
+        credentials = {}
+        matcher = IMAGE_WITH_HOST.match(image)
 
-            self.sys_docker.docker.login(
-                registry=hostname,
-                username=credentials[ATTR_USERNAME],
-                password=credentials[ATTR_PASSWORD],
+        # Custom registry
+        if matcher:
+            if matcher.group(1) in self.sys_docker.config.registries:
+                registry = matcher.group(1)
+                credentials[ATTR_REGISTRY] = registry
+
+        # If no match assume "dockerhub" as registry
+        elif DOCKER_HUB in self.sys_docker.config.registries:
+            registry = DOCKER_HUB
+
+        if registry:
+            stored = self.sys_docker.config.registries[registry]
+            credentials[ATTR_USERNAME] = stored[ATTR_USERNAME]
+            credentials[ATTR_PASSWORD] = stored[ATTR_PASSWORD]
+
+            _LOGGER.debug(
+                "Logging in to %s as %s",
+                registry,
+                stored[ATTR_USERNAME],
             )
+
+        return credentials
+
+    def _docker_login(self, image: str) -> None:
+        """Try to log in to the registry if there are credentials available."""
+        if not self.sys_docker.config.registries:
+            return
+
+        credentials = self._get_credentials(image)
+        if not credentials:
+            return
+
+        self.sys_docker.docker.login(**credentials)
 
     def _install(
         self, tag: str, image: Optional[str] = None, latest: bool = False
@@ -109,10 +145,10 @@ class DockerInterface(CoreSysAttributes):
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, tag)
         try:
-            # If the image name contains a path to a registry, try to log in
-            path = IMAGE_WITH_HOST.match(image)
-            if path:
-                self._docker_login(path.group(1))
+            if self.sys_docker.config.registries:
+                # Try login if we have defined credentials
+                self._docker_login(image)
+
             docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
             if latest:
                 _LOGGER.info("Tagging image %s with version %s as latest", image, tag)
