@@ -182,7 +182,11 @@ class APISupervisor(CoreSysAttributes):
         """Reload add-ons, configuration, etc."""
         return asyncio.shield(
             asyncio.wait(
-                [self.sys_updater.reload(), self.sys_homeassistant.secrets.reload()]
+                [
+                    self.sys_updater.reload(),
+                    self.sys_homeassistant.secrets.reload(),
+                    self.sys_resolution.evaluate.evaluate_system(),
+                ]
             )
         )
 

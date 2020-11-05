@@ -81,6 +81,9 @@ async def test_resolution_dismiss_suggestion(coresys: CoreSys):
     await coresys.resolution.dismiss_suggestion(clear_snapshot)
     assert clear_snapshot not in coresys.resolution.suggestions
 
+    with pytest.raises(ResolutionError):
+        await coresys.resolution.dismiss_suggestion(clear_snapshot)
+
 
 @pytest.mark.asyncio
 async def test_resolution_apply_suggestion(coresys: CoreSys):
@@ -121,6 +124,9 @@ async def test_resolution_dismiss_issue(coresys: CoreSys):
     await coresys.resolution.dismiss_issue(updated_failed)
     assert updated_failed not in coresys.resolution.issues
 
+    with pytest.raises(ResolutionError):
+        await coresys.resolution.dismiss_issue(updated_failed)
+
 
 @pytest.mark.asyncio
 async def test_resolution_create_issue_suggestion(coresys: CoreSys):
@@ -138,3 +144,15 @@ async def test_resolution_create_issue_suggestion(coresys: CoreSys):
 
     assert SuggestionType.EXECUTE_REPAIR == coresys.resolution.suggestions[-1].type
     assert ContextType.CORE == coresys.resolution.suggestions[-1].context
+
+
+@pytest.mark.asyncio
+async def test_resolution_dismiss_unsupported(coresys: CoreSys):
+    """Test resolution manager dismiss unsupported reason."""
+    coresys.resolution.unsupported = UnsupportedReason.CONTAINER
+
+    await coresys.resolution.dismiss_unsupported(UnsupportedReason.CONTAINER)
+    assert UnsupportedReason.CONTAINER not in coresys.resolution.unsupported
+
+    with pytest.raises(ResolutionError):
+        await coresys.resolution.dismiss_unsupported(UnsupportedReason.CONTAINER)
