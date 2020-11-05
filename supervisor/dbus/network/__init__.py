@@ -74,10 +74,7 @@ class NetworkManager(DBusInterface):
                 continue
             try:
                 await interface.connection.update_information()
-            except (IndexError, DBusFatalError, KeyError):
-                continue
-
-            if not interface.connection.ip4_config:
+            except (DBusFatalError):
                 continue
 
             if interface.connection.object_path == data.get(

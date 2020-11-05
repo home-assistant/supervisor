@@ -4,7 +4,6 @@ from typing import Optional
 
 from ...const import (
     ATTR_ADDRESS,
-    ATTR_GATEWAY,
     ATTR_IPV4,
     ATTR_IPV6,
     ATTR_METHOD,
@@ -93,6 +92,7 @@ class NetworkConnection(NetworkAttributes):
         """Return a ip6 configuration object for the connection."""
         return self._ip4_config
 
+    @property
     def ip6_config(self) -> IpConfiguration:
         """Return a ip6 configuration object for the connection."""
         return self._ip6_config
@@ -140,31 +140,31 @@ class NetworkConnection(NetworkAttributes):
         self._settings = NetworkSettings(settings)
 
         self._ip4_config = IpConfiguration(
-            ip_address(ip4_data[ATTR_GATEWAY])
+            ip_address(ip4_data[DBUS_ATTR_GATEWAY])
             if DBUS_ATTR_GATEWAY in ip4_data
             else None,
-            InterfaceMethod[data[ATTR_IPV4].get(ATTR_METHOD)],
+            InterfaceMethod(data[ATTR_IPV4].get(ATTR_METHOD)),
             [
                 ip_address(nameserver[ATTR_ADDRESS])
-                for nameserver in ip4_data.get(DBUS_ATTR_NAMESERVER_DATA)
+                for nameserver in ip4_data.get(DBUS_ATTR_NAMESERVER_DATA, [])
             ],
             [
                 ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
-                for address in ip4_data[DBUS_ATTR_ADDRESS_DATA]
+                for address in ip4_data.get(DBUS_ATTR_ADDRESS_DATA, [])
             ],
         )
         self._ip6_config = IpConfiguration(
-            ip_address(ip6_data[ATTR_GATEWAY])
+            ip_address(ip6_data.get(DBUS_ATTR_GATEWAY))
             if DBUS_ATTR_GATEWAY in ip4_data
             else None,
-            InterfaceMethod[data[ATTR_IPV6].get(ATTR_METHOD)],
+            InterfaceMethod(data[ATTR_IPV6].get(ATTR_METHOD)),
             [
                 ip_address(bytes(nameserver))
                 for nameserver in ip6_data.get(DBUS_ATTR_NAMESERVERS)
             ],
             [
                 ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
-                for address in ip6_data[DBUS_ATTR_ADDRESS_DATA]
+                for address in ip6_data.get(DBUS_ATTR_ADDRESS_DATA, [])
             ],
         )
 

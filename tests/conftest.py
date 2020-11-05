@@ -156,8 +156,8 @@ async def api_client(aiohttp_client, coresys: CoreSys):
 @pytest.fixture
 async def network_interface(dbus):
     """Fixture for a network interface."""
-    interface = NetworkInterface()
-    await interface.connect(dbus, "/org/freedesktop/NetworkManager/ActiveConnection/1")
+    interface = NetworkInterface(dbus)
+    await interface.connect("/org/freedesktop/NetworkManager/ActiveConnection/1")
     await interface.connection.update_information()
     yield interface
 
