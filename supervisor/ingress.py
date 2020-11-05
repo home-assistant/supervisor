@@ -121,7 +121,7 @@ class Ingress(JsonConfig, CoreSysAttributes):
 
         # Is still valid?
         if valid_until < utcnow():
-            _LOGGER.debug("Session is no longer valid (%f/%s)", valid_until, utcnow())
+            _LOGGER.debug("Session is no longer valid (%f/%f)", valid_until, utcnow())
             return False
 
         # Update time
