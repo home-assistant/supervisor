@@ -1,4 +1,6 @@
 """Payload generators for DBUS communication."""
+from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING
 
