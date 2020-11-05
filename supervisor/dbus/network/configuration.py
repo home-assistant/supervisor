@@ -1,5 +1,5 @@
 """NetworkConnection object4s for Network Manager."""
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 from typing import List, Optional, Union
 
 import attr
@@ -21,10 +21,10 @@ class NetworkAttributes:
 class IpConfiguration:
     """NetworkSettingsIPConfig object for Network Manager."""
 
-    gateway: Optional[Union[IPv4Address, IPv6Address]] = attr.ib()
+    gateway: Optional[Union[IPv6Address, IPv6Address]] = attr.ib()
     method: InterfaceMethod = attr.ib()
-    nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
-    address: List[Union[IPv4Address, IPv6Address]] = attr.ib()
+    nameservers: List[Union[IPv6Address, IPv6Address]] = attr.ib()
+    address: List[Union[IPv4Interface, IPv6Interface]] = attr.ib()
 
 
 @attr.s(slots=True)

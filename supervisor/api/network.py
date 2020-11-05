@@ -14,8 +14,11 @@ from ..const import (
     ATTR_INTERFACE,
     ATTR_INTERFACES,
     ATTR_IP_ADDRESS,
+    ATTR_IPV4,
+    ATTR_IPV6,
     ATTR_METHOD,
     ATTR_METHODS,
+    ATTR_MODE,
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
     ATTR_TYPE,
@@ -23,10 +26,8 @@ from ..const import (
     DOCKER_NETWORK_MASK,
 )
 from ..coresys import CoreSysAttributes
-from ..dbus.const import InterfaceMethodSimple
-from ..dbus.network.interface import NetworkInterface
-from ..dbus.network.utils import int2ip
 from ..exceptions import APIError
+from ..host.network import Interface, IpConfig
 from .utils import api_process, api_validate
 
 SCHEMA_UPDATE = vol.Schema(
@@ -39,19 +40,25 @@ SCHEMA_UPDATE = vol.Schema(
 )
 
 
-def interface_information(interface: NetworkInterface) -> dict:
+def ipconfig_struct(config: IpConfig) -> dict:
+    """Return a dict with information about ip configuration."""
+    return {
+        ATTR_MODE: config.mode,
+        ATTR_IP_ADDRESS: [address.with_prefixlen for address in config.address],
+        ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
+        ATTR_GATEWAY: str(config.gateway),
+    }
+
+
+def interface_struct(interface: Interface) -> dict:
     """Return a dict with information of a interface to be used in th API."""
     return {
-        ATTR_INTERFACE: interface.name,
-        ATTR_IP_ADDRESS: f"{interface.ip_address}/{interface.prefix}",
-        ATTR_GATEWAY: interface.gateway,
         ATTR_ID: interface.id,
+        ATTR_INTERFACE: interface.name,
         ATTR_TYPE: interface.type,
-        ATTR_NAMESERVERS: [int2ip(x) for x in interface.nameservers],
-        ATTR_METHOD: InterfaceMethodSimple.DHCP
-        if interface.method == "auto"
-        else InterfaceMethodSimple.STATIC,
         ATTR_PRIMARY: interface.primary,
+        ATTR_IPV4: ipconfig_struct(interface.ipv4),
+        ATTR_IPV6: ipconfig_struct(interface.ipv6),
     }
 
 
@@ -63,9 +70,7 @@ class APINetwork(CoreSysAttributes):
         """Return network information."""
         interfaces = {}
         for interface in self.sys_host.network.interfaces:
-            interfaces[
-                self.sys_host.network.interfaces[interface].name
-            ] = interface_information(self.sys_host.network.interfaces[interface])
+            interfaces[interface.name] = interface_struct(interface)
 
         return {
             ATTR_INTERFACES: interfaces,
@@ -84,19 +89,15 @@ class APINetwork(CoreSysAttributes):
 
         if req_interface.lower() == "default":
             for interface in self.sys_host.network.interfaces:
-                if not self.sys_host.network.interfaces[interface].primary:
+                if not interface.primary:
                     continue
-                return interface_information(
-                    self.sys_host.network.interfaces[interface]
-                )
+                return interface_struct(interface)
 
         else:
             for interface in self.sys_host.network.interfaces:
-                if req_interface != self.sys_host.network.interfaces[interface].name:
+                if req_interface != interface.name:
                     continue
-                return interface_information(
-                    self.sys_host.network.interfaces[interface]
-                )
+                return interface_struct(interface)
 
         return {}
 

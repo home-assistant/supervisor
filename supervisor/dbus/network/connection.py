@@ -1,5 +1,5 @@
 """Connection object for Network Manager."""
-from ipaddress import ip_address
+from ipaddress import ip_address, ip_interface
 from typing import Optional
 
 from ...const import (
@@ -149,7 +149,7 @@ class NetworkConnection(NetworkAttributes):
                 for nameserver in ip4_data.get(DBUS_ATTR_NAMESERVER_DATA)
             ],
             [
-                ip_address(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
+                ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
                 for address in ip4_data[DBUS_ATTR_ADDRESS_DATA]
             ],
         )
@@ -163,7 +163,7 @@ class NetworkConnection(NetworkAttributes):
                 for nameserver in ip6_data.get(DBUS_ATTR_NAMESERVERS)
             ],
             [
-                ip_address(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
+                ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
                 for address in ip6_data[DBUS_ATTR_ADDRESS_DATA]
             ],
         )

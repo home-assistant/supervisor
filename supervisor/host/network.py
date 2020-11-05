@@ -1,7 +1,7 @@
 """Info control for host."""
 from __future__ import annotations
 
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 import logging
 from typing import List, Union
 
@@ -21,7 +21,7 @@ class IpConfig:
     """Represent a IP configuration."""
 
     mode: InterfaceMode = attr.ib()
-    address: List[Union[IPv4Address, IPv6Address]] = attr.ib()
+    address: List[Union[IPv4Interface, IPv6Interface]] = attr.ib()
     gateway: Union[IPv4Address, IPv6Address] = attr.ib()
     nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
 
@@ -31,7 +31,7 @@ class Interface:
     """Represent a host network interface."""
 
     id: str = attr.ib()
-    interface: str = attr.ib()
+    name: str = attr.ib()
     primary: bool = attr.ib()
     type: ConnectionType = attr.ib()
     ipv4: IpConfig = attr.ib()
