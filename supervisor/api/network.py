@@ -18,7 +18,6 @@ from ..const import (
     ATTR_IP_ADDRESS,
     ATTR_IPV4,
     ATTR_IPV6,
-    ATTR_METHOD,
     ATTR_MODE,
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
@@ -33,10 +32,10 @@ from .utils import api_process, api_validate
 
 _SCHEMA_IP_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_ADDRESS): vol.Coerce(ip_interface),
-        vol.Optional(ATTR_METHOD): vol.Coerce(InterfaceMode),
+        vol.Optional(ATTR_ADDRESS): [vol.Coerce(ip_interface)],
+        vol.Optional(ATTR_MODE): vol.Coerce(InterfaceMode),
         vol.Optional(ATTR_GATEWAY): vol.Coerce(ip_address),
-        vol.Optional(ATTR_DNS): [vol.Coerce(ip_address)],
+        vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(ip_address)],
     }
 )
 
