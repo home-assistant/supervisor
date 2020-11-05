@@ -29,13 +29,17 @@
     '802-11-wireless':
         {
             'security': <'802-11-wireless-security'>,
-            'ssid': <[byte {{ options.ssid }}]>
+            'ssid': <[byte {{ interface["wifi"]["ssid"] }}]>
+            'method': <'{{ interface["wifi"]["method"] }}'>
 
         },
     '802-11-wireless-security':
         {
-            'auth-alg': <'{{ interface.connection.wireless.security['auth-alg'] }}'>,
-            'key-mgmt': <'{{ interface.connection.wireless.security['key-mgmt'] }}'>
+            'auth-alg': <'{{ interface["wifi"]["auth-alg"] }}'>,
+            'key-mgmt': <'{{ interface["wifi"]["key-mgmt"] }}'>
+            {% if interface["wifi"]["psk"] %}
+            'psk': <'{{ interface["wifi"]["psk"] }}'>
+            {% endif %}
         }
 {% endif %}
 }

@@ -34,7 +34,6 @@ from ..const import (
     DBUS_NAME_IP4CONFIG,
     DBUS_NAME_IP6CONFIG,
     DBUS_NAME_NM,
-    DBUS_OBJECT_BASE,
     ConnectionType,
     InterfaceMethod,
 )
@@ -120,9 +119,6 @@ class NetworkConnection(NetworkAttributes):
 
     async def update_information(self):
         """Update the information for childs ."""
-        if self._properties[DBUS_ATTR_IP4CONFIG] == DBUS_OBJECT_BASE:
-            return
-
         settings = await DBus.connect(
             DBUS_NAME_NM, self._properties[DBUS_ATTR_CONNECTION]
         )

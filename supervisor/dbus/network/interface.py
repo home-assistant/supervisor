@@ -30,9 +30,9 @@ class NetworkInterface:
         )
         self._connection = NetworkConnection(connection_object, connection_properties)
 
-    async def update_settings(self, **kwargs) -> None:
+    async def update_settings(self, interface_data: dict) -> None:
         """Update IP configuration used for this interface."""
-        payload = interface_update_payload(self, **kwargs)
+        payload = interface_update_payload(interface_data)
 
         await self.connection.settings.dbus.Settings.Connection.Update(payload)
 

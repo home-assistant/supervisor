@@ -69,6 +69,7 @@ class InterfaceMethod(str, Enum):
 
     AUTO = "auto"
     MANUAL = "manual"
+    DISABLED = "disabled"
 
 
 class ConnectionType(str, Enum):

@@ -18,7 +18,7 @@ from ..const import (
     ATTR_IP_ADDRESS,
     ATTR_IPV4,
     ATTR_IPV6,
-    ATTR_MODE,
+    ATTR_METHOD,
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
     ATTR_TYPE,
@@ -27,13 +27,13 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HostNetworkNotFound
-from ..host.network import Interface, InterfaceMode, IpConfig
+from ..host.network import Interface, InterfaceMethod, IpConfig
 from .utils import api_process, api_validate
 
 _SCHEMA_IP_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_ADDRESS): [vol.Coerce(ip_interface)],
-        vol.Optional(ATTR_MODE): vol.Coerce(InterfaceMode),
+        vol.Optional(ATTR_METHOD): vol.Coerce(InterfaceMethod),
         vol.Optional(ATTR_GATEWAY): vol.Coerce(ip_address),
         vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(ip_address)],
     }
@@ -50,7 +50,7 @@ SCHEMA_UPDATE = vol.Schema(
 def ipconfig_struct(config: IpConfig) -> dict:
     """Return a dict with information about ip configuration."""
     return {
-        ATTR_MODE: config.mode,
+        ATTR_METHOD: config.mode,
         ATTR_IP_ADDRESS: [address.with_prefixlen for address in config.ip_address],
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway),
