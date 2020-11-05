@@ -69,6 +69,7 @@ class NetworkManager(DBusInterface):
             if interface.connection.type not in [
                 ConnectionType.ETHERNET,
                 ConnectionType.WIRELESS,
+                ConnectionType.VLAN,
             ]:
                 continue
             try:
