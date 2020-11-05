@@ -3,7 +3,6 @@ from typing import Optional
 
 from ...utils.gdbus import DBus
 from ..const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM, DBUS_OBJECT_BASE
-from ..payloads.generate import interface_update_payload
 from .connection import NetworkConnection
 
 
@@ -30,11 +29,9 @@ class NetworkInterface:
         )
         self._connection = NetworkConnection(connection_object, connection_properties)
 
-    async def update_settings(self, interface_data: dict) -> None:
+    async def update_settings(self, nm_payload: str) -> None:
         """Update IP configuration used for this interface."""
-        payload = interface_update_payload(interface_data)
-
-        await self.connection.settings.dbus.Settings.Connection.Update(payload)
+        await self.connection.settings.dbus.Settings.Connection.Update(nm_payload)
 
         await self._nm_dbus.ActivateConnection(
             self.connection.settings.dbus.object_path,

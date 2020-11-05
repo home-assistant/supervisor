@@ -24,21 +24,21 @@
             'gateway': <'{{ options.get("gateway", interface.gateway) }}'>
         }
 {% endif %}
-{% if interface.type == "802-11-wireless" %}
+{% if interface.type == "wireless" %}
     ,
     '802-11-wireless':
         {
             'security': <'802-11-wireless-security'>,
-            'ssid': <[byte {{ interface["wifi"]["ssid"] }}]>
-            'method': <'{{ interface["wifi"]["method"] }}'>
+            'ssid': <[byte {{ wifi["ssid"] }}]>
+            'mode': <'{{ interface.wifi.mode }}'>
 
         },
     '802-11-wireless-security':
         {
-            'auth-alg': <'{{ interface["wifi"]["auth-alg"] }}'>,
-            'key-mgmt': <'{{ interface["wifi"]["key-mgmt"] }}'>
-            {% if interface["wifi"]["psk"] %}
-            'psk': <'{{ interface["wifi"]["psk"] }}'>
+            'auth-alg': <'{{ wifi["auth-alg"] }}'>,
+            'key-mgmt': <'{{ wifi["key-mgmt"] }}'>
+            {% if interface.wifi.psk %}
+            'psk': <'{{ interface.wifi.psk }}'>
             {% endif %}
         }
 {% endif %}

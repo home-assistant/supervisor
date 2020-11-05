@@ -11,6 +11,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import ConnectionType, InterfaceMethod as NMInterfaceMethod
 from ..dbus.network.configuration import WirelessProperties
 from ..dbus.network.interface import NetworkInterface
+from ..dbus.payloads.generate import interface_update_payload
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
@@ -129,7 +130,7 @@ class NetworkManager(CoreSysAttributes):
     async def apply_changes(self, interface: Interface) -> None:
         """Apply Interface changes to host."""
         inet = self.sys_dbus.network.interfaces[interface.name]
-        await inet.update_settings(attr.asdict(interface))
+        await inet.update_settings(interface_update_payload(interface))
         await self.update()
 
 
