@@ -2,7 +2,7 @@
     'connection':
         {
             'id': <'{{interface.id}}'>,
-            'type': <'{% if interface.type == "ethernet" %}802-3-ethernet{% interface.type == "wireless" %}802-11-wireless{% else %}{{ interface.type.value }}{% endif %}'>,
+            'type': <'{% if interface.type == "ethernet" %}802-3-ethernet{% elif interface.type == "wireless" %}802-11-wireless{% else %}{{ interface.type.value }}{% endif %}'>,
             'uuid': <'{{interface.uuid}}'>
         },
 
@@ -22,7 +22,7 @@
                     'prefix': <uint32 {{ address.with_prefixlen.partition("/") | last | int }}>
                 }]>,
             {% endfor %}
-            'gateway': <'{{ interface.ipv4.gateway.ip | string }}'>
+            'gateway': <'{{ interface.ipv4.gateway | string }}'>
 {% endif %}
         },
 
@@ -42,7 +42,7 @@
                     'prefix': <uint32 {{ address.with_prefixlen.partition("/") | last | int }}>
                 }]>,
             {% endfor %}
-            'gateway': <'{{ interface.ipv6.gateway.ip | string }}'>
+            'gateway': <'{{ interface.ipv6.gateway | string }}'>
 {% endif %}
         }
 
@@ -51,8 +51,8 @@
     '802-11-wireless':
         {
             'security': <'802-11-wireless-security'>,
-            'ssid': <[byte {{ interface.wifi.ssid }}]>
-            'mode': <'{{ interface.wifi.mode }}'>
+            'ssid': <[byte {{ interface.wifi.ssid }}]>,
+            'mode': <'{{ interface.wifi.mode.value }}'>
 
         },
     '802-11-wireless-security':

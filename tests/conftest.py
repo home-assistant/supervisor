@@ -12,7 +12,6 @@ from supervisor.bootstrap import initialize_coresys
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import DBUS_NAME_NM, DBUS_OBJECT_BASE
 from supervisor.dbus.network import NetworkManager
-from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.docker import DockerAPI
 from supervisor.utils.gdbus import DBus
 
@@ -106,10 +105,10 @@ async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSy
         coresys_obj = await initialize_coresys()
 
     # Mock save json
-    coresys_obj.ingress.save_data = MagicMock()
-    coresys_obj.auth.save_data = MagicMock()
-    coresys_obj.updater.save_data = MagicMock()
-    coresys_obj.config.save_data = MagicMock()
+    coresys_obj._ingress.save_data = MagicMock()
+    coresys_obj._auth.save_data = MagicMock()
+    coresys_obj._updater.save_data = MagicMock()
+    coresys_obj._config.save_data = MagicMock()
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
@@ -151,15 +150,6 @@ async def api_client(aiohttp_client, coresys: CoreSys):
     api.start = AsyncMock()
     await api.load()
     yield await aiohttp_client(api.webapp)
-
-
-@pytest.fixture
-async def network_interface(dbus):
-    """Fixture for a network interface."""
-    interface = NetworkInterface(dbus)
-    await interface.connect("/org/freedesktop/NetworkManager/ActiveConnection/1")
-    await interface.connection.update_information()
-    yield interface
 
 
 @pytest.fixture

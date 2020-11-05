@@ -1,6 +1,6 @@
 """Network Manager implementation for DBUS."""
 import logging
-from typing import Dict, Optional
+from typing import Dict
 
 from ...exceptions import DBusError, DBusFatalError, DBusInterfaceError
 from ...utils.gdbus import DBus
@@ -25,7 +25,7 @@ class NetworkManager(DBusInterface):
     def __init__(self) -> None:
         """Initialize Properties."""
         self._dns: NetworkManagerDNS = NetworkManagerDNS()
-        self._interfaces: Optional[Dict[str, NetworkInterface]] = []
+        self._interfaces: Dict[str, NetworkInterface] = {}
 
     @property
     def dns(self) -> NetworkManagerDNS:
@@ -60,7 +60,7 @@ class NetworkManager(DBusInterface):
             _LOGGER.warning("Can't get properties for Network Manager")
             return
 
-        self._interfaces = {}
+        self._interfaces.clear()
         for connection in data.get(DBUS_ATTR_ACTIVE_CONNECTIONS, []):
             interface = NetworkInterface(self.dbus)
 

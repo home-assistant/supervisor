@@ -48,6 +48,7 @@ class Interface:
     """Represent a host network interface."""
 
     id: str = attr.ib()
+    uuid: str = attr.ib()
     name: str = attr.ib()
     primary: bool = attr.ib()
     type: InterfaceType = attr.ib()
@@ -60,6 +61,7 @@ class Interface:
         """Concert a dbus interface into normal Interface."""
         return Interface(
             inet.connection.id,
+            inet.connection.uuid,
             inet.connection.device.interface,
             inet.connection.primary,
             _map_nm_type(inet.connection.type),
@@ -109,7 +111,7 @@ class NetworkManager(CoreSysAttributes):
 
     def get(self, inet_name: str) -> Interface:
         """Return interface from interface name."""
-        if inet_name in self.sys_dbus.network.interfaces:
+        if inet_name not in self.sys_dbus.network.interfaces:
             raise HostNetworkNotFound()
 
         return Interface.from_dbus_interface(
@@ -144,13 +146,13 @@ def _map_nm_method(method: NMInterfaceMethod) -> InterfaceMethod:
     return mapping.get(method.value, InterfaceMethod.DISABLE)
 
 
-def _map_nm_type(connection: ConnectionType) -> InterfaceType:
+def _map_nm_type(connection: str) -> InterfaceType:
     mapping = {
         ConnectionType.ETHERNET: InterfaceType.ETHERNET,
         ConnectionType.WIRELESS: InterfaceType.WIRELESS,
         ConnectionType.VLAN: InterfaceType.VLAN,
     }
-    return mapping.get(connection.value)
+    return mapping[connection]
 
 
 def _map_nm_wifi(wifi_config: Optional[WirelessProperties]) -> WifiConfig:
@@ -160,7 +162,7 @@ def _map_nm_wifi(wifi_config: Optional[WirelessProperties]) -> WifiConfig:
 
     # Map value
     mode = WifiMode(wifi_config.properties.get["method"], "infrastructure")
-    auth = AuthMethod.NONE
+    auth = AuthMethod.OPEN
 
     nmi_key = wifi_config.security["key-mgmt"]
     if nmi_key == "none":
