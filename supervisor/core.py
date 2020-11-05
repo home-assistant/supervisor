@@ -6,23 +6,15 @@ from typing import Awaitable, List, Optional
 
 import async_timeout
 
-from .const import (
-    RUN_SUPERVISOR_STATE,
-    SOCKET_DBUS,
-    SUPERVISED_SUPPORTED_OS,
-    AddonStartup,
-    CoreState,
-    HostFeature,
-)
+from .const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
-    DockerError,
     HassioError,
     HomeAssistantCrashError,
     HomeAssistantError,
     SupervisorUpdateError,
 )
-from .resolution.const import ContextType, IssueType, UnsupportedReason
+from .resolution.const import ContextType, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -65,34 +57,8 @@ class Core(CoreSysAttributes):
         # Load information from container
         await self.sys_supervisor.load()
 
-        # If host docker is supported?
-        if not self.sys_docker.info.supported_version:
-            self.sys_resolution.unsupported = UnsupportedReason.DOCKER_VERSION
-            self.healthy = False
-            _LOGGER.error(
-                "Docker version '%s' is not supported by Supervisor!",
-                self.sys_docker.info.version,
-            )
-        elif self.sys_docker.info.inside_lxc:
-            self.sys_resolution.unsupported = UnsupportedReason.LXC
-            self.healthy = False
-            _LOGGER.error(
-                "Detected Docker running inside LXC. Running Home Assistant with the Supervisor on LXC is not supported!"
-            )
-        elif not self.sys_supervisor.instance.privileged:
-            self.sys_resolution.unsupported = UnsupportedReason.PRIVILEGED
-            self.healthy = False
-            _LOGGER.error("Supervisor does not run in Privileged mode.")
-
-        if self.sys_docker.info.check_requirements():
-            self.sys_resolution.unsupported = UnsupportedReason.DOCKER_CONFIGURATION
-
-        # Dbus available
-        if not SOCKET_DBUS.exists():
-            self.sys_resolution.unsupported = UnsupportedReason.DBUS
-            _LOGGER.error(
-                "D-Bus is required for Home Assistant. This system is not supported!"
-            )
+        # Evaluate the system
+        await self.sys_resolution.evaluate.evaluate_system()
 
         # Check supervisor version/update
         if self.sys_dev:
@@ -156,38 +122,8 @@ class Core(CoreSysAttributes):
                 self.healthy = False
                 self.sys_capture_exception(err)
 
-        # Check supported OS
-        if not self.sys_hassos.available:
-            if self.sys_host.info.operating_system not in SUPERVISED_SUPPORTED_OS:
-                self.sys_resolution.unsupported = UnsupportedReason.OS
-                _LOGGER.error(
-                    "Detected unsupported OS: %s",
-                    self.sys_host.info.operating_system,
-                )
-
-        # Check Host features
-        if HostFeature.NETWORK not in self.sys_host.supported_features:
-            self.sys_resolution.unsupported = UnsupportedReason.NETWORK_MANAGER
-            _LOGGER.error("NetworkManager is not correctly configured")
-        if any(
-            feature not in self.sys_host.supported_features
-            for feature in (
-                HostFeature.HOSTNAME,
-                HostFeature.SERVICES,
-                HostFeature.SHUTDOWN,
-                HostFeature.REBOOT,
-            )
-        ):
-            self.sys_resolution.unsupported = UnsupportedReason.SYSTEMD
-            _LOGGER.error("Systemd is not correctly working")
-
-        # Check if image names from denylist exist
-        try:
-            if await self.sys_run_in_executor(self.sys_docker.check_denylist_images):
-                self.sys_resolution.unsupported = UnsupportedReason.CONTAINER
-                self.healthy = False
-        except DockerError:
-            self.healthy = False
+        # Evaluate the system
+        await self.sys_resolution.evaluate.evaluate_system()
 
     async def start(self):
         """Start Supervisor orchestration."""

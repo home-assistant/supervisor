@@ -73,7 +73,11 @@ class APIHost(CoreSysAttributes):
     @api_process
     def reload(self, request):
         """Reload host data."""
-        return asyncio.shield(self.sys_host.reload())
+        return asyncio.shield(
+            asyncio.wait(
+                [self.sys_host.reload(), self.sys_resolution.evaluate.evaluate_system()]
+            )
+        )
 
     @api_process
     async def services(self, request):

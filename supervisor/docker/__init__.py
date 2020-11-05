@@ -13,7 +13,6 @@ import requests
 from ..const import (
     ATTR_REGISTRIES,
     DNS_SUFFIX,
-    DOCKER_IMAGE_DENYLIST,
     DOCKER_NETWORK,
     FILE_HASSIO_DOCKER,
     SOCKET_DOCKER,
@@ -62,16 +61,6 @@ class DockerInfo:
     def inside_lxc(self) -> bool:
         """Return True if the docker run inside lxc."""
         return Path("/dev/lxd/sock").exists()
-
-    def check_requirements(self) -> None:
-        """Show wrong configurations."""
-        if self.storage != "overlay2":
-            _LOGGER.error("Docker storage driver %s is not supported!", self.storage)
-
-        if self.logging != "journald":
-            _LOGGER.error("Docker logging driver %s is not supported!", self.logging)
-
-        return self.storage != "overlay2" or self.logging != "journald"
 
 
 class DockerConfig(JsonConfig):
@@ -317,29 +306,3 @@ class DockerAPI:
 
             with suppress(docker.errors.DockerException, requests.RequestException):
                 network.disconnect(data.get("Name", cid), force=True)
-
-    def check_denylist_images(self) -> bool:
-        """Return a boolean if the host has images in the denylist."""
-        denied_images = set()
-
-        try:
-            for image in self.images.list():
-                for tag in image.tags:
-                    image_name = tag.split(":")[0]
-                    if (
-                        image_name in DOCKER_IMAGE_DENYLIST
-                        and image_name not in denied_images
-                    ):
-                        denied_images.add(image_name)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
-            raise DockerError() from err
-
-        if not denied_images:
-            return False
-
-        _LOGGER.error(
-            "Found images: '%s' which are not supported, remove these from the host!",
-            ", ".join(denied_images),
-        )
-        return True

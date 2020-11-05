@@ -12,6 +12,7 @@ from .const import (
     UnsupportedReason,
 )
 from .data import Issue, Suggestion
+from .evaluate import ResolutionEvaluation
 from .free_space import ResolutionStorage
 from .notify import ResolutionNotify
 
@@ -24,12 +25,18 @@ class ResolutionManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Resolution manager."""
         self.coresys: CoreSys = coresys
+        self._evaluate = ResolutionEvaluation(coresys)
         self._notify = ResolutionNotify(coresys)
         self._storage = ResolutionStorage(coresys)
 
         self._suggestions: List[Suggestion] = []
         self._issues: List[Issue] = []
         self._unsupported: List[UnsupportedReason] = []
+
+    @property
+    def evaluate(self) -> ResolutionEvaluation:
+        """Return the ResolutionEvaluation class."""
+        return self._evaluate
 
     @property
     def storage(self) -> ResolutionStorage:
@@ -150,3 +157,10 @@ class ResolutionManager(CoreSysAttributes):
             _LOGGER.warning("The UUID %s is not a valid issue", issue.uuid)
             raise ResolutionError()
         self._issues.remove(issue)
+
+    async def dismiss_unsupported(self, reason: Issue) -> None:
+        """Dismiss a reason for unsupported."""
+        if reason not in self._unsupported:
+            _LOGGER.warning("The reason %s is not active", reason)
+            raise ResolutionError()
+        self._unsupported.remove(reason)
