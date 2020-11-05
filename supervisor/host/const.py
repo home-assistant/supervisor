@@ -21,7 +21,7 @@ class InterfaceType(str, Enum):
 class AuthMethod(str, Enum):
     """Authentication method."""
 
-    NONE = "none"
+    OPEN = "open"
     WEB = "web"
     WPA_PSK = "wpa-psk"
 

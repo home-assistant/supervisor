@@ -39,7 +39,7 @@ class WifiConfig:
 
     mode: WifiMode = attr.ib()
     ssid: str = attr.ib()
-    authentication: AuthMethod = attr.ib()
+    auth: AuthMethod = attr.ib()
     psk: Optional[str] = attr.ib()
 
 

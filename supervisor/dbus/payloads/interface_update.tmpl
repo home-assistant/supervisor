@@ -2,44 +2,75 @@
     'connection':
         {
             'id': <'{{interface.id}}'>,
-            'type': <'{{interface.type}}'>,
+            'type': <'{% if interface.type == "ethernet" %}802-3-ethernet{% interface.type == "wireless" %}802-11-wireless{% else %}{{ interface.type.value }}{% endif %}'>,
             'uuid': <'{{interface.uuid}}'>
         },
 
-{% if options.get("method") == "auto" %}
     'ipv4':
         {
+{% if interface.ipv4.method == "dhcp" %}
             'method': <'auto'>
-        }
+{% elif interface.ipv4.method == "disable" %}
+            'method': <'disabled'>
 {% else %}
-    'ipv4':
-        {
             'method': <'manual'>,
-            'dns': <[uint32 {{ options.get("dns", interface.nameservers) | list | join(",") }}]>,
+            'dns': <[uint32 {{ interface.ipv4.nameservers | map("int") | join(",") }}]>,
             'address-data': <[
+            {% for address in interface.ipv4.ip_address %}
                 {
-                    'address': <'{{ options.get("address", interface.ip_address) }}'>,
-                    'prefix': <uint32 {{ options.get("prefix", interface.prefix) }}>
+                    'address': <'{{ address.ip | string }}'>,
+                    'prefix': <uint32 {{ address.with_prefixlen.partition("/") | last | int }}>
                 }]>,
-            'gateway': <'{{ options.get("gateway", interface.gateway) }}'>
-        }
+            {% endfor %}
+            'gateway': <'{{ interface.ipv4.gateway.ip | string }}'>
 {% endif %}
+        },
+
+    'ipv6':
+        {
+{% if interface.ipv6.method == "dhcp" %}
+            'method': <'auto'>
+{% elif interface.ipv6.method == "disable" %}
+            'method': <'disabled'>
+{% else %}
+            'method': <'manual'>,
+            'dns': <[uint32 {{ interface.ipv6.nameservers | map("int") | join(",") }}]>,
+            'address-data': <[
+            {% for address in interface.ipv6.ip_address %}
+                {
+                    'address': <'{{ address.ip | string }}'>,
+                    'prefix': <uint32 {{ address.with_prefixlen.partition("/") | last | int }}>
+                }]>,
+            {% endfor %}
+            'gateway': <'{{ interface.ipv6.gateway.ip | string }}'>
+{% endif %}
+        }
+
 {% if interface.type == "wireless" %}
     ,
     '802-11-wireless':
         {
             'security': <'802-11-wireless-security'>,
-            'ssid': <[byte {{ wifi["ssid"] }}]>
+            'ssid': <[byte {{ interface.wifi.ssid }}]>
             'mode': <'{{ interface.wifi.mode }}'>
 
         },
     '802-11-wireless-security':
         {
-            'auth-alg': <'{{ wifi["auth-alg"] }}'>,
-            'key-mgmt': <'{{ wifi["key-mgmt"] }}'>
-            {% if interface.wifi.psk %}
+        {% if interface.wifi.auth == "web" %}
+            'auth-alg': <'none'>,
+            'key-mgmt': <'none'>
+        {% elif interface.wifi.auth == "wpa-psk" %}
+            'auth-alg': <'shared'>,
+            'key-mgmt': <'wpa-psk'>
+        {% elif interface.wifi.auth == "open" %}
+            'auth-alg': <'open'>,
+            'key-mgmt': <'none'>
+        {% endif %}
+        {% if interface.wifi.psk %}
+            ,
             'psk': <'{{ interface.wifi.psk }}'>
-            {% endif %}
+        {% endif %}
         }
 {% endif %}
 }
