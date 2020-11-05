@@ -76,3 +76,4 @@ class ConnectionType(str, Enum):
 
     ETHERNET = "802-3-ethernet"
     WIRELESS = "802-11-wireless"
+    VLAN = "802-1Q-vlan"
