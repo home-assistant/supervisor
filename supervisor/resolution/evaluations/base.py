@@ -18,7 +18,7 @@ class EvaluateBase(CoreSysAttributes):
 
     async def __call__(self) -> None:
         """Execute the evaluation."""
-        if self.coresys.core.state not in self.states:
+        if self.sys_core.state not in self.states:
             return
         if await self.evaluate():
             if self.reason not in self.sys_resolution.unsupported:
