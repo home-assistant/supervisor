@@ -1,4 +1,4 @@
-"""Test NetwrokInterface API."""
+"""Test NetworkInterface API."""
 import pytest
 
 from supervisor.const import DOCKER_NETWORK, DOCKER_NETWORK_MASK

@@ -78,6 +78,19 @@ class APIIngress(CoreSysAttributes):
         session = self.sys_ingress.create_session()
         return {ATTR_SESSION: session}
 
+    @api_process
+    async def validate_session(self, request: web.Request) -> Dict[str, Any]:
+        """Create a new session."""
+        self._check_ha_access(request)
+
+        # Check Ingress Session
+        session = request.cookies.get(COOKIE_INGRESS)
+        if not self.sys_ingress.validate_session(session):
+            _LOGGER.warning("No valid ingress session %s", session)
+            raise HTTPUnauthorized()
+
+        return {}
+
     async def handler(
         self, request: web.Request
     ) -> Union[web.Response, web.StreamResponse, web.WebSocketResponse]:
