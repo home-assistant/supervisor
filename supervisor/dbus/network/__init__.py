@@ -7,11 +7,12 @@ import sentry_sdk
 from ...exceptions import DBusError, DBusFatalError, DBusInterfaceError
 from ...utils.gdbus import DBus
 from ..const import (
-    DBUS_ATTR_ACTIVE_CONNECTIONS,
+    DBUS_ATTR_DEVICES,
     DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_NAME_NM,
     DBUS_OBJECT_NM,
     ConnectionType,
+    DeviceType,
 )
 from ..interface import DBusInterface
 from ..utils import dbus_connected
@@ -63,15 +64,14 @@ class NetworkManager(DBusInterface):
             return
 
         self._interfaces.clear()
-        for connection in data.get(DBUS_ATTR_ACTIVE_CONNECTIONS, []):
+        for device in data.get(DBUS_ATTR_DEVICES, []):
             interface = NetworkInterface(self.dbus)
 
-            await interface.connect(connection)
+            await interface.connect(device)
 
             if interface.connection.type not in [
                 ConnectionType.ETHERNET,
                 ConnectionType.WIRELESS,
-                ConnectionType.VLAN,
             ]:
                 continue
 
@@ -85,12 +85,12 @@ class NetworkManager(DBusInterface):
                 sentry_sdk.capture_exception(err)
                 continue
 
-            if interface.connection.device.driver in ("veth", "bridge", "tun"):
+            if interface.type not in (DeviceType.ETHERNET, DeviceType.WIRELESS):
                 continue
 
             if interface.connection.object_path == data.get(
                 DBUS_ATTR_PRIMARY_CONNECTION
             ):
-                interface.connection.primary = True
+                interface.primary = True
 
-            self._interfaces[interface.connection.device.interface] = interface
+            self._interfaces[interface.name] = interface

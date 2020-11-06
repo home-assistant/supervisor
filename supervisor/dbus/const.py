@@ -26,6 +26,7 @@ DBUS_ATTR_802_ETHERNET = "802-3-ethernet"
 DBUS_ATTR_802_WIRELESS = "802-11-wireless"
 DBUS_ATTR_802_WIRELESS_SECURITY = "802-11-wireless-security"
 DBUS_ATTR_ACTIVE_CONNECTIONS = "ActiveConnections"
+DBUS_ATTR_ACTIVE_CONNECTION = "ActiveConnection"
 DBUS_ATTR_ADDRESS_DATA = "AddressData"
 DBUS_ATTR_BOOT_SLOT = "BootSlot"
 DBUS_ATTR_CHASSIS = "Chassis"
@@ -51,7 +52,6 @@ DBUS_ATTR_OPERATING_SYSTEM_PRETTY_NAME = "OperatingSystemPrettyName"
 DBUS_ATTR_OPERATION = "Operation"
 DBUS_ATTR_PRIMARY_CONNECTION = "PrimaryConnection"
 DBUS_ATTR_RCMANAGER = "RcManager"
-DBUS_ATTR_REAL = "Real"
 DBUS_ATTR_STATE = "State"
 DBUS_ATTR_STATIC_HOSTNAME = "StaticHostname"
 DBUS_ATTR_STATIC_OPERATING_SYSTEM_CPE_NAME = "OperatingSystemCPEName"
@@ -81,4 +81,15 @@ class ConnectionType(str, Enum):
 
     ETHERNET = "802-3-ethernet"
     WIRELESS = "802-11-wireless"
-    VLAN = "vlan"
+
+
+class DeviceType(int, Enum):
+    """Device Type."""
+
+    UNKNOWN = 0
+    ETHERNET = 1
+    WIRELESS = 2
+    BLUETOOTH = 5
+    VLAN = 11
+    TUN = 16
+    VETH = 20

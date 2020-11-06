@@ -1,33 +1,64 @@
 """NetworkInterface object for Network Manager."""
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from ...utils.gdbus import DBus
-from ..const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM, DBUS_OBJECT_BASE
+from ..const import (
+    DBUS_ATTR_ACTIVE_CONNECTION,
+    DBUS_ATTR_DEVICE_INTERFACE,
+    DBUS_ATTR_DEVICE_TYPE,
+    DBUS_ATTR_DRIVER,
+    DBUS_NAME_CONNECTION_ACTIVE,
+    DBUS_NAME_DEVICE,
+    DBUS_NAME_NM,
+    DBUS_OBJECT_BASE,
+    ConnectionType,
+)
+from ..interface import DBusInterfaceProxy
 from .connection import NetworkConnection
 
 
-class NetworkInterface:
-    """NetworkInterface object for Network Manager, this serves as a proxy to other objects."""
+class NetworkInterface(DBusInterfaceProxy):
+    """NetworkInterface object for Network Manager."""
 
-    def __init__(self, dbus: DBus) -> None:
+    def __init__(self, nm_dbus: DBus, object_path: str) -> None:
         """Initialize NetworkConnection object."""
+        self.object_path = object_path
+        self.properties = {}
+
         self._connection: Optional[NetworkConnection] = None
-        self._nm_dbus: DBus = dbus
+        self._nm_dbus: DBus = nm_dbus
 
     @property
-    def connection(self) -> NetworkConnection:
+    def name(self) -> str:
+        """Return interface name."""
+        return self.properties[DBUS_ATTR_DEVICE_INTERFACE]
+
+    @property
+    def type(self) -> int:
+        """Return interface type."""
+        return self.properties[DBUS_ATTR_DEVICE_TYPE]
+
+    @property
+    def driver(self) -> str:
+        """Return interface driver."""
+        return self.properties[DBUS_ATTR_DRIVER]
+
+    @property
+    def connection(self) -> Optional[NetworkConnection]:
         """Return the connection used for this interface."""
-        if self._connection is None:
-            raise RuntimeError()
         return self._connection
 
-    async def connect(self, connection_object: str) -> None:
-        """Get connection information."""
-        connection_bus = await DBus.connect(DBUS_NAME_NM, connection_object)
-        connection_properties = await connection_bus.get_properties(
-            DBUS_NAME_CONNECTION_ACTIVE
-        )
-        self._connection = NetworkConnection(connection_object, connection_properties)
+    async def connect(self) -> None:
+        """Get device information."""
+        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
+        self.properties = await self.dbus.get_properties(DBUS_NAME_DEVICE)
+
+        # If connection exists
+        if self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
+            self._connection = NetworkConnection(
+                self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
+            )
+            await self._connection.connect()
 
     async def update_settings(self, nm_payload: str) -> None:
         """Update IP configuration used for this interface."""
@@ -35,6 +66,6 @@ class NetworkInterface:
 
         await self._nm_dbus.ActivateConnection(
             self.connection.settings.dbus.object_path,
-            self.connection.device.dbus.object_path,
+            self.dbus.object_path,
             DBUS_OBJECT_BASE,
         )

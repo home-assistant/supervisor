@@ -28,10 +28,10 @@ from ..const import (
     DBUS_ATTR_IP6CONFIG,
     DBUS_ATTR_NAMESERVER_DATA,
     DBUS_ATTR_NAMESERVERS,
-    DBUS_ATTR_REAL,
     DBUS_ATTR_STATE,
     DBUS_ATTR_TYPE,
     DBUS_ATTR_UUID,
+    DBUS_NAME_CONNECTION_ACTIVE,
     DBUS_NAME_DEVICE,
     DBUS_NAME_DEVICE_WIRELESS,
     DBUS_NAME_IP4CONFIG,
@@ -41,31 +41,30 @@ from ..const import (
     ConnectionType,
     InterfaceMethod,
 )
+from ..interface import DBusInterfaceProxy
 from .configuration import (
     EthernetProperties,
     IpConfiguration,
-    NetworkAttributes,
     NetworkDevice,
     NetworkSettings,
     WirelessProperties,
 )
 
 
-class NetworkConnection(NetworkAttributes):
+class NetworkConnection(DBusInterfaceProxy):
     """NetworkConnection object for Network Manager."""
 
-    def __init__(self, object_path: str, properties: dict) -> None:
+    def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        super().__init__(object_path, properties)
-        self._device_dbus: DBus = None
+        self.object_path = object_path
+        self.properties = {}
+
         self._settings_dbus: DBus = None
         self._settings: Optional[NetworkSettings] = None
         self._ip4_config: Optional[IpConfiguration] = None
         self._ip6_config: Optional[IpConfiguration] = None
-        self._device: Optional[NetworkDevice] = None
         self._wireless: Optional[WirelessProperties] = None
         self._ethernet: Optional[EthernetProperties] = None
-        self.primary: bool = False
 
     @property
     def settings(self) -> NetworkSettings:
@@ -73,24 +72,24 @@ class NetworkConnection(NetworkAttributes):
         return self._settings
 
     @property
-    def device(self) -> NetworkDevice:
-        """Return the device used in the connection."""
-        return self._device
-
-    @property
     def default(self) -> bool:
         """Return a boolean connection is marked as default."""
-        return self._properties[DBUS_ATTR_DEFAULT]
+        return self.properties[DBUS_ATTR_DEFAULT]
 
     @property
     def id(self) -> str:
         """Return the id of the connection."""
-        return self._properties[DBUS_ATTR_ID]
+        return self.properties[DBUS_ATTR_ID]
 
     @property
     def type(self) -> str:
         """Return the type of the connection."""
-        return self._properties[DBUS_ATTR_TYPE]
+        return self.properties[DBUS_ATTR_TYPE]
+
+    @property
+    def uuid(self) -> str:
+        """Return the uuid of the connection."""
+        return self.properties[DBUS_ATTR_UUID]
 
     @property
     def ip4_config(self) -> Optional[IpConfiguration]:
@@ -101,11 +100,6 @@ class NetworkConnection(NetworkAttributes):
     def ip6_config(self) -> Optional[IpConfiguration]:
         """Return a ip6 configuration object for the connection."""
         return self._ip6_config
-
-    @property
-    def uuid(self) -> str:
-        """Return the uuid of the connection."""
-        return self._properties[DBUS_ATTR_UUID]
 
     @property
     def wireless(self) -> Optional[WirelessProperties]:
@@ -126,17 +120,18 @@ class NetworkConnection(NetworkAttributes):
         """
         return self._properties[DBUS_ATTR_STATE]
 
+    async def connect(self) -> None:
+        """Get connection information."""
+        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
+        self.properties = await self.dbus.get_properties(DBUS_NAME_CONNECTION_ACTIVE)
+
     async def update_information(self):
         """Update the information for childs ."""
         settings = await DBus.connect(
             DBUS_NAME_NM, self._properties[DBUS_ATTR_CONNECTION]
         )
-        device = await DBus.connect(
-            DBUS_NAME_NM, self._properties[DBUS_ATTR_DEVICES][0]
-        )
 
         data = (await settings.Settings.Connection.GetSettings())[0]
-        device_data = await device.get_properties(DBUS_NAME_DEVICE)
 
         self._settings = NetworkSettings(settings)
 
@@ -195,11 +190,3 @@ class NetworkConnection(NetworkAttributes):
 
         if self.type == ConnectionType.ETHERNET:
             self._ethernet = EthernetProperties(data.get(DBUS_ATTR_802_ETHERNET, {}))
-
-        self._device = NetworkDevice(
-            device,
-            device_data.get(DBUS_ATTR_DEVICE_INTERFACE),
-            device_data.get(DBUS_ATTR_DEVICE_TYPE),
-            device_data.get(DBUS_ATTR_REAL),
-            device_data.get(DBUS_ATTR_DRIVER),
-        )

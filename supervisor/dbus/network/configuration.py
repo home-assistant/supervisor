@@ -8,15 +8,6 @@ from ...utils.gdbus import DBus
 from ..const import InterfaceMethod
 
 
-class NetworkAttributes:
-    """NetworkAttributes object for Network Manager."""
-
-    def __init__(self, object_path: str, properties: dict) -> None:
-        """Initialize NetworkAttributes object."""
-        self._properties = properties
-        self.object_path = object_path
-
-
 @attr.s(slots=True)
 class IpConfiguration:
     """NetworkSettingsIPConfig object for Network Manager."""
@@ -52,7 +43,6 @@ class NetworkDevice:
     dbus: DBus = attr.ib()
     interface: str = attr.ib()
     device_type: int = attr.ib()
-    real: bool = attr.ib()
     driver: str = attr.ib()
 
 
