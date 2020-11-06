@@ -108,8 +108,8 @@ class Interface:
     primary: bool = attr.ib()
     privacy: Optional[bool] = attr.ib()
     type: InterfaceType = attr.ib()
-    ipv4: IpConfig = attr.ib()
-    ipv6: IpConfig = attr.ib()
+    ipv4: Optional[IpConfig] = attr.ib()
+    ipv6: Optional[IpConfig] = attr.ib()
     wifi: Optional[WifiConfig] = attr.ib()
 
     @staticmethod
@@ -127,13 +127,17 @@ class Interface:
                 inet.connection.ip4_config.address,
                 inet.connection.ip4_config.gateway,
                 inet.connection.ip4_config.nameservers,
-            ),
+            )
+            if inet.connection.ip4_config
+            else None,
             IpConfig(
                 Interface._map_nm_method(inet.connection.ip6_config.method),
                 inet.connection.ip6_config.address,
                 inet.connection.ip6_config.gateway,
                 inet.connection.ip6_config.nameservers,
-            ),
+            )
+            if inet.connection.ip6_config
+            else None,
             Interface._map_nm_wifi(inet.connection.wireless),
         )
 

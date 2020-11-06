@@ -4,8 +4,10 @@
             'id': <'{{interface.id}}'>,
             'type': <'{% if interface.type == "ethernet" %}802-3-ethernet{% elif interface.type == "wireless" %}802-11-wireless{% else %}{{ interface.type.value }}{% endif %}'>,
             'uuid': <'{{interface.uuid}}'>
-        },
+        }
 
+{% if interface.ipv4 %}
+    ,
     'ipv4':
         {
 {% if interface.ipv4.method == "dhcp" %}
@@ -24,8 +26,11 @@
             {% endfor %}
             'gateway': <'{{ interface.ipv4.gateway | string }}'>
 {% endif %}
-        },
+        }
+{% endif %}
 
+{% if interface.ipv6 %}
+    ,
     'ipv6':
         {
 {% if interface.ipv6.method == "dhcp" %}
@@ -45,6 +50,7 @@
             'gateway': <'{{ interface.ipv6.gateway | string }}'>
 {% endif %}
         }
+{% endif %}
 
 {% if interface.type == "ethernet" %}
     ,

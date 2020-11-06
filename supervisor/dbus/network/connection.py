@@ -35,6 +35,7 @@ from ..const import (
     DBUS_NAME_IP4CONFIG,
     DBUS_NAME_IP6CONFIG,
     DBUS_NAME_NM,
+    DBUS_OBJECT_BASE,
     ConnectionType,
     InterfaceMethod,
 )
@@ -90,12 +91,12 @@ class NetworkConnection(NetworkAttributes):
         return self._properties[DBUS_ATTR_TYPE]
 
     @property
-    def ip4_config(self) -> IpConfiguration:
+    def ip4_config(self) -> Optional[IpConfiguration]:
         """Return a ip4 configuration object for the connection."""
         return self._ip4_config
 
     @property
-    def ip6_config(self) -> IpConfiguration:
+    def ip6_config(self) -> Optional[IpConfiguration]:
         """Return a ip6 configuration object for the connection."""
         return self._ip6_config
 
@@ -135,44 +136,53 @@ class NetworkConnection(NetworkAttributes):
         device = await DBus.connect(
             DBUS_NAME_NM, self._properties[DBUS_ATTR_DEVICES][0]
         )
-        ip4 = await DBus.connect(DBUS_NAME_NM, self._properties[DBUS_ATTR_IP4CONFIG])
-        ip6 = await DBus.connect(DBUS_NAME_NM, self._properties[DBUS_ATTR_IP6CONFIG])
 
         data = (await settings.Settings.Connection.GetSettings())[0]
         device_data = await device.get_properties(DBUS_NAME_DEVICE)
-        ip4_data = await ip4.get_properties(DBUS_NAME_IP4CONFIG)
-        ip6_data = await ip6.get_properties(DBUS_NAME_IP6CONFIG)
 
         self._settings = NetworkSettings(settings)
 
-        self._ip4_config = IpConfiguration(
-            ip_address(ip4_data[DBUS_ATTR_GATEWAY])
-            if ip4_data.get(DBUS_ATTR_GATEWAY)
-            else None,
-            InterfaceMethod(data[ATTR_IPV4].get(ATTR_METHOD)),
-            [
-                ip_address(nameserver[ATTR_ADDRESS])
-                for nameserver in ip4_data.get(DBUS_ATTR_NAMESERVER_DATA, [])
-            ],
-            [
-                ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
-                for address in ip4_data.get(DBUS_ATTR_ADDRESS_DATA, [])
-            ],
-        )
-        self._ip6_config = IpConfiguration(
-            ip_address(ip6_data[DBUS_ATTR_GATEWAY])
-            if ip6_data.get(DBUS_ATTR_GATEWAY)
-            else None,
-            InterfaceMethod(data[ATTR_IPV6].get(ATTR_METHOD)),
-            [
-                ip_address(bytes(nameserver))
-                for nameserver in ip6_data.get(DBUS_ATTR_NAMESERVERS)
-            ],
-            [
-                ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
-                for address in ip6_data.get(DBUS_ATTR_ADDRESS_DATA, [])
-            ],
-        )
+        # IPv4
+        if self._properties[DBUS_ATTR_IP4CONFIG] != DBUS_OBJECT_BASE:
+            ip4 = await DBus.connect(
+                DBUS_NAME_NM, self._properties[DBUS_ATTR_IP4CONFIG]
+            )
+            ip4_data = await ip4.get_properties(DBUS_NAME_IP4CONFIG)
+            self._ip4_config = IpConfiguration(
+                ip_address(ip4_data[DBUS_ATTR_GATEWAY])
+                if ip4_data.get(DBUS_ATTR_GATEWAY)
+                else None,
+                InterfaceMethod(data[ATTR_IPV4].get(ATTR_METHOD)),
+                [
+                    ip_address(nameserver[ATTR_ADDRESS])
+                    for nameserver in ip4_data.get(DBUS_ATTR_NAMESERVER_DATA, [])
+                ],
+                [
+                    ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
+                    for address in ip4_data.get(DBUS_ATTR_ADDRESS_DATA, [])
+                ],
+            )
+
+        # IPv6
+        if self._properties[DBUS_ATTR_IP6CONFIG] != DBUS_OBJECT_BASE:
+            ip6 = await DBus.connect(
+                DBUS_NAME_NM, self._properties[DBUS_ATTR_IP6CONFIG]
+            )
+            ip6_data = await ip6.get_properties(DBUS_NAME_IP6CONFIG)
+            self._ip6_config = IpConfiguration(
+                ip_address(ip6_data[DBUS_ATTR_GATEWAY])
+                if ip6_data.get(DBUS_ATTR_GATEWAY)
+                else None,
+                InterfaceMethod(data[ATTR_IPV6].get(ATTR_METHOD)),
+                [
+                    ip_address(bytes(nameserver))
+                    for nameserver in ip6_data.get(DBUS_ATTR_NAMESERVERS)
+                ],
+                [
+                    ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
+                    for address in ip6_data.get(DBUS_ATTR_ADDRESS_DATA, [])
+                ],
+            )
 
         self._wireless = WirelessProperties(
             data.get(DBUS_ATTR_802_WIRELESS, {}),

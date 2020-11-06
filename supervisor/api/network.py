@@ -88,8 +88,8 @@ def interface_struct(interface: Interface) -> dict:
         ATTR_TYPE: interface.type,
         ATTR_PRIMARY: interface.primary,
         ATTR_PRIVACY: interface.privacy,
-        ATTR_IPV4: ipconfig_struct(interface.ipv4),
-        ATTR_IPV6: ipconfig_struct(interface.ipv6),
+        ATTR_IPV4: ipconfig_struct(interface.ipv4) if interface.ipv4 else None,
+        ATTR_IPV6: ipconfig_struct(interface.ipv6) if interface.ipv6 else None,
         ATTR_WIFI: wifi_struct(interface.wifi) if interface.wifi else None,
     }
 
