@@ -2,6 +2,8 @@
 import logging
 from typing import Dict
 
+import sentry_sdk
+
 from ...exceptions import DBusError, DBusFatalError, DBusInterfaceError
 from ...utils.gdbus import DBus
 from ..const import (
@@ -72,9 +74,15 @@ class NetworkManager(DBusInterface):
                 ConnectionType.VLAN,
             ]:
                 continue
+
+            # Process data
             try:
                 await interface.connection.update_information()
             except (DBusFatalError):
+                continue
+            except (KeyError, IndexError) as err:
+                _LOGGER.warning("Error while processing interface: %s", err)
+                sentry_sdk.capture_exception(err)
                 continue
 
             if interface.connection.object_path == data.get(

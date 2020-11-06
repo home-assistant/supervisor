@@ -20,6 +20,7 @@ DBUS_OBJECT_HOSTNAME = "/org/freedesktop/hostname1"
 DBUS_OBJECT_NM = "/org/freedesktop/NetworkManager"
 DBUS_OBJECT_SYSTEMD = "/org/freedesktop/systemd1"
 
+DBUS_ATTR_802_ETHERNET = "802-3-ethernet"
 DBUS_ATTR_802_WIRELESS = "802-11-wireless"
 DBUS_ATTR_802_WIRELESS_SECURITY = "802-11-wireless-security"
 DBUS_ATTR_ACTIVE_CONNECTIONS = "ActiveConnections"

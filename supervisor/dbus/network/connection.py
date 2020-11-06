@@ -12,6 +12,7 @@ from ...const import (
 )
 from ...utils.gdbus import DBus
 from ..const import (
+    DBUS_ATTR_802_ETHERNET,
     DBUS_ATTR_802_WIRELESS,
     DBUS_ATTR_802_WIRELESS_SECURITY,
     DBUS_ATTR_ADDRESS_DATA,
@@ -38,6 +39,7 @@ from ..const import (
     InterfaceMethod,
 )
 from .configuration import (
+    EthernetProperties,
     IpConfiguration,
     NetworkAttributes,
     NetworkDevice,
@@ -59,6 +61,7 @@ class NetworkConnection(NetworkAttributes):
         self._ip6_config: Optional[IpConfiguration] = None
         self._device: Optional[NetworkDevice] = None
         self._wireless: Optional[WirelessProperties] = None
+        self._ethernet: Optional[EthernetProperties] = None
         self.primary: bool = False
 
     @property
@@ -102,11 +105,17 @@ class NetworkConnection(NetworkAttributes):
         return self._properties[DBUS_ATTR_UUID]
 
     @property
-    def wireless(self) -> str:
+    def wireless(self) -> Optional[WirelessProperties]:
         """Return wireless properties if any."""
         if self.type != ConnectionType.WIRELESS:
             return None
         return self._wireless
+
+    def ethernet(self) -> Optional[EthernetProperties]:
+        """Return Ethernet properties if any."""
+        if self.type != ConnectionType.ETHERNET:
+            return None
+        return self._ethernet
 
     @property
     def state(self) -> int:
@@ -169,6 +178,8 @@ class NetworkConnection(NetworkAttributes):
             data.get(DBUS_ATTR_802_WIRELESS_SECURITY, {}),
             bytes(data.get(DBUS_ATTR_802_WIRELESS, {}).get(ATTR_SSID, [])).decode(),
         )
+
+        self._ethernet = EthernetProperties(data.get(DBUS_ATTR_802_ETHERNET, {}))
 
         self._device = NetworkDevice(
             device,

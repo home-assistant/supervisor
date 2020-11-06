@@ -46,11 +46,20 @@
 {% endif %}
         }
 
+{% if interface.type == "ethernet" %}
+    ,
+    '802-3-ethernet':
+        {
+            'assigned-mac-address': <'{% if interface.privacy_mac %}random{% else %}stable{%endif}'>
+        }
+{%endif}
+
 {% if interface.type == "wireless" %}
     ,
     '802-11-wireless':
         {
             'security': <'802-11-wireless-security'>,
+            'assigned-mac-address': <'{% if interface.privacy_mac %}random{% else %}stable{%endif}'>,
             'ssid': <[byte {{ interface.wifi.ssid }}]>,
             'mode': <'{{ interface.wifi.mode.value }}'>,
             'powersave': <uint32 1>

@@ -62,3 +62,10 @@ class WirelessProperties:
     properties: dict = attr.ib()
     security: dict = attr.ib()
     ssid: str = attr.ib()
+
+
+@attr.s(slots=True)
+class EthernetProperties:
+    """Ethernet properties object for Network Manager."""
+
+    property: dict = attr.ib()
