@@ -111,6 +111,7 @@ class NetworkConnection(NetworkAttributes):
             return None
         return self._wireless
 
+    @property
     def ethernet(self) -> Optional[EthernetProperties]:
         """Return Ethernet properties if any."""
         if self.type != ConnectionType.ETHERNET:

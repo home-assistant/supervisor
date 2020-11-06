@@ -68,4 +68,4 @@ class WirelessProperties:
 class EthernetProperties:
     """Ethernet properties object for Network Manager."""
 
-    property: dict = attr.ib()
+    properties: dict = attr.ib()
