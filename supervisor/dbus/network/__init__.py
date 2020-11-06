@@ -85,6 +85,9 @@ class NetworkManager(DBusInterface):
                 sentry_sdk.capture_exception(err)
                 continue
 
+            if interface.connection.device.driver in ("veth", "bridge", "tun"):
+                continue
+
             if interface.connection.object_path == data.get(
                 DBUS_ATTR_PRIMARY_CONNECTION
             ):

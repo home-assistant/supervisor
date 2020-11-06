@@ -53,6 +53,7 @@ class NetworkDevice:
     interface: str = attr.ib()
     device_type: int = attr.ib()
     real: bool = attr.ib()
+    driver: str = attr.ib()
 
 
 @attr.s(slots=True)

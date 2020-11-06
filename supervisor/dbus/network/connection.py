@@ -21,6 +21,7 @@ from ..const import (
     DBUS_ATTR_DEVICE_INTERFACE,
     DBUS_ATTR_DEVICE_TYPE,
     DBUS_ATTR_DEVICES,
+    DBUS_ATTR_DRIVER,
     DBUS_ATTR_GATEWAY,
     DBUS_ATTR_ID,
     DBUS_ATTR_IP4CONFIG,
@@ -197,4 +198,5 @@ class NetworkConnection(NetworkAttributes):
             device_data.get(DBUS_ATTR_DEVICE_INTERFACE),
             device_data.get(DBUS_ATTR_DEVICE_TYPE),
             device_data.get(DBUS_ATTR_REAL),
+            device_data.get(DBUS_ATTR_DRIVER),
         )
