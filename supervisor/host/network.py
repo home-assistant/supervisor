@@ -106,7 +106,7 @@ class Interface:
     uuid: str = attr.ib()
     name: str = attr.ib()
     primary: bool = attr.ib()
-    privacy_mac: Optional[bool] = attr.ib()
+    privacy: Optional[bool] = attr.ib()
     type: InterfaceType = attr.ib()
     ipv4: IpConfig = attr.ib()
     ipv6: IpConfig = attr.ib()
@@ -178,7 +178,7 @@ class Interface:
     def _map_nm_privacy(inet: NetworkInterface) -> Optional[bool]:
         """Generate privancy flag."""
         if inet.connection.type == ConnectionType.ETHERNET:
-            return (
+            return not (
                 inet.connection.ethernet.properties.get(
                     "assigned-mac-address", "stable"
                 )
@@ -186,7 +186,7 @@ class Interface:
             )
 
         if inet.connection.type == ConnectionType.WIRELESS:
-            return (
+            return not (
                 inet.connection.wireless.properties.get(
                     "assigned-mac-address", "stable"
                 )

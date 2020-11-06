@@ -21,7 +21,7 @@ from ..const import (
     ATTR_METHOD,
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
-    ATTR_PRIVACY_MAC,
+    ATTR_PRIVACY,
     ATTR_TYPE,
     DOCKER_NETWORK,
     DOCKER_NETWORK_MASK,
@@ -65,7 +65,7 @@ def interface_struct(interface: Interface) -> dict:
         ATTR_INTERFACE: interface.name,
         ATTR_TYPE: interface.type,
         ATTR_PRIMARY: interface.primary,
-        ATTR_PRIVACY_MAC: interface.privacy_mac,
+        ATTR_PRIVACY: interface.privacy,
         ATTR_IPV4: ipconfig_struct(interface.ipv4),
         ATTR_IPV6: ipconfig_struct(interface.ipv6),
     }

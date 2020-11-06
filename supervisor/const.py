@@ -281,7 +281,7 @@ ATTR_WATCHDOG = "watchdog"
 ATTR_WEBUI = "webui"
 ATTR_OBSERVER = "observer"
 ATTR_UPDATE_AVAILABLE = "update_available"
-ATTR_PRIVACY_MAC = "privacy_mac"
+ATTR_PRIVACY = "privacy"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
