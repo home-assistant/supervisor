@@ -33,6 +33,7 @@ from ..const import (
     DBUS_ATTR_TYPE,
     DBUS_ATTR_UUID,
     DBUS_NAME_DEVICE,
+    DBUS_NAME_DEVICE_WIRELESS,
     DBUS_NAME_IP4CONFIG,
     DBUS_NAME_IP6CONFIG,
     DBUS_NAME_NM,
@@ -109,15 +110,11 @@ class NetworkConnection(NetworkAttributes):
     @property
     def wireless(self) -> Optional[WirelessProperties]:
         """Return wireless properties if any."""
-        if self.type != ConnectionType.WIRELESS:
-            return None
         return self._wireless
 
     @property
     def ethernet(self) -> Optional[EthernetProperties]:
         """Return Ethernet properties if any."""
-        if self.type != ConnectionType.ETHERNET:
-            return None
         return self._ethernet
 
     @property
@@ -185,13 +182,19 @@ class NetworkConnection(NetworkAttributes):
                 ],
             )
 
-        self._wireless = WirelessProperties(
-            data.get(DBUS_ATTR_802_WIRELESS, {}),
-            data.get(DBUS_ATTR_802_WIRELESS_SECURITY, {}),
-            bytes(data.get(DBUS_ATTR_802_WIRELESS, {}).get(ATTR_SSID, [])).decode(),
-        )
+        if self.type == ConnectionType.WIRELESS:
+            wifi = await DBus.connect(
+                DBUS_NAME_DEVICE_WIRELESS, self._properties[DBUS_ATTR_DEVICES][0]
+            )
+            self._wireless = WirelessProperties(
+                wifi,
+                data.get(DBUS_ATTR_802_WIRELESS, {}),
+                data.get(DBUS_ATTR_802_WIRELESS_SECURITY, {}),
+                bytes(data.get(DBUS_ATTR_802_WIRELESS, {}).get(ATTR_SSID, [])).decode(),
+            )
 
-        self._ethernet = EthernetProperties(data.get(DBUS_ATTR_802_ETHERNET, {}))
+        if self.type == ConnectionType.ETHERNET:
+            self._ethernet = EthernetProperties(data.get(DBUS_ATTR_802_ETHERNET, {}))
 
         self._device = NetworkDevice(
             device,

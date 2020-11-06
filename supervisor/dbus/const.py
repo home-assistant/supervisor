@@ -3,7 +3,9 @@ from enum import Enum
 
 DBUS_NAME_CONNECTION_ACTIVE = "org.freedesktop.NetworkManager.Connection.Active"
 DBUS_NAME_DEVICE = "org.freedesktop.NetworkManager.Device"
+DBUS_NAME_DEVICE_WIRELESS = "org.freedesktop.NetworkManager.Device.Wireless"
 DBUS_NAME_DNS = "org.freedesktop.NetworkManager.DnsManager"
+DBUS_NAME_ACCESSPOINT = "org.freedesktop.NetworkManager.AccessPoint"
 DBUS_NAME_HOSTNAME = "org.freedesktop.hostname1"
 DBUS_NAME_IP4CONFIG = "org.freedesktop.NetworkManager.IP4Config"
 DBUS_NAME_IP6CONFIG = "org.freedesktop.NetworkManager.IP6Config"

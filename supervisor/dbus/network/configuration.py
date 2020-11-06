@@ -60,6 +60,7 @@ class NetworkDevice:
 class WirelessProperties:
     """WirelessProperties object for Network Manager."""
 
+    dbus: DBus = attr.ib()
     properties: dict = attr.ib()
     security: dict = attr.ib()
     ssid: str = attr.ib()
