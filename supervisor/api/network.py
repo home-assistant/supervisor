@@ -100,12 +100,11 @@ class APINetwork(CoreSysAttributes):
     @api_process
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return network information."""
-        interfaces = {}
-        for interface in self.sys_host.network.interfaces:
-            interfaces[interface.name] = interface_struct(interface)
-
         return {
-            ATTR_INTERFACES: interfaces,
+            ATTR_INTERFACES: [
+                interface_struct(interface)
+                for interface in self.sys_host.network.interfaces
+            ],
             ATTR_DOCKER: {
                 ATTR_INTERFACE: DOCKER_NETWORK,
                 ATTR_ADDRESS: str(DOCKER_NETWORK_MASK),

@@ -11,7 +11,7 @@ async def test_api_network_info(api_client, coresys):
     """Test network manager api."""
     resp = await api_client.get("/network/info")
     result = await resp.json()
-    assert TEST_INTERFACE in result["data"]["interfaces"]
+    assert TEST_INTERFACE in result["data"]["interfaces"][-1]["interface"]
 
     assert result["data"]["docker"]["interface"] == DOCKER_NETWORK
     assert result["data"]["docker"]["address"] == str(DOCKER_NETWORK_MASK)
