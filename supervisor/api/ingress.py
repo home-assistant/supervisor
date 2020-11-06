@@ -12,6 +12,7 @@ from aiohttp.web_exceptions import (
     HTTPUnauthorized,
 )
 from multidict import CIMultiDict, istr
+import voluptuous as vol
 
 from ..addons.addon import Addon
 from ..const import (
@@ -27,9 +28,11 @@ from ..const import (
     REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
-from .utils import api_process
+from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+VALIDATE_SESSION_DATA = vol.Schema({ATTR_SESSION: str})
 
 
 class APIIngress(CoreSysAttributes):
@@ -80,13 +83,14 @@ class APIIngress(CoreSysAttributes):
 
     @api_process
     async def validate_session(self, request: web.Request) -> Dict[str, Any]:
-        """Create a new session."""
+        """Validate session and extending how long it's valid for."""
         self._check_ha_access(request)
 
+        data = await api_validate(VALIDATE_SESSION_DATA, request)
+
         # Check Ingress Session
-        session = request.cookies.get(COOKIE_INGRESS)
-        if not self.sys_ingress.validate_session(session):
-            _LOGGER.warning("No valid ingress session %s", session)
+        if not self.sys_ingress.validate_session(data[ATTR_SESSION]):
+            _LOGGER.warning("No valid ingress session %s", data[ATTR_SESSION])
             raise HTTPUnauthorized()
 
         return {}

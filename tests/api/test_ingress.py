@@ -17,7 +17,7 @@ async def test_validate_session(stub_auth, api_client, coresys):
     coresys.core.sys_homeassistant.supervisor_token = "ABCD"
     resp = await api_client.post(
         "/ingress/validate_session",
-        cookies={"ingress_session": "non-existing"},
+        json={"session": "non-existing"},
     )
     assert resp.status == 401
     assert len(stub_auth.mock_calls) == 1
@@ -34,7 +34,7 @@ async def test_validate_session(stub_auth, api_client, coresys):
 
     resp = await api_client.post(
         "/ingress/validate_session",
-        cookies={"ingress_session": session},
+        json={"session": session},
     )
     assert resp.status == 200
     assert len(stub_auth.mock_calls) == 3
