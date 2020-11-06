@@ -9,6 +9,7 @@ import voluptuous as vol
 
 from ..const import (
     ATTR_ADDRESS,
+    ATTR_AUTH,
     ATTR_DNS,
     ATTR_DOCKER,
     ATTR_GATEWAY,
@@ -19,16 +20,21 @@ from ..const import (
     ATTR_IPV4,
     ATTR_IPV6,
     ATTR_METHOD,
+    ATTR_MODE,
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
     ATTR_PRIVACY,
+    ATTR_PSK,
+    ATTR_SSID,
     ATTR_TYPE,
+    ATTR_WIFI,
     DOCKER_NETWORK,
     DOCKER_NETWORK_MASK,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HostNetworkNotFound
-from ..host.network import Interface, InterfaceMethod, IpConfig
+from ..host.const import AuthMethod, WifiMode
+from ..host.network import Interface, InterfaceMethod, IpConfig, WifiConfig
 from .utils import api_process, api_validate
 
 _SCHEMA_IP_CONFIG = vol.Schema(
@@ -40,10 +46,22 @@ _SCHEMA_IP_CONFIG = vol.Schema(
     }
 )
 
+_SCHEMA_WIFI_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_MODE): vol.Coerce(WifiMode),
+        vol.Optional(ATTR_AUTH): vol.Coerce(AuthMethod),
+        vol.Optional(ATTR_SSID): str,
+        vol.Optional(ATTR_PSK): str,
+    }
+)
+
+# pylint: disable=no-value-for-parameter
 SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_IPV4): _SCHEMA_IP_CONFIG,
         vol.Optional(ATTR_IPV6): _SCHEMA_IP_CONFIG,
+        vol.Optional(ATTR_WIFI): _SCHEMA_WIFI_CONFIG,
+        vol.Optional(ATTR_PRIVACY): vol.Boolean(),
     }
 )
 
@@ -58,6 +76,11 @@ def ipconfig_struct(config: IpConfig) -> dict:
     }
 
 
+def wifi_struct(config: WifiConfig) -> dict:
+    """Return a dict with information about wifi configuration."""
+    return {ATTR_MODE: config.mode, ATTR_AUTH: config.auth, ATTR_SSID: config.ssid}
+
+
 def interface_struct(interface: Interface) -> dict:
     """Return a dict with information of a interface to be used in th API."""
     return {
@@ -68,6 +91,7 @@ def interface_struct(interface: Interface) -> dict:
         ATTR_PRIVACY: interface.privacy,
         ATTR_IPV4: ipconfig_struct(interface.ipv4),
         ATTR_IPV6: ipconfig_struct(interface.ipv6),
+        ATTR_WIFI: wifi_struct(interface.wifi) if interface.wifi else None,
     }
 
 
@@ -123,14 +147,18 @@ class APINetwork(CoreSysAttributes):
 
         # Validate data
         body = await api_validate(SCHEMA_UPDATE, request)
-        if not body.get(ATTR_IPV4) and not body.get(ATTR_IPV6):
+        if not body:
             raise APIError("You need to supply at least one option to update")
 
         # Apply config
-        for version, config in body.items():
-            if version == "ipv4":
+        for key, config in body.items():
+            if key == ATTR_IPV4:
                 interface.ipv4 = attr.evolve(interface.ipv4, **config)
-            elif version == "ipv6":
+            elif key == ATTR_IPV6:
                 interface.ipv6 = attr.evolve(interface.ipv6, **config)
+            elif key == ATTR_WIFI:
+                interface.wifi = attr.evolve(interface.wifi, **config)
+            elif key == ATTR_PRIVACY:
+                interface.privacy = config
 
         await asyncio.shield(self.sys_host.network.apply_change(interface))
