@@ -52,7 +52,8 @@
         {
             'security': <'802-11-wireless-security'>,
             'ssid': <[byte {{ interface.wifi.ssid }}]>,
-            'mode': <'{{ interface.wifi.mode.value }}'>
+            'mode': <'{{ interface.wifi.mode.value }}'>,
+            'powersave': <uint32 1>
 
         },
     '802-11-wireless-security':
