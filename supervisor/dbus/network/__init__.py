@@ -80,7 +80,7 @@ class NetworkManager(DBusInterface):
                 await interface.connection.update_information()
             except (DBusFatalError):
                 continue
-            except (KeyError, IndexError) as err:
+            except (KeyError, IndexError, ValueError) as err:
                 _LOGGER.warning("Error while processing interface: %s", err)
                 sentry_sdk.capture_exception(err)
                 continue
