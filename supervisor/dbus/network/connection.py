@@ -147,7 +147,7 @@ class NetworkConnection(NetworkAttributes):
 
         self._ip4_config = IpConfiguration(
             ip_address(ip4_data[DBUS_ATTR_GATEWAY])
-            if DBUS_ATTR_GATEWAY in ip4_data
+            if ip4_data.get(DBUS_ATTR_GATEWAY)
             else None,
             InterfaceMethod(data[ATTR_IPV4].get(ATTR_METHOD)),
             [
@@ -161,7 +161,7 @@ class NetworkConnection(NetworkAttributes):
         )
         self._ip6_config = IpConfiguration(
             ip_address(ip6_data[DBUS_ATTR_GATEWAY])
-            if DBUS_ATTR_GATEWAY in ip6_data
+            if ip6_data.get(DBUS_ATTR_GATEWAY)
             else None,
             InterfaceMethod(data[ATTR_IPV6].get(ATTR_METHOD)),
             [

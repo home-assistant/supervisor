@@ -84,7 +84,7 @@ class IpConfig:
 
     method: InterfaceMethod = attr.ib()
     address: List[Union[IPv4Interface, IPv6Interface]] = attr.ib()
-    gateway: Union[IPv4Address, IPv6Address] = attr.ib()
+    gateway: Optional[Union[IPv4Address, IPv6Address]] = attr.ib()
     nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
 
 
