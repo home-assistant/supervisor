@@ -160,8 +160,8 @@ class NetworkConnection(NetworkAttributes):
             ],
         )
         self._ip6_config = IpConfiguration(
-            ip_address(ip6_data.get(DBUS_ATTR_GATEWAY))
-            if DBUS_ATTR_GATEWAY in ip4_data
+            ip_address(ip6_data[DBUS_ATTR_GATEWAY])
+            if DBUS_ATTR_GATEWAY in ip6_data
             else None,
             InterfaceMethod(data[ATTR_IPV6].get(ATTR_METHOD)),
             [
