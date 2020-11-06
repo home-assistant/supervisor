@@ -91,7 +91,7 @@ class NetworkConnection(NetworkAttributes):
 
     @property
     def ip4_config(self) -> IpConfiguration:
-        """Return a ip6 configuration object for the connection."""
+        """Return a ip4 configuration object for the connection."""
         return self._ip4_config
 
     @property
