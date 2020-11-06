@@ -38,5 +38,6 @@ async def test_validate_session(stub_auth, api_client, coresys):
     )
     assert resp.status == 200
     assert len(stub_auth.mock_calls) == 3
+    assert await resp.json() == {"result": "ok", "data": {}}
 
     assert coresys.ingress.sessions[session] > valid_time

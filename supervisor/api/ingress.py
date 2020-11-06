@@ -93,8 +93,6 @@ class APIIngress(CoreSysAttributes):
             _LOGGER.warning("No valid ingress session %s", data[ATTR_SESSION])
             raise HTTPUnauthorized()
 
-        return {}
-
     async def handler(
         self, request: web.Request
     ) -> Union[web.Response, web.StreamResponse, web.WebSocketResponse]:
