@@ -83,7 +83,7 @@ class IpConfig:
     """Represent a IP configuration."""
 
     method: InterfaceMethod = attr.ib()
-    ip_address: List[Union[IPv4Interface, IPv6Interface]] = attr.ib()
+    address: List[Union[IPv4Interface, IPv6Interface]] = attr.ib()
     gateway: Union[IPv4Address, IPv6Address] = attr.ib()
     nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
 

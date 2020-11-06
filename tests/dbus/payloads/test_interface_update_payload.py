@@ -46,7 +46,7 @@ async def test_interface_update_payload_ethernet_ipv4(coresys):
     interface = coresys.host.network.get(TEST_INTERFACE)
 
     interface.ipv4.method = InterfaceMethod.STATIC
-    interface.ipv4.ip_address = [ip_interface("192.168.1.1/24")]
+    interface.ipv4.address = [ip_interface("192.168.1.1/24")]
     interface.ipv4.nameservers = [ip_address("1.1.1.1"), ip_address("1.0.1.1")]
     interface.ipv4.gateway = ip_address("192.168.1.1")
 
@@ -71,7 +71,7 @@ async def test_interface_update_payload_ethernet_ipv6(coresys):
     interface = coresys.host.network.get(TEST_INTERFACE)
 
     interface.ipv6.method = InterfaceMethod.STATIC
-    interface.ipv6.ip_address = [ip_interface("2a03:169:3df5:0:6be9:2588:b26a:a679/64")]
+    interface.ipv6.address = [ip_interface("2a03:169:3df5:0:6be9:2588:b26a:a679/64")]
     interface.ipv6.nameservers = [
         ip_address("2606:4700:4700::64"),
         ip_address("2606:4700:4700::6400"),

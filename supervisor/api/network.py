@@ -16,7 +16,6 @@ from ..const import (
     ATTR_ID,
     ATTR_INTERFACE,
     ATTR_INTERFACES,
-    ATTR_IP_ADDRESS,
     ATTR_IPV4,
     ATTR_IPV6,
     ATTR_METHOD,
@@ -69,8 +68,8 @@ SCHEMA_UPDATE = vol.Schema(
 def ipconfig_struct(config: IpConfig) -> dict:
     """Return a dict with information about ip configuration."""
     return {
-        ATTR_METHOD: config.mode,
-        ATTR_IP_ADDRESS: [address.with_prefixlen for address in config.ip_address],
+        ATTR_METHOD: config.method,
+        ATTR_ADDRESS: [address.with_prefixlen for address in config.address],
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway),
     }
@@ -161,4 +160,4 @@ class APINetwork(CoreSysAttributes):
             elif key == ATTR_PRIVACY:
                 interface.privacy = config
 
-        await asyncio.shield(self.sys_host.network.apply_change(interface))
+        await asyncio.shield(self.sys_host.network.apply_changes(interface))

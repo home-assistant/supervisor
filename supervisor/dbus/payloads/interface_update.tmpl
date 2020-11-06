@@ -16,7 +16,7 @@
             'method': <'manual'>,
             'dns': <[uint32 {{ interface.ipv4.nameservers | map("int") | join(",") }}]>,
             'address-data': <[
-            {% for address in interface.ipv4.ip_address %}
+            {% for address in interface.ipv4.address %}
                 {
                     'address': <'{{ address.ip | string }}'>,
                     'prefix': <uint32 {{ address.with_prefixlen.partition("/") | last | int }}>
@@ -36,7 +36,7 @@
             'method': <'manual'>,
             'dns': <[uint32 {{ interface.ipv6.nameservers | map("int") | join(",") }}]>,
             'address-data': <[
-            {% for address in interface.ipv6.ip_address %}
+            {% for address in interface.ipv6.address %}
                 {
                     'address': <'{{ address.ip | string }}'>,
                     'prefix': <uint32 {{ address.with_prefixlen.partition("/") | last | int }}>
