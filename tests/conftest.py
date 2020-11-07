@@ -1,8 +1,8 @@
 """Common test functions."""
 from pathlib import Path
+import re
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
-import re
 
 from aiohttp import web
 from aiohttp.test_utils import TestClient
@@ -16,7 +16,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
 from supervisor.utils.gdbus import DBus
 
-from tests.common import load_fixture, load_json_fixture, exists_fixture
+from tests.common import exists_fixture, load_fixture, load_json_fixture
 
 # pylint: disable=redefined-outer-name, protected-access
 
@@ -53,8 +53,10 @@ def docker() -> DockerAPI:
 def dbus() -> DBus:
     """Mock DBUS."""
 
-    async def mock_get_properties(_, interface):
-        return load_json_fixture(f"{interface.replace('.', '_')}.json")
+    async def mock_get_properties(dbus_obj, interface):
+        print(interface)
+        fixture = dbus_obj.object_path.replace("/", "_")[1:]
+        return load_json_fixture(f"{fixture}.json")
 
     async def mock_send(_, command, silent=False):
         if silent:

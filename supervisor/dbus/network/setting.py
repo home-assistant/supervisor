@@ -3,7 +3,7 @@ from typing import Any, Awaitable, Optional
 
 from ...const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
 from ...utils.gdbus import DBus
-from ..const import DBUS_NAME_CONNECTION_ACTIVE, DBUS_NAME_NM
+from ..const import DBUS_NAME_NM
 from ..interface import DBusInterfaceProxy
 from ..utils import dbus_connected
 from .configuration import (
@@ -102,8 +102,6 @@ class NetworkSetting(DBusInterfaceProxy):
     async def connect(self) -> None:
         """Get connection information."""
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
-        self.properties = await self.dbus.get_properties(DBUS_NAME_CONNECTION_ACTIVE)
-
         data = (await self.get_settings())[0]
 
         if CONF_ATTR_CONNECTION in data:
