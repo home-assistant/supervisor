@@ -13,3 +13,8 @@ def load_fixture(filename: str) -> str:
     """Load a fixture."""
     path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
     return path.read_text()
+
+
+def exists_fixture(filename: str) -> bool:
+    path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
+    return path.exists()

@@ -2,6 +2,7 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
+import re
 
 from aiohttp import web
 from aiohttp.test_utils import TestClient
@@ -15,7 +16,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
 from supervisor.utils.gdbus import DBus
 
-from tests.common import load_fixture, load_json_fixture
+from tests.common import load_fixture, load_json_fixture, exists_fixture
 
 # pylint: disable=redefined-outer-name, protected-access
 
@@ -59,9 +60,20 @@ def dbus() -> DBus:
         if silent:
             return ""
 
-        filetype = "xml" if "--xml" in command else "fixture"
-        fixture = f"{command[6].replace('/', '_')[1:]}.{filetype}"
-        return load_fixture(fixture)
+        fixture = command[6].replace("/", "_")[1:]
+        if command[1] == "introspect":
+            filetype = "xml"
+
+            if not exists_fixture(f"{fixture}.{filetype}"):
+                fixture = re.sub(r"_[0-9]+$", "", fixture)
+
+                # special case
+                if exists_fixture(f"{fixture}_*.{filetype}"):
+                    fixture = f"{fixture}_*"
+        else:
+            filetype = "fixture"
+
+        return load_fixture(f"{fixture}.{filetype}")
 
     with patch("supervisor.utils.gdbus.DBus._send", new=mock_send), patch(
         "supervisor.dbus.interface.DBusInterface.is_connected",
