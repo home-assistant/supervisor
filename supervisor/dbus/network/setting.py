@@ -50,7 +50,7 @@ class NetworkSetting(DBusInterfaceProxy):
         self._ipv6: Optional[IpProperties] = None
 
     @property
-    def connecton(self) -> Optional[ConnectionProperties]:
+    def connection(self) -> Optional[ConnectionProperties]:
         """Return connection properties if any."""
         return self._connection
 

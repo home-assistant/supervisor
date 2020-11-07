@@ -10,7 +10,7 @@ from tests.const import TEST_INTERFACE
 
 
 @pytest.mark.asyncio
-async def test_network_interface(network_manager: NetworkManager):
+async def test_network_interface_ethernet(network_manager: NetworkManager):
     """Test network interface."""
     interface = network_manager.interfaces[TEST_INTERFACE]
     assert interface.name == TEST_INTERFACE
@@ -37,3 +37,4 @@ async def test_network_interface(network_manager: NetworkManager):
 
     assert interface.settings.ipv4.method == InterfaceMethod.AUTO
     assert interface.settings.ipv6.method == InterfaceMethod.AUTO
+    assert interface.settings.connection.id == "Wired connection 1"

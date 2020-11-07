@@ -44,13 +44,18 @@ async def test_interface_update_payload_ethernet_privacy(coresys):
 async def test_interface_update_payload_ethernet_ipv4(coresys):
     """Test interface update payload."""
     interface = coresys.host.network.get(TEST_INTERFACE)
+    inet = coresys.dbus.network.interfaces[TEST_INTERFACE]
 
     interface.ipv4.method = InterfaceMethod.STATIC
     interface.ipv4.address = [ip_interface("192.168.1.1/24")]
     interface.ipv4.nameservers = [ip_address("1.1.1.1"), ip_address("1.0.1.1")]
     interface.ipv4.gateway = ip_address("192.168.1.1")
 
-    data = interface_update_payload(interface)
+    data = interface_update_payload(
+        interface,
+        name=inet.settings.connection.id,
+        uuid=inet.settings.connection.uuid,
+    )
     assert DBus.parse_gvariant(data)["ipv4"]["method"] == "manual"
     assert (
         DBus.parse_gvariant(data)["ipv4"]["address-data"][0]["address"] == "192.168.1.1"
@@ -58,9 +63,9 @@ async def test_interface_update_payload_ethernet_ipv4(coresys):
     assert DBus.parse_gvariant(data)["ipv4"]["address-data"][0]["prefix"] == 24
     assert DBus.parse_gvariant(data)["ipv4"]["dns"] == [16843009, 16777473]
     assert (
-        DBus.parse_gvariant(data)["connection"]["uuid"]
-        == "0c23631e-2118-355c-bbb0-8943229cb0d6"
+        DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
     )
+    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
     assert DBus.parse_gvariant(data)["ipv4"]["gateway"] == "192.168.1.1"
 
@@ -69,6 +74,7 @@ async def test_interface_update_payload_ethernet_ipv4(coresys):
 async def test_interface_update_payload_ethernet_ipv6(coresys):
     """Test interface update payload."""
     interface = coresys.host.network.get(TEST_INTERFACE)
+    inet = coresys.dbus.network.interfaces[TEST_INTERFACE]
 
     interface.ipv6.method = InterfaceMethod.STATIC
     interface.ipv6.address = [ip_interface("2a03:169:3df5:0:6be9:2588:b26a:a679/64")]
@@ -78,7 +84,11 @@ async def test_interface_update_payload_ethernet_ipv6(coresys):
     ]
     interface.ipv6.gateway = ip_address("fe80::da58:d7ff:fe00:9c69")
 
-    data = interface_update_payload(interface)
+    data = interface_update_payload(
+        interface,
+        name=inet.settings.connection.id,
+        uuid=inet.settings.connection.uuid,
+    )
     assert DBus.parse_gvariant(data)["ipv6"]["method"] == "manual"
     assert (
         DBus.parse_gvariant(data)["ipv6"]["address-data"][0]["address"]
@@ -90,9 +100,9 @@ async def test_interface_update_payload_ethernet_ipv6(coresys):
         50543257694033307102031451402929202176,
     ]
     assert (
-        DBus.parse_gvariant(data)["connection"]["uuid"]
-        == "0c23631e-2118-355c-bbb0-8943229cb0d6"
+        DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
     )
+    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
     assert DBus.parse_gvariant(data)["ipv6"]["gateway"] == "fe80::da58:d7ff:fe00:9c69"
 
@@ -104,7 +114,7 @@ async def test_interface_update_payload_wireless_wpa_psk(coresys):
 
     interface.type = InterfaceType.WIRELESS
     interface.wifi = WifiConfig(
-        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.WPA_PSK, "password"
+        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.WPA_PSK, "password", 0
     )
 
     data = interface_update_payload(interface)
@@ -127,7 +137,7 @@ async def test_interface_update_payload_wireless_web(coresys):
 
     interface.type = InterfaceType.WIRELESS
     interface.wifi = WifiConfig(
-        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.WEB, "password"
+        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.WEB, "password", 0
     )
 
     data = interface_update_payload(interface)
@@ -148,7 +158,9 @@ async def test_interface_update_payload_wireless_open(coresys):
 
     interface.type = InterfaceType.WIRELESS
     interface.privacy = False
-    interface.wifi = WifiConfig(WifiMode.INFRASTRUCTURE, "Test", AuthMethod.OPEN, None)
+    interface.wifi = WifiConfig(
+        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.OPEN, None, 0
+    )
 
     data = interface_update_payload(interface)
 
@@ -171,7 +183,9 @@ async def test_interface_update_payload_wireless_privacy(coresys):
 
     interface.type = InterfaceType.WIRELESS
     interface.privacy = True
-    interface.wifi = WifiConfig(WifiMode.INFRASTRUCTURE, "Test", AuthMethod.OPEN, None)
+    interface.wifi = WifiConfig(
+        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.OPEN, None, 0
+    )
 
     data = interface_update_payload(interface)
 

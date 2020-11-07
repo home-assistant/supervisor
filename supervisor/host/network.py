@@ -78,7 +78,16 @@ class NetworkManager(CoreSysAttributes):
     async def apply_changes(self, interface: Interface) -> None:
         """Apply Interface changes to host."""
         inet = self.sys_dbus.network.interfaces[interface.name]
-        await inet.update_settings(interface_update_payload(interface))
+        settings = interface_update_payload(
+            interface,
+            name=inet.settings.connection.id,
+            uuid=inet.settings.connection.uuid,
+        )
+
+        await inet.settings.update(settings)
+        await self.sys_dbus.network.activate_connection(
+            inet.connection.object_path, inet.object_path
+        )
         await self.update()
 
 
@@ -234,9 +243,9 @@ class Interface:
     def _map_nm_privacy(inet: NetworkInterface) -> Optional[bool]:
         """Generate privancy flag."""
         if inet.type == DeviceType.ETHERNET:
-            return not inet.settings.ethernet.assigned_mac in ("stable", None)
+            return inet.settings.ethernet.assigned_mac not in ("stable", None)
 
         if inet.type == DeviceType.WIRELESS:
-            return not inet.settings.wireless.assigned_mac == "stable"
+            return inet.settings.wireless.assigned_mac != "stable"
 
         return None
