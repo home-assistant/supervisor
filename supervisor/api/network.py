@@ -26,6 +26,8 @@ from ..const import (
     ATTR_SSID,
     ATTR_TYPE,
     ATTR_WIFI,
+    ATTR_ENABLED,
+    ATTR_CONNECTED,
     DOCKER_NETWORK,
     DOCKER_NETWORK_MASK,
 )
@@ -84,6 +86,8 @@ def interface_struct(interface: Interface) -> dict:
     return {
         ATTR_INTERFACE: interface.name,
         ATTR_TYPE: interface.type,
+        ATTR_ENABLED: interface.enabled,
+        ATTR_CONNECTED: interface.connected,
         ATTR_PRIMARY: interface.primary,
         ATTR_PRIVACY: interface.privacy,
         ATTR_IPV4: ipconfig_struct(interface.ipv4) if interface.ipv4 else None,

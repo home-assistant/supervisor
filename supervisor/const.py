@@ -285,6 +285,8 @@ ATTR_WIFI = "wifi"
 ATTR_SSD = "ssid"
 ATTR_AUTH = "auth"
 ATTR_PSK = "psk"
+ATTR_CONNECTED = "connected"
+ATTR_ENABLED = "enabled"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

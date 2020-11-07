@@ -102,9 +102,9 @@ class WifiConfig:
 class Interface:
     """Represent a host network interface."""
 
-    id: str = attr.ib()
-    uuid: str = attr.ib()
     name: str = attr.ib()
+    enabled: bool = attr.ib()
+    connected: bool = attr.ib()
     primary: bool = attr.ib()
     privacy: Optional[bool] = attr.ib()
     type: InterfaceType = attr.ib()
@@ -116,27 +116,27 @@ class Interface:
     def from_dbus_interface(inet: NetworkInterface) -> Interface:
         """Concert a dbus interface into normal Interface."""
         return Interface(
-            inet.connection.id,
-            inet.connection.uuid,
-            inet.connection.device.interface,
-            inet.connection.primary,
+            inet.name,
+            inet.settings is not None,
+            inet.connection is not None,
+            inet.primary,
             Interface._map_nm_privacy(inet),
             Interface._map_nm_type(inet.connection.type),
             IpConfig(
-                Interface._map_nm_method(inet.connection.ip4_config.method),
-                inet.connection.ip4_config.address,
-                inet.connection.ip4_config.gateway,
-                inet.connection.ip4_config.nameservers,
+                Interface._map_nm_method(inet.settings.ipv4.method),
+                inet.connection.ipv4.address,
+                inet.connection.ipv4.gateway,
+                inet.connection.ipv4.nameservers,
             )
-            if inet.connection.ip4_config
+            if inet.connection.ipv4
             else None,
             IpConfig(
-                Interface._map_nm_method(inet.connection.ip6_config.method),
-                inet.connection.ip6_config.address,
-                inet.connection.ip6_config.gateway,
-                inet.connection.ip6_config.nameservers,
+                Interface._map_nm_method(inet.settings.ipv6.method),
+                inet.connection.ipv6.address,
+                inet.connection.ipv6.gateway,
+                inet.connection.ipv6.nameservers,
             )
-            if inet.connection.ip6_config
+            if inet.connection.ipv6
             else None,
             Interface._map_nm_wifi(inet.connection.wireless),
         )
