@@ -28,16 +28,50 @@ class DNSConfiguration:
 
 
 @attr.s(slots=True)
-class WirelessProperties:
-    """WirelessProperties object for Network Manager."""
+class ConnectionProperties:
+    """Connection Properties object for Network Manager."""
 
-    properties: dict = attr.ib()
-    security: dict = attr.ib()
-    ssid: str = attr.ib()
+    id: Optional[str] = attr.ib()
+    uuid: Optional[str] = attr.ib()
+    type: Optional[str] = attr.ib()
+
+
+@attr.s(slots=True)
+class WirelessProperties:
+    """Wireless Properties object for Network Manager."""
+
+    ssid: Optional[str] = attr.ib()
+    assigned_mac: Optional[str] = attr.ib()
+    mode: Optional[str] = attr.ib()
+    powersave: Optional[int] = attr.ib()
+
+
+@attr.s(slots=True)
+class WirelessSecurityProperties:
+    """Wireless Security Properties object for Network Manager."""
+
+    auth_alg: Optional[str] = attr.ib()
+    key_mgmt: Optional[str] = attr.ib()
+    psk: Optional[str] = attr.ib()
 
 
 @attr.s(slots=True)
 class EthernetProperties:
     """Ethernet properties object for Network Manager."""
 
-    properties: dict = attr.ib()
+    assigned_mac: Optional[str] = attr.ib()
+
+
+@attr.s(slots=True)
+class VlanProperties:
+    """Ethernet properties object for Network Manager."""
+
+    id: Optional[int] = attr.ib()
+    parent: Optional[str] = attr.ib()
+
+
+@attr.s(slots=True)
+class IpProperties:
+    """IP properties object for Network Manager."""
+
+    method: Optional[str] = attr.ib()

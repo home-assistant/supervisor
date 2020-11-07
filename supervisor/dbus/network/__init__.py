@@ -67,7 +67,13 @@ class NetworkManager(DBusInterface):
         for device in data.get(DBUS_ATTR_DEVICES, []):
             interface = NetworkInterface(self.dbus, device)
 
-            await interface.connect()
+            # Connect to interface
+            try:
+                await interface.connect()
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Error while processing interface: %s", err)
+                sentry_sdk.capture_exception(err)
+                continue
 
             if (
                 interface.type
@@ -78,16 +84,6 @@ class NetworkManager(DBusInterface):
                 ]
                 or not interface.managed
             ):
-                continue
-
-            # Process data
-            try:
-                await interface.connection.update_information()
-            except (DBusFatalError):
-                continue
-            except (KeyError, IndexError, ValueError) as err:
-                _LOGGER.warning("Error while processing interface: %s", err)
-                sentry_sdk.capture_exception(err)
                 continue
 
             if interface.connection.object_path == data.get(

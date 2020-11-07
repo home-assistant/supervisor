@@ -4,24 +4,12 @@ from typing import Optional
 
 from ...const import (
     ATTR_ADDRESS,
-    ATTR_IPV4,
-    ATTR_IPV6,
-    ATTR_METHOD,
     ATTR_PREFIX,
-    ATTR_SSID,
 )
 from ...utils.gdbus import DBus
 from ..const import (
-    DBUS_ATTR_802_ETHERNET,
-    DBUS_ATTR_802_WIRELESS,
-    DBUS_ATTR_802_WIRELESS_SECURITY,
     DBUS_ATTR_ADDRESS_DATA,
     DBUS_ATTR_CONNECTION,
-    DBUS_ATTR_DEFAULT,
-    DBUS_ATTR_DEVICE_INTERFACE,
-    DBUS_ATTR_DEVICE_TYPE,
-    DBUS_ATTR_DEVICES,
-    DBUS_ATTR_DRIVER,
     DBUS_ATTR_GATEWAY,
     DBUS_ATTR_ID,
     DBUS_ATTR_IP4CONFIG,
@@ -32,23 +20,13 @@ from ..const import (
     DBUS_ATTR_TYPE,
     DBUS_ATTR_UUID,
     DBUS_NAME_CONNECTION_ACTIVE,
-    DBUS_NAME_DEVICE,
-    DBUS_NAME_DEVICE_WIRELESS,
     DBUS_NAME_IP4CONFIG,
     DBUS_NAME_IP6CONFIG,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
-    ConnectionType,
-    InterfaceMethod,
 )
 from ..interface import DBusInterfaceProxy
-from .configuration import (
-    EthernetProperties,
-    IpConfiguration,
-    NetworkDevice,
-    NetworkSettings,
-    WirelessProperties,
-)
+from .configuration import IpConfiguration
 
 
 class NetworkConnection(DBusInterfaceProxy):
