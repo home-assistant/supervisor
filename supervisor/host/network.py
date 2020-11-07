@@ -153,6 +153,7 @@ class Interface:
             if inet.connection and inet.connection.ipv6
             else None,
             Interface._map_nm_wifi(inet),
+            Interface._map_nm_vlan(inet),
         )
 
     @staticmethod
@@ -220,6 +221,14 @@ class Interface:
             inet.settings.wireless_security.psk,
             signal,
         )
+
+    @staticmethod
+    def _map_nm_vlan(inet: NetworkInterface) -> Optional[WifiConfig]:
+        """Create mapping to nm vlan property."""
+        if inet.type != DeviceType.VLAN or not inet.settings:
+            return None
+
+        return VlanConfig(inet.settings.vlan.id, inet.settings.vlan.parent)
 
     @staticmethod
     def _map_nm_privacy(inet: NetworkInterface) -> Optional[bool]:

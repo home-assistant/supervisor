@@ -99,6 +99,7 @@ class NetworkManager(DBusInterface):
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Error while processing interface: %s", err)
                 sentry_sdk.capture_exception(err)
+                raise err
                 continue
 
             # Skeep interface

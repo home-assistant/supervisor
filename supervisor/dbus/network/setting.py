@@ -104,7 +104,7 @@ class NetworkSetting(DBusInterfaceProxy):
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
         self.properties = await self.dbus.get_properties(DBUS_NAME_CONNECTION_ACTIVE)
 
-        data = await self.get_settings()[0]
+        data = (await self.get_settings())[0]
 
         if CONF_ATTR_CONNECTION in data:
             self._connection = ConnectionProperties(
