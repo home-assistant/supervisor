@@ -8,15 +8,15 @@ from ..const import (
     DBUS_ATTR_DEVICE_TYPE,
     DBUS_ATTR_DRIVER,
     DBUS_ATTR_MANAGED,
-    DBUS_NAME_CONNECTION_ACTIVE,
     DBUS_NAME_DEVICE,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
-    ConnectionType,
+    DeviceType,
 )
 from ..interface import DBusInterfaceProxy
 from .connection import NetworkConnection
 from .setting import NetworkSetting
+from .wireless import NetworkWireless
 
 
 class NetworkInterface(DBusInterfaceProxy):
@@ -30,7 +30,8 @@ class NetworkInterface(DBusInterfaceProxy):
         self.primary = True
 
         self._connection: Optional[NetworkConnection] = None
-        self._setting: Optional[NetworkSetting] = None
+        self._settings: Optional[NetworkSetting] = None
+        self._wireless: Optional[NetworkWireless] = None
         self._nm_dbus: DBus = nm_dbus
 
     @property
@@ -58,6 +59,16 @@ class NetworkInterface(DBusInterfaceProxy):
         """Return the connection used for this interface."""
         return self._connection
 
+    @property
+    def settings(self) -> Optional[NetworkSetting]:
+        """Return the connection settings used for this interface."""
+        return self._settings
+
+    @property
+    def wireless(self) -> Optional[NetworkWireless]:
+        """Return the wireless data for this interface."""
+        return self._wireless
+
     async def connect(self) -> None:
         """Get device information."""
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
@@ -76,8 +87,13 @@ class NetworkInterface(DBusInterfaceProxy):
 
         # Attach settings
         if self.connection and self.connection.setting_object != DBUS_OBJECT_BASE:
-            self._setting = NetworkSetting(self.connection.setting_object)
-            await self._setting.connect()
+            self._settings = NetworkSetting(self.connection.setting_object)
+            await self._settings.connect()
+
+        # Wireless
+        if self.type == DeviceType.WIRELESS:
+            self._wireless = NetworkWireless(self.object_path)
+            await self._wireless.connect()
 
     async def update_settings(self, nm_payload: str) -> None:
         """Update IP configuration used for this interface."""

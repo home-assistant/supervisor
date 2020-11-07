@@ -28,6 +28,17 @@ class DNSConfiguration:
 
 
 @attr.s(slots=True)
+class APConfiguration:
+    """Access Point object."""
+
+    ssid: str = attr.ib()
+    frequency: int = attr.ib()
+    mac: str = attr.ib()
+    mode: int = attr.ib()
+    signal: int = attr.ib()
+
+
+@attr.s(slots=True)
 class ConnectionProperties:
     """Connection Properties object for Network Manager."""
 
