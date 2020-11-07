@@ -16,5 +16,6 @@ def load_fixture(filename: str) -> str:
 
 
 def exists_fixture(filename: str) -> bool:
+    """Check if a fixture exists."""
     path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
     return path.exists()
