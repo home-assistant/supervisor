@@ -287,6 +287,7 @@ ATTR_AUTH = "auth"
 ATTR_PSK = "psk"
 ATTR_CONNECTED = "connected"
 ATTR_ENABLED = "enabled"
+ATTR_SIGNAL = "signal"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

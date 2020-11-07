@@ -10,8 +10,10 @@ import voluptuous as vol
 from ..const import (
     ATTR_ADDRESS,
     ATTR_AUTH,
+    ATTR_CONNECTED,
     ATTR_DNS,
     ATTR_DOCKER,
+    ATTR_ENABLED,
     ATTR_GATEWAY,
     ATTR_INTERFACE,
     ATTR_INTERFACES,
@@ -23,11 +25,10 @@ from ..const import (
     ATTR_PRIMARY,
     ATTR_PRIVACY,
     ATTR_PSK,
+    ATTR_SIGNAL,
     ATTR_SSID,
     ATTR_TYPE,
     ATTR_WIFI,
-    ATTR_ENABLED,
-    ATTR_CONNECTED,
     DOCKER_NETWORK,
     DOCKER_NETWORK_MASK,
 )
@@ -78,7 +79,12 @@ def ipconfig_struct(config: IpConfig) -> dict:
 
 def wifi_struct(config: WifiConfig) -> dict:
     """Return a dict with information about wifi configuration."""
-    return {ATTR_MODE: config.mode, ATTR_AUTH: config.auth, ATTR_SSID: config.ssid}
+    return {
+        ATTR_MODE: config.mode,
+        ATTR_AUTH: config.auth,
+        ATTR_SSID: config.ssid,
+        ATTR_SIGNAL: config.signal,
+    }
 
 
 def interface_struct(interface: Interface) -> dict:

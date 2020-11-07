@@ -5,7 +5,7 @@ from enum import Enum
 class InterfaceMethod(str, Enum):
     """Configuration of an interface."""
 
-    DISABLE = "disable"
+    DISABLED = "disabled"
     STATIC = "static"
     DHCP = "dhcp"
 

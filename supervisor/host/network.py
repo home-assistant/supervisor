@@ -8,8 +8,12 @@ from typing import List, Optional, Union
 import attr
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..dbus.const import ConnectionType, InterfaceMethod as NMInterfaceMethod
-from ..dbus.network.configuration import WirelessProperties
+from ..dbus.const import (
+    ConnectionStateType,
+    DeviceType,
+    InterfaceMethod as NMInterfaceMethod,
+)
+from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
 from ..dbus.payloads.generate import interface_update_payload
 from ..exceptions import (
@@ -96,6 +100,15 @@ class WifiConfig:
     ssid: str = attr.ib()
     auth: AuthMethod = attr.ib()
     psk: Optional[str] = attr.ib()
+    signal: Optional[int] = attr.ib()
+
+
+@attr.s(slots=True)
+class VlanConfig:
+    """Represent a vlan configuration."""
+
+    id: int = attr.ib()
+    interface: str = attr.ib()
 
 
 @attr.s(slots=True)
@@ -111,6 +124,7 @@ class Interface:
     ipv4: Optional[IpConfig] = attr.ib()
     ipv6: Optional[IpConfig] = attr.ib()
     wifi: Optional[WifiConfig] = attr.ib()
+    vlan: Optional[VlanConfig] = attr.ib()
 
     @staticmethod
     def from_dbus_interface(inet: NetworkInterface) -> Interface:
@@ -118,17 +132,17 @@ class Interface:
         return Interface(
             inet.name,
             inet.settings is not None,
-            inet.connection is not None,
+            Interface._map_nm_connected(inet.connection),
             inet.primary,
             Interface._map_nm_privacy(inet),
-            Interface._map_nm_type(inet.connection.type),
+            Interface._map_nm_type(inet.type),
             IpConfig(
                 Interface._map_nm_method(inet.settings.ipv4.method),
                 inet.connection.ipv4.address,
                 inet.connection.ipv4.gateway,
                 inet.connection.ipv4.nameservers,
             )
-            if inet.connection.ipv4
+            if inet.connection and inet.connection.ipv4
             else None,
             IpConfig(
                 Interface._map_nm_method(inet.settings.ipv6.method),
@@ -136,65 +150,84 @@ class Interface:
                 inet.connection.ipv6.gateway,
                 inet.connection.ipv6.nameservers,
             )
-            if inet.connection.ipv6
+            if inet.connection and inet.connection.ipv6
             else None,
-            Interface._map_nm_wifi(inet.connection.wireless),
+            Interface._map_nm_wifi(inet),
         )
 
     @staticmethod
-    def _map_nm_method(method: NMInterfaceMethod) -> InterfaceMethod:
+    def _map_nm_method(method: str) -> InterfaceMethod:
+        """Map IP interface method."""
         mapping = {
             NMInterfaceMethod.AUTO: InterfaceMethod.DHCP,
-            NMInterfaceMethod.DISABLED: InterfaceMethod.DISABLE,
+            NMInterfaceMethod.DISABLED: InterfaceMethod.DISABLED,
             NMInterfaceMethod.MANUAL: InterfaceMethod.STATIC,
         }
 
-        return mapping.get(method.value, InterfaceMethod.DISABLE)
+        return mapping.get(method, InterfaceMethod.DISABLED)
 
     @staticmethod
-    def _map_nm_type(connection: str) -> InterfaceType:
+    def _map_nm_connected(connection: Optional[NetworkConnection]) -> bool:
+        """Map connectivity state."""
+        if not connection:
+            return False
+
+        return connection.state in (
+            ConnectionStateType.ACTIVATED,
+            ConnectionStateType.ACTIVATING,
+        )
+
+    @staticmethod
+    def _map_nm_type(device_type: int) -> InterfaceType:
         mapping = {
-            ConnectionType.ETHERNET: InterfaceType.ETHERNET,
-            ConnectionType.WIRELESS: InterfaceType.WIRELESS,
-            ConnectionType.VLAN: InterfaceType.VLAN,
+            DeviceType.ETHERNET: InterfaceType.ETHERNET,
+            DeviceType.WIRELESS: InterfaceType.WIRELESS,
+            DeviceType.VLAN: InterfaceType.VLAN,
         }
-        return mapping[connection]
+        return mapping[device_type]
 
     @staticmethod
-    def _map_nm_wifi(wifi_config: Optional[WirelessProperties]) -> WifiConfig:
+    def _map_nm_wifi(inet: NetworkInterface) -> Optional[WifiConfig]:
         """Create mapping to nm wifi property."""
-        if wifi_config is None:
+        if inet.type != DeviceType.WIRELESS or not inet.settings:
             return None
 
-        # Map value
-        mode = WifiMode(wifi_config.properties.get["method"], "infrastructure")
-        auth = AuthMethod.OPEN
+        # Wireless operation mode
+        mode = (
+            WifiMode(inet.settings.wireless.mode)
+            if inet.settings.wireless.mode
+            else WifiMode.INFRASTRUCTURE
+        )
 
-        nmi_key = wifi_config.security["key-mgmt"]
-        if nmi_key == "none":
+        # Authentication
+        if inet.settings.wireless_security.key_mgmt == "none":
             auth = AuthMethod.WEB
-        elif nmi_key == "wpa-psk":
+        elif inet.settings.wireless_security.key_mgmt == "wpa-psk":
             auth = AuthMethod.WPA_PSK
+        else:
+            auth = AuthMethod.OPEN
 
-        return WifiConfig(mode, wifi_config.ssid, auth, wifi_config.security.get("psk"))
+        # Signal
+        if inet.wireless:
+            signal = inet.wireless.active.strength
+        else:
+            signal = None
+
+        return WifiConfig(
+            mode,
+            inet.settings.wireless.ssid,
+            auth,
+            inet.settings.wireless_security.psk,
+            signal,
+        )
 
     @staticmethod
     def _map_nm_privacy(inet: NetworkInterface) -> Optional[bool]:
         """Generate privancy flag."""
-        if inet.connection.type == ConnectionType.ETHERNET:
-            return not (
-                inet.connection.ethernet.properties.get(
-                    "assigned-mac-address", "stable"
-                )
-                == "stable"
-            )
+        if inet.type == DeviceType.ETHERNET:
+            return not inet.settings.ethernet.assigned_mac in ("stable", None)
 
-        if inet.connection.type == ConnectionType.WIRELESS:
-            return not (
-                inet.connection.wireless.properties.get(
-                    "assigned-mac-address", "stable"
-                )
-                == "stable"
-            )
+        if inet.type == DeviceType.WIRELESS:
+            return not inet.settings.wireless.assigned_mac == "stable"
 
         return None

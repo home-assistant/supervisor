@@ -88,8 +88,24 @@ class ConnectionType(str, Enum):
     WIRELESS = "802-11-wireless"
 
 
+class ConnectionStateType(int, Enum):
+    """Connection states.
+
+    https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMActiveConnectionState
+    """
+
+    UNKNOWN = 0
+    ACTIVATING = 1
+    ACTIVATED = 2
+    DEACTIVATING = 3
+    DEACTIVATED = 4
+
+
 class DeviceType(int, Enum):
-    """Device Type."""
+    """Device types.
+
+    https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMDeviceType
+    """
 
     UNKNOWN = 0
     ETHERNET = 1
