@@ -75,6 +75,7 @@ class NetworkManager(DBusInterface):
                 sentry_sdk.capture_exception(err)
                 continue
 
+            # Skeep interface
             if (
                 interface.type
                 not in [
