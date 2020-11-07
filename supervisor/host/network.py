@@ -77,17 +77,24 @@ class NetworkManager(CoreSysAttributes):
 
     async def apply_changes(self, interface: Interface) -> None:
         """Apply Interface changes to host."""
-        inet = self.sys_dbus.network.interfaces[interface.name]
-        settings = interface_update_payload(
-            interface,
-            name=inet.settings.connection.id,
-            uuid=inet.settings.connection.uuid,
-        )
+        inet = self.sys_dbus.network.interfaces.get(interface.name)
 
-        await inet.settings.update(settings)
-        await self.sys_dbus.network.activate_connection(
-            inet.connection.object_path, inet.object_path
-        )
+        if inet and interface.enabled:
+            settings = interface_update_payload(
+                interface,
+                name=inet.settings.connection.id,
+                uuid=inet.settings.connection.uuid,
+            )
+            await inet.settings.update(settings)
+        elif inet:
+            settings = interface_update_payload(interface)
+            await self.sys_dbus.network.add_and_activate_connection(
+                settings, inet.object_path
+            )
+        else:
+            settings = interface_update_payload(interface)
+            await self.sys_dbus.network.settings.add_connection(settings)
+
         await self.update()
 
 
