@@ -3,10 +3,10 @@ from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 
 import pytest
 
-from supervisor.dbus.const import InterfaceMethod
+from supervisor.dbus.const import DeviceType, InterfaceMethod
 from supervisor.dbus.network import NetworkManager
 
-from tests.const import TEST_INTERFACE
+from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
 
 
 @pytest.mark.asyncio
@@ -14,6 +14,7 @@ async def test_network_interface_ethernet(network_manager: NetworkManager):
     """Test network interface."""
     interface = network_manager.interfaces[TEST_INTERFACE]
     assert interface.name == TEST_INTERFACE
+    assert interface.type == DeviceType.ETHERNET
     assert interface.connection.state == 2
     assert interface.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
 
@@ -38,3 +39,11 @@ async def test_network_interface_ethernet(network_manager: NetworkManager):
     assert interface.settings.ipv4.method == InterfaceMethod.AUTO
     assert interface.settings.ipv6.method == InterfaceMethod.AUTO
     assert interface.settings.connection.id == "Wired connection 1"
+
+
+@pytest.mark.asyncio
+async def test_network_interface_wlan(network_manager: NetworkManager):
+    """Test network interface."""
+    interface = network_manager.interfaces[TEST_INTERFACE_WLAN]
+    assert interface.name == TEST_INTERFACE_WLAN
+    assert interface.type == DeviceType.WIRELESS

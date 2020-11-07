@@ -113,7 +113,7 @@ class NetworkManager(DBusInterface):
             ):
                 continue
 
-            if interface.connection.object_path == data.get(
+            if interface.connection and interface.connection.object_path == data.get(
                 DBUS_ATTR_PRIMARY_CONNECTION
             ):
                 interface.primary = True

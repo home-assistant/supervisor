@@ -54,8 +54,12 @@ def dbus() -> DBus:
     """Mock DBUS."""
 
     async def mock_get_properties(dbus_obj, interface):
-        print(interface)
-        fixture = dbus_obj.object_path.replace("/", "_")[1:]
+        latest = dbus_obj.object_path.split("/")[-1]
+        fixture = interface.replace(".", "_")
+
+        if latest.isnumeric():
+            fixture = f"{fixture}_{latest}"
+
         return load_json_fixture(f"{fixture}.json")
 
     async def mock_send(_, command, silent=False):
