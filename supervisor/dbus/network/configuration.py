@@ -5,7 +5,6 @@ from typing import List, Optional, Union
 import attr
 
 from ...utils.gdbus import DBus
-from ..const import InterfaceMethod
 
 
 @attr.s(slots=True)
@@ -29,27 +28,9 @@ class DNSConfiguration:
 
 
 @attr.s(slots=True)
-class NetworkSettings:
-    """NetworkSettings object for Network Manager."""
-
-    dbus: DBus = attr.ib()
-
-
-@attr.s(slots=True)
-class NetworkDevice:
-    """Device properties."""
-
-    dbus: DBus = attr.ib()
-    interface: str = attr.ib()
-    device_type: int = attr.ib()
-    driver: str = attr.ib()
-
-
-@attr.s(slots=True)
 class WirelessProperties:
     """WirelessProperties object for Network Manager."""
 
-    dbus: DBus = attr.ib()
     properties: dict = attr.ib()
     security: dict = attr.ib()
     ssid: str = attr.ib()

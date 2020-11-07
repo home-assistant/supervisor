@@ -59,8 +59,8 @@ class NetworkConnection(DBusInterfaceProxy):
         self.object_path = object_path
         self.properties = {}
 
-        self._ip4_config: Optional[IpConfiguration] = None
-        self._ip6_config: Optional[IpConfiguration] = None
+        self._ipv4: Optional[IpConfiguration] = None
+        self._ipv6: Optional[IpConfiguration] = None
 
     @property
     def id(self) -> str:
@@ -83,19 +83,19 @@ class NetworkConnection(DBusInterfaceProxy):
         return self.properties[DBUS_ATTR_STATE]
 
     @property
-    def connection_object(self) -> int:
+    def setting_object(self) -> int:
         """Return the connection object path."""
         return self.properties[DBUS_ATTR_CONNECTION]
 
     @property
-    def ip4_config(self) -> Optional[IpConfiguration]:
+    def ipv4(self) -> Optional[IpConfiguration]:
         """Return a ip4 configuration object for the connection."""
-        return self._ip4_config
+        return self._ipv4
 
     @property
-    def ip6_config(self) -> Optional[IpConfiguration]:
+    def ipv6(self) -> Optional[IpConfiguration]:
         """Return a ip6 configuration object for the connection."""
-        return self._ip6_config
+        return self._ipv6
 
     async def connect(self) -> None:
         """Get connection information."""
@@ -107,7 +107,7 @@ class NetworkConnection(DBusInterfaceProxy):
             ip4 = await DBus.connect(DBUS_NAME_NM, self.properties[DBUS_ATTR_IP4CONFIG])
             ip4_data = await ip4.get_properties(DBUS_NAME_IP4CONFIG)
 
-            self._ip4_config = IpConfiguration(
+            self._ipv4 = IpConfiguration(
                 ip_address(ip4_data[DBUS_ATTR_GATEWAY])
                 if ip4_data.get(DBUS_ATTR_GATEWAY)
                 else None,
@@ -126,7 +126,7 @@ class NetworkConnection(DBusInterfaceProxy):
             ip6 = await DBus.connect(DBUS_NAME_NM, self.properties[DBUS_ATTR_IP6CONFIG])
             ip6_data = await ip6.get_properties(DBUS_NAME_IP6CONFIG)
 
-            self._ip6_config = IpConfiguration(
+            self._ipv6 = IpConfiguration(
                 ip_address(ip6_data[DBUS_ATTR_GATEWAY])
                 if ip6_data.get(DBUS_ATTR_GATEWAY)
                 else None,

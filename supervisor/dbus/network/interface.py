@@ -16,6 +16,7 @@ from ..const import (
 )
 from ..interface import DBusInterfaceProxy
 from .connection import NetworkConnection
+from .setting import NetworkSetting
 
 
 class NetworkInterface(DBusInterfaceProxy):
@@ -29,6 +30,7 @@ class NetworkInterface(DBusInterfaceProxy):
         self.primary = True
 
         self._connection: Optional[NetworkConnection] = None
+        self._setting: Optional[NetworkSetting] = None
         self._nm_dbus: DBus = nm_dbus
 
     @property
@@ -71,6 +73,11 @@ class NetworkInterface(DBusInterfaceProxy):
                 self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
             )
             await self._connection.connect()
+
+        # Attach settings
+        if self.connection and self.connection.setting_object != DBUS_OBJECT_BASE:
+            self._setting = NetworkSetting(self.connection.setting_object)
+            await self._setting.connect()
 
     async def update_settings(self, nm_payload: str) -> None:
         """Update IP configuration used for this interface."""
