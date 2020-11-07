@@ -2,6 +2,9 @@
     'connection':
         {
             'id': <'{{ name }}'>,
+{% if interface.type != "vlan" %}
+            'interface-name': <'{{ interface.name }}'>,
+{% endif %}
             'type': <'{% if interface.type == "ethernet" %}802-3-ethernet{% elif interface.type == "wireless" %}802-11-wireless{% else %}{{ interface.type.value }}{% endif %}'>,
             'uuid': <'{{ uuid }}'>
         }
@@ -65,7 +68,7 @@
     'vlan':
         {
             'id': <uint32 {{ interface.vlan.id }}>,
-            'parent': <'{{ interface.vlan.parent }}'>
+            'parent': <'{{ interface.vlan.interface }}'>
         }
 {% endif %}
 

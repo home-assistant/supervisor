@@ -5,7 +5,7 @@ import pytest
 
 from supervisor.dbus.payloads.generate import interface_update_payload
 from supervisor.host.const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
-from supervisor.host.network import WifiConfig
+from supervisor.host.network import VlanConfig, WifiConfig
 from supervisor.utils.gdbus import DBus
 
 from tests.const import TEST_INTERFACE
@@ -67,6 +67,7 @@ async def test_interface_update_payload_ethernet_ipv4(coresys):
     )
     assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
+    assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
     assert DBus.parse_gvariant(data)["ipv4"]["gateway"] == "192.168.1.1"
 
 
@@ -104,6 +105,7 @@ async def test_interface_update_payload_ethernet_ipv6(coresys):
     )
     assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
+    assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
     assert DBus.parse_gvariant(data)["ipv6"]["gateway"] == "fe80::da58:d7ff:fe00:9c69"
 
 
@@ -199,3 +201,21 @@ async def test_interface_update_payload_wireless_privacy(coresys):
     assert DBus.parse_gvariant(data)["802-11-wireless-security"]["auth-alg"] == "open"
     assert DBus.parse_gvariant(data)["802-11-wireless-security"]["key-mgmt"] == "none"
     assert "psk" not in DBus.parse_gvariant(data)["802-11-wireless-security"]
+
+
+@pytest.mark.asyncio
+async def test_interface_update_payload_vlan(coresys):
+    """Test interface update payload."""
+    interface = coresys.host.network.get(TEST_INTERFACE)
+
+    interface.type = InterfaceType.VLAN
+    interface.vlan = VlanConfig(10, interface.name)
+
+    data = interface_update_payload(interface)
+    assert DBus.parse_gvariant(data)["ipv4"]["method"] == "auto"
+    assert DBus.parse_gvariant(data)["ipv6"]["method"] == "auto"
+
+    assert DBus.parse_gvariant(data)["vlan"]["id"] == 10
+    assert DBus.parse_gvariant(data)["vlan"]["parent"] == interface.name
+    assert DBus.parse_gvariant(data)["connection"]["type"] == "vlan"
+    assert "interface-name" not in DBus.parse_gvariant(data)["connection"]
