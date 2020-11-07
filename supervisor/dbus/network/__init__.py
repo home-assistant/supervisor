@@ -4,20 +4,20 @@ from typing import Dict
 
 import sentry_sdk
 
-from ...exceptions import DBusError, DBusFatalError, DBusInterfaceError
+from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.gdbus import DBus
 from ..const import (
     DBUS_ATTR_DEVICES,
     DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_NAME_NM,
     DBUS_OBJECT_NM,
-    ConnectionType,
     DeviceType,
 )
 from ..interface import DBusInterface
 from ..utils import dbus_connected
 from .dns import NetworkManagerDNS
 from .interface import NetworkInterface
+from .settings import NetworkManagerSettings
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -28,12 +28,18 @@ class NetworkManager(DBusInterface):
     def __init__(self) -> None:
         """Initialize Properties."""
         self._dns: NetworkManagerDNS = NetworkManagerDNS()
+        self._settings: NetworkManagerSettings = NetworkManagerSettings()
         self._interfaces: Dict[str, NetworkInterface] = {}
 
     @property
     def dns(self) -> NetworkManagerDNS:
         """Return NetworkManager DNS interface."""
         return self._dns
+
+    @property
+    def settings(self) -> NetworkManagerSettings:
+        """Return NetworkManager global settings."""
+        return self._settings
 
     @property
     def interfaces(self) -> Dict[str, NetworkInterface]:
@@ -45,6 +51,7 @@ class NetworkManager(DBusInterface):
         try:
             self.dbus = await DBus.connect(DBUS_NAME_NM, DBUS_OBJECT_NM)
             await self.dns.connect()
+            await self.settings.connect()
         except DBusError:
             _LOGGER.warning("Can't connect to Network Manager")
         except DBusInterfaceError:

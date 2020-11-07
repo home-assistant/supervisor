@@ -18,6 +18,7 @@ DBUS_NAME_SYSTEMD = "org.freedesktop.systemd1"
 
 DBUS_OBJECT_BASE = "/"
 DBUS_OBJECT_DNS = "/org/freedesktop/NetworkManager/DnsManager"
+DBUS_OBJECT_SETTINGS = "/org/freedesktop/NetworkManager/Settings"
 DBUS_OBJECT_HOSTNAME = "/org/freedesktop/hostname1"
 DBUS_OBJECT_NM = "/org/freedesktop/NetworkManager"
 DBUS_OBJECT_SYSTEMD = "/org/freedesktop/systemd1"
