@@ -13,7 +13,6 @@ from ..const import (
     ATTR_DNS,
     ATTR_DOCKER,
     ATTR_GATEWAY,
-    ATTR_ID,
     ATTR_INTERFACE,
     ATTR_INTERFACES,
     ATTR_IPV4,
@@ -83,7 +82,6 @@ def wifi_struct(config: WifiConfig) -> dict:
 def interface_struct(interface: Interface) -> dict:
     """Return a dict with information of a interface to be used in th API."""
     return {
-        ATTR_ID: interface.id,
         ATTR_INTERFACE: interface.name,
         ATTR_TYPE: interface.type,
         ATTR_PRIMARY: interface.primary,

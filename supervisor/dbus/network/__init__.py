@@ -65,14 +65,19 @@ class NetworkManager(DBusInterface):
 
         self._interfaces.clear()
         for device in data.get(DBUS_ATTR_DEVICES, []):
-            interface = NetworkInterface(self.dbus)
+            interface = NetworkInterface(self.dbus, device)
 
-            await interface.connect(device)
+            await interface.connect()
 
-            if interface.connection.type not in [
-                ConnectionType.ETHERNET,
-                ConnectionType.WIRELESS,
-            ]:
+            if (
+                interface.type
+                not in [
+                    DeviceType.ETHERNET,
+                    DeviceType.WIRELESS,
+                    DeviceType.VLAN,
+                ]
+                or not interface.managed
+            ):
                 continue
 
             # Process data
@@ -83,9 +88,6 @@ class NetworkManager(DBusInterface):
             except (KeyError, IndexError, ValueError) as err:
                 _LOGGER.warning("Error while processing interface: %s", err)
                 sentry_sdk.capture_exception(err)
-                continue
-
-            if interface.type not in (DeviceType.ETHERNET, DeviceType.WIRELESS):
                 continue
 
             if interface.connection.object_path == data.get(

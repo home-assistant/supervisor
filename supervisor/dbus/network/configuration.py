@@ -13,7 +13,6 @@ class IpConfiguration:
     """NetworkSettingsIPConfig object for Network Manager."""
 
     gateway: Optional[Union[IPv6Address, IPv6Address]] = attr.ib()
-    method: InterfaceMethod = attr.ib()
     nameservers: List[Union[IPv6Address, IPv6Address]] = attr.ib()
     address: List[Union[IPv4Interface, IPv6Interface]] = attr.ib()
 

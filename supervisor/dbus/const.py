@@ -58,6 +58,7 @@ DBUS_ATTR_STATIC_OPERATING_SYSTEM_CPE_NAME = "OperatingSystemCPEName"
 DBUS_ATTR_TYPE = "Type"
 DBUS_ATTR_UUID = "Uuid"
 DBUS_ATTR_VARIANT = "Variant"
+DBUS_ATTR_MANAGED = "Managed"
 
 
 class RaucState(str, Enum):

@@ -7,6 +7,7 @@ from ..const import (
     DBUS_ATTR_DEVICE_INTERFACE,
     DBUS_ATTR_DEVICE_TYPE,
     DBUS_ATTR_DRIVER,
+    DBUS_ATTR_MANAGED,
     DBUS_NAME_CONNECTION_ACTIVE,
     DBUS_NAME_DEVICE,
     DBUS_NAME_NM,
@@ -24,6 +25,8 @@ class NetworkInterface(DBusInterfaceProxy):
         """Initialize NetworkConnection object."""
         self.object_path = object_path
         self.properties = {}
+
+        self.primary = True
 
         self._connection: Optional[NetworkConnection] = None
         self._nm_dbus: DBus = nm_dbus
@@ -44,6 +47,11 @@ class NetworkInterface(DBusInterfaceProxy):
         return self.properties[DBUS_ATTR_DRIVER]
 
     @property
+    def managed(self) -> bool:
+        """Return interface driver."""
+        return self.properties[DBUS_ATTR_MANAGED]
+
+    @property
     def connection(self) -> Optional[NetworkConnection]:
         """Return the connection used for this interface."""
         return self._connection
@@ -52,6 +60,10 @@ class NetworkInterface(DBusInterfaceProxy):
         """Get device information."""
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
         self.properties = await self.dbus.get_properties(DBUS_NAME_DEVICE)
+
+        # Abort if device is not managed
+        if not self.managed:
+            return
 
         # If connection exists
         if self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
