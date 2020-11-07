@@ -242,10 +242,10 @@ class Interface:
     @staticmethod
     def _map_nm_privacy(inet: NetworkInterface) -> Optional[bool]:
         """Generate privancy flag."""
-        if inet.type == DeviceType.ETHERNET:
+        if inet.type == DeviceType.ETHERNET and inet.settings:
             return inet.settings.ethernet.assigned_mac not in ("stable", None)
 
-        if inet.type == DeviceType.WIRELESS:
+        if inet.type == DeviceType.WIRELESS and inet.settings:
             return inet.settings.wireless.assigned_mac != "stable"
 
         return None
