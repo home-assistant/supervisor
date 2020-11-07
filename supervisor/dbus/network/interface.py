@@ -1,5 +1,5 @@
 """NetworkInterface object for Network Manager."""
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from ...utils.gdbus import DBus
 from ..const import (
@@ -94,13 +94,3 @@ class NetworkInterface(DBusInterfaceProxy):
         if self.type == DeviceType.WIRELESS:
             self._wireless = NetworkWireless(self.object_path)
             await self._wireless.connect()
-
-    async def update_settings(self, nm_payload: str) -> None:
-        """Update IP configuration used for this interface."""
-        await self.connection.settings.dbus.Settings.Connection.Update(nm_payload)
-
-        await self._nm_dbus.ActivateConnection(
-            self.connection.settings.dbus.object_path,
-            self.dbus.object_path,
-            DBUS_OBJECT_BASE,
-        )

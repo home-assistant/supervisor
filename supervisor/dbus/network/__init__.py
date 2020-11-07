@@ -1,6 +1,6 @@
 """Network Manager implementation for DBUS."""
 import logging
-from typing import Dict
+from typing import Any, Awaitable, Dict
 
 import sentry_sdk
 
@@ -10,6 +10,7 @@ from ..const import (
     DBUS_ATTR_DEVICES,
     DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_NAME_NM,
+    DBUS_OBJECT_BASE,
     DBUS_OBJECT_NM,
     DeviceType,
 )
@@ -45,6 +46,24 @@ class NetworkManager(DBusInterface):
     def interfaces(self) -> Dict[str, NetworkInterface]:
         """Return a dictionary of active interfaces."""
         return self._interfaces
+
+    @dbus_connected
+    def activate_connection(
+        self, connection_object: str, device_object: str
+    ) -> Awaitable[Any]:
+        """Activate a connction on a device."""
+        return self.dbus.ActivateConnection(
+            connection_object, device_object, DBUS_OBJECT_BASE
+        )
+
+    @dbus_connected
+    def add_and_activate_connection(
+        self, settings: str, device_object: str
+    ) -> Awaitable[Any]:
+        """Activate a connction on a device."""
+        return self.dbus.AddAndActivateConnection(
+            settings, device_object, DBUS_OBJECT_BASE
+        )
 
     async def connect(self) -> None:
         """Connect to system's D-Bus."""

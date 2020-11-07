@@ -98,3 +98,13 @@ class DeviceType(int, Enum):
     VLAN = 11
     TUN = 16
     VETH = 20
+
+
+class WirelessMethodType(int, Enum):
+    """Device Type."""
+
+    UNKNOWN = 0
+    ADHOC = 1
+    INFRASTRUCTURE = 2
+    ACCESSPOINT = 3
+    MESH = 4

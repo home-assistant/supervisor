@@ -4,8 +4,6 @@ from typing import List, Optional, Union
 
 import attr
 
-from ...utils.gdbus import DBus
-
 
 @attr.s(slots=True)
 class IpConfiguration:
