@@ -6,15 +6,16 @@ from typing import Awaitable, List, Optional
 
 import async_timeout
 
-from .const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
-from .coresys import CoreSys, CoreSysAttributes
-from .exceptions import (
+from ..const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
+from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import (
     HassioError,
     HomeAssistantCrashError,
     HomeAssistantError,
     SupervisorUpdateError,
 )
-from .resolution.const import ContextType, IssueType
+from ..resolution.const import ContextType, IssueType
+from .internet import CoreInternet
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
+        self.internet = CoreInternet(coresys)
         self.healthy: bool = True
         self._state: Optional[CoreState] = None
 

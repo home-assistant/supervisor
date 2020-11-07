@@ -33,6 +33,7 @@ setup(
     packages=[
         "supervisor.addons",
         "supervisor.api",
+        "supervisor.core",
         "supervisor.dbus.network",
         "supervisor.dbus.payloads",
         "supervisor.dbus",

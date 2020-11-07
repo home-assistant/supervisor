@@ -12,6 +12,7 @@ from supervisor.utils.json import read_json_file
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JsonFileError
+from ..utils.condition import Condition
 from .addon import AddonStore
 from .data import StoreData
 from .repository import Repository
@@ -52,9 +53,10 @@ class StoreManager(CoreSysAttributes):
             await asyncio.wait(tasks)
 
         # read data from repositories
-        self.data.update()
+        await self.load()
         self._read_addons()
 
+    @Condition.internet
     async def update_repositories(self, list_repositories):
         """Add a new custom repository."""
         new_rep = set(list_repositories)
