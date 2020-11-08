@@ -26,21 +26,6 @@ async def test_interface_update_payload_ethernet(coresys):
 
 
 @pytest.mark.asyncio
-async def test_interface_update_payload_ethernet_privacy(coresys):
-    """Test interface update payload."""
-    interface = coresys.host.network.get(TEST_INTERFACE)
-
-    interface.privacy = True
-    data = interface_update_payload(interface)
-    assert DBus.parse_gvariant(data)["ipv4"]["method"] == "auto"
-    assert DBus.parse_gvariant(data)["ipv6"]["method"] == "auto"
-
-    assert (
-        DBus.parse_gvariant(data)["802-3-ethernet"]["assigned-mac-address"] == "random"
-    )
-
-
-@pytest.mark.asyncio
 async def test_interface_update_payload_ethernet_ipv4(coresys):
     """Test interface update payload."""
     interface = coresys.host.network.get(TEST_INTERFACE)
@@ -159,7 +144,6 @@ async def test_interface_update_payload_wireless_open(coresys):
     interface = coresys.host.network.get(TEST_INTERFACE)
 
     interface.type = InterfaceType.WIRELESS
-    interface.privacy = False
     interface.wifi = WifiConfig(
         WifiMode.INFRASTRUCTURE, "Test", AuthMethod.OPEN, None, 0
     )
@@ -171,31 +155,6 @@ async def test_interface_update_payload_wireless_open(coresys):
     assert DBus.parse_gvariant(data)["802-11-wireless"]["mode"] == "infrastructure"
     assert (
         DBus.parse_gvariant(data)["802-11-wireless"]["assigned-mac-address"] == "stable"
-    )
-
-    assert DBus.parse_gvariant(data)["802-11-wireless-security"]["auth-alg"] == "open"
-    assert DBus.parse_gvariant(data)["802-11-wireless-security"]["key-mgmt"] == "none"
-    assert "psk" not in DBus.parse_gvariant(data)["802-11-wireless-security"]
-
-
-@pytest.mark.asyncio
-async def test_interface_update_payload_wireless_privacy(coresys):
-    """Test interface update payload."""
-    interface = coresys.host.network.get(TEST_INTERFACE)
-
-    interface.type = InterfaceType.WIRELESS
-    interface.privacy = True
-    interface.wifi = WifiConfig(
-        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.OPEN, None, 0
-    )
-
-    data = interface_update_payload(interface)
-
-    assert DBus.parse_gvariant(data)["connection"]["type"] == "802-11-wireless"
-    assert DBus.parse_gvariant(data)["802-11-wireless"]["ssid"] == [84, 101, 115, 116]
-    assert DBus.parse_gvariant(data)["802-11-wireless"]["mode"] == "infrastructure"
-    assert (
-        DBus.parse_gvariant(data)["802-11-wireless"]["assigned-mac-address"] == "random"
     )
 
     assert DBus.parse_gvariant(data)["802-11-wireless-security"]["auth-alg"] == "open"

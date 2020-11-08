@@ -210,7 +210,6 @@ class Interface:
     enabled: bool = attr.ib()
     connected: bool = attr.ib()
     primary: bool = attr.ib()
-    privacy: Optional[bool] = attr.ib()
     type: InterfaceType = attr.ib()
     ipv4: Optional[IpConfig] = attr.ib()
     ipv6: Optional[IpConfig] = attr.ib()
@@ -225,7 +224,6 @@ class Interface:
             inet.settings is not None,
             Interface._map_nm_connected(inet.connection),
             inet.primary,
-            Interface._map_nm_privacy(inet),
             Interface._map_nm_type(inet.type),
             IpConfig(
                 Interface._map_nm_method(inet.settings.ipv4.method),
@@ -313,14 +311,3 @@ class Interface:
             return None
 
         return VlanConfig(inet.settings.vlan.id, inet.settings.vlan.parent)
-
-    @staticmethod
-    def _map_nm_privacy(inet: NetworkInterface) -> Optional[bool]:
-        """Generate privancy flag."""
-        if inet.type == DeviceType.ETHERNET and inet.settings:
-            return inet.settings.ethernet.assigned_mac not in ("stable", None)
-
-        if inet.type == DeviceType.WIRELESS and inet.settings:
-            return inet.settings.wireless.assigned_mac != "stable"
-
-        return None

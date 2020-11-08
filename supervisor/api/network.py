@@ -23,11 +23,11 @@ from ..const import (
     ATTR_MODE,
     ATTR_NAMESERVERS,
     ATTR_PRIMARY,
-    ATTR_PRIVACY,
     ATTR_PSK,
     ATTR_SIGNAL,
     ATTR_SSID,
     ATTR_TYPE,
+    ATTR_VLAN,
     ATTR_WIFI,
     DOCKER_NETWORK,
     DOCKER_NETWORK_MASK,
@@ -56,13 +56,14 @@ _SCHEMA_WIFI_CONFIG = vol.Schema(
     }
 )
 
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_IPV4): _SCHEMA_IP_CONFIG,
         vol.Optional(ATTR_IPV6): _SCHEMA_IP_CONFIG,
         vol.Optional(ATTR_WIFI): _SCHEMA_WIFI_CONFIG,
-        vol.Optional(ATTR_PRIVACY): vol.Boolean(),
+        vol.Optional(ATTR_ENABLED): vol.Boolean(),
     }
 )
 
@@ -95,10 +96,10 @@ def interface_struct(interface: Interface) -> dict:
         ATTR_ENABLED: interface.enabled,
         ATTR_CONNECTED: interface.connected,
         ATTR_PRIMARY: interface.primary,
-        ATTR_PRIVACY: interface.privacy,
         ATTR_IPV4: ipconfig_struct(interface.ipv4) if interface.ipv4 else None,
         ATTR_IPV6: ipconfig_struct(interface.ipv6) if interface.ipv6 else None,
         ATTR_WIFI: wifi_struct(interface.wifi) if interface.wifi else None,
+        ATTR_VLAN: wifi_struct(interface.vlan) if interface.vlan else None,
     }
 
 
@@ -164,7 +165,7 @@ class APINetwork(CoreSysAttributes):
                 interface.ipv6 = attr.evolve(interface.ipv6, **config)
             elif key == ATTR_WIFI:
                 interface.wifi = attr.evolve(interface.wifi, **config)
-            elif key == ATTR_PRIVACY:
-                interface.privacy = config
+            elif key == ATTR_ENABLED:
+                interface.enabled = config
 
         await asyncio.shield(self.sys_host.network.apply_changes(interface))
