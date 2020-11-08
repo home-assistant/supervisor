@@ -437,11 +437,9 @@ class Tasks(CoreSysAttributes):
 
     async def _check_internet_connection(self) -> None:
         """Periodically check the internet connection."""
-        _LOGGER.error("Checking network")
         await self.sys_core.internet.check_connection()
 
     async def _check_internet_connection_no_connection(self) -> None:
         """Periodically check the internet connection."""
         if not self.sys_core.internet.connected:
-            _LOGGER.error("Checking network")
             await self.sys_core.internet.check_connection()

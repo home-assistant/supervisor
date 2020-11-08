@@ -123,6 +123,9 @@ async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSy
     # Mock docker
     coresys_obj._docker = docker
 
+    # Set internet state
+    coresys_obj.core.internet._connected = True
+
     yield coresys_obj
 
 

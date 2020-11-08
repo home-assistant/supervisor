@@ -59,6 +59,10 @@ class Core(CoreSysAttributes):
         # Load information from container
         await self.sys_supervisor.load()
 
+        # Check internet on startup
+        if not self.sys_core.internet.connected:
+            await self.sys_core.internet.check_connection()
+
         # Evaluate the system
         await self.sys_resolution.evaluate.evaluate_system()
 

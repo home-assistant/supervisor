@@ -12,7 +12,7 @@ class CoreInternet(CoreSysAttributes):
 
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
-        self.coresys = coresys
+        self.coresys: CoreSys = coresys
         self._connected = False
 
     @property

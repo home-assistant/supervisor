@@ -90,10 +90,6 @@ async def initialize_coresys() -> CoreSys:
     if coresys.config.timezone == "UTC":
         coresys.config.timezone = await fetch_timezone(coresys.websession)
 
-    # Check internet on startup
-    if not coresys.core.internet.connected:
-        await coresys.core.internet.check_connection()
-
     # Set machine type
     if os.environ.get(ENV_SUPERVISOR_MACHINE):
         coresys.machine = os.environ[ENV_SUPERVISOR_MACHINE]
