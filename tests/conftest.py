@@ -77,6 +77,7 @@ def dbus() -> DBus:
                 if exists_fixture(f"{fixture}_*.{filetype}"):
                     fixture = f"{fixture}_*"
         else:
+            fixture = f"{fixture}-{command[10].split('.')[-1]}"
             filetype = "fixture"
 
         return load_fixture(f"{fixture}.{filetype}")
