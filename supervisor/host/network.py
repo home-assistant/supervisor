@@ -1,6 +1,7 @@
 """Info control for host."""
 from __future__ import annotations
 
+import asyncio
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 import logging
 from typing import List, Optional, Union
@@ -13,12 +14,14 @@ from ..dbus.const import (
     DeviceType,
     InterfaceMethod as NMInterfaceMethod,
 )
+from ..dbus.network.accesspoint import NetworkWirelessAP
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
 from ..dbus.payloads.generate import interface_update_payload
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
+    HostNetworkError,
     HostNetworkNotFound,
     HostNotSupportedError,
 )
@@ -79,23 +82,95 @@ class NetworkManager(CoreSysAttributes):
         """Apply Interface changes to host."""
         inet = self.sys_dbus.network.interfaces.get(interface.name)
 
-        if inet and interface.enabled:
+        # Update exist configuration
+        if inet and inet.settings and interface.enabled:
             settings = interface_update_payload(
                 interface,
                 name=inet.settings.connection.id,
                 uuid=inet.settings.connection.uuid,
             )
-            await inet.settings.update(settings)
-        elif inet:
+
+            try:
+                await inet.settings.update(settings)
+            except DBusError as err:
+                _LOGGER.error("Can't update config on %s", interface.name)
+                raise HostNetworkError() from err
+
+        # Create new configuration and activate interface
+        elif inet and interface.enabled:
             settings = interface_update_payload(interface)
-            await self.sys_dbus.network.add_and_activate_connection(
-                settings, inet.object_path
-            )
-        else:
+
+            try:
+                await self.sys_dbus.network.add_and_activate_connection(
+                    settings, inet.object_path
+                )
+            except DBusError as err:
+                _LOGGER.error("Can't create config and activate %s", interface.name)
+                raise HostNetworkError() from err
+
+        # Remove config from interface
+        elif inet and not interface.enabled:
+            try:
+                await inet.settings.delete()
+            except DBusError as err:
+                _LOGGER.error("Can't remove %s", interface.name)
+                raise HostNetworkError() from err
+
+        # Create new interface (like vlan)
+        elif not inet:
             settings = interface_update_payload(interface)
-            await self.sys_dbus.network.settings.add_connection(settings)
+
+            try:
+                await self.sys_dbus.network.settings.add_connection(settings)
+            except DBusError as err:
+                _LOGGER.error("Can't create new interface")
+                raise HostNetworkError() from err
 
         await self.update()
+
+    async def scan_wifi(self, interface: Interface) -> List[AccessPoint]:
+        """Scan on Interface for AccessPoint."""
+        inet = self.sys_dbus.network.interfaces.get(interface.name)
+
+        if inet.type != DeviceType.WIRELESS:
+            _LOGGER.error("Can only scan with wireless card - %s", interface.name)
+            raise HostNotSupportedError()
+
+        await inet.wireless.request_scan()
+        await asyncio.sleep(5)
+
+        accesspoints: List[AccessPoint] = []
+        for ap_object in await inet.wireless.get_all_accesspoints()[0]:
+            accesspoint = NetworkWirelessAP(ap_object)
+
+            try:
+                await accesspoint.connect()
+            except DBusError as err:
+                _LOGGER.waring("Can't process an AP: %s", err)
+                continue
+            else:
+                accesspoints.append(
+                    AccessPoint(
+                        WifiMode(accesspoint.mode),
+                        accesspoint.ssid,
+                        accesspoint.mac,
+                        accesspoint.frequency,
+                        accesspoint.strength,
+                    )
+                )
+
+        return accesspoints
+
+
+@attr.s(slots=True)
+class AccessPoint:
+    """Represent a wifi configuration."""
+
+    mode: WifiMode = attr.ib()
+    ssid: str = attr.ib()
+    mac: str = attr.ib()
+    frequency: int = attr.ib()
+    signal: int = attr.ib()
 
 
 @attr.s(slots=True)
@@ -209,13 +284,6 @@ class Interface:
         if inet.type != DeviceType.WIRELESS or not inet.settings:
             return None
 
-        # Wireless operation mode
-        mode = (
-            WifiMode(inet.settings.wireless.mode)
-            if inet.settings.wireless.mode
-            else WifiMode.INFRASTRUCTURE
-        )
-
         # Authentication
         if inet.settings.wireless_security.key_mgmt == "none":
             auth = AuthMethod.WEB
@@ -231,7 +299,7 @@ class Interface:
             signal = None
 
         return WifiConfig(
-            mode,
+            WifiMode(inet.settings.wireless.mode),
             inet.settings.wireless.ssid,
             auth,
             inet.settings.wireless_security.psk,
