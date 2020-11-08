@@ -95,14 +95,10 @@ def dbus() -> DBus:
 @pytest.fixture
 async def network_manager(dbus) -> NetworkManager:
     """Mock NetworkManager."""
-
-    async def dns_update():
-        pass
-
-    with patch("supervisor.dbus.network.NetworkManager.dns", return_value=MagicMock()):
-        nm_obj = NetworkManager()
-    nm_obj.dns.update = dns_update
+    nm_obj = NetworkManager()
     nm_obj.dbus = dbus
+
+    # Init
     await nm_obj.connect()
     await nm_obj.update()
 
