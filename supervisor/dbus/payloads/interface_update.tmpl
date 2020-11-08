@@ -44,7 +44,7 @@
             'method': <'manual'>,
             'dns': <[uint32 {{ interface.ipv6.nameservers | map("int") | join(",") }}]>,
             'address-data': <[
-            {% for address in interface.ipv6.address %}
+            {% for address in interface.ipv6.address if not address.with_prefixlen.startswith("fe80::") %}
                 {
                     'address': <'{{ address.ip | string }}'>,
                     'prefix': <uint32 {{ address.with_prefixlen.partition("/") | last | int }}>
