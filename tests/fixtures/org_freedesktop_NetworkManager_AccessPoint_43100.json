@@ -1,0 +1,12 @@
+{
+  "Flags": 1,
+  "WpaFlags": 0,
+  "RsnFlags": 392,
+  "Ssid": [86, 81, 64, 51, 53, 40, 53, 53, 55, 50, 48],
+  "Frequency": 5660,
+  "HwAddress": "18:4B:0D:23:A1:9C",
+  "Mode": 2,
+  "MaxBitrate": 540000,
+  "Strength": 63,
+  "LastSeen": 1398839
+}

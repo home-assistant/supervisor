@@ -31,7 +31,7 @@ class NetworkWireless(DBusInterfaceProxy):
     @dbus_connected
     def request_scan(self) -> Awaitable[None]:
         """Request a new AP scan."""
-        return self.dbus.Device.Wireless.RequestScan("{}")
+        return self.dbus.Device.Wireless.RequestScan("[]")
 
     @dbus_connected
     def get_all_accesspoints(self) -> Awaitable[Any]:

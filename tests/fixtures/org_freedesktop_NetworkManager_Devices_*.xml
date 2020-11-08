@@ -1,6 +1,6 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
                       "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
-<!-- GDBus 2.64.3 -->
+<!-- GDBus 2.62.5 -->
 <node>
   <interface name="org.freedesktop.DBus.Properties">
     <method name="Get">
@@ -41,6 +41,34 @@
     <property type="u" name="RefreshRateMs" access="readwrite"/>
     <property type="t" name="TxBytes" access="read"/>
     <property type="t" name="RxBytes" access="read"/>
+  </interface>
+  <interface name="org.freedesktop.NetworkManager.Device.Wireless">
+    <method name="GetAccessPoints">
+      <arg type="ao" name="access_points" direction="out"/>
+    </method>
+    <method name="GetAllAccessPoints">
+      <arg type="ao" name="access_points" direction="out"/>
+    </method>
+    <method name="RequestScan">
+      <arg type="a{sv}" name="options" direction="in"/>
+    </method>
+    <signal name="PropertiesChanged">
+      <arg type="a{sv}" name="properties"/>
+    </signal>
+    <signal name="AccessPointAdded">
+      <arg type="o" name="access_point"/>
+    </signal>
+    <signal name="AccessPointRemoved">
+      <arg type="o" name="access_point"/>
+    </signal>
+    <property type="s" name="HwAddress" access="read"/>
+    <property type="s" name="PermHwAddress" access="read"/>
+    <property type="u" name="Mode" access="read"/>
+    <property type="u" name="Bitrate" access="read"/>
+    <property type="ao" name="AccessPoints" access="read"/>
+    <property type="o" name="ActiveAccessPoint" access="read"/>
+    <property type="u" name="WirelessCapabilities" access="read"/>
+    <property type="x" name="LastScan" access="read"/>
   </interface>
   <interface name="org.freedesktop.NetworkManager.Device">
     <method name="Reapply">
@@ -88,16 +116,5 @@
     <property type="b" name="Real" access="read"/>
     <property type="u" name="Ip4Connectivity" access="read"/>
     <property type="u" name="Ip6Connectivity" access="read"/>
-    <property type="u" name="InterfaceFlags" access="read"/>
-  </interface>
-  <interface name="org.freedesktop.NetworkManager.Device.Wired">
-    <signal name="PropertiesChanged">
-      <arg type="a{sv}" name="properties"/>
-    </signal>
-    <property type="s" name="HwAddress" access="read"/>
-    <property type="s" name="PermHwAddress" access="read"/>
-    <property type="u" name="Speed" access="read"/>
-    <property type="as" name="S390Subchannels" access="read"/>
-    <property type="b" name="Carrier" access="read"/>
   </interface>
 </node>

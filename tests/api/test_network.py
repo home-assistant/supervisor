@@ -1,9 +1,11 @@
 """Test NetwrokInterface API."""
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from supervisor.const import DOCKER_NETWORK, DOCKER_NETWORK_MASK
 
-from tests.const import TEST_INTERFACE
+from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
 
 
 @pytest.mark.asyncio
@@ -115,3 +117,18 @@ async def test_api_network_interface_update_invalid(api_client):
         result["message"]
         == "expected a list for dictionary value @ data['ipv4']['nameservers']. Got '1.1.1.1'"
     )
+
+
+@pytest.mark.asyncio
+async def test_api_network_wireless_scan(api_client):
+    """Test network manager api."""
+    with patch("asyncio.sleep", return_value=AsyncMock()):
+        resp = await api_client.get(
+            f"/network/interface/{TEST_INTERFACE_WLAN}/accesspoints"
+        )
+    result = await resp.json()
+
+    assert ["UPC4814466", "VQ@35(55720"] == [
+        ap["ssid"] for ap in result["data"]["accesspoints"]
+    ]
+    assert [47, 63] == [ap["signal"] for ap in result["data"]["accesspoints"]]

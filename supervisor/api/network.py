@@ -8,6 +8,7 @@ import attr
 import voluptuous as vol
 
 from ..const import (
+    ATTR_ACCESSPOINTS,
     ATTR_ADDRESS,
     ATTR_AUTH,
     ATTR_CONNECTED,
@@ -201,7 +202,7 @@ class APINetwork(CoreSysAttributes):
 
         ap_list = await self.sys_host.network.scan_wifi(interface)
 
-        return {ATTR_WIFI: [accesspoint_struct(ap) for ap in ap_list]}
+        return {ATTR_ACCESSPOINTS: [accesspoint_struct(ap) for ap in ap_list]}
 
     @api_process
     async def create_vlan(self, request: web.Request) -> None:

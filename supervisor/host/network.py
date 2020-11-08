@@ -13,6 +13,7 @@ from ..dbus.const import (
     ConnectionStateType,
     DeviceType,
     InterfaceMethod as NMInterfaceMethod,
+    WirelessMethodType,
 )
 from ..dbus.network.accesspoint import NetworkWirelessAP
 from ..dbus.network.connection import NetworkConnection
@@ -140,7 +141,7 @@ class NetworkManager(CoreSysAttributes):
         await asyncio.sleep(5)
 
         accesspoints: List[AccessPoint] = []
-        for ap_object in await inet.wireless.get_all_accesspoints()[0]:
+        for ap_object in (await inet.wireless.get_all_accesspoints())[0]:
             accesspoint = NetworkWirelessAP(ap_object)
 
             try:
@@ -151,7 +152,7 @@ class NetworkManager(CoreSysAttributes):
             else:
                 accesspoints.append(
                     AccessPoint(
-                        WifiMode(accesspoint.mode),
+                        WifiMode[WirelessMethodType(accesspoint.mode).name],
                         accesspoint.ssid,
                         accesspoint.mac,
                         accesspoint.frequency,
@@ -297,7 +298,7 @@ class Interface:
             signal = None
 
         return WifiConfig(
-            WifiMode(inet.settings.wireless.mode),
+            WifiMode[WirelessMethodType(inet.settings.wireless.mode).name],
             inet.settings.wireless.ssid,
             auth,
             inet.settings.wireless_security.psk,

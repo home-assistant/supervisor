@@ -290,6 +290,7 @@ ATTR_ENABLED = "enabled"
 ATTR_SIGNAL = "signal"
 ATTR_MAC = "mac"
 ATTR_FREQUENCY = "frequency"
+ATTR_ACCESSPOINTS = "accesspoints"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
