@@ -34,11 +34,6 @@ RUN_SUPERVISOR_STATE = Path("/run/supervisor")
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
-DOCKER_IMAGE_DENYLIST = [
-    "containrrr/watchtower",
-    "pyouroboros/ouroboros",
-    "v2tec/watchtower",
-]
 
 DNS_SUFFIX = "local.hass.io"
 
@@ -226,6 +221,7 @@ ATTR_PROVIDERS = "providers"
 ATTR_RATING = "rating"
 ATTR_REFRESH_TOKEN = "refresh_token"
 ATTR_REGISTRIES = "registries"
+ATTR_REGISTRY = "registry"
 ATTR_REPOSITORIES = "repositories"
 ATTR_REPOSITORY = "repository"
 ATTR_SCHEMA = "schema"
@@ -364,8 +360,6 @@ ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_AD
 
 CHAN_ID = "chan_id"
 CHAN_TYPE = "chan_type"
-
-SUPERVISED_SUPPORTED_OS = ["Debian GNU/Linux 10 (buster)"]
 
 
 class AddonBoot(str, Enum):

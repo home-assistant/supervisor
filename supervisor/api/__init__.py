@@ -350,6 +350,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.post("/ingress/session", api_ingress.create_session),
+                web.post("/ingress/validate_session", api_ingress.validate_session),
                 web.get("/ingress/panels", api_ingress.panels),
                 web.view("/ingress/{token}/{path:.*}", api_ingress.handler),
             ]

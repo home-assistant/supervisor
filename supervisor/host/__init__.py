@@ -94,6 +94,8 @@ class HostManager(CoreSysAttributes):
         with suppress(PulseAudioError):
             await self.sound.update()
 
+        _LOGGER.info("Host information reload completed")
+
     async def load(self):
         """Load host information."""
         with suppress(HassioError):
