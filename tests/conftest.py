@@ -11,7 +11,6 @@ import pytest
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.coresys import CoreSys
-from supervisor.dbus.const import DBUS_NAME_NM, DBUS_OBJECT_BASE
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
 from supervisor.utils.gdbus import DBus
@@ -53,6 +52,8 @@ def docker() -> DockerAPI:
 def dbus() -> DBus:
     """Mock DBUS."""
 
+    dbus_commands = []
+
     async def mock_get_properties(dbus_obj, interface):
         latest = dbus_obj.object_path.split("/")[-1]
         fixture = interface.replace(".", "_")
@@ -80,16 +81,15 @@ def dbus() -> DBus:
             fixture = f"{fixture}-{command[10].split('.')[-1]}"
             filetype = "fixture"
 
+            dbus_commands.append(fixture)
+
         return load_fixture(f"{fixture}.{filetype}")
 
     with patch("supervisor.utils.gdbus.DBus._send", new=mock_send), patch(
         "supervisor.dbus.interface.DBusInterface.is_connected",
         return_value=True,
     ), patch("supervisor.utils.gdbus.DBus.get_properties", new=mock_get_properties):
-
-        dbus_obj = DBus(DBUS_NAME_NM, DBUS_OBJECT_BASE)
-
-        yield dbus_obj
+        yield dbus_commands
 
 
 @pytest.fixture
@@ -106,7 +106,7 @@ async def network_manager(dbus) -> NetworkManager:
 
 
 @pytest.fixture
-async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSys:
+async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system_data"), patch(
         "supervisor.bootstrap.setup_diagnostics"
@@ -131,8 +131,7 @@ async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSy
     coresys_obj._machine_id = uuid4()
 
     # Mock host communication
-    coresys_obj._dbus = dbus
-    coresys_obj._dbus.network = network_manager
+    coresys_obj._dbus._network = network_manager
 
     # Mock docker
     coresys_obj._docker = docker
