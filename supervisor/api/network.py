@@ -210,7 +210,7 @@ class APINetwork(CoreSysAttributes):
         interface = self._get_interface(request.match_info.get(ATTR_INTERFACE))
         vlan = int(request.match_info.get(ATTR_VLAN))
 
-        # Only wlan is supported
+        # Only ethernet is supported
         if interface.type != InterfaceType.ETHERNET:
             raise APIError(
                 f"Interface {interface.name} is not a valid ethernet card for vlan!"
