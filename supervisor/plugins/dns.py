@@ -74,7 +74,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             f"dns://{server!s}" for server in self.sys_host.network.dns_servers
         ]:
             with suppress(vol.Invalid):
-                server.append(dns_url(server))
+                servers.append(dns_url(server))
 
         return servers
 
