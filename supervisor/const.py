@@ -288,6 +288,8 @@ ATTR_PSK = "psk"
 ATTR_CONNECTED = "connected"
 ATTR_ENABLED = "enabled"
 ATTR_SIGNAL = "signal"
+ATTR_MAC = "mac"
+ATTR_FREQUENCY = "frequency"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

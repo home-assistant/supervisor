@@ -90,7 +90,9 @@ async def test_api_network_interface_info_invalid(api_client):
     """Test network manager api."""
     resp = await api_client.get("/network/interface/invalid/info")
     result = await resp.json()
-    assert not result["data"]
+
+    assert result["message"]
+    assert result["result"] == "error"
 
 
 @pytest.mark.asyncio
