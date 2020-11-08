@@ -122,7 +122,7 @@ class RestAPI(CoreSysAttributes):
                     api_network.scan_accesspoints,
                 ),
                 web.post(
-                    "/network/vlan/{interface}/{vlan}",
+                    "/network/interface/{interface}/vlan/{vlan}",
                     api_network.create_vlan,
                 ),
             ]
