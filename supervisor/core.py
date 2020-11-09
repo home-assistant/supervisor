@@ -162,7 +162,7 @@ class Core(CoreSysAttributes):
         try:
             # HomeAssistant is already running / supervisor have only reboot
             if self.sys_hardware.last_boot == self.sys_config.last_boot:
-                _LOGGER.debug("Supervisor reboot detected")
+                _LOGGER.info("Supervisor reboot detected")
                 return
 
             # reset register services / discovery
@@ -190,7 +190,7 @@ class Core(CoreSysAttributes):
                 except HomeAssistantError as err:
                     self.sys_capture_exception(err)
             else:
-                _LOGGER.debug("Skiping start of Home Assistant")
+                _LOGGER.info("Skiping start of Home Assistant")
 
             # start addon mark as application
             await self.sys_addons.boot(AddonStartup.APPLICATION)
