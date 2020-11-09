@@ -19,6 +19,7 @@ from ..const import (
     ATTR_GATEWAY,
     ATTR_INTERFACE,
     ATTR_INTERFACES,
+    ATTR_INTERNET,
     ATTR_IPV4,
     ATTR_IPV6,
     ATTR_MAC,
@@ -159,6 +160,7 @@ class APINetwork(CoreSysAttributes):
                 ATTR_GATEWAY: str(self.sys_docker.network.gateway),
                 ATTR_DNS: str(self.sys_docker.network.dns),
             },
+            ATTR_INTERNET: self.sys_core.internet.connected,
         }
 
     @api_process
