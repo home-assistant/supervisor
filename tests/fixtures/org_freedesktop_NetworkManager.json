@@ -1,8 +1,12 @@
 {
-  "Devices": ["/org/freedesktop/NetworkManager/Devices/1"],
+  "Devices": [
+    "/org/freedesktop/NetworkManager/Devices/1",
+    "/org/freedesktop/NetworkManager/Devices/3"
+  ],
   "AllDevices": [
     "/org/freedesktop/NetworkManager/Devices/1",
-    "/org/freedesktop/NetworkManager/Devices/2"
+    "/org/freedesktop/NetworkManager/Devices/2",
+    "/org/freedesktop/NetworkManager/Devices/3"
   ],
   "Checkpoints": [],
   "NetworkingEnabled": true,

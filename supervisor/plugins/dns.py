@@ -70,12 +70,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     def locals(self) -> List[str]:
         """Return list of local system DNS servers."""
         servers: List[str] = []
-        for server in self.sys_host.network.dns_servers:
-            if server in servers:
-                continue
+        for server in [
+            f"dns://{server!s}" for server in self.sys_host.network.dns_servers
+        ]:
             with suppress(vol.Invalid):
-                dns_url(server)
-                servers.append(server)
+                servers.append(dns_url(server))
 
         return servers
 
@@ -375,10 +374,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     def delete_host(self, host: str, write: bool = True) -> None:
         """Remove a entry from hosts."""
         entry = self._search_host([host])
-
-        # No match on hosts
         if not entry:
-            _LOGGER.debug("Can't remove Host entry: %s", host)
             return
 
         _LOGGER.debug("Removing host entry %s - %s", entry.ip_address, entry.names)

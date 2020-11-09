@@ -524,13 +524,13 @@ class DockerInterface(CoreSysAttributes):
                 raise ValueError()
 
         except (docker.errors.DockerException, ValueError) as err:
-            _LOGGER.debug("No version found for %s", self.image)
+            _LOGGER.info("No version found for %s", self.image)
             raise DockerNotFound() from err
         except requests.RequestException as err:
             _LOGGER.warning("Communication issues with dockerd on Host: %s", err)
             raise DockerRequestError() from err
         else:
-            _LOGGER.debug("Found %s versions: %s", self.image, available_version)
+            _LOGGER.info("Found %s versions: %s", self.image, available_version)
 
         # Sort version and return latest version
         available_version.sort(key=pkg_version.parse, reverse=True)

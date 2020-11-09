@@ -117,6 +117,14 @@ class RestAPI(CoreSysAttributes):
                     "/network/interface/{interface}/update",
                     api_network.interface_update,
                 ),
+                web.get(
+                    "/network/interface/{interface}/accesspoints",
+                    api_network.scan_accesspoints,
+                ),
+                web.post(
+                    "/network/interface/{interface}/vlan/{vlan}",
+                    api_network.create_vlan,
+                ),
             ]
         )
 
@@ -342,6 +350,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.post("/ingress/session", api_ingress.create_session),
+                web.post("/ingress/validate_session", api_ingress.validate_session),
                 web.get("/ingress/panels", api_ingress.panels),
                 web.view("/ingress/{token}/{path:.*}", api_ingress.handler),
             ]

@@ -73,7 +73,7 @@ class Auth(JsonConfig, CoreSysAttributes):
 
         # Check API state
         if not await self.sys_homeassistant.api.check_api_state():
-            _LOGGER.debug("Home Assistant not running, checking cache")
+            _LOGGER.info("Home Assistant not running, checking cache")
             return cache_hit is True
 
         # No cache hit

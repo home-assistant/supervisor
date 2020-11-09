@@ -2,7 +2,7 @@
 # pylint: disable=import-error,protected-access
 from unittest.mock import MagicMock, patch
 
-from supervisor.const import CoreState
+from supervisor.const import CoreState, HostFeature
 from supervisor.coresys import CoreSys
 from supervisor.resolution.evaluations.systemd import EvaluateSystemd
 
@@ -14,28 +14,19 @@ async def test_evaluation(coresys: CoreSys):
 
     assert systemd.reason not in coresys.resolution.unsupported
 
-    with patch(
-        "supervisor.utils.gdbus.DBusCallWrapper",
-        return_value=MagicMock(systemd=MagicMock(is_connected=False)),
-    ):
-        await systemd()
-        assert systemd.reason in coresys.resolution.unsupported
+    coresys._host = MagicMock()
 
-    with patch(
-        "supervisor.utils.gdbus.DBusCallWrapper",
-        return_value=MagicMock(hostname=MagicMock(is_connected=False)),
-    ):
-        await systemd()
-        assert systemd.reason in coresys.resolution.unsupported
+    coresys.host.supported_features = [HostFeature.HOSTNAME]
+    await systemd()
+    assert systemd.reason in coresys.resolution.unsupported
 
-    with patch(
-        "supervisor.utils.gdbus.DBusCallWrapper",
-        return_value=MagicMock(
-            hostname=MagicMock(is_connected=True), systemd=MagicMock(is_connected=True)
-        ),
-    ):
-        await systemd()
-        assert systemd.reason not in coresys.resolution.unsupported
+    coresys.host.supported_features = [
+        HostFeature.SERVICES,
+        HostFeature.SHUTDOWN,
+        HostFeature.REBOOT,
+    ]
+    await systemd()
+    assert systemd.reason in coresys.resolution.unsupported
 
 
 async def test_did_run(coresys: CoreSys):

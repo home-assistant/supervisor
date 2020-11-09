@@ -1,41 +1,104 @@
 {
     'connection':
         {
-            'id': <'{{interface.id}}'>,
-            'type': <'{{interface.type}}'>,
-            'uuid': <'{{interface.uuid}}'>
-        },
-
-{% if options.get("method") == "auto" %}
-    'ipv4':
-        {
-            'method': <'auto'>
+            'id': <'{{ name }}'>,
+{% if interface.type != "vlan" %}
+            'interface-name': <'{{ interface.name }}'>,
+{% endif %}
+            'type': <'{% if interface.type == "ethernet" %}802-3-ethernet{% elif interface.type == "wireless" %}802-11-wireless{% else %}{{ interface.type.value }}{% endif %}'>,
+            'uuid': <'{{ uuid }}'>
         }
-{% else %}
+
+{% if interface.ipv4 %}
+    ,
     'ipv4':
         {
+{% if interface.ipv4.method == "dhcp" %}
+            'method': <'auto'>
+{% elif interface.ipv4.method == "disable" %}
+            'method': <'disabled'>
+{% else %}
             'method': <'manual'>,
-            'dns': <[uint32 {{ options.get("dns", interface.nameservers) | list | join(",") }}]>,
+            'dns': <[uint32 {{ interface.ipv4.nameservers | map("int") | join(",") }}]>,
             'address-data': <[
+            {% for address in interface.ipv4.address %}
                 {
-                    'address': <'{{ options.get("address", interface.ip_address) }}'>,
-                    'prefix': <uint32 {{ options.get("prefix", interface.prefix) }}>
+                    'address': <'{{ address.ip | string }}'>,
+                    'prefix': <uint32 {{ address.with_prefixlen.partition("/") | last | int }}>
                 }]>,
-            'gateway': <'{{ options.get("gateway", interface.gateway) }}'>
+            {% endfor %}
+            'gateway': <'{{ interface.ipv4.gateway | string }}'>
+{% endif %}
         }
 {% endif %}
-{% if interface.type == "802-11-wireless" %}
+
+{% if interface.ipv6 %}
+    ,
+    'ipv6':
+        {
+{% if interface.ipv6.method == "dhcp" %}
+            'method': <'auto'>
+{% elif interface.ipv6.method == "disable" %}
+            'method': <'disabled'>
+{% else %}
+            'method': <'manual'>,
+            'dns': <[uint32 {{ interface.ipv6.nameservers | map("int") | join(",") }}]>,
+            'address-data': <[
+            {% for address in interface.ipv6.address if not address.with_prefixlen.startswith("fe80::") %}
+                {
+                    'address': <'{{ address.ip | string }}'>,
+                    'prefix': <uint32 {{ address.with_prefixlen.partition("/") | last | int }}>
+                }]>,
+            {% endfor %}
+            'gateway': <'{{ interface.ipv6.gateway | string }}'>
+{% endif %}
+        }
+{% endif %}
+
+{% if interface.type == "ethernet" %}
+    ,
+    '802-3-ethernet':
+        {
+            'assigned-mac-address': <'stable'>
+        }
+{% endif %}
+
+{% if interface.type == "vlan" %}
+    ,
+    'vlan':
+        {
+            'id': <uint32 {{ interface.vlan.id }}>,
+            'parent': <'{{ interface.vlan.interface }}'>
+        }
+{% endif %}
+
+{% if interface.type == "wireless" %}
     ,
     '802-11-wireless':
         {
             'security': <'802-11-wireless-security'>,
-            'ssid': <[byte {{ options.ssid }}]>
+            'assigned-mac-address': <'stable'>,
+            'ssid': <[byte {{ interface.wifi.ssid }}]>,
+            'mode': <'{{ interface.wifi.mode.value }}'>,
+            'powersave': <uint32 1>
 
         },
     '802-11-wireless-security':
         {
-            'auth-alg': <'{{ interface.connection.wireless.security['auth-alg'] }}'>,
-            'key-mgmt': <'{{ interface.connection.wireless.security['key-mgmt'] }}'>
+        {% if interface.wifi.auth == "web" %}
+            'auth-alg': <'none'>,
+            'key-mgmt': <'none'>
+        {% elif interface.wifi.auth == "wpa-psk" %}
+            'auth-alg': <'shared'>,
+            'key-mgmt': <'wpa-psk'>
+        {% elif interface.wifi.auth == "open" %}
+            'auth-alg': <'open'>,
+            'key-mgmt': <'none'>
+        {% endif %}
+        {% if interface.wifi.psk %}
+            ,
+            'psk': <'{{ interface.wifi.psk }}'>
+        {% endif %}
         }
 {% endif %}
 }

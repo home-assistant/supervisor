@@ -1,0 +1,20 @@
+{
+  "HwAddress": "EA:3C:50:4C:B8:82",
+  "PermHwAddress": "DC:A6:32:02:BA:21",
+  "Mode": 2,
+  "Bitrate": 0,
+  "AccessPoints": [
+    "/org/freedesktop/NetworkManager/AccessPoint/41533",
+    "/org/freedesktop/NetworkManager/AccessPoint/41534",
+    "/org/freedesktop/NetworkManager/AccessPoint/41535",
+    "/org/freedesktop/NetworkManager/AccessPoint/41536",
+    "/org/freedesktop/NetworkManager/AccessPoint/41537",
+    "/org/freedesktop/NetworkManager/AccessPoint/41538",
+    "/org/freedesktop/NetworkManager/AccessPoint/41539",
+    "/org/freedesktop/NetworkManager/AccessPoint/41540",
+    "/org/freedesktop/NetworkManager/AccessPoint/41541"
+  ],
+  "ActiveAccessPoint": "/",
+  "WirelessCapabilities": 2047,
+  "LastScan": 1343924585
+}

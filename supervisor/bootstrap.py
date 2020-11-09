@@ -95,7 +95,7 @@ async def initialize_coresys() -> CoreSys:
         coresys.machine = os.environ[ENV_SUPERVISOR_MACHINE]
     elif os.environ.get(ENV_HOMEASSISTANT_REPOSITORY):
         coresys.machine = os.environ[ENV_HOMEASSISTANT_REPOSITORY][14:-14]
-    _LOGGER.debug("Seting up coresys for machine: %s", coresys.machine)
+    _LOGGER.info("Seting up coresys for machine: %s", coresys.machine)
 
     return coresys
 
@@ -119,7 +119,7 @@ def initialize_system_data(coresys: CoreSys) -> None:
 
     # Supervisor addon data folder
     if not config.path_addons_data.is_dir():
-        _LOGGER.info(
+        _LOGGER.debug(
             "Creating Supervisor Add-on data folder at '%s'", config.path_addons_data
         )
         config.path_addons_data.mkdir(parents=True)
@@ -286,7 +286,7 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
     debugpy.listen(("0.0.0.0", 33333))
     if coresys.config.debug_block:
-        _LOGGER.debug("Wait until debugger is attached")
+        _LOGGER.info("Wait until debugger is attached")
         debugpy.wait_for_client()
 
 
