@@ -374,10 +374,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     def delete_host(self, host: str, write: bool = True) -> None:
         """Remove a entry from hosts."""
         entry = self._search_host([host])
-
-        # No match on hosts
         if not entry:
-            _LOGGER.debug("Can't remove Host entry: %s", host)
             return
 
         _LOGGER.debug("Removing host entry %s - %s", entry.ip_address, entry.names)
