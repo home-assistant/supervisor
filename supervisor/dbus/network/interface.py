@@ -27,7 +27,7 @@ class NetworkInterface(DBusInterfaceProxy):
         self.object_path = object_path
         self.properties = {}
 
-        self.primary = True
+        self.primary = False
 
         self._connection: Optional[NetworkConnection] = None
         self._settings: Optional[NetworkSetting] = None
