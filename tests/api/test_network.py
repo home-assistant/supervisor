@@ -16,6 +16,15 @@ async def test_api_network_info(api_client, coresys):
     assert TEST_INTERFACE in (
         inet["interface"] for inet in result["data"]["interfaces"]
     )
+    assert TEST_INTERFACE_WLAN in (
+        inet["interface"] for inet in result["data"]["interfaces"]
+    )
+
+    for interface in result["data"]["interfaces"]:
+        if interface["interface"] == TEST_INTERFACE:
+            assert interface["primary"]
+        if interface["interface"] == TEST_INTERFACE_WLAN:
+            assert not interface["primary"]
 
     assert result["data"]["docker"]["interface"] == DOCKER_NETWORK
     assert result["data"]["docker"]["address"] == str(DOCKER_NETWORK_MASK)
