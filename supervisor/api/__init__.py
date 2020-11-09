@@ -117,6 +117,14 @@ class RestAPI(CoreSysAttributes):
                     "/network/interface/{interface}/update",
                     api_network.interface_update,
                 ),
+                web.get(
+                    "/network/interface/{interface}/accesspoints",
+                    api_network.scan_accesspoints,
+                ),
+                web.post(
+                    "/network/interface/{interface}/vlan/{vlan}",
+                    api_network.create_vlan,
+                ),
             ]
         )
 

@@ -1,0 +1,85 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+                      "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!-- GDBus 2.62.5 -->
+<node>
+  <interface name="org.freedesktop.DBus.Properties">
+    <method name="Get">
+      <arg type="s" name="interface_name" direction="in"/>
+      <arg type="s" name="property_name" direction="in"/>
+      <arg type="v" name="value" direction="out"/>
+    </method>
+    <method name="GetAll">
+      <arg type="s" name="interface_name" direction="in"/>
+      <arg type="a{sv}" name="properties" direction="out"/>
+    </method>
+    <method name="Set">
+      <arg type="s" name="interface_name" direction="in"/>
+      <arg type="s" name="property_name" direction="in"/>
+      <arg type="v" name="value" direction="in"/>
+    </method>
+    <signal name="PropertiesChanged">
+      <arg type="s" name="interface_name"/>
+      <arg type="a{sv}" name="changed_properties"/>
+      <arg type="as" name="invalidated_properties"/>
+    </signal>
+  </interface>
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg type="s" name="xml_data" direction="out"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.DBus.Peer">
+    <method name="Ping"/>
+    <method name="GetMachineId">
+      <arg type="s" name="machine_uuid" direction="out"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.NetworkManager.Settings">
+    <method name="ListConnections">
+      <arg type="ao" name="connections" direction="out"/>
+    </method>
+    <method name="GetConnectionByUuid">
+      <arg type="s" name="uuid" direction="in"/>
+      <arg type="o" name="connection" direction="out"/>
+    </method>
+    <method name="AddConnection">
+      <arg type="a{sa{sv}}" name="connection" direction="in"/>
+      <arg type="o" name="path" direction="out"/>
+    </method>
+    <method name="AddConnectionUnsaved">
+      <arg type="a{sa{sv}}" name="connection" direction="in"/>
+      <arg type="o" name="path" direction="out"/>
+    </method>
+    <method name="AddConnection2">
+      <arg type="a{sa{sv}}" name="settings" direction="in"/>
+      <arg type="u" name="flags" direction="in"/>
+      <arg type="a{sv}" name="args" direction="in"/>
+      <arg type="o" name="path" direction="out"/>
+      <arg type="a{sv}" name="result" direction="out"/>
+    </method>
+    <method name="LoadConnections">
+      <arg type="as" name="filenames" direction="in"/>
+      <arg type="b" name="status" direction="out"/>
+      <arg type="as" name="failures" direction="out"/>
+    </method>
+    <method name="ReloadConnections">
+      <arg type="b" name="status" direction="out"/>
+    </method>
+    <method name="SaveHostname">
+      <arg type="s" name="hostname" direction="in"/>
+    </method>
+    <signal name="PropertiesChanged">
+      <arg type="a{sv}" name="properties"/>
+    </signal>
+    <signal name="NewConnection">
+      <arg type="o" name="connection"/>
+    </signal>
+    <signal name="ConnectionRemoved">
+      <arg type="o" name="connection"/>
+    </signal>
+    <property type="ao" name="Connections" access="read"/>
+    <property type="s" name="Hostname" access="read"/>
+    <property type="b" name="CanModify" access="read"/>
+  </interface>
+  <node name="1"/>
+</node>

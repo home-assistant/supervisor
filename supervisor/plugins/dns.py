@@ -70,12 +70,11 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     def locals(self) -> List[str]:
         """Return list of local system DNS servers."""
         servers: List[str] = []
-        for server in self.sys_host.network.dns_servers:
-            if server in servers:
-                continue
+        for server in [
+            f"dns://{server!s}" for server in self.sys_host.network.dns_servers
+        ]:
             with suppress(vol.Invalid):
-                dns_url(server)
-                servers.append(server)
+                servers.append(dns_url(server))
 
         return servers
 

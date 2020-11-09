@@ -1,42 +1,43 @@
 """Payload generators for DBUS communication."""
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
+from uuid import uuid4
 
 import jinja2
 
-from ...const import ATTR_ADDRESS, ATTR_DNS, ATTR_METHOD, ATTR_PREFIX, ATTR_SSID
-from ..const import ConnectionType, InterfaceMethod
-from ..network.utils import ip2int
+from ...host.const import InterfaceType
+
+if TYPE_CHECKING:
+    from ...host.network import Interface
+
 
 INTERFACE_UPDATE_TEMPLATE: Path = (
     Path(__file__).parents[2].joinpath("dbus/payloads/interface_update.tmpl")
 )
 
 
-def interface_update_payload(interface, **kwargs) -> str:
+def interface_update_payload(
+    interface: Interface, name: Optional[str] = None, uuid: Optional[str] = None
+) -> str:
     """Generate a payload for network interface update."""
     template = jinja2.Template(INTERFACE_UPDATE_TEMPLATE.read_text())
-    if kwargs.get(ATTR_DNS):
-        kwargs[ATTR_DNS] = [ip2int(x.strip()) for x in kwargs[ATTR_DNS]]
 
-    if kwargs.get(ATTR_METHOD):
-        kwargs[ATTR_METHOD] = (
-            InterfaceMethod.MANUAL
-            if kwargs[ATTR_METHOD] == "static"
-            else InterfaceMethod.AUTO
+    # Generate UUID
+    if not uuid:
+        uuid = str(uuid4())
+
+    # Generate ID/name
+    if not name and interface.type != InterfaceType.VLAN:
+        name = f"Supervisor {interface.name} - {interface.type!s}"
+    elif not name:
+        name = f"Supervisor {interface.name}.{interface.vlan.id}"
+
+    # Fix SSID
+    if interface.wifi:
+        interface.wifi.ssid = ", ".join(
+            [f"0x{x}" for x in interface.wifi.ssid.encode().hex(",").split(",")]
         )
 
-    if kwargs.get(ATTR_ADDRESS):
-        if "/" in kwargs[ATTR_ADDRESS]:
-            kwargs[ATTR_PREFIX] = kwargs[ATTR_ADDRESS].split("/")[-1]
-            kwargs[ATTR_ADDRESS] = kwargs[ATTR_ADDRESS].split("/")[0]
-        kwargs[ATTR_METHOD] = InterfaceMethod.MANUAL
-
-    if interface.type == ConnectionType.WIRELESS:
-        kwargs[ATTR_SSID] = ", ".join(
-            [
-                f"0x{x}"
-                for x in interface.connection.wireless.ssid.encode().hex(",").split(",")
-            ]
-        )
-
-    return template.render(interface=interface, options=kwargs)
+    return template.render(interface=interface, name=name, uuid=uuid)

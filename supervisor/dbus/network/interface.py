@@ -1,101 +1,96 @@
 """NetworkInterface object for Network Manager."""
+from typing import Optional
+
 from ...utils.gdbus import DBus
 from ..const import (
-    DBUS_NAME_CONNECTION_ACTIVE,
+    DBUS_ATTR_ACTIVE_CONNECTION,
+    DBUS_ATTR_DEVICE_INTERFACE,
+    DBUS_ATTR_DEVICE_TYPE,
+    DBUS_ATTR_DRIVER,
+    DBUS_ATTR_MANAGED,
+    DBUS_NAME_DEVICE,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
-    ConnectionType,
-    InterfaceMethod,
+    DeviceType,
 )
-from ..payloads.generate import interface_update_payload
+from ..interface import DBusInterfaceProxy
 from .connection import NetworkConnection
+from .setting import NetworkSetting
+from .wireless import NetworkWireless
 
 
-class NetworkInterface:
-    """NetworkInterface object for Network Manager, this serves as a proxy to other objects."""
+class NetworkInterface(DBusInterfaceProxy):
+    """NetworkInterface object for Network Manager."""
 
-    def __init__(self) -> None:
+    def __init__(self, nm_dbus: DBus, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        self._connection = None
-        self._nm_dbus = None
+        self.object_path = object_path
+        self.properties = {}
+
+        self.primary = True
+
+        self._connection: Optional[NetworkConnection] = None
+        self._settings: Optional[NetworkSetting] = None
+        self._wireless: Optional[NetworkWireless] = None
+        self._nm_dbus: DBus = nm_dbus
 
     @property
-    def nm_dbus(self) -> DBus:
-        """Return the NM DBus connection."""
-        return self._nm_dbus
+    def name(self) -> str:
+        """Return interface name."""
+        return self.properties[DBUS_ATTR_DEVICE_INTERFACE]
 
     @property
-    def connection(self) -> NetworkConnection:
+    def type(self) -> int:
+        """Return interface type."""
+        return self.properties[DBUS_ATTR_DEVICE_TYPE]
+
+    @property
+    def driver(self) -> str:
+        """Return interface driver."""
+        return self.properties[DBUS_ATTR_DRIVER]
+
+    @property
+    def managed(self) -> bool:
+        """Return interface driver."""
+        return self.properties[DBUS_ATTR_MANAGED]
+
+    @property
+    def connection(self) -> Optional[NetworkConnection]:
         """Return the connection used for this interface."""
         return self._connection
 
     @property
-    def name(self) -> str:
-        """Return the interface name."""
-        return self.connection.device.interface
+    def settings(self) -> Optional[NetworkSetting]:
+        """Return the connection settings used for this interface."""
+        return self._settings
 
     @property
-    def primary(self) -> bool:
-        """Return true if it's the primary interfac."""
-        return self.connection.primary
+    def wireless(self) -> Optional[NetworkWireless]:
+        """Return the wireless data for this interface."""
+        return self._wireless
 
-    @property
-    def ip_address(self) -> str:
-        """Return the ip_address."""
-        return self.connection.ip4_config.address_data.address
+    async def connect(self) -> None:
+        """Get device information."""
+        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
+        self.properties = await self.dbus.get_properties(DBUS_NAME_DEVICE)
 
-    @property
-    def prefix(self) -> str:
-        """Return the network prefix."""
-        return self.connection.ip4_config.address_data.prefix
+        # Abort if device is not managed
+        if not self.managed:
+            return
 
-    @property
-    def type(self) -> ConnectionType:
-        """Return the interface type."""
-        return self.connection.type
+        # If connection exists
+        if self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
+            self._connection = NetworkConnection(
+                self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
+            )
+            await self._connection.connect()
 
-    @property
-    def id(self) -> str:
-        """Return the interface id."""
-        return self.connection.id
+        # Attach settings
+        if self.connection and self.connection.setting_object != DBUS_OBJECT_BASE:
+            self._settings = NetworkSetting(self.connection.setting_object)
+            await self._settings.connect()
 
-    @property
-    def uuid(self) -> str:
-        """Return the interface uuid."""
-        return self.connection.uuid
-
-    @property
-    def method(self) -> InterfaceMethod:
-        """Return the interface method."""
-        return InterfaceMethod(self.connection.ip4_config.method)
-
-    @property
-    def gateway(self) -> str:
-        """Return the gateway."""
-        return self.connection.ip4_config.gateway
-
-    @property
-    def nameservers(self) -> str:
-        """Return the nameservers."""
-        return self.connection.ip4_config.nameservers
-
-    async def connect(self, nm_dbus: DBus, connection_object: str) -> None:
-        """Get connection information."""
-        self._nm_dbus = nm_dbus
-        connection_bus = await DBus.connect(DBUS_NAME_NM, connection_object)
-        connection_properties = await connection_bus.get_properties(
-            DBUS_NAME_CONNECTION_ACTIVE
-        )
-        self._connection = NetworkConnection(connection_object, connection_properties)
-
-    async def update_settings(self, **kwargs) -> None:
-        """Update IP configuration used for this interface."""
-        payload = interface_update_payload(self, **kwargs)
-
-        await self.connection.settings.dbus.Settings.Connection.Update(payload)
-
-        await self.nm_dbus.ActivateConnection(
-            self.connection.settings.dbus.object_path,
-            self.connection.device.dbus.object_path,
-            DBUS_OBJECT_BASE,
-        )
+        # Wireless
+        if self.type == DeviceType.WIRELESS:
+            self._wireless = NetworkWireless(self.object_path)
+            await self._wireless.connect()
