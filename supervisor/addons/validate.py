@@ -155,6 +155,7 @@ RE_MACHINE = re.compile(
     r"^!?(?:"
     r"|intel-nuc"
     r"|odroid-c2"
+    r"|odroid-c4"
     r"|odroid-n2"
     r"|odroid-xu"
     r"|qemuarm-64"
