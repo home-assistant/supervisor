@@ -61,4 +61,4 @@ class HomeAssistantSecrets(CoreSysAttributes):
         except (YAMLError, AttributeError) as err:
             _LOGGER.error("Can't process Home Assistant secrets: %s", err)
         else:
-            _LOGGER.info("Reloading Home Assistant secrets: %s", len(self.secrets))
+            _LOGGER.debug("Reloading Home Assistant secrets: %s", len(self.secrets))
