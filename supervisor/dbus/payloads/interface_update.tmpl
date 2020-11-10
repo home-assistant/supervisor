@@ -85,7 +85,7 @@
         },
     '802-11-wireless-security':
         {
-        {% if interface.wifi.auth == "web" %}
+        {% if interface.wifi.auth == "wep" %}
             'auth-alg': <'none'>,
             'key-mgmt': <'none'>
         {% elif interface.wifi.auth == "wpa-psk" %}

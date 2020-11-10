@@ -288,7 +288,7 @@ class Interface:
 
         # Authentication
         if inet.settings.wireless_security.key_mgmt == "none":
-            auth = AuthMethod.WEB
+            auth = AuthMethod.WEP
         elif inet.settings.wireless_security.key_mgmt == "wpa-psk":
             auth = AuthMethod.WPA_PSK
         else:

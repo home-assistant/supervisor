@@ -124,7 +124,7 @@ async def test_interface_update_payload_wireless_web(coresys):
 
     interface.type = InterfaceType.WIRELESS
     interface.wifi = WifiConfig(
-        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.WEB, "password", 0
+        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.WEP, "password", 0
     )
 
     data = interface_update_payload(interface)
