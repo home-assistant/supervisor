@@ -3,7 +3,7 @@ async_timeout==3.0.1
 attrs==20.3.0
 brotlipy==0.7.0
 cchardet==2.1.7
-colorlog==4.5.0
+colorlog==4.6.2
 cpe==1.2.1
 cryptography==3.2.1
 debugpy==1.1.0
