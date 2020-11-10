@@ -48,3 +48,20 @@ class Condition:
             return await method(*args, **kwargs)
 
         return wrapper
+
+    @staticmethod
+    def healthy(method):
+        """Wrap a method to guard for unhealthy installations."""
+
+        async def wrapper(*args, **kwargs):
+            """Wrap the method."""
+            coresys: CoreSys = args[0].coresys
+            if not coresys.core.healthy:
+                _LOGGER.warning(
+                    "'%s' blocked from execution, system is not healthy",
+                    method.__qualname__,
+                )
+                return False
+            return await method(*args, **kwargs)
+
+        return wrapper

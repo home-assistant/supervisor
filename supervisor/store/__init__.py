@@ -57,6 +57,7 @@ class StoreManager(CoreSysAttributes):
         self._read_addons()
 
     @Condition.internet
+    @Condition.healthy
     async def update_repositories(self, list_repositories):
         """Add a new custom repository."""
         new_rep = set(list_repositories)
