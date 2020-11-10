@@ -110,7 +110,7 @@ class NetworkManager(CoreSysAttributes):
                 raise HostNetworkError() from err
 
         # Remove config from interface
-        elif inet and not interface.enabled:
+        elif inet and inet.settings and not interface.enabled:
             try:
                 await inet.settings.delete()
             except DBusError as err:
@@ -126,6 +126,9 @@ class NetworkManager(CoreSysAttributes):
             except DBusError as err:
                 _LOGGER.error("Can't create new interface")
                 raise HostNetworkError() from err
+        else:
+            _LOGGER.warning("Requested Network interface update is not possible")
+            raise HostNetworkError()
 
         await self.update()
 
