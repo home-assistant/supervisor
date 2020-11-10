@@ -181,11 +181,23 @@ class APINetwork(CoreSysAttributes):
         # Apply config
         for key, config in body.items():
             if key == ATTR_IPV4:
-                interface.ipv4 = attr.evolve(interface.ipv4, **config)
+                interface.ipv4 = attr.evolve(
+                    interface.ipv4 or IpConfig(InterfaceMethod.STATIC, [], None, []),
+                    **config,
+                )
             elif key == ATTR_IPV6:
-                interface.ipv6 = attr.evolve(interface.ipv6, **config)
+                interface.ipv6 = attr.evolve(
+                    interface.ipv6 or IpConfig(InterfaceMethod.STATIC, [], None, []),
+                    **config,
+                )
             elif key == ATTR_WIFI:
-                interface.wifi = attr.evolve(interface.wifi, **config)
+                interface.wifi = attr.evolve(
+                    interface.wifi
+                    or WifiConfig(
+                        WifiMode.INFRASTRUCTURE, "", AuthMethod.OPEN, None, None
+                    ),
+                    **config,
+                )
             elif key == ATTR_ENABLED:
                 interface.enabled = config
 

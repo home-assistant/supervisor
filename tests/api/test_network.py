@@ -100,6 +100,37 @@ async def test_api_network_interface_update(api_client):
 
 
 @pytest.mark.asyncio
+async def test_api_network_interface_update_wifi(api_client):
+    """Test network manager api."""
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE_WLAN}/update",
+        json={
+            "enabled": True,
+            "ipv4": {
+                "method": "static",
+                "nameservers": ["1.1.1.1"],
+                "address": ["192.168.2.148/24"],
+                "gateway": "192.168.1.1",
+            },
+            "wifi": {"ssid": "MY_TEST", "auth": "wpa-psk", "psk": "myWifiPassword"},
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_api_network_interface_update_remove(api_client):
+    """Test network manager api."""
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE}/update",
+        json={"enabled": False},
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+
+@pytest.mark.asyncio
 async def test_api_network_interface_info_invalid(api_client):
     """Test network manager api."""
     resp = await api_client.get("/network/interface/invalid/info")
