@@ -287,7 +287,7 @@ class Interface:
             return None
 
         # Authentication
-        if inet.settings.wireless_security.key_mgmt == "none":
+        if inet.settings.wireless_security.auth_alg == "none":
             auth = AuthMethod.WEP
         elif inet.settings.wireless_security.key_mgmt == "wpa-psk":
             auth = AuthMethod.WPA_PSK
