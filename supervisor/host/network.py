@@ -298,12 +298,13 @@ class Interface:
             return None
 
         # Authentication
-        if inet.settings.wireless_security.auth_alg == "none":
+        auth = None
+        if not inet.settings.wireless_security:
+            auth = AuthMethod.OPEN
+        if inet.settings.wireless_security.key_mgmt == "none":
             auth = AuthMethod.WEP
         elif inet.settings.wireless_security.key_mgmt == "wpa-psk":
             auth = AuthMethod.WPA_PSK
-        else:
-            auth = AuthMethod.OPEN
 
         # Signal
         if inet.wireless:

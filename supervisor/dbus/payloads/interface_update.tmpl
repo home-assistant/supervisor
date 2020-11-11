@@ -76,29 +76,26 @@
     ,
     '802-11-wireless':
         {
-            'security': <'802-11-wireless-security'>,
             'assigned-mac-address': <'stable'>,
             'ssid': <[byte {{ interface.wifi.ssid }}]>,
             'mode': <'{{ interface.wifi.mode.value }}'>,
             'powersave': <uint32 1>
-
-        },
+{% if interface.wifi.auth != "open" %}
+            ,
+            'security': <'802-11-wireless-security'>,
+        }
+    ,
     '802-11-wireless-security':
         {
         {% if interface.wifi.auth == "wep" %}
             'auth-alg': <'none'>,
-            'key-mgmt': <'none'>
+            'key-mgmt': <'none'>,
         {% elif interface.wifi.auth == "wpa-psk" %}
-            'auth-alg': <'shared'>,
-            'key-mgmt': <'wpa-psk'>
-        {% elif interface.wifi.auth == "open" %}
             'auth-alg': <'open'>,
-            'key-mgmt': <'none'>
+            'key-mgmt': <'wpa-psk'>,
         {% endif %}
-        {% if interface.wifi.psk %}
-            ,
             'psk': <'{{ interface.wifi.psk }}'>
-        {% endif %}
+{% endif %}
         }
 {% endif %}
 }
