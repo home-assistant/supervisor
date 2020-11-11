@@ -264,7 +264,7 @@ class Interface:
     def _map_nm_method(method: str) -> InterfaceMethod:
         """Map IP interface method."""
         mapping = {
-            NMInterfaceMethod.AUTO: InterfaceMethod.DHCP,
+            NMInterfaceMethod.AUTO: InterfaceMethod.AUTO,
             NMInterfaceMethod.DISABLED: InterfaceMethod.DISABLED,
             NMInterfaceMethod.MANUAL: InterfaceMethod.STATIC,
         }

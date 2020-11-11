@@ -7,7 +7,7 @@ class InterfaceMethod(str, Enum):
 
     DISABLED = "disabled"
     STATIC = "static"
-    DHCP = "dhcp"
+    AUTO = "auto"
 
 
 class InterfaceType(str, Enum):

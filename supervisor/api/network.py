@@ -234,7 +234,7 @@ class APINetwork(CoreSysAttributes):
         ipv4_config = None
         if ATTR_IPV4 in body:
             ipv4_config = IpConfig(
-                body[ATTR_IPV4].get(ATTR_METHOD, InterfaceMethod.DHCP),
+                body[ATTR_IPV4].get(ATTR_METHOD, InterfaceMethod.AUTO),
                 body[ATTR_IPV4].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV4].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV4].get(ATTR_NAMESERVERS, []),
@@ -243,7 +243,7 @@ class APINetwork(CoreSysAttributes):
         ipv6_config = None
         if ATTR_IPV6 in body:
             ipv6_config = IpConfig(
-                body[ATTR_IPV6].get(ATTR_METHOD, InterfaceMethod.DHCP),
+                body[ATTR_IPV6].get(ATTR_METHOD, InterfaceMethod.AUTO),
                 body[ATTR_IPV6].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV6].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV6].get(ATTR_NAMESERVERS, []),

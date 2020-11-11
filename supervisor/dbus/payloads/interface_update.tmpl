@@ -36,7 +36,7 @@
     ,
     'ipv6':
         {
-{% if interface.ipv6.method == "dhcp" %}
+{% if interface.ipv6.method == "auto" %}
             'method': <'auto'>
 {% elif interface.ipv6.method == "disable" %}
             'method': <'disabled'>
