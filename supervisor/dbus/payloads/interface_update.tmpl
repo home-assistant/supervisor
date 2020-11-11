@@ -83,8 +83,8 @@
 {% if interface.wifi.auth != "open" %}
             ,
             'security': <'802-11-wireless-security'>,
-        }
-    ,
+        },
+
     '802-11-wireless-security':
         {
         {% if interface.wifi.auth == "wep" %}
