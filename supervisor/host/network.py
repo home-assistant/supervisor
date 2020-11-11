@@ -145,7 +145,10 @@ class NetworkManager(CoreSysAttributes):
         try:
             await inet.wireless.request_scan()
         except DBusProgramError as err:
-            if "already scanning" not in str(err):
+            if (
+                "GDBus.Error:org.freedesktop.NetworkManager.Device.NotAllowed"
+                not in str(err)
+            ):
                 raise HostNetworkError() from err
         else:
             await asyncio.sleep(5)
