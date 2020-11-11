@@ -30,7 +30,7 @@ def interface_update_payload(
 
     # Generate ID/name
     if not name and interface.type != InterfaceType.VLAN:
-        name = f"Supervisor {interface.name} - {interface.type.value}"
+        name = f"Supervisor {interface.name}"
     elif not name:
         name = f"Supervisor {interface.name}.{interface.vlan.id}"
 
