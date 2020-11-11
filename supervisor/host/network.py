@@ -22,6 +22,7 @@ from ..dbus.payloads.generate import interface_update_payload
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
+    DBusProgramError,
     HostNetworkError,
     HostNetworkNotFound,
     HostNotSupportedError,
@@ -140,9 +141,16 @@ class NetworkManager(CoreSysAttributes):
             _LOGGER.error("Can only scan with wireless card - %s", interface.name)
             raise HostNotSupportedError()
 
-        await inet.wireless.request_scan()
-        await asyncio.sleep(5)
+        # Request Scan
+        try:
+            await inet.wireless.request_scan()
+        except DBusProgramError as err:
+            if "already scanning" not in str(err):
+                raise HostNetworkError() from err
+        else:
+            await asyncio.sleep(5)
 
+        # Process AP
         accesspoints: List[AccessPoint] = []
         for ap_object in (await inet.wireless.get_all_accesspoints())[0]:
             accesspoint = NetworkWirelessAP(ap_object)

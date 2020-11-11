@@ -17,6 +17,7 @@ from ..exceptions import (
     DBusInterfaceError,
     DBusNotConnectedError,
     DBusParseError,
+    DBusProgramError,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -250,8 +251,8 @@ class DBus:
             raise exception()
 
         # General
-        _LOGGER.error("D-Bus return: %s", error.strip())
-        raise DBusFatalError()
+        _LOGGER.debug("D-Bus return: %s", error.strip())
+        raise DBusProgramError(error.strip())
 
     def attach_signals(self, filters=None):
         """Generate a signals wrapper."""
