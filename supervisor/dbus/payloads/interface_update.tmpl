@@ -92,9 +92,12 @@
             'key-mgmt': <'none'>,
         {% elif interface.wifi.auth == "wpa-psk" %}
             'auth-alg': <'open'>,
-            'key-mgmt': <'wpa-psk'>,
+            'key-mgmt': <'wpa-psk'>
         {% endif %}
+        {% if interface.wifi.psk %}
+            ,
             'psk': <'{{ interface.wifi.psk }}'>
+        {% endif %}
 {% endif %}
         }
 {% endif %}
