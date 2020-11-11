@@ -34,7 +34,7 @@ RE_GVARIANT_STRING: re.Pattern[Any] = re.compile(
     r"(?<=(?: |{|\[|\(|<))'(.*?)'(?=(?:|]|}|,|\)|>))"
 )
 RE_GVARIANT_BINARY: re.Pattern[Any] = re.compile(
-    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|\[byte (.*?)\]|\[(0x[0-9A-Za-z]{2}.*?)\]"
+    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|\[byte (.*?)\]|\[(0x[0-9A-Za-z]{2}.*?)\]|<byte (.*?)>"
 )
 RE_GVARIANT_BINARY_STRING: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|<?b\'(.*?)\'>?"
@@ -143,8 +143,8 @@ class DBus:
         # Handle Bytes
         json_raw = RE_GVARIANT_BINARY.sub(
             lambda x: x.group(0)
-            if not (x.group(1) or x.group(2))
-            else _convert_bytes(x.group(1) or x.group(2)),
+            if not (x.group(1) or x.group(2) or x.group(3))
+            else _convert_bytes(x.group(1) or x.group(2) or x.group(3)),
             json_raw,
         )
         json_raw = RE_GVARIANT_BINARY_STRING.sub(

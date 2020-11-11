@@ -473,3 +473,25 @@ def test_v6():
             ],
         }
     ]
+
+
+def test_single_byte():
+    """Test a singlebyte response."""
+    raw = "({'Flags': <uint32 1>, 'WpaFlags': <uint32 0>, 'RsnFlags': <uint32 392>, 'Ssid': <[byte 0x53, 0x59, 0x53, 0x48, 0x41, 0x43, 0x4b, 0x5f, 0x48, 0x6f, 0x6d, 0x65]>, 'Frequency': <uint32 5660>, 'HwAddress': <'18:4B:0D:A3:A1:9C'>, 'Mode': <uint32 2>, 'MaxBitrate': <uint32 540000>, 'Strength': <byte 0x2c>, 'LastSeen': <1646569>},)"
+
+    data = DBus.parse_gvariant(raw)
+
+    assert data == [
+        {
+            "Flags": 1,
+            "Frequency": 5660,
+            "HwAddress": "18:4B:0D:A3:A1:9C",
+            "LastSeen": 1646569,
+            "MaxBitrate": 540000,
+            "Mode": 2,
+            "RsnFlags": 392,
+            "Ssid": [83, 89, 83, 72, 65, 67, 75, 95, 72, 111, 109, 101],
+            "Strength": [44],
+            "WpaFlags": 0,
+        }
+    ]

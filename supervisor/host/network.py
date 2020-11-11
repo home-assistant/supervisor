@@ -150,7 +150,7 @@ class NetworkManager(CoreSysAttributes):
             try:
                 await accesspoint.connect()
             except DBusError as err:
-                _LOGGER.waring("Can't process an AP: %s", err)
+                _LOGGER.warning("Can't process an AP: %s", err)
                 continue
             else:
                 accesspoints.append(
