@@ -313,7 +313,7 @@ class Interface:
             signal = None
 
         return WifiConfig(
-            WifiMode[WirelessMethodType(inet.settings.wireless.mode).name],
+            WifiMode(inet.settings.wireless.mode),
             inet.settings.wireless.ssid,
             auth,
             inet.settings.wireless_security.psk,
