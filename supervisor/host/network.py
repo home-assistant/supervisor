@@ -78,7 +78,7 @@ class NetworkManager(CoreSysAttributes):
             # ConnectionState 4 == FULL (has internet)
             # https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMConnectivityState
             self._connectivity = state[0] == 4
-        except (DBusError, IndexError):
+        except DBusError:
             self._connectivity = False
 
     def get(self, inet_name: str) -> Interface:
