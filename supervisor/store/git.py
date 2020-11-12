@@ -115,6 +115,7 @@ class GitRepo(CoreSysAttributes):
         """Pull Git add-on repo."""
         if self.lock.locked():
             _LOGGER.warning("There is already a task in progress")
+            return
 
         async with self.lock:
             _LOGGER.info("Update add-on %s repository", self.url)
