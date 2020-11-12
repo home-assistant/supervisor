@@ -8,6 +8,7 @@ from typing import List, Optional, Union
 
 import attr
 
+from ..const import HostFeature
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
     ConnectionStateType,
@@ -38,7 +39,7 @@ class NetworkManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize system center handling."""
         self.coresys: CoreSys = coresys
-        self._connectivity: bool = True
+        self._connectivity: bool = None
 
     @property
     def connectivity(self) -> bool:
@@ -68,6 +69,9 @@ class NetworkManager(CoreSysAttributes):
 
     async def check_connectivity(self):
         """Check the internet connection."""
+        if HostFeature.NETWORK not in self.sys_host.supported_features:
+            self._connectivity = None
+            return
         try:
             state = await self.sys_dbus.network.check_connectivity()
 
