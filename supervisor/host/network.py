@@ -95,7 +95,7 @@ class NetworkManager(CoreSysAttributes):
             try:
                 await inet.settings.update(settings)
             except DBusError as err:
-                _LOGGER.error("Can't update config on %s", interface.name)
+                _LOGGER.error("Can't update config on %s: %s", interface.name, err)
                 raise HostNetworkError() from err
 
         # Create new configuration and activate interface
@@ -107,7 +107,9 @@ class NetworkManager(CoreSysAttributes):
                     settings, inet.object_path
                 )
             except DBusError as err:
-                _LOGGER.error("Can't create config and activate %s", interface.name)
+                _LOGGER.error(
+                    "Can't create config and activate %s: %s", interface.name, err
+                )
                 raise HostNetworkError() from err
 
         # Remove config from interface
@@ -115,7 +117,7 @@ class NetworkManager(CoreSysAttributes):
             try:
                 await inet.settings.delete()
             except DBusError as err:
-                _LOGGER.error("Can't remove %s", interface.name)
+                _LOGGER.error("Can't disable interface %s: %s", interface.name, err)
                 raise HostNetworkError() from err
 
         # Create new interface (like vlan)
@@ -125,7 +127,7 @@ class NetworkManager(CoreSysAttributes):
             try:
                 await self.sys_dbus.network.settings.add_connection(settings)
             except DBusError as err:
-                _LOGGER.error("Can't create new interface")
+                _LOGGER.error("Can't create new interface: %s", err)
                 raise HostNetworkError() from err
         else:
             _LOGGER.warning("Requested Network interface update is not possible")
@@ -145,11 +147,9 @@ class NetworkManager(CoreSysAttributes):
         try:
             await inet.wireless.request_scan()
         except DBusProgramError as err:
-            if (
-                "GDBus.Error:org.freedesktop.NetworkManager.Device.NotAllowed"
-                not in str(err)
-            ):
-                raise HostNetworkError() from err
+            _LOGGER.debug("Can't request a new scan: %s", err)
+        except DBusError as err:
+            raise HostNetworkError() from err
         else:
             await asyncio.sleep(5)
 
