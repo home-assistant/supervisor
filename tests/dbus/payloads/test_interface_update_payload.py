@@ -110,7 +110,7 @@ async def test_interface_update_payload_wireless_wpa_psk(coresys):
     assert DBus.parse_gvariant(data)["802-11-wireless"]["ssid"] == [84, 101, 115, 116]
     assert DBus.parse_gvariant(data)["802-11-wireless"]["mode"] == "infrastructure"
 
-    assert DBus.parse_gvariant(data)["802-11-wireless-security"]["auth-alg"] == "shared"
+    assert DBus.parse_gvariant(data)["802-11-wireless-security"]["auth-alg"] == "open"
     assert (
         DBus.parse_gvariant(data)["802-11-wireless-security"]["key-mgmt"] == "wpa-psk"
     )
@@ -124,7 +124,7 @@ async def test_interface_update_payload_wireless_web(coresys):
 
     interface.type = InterfaceType.WIRELESS
     interface.wifi = WifiConfig(
-        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.WEB, "password", 0
+        WifiMode.INFRASTRUCTURE, "Test", AuthMethod.WEP, "password", 0
     )
 
     data = interface_update_payload(interface)
@@ -156,10 +156,7 @@ async def test_interface_update_payload_wireless_open(coresys):
     assert (
         DBus.parse_gvariant(data)["802-11-wireless"]["assigned-mac-address"] == "stable"
     )
-
-    assert DBus.parse_gvariant(data)["802-11-wireless-security"]["auth-alg"] == "open"
-    assert DBus.parse_gvariant(data)["802-11-wireless-security"]["key-mgmt"] == "none"
-    assert "psk" not in DBus.parse_gvariant(data)["802-11-wireless-security"]
+    assert "802-11-wireless-security" not in DBus.parse_gvariant(data)
 
 
 @pytest.mark.asyncio

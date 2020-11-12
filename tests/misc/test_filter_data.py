@@ -7,7 +7,7 @@ import pytest
 from supervisor.const import SUPERVISOR_VERSION, CoreState
 from supervisor.exceptions import AddonConfigurationError
 from supervisor.misc.filter import filter_data
-from supervisor.resolution.const import UnsupportedReason
+from supervisor.resolution.const import ContextType, IssueType, UnsupportedReason
 
 SAMPLE_EVENT = {"sample": "event", "extra": {"Test": "123"}}
 
@@ -101,3 +101,19 @@ def test_sanitize(coresys):
     ]["headers"]
     assert ["X-Forwarded-Host", "example.com"] in filtered["request"]["headers"]
     assert ["X-Hassio-Key", "XXXXXXXXXXXXXXXXXXX"] in filtered["request"]["headers"]
+
+
+def test_issues_on_report(coresys):
+    """Attach issue to report."""
+
+    coresys.resolution.create_issue(IssueType.FATAL_ERROR, ContextType.SYSTEM)
+
+    coresys.config.diagnostics = True
+    coresys.core.state = CoreState.RUNNING
+
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        event = filter_data(coresys, SAMPLE_EVENT, {})
+
+    assert "issues" in event["contexts"]
+    assert event["contexts"]["issues"][0]["type"] == IssueType.FATAL_ERROR
+    assert event["contexts"]["issues"][0]["context"] == ContextType.SYSTEM

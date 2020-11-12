@@ -3,6 +3,7 @@ import os
 import re
 
 from aiohttp import hdrs
+import attr
 
 from ..const import HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
@@ -73,6 +74,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "os": coresys.hassos.version,
                 "supervisor": coresys.supervisor.version,
             },
+            "issues": [attr.asdict(issue) for issue in coresys.resolution.issues],
         }
     )
     event.setdefault("tags", []).extend(

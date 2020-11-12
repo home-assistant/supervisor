@@ -225,6 +225,10 @@ class DBusParseError(DBusError):
     """DBus parse error."""
 
 
+class DBusProgramError(DBusError):
+    """DBus application error."""
+
+
 # util/apparmor
 
 

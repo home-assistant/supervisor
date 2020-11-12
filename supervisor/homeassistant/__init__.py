@@ -220,6 +220,8 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def need_update(self) -> bool:
         """Return true if a Home Assistant update is available."""
+        if not self.latest_version:
+            return False
         return self.version != self.latest_version
 
     async def load(self) -> None:

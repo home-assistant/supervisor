@@ -7,7 +7,7 @@ class InterfaceMethod(str, Enum):
 
     DISABLED = "disabled"
     STATIC = "static"
-    DHCP = "dhcp"
+    AUTO = "auto"
 
 
 class InterfaceType(str, Enum):
@@ -22,7 +22,7 @@ class AuthMethod(str, Enum):
     """Authentication method."""
 
     OPEN = "open"
-    WEB = "web"
+    WEP = "wep"
     WPA_PSK = "wpa-psk"
 
 

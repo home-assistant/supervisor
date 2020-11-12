@@ -22,6 +22,7 @@ from ..dbus.payloads.generate import interface_update_payload
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
+    DBusProgramError,
     HostNetworkError,
     HostNetworkNotFound,
     HostNotSupportedError,
@@ -94,7 +95,7 @@ class NetworkManager(CoreSysAttributes):
             try:
                 await inet.settings.update(settings)
             except DBusError as err:
-                _LOGGER.error("Can't update config on %s", interface.name)
+                _LOGGER.error("Can't update config on %s: %s", interface.name, err)
                 raise HostNetworkError() from err
 
         # Create new configuration and activate interface
@@ -106,15 +107,17 @@ class NetworkManager(CoreSysAttributes):
                     settings, inet.object_path
                 )
             except DBusError as err:
-                _LOGGER.error("Can't create config and activate %s", interface.name)
+                _LOGGER.error(
+                    "Can't create config and activate %s: %s", interface.name, err
+                )
                 raise HostNetworkError() from err
 
         # Remove config from interface
-        elif inet and not interface.enabled:
+        elif inet and inet.settings and not interface.enabled:
             try:
                 await inet.settings.delete()
             except DBusError as err:
-                _LOGGER.error("Can't remove %s", interface.name)
+                _LOGGER.error("Can't disable interface %s: %s", interface.name, err)
                 raise HostNetworkError() from err
 
         # Create new interface (like vlan)
@@ -124,8 +127,11 @@ class NetworkManager(CoreSysAttributes):
             try:
                 await self.sys_dbus.network.settings.add_connection(settings)
             except DBusError as err:
-                _LOGGER.error("Can't create new interface")
+                _LOGGER.error("Can't create new interface: %s", err)
                 raise HostNetworkError() from err
+        else:
+            _LOGGER.warning("Requested Network interface update is not possible")
+            raise HostNetworkError()
 
         await self.update()
 
@@ -137,9 +143,17 @@ class NetworkManager(CoreSysAttributes):
             _LOGGER.error("Can only scan with wireless card - %s", interface.name)
             raise HostNotSupportedError()
 
-        await inet.wireless.request_scan()
-        await asyncio.sleep(5)
+        # Request Scan
+        try:
+            await inet.wireless.request_scan()
+        except DBusProgramError as err:
+            _LOGGER.debug("Can't request a new scan: %s", err)
+        except DBusError as err:
+            raise HostNetworkError() from err
+        else:
+            await asyncio.sleep(5)
 
+        # Process AP
         accesspoints: List[AccessPoint] = []
         for ap_object in (await inet.wireless.get_all_accesspoints())[0]:
             accesspoint = NetworkWirelessAP(ap_object)
@@ -147,7 +161,7 @@ class NetworkManager(CoreSysAttributes):
             try:
                 await accesspoint.connect()
             except DBusError as err:
-                _LOGGER.waring("Can't process an AP: %s", err)
+                _LOGGER.warning("Can't process an AP: %s", err)
                 continue
             else:
                 accesspoints.append(
@@ -250,7 +264,7 @@ class Interface:
     def _map_nm_method(method: str) -> InterfaceMethod:
         """Map IP interface method."""
         mapping = {
-            NMInterfaceMethod.AUTO: InterfaceMethod.DHCP,
+            NMInterfaceMethod.AUTO: InterfaceMethod.AUTO,
             NMInterfaceMethod.DISABLED: InterfaceMethod.DISABLED,
             NMInterfaceMethod.MANUAL: InterfaceMethod.STATIC,
         }
@@ -284,12 +298,13 @@ class Interface:
             return None
 
         # Authentication
+        auth = None
+        if not inet.settings.wireless_security:
+            auth = AuthMethod.OPEN
         if inet.settings.wireless_security.key_mgmt == "none":
-            auth = AuthMethod.WEB
+            auth = AuthMethod.WEP
         elif inet.settings.wireless_security.key_mgmt == "wpa-psk":
             auth = AuthMethod.WPA_PSK
-        else:
-            auth = AuthMethod.OPEN
 
         # Signal
         if inet.wireless:
@@ -298,7 +313,7 @@ class Interface:
             signal = None
 
         return WifiConfig(
-            WifiMode[WirelessMethodType(inet.settings.wireless.mode).name],
+            WifiMode(inet.settings.wireless.mode),
             inet.settings.wireless.ssid,
             auth,
             inet.settings.wireless_security.psk,
