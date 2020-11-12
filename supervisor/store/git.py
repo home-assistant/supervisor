@@ -4,7 +4,7 @@ import functools as ft
 import logging
 from pathlib import Path
 import shutil
-from typing import Optional
+from typing import Dict, Optional
 
 import git
 
@@ -27,16 +27,16 @@ class GitRepo(CoreSysAttributes):
         self.path: Path = path
         self.lock: asyncio.Lock = asyncio.Lock()
 
-        self.data = RE_REPOSITORY.match(url).groupdict()
-        self.slug = url
+        self.data: Dict[str, str] = RE_REPOSITORY.match(url).groupdict()
+        self.slug: str = url
 
     @property
-    def url(self):
+    def url(self) -> str:
         """Return repository URL."""
         return self.data[ATTR_URL]
 
     @property
-    def branch(self):
+    def branch(self) -> str:
         """Return repository branch."""
         return self.data[ATTR_BRANCH]
 
