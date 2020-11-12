@@ -87,7 +87,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         try:
             return pkg_parse(self.version) < pkg_parse(self.latest_version)
         except (TypeError, ValueError):
-            return True
+            return False
 
     async def load(self) -> None:
         """Load Audio setup."""
