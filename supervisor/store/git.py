@@ -4,11 +4,13 @@ import functools as ft
 import logging
 from pathlib import Path
 import shutil
+from typing import Optional
 
 import git
 
 from ..const import ATTR_BRANCH, ATTR_URL, URL_HASSIO_ADDONS
-from ..coresys import CoreSysAttributes
+from ..coresys import CoreSys, CoreSysAttributes
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import RE_REPOSITORY
 from .utils import get_hash_from_repository
 
@@ -18,14 +20,15 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class GitRepo(CoreSysAttributes):
     """Manage Add-on Git repository."""
 
-    def __init__(self, coresys, path, url):
+    def __init__(self, coresys: CoreSys, path: Path, url: str):
         """Initialize Git base wrapper."""
-        self.coresys = coresys
-        self.repo = None
-        self.path = path
-        self.lock = asyncio.Lock()
+        self.coresys: CoreSys = coresys
+        self.repo: Optional[git.Repo] = None
+        self.path: Path = path
+        self.lock: asyncio.Lock = asyncio.Lock()
 
         self.data = RE_REPOSITORY.match(url).groupdict()
+        self.slug = url
 
     @property
     def url(self):
@@ -42,6 +45,7 @@ class GitRepo(CoreSysAttributes):
         if not self.path.is_dir():
             return await self.clone()
 
+        # Load repository
         async with self.lock:
             try:
                 _LOGGER.info("Loading add-on %s repository", self.path)
@@ -53,7 +57,26 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't load %s repo: %s.", self.path, err)
-                await self._remove()
+                self.sys_resolution.create_issue(
+                    IssueType.FATAL_ERROR,
+                    ContextType.STORE,
+                    reference=self.slug,
+                )
+                return False
+
+        # Fix possible corruption
+        async with self.lock:
+            try:
+                _LOGGER.debug("Integrity check add-on %s repository", self.path)
+                await self.sys_run_in_executor(self.repo.git.execute, ["git", "fsck"])
+            except git.GitCommandError as err:
+                _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
+                self.sys_resolution.create_issue(
+                    IssueType.CORRUPT_REPOSITORY,
+                    ContextType.STORE,
+                    reference=self.slug,
+                    suggestions=[SuggestionType.EXECUTE_RESET],
+                )
                 return False
 
             return True
