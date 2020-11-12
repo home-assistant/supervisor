@@ -33,13 +33,3 @@ class WifiMode(str, Enum):
     MESH = "mesh"
     ADHOC = "adhoc"
     AP = "ap"
-
-
-class ConnectivityState(int, Enum):
-    """Connectivity State."""
-
-    UNKNOWN = 0
-    NONE = 1
-    PORTAL = 2
-    LIMITED = 3
-    FULL = 4

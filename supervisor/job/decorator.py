@@ -6,7 +6,6 @@ from typing import List, Optional
 from ..const import CoreState
 from ..coresys import CoreSys
 from ..exceptions import HassioError, JobException
-from ..host.const import ConnectivityState
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -97,9 +96,9 @@ class Job:
             if self._coresys.core.state == CoreState.RUNNING:
                 await self._coresys.host.network.check_connectivity()
                 await self._coresys.supervisor.check_connectivity()
-            if (
-                not self._coresys.supervisor.connectivity
-                or self._coresys.host.network.connectivity != ConnectivityState.FULL
+            if not self._coresys.supervisor.connectivity or (
+                self._coresys.host.network.connectivity is not None
+                and not self._coresys.host.network.connectivity
             ):
                 _LOGGER.warning(
                     "'%s' blocked from execution, no internet connection",

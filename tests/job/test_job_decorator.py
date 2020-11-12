@@ -44,9 +44,21 @@ async def test_internet(coresys: CoreSys):
             return True
 
     test = TestClass(coresys)
+
+    coresys.host.network._connectivity = True
+    coresys.supervisor._connectivity = True
     assert await test.execute()
 
+    coresys.host.network._connectivity = True
     coresys.supervisor._connectivity = False
+    assert not await test.execute()
+
+    coresys.host.network._connectivity = None
+    coresys.supervisor._connectivity = True
+    assert await test.execute()
+
+    coresys.host.network._connectivity = False
+    coresys.supervisor._connectivity = True
     assert not await test.execute()
 
 
