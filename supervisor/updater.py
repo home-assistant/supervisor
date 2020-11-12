@@ -25,8 +25,8 @@ from .const import (
 )
 from .coresys import CoreSysAttributes
 from .exceptions import HassioUpdaterError
+from .job.decorator import Job, JobCondition
 from .utils import AsyncThrottle
-from .utils.condition import Condition
 from .utils.json import JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG
 
@@ -159,7 +159,7 @@ class Updater(JsonConfig, CoreSysAttributes):
         self._data[ATTR_CHANNEL] = value
 
     @AsyncThrottle(timedelta(seconds=30))
-    @Condition.healthy
+    @Job(conditions=[JobCondition.HEALTHY])
     async def fetch_data(self):
         """Fetch current versions from Github.
 

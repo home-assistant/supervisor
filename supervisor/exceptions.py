@@ -293,3 +293,10 @@ class ResolutionError(HassioError):
 
 class ResolutionNotFound(ResolutionError):
     """Raise if suggestion/issue was not found."""
+
+
+# Job
+
+
+class JobException(HassioError):
+    """Base job exception."""

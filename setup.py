@@ -33,7 +33,6 @@ setup(
     packages=[
         "supervisor.addons",
         "supervisor.api",
-        "supervisor.core",
         "supervisor.dbus.network",
         "supervisor.dbus.payloads",
         "supervisor.dbus",
@@ -42,6 +41,7 @@ setup(
         "supervisor.docker",
         "supervisor.homeassistant",
         "supervisor.host",
+        "supervisor.job",
         "supervisor.misc",
         "supervisor.plugins",
         "supervisor.resolution.evaluations",

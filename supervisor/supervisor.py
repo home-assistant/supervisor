@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from typing import Awaitable, Optional
 
 import aiohttp
+from aiohttp.client_exceptions import ClientError
 from packaging.version import parse as pkg_parse
 
 from .const import SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
@@ -32,6 +33,7 @@ class Supervisor(CoreSysAttributes):
         """Initialize hass object."""
         self.coresys: CoreSys = coresys
         self.instance: DockerSupervisor = DockerSupervisor(coresys)
+        self._connectivity: bool = False
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
@@ -42,6 +44,11 @@ class Supervisor(CoreSysAttributes):
 
         with suppress(DockerError):
             await self.instance.cleanup()
+
+    @property
+    def connectivity(self) -> bool:
+        """Return true if we are connected to the internet."""
+        return self._connectivity
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -166,3 +173,14 @@ class Supervisor(CoreSysAttributes):
             await self.instance.retag()
         except DockerError:
             _LOGGER.error("Repair of Supervisor failed")
+
+    async def check_connectivity(self):
+        """Check the connection."""
+        try:
+            await self.sys_websession.head(
+                "https://version.home-assistant.io/online.txt", timeout=10
+            )
+        except (ClientError, asyncio.TimeoutError):
+            self._connectivity = False
+        else:
+            self._connectivity = True

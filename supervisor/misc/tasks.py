@@ -12,7 +12,7 @@ from ..exceptions import (
     MulticastError,
     ObserverError,
 )
-from ..utils.condition import Condition
+from ..job.decorator import Job, JobCondition
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -25,9 +25,6 @@ RUN_UPDATE_DNS = 30100
 RUN_UPDATE_AUDIO = 30200
 RUN_UPDATE_MULTICAST = 30300
 RUN_UPDATE_OBSERVER = 30400
-
-RUN_CHECK_INTERNET = 3600
-RUN_CHECK_INTERNET_NO_CONNECTION = 30
 
 RUN_RELOAD_ADDONS = 10800
 RUN_RELOAD_SNAPSHOTS = 72000
@@ -61,15 +58,6 @@ class Tasks(CoreSysAttributes):
 
     async def load(self):
         """Add Tasks to scheduler."""
-        # Internet
-        self.sys_scheduler.register_task(
-            self._check_internet_connection, RUN_CHECK_INTERNET
-        )
-        self.sys_scheduler.register_task(
-            self._check_internet_connection_no_connection,
-            RUN_CHECK_INTERNET_NO_CONNECTION,
-        )
-
         # Update
         self.sys_scheduler.register_task(self._update_addons, RUN_UPDATE_ADDONS)
         self.sys_scheduler.register_task(self._update_supervisor, RUN_UPDATE_SUPERVISOR)
@@ -125,8 +113,7 @@ class Tasks(CoreSysAttributes):
 
         _LOGGER.info("All core tasks are scheduled")
 
-    @Condition.free_space
-    @Condition.healthy
+    @Job(conditions=[JobCondition.HEALTHY, JobCondition.FREE_SPACE])
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
         for addon in self.sys_addons.all:
@@ -150,8 +137,7 @@ class Tasks(CoreSysAttributes):
             except AddonsError:
                 _LOGGER.error("Can't auto update Add-on %s", addon.slug)
 
-    @Condition.free_space
-    @Condition.healthy
+    @Job(conditions=[JobCondition.HEALTHY, JobCondition.FREE_SPACE])
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
         if not self.sys_supervisor.need_update:
@@ -436,12 +422,3 @@ class Tasks(CoreSysAttributes):
 
             # Adjust state
             addon.state = AddonState.STOPPED
-
-    async def _check_internet_connection(self) -> None:
-        """Periodically check the internet connection."""
-        await self.sys_core.internet.check_connection()
-
-    async def _check_internet_connection_no_connection(self) -> None:
-        """Periodically check the internet connection."""
-        if not self.sys_core.internet.connected:
-            await self.sys_core.internet.check_connection()

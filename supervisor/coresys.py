@@ -22,19 +22,20 @@ if TYPE_CHECKING:
     from .dbus import DBusManager
     from .discovery import Discovery
     from .hassos import HassOS
-    from .misc.scheduler import Scheduler
-    from .misc.hwmon import HwMonitor
-    from .misc.tasks import Tasks
     from .homeassistant import HomeAssistant
     from .host import HostManager
     from .ingress import Ingress
-    from .services import ServiceManager
-    from .snapshots import SnapshotManager
-    from .supervisor import Supervisor
-    from .store import StoreManager
-    from .updater import Updater
+    from .job import JobManager
+    from .misc.hwmon import HwMonitor
+    from .misc.scheduler import Scheduler
+    from .misc.tasks import Tasks
     from .plugins import PluginManager
     from .resolution import ResolutionManager
+    from .services import ServiceManager
+    from .snapshots import SnapshotManager
+    from .store import StoreManager
+    from .supervisor import Supervisor
+    from .updater import Updater
 
 
 T = TypeVar("T")
@@ -83,6 +84,7 @@ class CoreSys:
         self._hwmonitor: Optional[HwMonitor] = None
         self._plugins: Optional[PluginManager] = None
         self._resolution: Optional[ResolutionManager] = None
+        self._job: Optional[JobManager] = None
 
     @property
     def dev(self) -> bool:
@@ -414,6 +416,20 @@ class CoreSys:
         self._resolution = value
 
     @property
+    def job(self) -> JobManager:
+        """Return resolution manager object."""
+        if self._job is None:
+            raise RuntimeError("job manager not set!")
+        return self._job
+
+    @job.setter
+    def job(self, value: JobManager) -> None:
+        """Set a resolution manager object."""
+        if self._job:
+            raise RuntimeError("job manager already set!")
+        self._job = value
+
+    @property
     def machine(self) -> Optional[str]:
         """Return machine type string."""
         return self._machine
@@ -587,6 +603,11 @@ class CoreSysAttributes:
     def sys_resolution(self) -> ResolutionManager:
         """Return Resolution manager object."""
         return self.coresys.resolution
+
+    @property
+    def sys_job(self) -> JobManager:
+        """Return Job manager object."""
+        return self.coresys.job
 
     def sys_run_in_executor(
         self, funct: Callable[..., T], *args: Any

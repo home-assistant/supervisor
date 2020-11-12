@@ -6,16 +6,17 @@ from typing import Awaitable, List, Optional
 
 import async_timeout
 
-from ..const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
-from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import (
+from supervisor.host.const import ConnectivityState
+
+from .const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
+from .coresys import CoreSys, CoreSysAttributes
+from .exceptions import (
     HassioError,
     HomeAssistantCrashError,
     HomeAssistantError,
     SupervisorUpdateError,
 )
-from ..resolution.const import ContextType, IssueType
-from .internet import CoreInternet
+from .resolution.const import ContextType, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -26,7 +27,6 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
-        self.internet = CoreInternet(coresys)
         self.healthy: bool = True
         self._state: Optional[CoreState] = None
 
@@ -60,8 +60,11 @@ class Core(CoreSysAttributes):
         await self.sys_supervisor.load()
 
         # Check internet on startup
-        if not self.sys_core.internet.connected:
-            await self.sys_core.internet.check_connection()
+        if not self.sys_host.network.connectivity == ConnectivityState.FULL:
+            await self.sys_host.network.check_connectivity()
+
+        if not self.sys_supervisor.connectivity:
+            await self.sys_supervisor.check_connectivity()
 
         # Evaluate the system
         await self.sys_resolution.evaluate.evaluate_system()

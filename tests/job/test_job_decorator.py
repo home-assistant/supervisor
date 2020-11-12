@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from supervisor.coresys import CoreSys
-from supervisor.utils.condition import Condition
+from supervisor.job.decorator import Job, JobCondition
 
 
 async def test_healthy(coresys: CoreSys):
@@ -16,7 +16,7 @@ async def test_healthy(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Condition.healthy
+        @Job(conditions=[JobCondition.HEALTHY])
         async def execute(self):
             """Execute the class method."""
             return True
@@ -38,7 +38,7 @@ async def test_internet(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Condition.internet
+        @Job(conditions=[JobCondition.INTERNET])
         async def execute(self):
             """Execute the class method."""
             return True
@@ -46,7 +46,7 @@ async def test_internet(coresys: CoreSys):
     test = TestClass(coresys)
     assert await test.execute()
 
-    coresys.core.internet._connected = False
+    coresys.supervisor._connectivity = False
     assert not await test.execute()
 
 
@@ -60,7 +60,7 @@ async def test_free_space(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Condition.free_space
+        @Job(conditions=[JobCondition.FREE_SPACE])
         async def execute(self):
             """Execute the class method."""
             return True
