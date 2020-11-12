@@ -6,8 +6,6 @@ from typing import Awaitable, List, Optional
 
 import async_timeout
 
-from supervisor.host.const import ConnectivityState
-
 from .const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
@@ -60,7 +58,7 @@ class Core(CoreSysAttributes):
         await self.sys_supervisor.load()
 
         # Check internet on startup
-        if not self.sys_host.network.connectivity == ConnectivityState.FULL:
+        if not self.sys_host.network.connectivity:
             await self.sys_host.network.check_connectivity()
 
         if not self.sys_supervisor.connectivity:

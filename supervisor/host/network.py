@@ -27,13 +27,7 @@ from ..exceptions import (
     HostNetworkNotFound,
     HostNotSupportedError,
 )
-from .const import (
-    AuthMethod,
-    ConnectivityState,
-    InterfaceMethod,
-    InterfaceType,
-    WifiMode,
-)
+from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -44,10 +38,10 @@ class NetworkManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize system center handling."""
         self.coresys: CoreSys = coresys
-        self._connectivity = ConnectivityState.FULL
+        self._connectivity: bool = True
 
     @property
-    def connectivity(self) -> ConnectivityState:
+    def connectivity(self) -> bool:
         """Return true current connectivity state."""
         return self._connectivity
 
@@ -76,9 +70,12 @@ class NetworkManager(CoreSysAttributes):
         """Check the internet connection."""
         try:
             state = await self.sys_dbus.network.check_connectivity()
-            self._connectivity = ConnectivityState(state[0])
+
+            # ConnectionState 4 == FULL (has internet)
+            # https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMConnectivityState
+            self._connectivity = state[0] == 4
         except (DBusError, IndexError):
-            self._connectivity = ConnectivityState.UNKNOWN
+            self._connectivity = False
 
     def get(self, inet_name: str) -> Interface:
         """Return interface from interface name."""
