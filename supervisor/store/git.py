@@ -109,6 +109,12 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
+                self.sys_resolution.create_issue(
+                    IssueType.FATAL_ERROR,
+                    ContextType.STORE,
+                    reference=self.slug,
+                    suggestions=[SuggestionType.NEW_INITIALIZE],
+                )
                 raise StoreGitError() from err
 
     async def pull(self):
@@ -144,6 +150,12 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't update %s repo: %s.", self.url, err)
+                self.sys_resolution.create_issue(
+                    IssueType.CORRUPT_REPOSITORY,
+                    ContextType.STORE,
+                    reference=self.slug,
+                    suggestions=[SuggestionType.EXECUTE_RELOAD],
+                )
                 raise StoreGitError() from err
 
     async def _remove(self):

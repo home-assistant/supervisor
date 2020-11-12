@@ -54,3 +54,5 @@ class SuggestionType(str, Enum):
     EXECUTE_UPDATE = "execute_update"
     EXECUTE_REPAIR = "execute_repair"
     EXECUTE_RESET = "execute_reset"
+    EXECUTE_RELOAD = "execute_reload"
+    NEW_INITIALIZE = "new_initialize"
