@@ -27,7 +27,13 @@ from ..exceptions import (
     HostNetworkNotFound,
     HostNotSupportedError,
 )
-from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
+from .const import (
+    AuthMethod,
+    ConnectivityState,
+    InterfaceMethod,
+    InterfaceType,
+    WifiMode,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -38,6 +44,12 @@ class NetworkManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize system center handling."""
         self.coresys: CoreSys = coresys
+        self._connectivity = ConnectivityState.FULL
+
+    @property
+    def connectivity(self) -> ConnectivityState:
+        """Return true current connectivity state."""
+        return self._connectivity
 
     @property
     def interfaces(self) -> List[Interface]:
@@ -59,6 +71,14 @@ class NetworkManager(CoreSysAttributes):
             servers.extend(config.nameservers)
 
         return list(dict.fromkeys(servers))
+
+    async def check_connectivity(self):
+        """Check the internet connection."""
+        try:
+            state = await self.sys_dbus.network.check_connectivity()
+            self._connectivity = ConnectivityState(state[0])
+        except (DBusError, IndexError):
+            self._connectivity = ConnectivityState.UNKNOWN
 
     def get(self, inet_name: str) -> Interface:
         """Return interface from interface name."""

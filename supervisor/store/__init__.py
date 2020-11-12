@@ -12,6 +12,7 @@ from supervisor.utils.json import read_json_file
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JsonFileError
+from ..job.decorator import Job, JobCondition
 from .addon import AddonStore
 from .data import StoreData
 from .repository import Repository
@@ -52,17 +53,22 @@ class StoreManager(CoreSysAttributes):
             await asyncio.wait(tasks)
 
         # read data from repositories
-        self.data.update()
+        await self.load()
         self._read_addons()
 
+    @Job(conditions=[JobCondition.INTERNET, JobCondition.HEALTHY])
     async def update_repositories(self, list_repositories):
         """Add a new custom repository."""
+        job = self.sys_jobs.get_job("storemanager_update_repositories")
         new_rep = set(list_repositories)
         old_rep = set(self.repositories)
 
         # add new repository
-        async def _add_repository(url):
+        async def _add_repository(url: str, step: int):
             """Add a repository."""
+            await job.update(
+                progress=job.progress + step, stage=f"Checking {url} started"
+            )
             repository = Repository(self.coresys, url)
             if not await repository.load():
                 _LOGGER.error("Can't load data from repository %s", url)
@@ -85,7 +91,9 @@ class StoreManager(CoreSysAttributes):
 
             self.repositories[url] = repository
 
-        tasks = [_add_repository(url) for url in new_rep - old_rep]
+        await job.update(progress=10, stage="Check repositories")
+        repos = new_rep - old_rep
+        tasks = [_add_repository(url, 80 / len(repos)) for url in repos]
         if tasks:
             await asyncio.wait(tasks)
 
@@ -95,8 +103,13 @@ class StoreManager(CoreSysAttributes):
             self.sys_config.drop_addon_repository(url)
 
         # update data
+        await job.update(progress=90, stage="Update addons")
         self.data.update()
+
+        await job.update(progress=95, stage="Read addons")
         self._read_addons()
+
+        await job.update(progress=100)
 
     def _read_addons(self) -> None:
         """Reload add-ons inside store."""

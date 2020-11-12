@@ -65,6 +65,11 @@ class NetworkManager(DBusInterface):
             settings, device_object, DBUS_OBJECT_BASE
         )
 
+    @dbus_connected
+    async def check_connectivity(self) -> Awaitable[Any]:
+        """Check the connectivity of the host."""
+        return await self.dbus.CheckConnectivity()
+
     async def connect(self) -> None:
         """Connect to system's D-Bus."""
         try:
