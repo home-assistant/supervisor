@@ -12,7 +12,7 @@ from ..exceptions import (
     MulticastError,
     ObserverError,
 )
-from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
+from ..job.decorator import Job, JobCondition
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -113,6 +113,7 @@ class Tasks(CoreSysAttributes):
 
         _LOGGER.info("All core tasks are scheduled")
 
+    @Job(conditions=[JobCondition.HEALTHY, JobCondition.FREE_SPACE])
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
         for addon in self.sys_addons.all:
@@ -128,17 +129,6 @@ class Tasks(CoreSysAttributes):
                 )
                 continue
 
-            # Check free space
-            if self.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD:
-                _LOGGER.warning(
-                    "Not enough free space, pausing add-on updates - available space %f",
-                    self.sys_host.info.free_space,
-                )
-                self.sys_resolution.create_issue(
-                    IssueType.FREE_SPACE, ContextType.SYSTEM
-                )
-                return
-
             # Run Add-on update sequential
             # avoid issue on slow IO
             _LOGGER.info("Add-on auto update process %s", addon.slug)
@@ -147,18 +137,10 @@ class Tasks(CoreSysAttributes):
             except AddonsError:
                 _LOGGER.error("Can't auto update Add-on %s", addon.slug)
 
+    @Job(conditions=[JobCondition.HEALTHY, JobCondition.FREE_SPACE])
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
         if not self.sys_supervisor.need_update:
-            return
-
-        # Check free space
-        if self.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD:
-            _LOGGER.warning(
-                "Not enough free space, pausing supervisor update - available space %s",
-                self.sys_host.info.free_space,
-            )
-            self.sys_resolution.create_issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
             return
 
         _LOGGER.info(

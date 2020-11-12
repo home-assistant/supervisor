@@ -304,3 +304,11 @@ class StoreError(HassioError):
 
 class StoreGitError(StoreError):
     """Raise if something on git is happening."""
+
+
+# JobManager
+
+
+class JobException(HassioError):
+    """Base job exception."""
+

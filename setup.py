@@ -41,6 +41,7 @@ setup(
         "supervisor.docker",
         "supervisor.homeassistant",
         "supervisor.host",
+        "supervisor.job",
         "supervisor.misc",
         "supervisor.plugins",
         "supervisor.resolution.evaluations",

@@ -17,6 +17,7 @@ from ..const import (
     ATTR_ENABLED,
     ATTR_FREQUENCY,
     ATTR_GATEWAY,
+    ATTR_HOST_CONNECTIVITY,
     ATTR_INTERFACE,
     ATTR_INTERFACES,
     ATTR_IPV4,
@@ -29,6 +30,7 @@ from ..const import (
     ATTR_PSK,
     ATTR_SIGNAL,
     ATTR_SSID,
+    ATTR_SUPERVISOR_INTERNET,
     ATTR_TYPE,
     ATTR_VLAN,
     ATTR_WIFI,
@@ -159,6 +161,8 @@ class APINetwork(CoreSysAttributes):
                 ATTR_GATEWAY: str(self.sys_docker.network.gateway),
                 ATTR_DNS: str(self.sys_docker.network.dns),
             },
+            ATTR_HOST_CONNECTIVITY: self.sys_host.network.connectivity,
+            ATTR_SUPERVISOR_INTERNET: self.sys_supervisor.connectivity,
         }
 
     @api_process

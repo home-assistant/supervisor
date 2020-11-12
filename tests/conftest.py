@@ -13,6 +13,7 @@ from supervisor.bootstrap import initialize_coresys
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
+from supervisor.host.const import ConnectivityState
 from supervisor.utils.gdbus import DBus
 
 from tests.common import exists_fixture, load_fixture, load_json_fixture
@@ -135,6 +136,10 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
 
     # Mock docker
     coresys_obj._docker = docker
+
+    # Set internet state
+    coresys_obj.supervisor._connectivity = True
+    coresys_obj.host.network._connectivity = ConnectivityState.FULL
 
     yield coresys_obj
 
