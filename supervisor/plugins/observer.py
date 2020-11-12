@@ -67,7 +67,7 @@ class Observer(CoreSysAttributes, JsonConfig):
         try:
             return pkg_parse(self.version) < pkg_parse(self.latest_version)
         except (TypeError, ValueError):
-            return True
+            return False
 
     @property
     def supervisor_token(self) -> str:
