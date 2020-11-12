@@ -59,7 +59,7 @@ class StoreManager(CoreSysAttributes):
     @Job(conditions=[JobCondition.INTERNET, JobCondition.HEALTHY])
     async def update_repositories(self, list_repositories):
         """Add a new custom repository."""
-        job = self.sys_job.get_job("storemanager_update_repositories")
+        job = self.sys_jobs.get_job("storemanager_update_repositories")
         new_rep = set(list_repositories)
         old_rep = set(self.repositories)
 

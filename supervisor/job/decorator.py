@@ -52,7 +52,7 @@ class Job:
             if not self._coresys:
                 raise JobException(f"coresys is missing on {self.name}")
 
-            job = self._coresys.job.get_job(self.name)
+            job = self._coresys.jobs.get_job(self.name)
 
             if self.conditions and not await self._check_conditions():
                 return False
@@ -64,7 +64,7 @@ class Job:
                 raise JobException() from err
             finally:
                 if self.cleanup:
-                    self._coresys.job.remove_job(job)
+                    self._coresys.jobs.remove_job(job)
 
             return result
 

@@ -33,7 +33,7 @@ class SupervisorJob(CoreSysAttributes):
         """Update the job object."""
         if progress is not None:
             if progress >= round(100):
-                self.sys_job.remove_job(self)
+                self.sys_jobs.remove_job(self)
                 return
             self._progress = round(progress)
         if stage is not None:

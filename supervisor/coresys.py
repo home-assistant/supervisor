@@ -84,7 +84,7 @@ class CoreSys:
         self._hwmonitor: Optional[HwMonitor] = None
         self._plugins: Optional[PluginManager] = None
         self._resolution: Optional[ResolutionManager] = None
-        self._job: Optional[JobManager] = None
+        self._jobs: Optional[JobManager] = None
 
     @property
     def dev(self) -> bool:
@@ -416,18 +416,18 @@ class CoreSys:
         self._resolution = value
 
     @property
-    def job(self) -> JobManager:
+    def jobs(self) -> JobManager:
         """Return resolution manager object."""
-        if self._job is None:
+        if self._jobs is None:
             raise RuntimeError("job manager not set!")
-        return self._job
+        return self._jobs
 
-    @job.setter
-    def job(self, value: JobManager) -> None:
+    @jobs.setter
+    def jobs(self, value: JobManager) -> None:
         """Set a resolution manager object."""
-        if self._job:
+        if self._jobs:
             raise RuntimeError("job manager already set!")
-        self._job = value
+        self._jobs = value
 
     @property
     def machine(self) -> Optional[str]:
@@ -605,9 +605,9 @@ class CoreSysAttributes:
         return self.coresys.resolution
 
     @property
-    def sys_job(self) -> JobManager:
+    def sys_jobs(self) -> JobManager:
         """Return Job manager object."""
-        return self.coresys.job
+        return self.coresys.jobs
 
     def sys_run_in_executor(
         self, funct: Callable[..., T], *args: Any

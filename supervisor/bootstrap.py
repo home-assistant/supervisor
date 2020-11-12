@@ -57,7 +57,7 @@ async def initialize_coresys() -> CoreSys:
 
     # Initialize core objects
     coresys.resolution = ResolutionManager(coresys)
-    coresys.job = JobManager(coresys)
+    coresys.jobs = JobManager(coresys)
     coresys.core = Core(coresys)
     coresys.plugins = PluginManager(coresys)
     coresys.arch = CpuArch(coresys)
