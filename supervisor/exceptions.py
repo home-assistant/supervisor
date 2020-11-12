@@ -293,3 +293,14 @@ class ResolutionError(HassioError):
 
 class ResolutionNotFound(ResolutionError):
     """Raise if suggestion/issue was not found."""
+
+
+# Store
+
+
+class StoreError(HassioError):
+    """Raise if an error on store is happening."""
+
+
+class StoreGitError(StoreError):
+    """Raise if something on git is happening."""

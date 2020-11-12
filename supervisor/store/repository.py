@@ -57,15 +57,15 @@ class Repository(CoreSysAttributes):
 
     async def load(self):
         """Load addon repository."""
-        if self.git:
-            return await self.git.load()
-        return True
+        if not self.git:
+            return
+        await self.git.load()
 
     async def update(self):
         """Update add-on repository."""
-        if self.git:
-            return await self.git.pull()
-        return True
+        if not self.git:
+            return
+        await self.git.pull()
 
     async def remove(self):
         """Remove add-on repository."""

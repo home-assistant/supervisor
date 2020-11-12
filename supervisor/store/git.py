@@ -10,6 +10,7 @@ import git
 
 from ..const import ATTR_BRANCH, ATTR_URL, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import StoreGitError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import RE_REPOSITORY
 from .utils import get_hash_from_repository
@@ -40,10 +41,11 @@ class GitRepo(CoreSysAttributes):
         """Return repository branch."""
         return self.data[ATTR_BRANCH]
 
-    async def load(self):
+    async def load(self) -> None:
         """Init Git add-on repository."""
         if not self.path.is_dir():
-            return await self.clone()
+            await self.clone()
+            return
 
         # Load repository
         async with self.lock:
@@ -62,7 +64,7 @@ class GitRepo(CoreSysAttributes):
                     ContextType.STORE,
                     reference=self.slug,
                 )
-                return False
+                raise StoreGitError() from err
 
         # Fix possible corruption
         async with self.lock:
@@ -77,11 +79,9 @@ class GitRepo(CoreSysAttributes):
                     reference=self.slug,
                     suggestions=[SuggestionType.EXECUTE_RESET],
                 )
-                return False
+                raise StoreGitError() from err
 
-            return True
-
-    async def clone(self):
+    async def clone(self) -> None:
         """Clone git add-on repository."""
         async with self.lock:
             git_args = {
@@ -109,16 +109,12 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
-                await self._remove()
-                return False
-
-            return True
+                raise StoreGitError() from err
 
     async def pull(self):
         """Pull Git add-on repo."""
         if self.lock.locked():
             _LOGGER.warning("There is already a task in progress")
-            return False
 
         async with self.lock:
             _LOGGER.info("Update add-on %s repository", self.url)
@@ -147,9 +143,7 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't update %s repo: %s.", self.url, err)
-                return False
-
-            return True
+                raise StoreGitError() from err
 
     async def _remove(self):
         """Remove a repository."""
