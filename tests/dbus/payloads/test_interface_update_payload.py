@@ -60,6 +60,50 @@ async def test_interface_update_payload_ethernet_ipv4(coresys):
 
 
 @pytest.mark.asyncio
+async def test_interface_update_payload_ethernet_ipv4_disabled(coresys):
+    """Test interface update payload."""
+    interface = coresys.host.network.get(TEST_INTERFACE)
+    inet = coresys.dbus.network.interfaces[TEST_INTERFACE]
+
+    interface.ipv4.method = InterfaceMethod.DISABLED
+
+    data = interface_update_payload(
+        interface,
+        name=inet.settings.connection.id,
+        uuid=inet.settings.connection.uuid,
+    )
+    assert DBus.parse_gvariant(data)["ipv4"]["method"] == "disabled"
+    assert (
+        DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
+    )
+    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
+    assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
+
+
+@pytest.mark.asyncio
+async def test_interface_update_payload_ethernet_ipv4_auto(coresys):
+    """Test interface update payload."""
+    interface = coresys.host.network.get(TEST_INTERFACE)
+    inet = coresys.dbus.network.interfaces[TEST_INTERFACE]
+
+    interface.ipv4.method = InterfaceMethod.AUTO
+
+    data = interface_update_payload(
+        interface,
+        name=inet.settings.connection.id,
+        uuid=inet.settings.connection.uuid,
+    )
+    assert DBus.parse_gvariant(data)["ipv4"]["method"] == "auto"
+    assert (
+        DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
+    )
+    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
+    assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
+
+
+@pytest.mark.asyncio
 async def test_interface_update_payload_ethernet_ipv6(coresys):
     """Test interface update payload."""
     interface = coresys.host.network.get(TEST_INTERFACE)
@@ -95,6 +139,48 @@ async def test_interface_update_payload_ethernet_ipv6(coresys):
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
     assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
     assert DBus.parse_gvariant(data)["ipv6"]["gateway"] == "fe80::da58:d7ff:fe00:9c69"
+
+
+@pytest.mark.asyncio
+async def test_interface_update_payload_ethernet_ipv6_disabled(coresys):
+    """Test interface update payload."""
+    interface = coresys.host.network.get(TEST_INTERFACE)
+    inet = coresys.dbus.network.interfaces[TEST_INTERFACE]
+
+    interface.ipv6.method = InterfaceMethod.DISABLED
+    data = interface_update_payload(
+        interface,
+        name=inet.settings.connection.id,
+        uuid=inet.settings.connection.uuid,
+    )
+    assert DBus.parse_gvariant(data)["ipv6"]["method"] == "disabled"
+    assert (
+        DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
+    )
+    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
+    assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
+
+
+@pytest.mark.asyncio
+async def test_interface_update_payload_ethernet_ipv6_auto(coresys):
+    """Test interface update payload."""
+    interface = coresys.host.network.get(TEST_INTERFACE)
+    inet = coresys.dbus.network.interfaces[TEST_INTERFACE]
+
+    interface.ipv6.method = InterfaceMethod.AUTO
+    data = interface_update_payload(
+        interface,
+        name=inet.settings.connection.id,
+        uuid=inet.settings.connection.uuid,
+    )
+    assert DBus.parse_gvariant(data)["ipv6"]["method"] == "auto"
+    assert (
+        DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
+    )
+    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
+    assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
 
 
 @pytest.mark.asyncio
