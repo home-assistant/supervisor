@@ -58,11 +58,7 @@ class Core(CoreSysAttributes):
         await self.sys_supervisor.load()
 
         # Check internet on startup
-        if not self.sys_host.network.connectivity:
-            await self.sys_host.network.check_connectivity()
-
-        if not self.sys_supervisor.connectivity:
-            await self.sys_supervisor.check_connectivity()
+        await self.sys_supervisor.check_connectivity()
 
         # Evaluate the system
         await self.sys_resolution.evaluate.evaluate_system()

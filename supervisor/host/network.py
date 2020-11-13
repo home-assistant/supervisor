@@ -38,10 +38,10 @@ class NetworkManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize system center handling."""
         self.coresys: CoreSys = coresys
-        self._connectivity: bool = None
+        self._connectivity: Optional[bool] = None
 
     @property
-    def connectivity(self) -> bool:
+    def connectivity(self) -> Optional[bool]:
         """Return true current connectivity state."""
         return self._connectivity
 
@@ -67,15 +67,13 @@ class NetworkManager(CoreSysAttributes):
         return list(dict.fromkeys(servers))
 
     async def check_connectivity(self):
-        """Check the internet connection."""
-        if not self.sys_dbus.network.is_connected:
-            self._connectivity = None
-            return
+        """Check the internet connection.
+
+        ConnectionState 4 == FULL (has internet)
+        https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMConnectivityState
+        """
         try:
             state = await self.sys_dbus.network.check_connectivity()
-
-            # ConnectionState 4 == FULL (has internet)
-            # https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMConnectivityState
             self._connectivity = state[0] == 4
         except DBusError:
             self._connectivity = False
