@@ -24,6 +24,9 @@ async def test_interface_update_payload_ethernet(coresys):
         DBus.parse_gvariant(data)["802-3-ethernet"]["assigned-mac-address"] == "stable"
     )
 
+    assert DBus.parse_gvariant(data)["connection"]["mdns"] == 2
+    assert DBus.parse_gvariant(data)["connection"]["llmnr"] == 2
+
 
 @pytest.mark.asyncio
 async def test_interface_update_payload_ethernet_ipv4(coresys):

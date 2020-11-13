@@ -6,7 +6,9 @@
             'interface-name': <'{{ interface.name }}'>,
 {% endif %}
             'type': <'{% if interface.type == "ethernet" %}802-3-ethernet{% elif interface.type == "wireless" %}802-11-wireless{% else %}{{ interface.type.value }}{% endif %}'>,
-            'uuid': <'{{ uuid }}'>
+            'uuid': <'{{ uuid }}'>,
+            'llmnr': <uint32 2>,
+            'mdns': <uint32 2>
         }
 
 {% if interface.ipv4 %}
