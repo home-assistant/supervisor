@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from .homeassistant import HomeAssistant
     from .host import HostManager
     from .ingress import Ingress
-    from .job import JobManager
+    from .jobs import JobManager
     from .misc.hwmon import HwMonitor
     from .misc.scheduler import Scheduler
     from .misc.tasks import Tasks

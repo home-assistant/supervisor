@@ -33,7 +33,7 @@ class Supervisor(CoreSysAttributes):
         """Initialize hass object."""
         self.coresys: CoreSys = coresys
         self.instance: DockerSupervisor = DockerSupervisor(coresys)
-        self._connectivity: bool = False
+        self._connectivity: bool = True
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
@@ -176,9 +176,10 @@ class Supervisor(CoreSysAttributes):
 
     async def check_connectivity(self):
         """Check the connection."""
+        timeout = aiohttp.ClientTimeout(total=10)
         try:
             await self.sys_websession.head(
-                "https://version.home-assistant.io/online.txt", timeout=10
+                "https://version.home-assistant.io/online.txt", timeout=timeout
             )
         except (ClientError, asyncio.TimeoutError):
             self._connectivity = False

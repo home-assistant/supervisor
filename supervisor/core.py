@@ -57,9 +57,6 @@ class Core(CoreSysAttributes):
         # Load information from container
         await self.sys_supervisor.load()
 
-        # Check internet on startup
-        await self.sys_supervisor.check_connectivity()
-
         # Evaluate the system
         await self.sys_resolution.evaluate.evaluate_system()
 
@@ -139,6 +136,9 @@ class Core(CoreSysAttributes):
             _LOGGER.critical(
                 "System running in a unhealthy state and need manual intervention!"
             )
+
+        # Check internet on startup
+        await self.sys_supervisor.check_connectivity()
 
         # Mark booted partition as healthy
         if self.sys_hassos.available:

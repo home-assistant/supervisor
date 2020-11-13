@@ -2,8 +2,9 @@
 # pylint: disable=protected-access,import-error
 from unittest.mock import patch
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.job.decorator import Job, JobCondition
+from supervisor.jobs.decorator import Job, JobCondition
 
 
 async def test_healthy(coresys: CoreSys):
@@ -30,6 +31,7 @@ async def test_healthy(coresys: CoreSys):
 
 async def test_internet(coresys: CoreSys):
     """Test the internet decorator."""
+    coresys.core.state = CoreState.RUNNING
 
     class TestClass:
         """Test class."""
@@ -83,3 +85,44 @@ async def test_free_space(coresys: CoreSys):
 
     with patch("shutil.disk_usage", return_value=(42, 42, (512.0 ** 3))):
         assert not await test.execute()
+
+
+async def test_internet_connectivity_with_core_state(coresys: CoreSys):
+    """Test the different core states and the impact for internet condition."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.INTERNET])
+        async def execute(self):
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    coresys.host.network._connectivity = False
+    coresys.supervisor._connectivity = False
+
+    coresys.core.state = CoreState.INITIALIZE
+    assert await test.execute()
+
+    coresys.core.state = CoreState.SETUP
+    assert not await test.execute()
+
+    coresys.core.state = CoreState.STARTUP
+    assert await test.execute()
+
+    coresys.core.state = CoreState.RUNNING
+    assert not await test.execute()
+
+    coresys.core.state = CoreState.CLOSE
+    assert await test.execute()
+
+    coresys.core.state = CoreState.SHUTDOWN
+    assert await test.execute()
+
+    coresys.core.state = CoreState.STOPPING
+    assert await test.execute()
