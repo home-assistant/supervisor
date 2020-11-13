@@ -17,7 +17,7 @@
         {
 {% if interface.ipv4.method == "auto" %}
             'method': <'auto'>
-{% elif interface.ipv4.method == "disable" %}
+{% elif interface.ipv4.method == "disabled" %}
             'method': <'disabled'>
 {% else %}
             'method': <'manual'>,
@@ -40,7 +40,7 @@
         {
 {% if interface.ipv6.method == "auto" %}
             'method': <'auto'>
-{% elif interface.ipv6.method == "disable" %}
+{% elif interface.ipv6.method == "disabled" %}
             'method': <'disabled'>
 {% else %}
             'method': <'manual'>,
