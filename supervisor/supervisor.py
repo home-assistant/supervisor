@@ -33,7 +33,7 @@ class Supervisor(CoreSysAttributes):
         """Initialize hass object."""
         self.coresys: CoreSys = coresys
         self.instance: DockerSupervisor = DockerSupervisor(coresys)
-        self._connectivity: bool = False
+        self._connectivity: bool = True
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""

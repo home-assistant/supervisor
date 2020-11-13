@@ -75,7 +75,8 @@ class NetworkManager(CoreSysAttributes):
         try:
             state = await self.sys_dbus.network.check_connectivity()
             self._connectivity = state[0] == 4
-        except DBusError:
+        except DBusError as err:
+            _LOGGER.warning("Can't update connectivity information: %s", err)
             self._connectivity = False
 
     def get(self, inet_name: str) -> Interface:
@@ -95,8 +96,10 @@ class NetworkManager(CoreSysAttributes):
         except DBusError:
             _LOGGER.warning("Can't update network information!")
         except DBusNotConnectedError as err:
-            _LOGGER.error("No hostname D-Bus connection available")
+            _LOGGER.error("No network D-Bus connection available")
             raise HostNotSupportedError() from err
+
+        await self.check_connectivity()
 
     async def apply_changes(self, interface: Interface) -> None:
         """Apply Interface changes to host."""

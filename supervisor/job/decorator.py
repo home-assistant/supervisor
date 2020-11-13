@@ -53,7 +53,7 @@ class Job:
 
             job = self._coresys.jobs.get_job(self.name)
 
-            if self.conditions and not await self._check_conditions():
+            if self.conditions and not self._check_conditions():
                 return False
 
             try:
@@ -69,7 +69,7 @@ class Job:
 
         return wrapper
 
-    async def _check_conditions(self):
+    def _check_conditions(self):
         """Check conditions."""
         if JobCondition.HEALTHY in self.conditions:
             if not self._coresys.core.healthy:
@@ -93,10 +93,13 @@ class Job:
                 return False
 
         if JobCondition.INTERNET in self.conditions:
-            if self._coresys.core.state == CoreState.RUNNING:
-                if self._coresys.dbus.network.is_connected:
-                    await self._coresys.host.network.check_connectivity()
-                await self._coresys.supervisor.check_connectivity()
+            if self._coresys.core.state not in (
+                CoreState.SETUP,
+                CoreState.RUNNING,
+                CoreState.FREEZE,
+            ):
+                return True
+
             if not self._coresys.supervisor.connectivity:
                 _LOGGER.warning(
                     "'%s' blocked from execution, no supervisor internet connection",
