@@ -96,12 +96,18 @@ class Job:
             if self._coresys.core.state == CoreState.RUNNING:
                 await self._coresys.host.network.check_connectivity()
                 await self._coresys.supervisor.check_connectivity()
-            if not self._coresys.supervisor.connectivity or (
+            if not self._coresys.supervisor.connectivity:
+                _LOGGER.warning(
+                    "'%s' blocked from execution, no supervisor internet connection",
+                    self._method.__qualname__,
+                )
+                return False
+            elif (
                 self._coresys.host.network.connectivity is not None
                 and not self._coresys.host.network.connectivity
             ):
                 _LOGGER.warning(
-                    "'%s' blocked from execution, no internet connection",
+                    "'%s' blocked from execution, no host internet connection",
                     self._method.__qualname__,
                 )
                 return False
