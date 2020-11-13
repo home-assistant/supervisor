@@ -115,6 +115,9 @@ class NetworkManager(CoreSysAttributes):
 
             try:
                 await inet.settings.update(settings)
+                await self.sys_dbus.network.activate_connection(
+                    inet.settings.object_path, inet.object_path
+                )
             except DBusError as err:
                 _LOGGER.error("Can't update config on %s: %s", interface.name, err)
                 raise HostNetworkError() from err
