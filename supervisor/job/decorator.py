@@ -102,10 +102,7 @@ class Job:
                     self._method.__qualname__,
                 )
                 return False
-            elif (
-                self._coresys.host.network.connectivity is not None
-                and not self._coresys.host.network.connectivity
-            ):
+            elif self._coresys.host.network.connectivity in (False, None):
                 _LOGGER.warning(
                     "'%s' blocked from execution, no host internet connection",
                     self._method.__qualname__,
