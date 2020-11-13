@@ -47,6 +47,8 @@ RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
 RUN_REFRESH_ADDON = 15
 
+RUN_CHECK_CONNECTIVITY = 30
+
 
 class Tasks(CoreSysAttributes):
     """Handle Tasks inside Supervisor."""
@@ -110,6 +112,11 @@ class Tasks(CoreSysAttributes):
 
         # Refresh
         self.sys_scheduler.register_task(self._refresh_addon, RUN_REFRESH_ADDON)
+
+        # Connectivity
+        self.sys_scheduler.register_task(
+            self._check_connectivity, RUN_CHECK_CONNECTIVITY
+        )
 
         _LOGGER.info("All core tasks are scheduled")
 
@@ -422,3 +429,29 @@ class Tasks(CoreSysAttributes):
 
             # Adjust state
             addon.state = AddonState.STOPPED
+
+    async def _check_connectivity(self) -> None:
+        """Check system connectivity."""
+        value = self._cache.get("connectivity", 0)
+
+        # Need only full check if not connected or each 10min
+        if value >= 900:
+            pass
+        elif (
+            self.sys_supervisor.connectivity
+            and self.sys_host.network.connectivity is None
+        ) or (
+            self.sys_supervisor.connectivity
+            and self.sys_host.network.connectivity is not None
+            and self.sys_host.network.connectivity
+        ):
+            self._cache["connectivity"] = value + RUN_CHECK_CONNECTIVITY
+            return
+
+        # Check connectivity
+        try:
+            await self.sys_supervisor.check_connectivity()
+            if self.sys_dbus.network.is_connected:
+                await self.sys_host.network.check_connectivity()
+        finally:
+            self._cache["connectivity"] = 0
