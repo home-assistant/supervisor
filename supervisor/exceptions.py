@@ -311,4 +311,3 @@ class StoreGitError(StoreError):
 
 class JobException(HassioError):
     """Base job exception."""
-
