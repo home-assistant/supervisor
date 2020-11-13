@@ -12,7 +12,7 @@ from ..exceptions import (
     MulticastError,
     ObserverError,
 )
-from ..job.decorator import Job, JobCondition
+from ..jobs.decorator import Job, JobCondition
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

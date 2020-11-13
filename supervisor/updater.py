@@ -25,7 +25,7 @@ from .const import (
 )
 from .coresys import CoreSysAttributes
 from .exceptions import HassioUpdaterError
-from .job.decorator import Job, JobCondition
+from .jobs.decorator import Job, JobCondition
 from .utils import AsyncThrottle
 from .utils.json import JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG

@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from supervisor.coresys import CoreSys
-from supervisor.job.decorator import Job, JobCondition
+from supervisor.jobs.decorator import Job, JobCondition
 
 
 async def test_healthy(coresys: CoreSys):
