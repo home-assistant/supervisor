@@ -435,7 +435,7 @@ class Tasks(CoreSysAttributes):
         value = self._cache.get("connectivity", 0)
 
         # Need only full check if not connected or each 10min
-        if value >= 900:
+        if value >= 600:
             pass
         elif (
             self.sys_supervisor.connectivity

@@ -10,7 +10,7 @@ import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
-from supervisor.job import JobManager
+from supervisor.jobs import JobManager
 
 from .addons import AddonManager
 from .api import RestAPI
