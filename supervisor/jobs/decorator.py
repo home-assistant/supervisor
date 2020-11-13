@@ -96,7 +96,6 @@ class Job:
             if self._coresys.core.state not in (
                 CoreState.SETUP,
                 CoreState.RUNNING,
-                CoreState.FREEZE,
             ):
                 return True
 
