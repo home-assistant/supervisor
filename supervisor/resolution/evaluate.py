@@ -2,7 +2,7 @@
 import logging
 
 from ..coresys import CoreSys, CoreSysAttributes
-from .const import UnsupportedReason
+from .const import UnhealthyReason, UnsupportedReason
 from .evaluations.container import EvaluateContainer
 from .evaluations.dbus import EvaluateDbus
 from .evaluations.docker_configuration import EvaluateDockerConfiguration
@@ -54,6 +54,6 @@ class ResolutionEvaluation(CoreSysAttributes):
         await self._systemd()
 
         if any(reason in self.sys_resolution.unsupported for reason in UNHEALTHY):
-            self.sys_core.healthy = False
+            self.sys_resolution.unhealthy = UnhealthyReason.DOCKER
 
         _LOGGER.info("System evaluation complete")

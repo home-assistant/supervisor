@@ -7,6 +7,7 @@ from typing import Optional
 import pyudev
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..resolution.const import UnhealthyReason
 from ..utils import AsyncCallFilter
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class HwMonitor(CoreSysAttributes):
             self.monitor = pyudev.Monitor.from_netlink(self.context)
             self.observer = pyudev.MonitorObserver(self.monitor, self._udev_events)
         except OSError:
-            self.sys_core.healthy = False
+            self.sys_resolution.unhealthy = UnhealthyReason.PRIVILEGED
             _LOGGER.critical("Not privileged to run udev monitor!")
         else:
             self.observer.start()
