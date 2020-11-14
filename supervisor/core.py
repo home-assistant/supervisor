@@ -14,7 +14,7 @@ from .exceptions import (
     HomeAssistantError,
     SupervisorUpdateError,
 )
-from .resolution.const import ContextType, IssueType
+from .resolution.const import ContextType, IssueType, UnhealthyReason
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -25,7 +25,6 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
-        self.healthy: bool = True
         self._state: Optional[CoreState] = None
 
     @property
@@ -34,9 +33,14 @@ class Core(CoreSysAttributes):
         return self._state
 
     @property
-    def supported(self) -> CoreState:
+    def supported(self) -> bool:
         """Return true if the installation is supported."""
         return len(self.sys_resolution.unsupported) == 0
+
+    @property
+    def healthy(self) -> bool:
+        """Return true if the installation is healthy."""
+        return len(self.sys_resolution.unhealthy) == 0
 
     @state.setter
     def state(self, new_state: CoreState) -> None:
@@ -67,7 +71,7 @@ class Core(CoreSysAttributes):
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_ROLLBACK, ContextType.SUPERVISOR
             )
-            self.healthy = False
+            self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
             _LOGGER.error(
                 "Update '%s' of Supervisor '%s' failed!",
                 self.sys_config.version,
@@ -119,7 +123,7 @@ class Core(CoreSysAttributes):
                 _LOGGER.critical(
                     "Fatal error happening on load Task %s: %s", setup_task, err
                 )
-                self.healthy = False
+                self.sys_resolution.unhealthy = UnhealthyReason.SETUP
                 self.sys_capture_exception(err)
 
         # Evaluate the system

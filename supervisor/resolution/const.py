@@ -33,6 +33,15 @@ class UnsupportedReason(str, Enum):
     SYSTEMD = "systemd"
 
 
+class UnhealthyReason(str, Enum):
+    """Reasons for unsupported status."""
+
+    DOCKER = "docker"
+    SUPERVISOR = "supervisor"
+    SETUP = "setup"
+    PRIVILEGED = "privileged"
+
+
 class IssueType(str, Enum):
     """Issue type."""
 

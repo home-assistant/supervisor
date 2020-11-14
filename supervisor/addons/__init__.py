@@ -18,6 +18,7 @@ from ..exceptions import (
     HomeAssistantAPIError,
     HostAppArmorError,
 )
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..store.addon import AddonStore
 from ..utils import check_exception_chain
 from .addon import Addon
@@ -376,7 +377,12 @@ class AddonManager(CoreSysAttributes):
                     continue
             except DockerError as err:
                 _LOGGER.warning("Add-on %s is corrupt: %s", addon.slug, err)
-                self.sys_core.healthy = False
+                self.sys_resolution.create_issue(
+                    IssueType.CORRUPT_DOCKER,
+                    ContextType.ADDON,
+                    reference=addon.slug,
+                    suggestions=[SuggestionType.EXECUTE_REPAIR],
+                )
                 self.sys_capture_exception(err)
             else:
                 self.sys_plugins.dns.add_host(

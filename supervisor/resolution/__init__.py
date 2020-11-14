@@ -9,6 +9,7 @@ from .const import (
     ContextType,
     IssueType,
     SuggestionType,
+    UnhealthyReason,
     UnsupportedReason,
 )
 from .data import Issue, Suggestion
@@ -32,6 +33,7 @@ class ResolutionManager(CoreSysAttributes):
         self._suggestions: List[Suggestion] = []
         self._issues: List[Issue] = []
         self._unsupported: List[UnsupportedReason] = []
+        self._unhealthy: List[UnhealthyReason] = []
 
     @property
     def evaluate(self) -> ResolutionEvaluation:
@@ -80,6 +82,17 @@ class ResolutionManager(CoreSysAttributes):
         """Add a reason for unsupported."""
         if reason not in self._unsupported:
             self._unsupported.append(reason)
+
+    @property
+    def unhealthy(self) -> List[UnhealthyReason]:
+        """Return a list of unsupported reasons."""
+        return self._unhealthy
+
+    @unhealthy.setter
+    def unhealthy(self, reason: UnhealthyReason) -> None:
+        """Add a reason for unsupported."""
+        if reason not in self._unhealthy:
+            self._unhealthy.append(reason)
 
     def get_suggestion(self, uuid: str) -> Suggestion:
         """Return suggestion with uuid."""

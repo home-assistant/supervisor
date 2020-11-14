@@ -17,6 +17,7 @@ from supervisor.resolution.const import (
     ContextType,
     IssueType,
     SuggestionType,
+    UnhealthyReason,
     UnsupportedReason,
 )
 from supervisor.resolution.data import Issue, Suggestion
@@ -25,13 +26,22 @@ from supervisor.utils.dt import utcnow
 from supervisor.utils.tar import SecureTarFile
 
 
-def test_properies(coresys: CoreSys):
-    """Test resolution manager properties."""
+def test_properies_unsupported(coresys: CoreSys):
+    """Test resolution manager properties unsupported."""
 
     assert coresys.core.supported
 
     coresys.resolution.unsupported = UnsupportedReason.OS
     assert not coresys.core.supported
+
+
+def test_properies_unhealthy(coresys: CoreSys):
+    """Test resolution manager properties unhealthy."""
+
+    assert coresys.core.healthy
+
+    coresys.resolution.unhealthy = UnhealthyReason.SUPERVISOR
+    assert not coresys.core.healthy
 
 
 async def test_clear_snapshots(coresys: CoreSys, tmp_path):

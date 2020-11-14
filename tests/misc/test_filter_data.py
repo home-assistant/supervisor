@@ -7,7 +7,12 @@ import pytest
 from supervisor.const import SUPERVISOR_VERSION, CoreState
 from supervisor.exceptions import AddonConfigurationError
 from supervisor.misc.filter import filter_data
-from supervisor.resolution.const import ContextType, IssueType, UnsupportedReason
+from supervisor.resolution.const import (
+    ContextType,
+    IssueType,
+    UnhealthyReason,
+    UnsupportedReason,
+)
 
 SAMPLE_EVENT = {"sample": "event", "extra": {"Test": "123"}}
 
@@ -117,3 +122,17 @@ def test_issues_on_report(coresys):
     assert "issues" in event["contexts"]
     assert event["contexts"]["issues"][0]["type"] == IssueType.FATAL_ERROR
     assert event["contexts"]["issues"][0]["context"] == ContextType.SYSTEM
+
+
+def test_unhealthy_on_report(coresys):
+    """Attach unhealthy to report."""
+
+    coresys.config.diagnostics = True
+    coresys.core.state = CoreState.RUNNING
+    coresys.resolution.unhealthy = UnhealthyReason.DOCKER
+
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        event = filter_data(coresys, SAMPLE_EVENT, {})
+
+    assert "issues" in event["contexts"]
+    assert event["contexts"]["unhealthy"][-1] == UnhealthyReason.DOCKER
