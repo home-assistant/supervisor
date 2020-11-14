@@ -5,6 +5,7 @@ from unittest.mock import patch
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.jobs.decorator import Job, JobCondition
+from supervisor.resolution.const import UnhealthyReason
 
 
 async def test_healthy(coresys: CoreSys):
@@ -25,7 +26,7 @@ async def test_healthy(coresys: CoreSys):
     test = TestClass(coresys)
     assert await test.execute()
 
-    coresys.core.healthy = False
+    coresys.resolution.unhealthy = UnhealthyReason.DOCKER
     assert not await test.execute()
 
 

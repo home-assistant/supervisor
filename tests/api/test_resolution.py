@@ -3,13 +3,19 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from supervisor.const import ATTR_ISSUES, ATTR_SUGGESTIONS, ATTR_UNSUPPORTED
+from supervisor.const import (
+    ATTR_ISSUES,
+    ATTR_SUGGESTIONS,
+    ATTR_UNHEALTHY,
+    ATTR_UNSUPPORTED,
+)
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionError
 from supervisor.resolution.const import (
     ContextType,
     IssueType,
     SuggestionType,
+    UnhealthyReason,
     UnsupportedReason,
 )
 from supervisor.resolution.data import Issue, Suggestion
@@ -84,3 +90,13 @@ async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client):
     assert IssueType.UPDATE_FAILED == coresys.resolution.issues[-1].type
     await api_client.delete(f"/resolution/issue/{updated_failed.uuid}")
     assert updated_failed not in coresys.resolution.issues
+
+
+@pytest.mark.asyncio
+async def test_api_resolution_unhealthy(coresys: CoreSys, api_client):
+    """Test resolution manager api."""
+    coresys.resolution.unhealthy = UnhealthyReason.DOCKER
+
+    resp = await api_client.get("/resolution/info")
+    result = await resp.json()
+    assert UnhealthyReason.DOCKER == result["data"][ATTR_UNHEALTHY][-1]
