@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from .core import Core
     from .dbus import DBusManager
     from .discovery import Discovery
-    from .hassos import HassOS
+    from .os import HassOS
     from .homeassistant import HomeAssistant
     from .host import HostManager
     from .ingress import Ingress
@@ -76,7 +76,7 @@ class CoreSys:
         self._host: Optional[HostManager] = None
         self._ingress: Optional[Ingress] = None
         self._dbus: Optional[DBusManager] = None
-        self._hassos: Optional[HassOS] = None
+        self._os: Optional[HassOS] = None
         self._services: Optional[ServiceManager] = None
         self._scheduler: Optional[Scheduler] = None
         self._store: Optional[StoreManager] = None
@@ -388,18 +388,18 @@ class CoreSys:
         self._ingress = value
 
     @property
-    def hassos(self) -> HassOS:
+    def os(self) -> HassOS:
         """Return HassOS object."""
-        if self._hassos is None:
+        if self._os is None:
             raise RuntimeError("HassOS not set!")
-        return self._hassos
+        return self._os
 
-    @hassos.setter
-    def hassos(self, value: HassOS) -> None:
+    @os.setter
+    def os(self, value: HassOS) -> None:
         """Set a HassOS object."""
-        if self._hassos:
+        if self._os:
             raise RuntimeError("HassOS already set!")
-        self._hassos = value
+        self._os = value
 
     @property
     def resolution(self) -> ResolutionManager:
@@ -595,9 +595,9 @@ class CoreSysAttributes:
         return self.coresys.ingress
 
     @property
-    def sys_hassos(self) -> HassOS:
+    def sys_os(self) -> HassOS:
         """Return HassOS object."""
-        return self.coresys.hassos
+        return self.coresys.os
 
     @property
     def sys_resolution(self) -> ResolutionManager:

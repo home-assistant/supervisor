@@ -29,10 +29,10 @@ class APIOS(CoreSysAttributes):
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Return OS information."""
         return {
-            ATTR_VERSION: self.sys_hassos.version,
-            ATTR_VERSION_LATEST: self.sys_hassos.latest_version,
-            ATTR_UPDATE_AVAILABLE: self.sys_hassos.need_update,
-            ATTR_BOARD: self.sys_hassos.board,
+            ATTR_VERSION: self.sys_os.version,
+            ATTR_VERSION_LATEST: self.sys_os.latest_version,
+            ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
+            ATTR_BOARD: self.sys_os.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
         }
 
@@ -40,11 +40,11 @@ class APIOS(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_hassos.latest_version)
+        version = body.get(ATTR_VERSION, self.sys_os.latest_version)
 
-        await asyncio.shield(self.sys_hassos.update(version))
+        await asyncio.shield(self.sys_os.update(version))
 
     @api_process
     def config_sync(self, request: web.Request) -> Awaitable[None]:
         """Trigger config reload on OS."""
-        return asyncio.shield(self.sys_hassos.config_sync())
+        return asyncio.shield(self.sys_os.config_sync())

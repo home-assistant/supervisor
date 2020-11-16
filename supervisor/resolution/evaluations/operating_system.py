@@ -28,6 +28,6 @@ class EvaluateOperatingSystem(EvaluateBase):
 
     async def evaluate(self):
         """Run evaluation."""
-        if self.sys_hassos.available:
+        if self.sys_os.available:
             return False
         return self.sys_host.info.operating_system not in SUPPORTED_OS

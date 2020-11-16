@@ -75,7 +75,7 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.hostname.is_connected:
             features.append(HostFeature.HOSTNAME)
 
-        if self.sys_hassos.available:
+        if self.sys_os.available:
             features.append(HostFeature.HASSOS)
 
         return features

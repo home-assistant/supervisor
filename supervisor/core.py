@@ -98,7 +98,7 @@ class Core(CoreSysAttributes):
             # Load CPU/Arch
             self.sys_arch.load(),
             # Load HassOS
-            self.sys_hassos.load(),
+            self.sys_os.load(),
             # Load Stores
             self.sys_store.load(),
             # Load Add-ons
@@ -145,8 +145,8 @@ class Core(CoreSysAttributes):
         await self.sys_supervisor.check_connectivity()
 
         # Mark booted partition as healthy
-        if self.sys_hassos.available:
-            await self.sys_hassos.mark_healthy()
+        if self.sys_os.available:
+            await self.sys_os.mark_healthy()
 
         # On release channel, try update itself
         if self.sys_supervisor.need_update:
@@ -307,13 +307,18 @@ class Core(CoreSysAttributes):
         _LOGGER.info("Starting factory reset of Supervisor Environment")
         self.state = CoreState.FREEZE
 
-        await self.sys_plugins.factory_reset()
-        await self.sys_addons.factory_reset()
-        await self.sys_hassos.factory_reset()
+        reset_tasks: List[Awaitable[None]] = [
+            self.sys_addons.factory_reset(),
+            self.sys_homeassistant.factory_reset(),
+            self.sys_plugins.factory_reset(),
+            self.sys_host.factory_reset(),
+        ]
+        for task in reset_tasks:
+            await task
 
-        await self.sys_homeassistant.factory_reset()
-
+        # Reset system settings
         self.sys_config.reset_data()
+        self.sys_config.save_data()
 
         # Restart Supervisor
-        self.sys_create_task(self.stop())
+        self.stop()

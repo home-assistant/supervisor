@@ -31,7 +31,6 @@ from .core import Core
 from .coresys import CoreSys
 from .dbus import DBusManager
 from .discovery import Discovery
-from .hassos import HassOS
 from .homeassistant import HomeAssistant
 from .host import HostManager
 from .ingress import Ingress
@@ -39,6 +38,7 @@ from .misc.filter import filter_data
 from .misc.hwmon import HwMonitor
 from .misc.scheduler import Scheduler
 from .misc.tasks import Tasks
+from .os import HassOS
 from .plugins import PluginManager
 from .resolution import ResolutionManager
 from .services import ServiceManager
