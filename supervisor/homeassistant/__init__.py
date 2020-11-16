@@ -7,6 +7,8 @@ import shutil
 from typing import Optional
 from uuid import UUID
 
+from supervisor.exceptions import HomeAssistantError
+
 from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
@@ -23,6 +25,7 @@ from ..const import (
     FILE_HASSIO_HOMEASSISTANT,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..utils import remove_folder
 from ..utils.json import JsonConfig
 from ..validate import SCHEMA_HASS_CONFIG
 from .api import HomeAssistantAPI
@@ -246,3 +249,18 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
             _LOGGER.error("Home Assistant can't write pulse/client.config: %s", err)
         else:
             _LOGGER.info("Update pulse/client.config: %s", self.path_pulse)
+
+    async def factory_reset(self) -> None:
+        """Remove Core config & start clean."""
+        if await self.sys_homeassistant.core.is_running():
+            try:
+                self.sys_homeassistant.core.stop()
+            except HomeAssistantError:
+                _LOGGER.warning("Not able to shutdown Home Assistant Core")
+
+        await remove_folder(self.sys_config.path_homeassistant, content_only=True)
+
+        try:
+            await self.sys_homeassistant.core.rebuild()
+        except HomeAssistantError:
+            _LOGGER.warning("Not able to rebuild Home Assistant Core")

@@ -577,16 +577,16 @@ class AddonModel(CoreSysAttributes, ABC):
 
     def install(self) -> Awaitable[None]:
         """Install this add-on."""
-        return self.sys_addons.install(self.slug)
+        return self.sys_addons.install(self)
 
     def uninstall(self) -> Awaitable[None]:
         """Uninstall this add-on."""
-        return self.sys_addons.uninstall(self.slug)
+        return self.sys_addons.uninstall(self)
 
     def update(self) -> Awaitable[None]:
         """Update this add-on."""
-        return self.sys_addons.update(self.slug)
+        return self.sys_addons.update(self)
 
     def rebuild(self) -> Awaitable[None]:
         """Rebuild this add-on."""
-        return self.sys_addons.rebuild(self.slug)
+        return self.sys_addons.rebuild(self)

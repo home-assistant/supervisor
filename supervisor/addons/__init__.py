@@ -141,23 +141,18 @@ class AddonManager(CoreSysAttributes):
                 _LOGGER.warning("Can't stop Add-on %s: %s", addon.slug, err)
                 self.sys_capture_exception(err)
 
-    async def install(self, slug: str) -> None:
+    async def install(self, store: AddonStore) -> None:
         """Install an add-on."""
-        if slug in self.local:
-            _LOGGER.warning("Add-on %s is already installed", slug)
+        if store.slug in self.local:
+            _LOGGER.warning("Add-on %s is already installed", store.slug)
             return
-        store = self.store.get(slug)
-
-        if not store:
-            _LOGGER.error("Add-on %s not exists", slug)
-            raise AddonsError()
 
         if not store.available:
-            _LOGGER.error("Add-on %s not supported on that platform", slug)
+            _LOGGER.error("Add-on %s not supported on that platform", store.slug)
             raise AddonsNotSupportedError()
 
         self.data.install(store)
-        addon = Addon(self.coresys, slug)
+        addon = Addon(self.coresys, store.slug)
 
         if not addon.path_data.is_dir():
             _LOGGER.info(
@@ -174,21 +169,16 @@ class AddonManager(CoreSysAttributes):
             self.data.uninstall(addon)
             raise AddonsError() from err
         else:
-            self.local[slug] = addon
+            self.local[addon.slug] = addon
 
         # Reload ingress tokens
         if addon.with_ingress:
             await self.sys_ingress.reload()
 
-        _LOGGER.info("Add-on '%s' successfully installed", slug)
+        _LOGGER.info("Add-on '%s' successfully installed", addon.slug)
 
-    async def uninstall(self, slug: str) -> None:
+    async def uninstall(self, addon: Addon) -> None:
         """Remove an add-on."""
-        if slug not in self.local:
-            _LOGGER.warning("Add-on %s is not installed", slug)
-            return
-        addon = self.local[slug]
-
         try:
             await addon.instance.remove()
         except DockerError as err:
@@ -216,7 +206,7 @@ class AddonManager(CoreSysAttributes):
         # Cleanup Ingress dynamic port assignment
         if addon.with_ingress:
             self.sys_create_task(self.sys_ingress.reload())
-            self.sys_ingress.del_dynamic_port(slug)
+            self.sys_ingress.del_dynamic_port(addon.slug)
 
         # Cleanup discovery data
         for message in self.sys_discovery.list_messages:
@@ -231,29 +221,24 @@ class AddonManager(CoreSysAttributes):
             service.del_service_data(addon)
 
         self.data.uninstall(addon)
-        self.local.pop(slug)
+        self.local.pop(addon.slug)
 
-        _LOGGER.info("Add-on '%s' successfully removed", slug)
+        _LOGGER.info("Add-on '%s' successfully removed", addon.slug)
 
-    async def update(self, slug: str) -> None:
+    async def update(self, addon: Addon) -> None:
         """Update add-on."""
-        if slug not in self.local:
-            _LOGGER.error("Add-on %s is not installed", slug)
-            raise AddonsError()
-        addon = self.local[slug]
-
         if addon.is_detached:
-            _LOGGER.error("Add-on %s is not available inside store", slug)
+            _LOGGER.error("Add-on %s is not available inside store", addon.slug)
             raise AddonsError()
-        store = self.store[slug]
+        store = self.store[addon.slug]
 
         if addon.version == store.version:
-            _LOGGER.warning("No update available for add-on %s", slug)
+            _LOGGER.warning("No update available for add-on %s", addon.slug)
             return
 
         # Check if available, Maybe something have changed
         if not store.available:
-            _LOGGER.error("Add-on %s not supported on that platform", slug)
+            _LOGGER.error("Add-on %s not supported on that platform", addon.slug)
             raise AddonsNotSupportedError()
 
         # Update instance
@@ -268,7 +253,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError() from err
         else:
             self.data.update(store)
-            _LOGGER.info("Add-on '%s' successfully updated", slug)
+            _LOGGER.info("Add-on '%s' successfully updated", addon.slug)
 
         # Setup/Fix AppArmor profile
         await addon.install_apparmor()
@@ -277,17 +262,12 @@ class AddonManager(CoreSysAttributes):
         if last_state == AddonState.STARTED:
             await addon.start()
 
-    async def rebuild(self, slug: str) -> None:
+    async def rebuild(self, addon: Addon) -> None:
         """Perform a rebuild of local build add-on."""
-        if slug not in self.local:
-            _LOGGER.error("Add-on %s is not installed", slug)
-            raise AddonsError()
-        addon = self.local[slug]
-
         if addon.is_detached:
-            _LOGGER.error("Add-on %s is not available inside store", slug)
+            _LOGGER.error("Add-on %s is not available inside store", addon.slug)
             raise AddonsError()
-        store = self.store[slug]
+        store = self.store[addon.slug]
 
         # Check if a rebuild is possible now
         if addon.version != store.version:
@@ -306,7 +286,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError() from err
         else:
             self.data.update(store)
-            _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
+            _LOGGER.info("Add-on '%s' successfully rebuilt", addon.slug)
 
         # restore state
         if last_state == AddonState.STARTED:
@@ -366,7 +346,7 @@ class AddonManager(CoreSysAttributes):
 
             _LOGGER.error("Can't repair %s", addon.slug)
             with suppress(AddonsError):
-                await self.uninstall(addon.slug)
+                await self.uninstall(addon)
 
     async def sync_dns(self) -> None:
         """Sync add-ons DNS names."""
@@ -392,3 +372,17 @@ class AddonManager(CoreSysAttributes):
         # Write hosts files
         with suppress(CoreDNSError):
             self.sys_plugins.dns.write_hosts()
+
+    async def factory_reset(self) -> None:
+        """Remove installed Add-ons & Cleanup."""
+        for addon in self.installed:
+            try:
+                self.uninstall(addon)
+            except AddonsError:
+                _LOGGER.warning("Remove force: %s", addon.slug)
+            else:
+                continue
+
+            await addon.remove_data()
+            self.data.uninstall(addon)
+            self.local.pop(addon.slug)
