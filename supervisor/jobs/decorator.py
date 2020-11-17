@@ -63,7 +63,7 @@ class Job:
             except HassioError as err:
                 raise err
             except Exception as err:
-                _LOGGER.exception("Unhandelt exception: %s", err)
+                _LOGGER.exception("Unhandled exception: %s", err)
                 sentry_sdk.capture_exception(err)
                 raise JobException() from err
             finally:
