@@ -3,6 +3,8 @@ from enum import Enum
 import logging
 from typing import List, Optional
 
+import sentry_sdk
+
 from ..const import CoreState
 from ..coresys import CoreSys
 from ..exceptions import HassioError, JobException
@@ -57,15 +59,16 @@ class Job:
                 return False
 
             try:
-                result = await self._method(*args, **kwargs)
+                return await self._method(*args, **kwargs)
             except HassioError as err:
-                _LOGGER.error(err)
+                raise err
+            except Exception as err:
+                _LOGGER.exception("Unhandled exception: %s", err)
+                sentry_sdk.capture_exception(err)
                 raise JobException() from err
             finally:
                 if self.cleanup:
                     self._coresys.jobs.remove_job(job)
-
-            return result
 
         return wrapper
 

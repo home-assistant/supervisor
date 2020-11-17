@@ -144,7 +144,7 @@ class Tasks(CoreSysAttributes):
             except AddonsError:
                 _LOGGER.error("Can't auto update Add-on %s", addon.slug)
 
-    @Job(conditions=[JobCondition.HEALTHY, JobCondition.FREE_SPACE])
+    @Job(conditions=[JobCondition.FREE_SPACE])
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
         if not self.sys_supervisor.need_update:
