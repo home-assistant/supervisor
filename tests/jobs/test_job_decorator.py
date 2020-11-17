@@ -2,8 +2,11 @@
 # pylint: disable=protected-access,import-error
 from unittest.mock import patch
 
+import pytest
+
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import HassioError, JobException
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.resolution.const import UnhealthyReason
 
@@ -127,3 +130,45 @@ async def test_internet_connectivity_with_core_state(coresys: CoreSys):
 
     coresys.core.state = CoreState.STOPPING
     assert await test.execute()
+
+
+async def test_exception(coresys: CoreSys):
+    """Test the healty decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.HEALTHY])
+        async def execute(self):
+            """Execute the class method."""
+            raise HassioError()
+
+    test = TestClass(coresys)
+
+    with pytest.raises(HassioError):
+        assert await test.execute()
+
+
+async def test_exception_not_handle(coresys: CoreSys):
+    """Test the healty decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.HEALTHY])
+        async def execute(self):
+            """Execute the class method."""
+            raise Exception()
+
+    test = TestClass(coresys)
+
+    with pytest.raises(JobException):
+        assert await test.execute()
