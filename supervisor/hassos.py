@@ -107,6 +107,7 @@ class HassOS(CoreSysAttributes):
             return
         else:
             self._available = True
+            self.sys_host.supported_features.cache_clear()
 
         # Store meta data
         self._version = cpe.get_version()[0]

@@ -1,5 +1,6 @@
 """Host function like audio, D-Bus or systemd."""
 from contextlib import suppress
+from functools import cached_property
 import logging
 
 from ..const import HostFeature
@@ -59,7 +60,7 @@ class HostManager(CoreSysAttributes):
         """Return host PulseAudio control."""
         return self._sound
 
-    @property
+    @cached_property
     def supported_features(self):
         """Return a list of supported host features."""
         features = []

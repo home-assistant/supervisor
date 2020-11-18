@@ -1,7 +1,7 @@
 """A collection of tasks."""
 import logging
 
-from ..const import AddonState
+from ..const import AddonState, HostFeature
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
     AddonsError,
@@ -457,7 +457,7 @@ class Tasks(CoreSysAttributes):
         # Check connectivity
         try:
             await self.sys_supervisor.check_connectivity()
-            if self.sys_dbus.network.is_connected:
+            if HostFeature.NETWORK in self.sys_host.supported_features:
                 await self.sys_host.network.check_connectivity()
         finally:
             self._cache["connectivity"] = 0
