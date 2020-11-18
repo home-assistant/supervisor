@@ -2,6 +2,7 @@
 from contextlib import suppress
 from functools import lru_cache
 import logging
+from typing import List
 
 from ..const import HostFeature
 from ..coresys import CoreSys, CoreSysAttributes
@@ -61,8 +62,12 @@ class HostManager(CoreSysAttributes):
         return self._sound
 
     @property
+    def features(self) -> List[HostFeature]:
+        """Return a list of host features."""
+        return self.supported_features()
+
     @lru_cache
-    def supported_features(self):
+    def supported_features(self) -> List[HostFeature]:
         """Return a list of supported host features."""
         features = []
 

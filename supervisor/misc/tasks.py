@@ -457,7 +457,7 @@ class Tasks(CoreSysAttributes):
         # Check connectivity
         try:
             await self.sys_supervisor.check_connectivity()
-            if HostFeature.NETWORK in self.sys_host.supported_features:
+            if HostFeature.NETWORK in self.sys_host.features:
                 await self.sys_host.network.check_connectivity()
         finally:
             self._cache["connectivity"] = 0

@@ -26,4 +26,4 @@ class EvaluateNetworkManager(EvaluateBase):
 
     async def evaluate(self):
         """Run evaluation."""
-        return HostFeature.NETWORK not in self.sys_host.supported_features
+        return HostFeature.NETWORK not in self.sys_host.features

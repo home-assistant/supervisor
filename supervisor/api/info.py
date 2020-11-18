@@ -39,7 +39,7 @@ class APIInfo(CoreSysAttributes):
             ATTR_DOCKER: self.sys_docker.info.version,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
-            ATTR_FEATURES: self.sys_host.supported_features,
+            ATTR_FEATURES: self.sys_host.features,
             ATTR_MACHINE: self.sys_machine,
             ATTR_ARCH: self.sys_arch.default,
             ATTR_SUPPORTED_ARCH: self.sys_arch.supported,
