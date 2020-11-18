@@ -7,6 +7,7 @@ import sentry_sdk
 from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.gdbus import DBus
 from ..const import (
+    DBUS_ATTR_CONNECTION_ENABLED,
     DBUS_ATTR_DEVICES,
     DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_NAME_NM,
@@ -32,6 +33,8 @@ class NetworkManager(DBusInterface):
         self._settings: NetworkManagerSettings = NetworkManagerSettings()
         self._interfaces: Dict[str, NetworkInterface] = {}
 
+        self.properties: Dict[str, Any] = {}
+
     @property
     def dns(self) -> NetworkManagerDNS:
         """Return NetworkManager DNS interface."""
@@ -46,6 +49,11 @@ class NetworkManager(DBusInterface):
     def interfaces(self) -> Dict[str, NetworkInterface]:
         """Return a dictionary of active interfaces."""
         return self._interfaces
+
+    @property
+    def connectivity_enabled(self) -> bool:
+        """Return if connectivity check is enabled."""
+        return self.properties[DBUS_ATTR_CONNECTION_ENABLED]
 
     @dbus_connected
     def activate_connection(
@@ -86,16 +94,12 @@ class NetworkManager(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
+        self.properties = await self.dbus.get_properties(DBUS_NAME_NM)
+
         await self.dns.update()
 
-        data = await self.dbus.get_properties(DBUS_NAME_NM)
-
-        if not data:
-            _LOGGER.warning("Can't get properties for Network Manager")
-            return
-
         self._interfaces.clear()
-        for device in data.get(DBUS_ATTR_DEVICES, []):
+        for device in self.properties[DBUS_ATTR_DEVICES]:
             interface = NetworkInterface(self.dbus, device)
 
             # Connect to interface
@@ -118,8 +122,10 @@ class NetworkManager(DBusInterface):
             ):
                 continue
 
-            if interface.connection and interface.connection.object_path == data.get(
-                DBUS_ATTR_PRIMARY_CONNECTION
+            if (
+                interface.connection
+                and interface.connection.object_path
+                == self.properties[DBUS_ATTR_PRIMARY_CONNECTION]
             ):
                 interface.primary = True
 
