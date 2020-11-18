@@ -7,7 +7,7 @@ import sentry_sdk
 from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.gdbus import DBus
 from ..const import (
-    DBUS_ATTR_CONNECTION_AVAILABLE,
+    DBUS_ATTR_CONNECTION_ENABLED,
     DBUS_ATTR_DEVICES,
     DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_NAME_NM,
@@ -51,9 +51,9 @@ class NetworkManager(DBusInterface):
         return self._interfaces
 
     @property
-    def connectivity_available(self) -> bool:
-        """Return Primary connection object."""
-        return self.properties[DBUS_ATTR_CONNECTION_AVAILABLE]
+    def connectivity_enabled(self) -> bool:
+        """Return if connectivity check is enabled."""
+        return self.properties[DBUS_ATTR_CONNECTION_ENABLED]
 
     @dbus_connected
     def activate_connection(
