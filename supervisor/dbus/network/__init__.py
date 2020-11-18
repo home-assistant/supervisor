@@ -51,11 +51,6 @@ class NetworkManager(DBusInterface):
         return self._interfaces
 
     @property
-    def primary_connection_object(self) -> str:
-        """Return Primary connection object."""
-        return self.properties[DBUS_ATTR_PRIMARY_CONNECTION]
-
-    @property
     def connectivity_available(self) -> bool:
         """Return Primary connection object."""
         return self.properties[DBUS_ATTR_CONNECTION_AVAILABLE]
@@ -129,7 +124,8 @@ class NetworkManager(DBusInterface):
 
             if (
                 interface.connection
-                and interface.connection.object_path == self.primary_connection_object
+                and interface.connection.object_path
+                == self.properties[DBUS_ATTR_PRIMARY_CONNECTION]
             ):
                 interface.primary = True
 
