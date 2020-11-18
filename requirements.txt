@@ -1,5 +1,6 @@
 aiohttp==3.7.2
 async_timeout==3.0.1
+atomicwrites==1.4.0
 attrs==20.3.0
 brotlipy==0.7.0
 cchardet==2.1.7
