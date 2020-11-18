@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 
+from atomicwrites import atomic_write
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -17,7 +18,8 @@ _DEFAULT: Dict[str, Any] = {}
 def write_json_file(jsonfile: Path, data: Any) -> None:
     """Write a JSON file."""
     try:
-        jsonfile.write_text(json.dumps(data, indent=2))
+        with atomic_write(jsonfile, overwrite=True) as fp:
+            fp.write(json.dumps(data, indent=2))
         jsonfile.chmod(0o600)
     except (OSError, ValueError, TypeError) as err:
         _LOGGER.error("Can't write %s: %s", jsonfile, err)
