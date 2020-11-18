@@ -19,6 +19,8 @@ async def test_evaluation(coresys: CoreSys):
     assert network_manager.reason in coresys.resolution.unsupported
 
     coresys.dbus.network.is_connected = True
+    coresys.host.supported_features.cache_clear()
+
     await network_manager()
     assert network_manager.reason not in coresys.resolution.unsupported
 

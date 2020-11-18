@@ -1,6 +1,8 @@
 """Host function like audio, D-Bus or systemd."""
 from contextlib import suppress
+from functools import lru_cache
 import logging
+from typing import List
 
 from ..const import HostFeature
 from ..coresys import CoreSys, CoreSysAttributes
@@ -60,7 +62,12 @@ class HostManager(CoreSysAttributes):
         return self._sound
 
     @property
-    def supported_features(self):
+    def features(self) -> List[HostFeature]:
+        """Return a list of host features."""
+        return self.supported_features()
+
+    @lru_cache
+    def supported_features(self) -> List[HostFeature]:
         """Return a list of supported host features."""
         features = []
 
@@ -95,6 +102,7 @@ class HostManager(CoreSysAttributes):
             await self.sound.update()
 
         _LOGGER.info("Host information reload completed")
+        self.supported_features.cache_clear()  # pylint: disable=no-member
 
     async def load(self):
         """Load host information."""

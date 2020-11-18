@@ -16,11 +16,11 @@ async def test_evaluation(coresys: CoreSys):
 
     coresys._host = MagicMock()
 
-    coresys.host.supported_features = [HostFeature.HOSTNAME]
+    coresys.host.features = [HostFeature.HOSTNAME]
     await systemd()
     assert systemd.reason in coresys.resolution.unsupported
 
-    coresys.host.supported_features = [
+    coresys.host.features = [
         HostFeature.SERVICES,
         HostFeature.SHUTDOWN,
         HostFeature.REBOOT,

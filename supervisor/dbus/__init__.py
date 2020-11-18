@@ -55,3 +55,5 @@ class DBusManager(CoreSysAttributes):
             _LOGGER.error(
                 "No D-Bus support on Host. Disabled any kind of host control!"
             )
+
+        self.sys_host.supported_features.cache_clear()

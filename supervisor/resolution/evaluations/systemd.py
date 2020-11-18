@@ -27,7 +27,7 @@ class EvaluateSystemd(EvaluateBase):
     async def evaluate(self):
         """Run evaluation."""
         return any(
-            feature not in self.sys_host.supported_features
+            feature not in self.sys_host.features
             for feature in (
                 HostFeature.HOSTNAME,
                 HostFeature.SERVICES,
