@@ -1,6 +1,6 @@
 """Host function like audio, D-Bus or systemd."""
 from contextlib import suppress
-from functools import cached_property
+from functools import lru_cache
 import logging
 
 from ..const import HostFeature
@@ -60,7 +60,8 @@ class HostManager(CoreSysAttributes):
         """Return host PulseAudio control."""
         return self._sound
 
-    @cached_property
+    @property
+    @lru_cache
     def supported_features(self):
         """Return a list of supported host features."""
         features = []
@@ -96,6 +97,7 @@ class HostManager(CoreSysAttributes):
             await self.sound.update()
 
         _LOGGER.info("Host information reload completed")
+        self.supported_features.cache_clear()
 
     async def load(self):
         """Load host information."""
