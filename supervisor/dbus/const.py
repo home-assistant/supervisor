@@ -63,6 +63,7 @@ DBUS_ATTR_TYPE = "Type"
 DBUS_ATTR_UUID = "Uuid"
 DBUS_ATTR_VARIANT = "Variant"
 DBUS_ATTR_MANAGED = "Managed"
+DBUS_ATTR_CONNECTION_AVAILABLE = "ConnectivityCheckEnabled"
 
 
 class RaucState(str, Enum):

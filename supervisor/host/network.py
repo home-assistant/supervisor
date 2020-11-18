@@ -72,6 +72,10 @@ class NetworkManager(CoreSysAttributes):
         ConnectionState 4 == FULL (has internet)
         https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMConnectivityState
         """
+        if not self.sys_dbus.network.connectivity_available:
+            return
+
+        # Check connectivity
         try:
             state = await self.sys_dbus.network.check_connectivity()
             self._connectivity = state[0] == 4
