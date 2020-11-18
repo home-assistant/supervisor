@@ -44,8 +44,13 @@ async def test_internet(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(conditions=[JobCondition.INTERNET])
-        async def execute(self):
+        @Job(conditions=[JobCondition.INTERNET_HOST])
+        async def execute_host(self):
+            """Execute the class method."""
+            return True
+
+        @Job(conditions=[JobCondition.INTERNET_SYSTEM])
+        async def execute_system(self):
             """Execute the class method."""
             return True
 
@@ -53,19 +58,23 @@ async def test_internet(coresys: CoreSys):
 
     coresys.host.network._connectivity = True
     coresys.supervisor._connectivity = True
-    assert await test.execute()
+    assert await test.execute_host()
+    assert await test.execute_system()
 
     coresys.host.network._connectivity = True
     coresys.supervisor._connectivity = False
-    assert not await test.execute()
+    assert await test.execute_host()
+    assert not await test.execute_system()
 
     coresys.host.network._connectivity = None
     coresys.supervisor._connectivity = True
-    assert await test.execute()
+    assert await test.execute_host()
+    assert await test.execute_system()
 
     coresys.host.network._connectivity = False
     coresys.supervisor._connectivity = True
-    assert not await test.execute()
+    assert not await test.execute_host()
+    assert await test.execute_system()
 
 
 async def test_free_space(coresys: CoreSys):
@@ -101,7 +110,7 @@ async def test_internet_connectivity_with_core_state(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(conditions=[JobCondition.INTERNET])
+        @Job(conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.INTERNET_HOST])
         async def execute(self):
             """Execute the class method."""
             return True
