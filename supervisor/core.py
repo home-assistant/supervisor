@@ -186,6 +186,7 @@ class Core(CoreSysAttributes):
                 self.sys_homeassistant.boot
                 and not await self.sys_homeassistant.core.is_running()
             ):
+                _LOGGER.info("Start Home Assistant Core")
                 try:
                     await self.sys_homeassistant.core.start()
                 except HomeAssistantCrashError as err:
