@@ -18,7 +18,8 @@ class JobCondition(str, Enum):
 
     FREE_SPACE = "free_space"
     HEALTHY = "healthy"
-    INTERNET = "internet"
+    INTERNET_SYSTEM = "internet_system"
+    INTERNET_HOST = "internet_host"
 
 
 class Job:
@@ -95,21 +96,31 @@ class Job:
                 )
                 return False
 
-        if JobCondition.INTERNET in self.conditions:
+        if any(
+            internet in self.conditions
+            for internet in (
+                JobCondition.INTERNET_SYSTEM,
+                JobCondition.INTERNET_HOST,
+            )
+        ):
             if self._coresys.core.state not in (
                 CoreState.SETUP,
                 CoreState.RUNNING,
             ):
                 return True
 
-            if not self._coresys.supervisor.connectivity:
+            if (
+                JobCondition.INTERNET_SYSTEM in self.conditions
+                and not self._coresys.supervisor.connectivity
+            ):
                 _LOGGER.warning(
                     "'%s' blocked from execution, no supervisor internet connection",
                     self._method.__qualname__,
                 )
                 return False
             elif (
-                self._coresys.host.network.connectivity is not None
+                JobCondition.INTERNET_HOST in self.conditions
+                and self._coresys.host.network.connectivity is not None
                 and not self._coresys.host.network.connectivity
             ):
                 _LOGGER.warning(

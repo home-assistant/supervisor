@@ -56,7 +56,7 @@ class StoreManager(CoreSysAttributes):
         await self.load()
         self._read_addons()
 
-    @Job(conditions=[JobCondition.INTERNET, JobCondition.HEALTHY])
+    @Job(conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.HEALTHY])
     async def update_repositories(self, list_repositories):
         """Add a new custom repository."""
         job = self.sys_jobs.get_job("storemanager_update_repositories")

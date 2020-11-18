@@ -120,7 +120,13 @@ class Tasks(CoreSysAttributes):
 
         _LOGGER.info("All core tasks are scheduled")
 
-    @Job(conditions=[JobCondition.HEALTHY, JobCondition.FREE_SPACE])
+    @Job(
+        conditions=[
+            JobCondition.HEALTHY,
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+        ]
+    )
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
         for addon in self.sys_addons.all:
@@ -144,7 +150,7 @@ class Tasks(CoreSysAttributes):
             except AddonsError:
                 _LOGGER.error("Can't auto update Add-on %s", addon.slug)
 
-    @Job(conditions=[JobCondition.FREE_SPACE])
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_HOST])
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
         if not self.sys_supervisor.need_update:
