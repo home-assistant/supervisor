@@ -102,7 +102,7 @@ class HostManager(CoreSysAttributes):
             await self.sound.update()
 
         _LOGGER.info("Host information reload completed")
-        self.supported_features.cache_clear()
+        self.supported_features.cache_clear()  # pylint: disable=no-member
 
     async def load(self):
         """Load host information."""
