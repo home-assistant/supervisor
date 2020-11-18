@@ -27,7 +27,7 @@ class SupervisorJob(CoreSysAttributes):
         """Return the current stage."""
         return self._stage
 
-    async def update(
+    def update(
         self, progress: Optional[int] = None, stage: Optional[str] = None
     ) -> None:
         """Update the job object."""

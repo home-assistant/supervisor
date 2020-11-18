@@ -66,9 +66,7 @@ class StoreManager(CoreSysAttributes):
         # add new repository
         async def _add_repository(url: str, step: int):
             """Add a repository."""
-            await job.update(
-                progress=job.progress + step, stage=f"Checking {url} started"
-            )
+            job.update(progress=job.progress + step, stage=f"Checking {url} started")
             repository = Repository(self.coresys, url)
             try:
                 await repository.load()
@@ -93,7 +91,7 @@ class StoreManager(CoreSysAttributes):
 
             self.repositories[url] = repository
 
-        await job.update(progress=10, stage="Check repositories")
+        job.update(progress=10, stage="Check repositories")
         repos = new_rep - old_rep
         tasks = [_add_repository(url, 80 / len(repos)) for url in repos]
         if tasks:
@@ -105,13 +103,13 @@ class StoreManager(CoreSysAttributes):
             self.sys_config.drop_addon_repository(url)
 
         # update data
-        await job.update(progress=90, stage="Update addons")
+        job.update(progress=90, stage="Update addons")
         self.data.update()
 
-        await job.update(progress=95, stage="Read addons")
+        job.update(progress=95, stage="Read addons")
         self._read_addons()
 
-        await job.update(progress=100)
+        job.update(progress=100)
 
     def _read_addons(self) -> None:
         """Reload add-ons inside store."""

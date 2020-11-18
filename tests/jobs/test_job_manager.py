@@ -26,7 +26,7 @@ async def test_remove_job_with_progress(coresys: CoreSys):
     job = coresys.jobs.get_job(TEST_JOB)
 
     assert job.name in coresys.jobs.jobs
-    await job.update(progress=100)
+    job.update(progress=100)
     assert job.name not in coresys.jobs.jobs
 
 
@@ -34,6 +34,6 @@ async def test_update_job(coresys: CoreSys):
     """Test updating jobs."""
     job = coresys.jobs.get_job(TEST_JOB)
 
-    await job.update(progress=50, stage="stage")
+    job.update(progress=50, stage="stage")
     assert job.progress == 50
     assert job.stage == "stage"
