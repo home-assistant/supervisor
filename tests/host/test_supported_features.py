@@ -8,4 +8,7 @@ def test_supported_features(coresys):
 
     coresys._dbus.network.is_connected = False
 
+    assert "network" in coresys.host.features
+
+    coresys.host.supported_features.cache_clear()
     assert "network" not in coresys.host.features
