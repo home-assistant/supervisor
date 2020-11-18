@@ -104,7 +104,7 @@ class NetworkManager(DBusInterface):
         await self.dns.update()
 
         self._interfaces.clear()
-        for device in self.properties(DBUS_ATTR_DEVICES, []):
+        for device in self.properties[DBUS_ATTR_DEVICES]:
             interface = NetworkInterface(self.dbus, device)
 
             # Connect to interface
