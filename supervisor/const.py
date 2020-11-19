@@ -5,7 +5,7 @@ from pathlib import Path
 
 SUPERVISOR_VERSION = "DEV"
 
-URL_HASSIO_ADDONS = "https://github.com/home-assistant/hassio-addons"
+URL_HASSIO_ADDONS = "https://github.com/home-assistant/addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor.txt"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
 
