@@ -11,7 +11,7 @@ from supervisor.utils.json import read_json_file
 
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JsonFileError, StoreError, StoreGitError
+from ..exceptions import JsonFileError, StoreGitError
 from ..jobs.decorator import Job, JobCondition
 from .addon import AddonStore
 from .data import StoreData
@@ -71,8 +71,8 @@ class StoreManager(CoreSysAttributes):
             try:
                 await repository.load()
             except StoreGitError as err:
-                _LOGGER.error("Can't load data from repository %s", url)
-                raise StoreError() from err
+                _LOGGER.error("Can't load data from repository %s: %s", url, err)
+                return
 
             # don't add built-in repository to config
             if url not in BUILTIN_REPOSITORIES:
