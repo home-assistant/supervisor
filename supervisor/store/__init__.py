@@ -70,8 +70,8 @@ class StoreManager(CoreSysAttributes):
             repository = Repository(self.coresys, url)
             try:
                 await repository.load()
-            except StoreGitError as err:
-                _LOGGER.error("Can't load data from repository %s: %s", url, err)
+            except StoreGitError:
+                _LOGGER.error("Can't load data from repository %s", url)
                 return
 
             # don't add built-in repository to config
