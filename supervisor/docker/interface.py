@@ -162,6 +162,11 @@ class DockerInterface(CoreSysAttributes):
                     "Available space in /data is: %s GiB",
                     free_space,
                 )
+            elif err.status_code == 429:
+                _LOGGER.info(
+                    "You are now ratelimited by Docker Hub, for more details see "
+                    "https://www.home-assistant.io/more-info/dockerhub-rate-limit"
+                )
             raise DockerError() from err
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Unknown error with %s:%s -> %s", image, tag, err)
