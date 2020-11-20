@@ -63,6 +63,9 @@ def dbus() -> DBus:
 
         return load_json_fixture(f"{fixture}.json")
 
+    async def mock_wait_signal(_, __):
+        pass
+
     async def mock_send(_, command, silent=False):
         if silent:
             return ""
@@ -86,9 +89,13 @@ def dbus() -> DBus:
         return load_fixture(f"{fixture}.{filetype}")
 
     with patch("supervisor.utils.gdbus.DBus._send", new=mock_send), patch(
+        "supervisor.utils.gdbus.DBus.wait_signal", new=mock_wait_signal
+    ), patch(
         "supervisor.dbus.interface.DBusInterface.is_connected",
         return_value=True,
-    ), patch("supervisor.utils.gdbus.DBus.get_properties", new=mock_get_properties):
+    ), patch(
+        "supervisor.utils.gdbus.DBus.get_properties", new=mock_get_properties
+    ):
         yield dbus_commands
 
 
