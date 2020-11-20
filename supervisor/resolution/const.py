@@ -46,6 +46,7 @@ class IssueType(str, Enum):
     """Issue type."""
 
     FREE_SPACE = "free_space"
+    DOCKER_RATELIMIT = "docker_ratelimit"
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
     MISSING_IMAGE = "missing_image"
@@ -64,4 +65,5 @@ class SuggestionType(str, Enum):
     EXECUTE_REPAIR = "execute_repair"
     EXECUTE_RESET = "execute_reset"
     EXECUTE_RELOAD = "execute_reload"
+    REGISTRY_LOGIN = "registry_login"
     NEW_INITIALIZE = "new_initialize"
