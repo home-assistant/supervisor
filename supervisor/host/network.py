@@ -10,6 +10,7 @@ import attr
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
+    DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED,
     ConnectionStateType,
     DeviceType,
     InterfaceMethod as NMInterfaceMethod,
@@ -161,6 +162,9 @@ class NetworkManager(CoreSysAttributes):
             _LOGGER.warning("Requested Network interface update is not possible")
             raise HostNetworkError()
 
+        await self.sys_dbus.network.dbus.wait_signal(
+            DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED
+        )
         await self.update()
 
     async def scan_wifi(self, interface: Interface) -> List[AccessPoint]:

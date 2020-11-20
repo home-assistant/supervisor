@@ -48,7 +48,9 @@ RE_GVARIANT_TUPLE_C: re.Pattern[Any] = re.compile(
 RE_BIN_STRING_OCT: re.Pattern[Any] = re.compile(r"\\\\(\d{3})")
 RE_BIN_STRING_HEX: re.Pattern[Any] = re.compile(r"\\\\x([0-9A-Za-z]{2})")
 
-RE_MONITOR_OUTPUT: re.Pattern[Any] = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
+RE_MONITOR_OUTPUT: re.Pattern[Any] = re.compile(
+    r".+?: (?P<signal>[^\s].+?) (?P<data>.*)"
+)
 
 # Map GDBus to errors
 MAP_GDBUS_ERROR: Dict[str, Any] = {
