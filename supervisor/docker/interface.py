@@ -19,6 +19,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from .stats import DockerStats
 
@@ -161,6 +162,16 @@ class DockerInterface(CoreSysAttributes):
                     "This error is often caused by not having enough disk space available. "
                     "Available space in /data is: %s GiB",
                     free_space,
+                )
+            elif err.status_code == 429:
+                self.sys_resolution.create_issue(
+                    IssueType.DOCKER_RATELIMIT,
+                    ContextType.SYSTEM,
+                    suggestions=[SuggestionType.REGISTRY_LOGIN],
+                )
+                _LOGGER.info(
+                    "Your IP address has made too many requests to Docker Hub which activated a rate limit. "
+                    "For more details see https://www.home-assistant.io/more-info/dockerhub-rate-limit"
                 )
             raise DockerError() from err
         except (docker.errors.DockerException, requests.RequestException) as err:
