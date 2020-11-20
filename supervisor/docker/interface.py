@@ -164,8 +164,8 @@ class DockerInterface(CoreSysAttributes):
                 )
             elif err.status_code == 429:
                 _LOGGER.info(
-                    "You are now ratelimited by Docker Hub, for more details see "
-                    "https://www.home-assistant.io/more-info/dockerhub-rate-limit"
+                    "Your IP address has made too many requests to Docker Hub which activated a rate limit. "
+                    "For more details see https://www.home-assistant.io/more-info/dockerhub-rate-limit"
                 )
             raise DockerError() from err
         except (docker.errors.DockerException, requests.RequestException) as err:
