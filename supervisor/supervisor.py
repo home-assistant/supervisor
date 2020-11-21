@@ -11,12 +11,13 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 from packaging.version import parse as pkg_parse
 
-from .const import SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
+from .const import SUPERVISOR_VERSION, URL_HASSIO_APPARMOR, CoreState
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
 from .exceptions import (
     DockerError,
+    HassioError,
     HostAppArmorError,
     SupervisorError,
     SupervisorUpdateError,
@@ -146,6 +147,10 @@ class Supervisor(CoreSysAttributes):
 
     async def restart(self) -> None:
         """Restart Supervisor soft."""
+        if self.sys_core.state != CoreState.RUNNING:
+            _LOGGER.warning("Can only restart from running mode!")
+            raise HassioError()
+
         self.sys_core.exit_code = 100
         self.sys_create_task(self.sys_core.stop())
 
