@@ -7,6 +7,7 @@ from typing import Set
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
+from ..jobs.decorator import Job, JobCondition
 from ..utils.dt import utcnow
 from .snapshot import Snapshot
 from .utils import create_slug
@@ -121,6 +122,7 @@ class SnapshotManager(CoreSysAttributes):
         self.snapshots_obj[snapshot.slug] = snapshot
         return snapshot
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.HEALTHY])
     async def do_snapshot_full(self, name="", password=None):
         """Create a full snapshot."""
         if self.lock.locked():
@@ -156,6 +158,7 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.HEALTHY])
     async def do_snapshot_partial(
         self, name="", addons=None, folders=None, password=None
     ):
@@ -207,6 +210,14 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
+            JobCondition.INTERNET_HOST,
+            JobCondition.INTERNET_SYSTEM,
+        ]
+    )
     async def do_restore_full(self, snapshot, password=None):
         """Restore a snapshot."""
         if self.lock.locked():
@@ -283,6 +294,14 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
+            JobCondition.INTERNET_HOST,
+            JobCondition.INTERNET_SYSTEM,
+        ]
+    )
     async def do_restore_partial(
         self, snapshot, homeassistant=False, addons=None, folders=None, password=None
     ):

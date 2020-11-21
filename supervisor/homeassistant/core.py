@@ -21,6 +21,7 @@ from ..exceptions import (
     HomeAssistantError,
     HomeAssistantUpdateError,
 )
+from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock
 
@@ -152,6 +153,13 @@ class HomeAssistantCore(CoreSysAttributes):
             await self.instance.cleanup()
 
     @process_lock
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
+            JobCondition.INTERNET_HOST,
+        ]
+    )
     async def update(self, version: Optional[str] = None) -> None:
         """Update HomeAssistant version."""
         version = version or self.sys_homeassistant.latest_version
@@ -409,6 +417,12 @@ class HomeAssistantCore(CoreSysAttributes):
         self._error_state = True
         raise HomeAssistantCrashError()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+        ]
+    )
     async def repair(self):
         """Repair local Home Assistant data."""
         if await self.instance.exists():

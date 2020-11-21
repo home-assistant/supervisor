@@ -156,14 +156,7 @@ class DockerInterface(CoreSysAttributes):
                 docker_image.tag(image, tag="latest")
         except docker.errors.APIError as err:
             _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
-            if err.status_code == 404:
-                free_space = self.sys_host.info.free_space
-                _LOGGER.info(
-                    "This error is often caused by not having enough disk space available. "
-                    "Available space in /data is: %s GiB",
-                    free_space,
-                )
-            elif err.status_code == 429:
+            if err.status_code == 429:
                 self.sys_resolution.create_issue(
                     IssueType.DOCKER_RATELIMIT,
                     ContextType.SYSTEM,

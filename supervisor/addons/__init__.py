@@ -18,6 +18,7 @@ from ..exceptions import (
     HomeAssistantAPIError,
     HostAppArmorError,
 )
+from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..store.addon import AddonStore
 from ..utils import check_exception_chain
@@ -141,6 +142,13 @@ class AddonManager(CoreSysAttributes):
                 _LOGGER.warning("Can't stop Add-on %s: %s", addon.slug, err)
                 self.sys_capture_exception(err)
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+            JobCondition.HEALTHY,
+        ]
+    )
     async def install(self, slug: str) -> None:
         """Install an add-on."""
         if slug in self.local:
@@ -235,6 +243,13 @@ class AddonManager(CoreSysAttributes):
 
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+            JobCondition.HEALTHY,
+        ]
+    )
     async def update(self, slug: str) -> None:
         """Update add-on."""
         if slug not in self.local:
@@ -277,6 +292,13 @@ class AddonManager(CoreSysAttributes):
         if last_state == AddonState.STARTED:
             await addon.start()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+            JobCondition.HEALTHY,
+        ]
+    )
     async def rebuild(self, slug: str) -> None:
         """Perform a rebuild of local build add-on."""
         if slug not in self.local:
@@ -312,6 +334,13 @@ class AddonManager(CoreSysAttributes):
         if last_state == AddonState.STARTED:
             await addon.start()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+            JobCondition.HEALTHY,
+        ]
+    )
     async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
         if slug not in self.local:
@@ -334,6 +363,7 @@ class AddonManager(CoreSysAttributes):
             with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_HOST])
     async def repair(self) -> None:
         """Repair local add-ons."""
         needs_repair: List[Addon] = []
