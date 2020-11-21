@@ -258,7 +258,7 @@ class Core(CoreSysAttributes):
             _LOGGER.warning("Stage 2: Force Shutdown!")
 
         self.state = CoreState.CLOSE
-        _LOGGER.info("Supervisor is down - %s", self.exit_code)
+        _LOGGER.info("Supervisor is down - %d", self.exit_code)
         self.sys_loop.stop()
 
     async def shutdown(self):
