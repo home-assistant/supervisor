@@ -60,4 +60,4 @@ if __name__ == "__main__":
         loop.close()
 
     _LOGGER.info("Closing Supervisor")
-    sys.exit(0)
+    sys.exit(coresys.core.exit_code)

@@ -195,6 +195,11 @@ class APISupervisor(CoreSysAttributes):
         """Try to repair the local setup / overlayfs."""
         return asyncio.shield(self.sys_core.repair())
 
+    @api_process
+    def restart(self, request: web.Request) -> Awaitable[None]:
+        """Soft restart Supervisor."""
+        return asyncio.shield(self.sys_supervisor.restart())
+
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return supervisor Docker logs."""

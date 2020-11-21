@@ -11,6 +11,8 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 from packaging.version import parse as pkg_parse
 
+from supervisor.jobs.decorator import Job, JobCondition
+
 from .const import SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
@@ -142,6 +144,12 @@ class Supervisor(CoreSysAttributes):
 
         with suppress(SupervisorError):
             await self.update_apparmor()
+        self.sys_create_task(self.sys_core.stop())
+
+    @Job(conditions=[JobCondition.RUNNING])
+    async def restart(self) -> None:
+        """Restart Supervisor soft."""
+        self.sys_core.exit_code = 100
         self.sys_create_task(self.sys_core.stop())
 
     @property

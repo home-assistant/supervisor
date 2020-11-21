@@ -20,6 +20,7 @@ class JobCondition(str, Enum):
     HEALTHY = "healthy"
     INTERNET_SYSTEM = "internet_system"
     INTERNET_HOST = "internet_host"
+    RUNNING = "running"
 
 
 class Job:
@@ -79,6 +80,14 @@ class Job:
             if not self._coresys.core.healthy:
                 _LOGGER.warning(
                     "'%s' blocked from execution, system is not healthy",
+                    self._method.__qualname__,
+                )
+                return False
+
+        if JobCondition.RUNNING in self.conditions:
+            if self._coresys.core.state != CoreState.RUNNING:
+                _LOGGER.warning(
+                    "'%s' blocked from execution, system is not running",
                     self._method.__qualname__,
                 )
                 return False

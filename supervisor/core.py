@@ -26,6 +26,7 @@ class Core(CoreSysAttributes):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
         self._state: Optional[CoreState] = None
+        self.exit_code: int = 0
 
     @property
     def state(self) -> CoreState:
@@ -257,7 +258,7 @@ class Core(CoreSysAttributes):
             _LOGGER.warning("Stage 2: Force Shutdown!")
 
         self.state = CoreState.CLOSE
-        _LOGGER.info("Supervisor is down")
+        _LOGGER.info("Supervisor is down - %d", self.exit_code)
         self.sys_loop.stop()
 
     async def shutdown(self):
