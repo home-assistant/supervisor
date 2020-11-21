@@ -251,6 +251,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/supervisor/logs", api_supervisor.logs),
                 web.post("/supervisor/update", api_supervisor.update),
                 web.post("/supervisor/reload", api_supervisor.reload),
+                web.post("/supervisor/restart", api_supervisor.restart),
                 web.post("/supervisor/options", api_supervisor.options),
                 web.post("/supervisor/repair", api_supervisor.repair),
             ]
