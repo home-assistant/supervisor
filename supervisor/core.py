@@ -259,7 +259,7 @@ class Core(CoreSysAttributes):
 
         self.state = CoreState.CLOSE
         _LOGGER.info("Supervisor is down - %s", self.exit_code)
-        self.sys_loop.call_soon(self.sys_loop.stop)
+        self.sys_loop.stop()
 
     async def shutdown(self):
         """Shutdown all running containers in correct order."""

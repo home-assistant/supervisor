@@ -142,12 +142,12 @@ class Supervisor(CoreSysAttributes):
 
         with suppress(SupervisorError):
             await self.update_apparmor()
-        await self.sys_core.stop()
+        self.sys_create_task(self.sys_core.stop())
 
     async def restart(self) -> None:
         """Restart Supervisor soft."""
         self.sys_core.exit_code = 100
-        await self.sys_core.stop()
+        self.sys_create_task(self.sys_core.stop())
 
     @property
     def in_progress(self) -> bool:
