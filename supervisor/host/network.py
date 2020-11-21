@@ -338,6 +338,11 @@ class Interface:
         elif inet.settings.wireless_security.key_mgmt == "wpa-psk":
             auth = AuthMethod.WPA_PSK
 
+        # WifiMode
+        mode = WifiMode.INFRASTRUCTURE
+        if inet.settings.wireless.mode:
+            mode = WifiMode(inet.settings.wireless.mode)
+
         # Signal
         if inet.wireless:
             signal = inet.wireless.active.strength
@@ -345,7 +350,7 @@ class Interface:
             signal = None
 
         return WifiConfig(
-            WifiMode(inet.settings.wireless.mode),
+            mode,
             inet.settings.wireless.ssid,
             auth,
             inet.settings.wireless_security.psk,
