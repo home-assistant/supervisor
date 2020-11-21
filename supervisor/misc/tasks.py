@@ -125,6 +125,7 @@ class Tasks(CoreSysAttributes):
             JobCondition.HEALTHY,
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
+            JobCondition.RUNNING,
         ]
     )
     async def _update_addons(self):
@@ -150,7 +151,13 @@ class Tasks(CoreSysAttributes):
             except AddonsError:
                 _LOGGER.error("Can't auto update Add-on %s", addon.slug)
 
-    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_HOST])
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+            JobCondition.RUNNING,
+        ]
+    )
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
         if not self.sys_supervisor.need_update:
@@ -231,6 +238,7 @@ class Tasks(CoreSysAttributes):
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
 
+    @Job(conditions=JobCondition.RUNNING)
     async def _update_cli(self):
         """Check and run update of cli."""
         if not self.sys_plugins.cli.need_update:
@@ -241,6 +249,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.cli.update()
 
+    @Job(conditions=JobCondition.RUNNING)
     async def _update_dns(self):
         """Check and run update of CoreDNS plugin."""
         if not self.sys_plugins.dns.need_update:
@@ -252,6 +261,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.dns.update()
 
+    @Job(conditions=JobCondition.RUNNING)
     async def _update_audio(self):
         """Check and run update of PulseAudio plugin."""
         if not self.sys_plugins.audio.need_update:
@@ -263,6 +273,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.audio.update()
 
+    @Job(conditions=JobCondition.RUNNING)
     async def _update_observer(self):
         """Check and run update of Observer plugin."""
         if not self.sys_plugins.observer.need_update:
@@ -274,6 +285,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.observer.update()
 
+    @Job(conditions=JobCondition.RUNNING)
     async def _update_multicast(self):
         """Check and run update of multicast."""
         if not self.sys_plugins.multicast.need_update:
