@@ -417,6 +417,12 @@ class HomeAssistantCore(CoreSysAttributes):
         self._error_state = True
         raise HomeAssistantCrashError()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+        ]
+    )
     async def repair(self):
         """Repair local Home Assistant data."""
         if await self.instance.exists():
