@@ -205,6 +205,20 @@ class APINetwork(CoreSysAttributes):
             elif key == ATTR_ENABLED:
                 interface.enabled = config
 
+            if not interface.enabled and (
+                interface.ipv4.method
+                in [
+                    InterfaceMethod.STATIC,
+                    InterfaceMethod.AUTO,
+                ]
+                or interface.ipv6.method
+                in [
+                    InterfaceMethod.STATIC,
+                    InterfaceMethod.AUTO,
+                ]
+            ):
+                interface.enabled = True
+
         await asyncio.shield(self.sys_host.network.apply_changes(interface))
 
     @api_process
