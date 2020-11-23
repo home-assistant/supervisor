@@ -66,21 +66,21 @@ class Job:
 
     def _check_conditions(self):
         """Check conditions."""
-        used_condition = set(self.conditions) - set(
+        used_conditions = set(self.conditions) - set(
             self._coresys.jobs.ignore_conditions
         )
-        ignored_condition = set(self.conditions) & set(
+        ignored_conditions = set(self.conditions) & set(
             self._coresys.jobs.ignore_conditions
         )
 
         # Check if somethings is ignored
-        if ignored_condition:
+        if ignored_conditions:
             _LOGGER.warning(
                 "Following job conditions are ignored and will make the system unstable when they occur: %s",
-                ignored_condition,
+                ignored_conditions,
             )
 
-        if JobCondition.HEALTHY in used_condition:
+        if JobCondition.HEALTHY in used_conditions:
             if not self._coresys.core.healthy:
                 _LOGGER.warning(
                     "'%s' blocked from execution, system is not healthy",
@@ -88,7 +88,7 @@ class Job:
                 )
                 return False
 
-        if JobCondition.RUNNING in used_condition:
+        if JobCondition.RUNNING in used_conditions:
             if self._coresys.core.state != CoreState.RUNNING:
                 _LOGGER.warning(
                     "'%s' blocked from execution, system is not running",
@@ -96,7 +96,7 @@ class Job:
                 )
                 return False
 
-        if JobCondition.FREE_SPACE in used_condition:
+        if JobCondition.FREE_SPACE in used_conditions:
             free_space = self._coresys.host.info.free_space
             if free_space < MINIMUM_FREE_SPACE_THRESHOLD:
                 _LOGGER.warning(
