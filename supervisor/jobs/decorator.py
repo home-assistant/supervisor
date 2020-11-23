@@ -73,10 +73,10 @@ class Job:
             self._coresys.jobs.ignore_conditions
         )
 
-        # Check if somethings is ingored
+        # Check if somethings is ignored
         if ignored_condition:
             _LOGGER.warning(
-                "Following job conditions would be ignored and make the system unstable: %s",
+                "Following job conditions are ignored and will make the system unstable when they occur: %s",
                 ignored_condition,
             )
 
