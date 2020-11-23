@@ -76,6 +76,12 @@ class Job:
 
     def _check_conditions(self):
         """Check conditions."""
+        if not self._coresys.core.supported and not self._coresys.core.healthy:
+            _LOGGER.critical(
+                "Your system is not healthy in a unsupported envoirement. We disable all protection to keep your system stable. Please fix the unhealthy issue asap!"
+            )
+            return True
+
         if JobCondition.HEALTHY in self.conditions:
             if not self._coresys.core.healthy:
                 _LOGGER.warning(
