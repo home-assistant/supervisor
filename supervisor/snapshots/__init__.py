@@ -122,7 +122,7 @@ class SnapshotManager(CoreSysAttributes):
         self.snapshots_obj[snapshot.slug] = snapshot
         return snapshot
 
-    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.HEALTHY])
+    @Job(conditions=[JobCondition.FREE_SPACE])
     async def do_snapshot_full(self, name="", password=None):
         """Create a full snapshot."""
         if self.lock.locked():
@@ -158,7 +158,7 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
-    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.HEALTHY])
+    @Job(conditions=[JobCondition.FREE_SPACE])
     async def do_snapshot_partial(
         self, name="", addons=None, folders=None, password=None
     ):
