@@ -10,15 +10,15 @@ from supervisor.resolution.evaluations.job_conditions import EvaluateJobConditio
 
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
-    job_conditios = EvaluateJobConditions(coresys)
+    job_conditions = EvaluateJobConditions(coresys)
     coresys.core.state = CoreState.SETUP
 
-    await job_conditios()
-    assert job_conditios.reason not in coresys.resolution.unsupported
+    await job_conditions()
+    assert job_conditions.reason not in coresys.resolution.unsupported
 
     coresys.jobs.ignore_conditions = [JobCondition.HEALTHY]
-    await job_conditios()
-    assert job_conditios.reason in coresys.resolution.unsupported
+    await job_conditions()
+    assert job_conditions.reason in coresys.resolution.unsupported
 
 
 async def test_did_run(coresys: CoreSys):
