@@ -1,5 +1,4 @@
 """Job decorator."""
-from enum import Enum
 import logging
 from typing import List, Optional
 
@@ -9,18 +8,9 @@ from ..const import CoreState
 from ..coresys import CoreSys
 from ..exceptions import HassioError, JobException
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
+from .const import JobCondition
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
-
-
-class JobCondition(str, Enum):
-    """Job condition enum."""
-
-    FREE_SPACE = "free_space"
-    HEALTHY = "healthy"
-    INTERNET_SYSTEM = "internet_system"
-    INTERNET_HOST = "internet_host"
-    RUNNING = "running"
 
 
 class Job:
@@ -76,13 +66,21 @@ class Job:
 
     def _check_conditions(self):
         """Check conditions."""
-        if not self._coresys.core.supported and not self._coresys.core.healthy:
-            _LOGGER.critical(
-                "Your system is not healthy in a unsupported envoirement. We disable all protection to keep your system stable. Please fix the unhealthy issue asap!"
-            )
-            return True
+        used_condition = set(self.conditions) - set(
+            self._coresys.jobs.ignore_conditions
+        )
+        ignored_condition = set(self.conditions) & set(
+            self._coresys.jobs.ignore_conditions
+        )
 
-        if JobCondition.HEALTHY in self.conditions:
+        # Check if somethings is ingored
+        if ignored_condition:
+            _LOGGER.warning(
+                "Following job conditions would be ignored and make the system unstable: %s",
+                ignored_condition,
+            )
+
+        if JobCondition.HEALTHY in used_condition:
             if not self._coresys.core.healthy:
                 _LOGGER.warning(
                     "'%s' blocked from execution, system is not healthy",
@@ -90,7 +88,7 @@ class Job:
                 )
                 return False
 
-        if JobCondition.RUNNING in self.conditions:
+        if JobCondition.RUNNING in used_condition:
             if self._coresys.core.state != CoreState.RUNNING:
                 _LOGGER.warning(
                     "'%s' blocked from execution, system is not running",
@@ -98,7 +96,7 @@ class Job:
                 )
                 return False
 
-        if JobCondition.FREE_SPACE in self.conditions:
+        if JobCondition.FREE_SPACE in used_condition:
             free_space = self._coresys.host.info.free_space
             if free_space < MINIMUM_FREE_SPACE_THRESHOLD:
                 _LOGGER.warning(
@@ -111,37 +109,27 @@ class Job:
                 )
                 return False
 
-        if any(
-            internet in self.conditions
-            for internet in (
-                JobCondition.INTERNET_SYSTEM,
-                JobCondition.INTERNET_HOST,
-            )
+        if (
+            JobCondition.INTERNET_SYSTEM in self.conditions
+            and not self._coresys.supervisor.connectivity
+            and self._coresys.core.state in (CoreState.SETUP, CoreState.RUNNING)
         ):
-            if self._coresys.core.state not in (
-                CoreState.SETUP,
-                CoreState.RUNNING,
-            ):
-                return True
+            _LOGGER.warning(
+                "'%s' blocked from execution, no supervisor internet connection",
+                self._method.__qualname__,
+            )
+            return False
 
-            if (
-                JobCondition.INTERNET_SYSTEM in self.conditions
-                and not self._coresys.supervisor.connectivity
-            ):
-                _LOGGER.warning(
-                    "'%s' blocked from execution, no supervisor internet connection",
-                    self._method.__qualname__,
-                )
-                return False
-            elif (
-                JobCondition.INTERNET_HOST in self.conditions
-                and self._coresys.host.network.connectivity is not None
-                and not self._coresys.host.network.connectivity
-            ):
-                _LOGGER.warning(
-                    "'%s' blocked from execution, no host internet connection",
-                    self._method.__qualname__,
-                )
-                return False
+        if (
+            JobCondition.INTERNET_HOST in self.conditions
+            and self._coresys.host.network.connectivity is not None
+            and not self._coresys.host.network.connectivity
+            and self._coresys.core.state in (CoreState.SETUP, CoreState.RUNNING)
+        ):
+            _LOGGER.warning(
+                "'%s' blocked from execution, no host internet connection",
+                self._method.__qualname__,
+            )
+            return False
 
         return True

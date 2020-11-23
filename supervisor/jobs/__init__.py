@@ -3,6 +3,9 @@ import logging
 from typing import Dict, List, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..utils.json import JsonConfig
+from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
+from .validate import SCHEMA_JOBS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -46,11 +49,12 @@ class SupervisorJob(CoreSysAttributes):
         )
 
 
-class JobManager(CoreSysAttributes):
+class JobManager(JsonConfig, CoreSysAttributes):
     """Job class."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize the JobManager class."""
+        super().__init__(FILE_CONFIG_JOBS, SCHEMA_JOBS_CONFIG)
         self.coresys: CoreSys = coresys
         self._jobs: Dict[str, SupervisorJob] = {}
 
@@ -58,6 +62,16 @@ class JobManager(CoreSysAttributes):
     def jobs(self) -> List[SupervisorJob]:
         """Return a list of current jobs."""
         return self._jobs
+
+    @property
+    def ignore_conditions(self) -> List[JobCondition]:
+        """Return a list of ingore condition."""
+        return self._data[ATTR_IGNORE_CONDITIONS]
+
+    @ignore_conditions.setter
+    def ignore_conditions(self, value: List[JobCondition]) -> None:
+        """Set a list of ignored condition."""
+        self._data[ATTR_IGNORE_CONDITIONS] = value
 
     def get_job(self, name: str) -> SupervisorJob:
         """Return a job, create one if it does not exsist."""

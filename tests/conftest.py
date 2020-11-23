@@ -131,6 +131,7 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     coresys_obj._auth.save_data = MagicMock()
     coresys_obj._updater.save_data = MagicMock()
     coresys_obj._config.save_data = MagicMock()
+    coresys_obj._jobs.save_data = MagicMock()
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
