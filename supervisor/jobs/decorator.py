@@ -80,34 +80,36 @@ class Job:
                 ignored_conditions,
             )
 
-        if JobCondition.HEALTHY in used_conditions:
-            if not self._coresys.core.healthy:
-                _LOGGER.warning(
-                    "'%s' blocked from execution, system is not healthy",
-                    self._method.__qualname__,
-                )
-                return False
+        if JobCondition.HEALTHY in used_conditions and not self._coresys.core.healthy:
+            _LOGGER.warning(
+                "'%s' blocked from execution, system is not healthy",
+                self._method.__qualname__,
+            )
+            return False
 
-        if JobCondition.RUNNING in used_conditions:
-            if self._coresys.core.state != CoreState.RUNNING:
-                _LOGGER.warning(
-                    "'%s' blocked from execution, system is not running",
-                    self._method.__qualname__,
-                )
-                return False
+        if (
+            JobCondition.RUNNING in used_conditions
+            and self._coresys.core.state != CoreState.RUNNING
+        ):
+            _LOGGER.warning(
+                "'%s' blocked from execution, system is not running",
+                self._method.__qualname__,
+            )
+            return False
 
-        if JobCondition.FREE_SPACE in used_conditions:
-            free_space = self._coresys.host.info.free_space
-            if free_space < MINIMUM_FREE_SPACE_THRESHOLD:
-                _LOGGER.warning(
-                    "'%s' blocked from execution, not enough free space (%sGB) left on the device",
-                    self._method.__qualname__,
-                    free_space,
-                )
-                self._coresys.resolution.create_issue(
-                    IssueType.FREE_SPACE, ContextType.SYSTEM
-                )
-                return False
+        if (
+            JobCondition.FREE_SPACE in used_conditions
+            and self._coresys.host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD
+        ):
+            _LOGGER.warning(
+                "'%s' blocked from execution, not enough free space (%sGB) left on the device",
+                self._method.__qualname__,
+                self._coresys.host.info.free_space,
+            )
+            self._coresys.resolution.create_issue(
+                IssueType.FREE_SPACE, ContextType.SYSTEM
+            )
+            return False
 
         if (
             JobCondition.INTERNET_SYSTEM in self.conditions
