@@ -75,7 +75,7 @@ class Job:
 
         # Check if somethings is ignored
         if ignored_conditions:
-            _LOGGER.warning(
+            _LOGGER.critical(
                 "Following job conditions are ignored and will make the system unstable when they occur: %s",
                 ignored_conditions,
             )
