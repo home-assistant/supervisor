@@ -74,8 +74,10 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "os": coresys.hassos.version,
                 "supervisor": coresys.supervisor.version,
             },
-            "issues": [attr.asdict(issue) for issue in coresys.resolution.issues],
-            "unhealthy": coresys.resolution.unhealthy,
+            "resolution": {
+                "issues": [attr.asdict(issue) for issue in coresys.resolution.issues],
+                "unhealthy": coresys.resolution.unhealthy,
+            },
         }
     )
     event.setdefault("tags", []).extend(
