@@ -13,6 +13,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import StoreGitError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import RE_REPOSITORY
+from ..jobs.decorator import Job, JobCondition
 from .utils import get_hash_from_repository
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -81,6 +82,7 @@ class GitRepo(CoreSysAttributes):
                 )
                 raise StoreGitError() from err
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM])
     async def clone(self) -> None:
         """Clone git add-on repository."""
         async with self.lock:
@@ -117,6 +119,7 @@ class GitRepo(CoreSysAttributes):
                 )
                 raise StoreGitError() from err
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM])
     async def pull(self):
         """Pull Git add-on repo."""
         if self.lock.locked():

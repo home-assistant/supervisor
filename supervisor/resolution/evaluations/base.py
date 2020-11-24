@@ -1,4 +1,5 @@
 """Baseclass for system evaluations."""
+from abc import ABC, abstractproperty, abstractmethod
 import logging
 from typing import List
 
@@ -9,7 +10,7 @@ from ..const import UnsupportedReason
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class EvaluateBase(CoreSysAttributes):
+class EvaluateBase(ABC, CoreSysAttributes):
     """Baseclass for evaluation."""
 
     def __init__(self, coresys: CoreSys) -> None:
@@ -33,19 +34,19 @@ class EvaluateBase(CoreSysAttributes):
                 _LOGGER.info("Clearing %s as reason for unsupported", self.reason)
                 await self.sys_resolution.dismiss_unsupported(self.reason)
 
+    @abstractmethod
     async def evaluate(self):
         """Run evaluation."""
-        raise NotImplementedError
 
     @property
+    @abstractproperty
     def reason(self) -> UnsupportedReason:
         """Return a UnsupportedReason enum."""
-        raise NotImplementedError
 
     @property
+    @abstractproperty
     def on_failure(self) -> str:
         """Return a string that is printed when self.evaluate is False."""
-        raise NotImplementedError
 
     @property
     def states(self) -> List[CoreState]:
