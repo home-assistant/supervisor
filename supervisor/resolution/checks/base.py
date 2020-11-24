@@ -28,10 +28,10 @@ class CheckBase(ABC, CoreSysAttributes):
                 continue
             return
 
-        await self.run_test()
+        await self.run_check()
 
     @abstractmethod
-    async def run_test(self):
+    async def run_check(self):
         """Run check."""
 
     @property

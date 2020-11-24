@@ -14,7 +14,8 @@ from .const import (
 )
 from .data import Issue, Suggestion
 from .evaluate import ResolutionEvaluation
-from .free_space import ResolutionStorage
+from .check import ResolutionCheck
+from .suggestion import ResolutionSuggestion
 from .notify import ResolutionNotify
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -27,8 +28,9 @@ class ResolutionManager(CoreSysAttributes):
         """Initialize Resolution manager."""
         self.coresys: CoreSys = coresys
         self._evaluate = ResolutionEvaluation(coresys)
+        self._check = ResolutionCheck(coresys)
+        self._suggestion = ResolutionSuggestion(coresys)
         self._notify = ResolutionNotify(coresys)
-        self._storage = ResolutionStorage(coresys)
 
         self._suggestions: List[Suggestion] = []
         self._issues: List[Issue] = []
@@ -41,9 +43,14 @@ class ResolutionManager(CoreSysAttributes):
         return self._evaluate
 
     @property
-    def storage(self) -> ResolutionStorage:
-        """Return the ResolutionStorage class."""
-        return self._storage
+    def check(self) -> ResolutionCheck:
+        """Return the ResolutionCheck class."""
+        return self._check
+
+    @property
+    def suggestion(self) -> ResolutionSuggestion:
+        """Return the ResolutionCheck class."""
+        return self._suggestion
 
     @property
     def notify(self) -> ResolutionNotify:
@@ -136,8 +143,7 @@ class ResolutionManager(CoreSysAttributes):
 
     async def healthcheck(self):
         """Scheduled task to check for known issues."""
-        # Check free space
-        self.sys_run_in_executor(self.storage.check_free_space)
+        await self.check.check_system()
 
         # Create notification for any known issues
         await self.notify.issue_notifications()

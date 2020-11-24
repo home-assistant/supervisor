@@ -19,7 +19,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class CheckFreeSpace(CheckBase):
     """Storage class for check."""
 
-    async def run_test(self):
+    async def run_check(self):
         """Run check."""
         if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
             if len(self.sys_snapshots.list_snapshots) == 0:

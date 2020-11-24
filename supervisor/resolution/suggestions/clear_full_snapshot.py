@@ -1,18 +1,13 @@
 """Helpers to check and fix issues with free space."""
 import logging
-from typing import List
 
 from .base import SuggestionBase
 from ...const import SNAPSHOT_FULL
-from ...coresys import CoreSys, CoreSysAttributes
 from ..const import (
-    MINIMUM_FREE_SPACE_THRESHOLD,
     MINIMUM_FULL_SNAPSHOTS,
     ContextType,
-    IssueType,
     SuggestionType,
 )
-from ..data import Suggestion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
