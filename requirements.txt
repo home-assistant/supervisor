@@ -8,7 +8,7 @@ colorlog==4.6.2
 cpe==1.2.1
 cryptography==3.2.1
 debugpy==1.2.0
-docker==4.3.1
+docker==4.4.0
 gitpython==3.1.11
 jinja2==2.11.2
 packaging==20.4
