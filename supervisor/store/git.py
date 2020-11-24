@@ -62,7 +62,7 @@ class GitRepo(CoreSysAttributes):
         ) as err:
             _LOGGER.error("Can't load %s repo: %s.", self.path, err)
             self.lock.release()
-            await self._reinitialise()
+            await self._reinitialize()
         else:
             self.lock.release()
 
@@ -74,7 +74,7 @@ class GitRepo(CoreSysAttributes):
         except git.GitCommandError as err:
             _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
             self.lock.release()
-            await self._reinitialise()
+            await self._reinitialize()
         else:
             self.lock.release()
 
@@ -172,9 +172,9 @@ class GitRepo(CoreSysAttributes):
             ft.partial(shutil.rmtree, self.path, onerror=log_err)
         )
 
-    async def _reinitialise(self):
-        """Reinitialise local git."""
-        _LOGGER.info("Reinitialise local add-on %s repository", self.url)
+    async def _reinitialize(self):
+        """Reinitialize local git."""
+        _LOGGER.info("Reinitialize local add-on %s repository", self.url)
         await self._remove()
         await self.load()
 
