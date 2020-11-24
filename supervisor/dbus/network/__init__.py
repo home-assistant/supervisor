@@ -105,7 +105,8 @@ class NetworkManager(DBusInterface):
             # Connect to interface
             try:
                 await interface.connect()
-            except DBusProgramError:
+            except DBusProgramError as err:
+                _LOGGER.warning("Can't process %s: %s", device, err)
                 continue
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception("Error while processing interface: %s", err)
