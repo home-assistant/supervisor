@@ -152,6 +152,7 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/jobs/info", api_jobs.info),
                 web.post("/jobs/options", api_jobs.options),
+                web.post("/jobs/reset", api_jobs.reset),
             ]
         )
 

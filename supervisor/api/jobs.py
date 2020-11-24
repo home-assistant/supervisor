@@ -35,3 +35,8 @@ class APIJobs(CoreSysAttributes):
             self.sys_jobs.ignore_conditions = body[ATTR_IGNORE_CONDITIONS]
 
         self.sys_jobs.save_data()
+
+    @api_process
+    async def reset(self, request: web.Request) -> None:
+        """Reset options for JobManager."""
+        self.sys_jobs.reset_data()
