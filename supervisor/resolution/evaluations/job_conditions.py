@@ -22,7 +22,7 @@ class EvaluateJobConditions(EvaluateBase):
     @property
     def states(self) -> List[CoreState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.SETUP, CoreState.RUNNING]
+        return [CoreState.INITIALIZE, CoreState.SETUP, CoreState.RUNNING]
 
     async def evaluate(self) -> None:
         """Run evaluation."""
