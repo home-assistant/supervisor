@@ -87,6 +87,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/core/.+"
         r"|/dns/.+"
         r"|/docker/.+"
+        r"|/jobs/.+"
         r"|/hardware/.+"
         r"|/hassos/.+"
         r"|/homeassistant/.+"
