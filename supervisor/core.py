@@ -162,6 +162,7 @@ class Core(CoreSysAttributes):
                     "Can't update Supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )
+                self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
                 self.sys_capture_exception(err)
 
         # Start addon mark as initialize
