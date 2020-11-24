@@ -18,6 +18,7 @@ from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .info import APIInfo
 from .ingress import APIIngress
+from .jobs import APIJobs
 from .multicast import APIMulticast
 from .network import APINetwork
 from .observer import APIObserver
@@ -72,6 +73,7 @@ class RestAPI(CoreSysAttributes):
         self._register_network()
         self._register_observer()
         self._register_os()
+        self._register_jobs()
         self._register_panel()
         self._register_proxy()
         self._register_resolution()
@@ -138,6 +140,19 @@ class RestAPI(CoreSysAttributes):
                 web.get("/os/info", api_os.info),
                 web.post("/os/update", api_os.update),
                 web.post("/os/config/sync", api_os.config_sync),
+            ]
+        )
+
+    def _register_jobs(self) -> None:
+        """Register Jobs functions."""
+        api_jobs = APIJobs()
+        api_jobs.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/jobs/info", api_jobs.info),
+                web.post("/jobs/options", api_jobs.options),
+                web.post("/jobs/reset", api_jobs.reset),
             ]
         )
 

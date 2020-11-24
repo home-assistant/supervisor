@@ -1,5 +1,4 @@
 """Job decorator."""
-from enum import Enum
 import logging
 from typing import List, Optional
 
@@ -9,18 +8,9 @@ from ..const import CoreState
 from ..coresys import CoreSys
 from ..exceptions import HassioError, JobException
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
+from .const import JobCondition
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
-
-
-class JobCondition(str, Enum):
-    """Job condition enum."""
-
-    FREE_SPACE = "free_space"
-    HEALTHY = "healthy"
-    INTERNET_SYSTEM = "internet_system"
-    INTERNET_HOST = "internet_host"
-    RUNNING = "running"
 
 
 class Job:
@@ -76,66 +66,72 @@ class Job:
 
     def _check_conditions(self):
         """Check conditions."""
-        if JobCondition.HEALTHY in self.conditions:
-            if not self._coresys.core.healthy:
-                _LOGGER.warning(
-                    "'%s' blocked from execution, system is not healthy",
-                    self._method.__qualname__,
-                )
-                return False
+        used_conditions = set(self.conditions) - set(
+            self._coresys.jobs.ignore_conditions
+        )
+        ignored_conditions = set(self.conditions) & set(
+            self._coresys.jobs.ignore_conditions
+        )
 
-        if JobCondition.RUNNING in self.conditions:
-            if self._coresys.core.state != CoreState.RUNNING:
-                _LOGGER.warning(
-                    "'%s' blocked from execution, system is not running",
-                    self._method.__qualname__,
-                )
-                return False
-
-        if JobCondition.FREE_SPACE in self.conditions:
-            free_space = self._coresys.host.info.free_space
-            if free_space < MINIMUM_FREE_SPACE_THRESHOLD:
-                _LOGGER.warning(
-                    "'%s' blocked from execution, not enough free space (%sGB) left on the device",
-                    self._method.__qualname__,
-                    free_space,
-                )
-                self._coresys.resolution.create_issue(
-                    IssueType.FREE_SPACE, ContextType.SYSTEM
-                )
-                return False
-
-        if any(
-            internet in self.conditions
-            for internet in (
-                JobCondition.INTERNET_SYSTEM,
-                JobCondition.INTERNET_HOST,
+        # Check if somethings is ignored
+        if ignored_conditions:
+            _LOGGER.critical(
+                "The following job conditions are ignored and will make the system unstable when they occur: %s",
+                ignored_conditions,
             )
-        ):
-            if self._coresys.core.state not in (
-                CoreState.SETUP,
-                CoreState.RUNNING,
-            ):
-                return True
 
-            if (
-                JobCondition.INTERNET_SYSTEM in self.conditions
-                and not self._coresys.supervisor.connectivity
-            ):
-                _LOGGER.warning(
-                    "'%s' blocked from execution, no supervisor internet connection",
-                    self._method.__qualname__,
-                )
-                return False
-            elif (
-                JobCondition.INTERNET_HOST in self.conditions
-                and self._coresys.host.network.connectivity is not None
-                and not self._coresys.host.network.connectivity
-            ):
-                _LOGGER.warning(
-                    "'%s' blocked from execution, no host internet connection",
-                    self._method.__qualname__,
-                )
-                return False
+        if JobCondition.HEALTHY in used_conditions and not self._coresys.core.healthy:
+            _LOGGER.warning(
+                "'%s' blocked from execution, system is not healthy",
+                self._method.__qualname__,
+            )
+            return False
+
+        if (
+            JobCondition.RUNNING in used_conditions
+            and self._coresys.core.state != CoreState.RUNNING
+        ):
+            _LOGGER.warning(
+                "'%s' blocked from execution, system is not running",
+                self._method.__qualname__,
+            )
+            return False
+
+        if (
+            JobCondition.FREE_SPACE in used_conditions
+            and self._coresys.host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD
+        ):
+            _LOGGER.warning(
+                "'%s' blocked from execution, not enough free space (%sGB) left on the device",
+                self._method.__qualname__,
+                self._coresys.host.info.free_space,
+            )
+            self._coresys.resolution.create_issue(
+                IssueType.FREE_SPACE, ContextType.SYSTEM
+            )
+            return False
+
+        if (
+            JobCondition.INTERNET_SYSTEM in self.conditions
+            and not self._coresys.supervisor.connectivity
+            and self._coresys.core.state in (CoreState.SETUP, CoreState.RUNNING)
+        ):
+            _LOGGER.warning(
+                "'%s' blocked from execution, no supervisor internet connection",
+                self._method.__qualname__,
+            )
+            return False
+
+        if (
+            JobCondition.INTERNET_HOST in self.conditions
+            and self._coresys.host.network.connectivity is not None
+            and not self._coresys.host.network.connectivity
+            and self._coresys.core.state in (CoreState.SETUP, CoreState.RUNNING)
+        ):
+            _LOGGER.warning(
+                "'%s' blocked from execution, no host internet connection",
+                self._method.__qualname__,
+            )
+            return False
 
         return True

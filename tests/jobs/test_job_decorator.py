@@ -205,3 +205,30 @@ async def test_running(coresys: CoreSys):
 
     coresys.core.state = CoreState.FREEZE
     assert not await test.execute()
+
+
+async def test_ignore_conditions(coresys: CoreSys):
+    """Test the ignore conditions decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.RUNNING])
+        async def execute(self):
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+
+    coresys.core.state = CoreState.RUNNING
+    assert await test.execute()
+
+    coresys.core.state = CoreState.FREEZE
+    assert not await test.execute()
+
+    coresys.jobs.ignore_conditions = [JobCondition.RUNNING]
+    assert await test.execute()
