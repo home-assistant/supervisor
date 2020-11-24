@@ -174,7 +174,7 @@ class GitRepo(CoreSysAttributes):
 
     async def _reinitialize(self):
         """Reinitialize local git."""
-        _LOGGER.info("Reinitialize local add-on %s repository", self.url)
+        _LOGGER.info("Reinitialize local add-on %s repository", self.path)
         await self._remove()
         await self.load()
 
