@@ -11,6 +11,7 @@ import git
 from ..const import ATTR_BRANCH, ATTR_URL, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import StoreGitError
+from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import RE_REPOSITORY
 from .utils import get_hash_from_repository
@@ -41,6 +42,7 @@ class GitRepo(CoreSysAttributes):
         """Return repository branch."""
         return self.data[ATTR_BRANCH]
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM])
     async def load(self) -> None:
         """Init Git add-on repository."""
         if not self.path.is_dir():
@@ -48,38 +50,33 @@ class GitRepo(CoreSysAttributes):
             return
 
         # Load repository
-        async with self.lock:
-            try:
-                _LOGGER.info("Loading add-on %s repository", self.path)
-                self.repo = await self.sys_run_in_executor(git.Repo, str(self.path))
+        await self.lock.acquire()
+        try:
+            _LOGGER.info("Loading add-on %s repository", self.path)
+            self.repo = await self.sys_run_in_executor(git.Repo, str(self.path))
 
-            except (
-                git.InvalidGitRepositoryError,
-                git.NoSuchPathError,
-                git.GitCommandError,
-            ) as err:
-                _LOGGER.error("Can't load %s repo: %s.", self.path, err)
-                self.sys_resolution.create_issue(
-                    IssueType.FATAL_ERROR,
-                    ContextType.STORE,
-                    reference=self.slug,
-                )
-                raise StoreGitError() from err
+        except (
+            git.InvalidGitRepositoryError,
+            git.NoSuchPathError,
+            git.GitCommandError,
+        ) as err:
+            _LOGGER.error("Can't load %s repo: %s.", self.path, err)
+            self.lock.release()
+            await self._reinitialise()
+        else:
+            self.lock.release()
 
         # Fix possible corruption
-        async with self.lock:
-            try:
-                _LOGGER.debug("Integrity check add-on %s repository", self.path)
-                await self.sys_run_in_executor(self.repo.git.execute, ["git", "fsck"])
-            except git.GitCommandError as err:
-                _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
-                self.sys_resolution.create_issue(
-                    IssueType.CORRUPT_REPOSITORY,
-                    ContextType.STORE,
-                    reference=self.slug,
-                    suggestions=[SuggestionType.EXECUTE_RESET],
-                )
-                raise StoreGitError() from err
+        await self.lock.acquire()
+        try:
+            _LOGGER.debug("Integrity check add-on %s repository", self.path)
+            await self.sys_run_in_executor(self.repo.git.execute, ["git", "fsck"])
+        except git.GitCommandError as err:
+            _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
+            self.lock.release()
+            await self._reinitialise()
+        else:
+            self.lock.release()
 
     async def clone(self) -> None:
         """Clone git add-on repository."""
@@ -174,6 +171,12 @@ class GitRepo(CoreSysAttributes):
         await self.sys_run_in_executor(
             ft.partial(shutil.rmtree, self.path, onerror=log_err)
         )
+
+    async def _reinitialise(self):
+        """Reinitialise local git."""
+        _LOGGER.info("Reinitialise local add-on %s repository", self.url)
+        await self._remove()
+        await self.load()
 
 
 class GitRepoHassIO(GitRepo):
