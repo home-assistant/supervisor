@@ -1,9 +1,11 @@
 """Supervisor resolution center."""
+from datetime import time
 import logging
 from typing import List, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
+from .check import ResolutionCheck
 from .const import (
     SCHEDULED_HEALTHCHECK,
     ContextType,
@@ -14,7 +16,6 @@ from .const import (
 )
 from .data import Issue, Suggestion
 from .evaluate import ResolutionEvaluation
-from .check import ResolutionCheck
 from .fixup import ResolutionFixup
 from .notify import ResolutionNotify
 
@@ -48,7 +49,7 @@ class ResolutionManager(CoreSysAttributes):
         return self._check
 
     @property
-    def suggestion(self) -> ResolutionFixup:
+    def fixup(self) -> ResolutionFixup:
         """Return the ResolutionFixup class."""
         return self._fixup
 
@@ -140,6 +141,7 @@ class ResolutionManager(CoreSysAttributes):
 
         # Schedule the healthcheck
         self.sys_scheduler.register_task(self.healthcheck, SCHEDULED_HEALTHCHECK)
+        self.sys_scheduler.register_task(self.fixup.run_autofix, time(hour=2))
 
     async def healthcheck(self):
         """Scheduled task to check for known issues."""
@@ -154,13 +156,7 @@ class ResolutionManager(CoreSysAttributes):
             _LOGGER.warning("Suggestion %s is not valid", suggestion.uuid)
             raise ResolutionError()
 
-        if suggestion.type == SuggestionType.CLEAR_FULL_SNAPSHOT:
-            self.storage.clean_full_snapshots()
-
-        elif suggestion.type == SuggestionType.CREATE_FULL_SNAPSHOT:
-            await self.sys_snapshots.do_snapshot_full()
-
-        self._suggestions.remove(suggestion)
+        await self.fixup.apply_fixup(suggestion)
         await self.healthcheck()
 
     async def dismiss_suggestion(self, suggestion: Suggestion) -> None:

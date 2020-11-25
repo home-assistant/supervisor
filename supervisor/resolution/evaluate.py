@@ -1,7 +1,8 @@
 """Helpers to evaluate the system."""
 import logging
-from supervisor.exceptions import HassioError
 from typing import List
+
+from supervisor.exceptions import HassioError
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import UnhealthyReason, UnsupportedReason
@@ -46,7 +47,7 @@ class ResolutionEvaluation(CoreSysAttributes):
         self._job_conditions = EvaluateJobConditions(coresys)
 
     @property
-    def all_evalution(self) -> List[EvaluateBase]:
+    def all_evalutions(self) -> List[EvaluateBase]:
         """Return list of all evaluations."""
         return [
             self._container,
@@ -65,7 +66,7 @@ class ResolutionEvaluation(CoreSysAttributes):
         """Evaluate the system."""
         _LOGGER.info("Starting system evaluation with state %s", self.sys_core.state)
 
-        for evaluation in self.all_evalution:
+        for evaluation in self.all_evalutions:
             try:
                 evaluation()
             except HassioError as err:
