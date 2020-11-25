@@ -1,11 +1,11 @@
 """Baseclass for system checks."""
-from abc import ABC, abstractproperty, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 import logging
 from typing import List
 
 from ...const import CoreState
 from ...coresys import CoreSys, CoreSysAttributes
-from ..const import ContextType, IssueType, UnsupportedReason
+from ..const import ContextType, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class CheckBase(ABC, CoreSysAttributes):
 
         # Don't need run if issue exists
         for issue in self.sys_resolution.issues:
-            if issue.type != self.issue and issue.context != self.context:
+            if issue.type != self.issue or issue.context != self.context:
                 continue
             return
 

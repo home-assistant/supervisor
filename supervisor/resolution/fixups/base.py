@@ -23,10 +23,7 @@ class FixupBase(ABC, CoreSysAttributes):
         # Get suggestion to fix
         fixing_suggestion: Optional[Suggestion] = None
         for suggestion in self.sys_resolution.suggestions:
-            if (
-                suggestion.type != self.suggestion
-                and suggestion.context != self.context
-            ):
+            if suggestion.type != self.suggestion or suggestion.context != self.context:
                 continue
             fixing_suggestion = suggestion
             break

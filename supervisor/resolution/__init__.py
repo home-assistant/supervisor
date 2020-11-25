@@ -159,21 +159,21 @@ class ResolutionManager(CoreSysAttributes):
         await self.fixup.apply_fixup(suggestion)
         await self.healthcheck()
 
-    async def dismiss_suggestion(self, suggestion: Suggestion) -> None:
+    def dismiss_suggestion(self, suggestion: Suggestion) -> None:
         """Dismiss suggested action."""
         if suggestion not in self._suggestions:
             _LOGGER.warning("The UUID %s is not valid suggestion", suggestion.uuid)
             raise ResolutionError()
         self._suggestions.remove(suggestion)
 
-    async def dismiss_issue(self, issue: Issue) -> None:
+    def dismiss_issue(self, issue: Issue) -> None:
         """Dismiss suggested action."""
         if issue not in self._issues:
             _LOGGER.warning("The UUID %s is not a valid issue", issue.uuid)
             raise ResolutionError()
         self._issues.remove(issue)
 
-    async def dismiss_unsupported(self, reason: Issue) -> None:
+    def dismiss_unsupported(self, reason: Issue) -> None:
         """Dismiss a reason for unsupported."""
         if reason not in self._unsupported:
             _LOGGER.warning("The reason %s is not active", reason)

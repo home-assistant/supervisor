@@ -46,6 +46,6 @@ class ResolutionFixup(CoreSysAttributes):
     async def apply_fixup(self, suggestion: Suggestion) -> None:
         """Apply a fixup for a suggestion."""
         for fix in self.all_fixes:
-            if fix.suggestion != suggestion.type and fix.context != suggestion.context:
+            if fix.suggestion != suggestion.type or fix.context != suggestion.context:
                 continue
             await fix()

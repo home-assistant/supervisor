@@ -68,7 +68,7 @@ class ResolutionEvaluation(CoreSysAttributes):
 
         for evaluation in self.all_evalutions:
             try:
-                evaluation()
+                await evaluation()
             except HassioError as err:
                 _LOGGER.warning(
                     "Error during processing %s: %s", evaluation.reason, err
