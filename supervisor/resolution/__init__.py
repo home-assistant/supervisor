@@ -15,7 +15,7 @@ from .const import (
 from .data import Issue, Suggestion
 from .evaluate import ResolutionEvaluation
 from .check import ResolutionCheck
-from .suggestion import ResolutionSuggestion
+from .fixup import ResolutionFixup
 from .notify import ResolutionNotify
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class ResolutionManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._evaluate = ResolutionEvaluation(coresys)
         self._check = ResolutionCheck(coresys)
-        self._suggestion = ResolutionSuggestion(coresys)
+        self._fixup = ResolutionFixup(coresys)
         self._notify = ResolutionNotify(coresys)
 
         self._suggestions: List[Suggestion] = []
@@ -48,9 +48,9 @@ class ResolutionManager(CoreSysAttributes):
         return self._check
 
     @property
-    def suggestion(self) -> ResolutionSuggestion:
-        """Return the ResolutionCheck class."""
-        return self._suggestion
+    def suggestion(self) -> ResolutionFixup:
+        """Return the ResolutionFixup class."""
+        return self._fixup
 
     @property
     def notify(self) -> ResolutionNotify:
