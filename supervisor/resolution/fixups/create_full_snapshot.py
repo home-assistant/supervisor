@@ -8,7 +8,7 @@ from .base import FixupBase
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class FixupDoFullSnapshot(FixupBase):
+class FixupCreateFullSnapshot(FixupBase):
     """Storage class for fixup."""
 
     async def process_fixup(self, suggestion: Suggestion) -> None:

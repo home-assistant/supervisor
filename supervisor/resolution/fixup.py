@@ -8,7 +8,7 @@ from supervisor.resolution.data import Suggestion
 from ..coresys import CoreSys, CoreSysAttributes
 from .fixups.base import FixupBase
 from .fixups.clear_full_snapshot import FixupClearFullSnapshot
-from .fixups.do_full_snapshot import FixupDoFullSnapshot
+from .fixups.create_full_snapshot import FixupCreateFullSnapshot
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -20,13 +20,13 @@ class ResolutionFixup(CoreSysAttributes):
         """Initialize the suggestion class."""
         self.coresys = coresys
 
-        self._do_full_snapshot = FixupDoFullSnapshot(coresys)
+        self._create_full_snapshot = FixupCreateFullSnapshot(coresys)
         self._clear_full_snapshot = FixupClearFullSnapshot(coresys)
 
     @property
     def all_fixes(self) -> List[FixupBase]:
         """Return a list of all fixups."""
-        return [self._do_full_snapshot, self._clear_full_snapshot]
+        return [self._create_full_snapshot, self._clear_full_snapshot]
 
     async def run_autofix(self) -> None:
         """Run all startup fixes."""
