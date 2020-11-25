@@ -1,0 +1,69 @@
+"""Baseclass for system fixup."""
+from abc import ABC, abstractproperty, abstractmethod
+import logging
+from typing import Optional
+
+from ...const import CoreState
+from ...coresys import CoreSys, CoreSysAttributes
+from ...exceptions import ResolutionFixupError
+from ..const import SuggestionType, IssueType, ContextType
+from ..data import Suggestion
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+class FixupBase(ABC, CoreSysAttributes):
+    """Baseclass for fixup."""
+
+    def __init__(self, coresys: CoreSys) -> None:
+        """Initialize the fixup class."""
+        self.coresys = coresys
+
+    async def __call__(self) -> None:
+        """Execute the evaluation."""
+        # Get suggestion to fix
+        fixing_suggestion: Optional[Suggestion] = None
+        for suggestion in self.sys_resolution.suggestions:
+            if (
+                suggestion.type != self.suggestion
+                and suggestion.context != self.context
+            ):
+                continue
+            fixing_suggestion = suggestion
+            break
+
+        # No suggestion
+        if fixing_suggestion is None:
+            return
+
+        # Process fixup
+        try:
+            await self.process_fixup()
+        except ResolutionFixupError:
+            return
+
+        self.sys_resolution.dismiss_suggestion(fixing_suggestion)
+
+    @abstractmethod
+    async def process_fixup(self) -> None:
+        """Run processing of fixup."""
+
+    @property
+    @abstractproperty
+    def suggestion(self) -> SuggestionType:
+        """Return a SuggestionType enum."""
+
+    @property
+    @abstractproperty
+    def context(self) -> ContextType:
+        """Return a ContextType enum."""
+
+    @property
+    def issue(self) -> Optional[IssueType]:
+        """Return a IssueType enum."""
+        return None
+
+    @property
+    def auto(self) -> bool:
+        """Return if a fixup can be apply as auto fix."""
+        return False
