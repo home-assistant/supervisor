@@ -1,5 +1,5 @@
 """Baseclass for system evaluations."""
-from abc import ABC, abstractproperty, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 import logging
 from typing import List
 
@@ -32,7 +32,7 @@ class EvaluateBase(ABC, CoreSysAttributes):
         else:
             if self.reason in self.sys_resolution.unsupported:
                 _LOGGER.info("Clearing %s as reason for unsupported", self.reason)
-                await self.sys_resolution.dismiss_unsupported(self.reason)
+                self.sys_resolution.dismiss_unsupported(self.reason)
 
     @abstractmethod
     async def evaluate(self):

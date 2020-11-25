@@ -11,9 +11,9 @@ import git
 from ..const import ATTR_BRANCH, ATTR_URL, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import StoreGitError
+from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import RE_REPOSITORY
-from ..jobs.decorator import Job, JobCondition
 from .utils import get_hash_from_repository
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
