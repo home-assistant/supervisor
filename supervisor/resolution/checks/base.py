@@ -24,7 +24,7 @@ class CheckBase(ABC, CoreSysAttributes):
 
         # Don't need run if issue exists
         for issue in self.sys_resolution.issues:
-            if not issue.type != self.issue and issue.context != self.context:
+            if issue.type != self.issue and issue.context != self.context:
                 continue
             return
 
