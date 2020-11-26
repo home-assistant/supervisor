@@ -25,6 +25,7 @@ PROC_STAT: Path = Path("/proc/stat")
 RE_BOOT_TIME: re.Pattern = re.compile(r"btime (\d+)")
 
 GPIO_DEVICES: Path = Path("/sys/class/gpio")
+INPUT_DEVICES: Path = Path("/dev/input/by-id")
 SOC_DEVICES: Path = Path("/sys/devices/platform/soc")
 RE_TTY: re.Pattern = re.compile(r"tty[A-Z]+")
 
@@ -114,9 +115,8 @@ class Hardware:
     def input_devices(self) -> Set[str]:
         """Return all input devices."""
         dev_list: Set[str] = set()
-        for device in self.context.list_devices(subsystem="input"):
-            if "NAME" in device.properties:
-                dev_list.add(device.properties["NAME"].replace('"', "").strip())
+        for device in INPUT_DEVICES.iterdir():
+            dev_list.add(str(device))
 
         return dev_list
 
