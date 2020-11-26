@@ -37,3 +37,18 @@ async def test_if_check_make_issue(coresys: CoreSys):
         await coresys.resolution.check.check_system()
 
     assert coresys.resolution.issues[-1].type == IssueType.FREE_SPACE
+
+
+async def test_if_check_cleanup_issue(coresys: CoreSys):
+    """Test check for setup."""
+    coresys.core.state = CoreState.RUNNING
+
+    with patch("shutil.disk_usage", return_value=(1, 1, 1)):
+        await coresys.resolution.check.check_system()
+
+    assert coresys.resolution.issues[-1].type == IssueType.FREE_SPACE
+
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        await coresys.resolution.check.check_system()
+
+    assert len(coresys.resolution.issues) == 0

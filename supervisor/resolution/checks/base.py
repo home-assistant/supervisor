@@ -1,11 +1,12 @@
 """Baseclass for system checks."""
 from abc import ABC, abstractmethod, abstractproperty
 import logging
-from typing import List
+from typing import List, Optional
 
 from ...const import CoreState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import ContextType, IssueType
+from ..data import Issue
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -22,18 +23,33 @@ class CheckBase(ABC, CoreSysAttributes):
         if self.sys_core.state not in self.states:
             return
 
-        # Don't need run if issue exists
+        # Check if system is affected by the issue
+        affected: Optional[Issue] = None
         for issue in self.sys_resolution.issues:
             if issue.type != self.issue or issue.context != self.context:
                 continue
+            affected = issue
+            break
+
+        # System is not affected
+        if affected is None:
+            _LOGGER.debug("Run check for %s/%s", self.issue, self.context)
+            await self.run_check()
             return
 
-        _LOGGER.debug("Run check for %s/%s", self.issue, self.context)
-        await self.run_check()
+        # Check if issue still exists
+        if await self.approve_check():
+            return
+
+        self.sys_resolution.dismiss_issue(affected)
 
     @abstractmethod
-    async def run_check(self):
-        """Run check."""
+    async def run_check(self) -> None:
+        """Run check if not affected by issue."""
+
+    @abstractmethod
+    async def approve_check(self) -> bool:
+        """Approve check if it is affected by issue."""
 
     @property
     @abstractproperty

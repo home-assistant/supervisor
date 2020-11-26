@@ -26,6 +26,18 @@ async def test_check(coresys: CoreSys):
     assert coresys.resolution.issues[-1].type == IssueType.FREE_SPACE
 
 
+async def test_approve(coresys: CoreSys):
+    """Test check."""
+    free_space = CheckFreeSpace(coresys)
+    coresys.core.state = CoreState.RUNNING
+
+    with patch("shutil.disk_usage", return_value=(1, 1, 1)):
+        assert await free_space.approve_check()
+
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        assert not await free_space.approve_check()
+
+
 async def test_did_run(coresys: CoreSys):
     """Test that the check ran as expected."""
     free_space = CheckFreeSpace(coresys)
