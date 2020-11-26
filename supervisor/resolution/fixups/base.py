@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod, abstractproperty
 from contextlib import suppress
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from ...coresys import CoreSys, CoreSysAttributes
 from ...exceptions import ResolutionError, ResolutionFixupError
@@ -42,13 +42,12 @@ class FixupBase(ABC, CoreSysAttributes):
 
         self.sys_resolution.dismiss_suggestion(fixing_suggestion)
 
-        if self.issue is None:
-            return
-
-        with suppress(ResolutionError):
-            self.sys_resolution.dismiss_issue(
-                Issue(self.issue, self.context, fixing_suggestion.reference)
-            )
+        # Cleanup issue
+        for issue in self.issues:
+            with suppress(ResolutionError):
+                self.sys_resolution.dismiss_issue(
+                    Issue(issue, self.context, fixing_suggestion.reference)
+                )
 
     @abstractmethod
     async def process_fixup(self, reference: Optional[str] = None) -> None:
@@ -65,9 +64,9 @@ class FixupBase(ABC, CoreSysAttributes):
         """Return a ContextType enum."""
 
     @property
-    def issue(self) -> Optional[IssueType]:
-        """Return a IssueType enum."""
-        return None
+    def issues(self) -> List[IssueType]:
+        """Return a IssueType enum list."""
+        return []
 
     @property
     def auto(self) -> bool:

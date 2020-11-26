@@ -67,4 +67,3 @@ class SuggestionType(str, Enum):
     EXECUTE_RESET = "execute_reset"
     EXECUTE_RELOAD = "execute_reload"
     REGISTRY_LOGIN = "registry_login"
-    NEW_INITIALIZE = "new_initialize"

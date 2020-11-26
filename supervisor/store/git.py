@@ -114,7 +114,7 @@ class GitRepo(CoreSysAttributes):
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
                     reference=self.path.stem,
-                    suggestions=[SuggestionType.NEW_INITIALIZE],
+                    suggestions=[SuggestionType.EXECUTE_RELOAD],
                 )
                 raise StoreGitError() from err
 
