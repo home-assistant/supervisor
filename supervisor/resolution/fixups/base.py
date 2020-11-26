@@ -1,14 +1,11 @@
 """Baseclass for system fixup."""
 from abc import ABC, abstractmethod, abstractproperty
-import logging
 from typing import Optional
 
 from ...coresys import CoreSys, CoreSysAttributes
 from ...exceptions import ResolutionFixupError
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Suggestion
-
-_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class FixupBase(ABC, CoreSysAttributes):
