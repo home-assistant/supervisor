@@ -28,6 +28,7 @@ class CheckBase(ABC, CoreSysAttributes):
                 continue
             return
 
+        _LOGGER.debug("Run check for %s/%s", self.issue, self.context)
         await self.run_check()
 
     @abstractmethod

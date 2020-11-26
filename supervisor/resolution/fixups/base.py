@@ -1,11 +1,15 @@
 """Baseclass for system fixup."""
 from abc import ABC, abstractmethod, abstractproperty
+from contextlib import suppress
+import logging
 from typing import Optional
 
 from ...coresys import CoreSys, CoreSysAttributes
-from ...exceptions import ResolutionFixupError
+from ...exceptions import ResolutionError, ResolutionFixupError
 from ..const import ContextType, IssueType, SuggestionType
-from ..data import Suggestion
+from ..data import Issue, Suggestion
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class FixupBase(ABC, CoreSysAttributes):
@@ -30,12 +34,21 @@ class FixupBase(ABC, CoreSysAttributes):
             return
 
         # Process fixup
+        _LOGGER.debug("Run fixup for %s/%s", self.suggestion, self.context)
         try:
             await self.process_fixup(fixing_suggestion)
         except ResolutionFixupError:
             return
 
         self.sys_resolution.dismiss_suggestion(fixing_suggestion)
+
+        if self.issue is None:
+            return
+
+        with suppress(ResolutionError):
+            self.sys_resolution.dismiss_issue(
+                Issue(self.issue, self.context, fixing_suggestion.reference)
+            )
 
     @abstractmethod
     async def process_fixup(self, suggestion: Suggestion) -> None:

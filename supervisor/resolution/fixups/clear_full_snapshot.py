@@ -2,7 +2,7 @@
 import logging
 
 from ...const import SNAPSHOT_FULL
-from ..const import MINIMUM_FULL_SNAPSHOTS, ContextType, SuggestionType
+from ..const import MINIMUM_FULL_SNAPSHOTS, ContextType, IssueType, SuggestionType
 from ..data import Suggestion
 from .base import FixupBase
 
@@ -34,3 +34,8 @@ class FixupClearFullSnapshot(FixupBase):
     def context(self) -> ContextType:
         """Return a ContextType enum."""
         return ContextType.SYSTEM
+
+    @property
+    def issue(self) -> IssueType:
+        """Return a IssueType enum."""
+        return IssueType.FREE_SPACE
