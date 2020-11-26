@@ -295,6 +295,10 @@ class ResolutionNotFound(ResolutionError):
     """Raise if suggestion/issue was not found."""
 
 
+class ResolutionFixupError(HassioError):
+    """Rasie if a fixup fails."""
+
+
 # Store
 
 

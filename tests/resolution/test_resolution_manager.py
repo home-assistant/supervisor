@@ -1,16 +1,8 @@
 """Tests for resolution manager."""
-from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
 
-from supervisor.const import (
-    ATTR_DATE,
-    ATTR_SLUG,
-    ATTR_TYPE,
-    SNAPSHOT_FULL,
-    SNAPSHOT_PARTIAL,
-)
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionError
 from supervisor.resolution.const import (
@@ -21,9 +13,6 @@ from supervisor.resolution.const import (
     UnsupportedReason,
 )
 from supervisor.resolution.data import Issue, Suggestion
-from supervisor.snapshots.snapshot import Snapshot
-from supervisor.utils.dt import utcnow
-from supervisor.utils.tar import SecureTarFile
 
 
 def test_properies_unsupported(coresys: CoreSys):
@@ -44,42 +33,6 @@ def test_properies_unhealthy(coresys: CoreSys):
     assert not coresys.core.healthy
 
 
-async def test_clear_snapshots(coresys: CoreSys, tmp_path):
-    """Test snapshot cleanup."""
-    for slug in ["sn1", "sn2", "sn3", "sn4", "sn5"]:
-        temp_tar = Path(tmp_path, f"{slug}.tar")
-        with SecureTarFile(temp_tar, "w"):
-            pass
-        snapshot = Snapshot(coresys, temp_tar)
-        snapshot._data = {  # pylint: disable=protected-access
-            ATTR_SLUG: slug,
-            ATTR_DATE: utcnow().isoformat(),
-            ATTR_TYPE: SNAPSHOT_PARTIAL
-            if "1" in slug or "5" in slug
-            else SNAPSHOT_FULL,
-        }
-        coresys.snapshots.snapshots_obj[snapshot.slug] = snapshot
-
-    newest_full_snapshot = coresys.snapshots.snapshots_obj["sn4"]
-
-    assert newest_full_snapshot in coresys.snapshots.list_snapshots
-    assert (
-        len(
-            [x for x in coresys.snapshots.list_snapshots if x.sys_type == SNAPSHOT_FULL]
-        )
-        == 3
-    )
-
-    coresys.resolution.storage.clean_full_snapshots()
-    assert newest_full_snapshot in coresys.snapshots.list_snapshots
-    assert (
-        len(
-            [x for x in coresys.snapshots.list_snapshots if x.sys_type == SNAPSHOT_FULL]
-        )
-        == 1
-    )
-
-
 @pytest.mark.asyncio
 async def test_resolution_dismiss_suggestion(coresys: CoreSys):
     """Test resolution manager suggestion apply api."""
@@ -88,11 +41,11 @@ async def test_resolution_dismiss_suggestion(coresys: CoreSys):
     )
 
     assert SuggestionType.CLEAR_FULL_SNAPSHOT == coresys.resolution.suggestions[-1].type
-    await coresys.resolution.dismiss_suggestion(clear_snapshot)
+    coresys.resolution.dismiss_suggestion(clear_snapshot)
     assert clear_snapshot not in coresys.resolution.suggestions
 
     with pytest.raises(ResolutionError):
-        await coresys.resolution.dismiss_suggestion(clear_snapshot)
+        coresys.resolution.dismiss_suggestion(clear_snapshot)
 
 
 @pytest.mark.asyncio
@@ -131,11 +84,11 @@ async def test_resolution_dismiss_issue(coresys: CoreSys):
     )
 
     assert IssueType.UPDATE_FAILED == coresys.resolution.issues[-1].type
-    await coresys.resolution.dismiss_issue(updated_failed)
+    coresys.resolution.dismiss_issue(updated_failed)
     assert updated_failed not in coresys.resolution.issues
 
     with pytest.raises(ResolutionError):
-        await coresys.resolution.dismiss_issue(updated_failed)
+        coresys.resolution.dismiss_issue(updated_failed)
 
 
 @pytest.mark.asyncio
@@ -161,8 +114,8 @@ async def test_resolution_dismiss_unsupported(coresys: CoreSys):
     """Test resolution manager dismiss unsupported reason."""
     coresys.resolution.unsupported = UnsupportedReason.CONTAINER
 
-    await coresys.resolution.dismiss_unsupported(UnsupportedReason.CONTAINER)
+    coresys.resolution.dismiss_unsupported(UnsupportedReason.CONTAINER)
     assert UnsupportedReason.CONTAINER not in coresys.resolution.unsupported
 
     with pytest.raises(ResolutionError):
-        await coresys.resolution.dismiss_unsupported(UnsupportedReason.CONTAINER)
+        coresys.resolution.dismiss_unsupported(UnsupportedReason.CONTAINER)

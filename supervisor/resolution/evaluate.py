@@ -1,8 +1,12 @@
 """Helpers to evaluate the system."""
 import logging
+from typing import List
+
+from supervisor.exceptions import HassioError
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import UnhealthyReason, UnsupportedReason
+from .evaluations.base import EvaluateBase
 from .evaluations.container import EvaluateContainer
 from .evaluations.dbus import EvaluateDbus
 from .evaluations.docker_configuration import EvaluateDockerConfiguration
@@ -42,19 +46,34 @@ class ResolutionEvaluation(CoreSysAttributes):
         self._systemd = EvaluateSystemd(coresys)
         self._job_conditions = EvaluateJobConditions(coresys)
 
+    @property
+    def all_evalutions(self) -> List[EvaluateBase]:
+        """Return list of all evaluations."""
+        return [
+            self._container,
+            self._dbus,
+            self._docker_configuration,
+            self._docker_version,
+            self._lxc,
+            self._network_manager,
+            self._operating_system,
+            self._privileged,
+            self._systemd,
+            self._job_conditions,
+        ]
+
     async def evaluate_system(self) -> None:
         """Evaluate the system."""
         _LOGGER.info("Starting system evaluation with state %s", self.sys_core.state)
-        await self._container()
-        await self._dbus()
-        await self._docker_configuration()
-        await self._docker_version()
-        await self._lxc()
-        await self._network_manager()
-        await self._operating_system()
-        await self._privileged()
-        await self._systemd()
-        await self._job_conditions()
+
+        for evaluation in self.all_evalutions:
+            try:
+                await evaluation()
+            except HassioError as err:
+                _LOGGER.warning(
+                    "Error during processing %s: %s", evaluation.reason, err
+                )
+                self.sys_capture_exception(err)
 
         if any(reason in self.sys_resolution.unsupported for reason in UNHEALTHY):
             self.sys_resolution.unhealthy = UnhealthyReason.DOCKER
