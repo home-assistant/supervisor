@@ -3,7 +3,6 @@ import asyncio
 import functools as ft
 import logging
 from pathlib import Path
-import shutil
 from typing import Dict, Optional
 
 import git
@@ -13,6 +12,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import StoreGitError
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..utils import remove_folder
 from ..validate import RE_REPOSITORY
 from .utils import get_hash_from_repository
 
@@ -30,7 +30,6 @@ class GitRepo(CoreSysAttributes):
         self.lock: asyncio.Lock = asyncio.Lock()
 
         self.data: Dict[str, str] = RE_REPOSITORY.match(url).groupdict()
-        self.slug: str = url
 
     @property
     def url(self) -> str:
@@ -63,7 +62,7 @@ class GitRepo(CoreSysAttributes):
                 self.sys_resolution.create_issue(
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
-                    reference=self.slug,
+                    reference=self.path.stem,
                 )
                 raise StoreGitError() from err
 
@@ -77,7 +76,7 @@ class GitRepo(CoreSysAttributes):
                 self.sys_resolution.create_issue(
                     IssueType.CORRUPT_REPOSITORY,
                     ContextType.STORE,
-                    reference=self.slug,
+                    reference=self.path.stem,
                     suggestions=[SuggestionType.EXECUTE_RESET],
                 )
                 raise StoreGitError() from err
@@ -114,7 +113,7 @@ class GitRepo(CoreSysAttributes):
                 self.sys_resolution.create_issue(
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
-                    reference=self.slug,
+                    reference=self.path.stem,
                     suggestions=[SuggestionType.NEW_INITIALIZE],
                 )
                 raise StoreGitError() from err
@@ -156,7 +155,7 @@ class GitRepo(CoreSysAttributes):
                 self.sys_resolution.create_issue(
                     IssueType.CORRUPT_REPOSITORY,
                     ContextType.STORE,
-                    reference=self.slug,
+                    reference=self.path.stem,
                     suggestions=[SuggestionType.EXECUTE_RELOAD],
                 )
                 raise StoreGitError() from err
@@ -169,14 +168,7 @@ class GitRepo(CoreSysAttributes):
 
         if not self.path.is_dir():
             return
-
-        def log_err(funct, path, _):
-            """Log error."""
-            _LOGGER.warning("Can't remove %s", path)
-
-        await self.sys_run_in_executor(
-            ft.partial(shutil.rmtree, self.path, onerror=log_err)
-        )
+        await remove_folder(self.path)
 
 
 class GitRepoHassIO(GitRepo):

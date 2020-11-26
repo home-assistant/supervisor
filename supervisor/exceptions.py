@@ -310,6 +310,10 @@ class StoreGitError(StoreError):
     """Raise if something on git is happening."""
 
 
+class StoreNotFound(StoreError):
+    """Reaise if slug is not known."""
+
+
 # JobManager
 
 

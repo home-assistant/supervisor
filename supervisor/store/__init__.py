@@ -11,7 +11,7 @@ from supervisor.utils.json import read_json_file
 
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JsonFileError, StoreGitError
+from ..exceptions import JsonFileError, StoreGitError, StoreNotFound
 from ..jobs.decorator import Job, JobCondition
 from .addon import AddonStore
 from .data import StoreData
@@ -35,6 +35,12 @@ class StoreManager(CoreSysAttributes):
     def all(self) -> List[Repository]:
         """Return list of add-on repositories."""
         return list(self.repositories.values())
+
+    def get(self, slug: str) -> Repository:
+        """Return Repository with slug."""
+        if slug not in self.repositories:
+            raise StoreNotFound()
+        return self.repositories[slug]
 
     async def load(self) -> None:
         """Start up add-on management."""
