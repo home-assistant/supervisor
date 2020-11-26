@@ -19,8 +19,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class CheckFreeSpace(CheckBase):
     """Storage class for check."""
 
-    async def run_check(self):
-        """Run check."""
+    async def run_check(self) -> None:
+        """Run check if not affected by issue."""
         if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
             if len(self.sys_snapshots.list_snapshots) == 0:
                 # No snapshots, let's suggest the user to create one!
@@ -45,6 +45,12 @@ class CheckFreeSpace(CheckBase):
         self.sys_resolution.create_issue(
             IssueType.FREE_SPACE, ContextType.SYSTEM, suggestions=suggestions
         )
+
+    async def approve_check(self) -> bool:
+        """Approve check if it is affected by issue."""
+        if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
+            return False
+        return True
 
     @property
     def issue(self) -> IssueType:
