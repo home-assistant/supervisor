@@ -2,7 +2,6 @@
 import logging
 from typing import List
 
-from .base import CheckBase
 from ...const import SNAPSHOT_FULL, CoreState
 from ..const import (
     MINIMUM_FREE_SPACE_THRESHOLD,
@@ -12,6 +11,7 @@ from ..const import (
     SuggestionType,
 )
 from ..data import Suggestion
+from .base import CheckBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
