@@ -36,7 +36,7 @@ class FixupBase(ABC, CoreSysAttributes):
         # Process fixup
         _LOGGER.debug("Run fixup for %s/%s", self.suggestion, self.context)
         try:
-            await self.process_fixup(fixing_suggestion)
+            await self.process_fixup(reference=fixing_suggestion.reference)
         except ResolutionFixupError:
             return
 
@@ -51,7 +51,7 @@ class FixupBase(ABC, CoreSysAttributes):
             )
 
     @abstractmethod
-    async def process_fixup(self, suggestion: Suggestion) -> None:
+    async def process_fixup(self, reference: Optional[str] = None) -> None:
         """Run processing of fixup."""
 
     @property
