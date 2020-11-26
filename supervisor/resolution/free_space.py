@@ -25,13 +25,16 @@ class ResolutionStorage(CoreSysAttributes):
 
     def check_free_space(self) -> None:
         """Check free space."""
-        if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
+        free_space = self.sys_host.info.free_space
+        if free_space > MINIMUM_FREE_SPACE_THRESHOLD:
             if len(self.sys_snapshots.list_snapshots) == 0:
                 # No snapshots, let's suggest the user to create one!
                 self.sys_resolution.suggestions = Suggestion(
                     SuggestionType.CREATE_FULL_SNAPSHOT, ContextType.SYSTEM
                 )
             return
+
+        _LOGGER.warning("Free space left on the device: %sGB", free_space)
 
         suggestions: List[SuggestionType] = []
         if (
@@ -47,7 +50,10 @@ class ResolutionStorage(CoreSysAttributes):
             suggestions.append(SuggestionType.CLEAR_FULL_SNAPSHOT)
 
         self.sys_resolution.create_issue(
-            IssueType.FREE_SPACE, ContextType.SYSTEM, suggestions=suggestions
+            IssueType.FREE_SPACE,
+            ContextType.SYSTEM,
+            suggestions=suggestions,
+            reference=str(free_space),
         )
 
     def clean_full_snapshots(self):
