@@ -58,7 +58,7 @@ class GitRepo(CoreSysAttributes):
                 git.NoSuchPathError,
                 git.GitCommandError,
             ) as err:
-                _LOGGER.error("Can't load %s repo: %s.", self.path, err)
+                _LOGGER.error("Can't load %s", self.path)
                 self.sys_resolution.create_issue(
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
