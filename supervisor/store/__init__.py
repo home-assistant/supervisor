@@ -6,16 +6,15 @@ from typing import Dict, List
 
 import voluptuous as vol
 
-from supervisor.store.validate import SCHEMA_REPOSITORY_CONFIG
-from supervisor.utils.json import read_json_file
-
 from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JsonFileError, StoreGitError, StoreNotFound
 from ..jobs.decorator import Job, JobCondition
+from ..utils.json import read_json_file
 from .addon import AddonStore
 from .data import StoreData
 from .repository import Repository
+from .validate import SCHEMA_REPOSITORY_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
