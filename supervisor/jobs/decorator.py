@@ -45,7 +45,7 @@ class Job:
             if not self._coresys:
                 raise JobException(f"coresys is missing on {self.name}")
 
-            job = self._coresys.jobs.get_job(self.name)
+            job = self._coresys.jobs.job
 
             if self.conditions and not self._check_conditions():
                 return False
