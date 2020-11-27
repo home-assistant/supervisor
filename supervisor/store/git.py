@@ -78,6 +78,7 @@ class GitRepo(CoreSysAttributes):
         else:
             self.lock.release()
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM])
     async def clone(self) -> None:
         """Clone git add-on repository."""
         async with self.lock:
@@ -114,6 +115,7 @@ class GitRepo(CoreSysAttributes):
                 )
                 raise StoreGitError() from err
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM])
     async def pull(self):
         """Pull Git add-on repo."""
         if self.lock.locked():

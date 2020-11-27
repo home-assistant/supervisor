@@ -4,7 +4,7 @@ from typing import Any, Awaitable, Dict
 
 import sentry_sdk
 
-from ...exceptions import DBusError, DBusInterfaceError
+from ...exceptions import DBusError, DBusInterfaceError, DBusProgramError
 from ...utils.gdbus import DBus
 from ..const import (
     DBUS_ATTR_CONNECTION_ENABLED,
@@ -105,6 +105,9 @@ class NetworkManager(DBusInterface):
             # Connect to interface
             try:
                 await interface.connect()
+            except DBusProgramError as err:
+                _LOGGER.warning("Can't process %s: %s", device, err)
+                continue
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception("Error while processing interface: %s", err)
                 sentry_sdk.capture_exception(err)

@@ -116,7 +116,7 @@ class Hardware:
         dev_list: Set[str] = set()
         for device in self.context.list_devices(subsystem="input"):
             if "NAME" in device.properties:
-                dev_list.add(device.properties["NAME"].replace('"', ""))
+                dev_list.add(device.properties["NAME"].replace('"', "").strip())
 
         return dev_list
 

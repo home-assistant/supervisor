@@ -2,29 +2,25 @@
 import logging
 from typing import List
 
-from ..const import SNAPSHOT_FULL
-from ..coresys import CoreSys, CoreSysAttributes
-from .const import (
+from ...const import SNAPSHOT_FULL, CoreState
+from ..const import (
     MINIMUM_FREE_SPACE_THRESHOLD,
     MINIMUM_FULL_SNAPSHOTS,
     ContextType,
     IssueType,
     SuggestionType,
 )
-from .data import Suggestion
+from ..data import Suggestion
+from .base import CheckBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class ResolutionStorage(CoreSysAttributes):
-    """Storage class for resolution."""
+class CheckFreeSpace(CheckBase):
+    """Storage class for check."""
 
-    def __init__(self, coresys: CoreSys):
-        """Initialize the storage class."""
-        self.coresys = coresys
-
-    def check_free_space(self) -> None:
-        """Check free space."""
+    async def run_check(self) -> None:
+        """Run check if not affected by issue."""
         if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
             if len(self.sys_snapshots.list_snapshots) == 0:
                 # No snapshots, let's suggest the user to create one!
@@ -50,15 +46,23 @@ class ResolutionStorage(CoreSysAttributes):
             IssueType.FREE_SPACE, ContextType.SYSTEM, suggestions=suggestions
         )
 
-    def clean_full_snapshots(self):
-        """Clean out all old full snapshots, but keep the most recent."""
-        full_snapshots = [
-            x for x in self.sys_snapshots.list_snapshots if x.sys_type == SNAPSHOT_FULL
-        ]
+    async def approve_check(self) -> bool:
+        """Approve check if it is affected by issue."""
+        if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
+            return False
+        return True
 
-        if len(full_snapshots) < MINIMUM_FULL_SNAPSHOTS:
-            return
+    @property
+    def issue(self) -> IssueType:
+        """Return a IssueType enum."""
+        return IssueType.FREE_SPACE
 
-        _LOGGER.info("Starting removal of old full snapshots")
-        for snapshot in sorted(full_snapshots, key=lambda x: x.date)[:-1]:
-            self.sys_snapshots.remove(snapshot)
+    @property
+    def context(self) -> ContextType:
+        """Return a ContextType enum."""
+        return ContextType.SYSTEM
+
+    @property
+    def states(self) -> List[CoreState]:
+        """Return a list of valid states when this check can run."""
+        return [CoreState.RUNNING, CoreState.STARTUP]

@@ -162,6 +162,7 @@ class Core(CoreSysAttributes):
                     "Can't update Supervisor! This will break some Add-ons or affect "
                     "future version of Home Assistant!"
                 )
+                self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
                 self.sys_capture_exception(err)
 
         # Start addon mark as initialize
@@ -221,6 +222,7 @@ class Core(CoreSysAttributes):
             # Upate Host/Deivce information
             self.sys_create_task(self.sys_host.reload())
             self.sys_create_task(self.sys_updater.reload())
+            self.sys_create_task(self.sys_resolution.fixup.run_autofix())
 
             self.state = CoreState.RUNNING
             _LOGGER.info("Supervisor is up and running")
