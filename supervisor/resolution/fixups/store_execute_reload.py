@@ -19,7 +19,7 @@ class FixupStoreExecuteReload(FixupBase):
         try:
             repository = self.sys_store.get(reference)
         except StoreNotFound:
-            _LOGGER.error("Can't find store %s for fixup", reference)
+            _LOGGER.warning("Can't find store %s for fixup", reference)
             return
 
         # Load data again

@@ -1,24 +1,20 @@
 """Add-on Store handler."""
 import asyncio
 import logging
-from pathlib import Path
 from typing import Dict, List
 
-import voluptuous as vol
-
-from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JsonFileError, StoreGitError, StoreNotFound
+from ..exceptions import StoreGitError, StoreNotFound
 from ..jobs.decorator import Job, JobCondition
-from ..utils.json import read_json_file
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from .addon import AddonStore
+from .const import StoreType
 from .data import StoreData
 from .repository import Repository
-from .validate import SCHEMA_REPOSITORY_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-BUILTIN_REPOSITORIES = {REPOSITORY_CORE, REPOSITORY_LOCAL}
+BUILTIN_REPOSITORIES = {StoreType.CORE.value, StoreType.LOCAL.value}
 
 
 class StoreManager(CoreSysAttributes):
@@ -87,22 +83,18 @@ class StoreManager(CoreSysAttributes):
                 await repository.load()
             except StoreGitError:
                 _LOGGER.error("Can't load data from repository %s", url)
-
-            # don't add built-in repository to config
-            if url not in BUILTIN_REPOSITORIES:
-                # Verify that it is a add-on repository
-                repository_file = Path(repository.git.path, "repository.json")
-                try:
-                    await self.sys_run_in_executor(
-                        SCHEMA_REPOSITORY_CONFIG, read_json_file(repository_file)
+            else:
+                if not repository.validate():
+                    _LOGGER.error("%s is not a valid add-on repository", url)
+                    self.sys_resolution.create_issue(
+                        IssueType.CORRUPT_REPOSITORY,
+                        ContextType.STORE,
+                        reference=repository.slug,
+                        suggestions=[SuggestionType.EXECUTE_REMOVE],
                     )
-                except (JsonFileError, vol.Invalid) as err:
-                    _LOGGER.error("%s is not a valid add-on repository. %s", url, err)
-                    await repository.remove()
-                    return
 
-                self.sys_config.add_addon_repository(url)
-
+            # Add Repository to list
+            self.sys_config.add_addon_repository(repository.source)
             self.repositories[repository.slug] = repository
 
         job.update(progress=10, stage="Check repositories")

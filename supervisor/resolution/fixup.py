@@ -10,6 +10,7 @@ from .fixups.base import FixupBase
 from .fixups.clear_full_snapshot import FixupClearFullSnapshot
 from .fixups.create_full_snapshot import FixupCreateFullSnapshot
 from .fixups.store_execute_reload import FixupStoreExecuteReload
+from .fixups.store_execute_remove import FixupStoreExecuteRemove
 from .fixups.store_execute_reset import FixupStoreExecuteReset
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class ResolutionFixup(CoreSysAttributes):
         self._clear_full_snapshot = FixupClearFullSnapshot(coresys)
         self._store_execute_reset = FixupStoreExecuteReset(coresys)
         self._store_execute_reload = FixupStoreExecuteReload(coresys)
+        self._store_execute_remove = FixupStoreExecuteRemove(coresys)
 
     @property
     def all_fixes(self) -> List[FixupBase]:
@@ -35,6 +37,7 @@ class ResolutionFixup(CoreSysAttributes):
             self._clear_full_snapshot,
             self._store_execute_reload,
             self._store_execute_reset,
+            self._store_execute_remove,
         ]
 
     async def run_autofix(self) -> None:
