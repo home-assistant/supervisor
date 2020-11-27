@@ -44,7 +44,7 @@ class FixupStoreExecuteReset(FixupBase):
     @property
     def issues(self) -> List[IssueType]:
         """Return a IssueType enum list."""
-        return [IssueType.CORRUPT_REPOSITORY]
+        return [IssueType.CORRUPT_REPOSITORY, IssueType.FATAL_ERROR]
 
     @property
     def auto(self) -> bool:
