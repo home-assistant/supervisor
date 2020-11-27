@@ -67,7 +67,7 @@ class StoreManager(CoreSysAttributes):
         """Add a new custom repository."""
         job = self.sys_jobs.get_job("storemanager_update_repositories")
         new_rep = set(list_repositories)
-        old_rep = set(self.repositories)
+        old_rep = {repository.url for repository in self.all}
 
         # add new repository
         async def _add_repository(url: str, step: int):
