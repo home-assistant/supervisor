@@ -77,7 +77,6 @@ class StoreManager(CoreSysAttributes):
                 await repository.load()
             except StoreGitError:
                 _LOGGER.error("Can't load data from repository %s", url)
-                return
 
             # don't add built-in repository to config
             if url not in BUILTIN_REPOSITORIES:
