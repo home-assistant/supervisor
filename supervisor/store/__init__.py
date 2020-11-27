@@ -41,6 +41,14 @@ class StoreManager(CoreSysAttributes):
             raise StoreNotFound()
         return self.repositories[slug]
 
+    def get_from_url(self, url: str) -> Repository:
+        """Return Repository with slug."""
+        for repository in self.repositories:
+            if repository.url != url:
+                continue
+            return repository
+        raise StoreNotFound()
+
     async def load(self) -> None:
         """Start up add-on management."""
         self.data.update()
@@ -73,6 +81,8 @@ class StoreManager(CoreSysAttributes):
             """Add a repository."""
             job.update(progress=job.progress + step, stage=f"Checking {url} started")
             repository = Repository(self.coresys, url)
+
+            # Load the repository
             try:
                 await repository.load()
             except StoreGitError:
@@ -101,9 +111,10 @@ class StoreManager(CoreSysAttributes):
         if tasks:
             await asyncio.wait(tasks)
 
-        # del new repository
+        # del stle repository
         for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
-            await self.repositories.pop(url).remove()
+            repository = self.get_from_url(url)
+            await self.repositories.pop(repository.slug).remove()
             self.sys_config.drop_addon_repository(url)
 
         # update data
