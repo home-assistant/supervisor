@@ -156,7 +156,7 @@ class GitRepo(CoreSysAttributes):
                     IssueType.CORRUPT_REPOSITORY,
                     ContextType.STORE,
                     reference=self.path.stem,
-                    suggestions=[SuggestionType.EXECUTE_RELOAD],
+                    suggestions=[SuggestionType.EXECUTE_RESET],
                 )
                 raise StoreGitError() from err
 

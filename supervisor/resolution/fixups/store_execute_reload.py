@@ -32,7 +32,7 @@ class FixupStoreExecuteReload(FixupBase):
     @property
     def suggestion(self) -> SuggestionType:
         """Return a SuggestionType enum."""
-        return SuggestionType.EXECUTE_RESET
+        return SuggestionType.EXECUTE_RELOAD
 
     @property
     def context(self) -> ContextType:
@@ -42,7 +42,7 @@ class FixupStoreExecuteReload(FixupBase):
     @property
     def issues(self) -> List[IssueType]:
         """Return a IssueType enum list."""
-        return [IssueType.CORRUPT_REPOSITORY, IssueType.FATAL_ERROR]
+        return [IssueType.FATAL_ERROR]
 
     @property
     def auto(self) -> bool:
