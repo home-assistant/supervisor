@@ -95,7 +95,7 @@ class StoreManager(CoreSysAttributes):
 
                 self.sys_config.add_addon_repository(url)
 
-            self.repositories[url] = repository
+            self.repositories[repository.slug] = repository
 
         job.update(progress=10, stage="Check repositories")
         repos = new_rep - old_rep
