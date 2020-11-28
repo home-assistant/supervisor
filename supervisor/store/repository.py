@@ -24,9 +24,9 @@ class Repository(CoreSysAttributes):
     def __init__(self, coresys: CoreSys, repository: str):
         """Initialize repository object."""
         self.coresys: CoreSys = coresys
-        self.source: Optional[str] = None
         self.git: Optional[str] = None
 
+        self.source: str = repository
         if repository == StoreType.LOCAL:
             self._slug = repository
             self._type = StoreType.LOCAL
