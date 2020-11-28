@@ -33,7 +33,7 @@ class StoreData(CoreSysAttributes):
         self.repositories: Dict[str, Any] = {}
         self.addons: Dict[str, Any] = {}
 
-    def update(self):
+    def update(self) -> None:
         """Read data from add-on repository."""
         self.repositories.clear()
         self.addons.clear()
@@ -52,7 +52,7 @@ class StoreData(CoreSysAttributes):
             if repository_element.is_dir():
                 self._read_git_repository(repository_element)
 
-    def _read_git_repository(self, path: Path):
+    def _read_git_repository(self, path: Path) -> None:
         """Process a custom repository folder."""
         slug = extract_hash_from_path(path)
 
@@ -73,7 +73,7 @@ class StoreData(CoreSysAttributes):
         self.repositories[slug] = repository_info
         self._read_addons_folder(path, slug)
 
-    def _read_addons_folder(self, path: Path, repository: Dict):
+    def _read_addons_folder(self, path: Path, repository: Dict) -> None:
         """Read data from add-ons folder."""
         try:
             # Generate a list without artefact, safe for corruptions
