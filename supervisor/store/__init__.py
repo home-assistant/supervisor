@@ -94,7 +94,8 @@ class StoreManager(CoreSysAttributes):
                     )
 
             # Add Repository to list
-            self.sys_config.add_addon_repository(repository.source)
+            if repository.type == StoreType.GIT:
+                self.sys_config.add_addon_repository(repository.source)
             self.repositories[repository.slug] = repository
 
         job.update(progress=10, stage="Check repositories")
