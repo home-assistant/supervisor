@@ -92,7 +92,6 @@ class StoreData(CoreSysAttributes):
             _LOGGER.critical(
                 "Can't process %s because of Filesystem issues: %s", repository, err
             )
-            self.sys_capture_exception(err)
             return
 
         for addon in addon_list:
