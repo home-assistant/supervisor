@@ -39,7 +39,7 @@ class StoreManager(CoreSysAttributes):
 
     def get_from_url(self, url: str) -> Repository:
         """Return Repository with slug."""
-        for repository in self.repositories:
+        for repository in self.all:
             if repository.url != url:
                 continue
             return repository
@@ -57,7 +57,7 @@ class StoreManager(CoreSysAttributes):
 
     async def reload(self) -> None:
         """Update add-ons from repository and reload list."""
-        tasks = [repository.update() for repository in self.repositories.values()]
+        tasks = [repository.update() for repository in self.all]
         if tasks:
             await asyncio.wait(tasks)
 

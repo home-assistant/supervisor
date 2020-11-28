@@ -182,7 +182,6 @@ async def api_client(aiohttp_client, coresys: CoreSys):
 def store_manager(coresys: CoreSys):
     """Fixture for the store manager."""
     sm_obj = coresys.store
-    sm_obj.repositories = set(coresys.config.addons_repositories)
     with patch("supervisor.store.data.StoreData.update", return_value=MagicMock()):
         yield sm_obj
 
