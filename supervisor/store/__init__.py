@@ -40,7 +40,7 @@ class StoreManager(CoreSysAttributes):
     def get_from_url(self, url: str) -> Repository:
         """Return Repository with slug."""
         for repository in self.all:
-            if repository.url != url:
+            if repository.source != url:
                 continue
             return repository
         raise StoreNotFound()
