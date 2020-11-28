@@ -311,7 +311,7 @@ class StoreGitError(StoreError):
 
 
 class StoreNotFound(StoreError):
-    """Reaise if slug is not known."""
+    """Raise if slug is not known."""
 
 
 # JobManager

@@ -158,7 +158,7 @@ class APISupervisor(CoreSysAttributes):
                 await self.sys_resolution.apply_suggestion(suggestion)
 
             if found_invalid:
-                raise APIError("Invlid Add-on repository!")
+                raise APIError("Invalid Add-on repository!")
 
         self.sys_updater.save_data()
         self.sys_config.save_data()

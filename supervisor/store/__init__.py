@@ -104,7 +104,7 @@ class StoreManager(CoreSysAttributes):
         if tasks:
             await asyncio.wait(tasks)
 
-        # del stle repository
+        # Delete stale repositories
         for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
             repository = self.get_from_url(url)
             await self.repositories.pop(repository.slug).remove()
