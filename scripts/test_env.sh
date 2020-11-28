@@ -125,6 +125,8 @@ echo "Start Test-Env"
 start_docker
 trap "stop_docker" ERR
 
+docker system prune -f
+
 build_supervisor
 cleanup_lastboot
 cleanup_docker

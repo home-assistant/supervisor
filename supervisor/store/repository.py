@@ -1,75 +1,103 @@
 """Represent a Supervisor repository."""
-from ..const import (
-    ATTR_MAINTAINER,
-    ATTR_NAME,
-    ATTR_URL,
-    REPOSITORY_CORE,
-    REPOSITORY_LOCAL,
-)
-from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
+import logging
+from pathlib import Path
+from typing import Dict, Optional
+
+import voluptuous as vol
+
+from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_URL
+from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import JsonFileError, StoreError
+from ..utils.json import read_json_file
+from .const import StoreType
 from .git import GitRepoCustom, GitRepoHassIO
 from .utils import get_hash_from_repository
+from .validate import SCHEMA_REPOSITORY_CONFIG
 
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 UNKNOWN = "unknown"
 
 
 class Repository(CoreSysAttributes):
     """Repository in Supervisor."""
 
-    slug: str = None
-
-    def __init__(self, coresys, repository):
+    def __init__(self, coresys: CoreSys, repository: str):
         """Initialize repository object."""
-        self.coresys = coresys
-        self.source = None
-        self.git = None
+        self.coresys: CoreSys = coresys
+        self.git: Optional[str] = None
 
-        if repository == REPOSITORY_LOCAL:
-            self.slug = repository
-        elif repository == REPOSITORY_CORE:
-            self.slug = repository
+        self.source: str = repository
+        if repository == StoreType.LOCAL:
+            self._slug = repository
+            self._type = StoreType.LOCAL
+        elif repository == StoreType.CORE:
             self.git = GitRepoHassIO(coresys)
+            self._slug = repository
+            self._type = StoreType.CORE
         else:
-            self.slug = get_hash_from_repository(repository)
             self.git = GitRepoCustom(coresys, repository)
             self.source = repository
+            self._slug = get_hash_from_repository(repository)
+            self._type = StoreType.GIT
 
     @property
-    def data(self):
+    def slug(self) -> str:
+        """Return repo slug."""
+        return self._slug
+
+    @property
+    def type(self) -> StoreType:
+        """Return type of the store."""
+        return self._type
+
+    @property
+    def data(self) -> Dict:
         """Return data struct repository."""
         return self.sys_store.data.repositories.get(self.slug, {})
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return name of repository."""
         return self.data.get(ATTR_NAME, UNKNOWN)
 
     @property
-    def url(self):
+    def url(self) -> str:
         """Return URL of repository."""
         return self.data.get(ATTR_URL, self.source)
 
     @property
-    def maintainer(self):
+    def maintainer(self) -> str:
         """Return url of repository."""
         return self.data.get(ATTR_MAINTAINER, UNKNOWN)
 
-    async def load(self):
+    def validate(self) -> bool:
+        """Check if store is valid."""
+        if self.type != StoreType.GIT:
+            return True
+
+        repository_file = Path(self.git.path, "repository.json")
+        try:
+            SCHEMA_REPOSITORY_CONFIG(read_json_file(repository_file))
+        except (JsonFileError, vol.Invalid):
+            return False
+        return True
+
+    async def load(self) -> None:
         """Load addon repository."""
         if not self.git:
             return
         await self.git.load()
 
-    async def update(self):
+    async def update(self) -> None:
         """Update add-on repository."""
-        if not self.git:
+        if self.type == StoreType.LOCAL:
             return
         await self.git.pull()
 
-    async def remove(self):
+    async def remove(self) -> None:
         """Remove add-on repository."""
-        if self.slug in (REPOSITORY_CORE, REPOSITORY_LOCAL):
-            raise APIError("Can't remove built-in repositories!")
+        if self.type != StoreType.GIT:
+            _LOGGER.error("Can't remove built-in repositories!")
+            raise StoreError()
 
         await self.git.remove()
