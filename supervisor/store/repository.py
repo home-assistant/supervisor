@@ -40,6 +40,10 @@ class Repository(CoreSysAttributes):
             self._slug = get_hash_from_repository(repository)
             self._type = StoreType.GIT
 
+    def __repr__(self) -> str:
+        """Return internal representation."""
+        return f"<Store.Repository: {self.slug} / {self.source}>"
+
     @property
     def slug(self) -> str:
         """Return repo slug."""
@@ -75,11 +79,17 @@ class Repository(CoreSysAttributes):
         if self.type != StoreType.GIT:
             return True
 
+        # If exists?
         repository_file = Path(self.git.path, "repository.json")
+        if not repository_file.exists():
+            return False
+
+        # If valid?
         try:
             SCHEMA_REPOSITORY_CONFIG(read_json_file(repository_file))
         except (JsonFileError, vol.Invalid):
             return False
+
         return True
 
     async def load(self) -> None:

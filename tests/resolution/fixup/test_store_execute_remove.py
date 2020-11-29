@@ -22,6 +22,8 @@ async def test_fixup(coresys: CoreSys):
     )
 
     mock_repositorie = AsyncMock()
+    mock_repositorie.slug = "test"
+
     coresys.store.repositories["test"] = mock_repositorie
 
     await store_execute_remove()
@@ -30,3 +32,5 @@ async def test_fixup(coresys: CoreSys):
     assert coresys.config.save_data.called
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0
+
+    assert "test" not in coresys.store.repositories

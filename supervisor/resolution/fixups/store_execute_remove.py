@@ -27,6 +27,8 @@ class FixupStoreExecuteRemove(FixupBase):
             await repository.remove()
         except StoreError:
             raise ResolutionFixupError() from None
+        else:
+            self.sys_store.repositories.pop(repository.slug, None)
 
         self.sys_config.drop_addon_repository(repository.source)
         self.sys_config.save_data()
