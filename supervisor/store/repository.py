@@ -79,11 +79,17 @@ class Repository(CoreSysAttributes):
         if self.type != StoreType.GIT:
             return True
 
+        # If exists?
         repository_file = Path(self.git.path, "repository.json")
+        if not repository_file.exists():
+            return False
+
+        # If valid?
         try:
             SCHEMA_REPOSITORY_CONFIG(read_json_file(repository_file))
         except (JsonFileError, vol.Invalid):
             return False
+
         return True
 
     async def load(self) -> None:
