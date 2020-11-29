@@ -40,6 +40,10 @@ class Repository(CoreSysAttributes):
             self._slug = get_hash_from_repository(repository)
             self._type = StoreType.GIT
 
+    def __repr__(self) -> str:
+        """Return internal representation."""
+        return f"<Store.Repository: {self.slug} / {self.source}>"
+
     @property
     def slug(self) -> str:
         """Return repo slug."""
