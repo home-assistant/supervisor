@@ -13,9 +13,8 @@ from .base import EvaluateBase
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DOCKER_IMAGE_DENYLIST = [
-    "containrrr/watchtower",
-    "pyouroboros/ouroboros",
-    "v2tec/watchtower",
+    "watchtower",
+    "ouroboros",
 ]
 
 
@@ -48,9 +47,12 @@ class EvaluateContainer(EvaluateBase):
         self._images.clear()
         for image in await self.sys_run_in_executor(self._get_images):
             for tag in image.tags:
-                image_name = tag.split(":")[0]
+                image_name = tag.partition(":")[0].split("/")[-1]
                 if (
-                    image_name in DOCKER_IMAGE_DENYLIST
+                    any(
+                        image_name.startswith(deny_name)
+                        for deny_name in DOCKER_IMAGE_DENYLIST
+                    )
                     and image_name not in self._images
                 ):
                     self._images.add(image_name)
