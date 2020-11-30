@@ -137,6 +137,7 @@ class Supervisor(CoreSysAttributes):
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_FAILED, ContextType.SUPERVISOR
             )
+            self.sys_capture_exception(err)
             raise SupervisorUpdateError() from err
         else:
             self.sys_config.version = version
