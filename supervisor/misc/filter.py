@@ -76,6 +76,10 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
             },
             "resolution": {
                 "issues": [attr.asdict(issue) for issue in coresys.resolution.issues],
+                "suggestions": [
+                    attr.asdict(suggestion)
+                    for suggestion in coresys.resolution.suggestions
+                ],
                 "unhealthy": coresys.resolution.unhealthy,
             },
         }

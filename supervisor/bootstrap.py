@@ -303,7 +303,6 @@ def setup_diagnostics(coresys: CoreSys) -> None:
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
         before_send=lambda event, hint: filter_data(coresys, event, hint),
-        auto_enabling_integrations=False,
         integrations=[AioHttpIntegration(), sentry_logging],
         release=SUPERVISOR_VERSION,
         max_breadcrumbs=30,
