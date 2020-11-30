@@ -31,6 +31,7 @@ ATTR_ASSIGNED_MAC = "assigned-mac-address"
 ATTR_POWERSAVE = "powersave"
 ATTR_AUTH_ALGO = "auth-algo"
 ATTR_KEY_MGMT = "key-mgmt"
+ATTR_INTERFACE_NAME = "interface-name"
 
 
 class NetworkSetting(DBusInterfaceProxy):
@@ -109,6 +110,7 @@ class NetworkSetting(DBusInterfaceProxy):
                 data[CONF_ATTR_CONNECTION].get(ATTR_ID),
                 data[CONF_ATTR_CONNECTION].get(ATTR_UUID),
                 data[CONF_ATTR_CONNECTION].get(ATTR_TYPE),
+                data[CONF_ATTR_CONNECTION].get(ATTR_INTERFACE_NAME),
             )
 
         if CONF_ATTR_802_ETHERNET in data:

@@ -111,7 +111,12 @@ class NetworkManager(CoreSysAttributes):
         inet = self.sys_dbus.network.interfaces.get(interface.name)
 
         # Update exist configuration
-        if inet and inet.settings and interface.enabled:
+        if (
+            inet
+            and inet.settings
+            and inet.settings.connection.interface_name == interface.name
+            and interface.enabled
+        ):
             settings = interface_update_payload(
                 interface,
                 name=inet.settings.connection.id,
@@ -279,7 +284,7 @@ class Interface:
                 inet.connection.ipv4.nameservers,
             )
             if inet.connection and inet.connection.ipv4
-            else None,
+            else IpConfig(InterfaceMethod.DISABLED, [], None, []),
             IpConfig(
                 Interface._map_nm_method(inet.settings.ipv6.method),
                 inet.connection.ipv6.address,
@@ -287,7 +292,7 @@ class Interface:
                 inet.connection.ipv6.nameservers,
             )
             if inet.connection and inet.connection.ipv6
-            else None,
+            else IpConfig(InterfaceMethod.DISABLED, [], None, []),
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
         )

@@ -61,7 +61,7 @@
     ,
     '802-3-ethernet':
         {
-            'assigned-mac-address': <'stable'>
+            'assigned-mac-address': <'preserve'>
         }
 {% endif %}
 
@@ -78,7 +78,7 @@
     ,
     '802-11-wireless':
         {
-            'assigned-mac-address': <'stable'>,
+            'assigned-mac-address': <'preserve'>,
             'ssid': <[byte {{ interface.wifi.ssid }}]>,
             'mode': <'{{ interface.wifi.mode.value }}'>,
             'powersave': <uint32 1>

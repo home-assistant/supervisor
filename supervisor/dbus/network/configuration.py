@@ -32,6 +32,7 @@ class ConnectionProperties:
     id: Optional[str] = attr.ib()
     uuid: Optional[str] = attr.ib()
     type: Optional[str] = attr.ib()
+    interface_name: Optional[str] = attr.ib()
 
 
 @attr.s(slots=True)
