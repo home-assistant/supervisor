@@ -2,8 +2,6 @@
 import logging
 from typing import List
 
-from supervisor.exceptions import HassioError
-
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import UnhealthyReason, UnsupportedReason
 from .evaluations.base import EvaluateBase
@@ -69,7 +67,7 @@ class ResolutionEvaluation(CoreSysAttributes):
         for evaluation in self.all_evalutions:
             try:
                 await evaluation()
-            except HassioError as err:
+            except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning(
                     "Error during processing %s: %s", evaluation.reason, err
                 )

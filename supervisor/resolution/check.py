@@ -3,7 +3,6 @@ import logging
 from typing import List
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError
 from .checks.base import CheckBase
 from .checks.free_space import CheckFreeSpace
 
@@ -31,7 +30,7 @@ class ResolutionCheck(CoreSysAttributes):
         for test in self.all_tests:
             try:
                 await test()
-            except HassioError as err:
+            except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Error during processing %s: %s", test.issue, err)
                 self.sys_capture_exception(err)
 

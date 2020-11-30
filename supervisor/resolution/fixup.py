@@ -2,10 +2,8 @@
 import logging
 from typing import List
 
-from supervisor.exceptions import HassioError
-from supervisor.resolution.data import Suggestion
-
 from ..coresys import CoreSys, CoreSysAttributes
+from .data import Suggestion
 from .fixups.base import FixupBase
 from .fixups.clear_full_snapshot import FixupClearFullSnapshot
 from .fixups.create_full_snapshot import FixupCreateFullSnapshot
@@ -49,7 +47,7 @@ class ResolutionFixup(CoreSysAttributes):
                 continue
             try:
                 await fix()
-            except HassioError as err:
+            except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
                 self.sys_capture_exception(err)
 

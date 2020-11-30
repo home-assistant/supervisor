@@ -40,7 +40,7 @@ class EvaluateContainer(EvaluateBase):
     @property
     def states(self) -> List[CoreState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.SETUP, CoreState.RUNNING]
+        return [CoreState.SETUP, CoreState.RUNNING, CoreState.INITIALIZE]
 
     async def evaluate(self) -> None:
         """Run evaluation."""
@@ -48,6 +48,8 @@ class EvaluateContainer(EvaluateBase):
         for image in await self.sys_run_in_executor(self._get_images):
             for tag in image.tags:
                 image_name = tag.partition(":")[0].split("/")[-1]
+
+                # Evalue system
                 if (
                     any(
                         image_name.startswith(deny_name)
