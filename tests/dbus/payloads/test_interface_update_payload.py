@@ -49,7 +49,7 @@ async def test_interface_update_payload_ethernet_ipv4(coresys):
         DBus.parse_gvariant(data)["ipv4"]["address-data"][0]["address"] == "192.168.1.1"
     )
     assert DBus.parse_gvariant(data)["ipv4"]["address-data"][0]["prefix"] == 24
-    assert DBus.parse_gvariant(data)["ipv4"]["dns"] == [16843009, 16777473]
+    assert DBus.parse_gvariant(data)["ipv4"]["dns"] == [16843009, 16842753]
     assert (
         DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
     )
@@ -129,8 +129,8 @@ async def test_interface_update_payload_ethernet_ipv6(coresys):
     )
     assert DBus.parse_gvariant(data)["ipv6"]["address-data"][0]["prefix"] == 64
     assert DBus.parse_gvariant(data)["ipv6"]["dns"] == [
-        50543257694033307102031451402929176676,
-        50543257694033307102031451402929202176,
+        [100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 71, 6, 38],
+        [0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 71, 6, 38],
     ]
     assert (
         DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
