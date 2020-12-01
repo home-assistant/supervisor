@@ -1,7 +1,7 @@
 """REST API for network."""
 import asyncio
 from ipaddress import ip_address, ip_interface
-from typing import Any, Dict
+from typing import Any, Awaitable, Dict
 
 from aiohttp import web
 import attr
@@ -206,6 +206,11 @@ class APINetwork(CoreSysAttributes):
                 interface.enabled = config
 
         await asyncio.shield(self.sys_host.network.apply_changes(interface))
+
+    @api_process
+    def reload(self, request: web.Request) -> Awaitable[None]:
+        """Reload network data."""
+        return asyncio.shield(self.sys_host.network.update())
 
     @api_process
     async def scan_accesspoints(self, request: web.Request) -> Dict[str, Any]:

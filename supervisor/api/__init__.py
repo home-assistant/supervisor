@@ -112,6 +112,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/network/info", api_network.info),
+                web.post("/network/reload", api_network.reload),
                 web.get(
                     "/network/interface/{interface}/info", api_network.interface_info
                 ),
