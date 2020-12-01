@@ -185,3 +185,12 @@ async def test_api_network_wireless_scan(api_client):
         ap["ssid"] for ap in result["data"]["accesspoints"]
     ]
     assert [47, 63] == [ap["signal"] for ap in result["data"]["accesspoints"]]
+
+
+@pytest.mark.asyncio
+async def test_api_network_reload(api_client, coresys):
+    """Test network manager reload api."""
+    resp = await api_client.post("/network/reload")
+    result = await resp.json()
+
+    assert result["result"] == "ok"
