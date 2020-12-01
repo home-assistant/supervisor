@@ -62,6 +62,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "host": coresys.host.info.operating_system,
                 "kernel": coresys.host.info.kernel,
                 "machine": coresys.machine,
+                "images": coresys.resolution.evaluate.cached_images,
             },
             "versions": {
                 "audio": coresys.plugins.audio.version,

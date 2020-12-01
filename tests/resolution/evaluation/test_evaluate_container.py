@@ -48,12 +48,21 @@ async def test_evaluation(coresys: CoreSys):
         await container()
         assert container.reason in coresys.resolution.unsupported
 
+    assert coresys.resolution.evaluate.cached_images == {
+        "armhfbuild/watchtower:latest",
+        "concerco/watchtowerv6:10.0.2",
+        "containrrr/watchtower:1.1",
+        "pyouroboros/ouroboros:1.4.3",
+    }
+
     with patch(
         "supervisor.resolution.evaluations.container.EvaluateContainer._get_images",
         return_value=[MagicMock(tags=[])],
     ):
         await container()
         assert container.reason not in coresys.resolution.unsupported
+
+    assert coresys.resolution.evaluate.cached_images == set()
 
 
 async def test_did_run(coresys: CoreSys):

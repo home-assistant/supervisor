@@ -1,6 +1,6 @@
 """Helpers to evaluate the system."""
 import logging
-from typing import List
+from typing import List, Set
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import UnhealthyReason, UnsupportedReason
@@ -32,6 +32,8 @@ class ResolutionEvaluation(CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the evaluation class."""
         self.coresys = coresys
+
+        self.cached_images: Set[str] = set()
 
         self._container = EvaluateContainer(coresys)
         self._dbus = EvaluateDbus(coresys)
