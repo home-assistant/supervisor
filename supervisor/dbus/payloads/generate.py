@@ -43,11 +43,11 @@ def interface_update_payload(
     if not uuid:
         uuid = str(uuid4())
 
-    # Generate ID/name
-    if not name and interface.type != InterfaceType.VLAN:
+    # Generate/Update ID/name
+    if not name or not name.startswith("Supervisor"):
         name = f"Supervisor {interface.name}"
-    elif not name:
-        name = f"Supervisor {interface.name}.{interface.vlan.id}"
+    if interface.type == InterfaceType.VLAN:
+        name = f"{name}.{interface.vlan.id}"
 
     # Fix SSID
     if interface.wifi:
