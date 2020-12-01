@@ -54,7 +54,7 @@ async def test_interface_update_payload_ethernet_ipv4(coresys):
     assert (
         DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
     )
-    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["id"] == "Supervisor eth0"
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
     assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
     assert DBus.parse_gvariant(data)["ipv4"]["gateway"] == "192.168.1.1"
@@ -77,7 +77,7 @@ async def test_interface_update_payload_ethernet_ipv4_disabled(coresys):
     assert (
         DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
     )
-    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["id"] == "Supervisor eth0"
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
     assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
 
@@ -99,7 +99,7 @@ async def test_interface_update_payload_ethernet_ipv4_auto(coresys):
     assert (
         DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
     )
-    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["id"] == "Supervisor eth0"
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
     assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
 
@@ -136,7 +136,7 @@ async def test_interface_update_payload_ethernet_ipv6(coresys):
     assert (
         DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
     )
-    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["id"] == "Supervisor eth0"
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
     assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
     assert DBus.parse_gvariant(data)["ipv6"]["gateway"] == "fe80::da58:d7ff:fe00:9c69"
@@ -158,7 +158,7 @@ async def test_interface_update_payload_ethernet_ipv6_disabled(coresys):
     assert (
         DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
     )
-    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["id"] == "Supervisor eth0"
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
     assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
 
@@ -179,7 +179,7 @@ async def test_interface_update_payload_ethernet_ipv6_auto(coresys):
     assert (
         DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
     )
-    assert DBus.parse_gvariant(data)["connection"]["id"] == inet.settings.connection.id
+    assert DBus.parse_gvariant(data)["connection"]["id"] == "Supervisor eth0"
     assert DBus.parse_gvariant(data)["connection"]["type"] == "802-3-ethernet"
     assert DBus.parse_gvariant(data)["connection"]["interface-name"] == interface.name
 
