@@ -45,9 +45,8 @@ class Job:
                 self._coresys = args[0].coresys
             except AttributeError:
                 pass
-            else:
-                if not self._coresys:
-                    raise JobException(f"coresys is missing on {self.name}")
+            if not self._coresys:
+                raise JobException(f"coresys is missing on {self.name}")
 
             job = self._coresys.jobs.get_job(self.name)
 
