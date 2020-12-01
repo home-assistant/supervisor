@@ -7,7 +7,7 @@ from requests import RequestException
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ..const import UnsupportedReason
+from ..const import ContextType, IssueType, SuggestionType, UnsupportedReason
 from .base import EvaluateBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -44,12 +44,15 @@ class EvaluateContainer(EvaluateBase):
 
     async def evaluate(self) -> None:
         """Run evaluation."""
+        self.sys_resolution.evaluate.cached_images.clear()
         self._images.clear()
+
         for image in await self.sys_run_in_executor(self._get_images):
             for tag in image.tags:
-                image_name = tag.partition(":")[0].split("/")[-1]
+                self.sys_resolution.evaluate.cached_images.add(tag)
 
                 # Evalue system
+                image_name = tag.partition(":")[0].split("/")[-1]
                 if (
                     any(
                         image_name.startswith(deny_name)
@@ -68,5 +71,10 @@ class EvaluateContainer(EvaluateBase):
             images = self.sys_docker.images.list()
         except (DockerException, RequestException) as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
+            self.sys_resolution.create_issue(
+                IssueType.CORRUPT_DOCKER,
+                ContextType.SYSTEM,
+                suggestions=[SuggestionType.EXECUTE_REPAIR],
+            )
 
         return images

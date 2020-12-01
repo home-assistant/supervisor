@@ -165,3 +165,17 @@ def test_unhealthy_on_report(coresys):
 
     assert "issues" in event["contexts"]["resolution"]
     assert event["contexts"]["resolution"]["unhealthy"][-1] == UnhealthyReason.DOCKER
+
+
+def test_images_report(coresys):
+    """Attach image to report."""
+
+    coresys.config.diagnostics = True
+    coresys.core.state = CoreState.RUNNING
+    coresys.resolution.evaluate.cached_images.add("my/test:image")
+
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        event = filter_data(coresys, SAMPLE_EVENT, {})
+
+    assert "issues" in event["contexts"]["resolution"]
+    assert event["contexts"]["host"]["images"] == {"my/test:image"}
