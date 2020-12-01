@@ -21,7 +21,8 @@ async def test_interface_update_payload_ethernet(coresys):
     assert DBus.parse_gvariant(data)["ipv6"]["method"] == "auto"
 
     assert (
-        DBus.parse_gvariant(data)["802-3-ethernet"]["assigned-mac-address"] == "stable"
+        DBus.parse_gvariant(data)["802-3-ethernet"]["assigned-mac-address"]
+        == "preserve"
     )
 
     assert DBus.parse_gvariant(data)["connection"]["mdns"] == 2
@@ -243,7 +244,8 @@ async def test_interface_update_payload_wireless_open(coresys):
     assert DBus.parse_gvariant(data)["802-11-wireless"]["ssid"] == [84, 101, 115, 116]
     assert DBus.parse_gvariant(data)["802-11-wireless"]["mode"] == "infrastructure"
     assert (
-        DBus.parse_gvariant(data)["802-11-wireless"]["assigned-mac-address"] == "stable"
+        DBus.parse_gvariant(data)["802-11-wireless"]["assigned-mac-address"]
+        == "preserve"
     )
     assert "802-11-wireless-security" not in DBus.parse_gvariant(data)
 
