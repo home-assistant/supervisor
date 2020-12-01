@@ -265,4 +265,5 @@ async def test_interface_update_payload_vlan(coresys):
     assert DBus.parse_gvariant(data)["vlan"]["id"] == 10
     assert DBus.parse_gvariant(data)["vlan"]["parent"] == interface.name
     assert DBus.parse_gvariant(data)["connection"]["type"] == "vlan"
+    assert DBus.parse_gvariant(data)["connection"]["id"] == "Supervisor eth0.10"
     assert "interface-name" not in DBus.parse_gvariant(data)["connection"]
