@@ -25,6 +25,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class Rauc(DBusInterface):
     """Handle D-Bus interface for rauc."""
 
+    name = DBUS_NAME_RAUC
+
     def __init__(self):
         """Initialize Properties."""
         self._operation: Optional[str] = None
