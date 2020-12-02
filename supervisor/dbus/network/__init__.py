@@ -27,6 +27,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class NetworkManager(DBusInterface):
     """Handle D-Bus interface for Network Manager."""
 
+    name = DBUS_NAME_NM
+
     def __init__(self) -> None:
         """Initialize Properties."""
         self._dns: NetworkManagerDNS = NetworkManagerDNS()

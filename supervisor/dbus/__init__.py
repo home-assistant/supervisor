@@ -1,9 +1,11 @@
 """D-Bus interface objects."""
 import logging
+from typing import List
 
+from ..const import SOCKET_DBUS
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DBusNotConnectedError
 from .hostname import Hostname
+from .interface import DBusInterface
 from .network import NetworkManager
 from .rauc import Rauc
 from .systemd import Systemd
@@ -45,15 +47,22 @@ class DBusManager(CoreSysAttributes):
 
     async def load(self) -> None:
         """Connect interfaces to D-Bus."""
-
-        try:
-            await self.systemd.connect()
-            await self.hostname.connect()
-            await self.rauc.connect()
-            await self.network.connect()
-        except DBusNotConnectedError:
+        if not SOCKET_DBUS.exists():
             _LOGGER.error(
                 "No D-Bus support on Host. Disabled any kind of host control!"
             )
+            return
+
+        dbus_loads: List[DBusInterface] = [
+            self.systemd,
+            self.hostname,
+            self.rauc,
+            self.network,
+        ]
+        for dbus in dbus_loads:
+            try:
+                await dbus.connect()
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Can't load dbus interface %s: %s", dbus.name, err)
 
         self.sys_host.supported_features.cache_clear()

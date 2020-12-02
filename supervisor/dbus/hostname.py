@@ -23,6 +23,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class Hostname(DBusInterface):
     """Handle D-Bus interface for hostname/system."""
 
+    name = DBUS_NAME_HOSTNAME
+
     def __init__(self):
         """Initialize Properties."""
         self._hostname: Optional[str] = None
