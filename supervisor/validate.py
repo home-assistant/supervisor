@@ -27,6 +27,7 @@ from .const import (
     ATTR_LOGGING,
     ATTR_MULTICAST,
     ATTR_OBSERVER,
+    ATTR_OTA,
     ATTR_PASSWORD,
     ATTR_PORT,
     ATTR_PORTS,
@@ -135,6 +136,7 @@ SCHEMA_HASS_CONFIG = vol.Schema(
 )
 
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_UPDATER_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_CHANNEL, default=UpdateChannel.STABLE): vol.Coerce(
@@ -160,6 +162,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
             },
             extra=vol.REMOVE_EXTRA,
         ),
+        vol.Optional(ATTR_OTA): vol.Url(),
     },
     extra=vol.REMOVE_EXTRA,
 )

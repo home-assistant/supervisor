@@ -8,7 +8,6 @@ import aiohttp
 from cpe import CPE
 from packaging.version import parse as pkg_parse
 
-from .const import URL_HASSOS_OTA
 from .coresys import CoreSys, CoreSysAttributes
 from .dbus.rauc import RaucState
 from .exceptions import DBusError, HassOSNotSupportedError, HassOSUpdateError
@@ -64,10 +63,14 @@ class HassOS(CoreSysAttributes):
 
     async def _download_raucb(self, version: str) -> Path:
         """Download rauc bundle (OTA) from github."""
-        url = URL_HASSOS_OTA.format(version=version, board=self.board)
-        raucb = Path(self.sys_config.path_tmp, f"hassos-{version}.raucb")
+        raw_url = self.sys_updater.ota_url
+        if raw_url is None:
+            _LOGGER.error("Don't have an URL for OTA updates!")
+            raise HassOSNotSupportedError()
+        url = raw_url.format(version=version, board=self.board)
 
         _LOGGER.info("Fetch OTA update from %s", url)
+        raucb = Path(self.sys_config.path_tmp, f"hassos-{version}.raucb")
         try:
             timeout = aiohttp.ClientTimeout(total=60 * 60, connect=180)
             async with self.sys_websession.get(url, timeout=timeout) as request:

@@ -18,6 +18,7 @@ from .const import (
     ATTR_IMAGE,
     ATTR_MULTICAST,
     ATTR_OBSERVER,
+    ATTR_OTA,
     ATTR_SUPERVISOR,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
@@ -93,7 +94,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def image_homeassistant(self) -> Optional[str]:
-        """Return latest version of Home Assistant."""
+        """Return image of Home Assistant docker."""
         if ATTR_HOMEASSISTANT not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_HOMEASSISTANT].format(
@@ -102,7 +103,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def image_supervisor(self) -> Optional[str]:
-        """Return latest version of Supervisor."""
+        """Return image of Supervisor docker."""
         if ATTR_SUPERVISOR not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_SUPERVISOR].format(
@@ -111,28 +112,28 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def image_cli(self) -> Optional[str]:
-        """Return latest version of CLI."""
+        """Return image of CLI docker."""
         if ATTR_CLI not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_CLI].format(arch=self.sys_arch.supervisor)
 
     @property
     def image_dns(self) -> Optional[str]:
-        """Return latest version of DNS."""
+        """Return image of DNS docker."""
         if ATTR_DNS not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_DNS].format(arch=self.sys_arch.supervisor)
 
     @property
     def image_audio(self) -> Optional[str]:
-        """Return latest version of Audio."""
+        """Return image of Audio docker."""
         if ATTR_AUDIO not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_AUDIO].format(arch=self.sys_arch.supervisor)
 
     @property
     def image_observer(self) -> Optional[str]:
-        """Return latest version of Observer."""
+        """Return image of Observer docker."""
         if ATTR_OBSERVER not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_OBSERVER].format(
@@ -141,12 +142,17 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def image_multicast(self) -> Optional[str]:
-        """Return latest version of Multicast."""
+        """Return image of Multicast docker."""
         if ATTR_MULTICAST not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_MULTICAST].format(
             arch=self.sys_arch.supervisor
         )
+
+    @property
+    def ota_url(self) -> Optional[str]:
+        """Return OTA url for OS."""
+        return self._data.get(ATTR_OTA)
 
     @property
     def channel(self) -> UpdateChannel:
@@ -196,6 +202,7 @@ class Updater(JsonConfig, CoreSysAttributes):
             # Update HassOS version
             if self.sys_hassos.board:
                 self._data[ATTR_HASSOS] = data["hassos"][self.sys_hassos.board]
+                self._data[ATTR_OTA] = data["ota"]
 
             # Update Home Assistant plugins
             self._data[ATTR_CLI] = data["cli"]
