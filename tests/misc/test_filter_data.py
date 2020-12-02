@@ -178,4 +178,4 @@ def test_images_report(coresys):
         event = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert "issues" in event["contexts"]["resolution"]
-    assert event["contexts"]["host"]["images"] == {"my/test:image"}
+    assert event["contexts"]["host"]["images"] == ["my/test:image"]
