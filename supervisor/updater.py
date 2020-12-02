@@ -202,7 +202,7 @@ class Updater(JsonConfig, CoreSysAttributes):
             # Update HassOS version
             if self.sys_hassos.board:
                 self._data[ATTR_HASSOS] = data["hassos"][self.sys_hassos.board]
-                self._data[ATTR_IMAGE][ATTR_OTA] = data["image"]["ota"]
+                self._data[ATTR_OTA] = data["ota"]
 
             # Update Home Assistant plugins
             self._data[ATTR_CLI] = data["cli"]
