@@ -8,7 +8,11 @@ import signal
 from colorlog import ColoredFormatter
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+from sentry_sdk.integrations.atexit import AtexitIntegration
+from sentry_sdk.integrations.dedupe import DedupeIntegration
+from sentry_sdk.integrations.excepthook import ExcepthookIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.threading import ThreadingIntegration
 
 from supervisor.jobs import JobManager
 
@@ -295,16 +299,20 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
-    sentry_logging = LoggingIntegration(
-        level=logging.WARNING, event_level=logging.CRITICAL
-    )
-
     _LOGGER.info("Initializing Supervisor Sentry")
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
         before_send=lambda event, hint: filter_data(coresys, event, hint),
         auto_enabling_integrations=False,
-        integrations=[AioHttpIntegration(), sentry_logging],
+        default_integrations=False,
+        integrations=[
+            AioHttpIntegration(),
+            ExcepthookIntegration(),
+            DedupeIntegration(),
+            AtexitIntegration(),
+            ThreadingIntegration(),
+            LoggingIntegration(level=logging.WARNING, event_level=logging.CRITICAL),
+        ],
         release=SUPERVISOR_VERSION,
         max_breadcrumbs=30,
     )
