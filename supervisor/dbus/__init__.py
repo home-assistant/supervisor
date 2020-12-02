@@ -56,8 +56,8 @@ class DBusManager(CoreSysAttributes):
         dbus_loads: List[DBusInterface] = [
             self.systemd,
             self.hostname,
-            self.rauc,
             self.network,
+            self.rauc,
         ]
         for dbus in dbus_loads:
             try:
