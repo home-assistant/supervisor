@@ -1,6 +1,6 @@
 """Job decorator."""
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import sentry_sdk
 
@@ -21,11 +21,13 @@ class Job:
         name: Optional[str] = None,
         conditions: Optional[List[JobCondition]] = None,
         cleanup: bool = True,
+        on_condition: Optional[JobException] = None,
     ):
         """Initialize the Job class."""
         self.name = name
         self.conditions = conditions
         self.cleanup = cleanup
+        self.on_condition = on_condition
         self._coresys: Optional[CoreSys] = None
         self._method = None
 
@@ -33,23 +35,28 @@ class Job:
         """Call the wrapper logic."""
         self._method = method
 
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> Any:
             """Wrap the method."""
             if self.name is None:
                 self.name = str(self._method.__qualname__).lower().replace(".", "_")
+
+            # Evaluate coresys
             try:
                 self._coresys = args[0].coresys
             except AttributeError:
-                return False
-
+                pass
             if not self._coresys:
                 raise JobException(f"coresys is missing on {self.name}")
 
             job = self._coresys.jobs.get_job(self.name)
 
+            # Handle condition
             if self.conditions and not self._check_conditions():
-                return False
+                if self.on_condition is None:
+                    return
+                raise self.on_condition()
 
+            # Execute Job
             try:
                 return await self._method(*args, **kwargs)
             except HassioError as err:
