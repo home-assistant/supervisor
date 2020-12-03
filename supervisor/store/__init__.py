@@ -65,7 +65,7 @@ class StoreManager(CoreSysAttributes):
         await self.load()
         self._read_addons()
 
-    @Job(conditions=[JobCondition.INTERNET_SYSTEM])
+    @Job(conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.FREE_SPACE])
     async def update_repositories(self, list_repositories):
         """Add a new custom repository."""
         job = self.sys_jobs.get_job("storemanager_update_repositories")
@@ -83,6 +83,12 @@ class StoreManager(CoreSysAttributes):
                 await repository.load()
             except StoreGitError:
                 _LOGGER.error("Can't load data from repository %s", url)
+                self.sys_resolution.create_issue(
+                    IssueType.CORRUPT_REPOSITORY,
+                    ContextType.STORE,
+                    reference=repository.slug,
+                    suggestions=[SuggestionType.EXECUTE_REMOVE],
+                )
             else:
                 if not repository.validate():
                     _LOGGER.error("%s is not a valid add-on repository", url)
