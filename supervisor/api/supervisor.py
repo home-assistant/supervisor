@@ -6,7 +6,7 @@ from typing import Any, Awaitable, Dict
 from aiohttp import web
 import voluptuous as vol
 
-from supervisor.resolution.const import ContextType, SuggestionType
+from supervisor.resolution.const import SuggestionType
 
 from ..const import (
     ATTR_ADDONS,
@@ -149,13 +149,9 @@ class APISupervisor(CoreSysAttributes):
             # Fix invalid repository
             found_invalid = False
             for suggestion in self.sys_resolution.suggestions:
-                if (
-                    suggestion.type != SuggestionType.EXECUTE_REMOVE
-                    and suggestion.context != ContextType
-                ):
-                    continue
-                found_invalid = True
-                await self.sys_resolution.apply_suggestion(suggestion)
+                if suggestion.type == SuggestionType.CUSTOM_REPOSITORIES_CHECK:
+                    found_invalid = True
+                    await self.sys_resolution.apply_suggestion(suggestion)
 
             if found_invalid:
                 raise APIError("Invalid Add-on repository!")

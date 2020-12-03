@@ -112,15 +112,23 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
-                suggestion = SuggestionType.EXECUTE_RELOAD
-                if KnownGitError.BAD_REQUEST in err.stderr:
-                    suggestion = SuggestionType.EXECUTE_REMOVE
-                self.sys_resolution.create_issue(
-                    IssueType.FATAL_ERROR,
-                    ContextType.STORE,
-                    reference=self.path.stem,
-                    suggestions=[suggestion],
-                )
+                if any(
+                    error in err.stderr
+                    for error in [KnownGitError.BAD_REQUEST, KnownGitError.RESOLVE]
+                ):
+                    self.sys_resolution.create_issue(
+                        IssueType.CUSTOM_REPOSITORY,
+                        ContextType.STORE,
+                        suggestions=[SuggestionType.CUSTOM_REPOSITORIES_CHECK],
+                    )
+
+                else:
+                    self.sys_resolution.create_issue(
+                        IssueType.FATAL_ERROR,
+                        ContextType.STORE,
+                        reference=self.path.stem,
+                        suggestions=[SuggestionType.EXECUTE_RELOAD],
+                    )
                 raise StoreGitError() from err
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM])

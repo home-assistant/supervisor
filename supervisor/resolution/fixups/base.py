@@ -8,7 +8,7 @@ from ...exceptions import ResolutionFixupError
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Issue, Suggestion
 
-_LOGGER: logging.Logger = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
 class FixupBase(ABC, CoreSysAttributes):

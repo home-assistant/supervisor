@@ -50,6 +50,7 @@ class IssueType(str, Enum):
     DOCKER_RATELIMIT = "docker_ratelimit"
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
+    CUSTOM_REPOSITORY = "custom_repository"
     MISSING_IMAGE = "missing_image"
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"
@@ -62,6 +63,7 @@ class SuggestionType(str, Enum):
 
     CLEAR_FULL_SNAPSHOT = "clear_full_snapshot"
     CREATE_FULL_SNAPSHOT = "create_full_snapshot"
+    CUSTOM_REPOSITORIES_CHECK = "custom_repositories_check"
     EXECUTE_UPDATE = "execute_update"
     EXECUTE_REPAIR = "execute_repair"
     EXECUTE_RESET = "execute_reset"

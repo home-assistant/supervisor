@@ -75,7 +75,7 @@ class StoreManager(CoreSysAttributes):
         # add new repository
         async def _add_repository(url: str, step: int):
             """Add a repository."""
-            job.update(progress=job.progress + step, stage=f"Checking {url} started")
+            job.update(progress=job.progress + step, stage=f"Checking {url}")
             repository = Repository(self.coresys, url)
 
             # Load the repository
@@ -83,6 +83,7 @@ class StoreManager(CoreSysAttributes):
                 await repository.load()
             except StoreGitError:
                 _LOGGER.error("Can't load data from repository %s", url)
+                return
             else:
                 if not repository.validate():
                     _LOGGER.error("%s is not a valid add-on repository", url)
@@ -100,7 +101,7 @@ class StoreManager(CoreSysAttributes):
 
         job.update(progress=10, stage="Check repositories")
         repos = new_rep - old_rep
-        tasks = [_add_repository(url, 80 / len(repos)) for url in repos]
+        tasks = [_add_repository(url, 70 / len(repos)) for url in repos]
         if tasks:
             await asyncio.wait(tasks)
 

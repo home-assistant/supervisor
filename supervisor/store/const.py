@@ -14,3 +14,4 @@ class KnownGitError(str, Enum):
     """Known GIT error types."""
 
     BAD_REQUEST = "The requested URL returned error: 400"
+    RESOLVE = "Could not resolve host"

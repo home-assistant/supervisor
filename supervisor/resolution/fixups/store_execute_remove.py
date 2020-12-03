@@ -16,21 +16,25 @@ class FixupStoreExecuteRemove(FixupBase):
     async def process_fixup(self, reference: Optional[str] = None) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Remove invalid Store: %s", reference)
+        repository = None
         try:
             repository = self.sys_store.get(reference)
         except StoreNotFound:
             _LOGGER.warning("Can't find store %s for fixup", reference)
-            return
-
-        # Remove repository
-        try:
-            await repository.remove()
-        except StoreError:
-            raise ResolutionFixupError() from None
         else:
-            self.sys_store.repositories.pop(repository.slug, None)
+            # Remove repository
+            try:
+                await repository.remove()
+            except StoreError:
+                raise ResolutionFixupError() from None
+            else:
+                self.sys_store.repositories.pop(repository.slug, None)
 
-        self.sys_config.drop_addon_repository(repository.source)
+        if repository:
+            self.sys_config.drop_addon_repository(repository.source)
+        else:
+            self.sys_store.repositories.pop(reference, None)
+
         self.sys_config.save_data()
 
     @property
