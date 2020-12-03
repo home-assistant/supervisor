@@ -244,7 +244,7 @@ async def test_exception_conditions(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(conditions=[JobCondition.RUNNING], raise_on_conditions=HassioError)
+        @Job(conditions=[JobCondition.RUNNING], on_condition=HassioError)
         async def execute(self):
             """Execute the class method."""
             return True

@@ -21,13 +21,13 @@ class Job:
         name: Optional[str] = None,
         conditions: Optional[List[JobCondition]] = None,
         cleanup: bool = True,
-        raise_on_conditions: Optional[Exception] = None,
+        on_condition: Optional[JobException] = None,
     ):
         """Initialize the Job class."""
         self.name = name
         self.conditions = conditions
         self.cleanup = cleanup
-        self.raise_on_conditions = raise_on_conditions
+        self.on_condition = on_condition
         self._coresys: Optional[CoreSys] = None
         self._method = None
 
@@ -52,9 +52,9 @@ class Job:
 
             # Handle condition
             if self.conditions and not self._check_conditions():
-                if self.raise_on_conditions is None:
+                if self.on_condition is None:
                     return
-                raise self.raise_on_conditions()
+                raise self.on_condition()
 
             # Execute Job
             try:

@@ -148,7 +148,7 @@ class Supervisor(CoreSysAttributes):
             await self.update_apparmor()
         self.sys_create_task(self.sys_core.stop())
 
-    @Job(conditions=[JobCondition.RUNNING], raise_on_conditions=SupervisorJobError)
+    @Job(conditions=[JobCondition.RUNNING], on_condition=SupervisorJobError)
     async def restart(self) -> None:
         """Restart Supervisor soft."""
         self.sys_core.exit_code = 100

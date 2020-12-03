@@ -160,7 +160,7 @@ class HomeAssistantCore(CoreSysAttributes):
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
         ],
-        raise_on_conditions=HomeAssistantJobError,
+        on_condition=HomeAssistantJobError,
     )
     async def update(self, version: Optional[str] = None) -> None:
         """Update HomeAssistant version."""

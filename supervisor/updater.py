@@ -24,7 +24,7 @@ from .const import (
     UpdateChannel,
 )
 from .coresys import CoreSysAttributes
-from .exceptions import HassioUpdaterError
+from .exceptions import UpdaterError, UpdaterJobError
 from .jobs.decorator import Job, JobCondition
 from .utils import AsyncThrottle
 from .utils.json import JsonConfig
@@ -43,13 +43,13 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Update internal data."""
-        with suppress(HassioUpdaterError):
-            await self.fetch_data()
+        with suppress(UpdaterError):
+            await self.on_condition()
 
     async def reload(self) -> None:
         """Update internal data."""
-        with suppress(HassioUpdaterError):
-            await self.fetch_data()
+        with suppress(UpdaterJobError):
+            await self.on_condition()
 
     @property
     def version_homeassistant(self) -> Optional[str]:
@@ -161,9 +161,9 @@ class Updater(JsonConfig, CoreSysAttributes):
     @AsyncThrottle(timedelta(seconds=30))
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
-        raise_on_conditions=HassioUpdaterError,
+        on_condition=UpdaterJobError,
     )
-    async def fetch_data(self):
+    async def on_condition(self):
         """Fetch current versions from Github.
 
         Is a coroutine.
@@ -178,16 +178,16 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
-            raise HassioUpdaterError() from err
+            raise UpdaterError() from err
 
         except json.JSONDecodeError as err:
             _LOGGER.warning("Can't parse versions from %s: %s", url, err)
-            raise HassioUpdaterError() from err
+            raise UpdaterError() from err
 
         # data valid?
         if not data or data.get(ATTR_CHANNEL) != self.channel:
             _LOGGER.warning("Invalid data from %s", url)
-            raise HassioUpdaterError()
+            raise UpdaterError()
 
         try:
             # Update supervisor version
@@ -218,7 +218,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         except KeyError as err:
             _LOGGER.warning("Can't process version data: %s", err)
-            raise HassioUpdaterError() from err
+            raise UpdaterError() from err
 
         else:
             self.save_data()

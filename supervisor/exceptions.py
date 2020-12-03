@@ -9,6 +9,13 @@ class HassioNotSupportedError(HassioError):
     """Function is not supported."""
 
 
+# JobManager
+
+
+class JobException(HassioError):
+    """Base job exception."""
+
+
 # HomeAssistant
 
 
@@ -32,7 +39,7 @@ class HomeAssistantAuthError(HomeAssistantAPIError):
     """Home Assistant Auth API exception."""
 
 
-class HomeAssistantJobError(HomeAssistantError):
+class HomeAssistantJobError(HomeAssistantError, JobException):
     """Raise on Home Assistant job error."""
 
 
@@ -47,7 +54,7 @@ class SupervisorUpdateError(SupervisorError):
     """Supervisor update error."""
 
 
-class SupervisorJobError(SupervisorError):
+class SupervisorJobError(SupervisorError, JobException):
     """Raise on job errors."""
 
 
@@ -136,7 +143,7 @@ class AddonsNotSupportedError(HassioNotSupportedError):
     """Addons don't support a function."""
 
 
-class AddonsJobError(AddonsError):
+class AddonsJobError(AddonsError, JobException):
     """Raise on job errors."""
 
 
@@ -150,8 +157,12 @@ class HassioArchNotFound(HassioNotSupportedError):
 # Updater
 
 
-class HassioUpdaterError(HassioError):
+class UpdaterError(HassioError):
     """Error on Updater."""
+
+
+class UpdaterJobError(UpdaterError, JobException):
+    """Raise on job error."""
 
 
 # Auth
@@ -324,10 +335,3 @@ class StoreGitError(StoreError):
 
 class StoreNotFound(StoreError):
     """Raise if slug is not known."""
-
-
-# JobManager
-
-
-class JobException(HassioError):
-    """Base job exception."""

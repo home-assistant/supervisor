@@ -149,7 +149,7 @@ class AddonManager(CoreSysAttributes):
             JobCondition.INTERNET_HOST,
             JobCondition.HEALTHY,
         ],
-        raise_on_conditions=AddonsJobError,
+        on_condition=AddonsJobError,
     )
     async def install(self, slug: str) -> None:
         """Install an add-on."""
@@ -251,7 +251,7 @@ class AddonManager(CoreSysAttributes):
             JobCondition.INTERNET_HOST,
             JobCondition.HEALTHY,
         ],
-        raise_on_conditions=AddonsJobError,
+        on_condition=AddonsJobError,
     )
     async def update(self, slug: str) -> None:
         """Update add-on."""
@@ -301,7 +301,7 @@ class AddonManager(CoreSysAttributes):
             JobCondition.INTERNET_HOST,
             JobCondition.HEALTHY,
         ],
-        raise_on_conditions=AddonsJobError,
+        on_condition=AddonsJobError,
     )
     async def rebuild(self, slug: str) -> None:
         """Perform a rebuild of local build add-on."""
@@ -344,7 +344,7 @@ class AddonManager(CoreSysAttributes):
             JobCondition.INTERNET_HOST,
             JobCondition.HEALTHY,
         ],
-        raise_on_conditions=AddonsJobError,
+        on_condition=AddonsJobError,
     )
     async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
