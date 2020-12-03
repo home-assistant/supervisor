@@ -55,7 +55,7 @@ class NetworkManager(DBusInterface):
     @property
     def connectivity_enabled(self) -> bool:
         """Return if connectivity check is enabled."""
-        return self.properties[DBUS_ATTR_CONNECTION_ENABLED]
+        return self.properties.get(DBUS_ATTR_CONNECTION_ENABLED, False)
 
     @dbus_connected
     def activate_connection(
