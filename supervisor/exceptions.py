@@ -322,6 +322,10 @@ class ResolutionFixupError(HassioError):
     """Rasie if a fixup fails."""
 
 
+class ResolutionFixupJobError(ResolutionFixupError, JobException):
+    """Raise on job error."""
+
+
 # Store
 
 

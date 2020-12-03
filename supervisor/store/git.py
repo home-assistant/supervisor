@@ -22,6 +22,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class GitRepo(CoreSysAttributes):
     """Manage Add-on Git repository."""
 
+    builtin: bool
+
     def __init__(self, coresys: CoreSys, path: Path, url: str):
         """Initialize Git base wrapper."""
         self.coresys: CoreSys = coresys
@@ -115,7 +117,11 @@ class GitRepo(CoreSysAttributes):
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
                     reference=self.path.stem,
-                    suggestions=[SuggestionType.EXECUTE_RELOAD],
+                    suggestions=[
+                        SuggestionType.EXECUTE_RELOAD
+                        if self.builtin
+                        else SuggestionType.EXECUTE_REMOVE
+                    ],
                 )
                 raise StoreGitError() from err
 
@@ -175,6 +181,8 @@ class GitRepo(CoreSysAttributes):
 class GitRepoHassIO(GitRepo):
     """Supervisor add-ons repository."""
 
+    builtin: bool = False
+
     def __init__(self, coresys):
         """Initialize Git Supervisor add-on repository."""
         super().__init__(coresys, coresys.config.path_addons_core, URL_HASSIO_ADDONS)
@@ -182,6 +190,8 @@ class GitRepoHassIO(GitRepo):
 
 class GitRepoCustom(GitRepo):
     """Custom add-ons repository."""
+
+    builtin: bool = False
 
     def __init__(self, coresys, url):
         """Initialize custom Git Supervisor addo-n repository."""
