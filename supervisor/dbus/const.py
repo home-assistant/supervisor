@@ -118,6 +118,7 @@ class DeviceType(int, Enum):
     VLAN = 11
     TUN = 16
     VETH = 20
+    BRIDGE = 13
 
 
 class WirelessMethodType(int, Enum):

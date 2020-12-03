@@ -16,6 +16,7 @@ class InterfaceType(str, Enum):
     ETHERNET = "ethernet"
     WIRELESS = "wireless"
     VLAN = "vlan"
+    BRIDGE = "bridge"
 
 
 class AuthMethod(str, Enum):

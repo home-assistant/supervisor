@@ -122,6 +122,7 @@ class NetworkManager(DBusInterface):
                     DeviceType.ETHERNET,
                     DeviceType.WIRELESS,
                     DeviceType.VLAN,
+                    DeviceType.BRIDGE,
                 ]
                 or not interface.managed
             ):
