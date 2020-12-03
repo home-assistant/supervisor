@@ -100,7 +100,7 @@ class Repository(CoreSysAttributes):
 
     async def update(self) -> None:
         """Update add-on repository."""
-        if self.type == StoreType.LOCAL:
+        if self.type == StoreType.LOCAL or not self.validate():
             return
         await self.git.pull()
 

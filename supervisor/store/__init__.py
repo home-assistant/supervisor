@@ -4,7 +4,7 @@ import logging
 from typing import Dict, List
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import StoreGitError, StoreNotFound
+from ..exceptions import StoreGitError, StoreJobError, StoreNotFound
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from .addon import AddonStore
@@ -83,6 +83,14 @@ class StoreManager(CoreSysAttributes):
                 await repository.load()
             except StoreGitError:
                 _LOGGER.error("Can't load data from repository %s", url)
+            except StoreJobError:
+                _LOGGER.warning("Skip update to later for %s", repository.slug)
+                self.sys_resolution.create_issue(
+                    IssueType.FATAL_ERROR,
+                    ContextType.STORE,
+                    refrence=repository.slug,
+                    suggestions=[SuggestionType.EXECUTE_RELOAD],
+                )
             else:
                 if not repository.validate():
                     _LOGGER.error("%s is not a valid add-on repository", url)

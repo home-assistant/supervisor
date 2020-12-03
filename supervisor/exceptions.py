@@ -322,6 +322,10 @@ class ResolutionFixupError(HassioError):
     """Rasie if a fixup fails."""
 
 
+class ResolutionFixupJobError(ResolutionFixupError, JobException):
+    """Raise on job error."""
+
+
 # Store
 
 
@@ -335,3 +339,7 @@ class StoreGitError(StoreError):
 
 class StoreNotFound(StoreError):
     """Raise if slug is not known."""
+
+
+class StoreJobError(StoreError, JobException):
+    """Raise on job error with git."""

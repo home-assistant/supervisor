@@ -9,7 +9,7 @@ import git
 
 from ..const import ATTR_BRANCH, ATTR_URL, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import StoreGitError
+from ..exceptions import StoreGitError, StoreJobError
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import remove_folder
@@ -21,6 +21,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 class GitRepo(CoreSysAttributes):
     """Manage Add-on Git repository."""
+
+    builtin: bool
 
     def __init__(self, coresys: CoreSys, path: Path, url: str):
         """Initialize Git base wrapper."""
@@ -82,7 +84,10 @@ class GitRepo(CoreSysAttributes):
                 )
                 raise StoreGitError() from err
 
-    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM])
+    @Job(
+        conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
+        on_condition=StoreJobError,
+    )
     async def clone(self) -> None:
         """Clone git add-on repository."""
         async with self.lock:
@@ -115,11 +120,18 @@ class GitRepo(CoreSysAttributes):
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
                     reference=self.path.stem,
-                    suggestions=[SuggestionType.EXECUTE_RELOAD],
+                    suggestions=[
+                        SuggestionType.EXECUTE_RELOAD
+                        if self.builtin
+                        else SuggestionType.EXECUTE_REMOVE
+                    ],
                 )
                 raise StoreGitError() from err
 
-    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM])
+    @Job(
+        conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
+        on_condition=StoreJobError,
+    )
     async def pull(self):
         """Pull Git add-on repo."""
         if self.lock.locked():
@@ -175,6 +187,8 @@ class GitRepo(CoreSysAttributes):
 class GitRepoHassIO(GitRepo):
     """Supervisor add-ons repository."""
 
+    builtin: bool = False
+
     def __init__(self, coresys):
         """Initialize Git Supervisor add-on repository."""
         super().__init__(coresys, coresys.config.path_addons_core, URL_HASSIO_ADDONS)
@@ -182,6 +196,8 @@ class GitRepoHassIO(GitRepo):
 
 class GitRepoCustom(GitRepo):
     """Custom add-ons repository."""
+
+    builtin: bool = False
 
     def __init__(self, coresys, url):
         """Initialize custom Git Supervisor addo-n repository."""

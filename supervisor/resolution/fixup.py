@@ -29,7 +29,10 @@ class ResolutionFixup(CoreSysAttributes):
 
     @property
     def all_fixes(self) -> List[FixupBase]:
-        """Return a list of all fixups."""
+        """Return a list of all fixups.
+
+        Order can be important!
+        """
         return [
             self._create_full_snapshot,
             self._clear_full_snapshot,
