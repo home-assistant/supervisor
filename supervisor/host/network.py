@@ -283,7 +283,7 @@ class Interface:
                 inet.connection.ipv4.gateway,
                 inet.connection.ipv4.nameservers,
             )
-            if inet.settings.ipv4 and inet.connection and inet.connection.ipv4
+            if inet.settings and inet.settings.ipv4 and inet.connection and inet.connection.ipv4
             else IpConfig(InterfaceMethod.DISABLED, [], None, []),
             IpConfig(
                 Interface._map_nm_method(inet.settings.ipv6.method),
@@ -291,7 +291,7 @@ class Interface:
                 inet.connection.ipv6.gateway,
                 inet.connection.ipv6.nameservers,
             )
-            if inet.settings.ipv6 and inet.connection and inet.connection.ipv6
+            if inet.settings and inet.settings.ipv6 and inet.connection and inet.connection.ipv6
             else IpConfig(InterfaceMethod.DISABLED, [], None, []),
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
