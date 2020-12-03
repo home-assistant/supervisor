@@ -19,6 +19,7 @@ from ..exceptions import (
     DockerError,
     HomeAssistantCrashError,
     HomeAssistantError,
+    HomeAssistantJobError,
     HomeAssistantUpdateError,
 )
 from ..jobs.decorator import Job, JobCondition
@@ -158,7 +159,8 @@ class HomeAssistantCore(CoreSysAttributes):
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
-        ]
+        ],
+        raise_on_conditions=HomeAssistantJobError,
     )
     async def update(self, version: Optional[str] = None) -> None:
         """Update HomeAssistant version."""

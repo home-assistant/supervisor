@@ -32,6 +32,10 @@ class HomeAssistantAuthError(HomeAssistantAPIError):
     """Home Assistant Auth API exception."""
 
 
+class HomeAssistantJobError(HomeAssistantError):
+    """Raise on Home Assistant job error."""
+
+
 # Supervisor
 
 
