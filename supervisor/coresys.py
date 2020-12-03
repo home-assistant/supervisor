@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from .misc.scheduler import Scheduler
     from .misc.tasks import Tasks
     from .plugins import PluginManager
-    from .resolution import ResolutionManager
+    from .resolution.module import ResolutionManager
     from .services import ServiceManager
     from .snapshots import SnapshotManager
     from .store import StoreManager
