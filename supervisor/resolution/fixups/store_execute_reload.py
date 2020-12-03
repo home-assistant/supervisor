@@ -2,8 +2,9 @@
 import logging
 from typing import List, Optional
 
-from supervisor.exceptions import ResolutionFixupError, StoreError, StoreNotFound
-
+from ...exceptions import ResolutionFixupError, StoreError, StoreNotFound
+from ...jobs.const import JobCondition
+from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
@@ -13,6 +14,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class FixupStoreExecuteReload(FixupBase):
     """Storage class for fixup."""
 
+    @Job(JobCondition.INTERNET_SYSTEM)
     async def process_fixup(self, reference: Optional[str] = None) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Reload Store: %s", reference)
