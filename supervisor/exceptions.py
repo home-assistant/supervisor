@@ -339,3 +339,7 @@ class StoreGitError(StoreError):
 
 class StoreNotFound(StoreError):
     """Raise if slug is not known."""
+
+
+class StoreJobError(StoreError, JobException):
+    """Raise on job error with git."""
