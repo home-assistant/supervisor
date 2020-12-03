@@ -182,7 +182,9 @@ async def api_client(aiohttp_client, coresys: CoreSys):
 def store_manager(coresys: CoreSys):
     """Fixture for the store manager."""
     sm_obj = coresys.store
-    with patch("supervisor.store.data.StoreData.update", return_value=MagicMock()):
+    with patch(
+        "supervisor.store.data.StoreData.update", return_value=MagicMock()
+    ), patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
         yield sm_obj
 
 
