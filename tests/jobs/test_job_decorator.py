@@ -232,3 +232,28 @@ async def test_ignore_conditions(coresys: CoreSys):
 
     coresys.jobs.ignore_conditions = [JobCondition.RUNNING]
     assert await test.execute()
+
+
+async def test_exception_conditions(coresys: CoreSys):
+    """Test the ignore conditions decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.RUNNING], on_condition=HassioError)
+        async def execute(self):
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+
+    coresys.core.state = CoreState.RUNNING
+    assert await test.execute()
+
+    coresys.core.state = CoreState.FREEZE
+    with pytest.raises(HassioError):
+        await test.execute()

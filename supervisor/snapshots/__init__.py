@@ -122,7 +122,7 @@ class SnapshotManager(CoreSysAttributes):
         self.snapshots_obj[snapshot.slug] = snapshot
         return snapshot
 
-    @Job(conditions=[JobCondition.FREE_SPACE])
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_snapshot_full(self, name="", password=None):
         """Create a full snapshot."""
         if self.lock.locked():
@@ -144,9 +144,9 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Snapshotting %s store folders", snapshot.slug)
                 await snapshot.store_folders()
 
-        except Exception as excep:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
-            print(excep)
+            self.sys_capture_exception(err)
             return None
 
         else:
@@ -158,7 +158,7 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
-    @Job(conditions=[JobCondition.FREE_SPACE])
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_snapshot_partial(
         self, name="", addons=None, folders=None, password=None
     ):
@@ -195,8 +195,9 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.info("Snapshotting %s store folders", snapshot.slug)
                     await snapshot.store_folders(folders)
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
+            self.sys_capture_exception(err)
             return None
 
         else:
@@ -216,6 +217,7 @@ class SnapshotManager(CoreSysAttributes):
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
             JobCondition.INTERNET_SYSTEM,
+            JobCondition.RUNNING,
         ]
     )
     async def do_restore_full(self, snapshot, password=None):
@@ -282,8 +284,9 @@ class SnapshotManager(CoreSysAttributes):
                 await task_hass
                 await self.sys_homeassistant.core.start()
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
+            self.sys_capture_exception(err)
             return False
 
         else:
@@ -300,6 +303,7 @@ class SnapshotManager(CoreSysAttributes):
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
             JobCondition.INTERNET_SYSTEM,
+            JobCondition.RUNNING,
         ]
     )
     async def do_restore_partial(
@@ -368,8 +372,9 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.warning("Need restart HomeAssistant for API")
                     await self.sys_homeassistant.core.restart()
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
+            self.sys_capture_exception(err)
             return False
 
         else:
