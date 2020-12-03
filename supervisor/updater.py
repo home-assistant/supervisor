@@ -44,12 +44,12 @@ class Updater(JsonConfig, CoreSysAttributes):
     async def load(self) -> None:
         """Update internal data."""
         with suppress(UpdaterError):
-            await self.on_condition()
+            await self.fetch_data()
 
     async def reload(self) -> None:
         """Update internal data."""
         with suppress(UpdaterJobError):
-            await self.on_condition()
+            await self.fetch_data()
 
     @property
     def version_homeassistant(self) -> Optional[str]:
@@ -163,7 +163,7 @@ class Updater(JsonConfig, CoreSysAttributes):
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=UpdaterJobError,
     )
-    async def on_condition(self):
+    async def fetch_data(self):
         """Fetch current versions from Github.
 
         Is a coroutine.
