@@ -43,6 +43,10 @@ class SupervisorUpdateError(SupervisorError):
     """Supervisor update error."""
 
 
+class SupervisorJobError(SupervisorError):
+    """Raise on job errors."""
+
+
 # HassOS
 
 
@@ -126,6 +130,10 @@ class AddonConfigurationError(AddonsError):
 
 class AddonsNotSupportedError(HassioNotSupportedError):
     """Addons don't support a function."""
+
+
+class AddonsJobError(AddonsError):
+    """Raise on job errors."""
 
 
 # Arch

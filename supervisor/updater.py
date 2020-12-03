@@ -159,7 +159,10 @@ class Updater(JsonConfig, CoreSysAttributes):
         self._data[ATTR_CHANNEL] = value
 
     @AsyncThrottle(timedelta(seconds=30))
-    @Job(conditions=[JobCondition.INTERNET_SYSTEM])
+    @Job(
+        conditions=[JobCondition.INTERNET_SYSTEM],
+        raise_on_conditions=HassioUpdaterError,
+    )
     async def fetch_data(self):
         """Fetch current versions from Github.
 

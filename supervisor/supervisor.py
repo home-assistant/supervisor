@@ -21,6 +21,7 @@ from .exceptions import (
     DockerError,
     HostAppArmorError,
     SupervisorError,
+    SupervisorJobError,
     SupervisorUpdateError,
 )
 from .resolution.const import ContextType, IssueType
@@ -147,7 +148,7 @@ class Supervisor(CoreSysAttributes):
             await self.update_apparmor()
         self.sys_create_task(self.sys_core.stop())
 
-    @Job(conditions=[JobCondition.RUNNING])
+    @Job(conditions=[JobCondition.RUNNING], raise_on_conditions=SupervisorJobError)
     async def restart(self) -> None:
         """Restart Supervisor soft."""
         self.sys_core.exit_code = 100
