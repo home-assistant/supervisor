@@ -8,3 +8,9 @@ class StoreType(str, Enum):
     CORE = "core"
     LOCAL = "local"
     GIT = "git"
+
+
+class KnownGitError(str, Enum):
+    """Known GIT error types."""
+
+    BAD_REQUEST = "The requested URL returned error: 400"

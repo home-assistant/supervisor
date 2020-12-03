@@ -83,12 +83,6 @@ class StoreManager(CoreSysAttributes):
                 await repository.load()
             except StoreGitError:
                 _LOGGER.error("Can't load data from repository %s", url)
-                self.sys_resolution.create_issue(
-                    IssueType.CORRUPT_REPOSITORY,
-                    ContextType.STORE,
-                    reference=repository.slug,
-                    suggestions=[SuggestionType.EXECUTE_REMOVE],
-                )
             else:
                 if not repository.validate():
                     _LOGGER.error("%s is not a valid add-on repository", url)

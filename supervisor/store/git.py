@@ -14,6 +14,7 @@ from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import remove_folder
 from ..validate import RE_REPOSITORY
+from .const import KnownGitError
 from .utils import get_hash_from_repository
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -111,11 +112,14 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
+                suggestion = SuggestionType.EXECUTE_RELOAD
+                if KnownGitError.BAD_REQUEST in err.stderr:
+                    suggestion = SuggestionType.EXECUTE_REMOVE
                 self.sys_resolution.create_issue(
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
                     reference=self.path.stem,
-                    suggestions=[SuggestionType.EXECUTE_RELOAD],
+                    suggestions=[suggestion],
                 )
                 raise StoreGitError() from err
 
