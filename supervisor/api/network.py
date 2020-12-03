@@ -18,6 +18,7 @@ from ..const import (
     ATTR_FREQUENCY,
     ATTR_GATEWAY,
     ATTR_HOST_INTERNET,
+    ATTR_ID,
     ATTR_INTERFACE,
     ATTR_INTERFACES,
     ATTR_IPV4,
@@ -26,6 +27,7 @@ from ..const import (
     ATTR_METHOD,
     ATTR_MODE,
     ATTR_NAMESERVERS,
+    ATTR_PARENT,
     ATTR_PRIMARY,
     ATTR_PSK,
     ATTR_SIGNAL,
@@ -100,6 +102,14 @@ def wifi_struct(config: WifiConfig) -> dict:
     }
 
 
+def vlan_struct(config: VlanConfig) -> dict:
+    """Return a dict with information about VLAN configuration."""
+    return {
+        ATTR_ID: config.id,
+        ATTR_PARENT: config.interface,
+    }
+
+
 def interface_struct(interface: Interface) -> dict:
     """Return a dict with information of a interface to be used in th API."""
     return {
@@ -111,7 +121,7 @@ def interface_struct(interface: Interface) -> dict:
         ATTR_IPV4: ipconfig_struct(interface.ipv4) if interface.ipv4 else None,
         ATTR_IPV6: ipconfig_struct(interface.ipv6) if interface.ipv6 else None,
         ATTR_WIFI: wifi_struct(interface.wifi) if interface.wifi else None,
-        ATTR_VLAN: interface.vlan.id if interface.vlan else None,
+        ATTR_VLAN: wifi_struct(interface.vlan) if interface.vlan else None,
     }
 
 
