@@ -49,7 +49,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     async def reload(self) -> None:
         """Update internal data."""
-        with suppress(UpdaterJobError):
+        with suppress(UpdaterError):
             await self.fetch_data()
 
     @property
