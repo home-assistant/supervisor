@@ -30,7 +30,7 @@ from .settings import NetworkManagerSettings
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-MINIMAL_VERSION = "1.14.0"
+MINIMAL_VERSION = "1.14.6"
 
 
 class NetworkManager(DBusInterface):
