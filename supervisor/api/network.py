@@ -18,6 +18,7 @@ from ..const import (
     ATTR_FREQUENCY,
     ATTR_GATEWAY,
     ATTR_HOST_INTERNET,
+    ATTR_ID,
     ATTR_INTERFACE,
     ATTR_INTERFACES,
     ATTR_IPV4,
@@ -26,6 +27,7 @@ from ..const import (
     ATTR_METHOD,
     ATTR_MODE,
     ATTR_NAMESERVERS,
+    ATTR_PARENT,
     ATTR_PRIMARY,
     ATTR_PSK,
     ATTR_SIGNAL,
@@ -80,7 +82,7 @@ SCHEMA_UPDATE = vol.Schema(
 )
 
 
-def ipconfig_struct(config: IpConfig) -> dict:
+def ipconfig_struct(config: IpConfig) -> Dict[str, Any]:
     """Return a dict with information about ip configuration."""
     return {
         ATTR_METHOD: config.method,
@@ -90,7 +92,7 @@ def ipconfig_struct(config: IpConfig) -> dict:
     }
 
 
-def wifi_struct(config: WifiConfig) -> dict:
+def wifi_struct(config: WifiConfig) -> Dict[str, Any]:
     """Return a dict with information about wifi configuration."""
     return {
         ATTR_MODE: config.mode,
@@ -100,7 +102,15 @@ def wifi_struct(config: WifiConfig) -> dict:
     }
 
 
-def interface_struct(interface: Interface) -> dict:
+def vlan_struct(config: VlanConfig) -> Dict[str, Any]:
+    """Return a dict with information about VLAN configuration."""
+    return {
+        ATTR_ID: config.id,
+        ATTR_PARENT: config.interface,
+    }
+
+
+def interface_struct(interface: Interface) -> Dict[str, Any]:
     """Return a dict with information of a interface to be used in th API."""
     return {
         ATTR_INTERFACE: interface.name,
@@ -115,7 +125,7 @@ def interface_struct(interface: Interface) -> dict:
     }
 
 
-def accesspoint_struct(accesspoint: AccessPoint) -> dict:
+def accesspoint_struct(accesspoint: AccessPoint) -> Dict[str, Any]:
     """Return a dict for AccessPoint."""
     return {
         ATTR_MODE: accesspoint.mode,
