@@ -126,7 +126,7 @@ class NetworkManager(DBusInterface):
         except (TypeError, ValueError, KeyError):
             pass
 
-        _LOGGER.error("The version of NetworkManager is not supported!")
+        _LOGGER.error("Version '%s' of NetworkManager is not supported!", self.version)
         raise HostNotSupportedError()
 
     @dbus_connected
