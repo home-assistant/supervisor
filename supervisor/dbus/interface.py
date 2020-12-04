@@ -20,6 +20,10 @@ class DBusInterface(ABC):
     async def connect(self):
         """Connect to D-Bus."""
 
+    def disconnect(self):
+        """Disconnect from D-Bus."""
+        self.dbus = None
+
 
 class DBusInterfaceProxy(ABC):
     """Handle D-Bus interface proxy."""
