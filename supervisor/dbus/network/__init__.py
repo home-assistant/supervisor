@@ -2,14 +2,21 @@
 import logging
 from typing import Any, Awaitable, Dict
 
+from packaging.version import parse as pkg_parse
 import sentry_sdk
 
-from ...exceptions import DBusError, DBusInterfaceError, DBusProgramError
+from ...exceptions import (
+    DBusError,
+    DBusInterfaceError,
+    DBusProgramError,
+    HostNotSupportedError,
+)
 from ...utils.gdbus import DBus
 from ..const import (
     DBUS_ATTR_CONNECTION_ENABLED,
     DBUS_ATTR_DEVICES,
     DBUS_ATTR_PRIMARY_CONNECTION,
+    DBUS_ATTR_VERSION,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
     DBUS_OBJECT_NM,
@@ -22,6 +29,8 @@ from .interface import NetworkInterface
 from .settings import NetworkManagerSettings
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+MINIMAL_VERSION = "1.14.6"
 
 
 class NetworkManager(DBusInterface):
@@ -55,7 +64,12 @@ class NetworkManager(DBusInterface):
     @property
     def connectivity_enabled(self) -> bool:
         """Return if connectivity check is enabled."""
-        return self.properties.get(DBUS_ATTR_CONNECTION_ENABLED, False)
+        return self.properties[DBUS_ATTR_CONNECTION_ENABLED]
+
+    @property
+    def version(self) -> bool:
+        """Return if connectivity check is enabled."""
+        return self.properties[DBUS_ATTR_VERSION]
 
     @dbus_connected
     def activate_connection(
@@ -92,6 +106,28 @@ class NetworkManager(DBusInterface):
             _LOGGER.warning(
                 "No Network Manager support on the host. Local network functions have been disabled."
             )
+
+        # Make Sure we only connect to supported version
+        if self.is_connected:
+            try:
+                await self._validate_version()
+            except (HostNotSupportedError, DBusError):
+                self.disconnect()
+                self.dns.disconnect()
+                self.settings.disconnect()
+
+    async def _validate_version(self) -> None:
+        """Validate Version of NetworkManager."""
+        self.properties = await self.dbus.get_properties(DBUS_NAME_NM)
+
+        try:
+            if pkg_parse(self.version) >= pkg_parse(MINIMAL_VERSION):
+                return
+        except (TypeError, ValueError, KeyError):
+            pass
+
+        _LOGGER.error("Version '%s' of NetworkManager is not supported!", self.version)
+        raise HostNotSupportedError()
 
     @dbus_connected
     async def update(self):
