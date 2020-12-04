@@ -32,7 +32,9 @@ def interface_update_payload(
 
     def ipv6_to_byte(ip_address: IPv6Address) -> str:
         """Convert an ipv6 to an byte array."""
-        return f'[byte {", ".join("0x{:02x}".format(val) for val in reversed(ip_address.packed))}]'
+        return (
+            f'[byte {", ".join("0x{:02x}".format(val) for val in ip_address.packed)}]'
+        )
 
     # Init template
     env.filters["ipv4_to_int"] = ipv4_to_int

@@ -115,6 +115,7 @@ async def test_interface_update_payload_ethernet_ipv6(coresys):
     interface.ipv6.nameservers = [
         ip_address("2606:4700:4700::64"),
         ip_address("2606:4700:4700::6400"),
+        ip_address("2606:4700:4700::1111"),
     ]
     interface.ipv6.gateway = ip_address("fe80::da58:d7ff:fe00:9c69")
 
@@ -130,8 +131,9 @@ async def test_interface_update_payload_ethernet_ipv6(coresys):
     )
     assert DBus.parse_gvariant(data)["ipv6"]["address-data"][0]["prefix"] == 64
     assert DBus.parse_gvariant(data)["ipv6"]["dns"] == [
-        [100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 71, 6, 38],
-        [0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 71, 6, 38],
+        [38, 6, 71, 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100],
+        [38, 6, 71, 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0],
+        [38, 6, 71, 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 17],
     ]
     assert (
         DBus.parse_gvariant(data)["connection"]["uuid"] == inet.settings.connection.uuid
