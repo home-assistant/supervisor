@@ -158,7 +158,6 @@ class DockerInterface(CoreSysAttributes):
                 # Try login if we have defined credentials
                 self._docker_login(image)
 
-            # docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
             for line in self.sys_docker.api.pull(image, tag, stream=True, decode=True):
                 if line.get("status"):
                     if PULL_PROGRESS.get(line["status"]):
