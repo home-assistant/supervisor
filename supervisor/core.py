@@ -66,18 +66,25 @@ class Core(CoreSysAttributes):
         await self.sys_resolution.evaluate.evaluate_system()
 
         # Check supervisor version/update
-        if self.sys_dev:
-            self.sys_config.version = self.sys_supervisor.version
-        elif self.sys_config.version != self.sys_supervisor.version:
+        if self.sys_config.version == self.sys_supervisor.version:
+            return
+
+        # Somethings going wrong
+        _LOGGER.error(
+            "Update '%s' of Supervisor '%s' failed!",
+            self.sys_config.version,
+            self.sys_supervisor.version,
+        )
+
+        if self.sys_supervisor.need_update:
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_ROLLBACK, ContextType.SUPERVISOR
             )
             self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
-            _LOGGER.error(
-                "Update '%s' of Supervisor '%s' failed!",
-                self.sys_config.version,
-                self.sys_supervisor.version,
-            )
+
+        # Fix wrong version in config / avoid boot loop on OS
+        self.sys_config.version = self.sys_supervisor.version
+        self.sys_config.save_data()
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
