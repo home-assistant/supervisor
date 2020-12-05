@@ -10,6 +10,7 @@ from supervisor.misc.filter import filter_data
 from supervisor.resolution.const import (
     ContextType,
     IssueType,
+    SuggestionType,
     UnhealthyReason,
     UnsupportedReason,
 )
@@ -124,6 +125,34 @@ def test_issues_on_report(coresys):
     assert event["contexts"]["resolution"]["issues"][0]["context"] == ContextType.SYSTEM
 
 
+def test_suggestions_on_report(coresys):
+    """Attach suggestion to report."""
+
+    coresys.resolution.create_issue(
+        IssueType.FATAL_ERROR,
+        ContextType.SYSTEM,
+        suggestions=[SuggestionType.EXECUTE_RELOAD],
+    )
+
+    coresys.config.diagnostics = True
+    coresys.core.state = CoreState.RUNNING
+
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        event = filter_data(coresys, SAMPLE_EVENT, {})
+
+    assert "issues" in event["contexts"]["resolution"]
+    assert event["contexts"]["resolution"]["issues"][0]["type"] == IssueType.FATAL_ERROR
+    assert event["contexts"]["resolution"]["issues"][0]["context"] == ContextType.SYSTEM
+    assert (
+        event["contexts"]["resolution"]["suggestions"][0]["type"]
+        == SuggestionType.EXECUTE_RELOAD
+    )
+    assert (
+        event["contexts"]["resolution"]["suggestions"][0]["context"]
+        == ContextType.SYSTEM
+    )
+
+
 def test_unhealthy_on_report(coresys):
     """Attach unhealthy to report."""
 
@@ -136,3 +165,17 @@ def test_unhealthy_on_report(coresys):
 
     assert "issues" in event["contexts"]["resolution"]
     assert event["contexts"]["resolution"]["unhealthy"][-1] == UnhealthyReason.DOCKER
+
+
+def test_images_report(coresys):
+    """Attach image to report."""
+
+    coresys.config.diagnostics = True
+    coresys.core.state = CoreState.RUNNING
+    coresys.resolution.evaluate.cached_images.add("my/test:image")
+
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        event = filter_data(coresys, SAMPLE_EVENT, {})
+
+    assert "issues" in event["contexts"]["resolution"]
+    assert event["contexts"]["host"]["images"] == ["my/test:image"]

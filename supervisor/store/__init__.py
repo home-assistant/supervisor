@@ -1,25 +1,20 @@
 """Add-on Store handler."""
 import asyncio
 import logging
-from pathlib import Path
 from typing import Dict, List
 
-import voluptuous as vol
-
-from supervisor.store.validate import SCHEMA_REPOSITORY_CONFIG
-from supervisor.utils.json import read_json_file
-
-from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JsonFileError, StoreGitError
+from ..exceptions import StoreGitError, StoreJobError, StoreNotFound
 from ..jobs.decorator import Job, JobCondition
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from .addon import AddonStore
+from .const import StoreType
 from .data import StoreData
 from .repository import Repository
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-BUILTIN_REPOSITORIES = {REPOSITORY_CORE, REPOSITORY_LOCAL}
+BUILTIN_REPOSITORIES = {StoreType.CORE.value, StoreType.LOCAL.value}
 
 
 class StoreManager(CoreSysAttributes):
@@ -36,6 +31,20 @@ class StoreManager(CoreSysAttributes):
         """Return list of add-on repositories."""
         return list(self.repositories.values())
 
+    def get(self, slug: str) -> Repository:
+        """Return Repository with slug."""
+        if slug not in self.repositories:
+            raise StoreNotFound()
+        return self.repositories[slug]
+
+    def get_from_url(self, url: str) -> Repository:
+        """Return Repository with slug."""
+        for repository in self.all:
+            if repository.source != url:
+                continue
+            return repository
+        raise StoreNotFound()
+
     async def load(self) -> None:
         """Start up add-on management."""
         self.data.update()
@@ -48,7 +57,7 @@ class StoreManager(CoreSysAttributes):
 
     async def reload(self) -> None:
         """Update add-ons from repository and reload list."""
-        tasks = [repository.update() for repository in self.repositories.values()]
+        tasks = [repository.update() for repository in self.all]
         if tasks:
             await asyncio.wait(tasks)
 
@@ -61,35 +70,41 @@ class StoreManager(CoreSysAttributes):
         """Add a new custom repository."""
         job = self.sys_jobs.get_job("storemanager_update_repositories")
         new_rep = set(list_repositories)
-        old_rep = set(self.repositories)
+        old_rep = {repository.source for repository in self.all}
 
         # add new repository
         async def _add_repository(url: str, step: int):
             """Add a repository."""
             job.update(progress=job.progress + step, stage=f"Checking {url} started")
             repository = Repository(self.coresys, url)
+
+            # Load the repository
             try:
                 await repository.load()
             except StoreGitError:
                 _LOGGER.error("Can't load data from repository %s", url)
-                return
-
-            # don't add built-in repository to config
-            if url not in BUILTIN_REPOSITORIES:
-                # Verify that it is a add-on repository
-                repository_file = Path(repository.git.path, "repository.json")
-                try:
-                    await self.sys_run_in_executor(
-                        SCHEMA_REPOSITORY_CONFIG, read_json_file(repository_file)
+            except StoreJobError:
+                _LOGGER.warning("Skip update to later for %s", repository.slug)
+                self.sys_resolution.create_issue(
+                    IssueType.FATAL_ERROR,
+                    ContextType.STORE,
+                    refrence=repository.slug,
+                    suggestions=[SuggestionType.EXECUTE_RELOAD],
+                )
+            else:
+                if not repository.validate():
+                    _LOGGER.error("%s is not a valid add-on repository", url)
+                    self.sys_resolution.create_issue(
+                        IssueType.CORRUPT_REPOSITORY,
+                        ContextType.STORE,
+                        reference=repository.slug,
+                        suggestions=[SuggestionType.EXECUTE_REMOVE],
                     )
-                except (JsonFileError, vol.Invalid) as err:
-                    _LOGGER.error("%s is not a valid add-on repository. %s", url, err)
-                    await repository.remove()
-                    return
 
-                self.sys_config.add_addon_repository(url)
-
-            self.repositories[url] = repository
+            # Add Repository to list
+            if repository.type == StoreType.GIT:
+                self.sys_config.add_addon_repository(repository.source)
+            self.repositories[repository.slug] = repository
 
         job.update(progress=10, stage="Check repositories")
         repos = new_rep - old_rep
@@ -97,9 +112,10 @@ class StoreManager(CoreSysAttributes):
         if tasks:
             await asyncio.wait(tasks)
 
-        # del new repository
+        # Delete stale repositories
         for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
-            await self.repositories.pop(url).remove()
+            repository = self.get_from_url(url)
+            await self.repositories.pop(repository.slug).remove()
             self.sys_config.drop_addon_repository(url)
 
         # update data

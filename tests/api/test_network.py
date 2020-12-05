@@ -26,8 +26,18 @@ async def test_api_network_info(api_client, coresys):
             assert interface["ipv4"]["gateway"] == "192.168.2.1"
         if interface["interface"] == TEST_INTERFACE_WLAN:
             assert not interface["primary"]
-            assert interface["ipv4"] is None
-            assert interface["ipv6"] is None
+            assert interface["ipv4"] == {
+                "address": [],
+                "gateway": None,
+                "method": "disabled",
+                "nameservers": [],
+            }
+            assert interface["ipv6"] == {
+                "address": [],
+                "gateway": None,
+                "method": "disabled",
+                "nameservers": [],
+            }
 
     assert result["data"]["docker"]["interface"] == DOCKER_NETWORK
     assert result["data"]["docker"]["address"] == str(DOCKER_NETWORK_MASK)
@@ -175,3 +185,12 @@ async def test_api_network_wireless_scan(api_client):
         ap["ssid"] for ap in result["data"]["accesspoints"]
     ]
     assert [47, 63] == [ap["signal"] for ap in result["data"]["accesspoints"]]
+
+
+@pytest.mark.asyncio
+async def test_api_network_reload(api_client, coresys):
+    """Test network manager reload api."""
+    resp = await api_client.post("/network/reload")
+    result = await resp.json()
+
+    assert result["result"] == "ok"

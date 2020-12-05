@@ -21,7 +21,7 @@
             'method': <'disabled'>
 {% else %}
             'method': <'manual'>,
-            'dns': <[uint32 {{ interface.ipv4.nameservers | map("int") | join(",") }}]>,
+            'dns': <[uint32 {{ interface.ipv4.nameservers | map("ipv4_to_int") | join(",") }}]>,
             'address-data': <[
             {% for address in interface.ipv4.address %}
                 {
@@ -44,7 +44,7 @@
             'method': <'disabled'>
 {% else %}
             'method': <'manual'>,
-            'dns': <[uint32 {{ interface.ipv6.nameservers | map("int") | join(",") }}]>,
+            'dns': <[{{ interface.ipv6.nameservers | map("ipv6_to_byte") | join(",") }}]>,
             'address-data': <[
             {% for address in interface.ipv6.address if not address.with_prefixlen.startswith("fe80::") %}
                 {
@@ -61,7 +61,7 @@
     ,
     '802-3-ethernet':
         {
-            'assigned-mac-address': <'stable'>
+            'assigned-mac-address': <'preserve'>
         }
 {% endif %}
 
@@ -78,7 +78,7 @@
     ,
     '802-11-wireless':
         {
-            'assigned-mac-address': <'stable'>,
+            'assigned-mac-address': <'preserve'>,
             'ssid': <[byte {{ interface.wifi.ssid }}]>,
             'mode': <'{{ interface.wifi.mode.value }}'>,
             'powersave': <uint32 1>

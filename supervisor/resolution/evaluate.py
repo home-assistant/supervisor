@@ -1,8 +1,6 @@
 """Helpers to evaluate the system."""
 import logging
-from typing import List
-
-from supervisor.exceptions import HassioError
+from typing import List, Set
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import UnhealthyReason, UnsupportedReason
@@ -34,6 +32,8 @@ class ResolutionEvaluation(CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the evaluation class."""
         self.coresys = coresys
+
+        self.cached_images: Set[str] = set()
 
         self._container = EvaluateContainer(coresys)
         self._dbus = EvaluateDbus(coresys)
@@ -69,7 +69,7 @@ class ResolutionEvaluation(CoreSysAttributes):
         for evaluation in self.all_evalutions:
             try:
                 await evaluation()
-            except HassioError as err:
+            except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning(
                     "Error during processing %s: %s", evaluation.reason, err
                 )

@@ -9,6 +9,7 @@ class DBusInterface(ABC):
     """Handle D-Bus interface for hostname/system."""
 
     dbus: Optional[DBus] = None
+    name: Optional[str] = None
 
     @property
     def is_connected(self):
@@ -18,6 +19,10 @@ class DBusInterface(ABC):
     @abstractmethod
     async def connect(self):
         """Connect to D-Bus."""
+
+    def disconnect(self):
+        """Disconnect from D-Bus."""
+        self.dbus = None
 
 
 class DBusInterfaceProxy(ABC):

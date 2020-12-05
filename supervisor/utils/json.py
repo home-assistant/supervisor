@@ -67,7 +67,7 @@ class JsonConfig:
         try:
             self._data = self._schema(self._data)
         except vol.Invalid as ex:
-            _LOGGER.error(
+            _LOGGER.critical(
                 "Can't parse %s: %s", self._file, humanize_error(self._data, ex)
             )
 
@@ -81,7 +81,7 @@ class JsonConfig:
         try:
             self._data = self._schema(self._data)
         except vol.Invalid as ex:
-            _LOGGER.error("Can't parse data: %s", humanize_error(self._data, ex))
+            _LOGGER.critical("Can't parse data: %s", humanize_error(self._data, ex))
 
             # Load last valid data
             _LOGGER.warning("Resetting %s to last version", self._file)

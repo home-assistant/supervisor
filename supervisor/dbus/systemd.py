@@ -13,6 +13,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class Systemd(DBusInterface):
     """Systemd function handler."""
 
+    name = DBUS_NAME_SYSTEMD
+
     async def connect(self):
         """Connect to D-Bus."""
         try:

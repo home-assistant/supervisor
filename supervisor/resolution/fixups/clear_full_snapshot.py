@@ -1,6 +1,6 @@
 """Helpers to check and fix issues with free space."""
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from ...const import SNAPSHOT_FULL
 from ..const import MINIMUM_FULL_SNAPSHOTS, ContextType, IssueType, SuggestionType
@@ -36,6 +36,6 @@ class FixupClearFullSnapshot(FixupBase):
         return ContextType.SYSTEM
 
     @property
-    def issue(self) -> IssueType:
-        """Return a IssueType enum."""
-        return IssueType.FREE_SPACE
+    def issues(self) -> List[IssueType]:
+        """Return a IssueType enum list."""
+        return [IssueType.FREE_SPACE]

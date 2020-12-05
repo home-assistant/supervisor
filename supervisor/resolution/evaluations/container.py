@@ -7,15 +7,14 @@ from requests import RequestException
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ..const import UnsupportedReason
+from ..const import ContextType, IssueType, SuggestionType, UnsupportedReason
 from .base import EvaluateBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DOCKER_IMAGE_DENYLIST = [
-    "containrrr/watchtower",
-    "pyouroboros/ouroboros",
-    "v2tec/watchtower",
+    "watchtower",
+    "ouroboros",
 ]
 
 
@@ -41,16 +40,24 @@ class EvaluateContainer(EvaluateBase):
     @property
     def states(self) -> List[CoreState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.SETUP, CoreState.RUNNING]
+        return [CoreState.SETUP, CoreState.RUNNING, CoreState.INITIALIZE]
 
     async def evaluate(self) -> None:
         """Run evaluation."""
+        self.sys_resolution.evaluate.cached_images.clear()
         self._images.clear()
+
         for image in await self.sys_run_in_executor(self._get_images):
             for tag in image.tags:
-                image_name = tag.split(":")[0]
+                self.sys_resolution.evaluate.cached_images.add(tag)
+
+                # Evalue system
+                image_name = tag.partition(":")[0].split("/")[-1]
                 if (
-                    image_name in DOCKER_IMAGE_DENYLIST
+                    any(
+                        image_name.startswith(deny_name)
+                        for deny_name in DOCKER_IMAGE_DENYLIST
+                    )
                     and image_name not in self._images
                 ):
                     self._images.add(image_name)
@@ -64,5 +71,10 @@ class EvaluateContainer(EvaluateBase):
             images = self.sys_docker.images.list()
         except (DockerException, RequestException) as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
+            self.sys_resolution.create_issue(
+                IssueType.CORRUPT_DOCKER,
+                ContextType.SYSTEM,
+                suggestions=[SuggestionType.EXECUTE_REPAIR],
+            )
 
         return images

@@ -9,11 +9,6 @@ URL_HASSIO_ADDONS = "https://github.com/home-assistant/addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor.txt"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
 
-URL_HASSOS_OTA = (
-    "https://github.com/home-assistant/operating-system/releases/download/"
-    "{version}/hassos_{board}-{version}.raucb"
-)
-
 SUPERVISOR_DATA = Path("/data")
 
 FILE_HASSIO_ADDONS = Path(SUPERVISOR_DATA, "addons.json")
@@ -158,6 +153,7 @@ ATTR_HOST_NETWORK = "host_network"
 ATTR_HOST_PID = "host_pid"
 ATTR_HOSTNAME = "hostname"
 ATTR_ICON = "icon"
+ATTR_ID = "id"
 ATTR_ISSUES = "issues"
 ATTR_IMAGE = "image"
 ATTR_IMAGES = "images"
@@ -210,6 +206,7 @@ ATTR_PANEL_ICON = "panel_icon"
 ATTR_PANEL_TITLE = "panel_title"
 ATTR_PANELS = "panels"
 ATTR_PASSWORD = "password"
+ATTR_PARENT = "parent"
 ATTR_PORT = "port"
 ATTR_PORTS = "ports"
 ATTR_PORTS_DESCRIPTION = "ports_description"
@@ -290,6 +287,7 @@ ATTR_MAC = "mac"
 ATTR_FREQUENCY = "frequency"
 ATTR_ACCESSPOINTS = "accesspoints"
 ATTR_UNHEALTHY = "unhealthy"
+ATTR_OTA = "ota"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
