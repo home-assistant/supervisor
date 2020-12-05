@@ -22,6 +22,7 @@ class SupervisorJob(CoreSysAttributes):
         self._name: Optional[str] = name
         self._progress: int = 0
         self._stage: Optional[str] = None
+        self._data: Optional[dict] = None
 
     @property
     def id(self) -> str:
@@ -43,8 +44,16 @@ class SupervisorJob(CoreSysAttributes):
         """Return the current stage."""
         return self._stage
 
+    @property
+    def data(self) -> Optional[str]:
+        """Return additional data for the job."""
+        return self._data
+
     def update(
-        self, progress: Optional[int] = None, stage: Optional[str] = None
+        self,
+        progress: Optional[int] = None,
+        stage: Optional[str] = None,
+        data: Optional[dict] = None,
     ) -> None:
         """Update the job object."""
         if progress is not None:
@@ -54,11 +63,14 @@ class SupervisorJob(CoreSysAttributes):
             self._progress = round(progress)
         if stage is not None:
             self._stage = stage
+        if data is not None:
+            self._data = data
         _LOGGER.debug(
-            "Job updated; name: %s, progress: %s, stage: %s",
+            'Update: {"name": %s, "progress": %s, "stage": %s, "data": %s}',
             self.name,
             self.progress,
             self.stage,
+            self.data,
         )
 
 
