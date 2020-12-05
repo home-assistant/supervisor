@@ -1,4 +1,29 @@
+change-template: "- #$NUMBER $TITLE @$AUTHOR"
+sort-direction: ascending
+
+categories:
+  - title: ":boom: Breaking Changes"
+    label: "breaking-change"
+
+  - title: ":sparkles: New Features"
+    label: "new-feature"
+
+  - title: ":zap: Enhancements"
+    label: "enhancement"
+
+  - title: ":bug: Bug Fixes"
+    label: "bugfix"
+
+  - title: ":arrow_up: Dependency Updates"
+    label: "dependencies"
+
+include-labels:
+  - "breaking-change"
+  - "new-feature"
+  - "enhancement"
+  - "bugfix"
+  - "dependencies"
+
 template: |
-  ## What's Changed
 
   $CHANGES
