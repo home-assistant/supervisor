@@ -34,6 +34,11 @@ class SupervisorJob(CoreSysAttributes):
         """Return the name for the job."""
         return self._name or self.id
 
+    @name.setter
+    def name(self, value: str) -> None:
+        """Set the name of a job."""
+        self._name = value
+
     @property
     def progress(self) -> int:
         """Return the current progress."""
