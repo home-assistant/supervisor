@@ -28,6 +28,13 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
 DOCKER_HUB = "hub.docker.com"
 
+PULL_PROGRESS = {
+    "Pulling fs layer": 10,
+    "Waiting": 30,
+    "Downloading": 50,
+    "Extracting": 70,
+}
+
 
 class DockerInterface(CoreSysAttributes):
     """Docker Supervisor interface."""
@@ -143,6 +150,7 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         image = image or self.image
+        job = self.sys_jobs.get_job(f"docker_install_{image}")
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, tag)
         try:
@@ -150,7 +158,18 @@ class DockerInterface(CoreSysAttributes):
                 # Try login if we have defined credentials
                 self._docker_login(image)
 
-            docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
+            # docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
+            for line in self.sys_docker.api.pull(image, tag, stream=True, decode=True):
+                if line.get("status"):
+                    if PULL_PROGRESS.get(line["status"]):
+                        if PULL_PROGRESS[line["status"]] > job.progress:
+                            job.update(
+                                stage=line["status"],
+                                progress=PULL_PROGRESS[line["status"]],
+                            )
+            job.update(progress=90, stage="Pull complete")
+
+            docker_image = self.sys_docker.images.get(f"{image}:{tag}")
             if latest:
                 _LOGGER.info("Tagging image %s with version %s as latest", image, tag)
                 docker_image.tag(image, tag="latest")
@@ -173,6 +192,8 @@ class DockerInterface(CoreSysAttributes):
             raise DockerError() from err
         else:
             self._meta = docker_image.attrs
+
+        job.update(progress=100)
 
     def exists(self) -> Awaitable[bool]:
         """Return True if Docker image exists in local repository."""

@@ -7,6 +7,8 @@ from typing import Any, Dict, Optional
 
 import attr
 import docker
+from docker.models.containers import Container, ContainerCollection
+from docker.models.images import ImageCollection
 from packaging import version as pkg_version
 import requests
 
@@ -92,12 +94,12 @@ class DockerAPI:
         self.config: DockerConfig = DockerConfig()
 
     @property
-    def images(self) -> docker.models.images.ImageCollection:
+    def images(self) -> ImageCollection:
         """Return API images."""
         return self.docker.images
 
     @property
-    def containers(self) -> docker.models.containers.ContainerCollection:
+    def containers(self) -> ContainerCollection:
         """Return API containers."""
         return self.docker.containers
 
@@ -118,7 +120,7 @@ class DockerAPI:
         dns: bool = True,
         ipv4: Optional[IPv4Address] = None,
         **kwargs: Any,
-    ) -> docker.models.containers.Container:
+    ) -> Container:
         """Create a Docker container and run it.
 
         Need run inside executor.
