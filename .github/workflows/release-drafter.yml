@@ -20,7 +20,6 @@ jobs:
         run: |
           declare -i newpost
           latest=$(git describe --tags $(git rev-list --tags --max-count=1))
-          latest="2020.11.12"
           latestpre=$(echo "$latest" | awk '{split($0,a,"."); print a[1] "." a[2]}')
           datepre=$(date --utc '+%Y.%m')
 
