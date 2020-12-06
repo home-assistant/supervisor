@@ -20,6 +20,9 @@ categories:
   - title: ":recycle: Refactor"
     label: "refactor"
 
+  - title: ":green_heart: CI"
+    label: "ci"
+
   - title: ":bug: Bug Fixes"
     label: "bugfix"
 
@@ -40,6 +43,7 @@ include-labels:
   - "bugfix"
   - "dependencies"
   - "test"
+  - "ci"
 
 template: |
 
