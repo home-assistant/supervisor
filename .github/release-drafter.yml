@@ -5,24 +5,41 @@ categories:
   - title: ":boom: Breaking Changes"
     label: "breaking-change"
 
+  - title: ":wrench: Build"
+    label: "build"
+
+  - title: ":boar: Chore"
+    label: "chore"
+
   - title: ":sparkles: New Features"
     label: "new-feature"
 
-  - title: ":zap: Enhancements"
-    label: "enhancement"
+  - title: ":zap: Performance"
+    label: "performance"
+
+  - title: ":recycle: Refactor"
+    label: "refactor"
 
   - title: ":bug: Bug Fixes"
     label: "bugfix"
+
+  - title: ":white_check_mark: Test"
+    label: "test"
 
   - title: ":arrow_up: Dependency Updates"
     label: "dependencies"
 
 include-labels:
   - "breaking-change"
+  - "build"
+  - "chore"
+  - "performance"
+  - "refactor"
   - "new-feature"
   - "enhancement"
   - "bugfix"
   - "dependencies"
+  - "test"
 
 template: |
 
