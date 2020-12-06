@@ -39,7 +39,6 @@ include-labels:
   - "performance"
   - "refactor"
   - "new-feature"
-  - "enhancement"
   - "bugfix"
   - "dependencies"
   - "test"
