@@ -51,3 +51,19 @@ Paste supervisor logs here
 ```
 
 </details>
+
+### System Information
+
+<details>
+<summary>System Information</summary>
+<!--
+- Use this command: ha info
+-->
+
+```
+Paste system info here
+
+```
+
+</details>
+
