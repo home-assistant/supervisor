@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a bug/issues with an unsupported Supervisor
-    url: https://community.home-assistant.io/c/community-guides
+    url: https://community.home-assistant.io
     about: The Community guide can help or was updated to solve your issue
 
   - name: Report a bug for the Supervisor panel
