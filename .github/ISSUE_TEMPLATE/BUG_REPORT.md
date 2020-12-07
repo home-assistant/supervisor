@@ -1,5 +1,5 @@
 ---
-name: Report a bug with the Supervisor
+name: Report a bug with the Supervisor on a supported System
 about: Report an issue related to the Home Assistant Supervisor.
 labels: bug
 ---
@@ -9,6 +9,10 @@ labels: bug
 - This is for bugs only. Feature and enhancement requests should go in our community forum: https://community.home-assistant.io/c/feature-requests
 - Provide as many details as possible. Paste logs, configuration sample and code into the backticks. Do not delete any text from this template!
 - If you have a problem with an add-on, make an issue in it's repository.
+-->
+
+<!--
+Important: You can only fill a bug repport for an supported system! If you run an unsupported installation. This report would be closed without comment.
 -->
 
 ### Describe the issue
