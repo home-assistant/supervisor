@@ -150,7 +150,7 @@ class SnapshotManager(CoreSysAttributes):
             return None
 
         else:
-            _LOGGER.info("Crating full-snapshot with slug %s completed", snapshot.slug)
+            _LOGGER.info("Creating full-snapshot with slug %s completed", snapshot.slug)
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
 
