@@ -6,7 +6,7 @@ brotli==1.0.9
 cchardet==2.1.7
 colorlog==4.6.2
 cpe==1.2.1
-cryptography==3.2.1
+cryptography==3.3.1
 debugpy==1.2.1
 gitpython==3.1.11
 jinja2==2.11.2
