@@ -8,7 +8,6 @@ colorlog==4.6.2
 cpe==1.2.1
 cryptography==3.2.1
 debugpy==1.2.0
-docker==4.4.0
 gitpython==3.1.11
 jinja2==2.11.2
 packaging==20.4
@@ -18,3 +17,4 @@ pyudev==0.22.0
 ruamel.yaml==0.15.100
 sentry-sdk==0.19.4
 voluptuous==0.12.1
+git+git://github.com/docker/docker-py@1757c974fa3a05b0e9b783af85242b18df09d05d#docker=4.4.1dev0
