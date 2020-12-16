@@ -202,7 +202,7 @@ class SnapshotManager(CoreSysAttributes):
 
         else:
             _LOGGER.info(
-                "Crating partial-snapshot with slug %s completed", snapshot.slug
+                "Creating partial-snapshot with slug %s completed", snapshot.slug
             )
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
