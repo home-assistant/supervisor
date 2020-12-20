@@ -156,6 +156,22 @@ class GitRepo(CoreSysAttributes):
                     ft.partial(self.repo.git.reset, f"origin/{branch}", hard=True)
                 )
 
+                # Update submodules
+                await self.sys_run_in_executor(
+                    ft.partial(
+                        self.repo.git.submodule.root.update,
+                        {
+                            attribute: value
+                            for attribute, value in (
+                                ("recursive", False),
+                                ("init", True),
+                                ("force_remove", True),
+                                ("force_reset", True),
+                            )
+                        },
+                    )
+                )
+
                 # Cleanup old data
                 await self.sys_run_in_executor(ft.partial(self.repo.git.clean, "-xdf"))
 
