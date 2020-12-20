@@ -161,13 +161,10 @@ class GitRepo(CoreSysAttributes):
                     ft.partial(
                         self.repo.git.submodule.root.update,
                         {
-                            attribute: value
-                            for attribute, value in (
-                                ("recursive", False),
-                                ("init", True),
-                                ("force_remove", True),
-                                ("force_reset", True),
-                            )
+                            "recursive": False,
+                            "init": True,
+                            "force_remove": True,
+                            "force_reset": True,
                         },
                     )
                 )
