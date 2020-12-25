@@ -12,7 +12,7 @@ gitpython==3.1.11
 jinja2==2.11.2
 packaging==20.4
 pulsectl==20.5.1
-pytz==2020.4
+pytz==2020.5
 pyudev==0.22.0
 ruamel.yaml==0.15.100
 sentry-sdk==0.19.5
