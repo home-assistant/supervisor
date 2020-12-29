@@ -7,6 +7,8 @@ import logging
 from typing import Optional
 
 import aiohttp
+from awesomeversion import AwesomeVersion
+from awesomeversion.exceptions import AwesomeVersionCompare
 
 from .const import (
     ATTR_AUDIO,
@@ -53,42 +55,42 @@ class Updater(JsonConfig, CoreSysAttributes):
             await self.fetch_data()
 
     @property
-    def version_homeassistant(self) -> Optional[str]:
+    def version_homeassistant(self) -> Optional[AwesomeVersion]:
         """Return latest version of Home Assistant."""
         return self._data.get(ATTR_HOMEASSISTANT)
 
     @property
-    def version_supervisor(self) -> Optional[str]:
+    def version_supervisor(self) -> Optional[AwesomeVersion]:
         """Return latest version of Supervisor."""
         return self._data.get(ATTR_SUPERVISOR)
 
     @property
-    def version_hassos(self) -> Optional[str]:
+    def version_hassos(self) -> Optional[AwesomeVersion]:
         """Return latest version of HassOS."""
         return self._data.get(ATTR_HASSOS)
 
     @property
-    def version_cli(self) -> Optional[str]:
+    def version_cli(self) -> Optional[AwesomeVersion]:
         """Return latest version of CLI."""
         return self._data.get(ATTR_CLI)
 
     @property
-    def version_dns(self) -> Optional[str]:
+    def version_dns(self) -> Optional[AwesomeVersion]:
         """Return latest version of DNS."""
         return self._data.get(ATTR_DNS)
 
     @property
-    def version_audio(self) -> Optional[str]:
+    def version_audio(self) -> Optional[AwesomeVersion]:
         """Return latest version of Audio."""
         return self._data.get(ATTR_AUDIO)
 
     @property
-    def version_observer(self) -> Optional[str]:
+    def version_observer(self) -> Optional[AwesomeVersion]:
         """Return latest version of Observer."""
         return self._data.get(ATTR_OBSERVER)
 
     @property
-    def version_multicast(self) -> Optional[str]:
+    def version_multicast(self) -> Optional[AwesomeVersion]:
         """Return latest version of Multicast."""
         return self._data.get(ATTR_MULTICAST)
 
@@ -197,22 +199,26 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         try:
             # Update supervisor version
-            self._data[ATTR_SUPERVISOR] = data["supervisor"]
+            self._data[ATTR_SUPERVISOR] = AwesomeVersion(data["supervisor"])
 
             # Update Home Assistant core version
-            self._data[ATTR_HOMEASSISTANT] = data["homeassistant"][machine]
+            self._data[ATTR_HOMEASSISTANT] = AwesomeVersion(
+                data["homeassistant"][machine]
+            )
 
             # Update HassOS version
             if self.sys_hassos.board:
-                self._data[ATTR_HASSOS] = data["hassos"][self.sys_hassos.board]
+                self._data[ATTR_HASSOS] = AwesomeVersion(
+                    data["hassos"][self.sys_hassos.board]
+                )
                 self._data[ATTR_OTA] = data["ota"]
 
             # Update Home Assistant plugins
-            self._data[ATTR_CLI] = data["cli"]
-            self._data[ATTR_DNS] = data["dns"]
-            self._data[ATTR_AUDIO] = data["audio"]
-            self._data[ATTR_OBSERVER] = data["observer"]
-            self._data[ATTR_MULTICAST] = data["multicast"]
+            self._data[ATTR_CLI] = AwesomeVersion(data["cli"])
+            self._data[ATTR_DNS] = AwesomeVersion(data["dns"])
+            self._data[ATTR_AUDIO] = AwesomeVersion(data["audio"])
+            self._data[ATTR_OBSERVER] = AwesomeVersion(data["observer"])
+            self._data[ATTR_MULTICAST] = AwesomeVersion(data["multicast"])
 
             # Update images for that versions
             self._data[ATTR_IMAGE][ATTR_HOMEASSISTANT] = data["image"]["core"]

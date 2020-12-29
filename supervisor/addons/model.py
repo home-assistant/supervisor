@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
-from packaging import version as pkg_version
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from ..const import (
@@ -183,12 +183,12 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_REPOSITORY]
 
     @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> AwesomeVersion:
         """Return latest version of add-on."""
         return self.data[ATTR_VERSION]
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> AwesomeVersion:
         """Return version of add-on."""
         return self.data[ATTR_VERSION]
 

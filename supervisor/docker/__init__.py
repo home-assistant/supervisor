@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import attr
+from awesomeversion import AwesomeVersion
+from awesomeversion.exceptions import AwesomeVersionCompare
 import docker
-from packaging import version as pkg_version
 import requests
 
 from ..const import (
@@ -24,7 +25,7 @@ from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-MIN_SUPPORTED_DOCKER = "19.03.0"
+MIN_SUPPORTED_DOCKER = AwesomeVersion("19.03.0")
 DOCKER_NETWORK_HOST = "host"
 
 
@@ -40,22 +41,21 @@ class CommandReturn:
 class DockerInfo:
     """Return docker information."""
 
-    version: str = attr.ib()
+    version: AwesomeVersion = attr.ib()
     storage: str = attr.ib()
     logging: str = attr.ib()
 
     @staticmethod
     def new(data: Dict[str, Any]):
         """Create a object from docker info."""
-        return DockerInfo(data["ServerVersion"], data["Driver"], data["LoggingDriver"])
+        return DockerInfo(
+            AwesomeVersion(data["ServerVersion"]), data["Driver"], data["LoggingDriver"]
+        )
 
     @property
     def supported_version(self) -> bool:
         """Return true, if docker version is supported."""
-        version_local = pkg_version.parse(self.version)
-        version_min = pkg_version.parse(MIN_SUPPORTED_DOCKER)
-
-        return version_local >= version_min
+        return self.version >= MIN_SUPPORTED_DOCKER
 
     @property
     def inside_lxc(self) -> bool:
@@ -114,7 +114,7 @@ class DockerAPI:
     def run(
         self,
         image: str,
-        version: str = "latest",
+        tag: str = "latest",
         dns: bool = True,
         ipv4: Optional[IPv4Address] = None,
         **kwargs: Any,
@@ -140,7 +140,7 @@ class DockerAPI:
         # Create container
         try:
             container = self.docker.containers.create(
-                f"{image}:{version}", use_config_proxy=False, **kwargs
+                f"{image}:{tag}", use_config_proxy=False, **kwargs
             )
         except docker.errors.NotFound as err:
             _LOGGER.error("Image %s not exists for %s", image, name)
@@ -195,7 +195,7 @@ class DockerAPI:
     def run_command(
         self,
         image: str,
-        version: str = "latest",
+        tag: str = "latest",
         command: Optional[str] = None,
         **kwargs: Any,
     ) -> CommandReturn:
@@ -210,7 +210,7 @@ class DockerAPI:
         container = None
         try:
             container = self.docker.containers.run(
-                f"{image}:{version}",
+                f"{image}:{tag}",
                 command=command,
                 network=self.network.name,
                 use_config_proxy=False,

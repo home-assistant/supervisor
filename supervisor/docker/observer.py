@@ -38,7 +38,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_plugins.observer.version,
+            tag=self.sys_plugins.observer.version.string,
             init=False,
             ipv4=self.sys_docker.network.observer,
             name=self.name,

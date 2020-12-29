@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, Union
 
+from awesomeversion.awesomeversion import AwesomeVersion
 import docker
 import requests
 
@@ -72,7 +73,7 @@ class DockerAddon(DockerInterface):
         return self.addon.timeout
 
     @property
-    def version(self) -> str:
+    def version(self) -> AwesomeVersion:
         """Return version of Docker image."""
         if self.addon.legacy:
             return self.addon.version
@@ -355,7 +356,7 @@ class DockerAddon(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.addon.version,
+            tag=self.addon.version.string,
             name=self.name,
             hostname=self.addon.hostname,
             detach=True,

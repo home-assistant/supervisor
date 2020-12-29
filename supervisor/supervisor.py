@@ -9,7 +9,8 @@ from typing import Awaitable, Optional
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError
-from packaging.version import parse as pkg_parse
+from awesomeversion import AwesomeVersion
+from awesomeversion.exceptions import AwesomeVersionCompare
 
 from supervisor.jobs.decorator import Job, JobCondition
 
@@ -65,17 +66,17 @@ class Supervisor(CoreSysAttributes):
             return False
 
         try:
-            return pkg_parse(self.version) < pkg_parse(self.latest_version)
-        except (TypeError, ValueError):
+            return self.version < self.latest_version
+        except AwesomeVersionCompare:
             return False
 
     @property
-    def version(self) -> str:
+    def version(self) -> AwesomeVersion:
         """Return version of running Home Assistant."""
-        return SUPERVISOR_VERSION
+        return AwesomeVersion(SUPERVISOR_VERSION)
 
     @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> AwesomeVersion:
         """Return last available version of Home Assistant."""
         return self.sys_updater.version_supervisor
 
@@ -117,7 +118,7 @@ class Supervisor(CoreSysAttributes):
                 _LOGGER.error("Can't update AppArmor profile!")
                 raise SupervisorError() from err
 
-    async def update(self, version: Optional[str] = None) -> None:
+    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update Home Assistant version."""
         version = version or self.latest_version
 

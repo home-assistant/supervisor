@@ -9,8 +9,9 @@ from pathlib import Path, PurePath
 import shutil
 from typing import Awaitable, Optional
 
+from awesomeversion import AwesomeVersion
+from awesomeversion.exceptions import AwesomeVersionCompare
 import jinja2
-from packaging.version import parse as pkg_parse
 
 from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSys, CoreSysAttributes
@@ -50,12 +51,12 @@ class Audio(JsonConfig, CoreSysAttributes):
         return self.sys_config.path_extern_audio.joinpath("asound")
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> Optional[AwesomeVersion]:
         """Return current version of Audio."""
         return self._data.get(ATTR_VERSION)
 
     @version.setter
-    def version(self, value: str) -> None:
+    def version(self, value: AwesomeVersion) -> None:
         """Set current version of Audio."""
         self._data[ATTR_VERSION] = value
 
@@ -72,7 +73,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         self._data[ATTR_IMAGE] = value
 
     @property
-    def latest_version(self) -> Optional[str]:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return latest version of Audio."""
         return self.sys_updater.version_audio
 
@@ -85,8 +86,8 @@ class Audio(JsonConfig, CoreSysAttributes):
     def need_update(self) -> bool:
         """Return True if an update is available."""
         try:
-            return pkg_parse(self.version) < pkg_parse(self.latest_version)
-        except (TypeError, ValueError):
+            return self.version < self.latest_version
+        except AwesomeVersionCompare:
             return False
 
     async def load(self) -> None:
@@ -103,7 +104,7 @@ class Audio(JsonConfig, CoreSysAttributes):
             if not self.version:
                 self.version = await self.instance.get_latest_version()
 
-            await self.instance.attach(tag=self.version)
+            await self.instance.attach(tag=self.version.string)
         except DockerError:
             _LOGGER.info("No Audio plugin Docker image %s found.", self.instance.image)
 
