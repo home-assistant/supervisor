@@ -7,8 +7,7 @@ import shutil
 from typing import Optional
 from uuid import UUID
 
-from awesomeversion.awesomeversion import AwesomeVersion
-from awesomeversion.exceptions import AwesomeVersionCompare
+from awesomeversion.awesomeversion import AwesomeVersion, AwesomeVersionCompare
 
 from ..const import (
     ATTR_ACCESS_TOKEN,

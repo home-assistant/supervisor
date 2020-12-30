@@ -3,8 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
-from awesomeversion import AwesomeVersion
-from awesomeversion.exceptions import AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionCompare
 import voluptuous as vol
 
 from ..const import (

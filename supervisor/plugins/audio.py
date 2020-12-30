@@ -9,8 +9,7 @@ from pathlib import Path, PurePath
 import shutil
 from typing import Awaitable, Optional
 
-from awesomeversion import AwesomeVersion
-from awesomeversion.exceptions import AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionCompare
 import jinja2
 
 from ..const import ATTR_IMAGE, ATTR_VERSION

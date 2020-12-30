@@ -9,8 +9,7 @@ from typing import Awaitable, Optional
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError
-from awesomeversion import AwesomeVersion
-from awesomeversion.exceptions import AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionCompare
 
 from supervisor.jobs.decorator import Job, JobCondition
 

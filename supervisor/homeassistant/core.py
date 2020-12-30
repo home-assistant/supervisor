@@ -10,9 +10,7 @@ import time
 from typing import Awaitable, Optional
 
 import attr
-from awesomeversion.awesomeversion import AwesomeVersion
-from awesomeversion.exceptions import AwesomeVersionCompare
-from packaging import version as pkg_version
+from awesomeversion import AwesomeVersion, AwesomeVersionCompare
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.homeassistant import DockerHomeAssistant
