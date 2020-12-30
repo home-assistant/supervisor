@@ -1,12 +1,12 @@
 """Supervisor plugins base class."""
-from abc import ABC, abstractproperty, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 from typing import Optional
 
-from awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from ..utils.json import JsonConfig
-from ..coresys import CoreSysAttributes
 from ..const import ATTR_IMAGE, ATTR_VERSION
+from ..coresys import CoreSysAttributes
+from ..utils.json import JsonConfig
 
 
 class PluginBase(ABC, JsonConfig, CoreSysAttributes):
@@ -46,7 +46,7 @@ class PluginBase(ABC, JsonConfig, CoreSysAttributes):
         """Return True if an update is available."""
         try:
             return self.version < self.latest_version
-        except (AwesomeVersionCompare, TypeError):
+        except (AwesomeVersionException, TypeError):
             return False
 
     @abstractmethod

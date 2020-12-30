@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Awaitable, Optional
 
 import aiohttp
-from awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 from cpe import CPE
 
 from .coresys import CoreSys, CoreSysAttributes
@@ -47,7 +47,7 @@ class HassOS(CoreSysAttributes):
         """Return true if a HassOS update is available."""
         try:
             return self.version < self.latest_version
-        except AwesomeVersionCompare:
+        except AwesomeVersionException:
             return False
 
     @property

@@ -7,7 +7,7 @@ import logging
 from typing import Optional
 
 import aiohttp
-from awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion import AwesomeVersion
 
 from .const import (
     ATTR_AUDIO,

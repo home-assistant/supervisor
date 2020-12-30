@@ -9,7 +9,7 @@ from typing import Awaitable, Optional
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError
-from awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from supervisor.jobs.decorator import Job, JobCondition
 
@@ -66,7 +66,7 @@ class Supervisor(CoreSysAttributes):
 
         try:
             return self.version < self.latest_version
-        except AwesomeVersionCompare:
+        except AwesomeVersionException:
             return False
 
     @property

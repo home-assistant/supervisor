@@ -8,8 +8,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, Union
 
-from awesomeversion import awesomeversion
-from awesomeversion.awesomeversion import AwesomeVersion
+from awesomeversion import AwesomeVersion
 import docker
 import requests
 

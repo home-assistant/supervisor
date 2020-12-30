@@ -7,7 +7,7 @@ import shutil
 from typing import Optional
 from uuid import UUID
 
-from awesomeversion.awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion.awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -224,7 +224,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         """Return true if a Home Assistant update is available."""
         try:
             return self.version != self.latest_version
-        except AwesomeVersionCompare:
+        except AwesomeVersionException:
             return False
 
     async def load(self) -> None:

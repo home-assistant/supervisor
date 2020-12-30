@@ -10,7 +10,7 @@ import time
 from typing import Awaitable, Optional
 
 import attr
-from awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.homeassistant import DockerHomeAssistant
@@ -358,7 +358,7 @@ class HomeAssistantCore(CoreSysAttributes):
         # Manage timeouts
         timeout: bool = True
         start_time = time.monotonic()
-        with suppress(AwesomeVersionCompare):
+        with suppress(AwesomeVersionException):
             # Version provide early stage UI
             if version >= AwesomeVersion("0.112.0"):
                 _LOGGER.debug("Disable startup timeouts - early UI")

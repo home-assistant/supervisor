@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
-from awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 import voluptuous as vol
 
 from ..const import (
@@ -557,7 +557,7 @@ class AddonModel(CoreSysAttributes, ABC):
         version: Optional[AwesomeVersion] = config.get(ATTR_HOMEASSISTANT)
         try:
             return self.sys_homeassistant.version >= version
-        except (AwesomeVersionCompare, TypeError):
+        except (AwesomeVersionException, TypeError):
             return True
 
     def _image(self, config) -> str:

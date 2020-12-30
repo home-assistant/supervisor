@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import attr
-from awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion import AwesomeVersion
 import docker
 import requests
 
