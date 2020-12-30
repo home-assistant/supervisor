@@ -4,6 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict
 
+from awesomeversion import AwesomeVersion
+
 from ..const import ATTR_ARGS, ATTR_BUILD_FROM, ATTR_SQUASH, META_ADDON
 from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.json import JsonConfig
@@ -46,11 +48,11 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
         """Return additional Docker build arguments."""
         return self._data[ATTR_ARGS]
 
-    def get_docker_args(self, version):
+    def get_docker_args(self, version: AwesomeVersion):
         """Create a dict with Docker build arguments."""
         args = {
             "path": str(self.addon.path_location),
-            "tag": f"{self.addon.image}:{version}",
+            "tag": f"{self.addon.image}:{version!s}",
             "pull": True,
             "forcerm": True,
             "squash": self.squash,

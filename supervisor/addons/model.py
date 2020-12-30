@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
 from awesomeversion import AwesomeVersion
+from awesomeversion.exceptions import AwesomeVersionCompare
 import voluptuous as vol
 
 from ..const import (
@@ -555,14 +556,9 @@ class AddonModel(CoreSysAttributes, ABC):
 
         # Home Assistant
         version = config.get(ATTR_HOMEASSISTANT)
-        if version is None or self.sys_homeassistant.version is None:
-            return True
-
         try:
-            return pkg_version.parse(
-                self.sys_homeassistant.version
-            ) >= pkg_version.parse(version)
-        except pkg_version.InvalidVersion:
+            return self.sys_homeassistant.version >= version
+        except (AwesomeVersionCompare, TypeError):
             return True
 
     def _image(self, config) -> str:
