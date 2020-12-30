@@ -7,6 +7,7 @@ from typing import Awaitable, List, Optional
 import async_timeout
 
 from .const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
+from .homeassistant.core import LANDINGPAGE
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     HassioError,
@@ -221,7 +222,7 @@ class Core(CoreSysAttributes):
             await self.sys_tasks.load()
 
             # If landingpage / run upgrade in background
-            if self.sys_homeassistant.version == "landingpage":
+            if self.sys_homeassistant.version == LANDINGPAGE:
                 self.sys_create_task(self.sys_homeassistant.core.install())
 
             # Start observe the host Hardware

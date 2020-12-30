@@ -10,6 +10,8 @@ import time
 from typing import Awaitable, Optional
 
 import attr
+from awesomeversion.awesomeversion import AwesomeVersion
+from awesomeversion.exceptions import AwesomeVersionCompare
 from packaging import version as pkg_version
 
 from ..coresys import CoreSys, CoreSysAttributes
@@ -30,7 +32,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
-LANDINGPAGE: str = "landingpage"
+LANDINGPAGE: AwesomeVersion = AwesomeVersion("landingpage")
 
 
 @attr.s(frozen=True)
@@ -122,11 +124,11 @@ class HomeAssistantCore(CoreSysAttributes):
             if not self.sys_homeassistant.latest_version:
                 await self.sys_updater.reload()
 
-            tag = self.sys_homeassistant.latest_version
-            if tag:
+            if self.sys_homeassistant.latest_version:
                 try:
                     await self.instance.update(
-                        tag, image=self.sys_updater.image_homeassistant
+                        self.sys_homeassistant.latest_version,
+                        image=self.sys_updater.image_homeassistant,
                     )
                     break
                 except DockerError:
@@ -162,7 +164,7 @@ class HomeAssistantCore(CoreSysAttributes):
         ],
         on_condition=HomeAssistantJobError,
     )
-    async def update(self, version: Optional[str] = None) -> None:
+    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update HomeAssistant version."""
         version = version or self.sys_homeassistant.latest_version
         old_image = self.sys_homeassistant.image
@@ -175,7 +177,7 @@ class HomeAssistantCore(CoreSysAttributes):
             return
 
         # process an update
-        async def _update(to_version: str) -> None:
+        async def _update(to_version: AwesomeVersion) -> None:
             """Run Home Assistant update."""
             _LOGGER.info("Updating Home Assistant to version %s", to_version)
             try:
@@ -348,7 +350,7 @@ class HomeAssistantCore(CoreSysAttributes):
         _LOGGER.info("Home Assistant config is valid")
         return ConfigResult(True, log)
 
-    async def _block_till_run(self, version: str) -> None:
+    async def _block_till_run(self, version: AwesomeVersion) -> None:
         """Block until Home-Assistant is booting up or startup timeout."""
         # Skip landingpage
         if version == LANDINGPAGE:
@@ -358,9 +360,9 @@ class HomeAssistantCore(CoreSysAttributes):
         # Manage timeouts
         timeout: bool = True
         start_time = time.monotonic()
-        with suppress(pkg_version.InvalidVersion):
+        with suppress(AwesomeVersionCompare):
             # Version provide early stage UI
-            if pkg_version.parse(version) >= pkg_version.parse("0.112.0"):
+            if version >= AwesomeVersion("0.112.0"):
                 _LOGGER.debug("Disable startup timeouts - early UI")
                 timeout = False
 
