@@ -46,7 +46,7 @@ class PluginBase(ABC, JsonConfig, CoreSysAttributes):
         """Return True if an update is available."""
         try:
             return self.version < self.latest_version
-        except AwesomeVersionCompare:
+        except (AwesomeVersionCompare, TypeError):
             return False
 
     @abstractmethod

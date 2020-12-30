@@ -10,19 +10,20 @@ from pathlib import Path
 from typing import Awaitable, List, Optional
 
 import attr
+from awesomeversion import AwesomeVersion
 import jinja2
-from packaging.version import parse as pkg_parse
 import voluptuous as vol
 
-from ..const import ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION, DNS_SUFFIX, LogLevel
-from ..coresys import CoreSys, CoreSysAttributes
+from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
+from ..coresys import CoreSys
 from ..docker.dns import DockerDNS
 from ..docker.stats import DockerStats
 from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerError, JsonFileError
 from ..resolution.const import ContextType, IssueType, SuggestionType
-from ..utils.json import JsonConfig, write_json_file
+from ..utils.json import write_json_file
 from ..validate import dns_url
 from .const import FILE_HASSIO_DNS
+from .base import PluginBase
 from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -40,14 +41,13 @@ class HostEntry:
     names: List[str] = attr.ib()
 
 
-class CoreDNS(JsonConfig, CoreSysAttributes):
+class CoreDNS(PluginBase):
     """Home Assistant core object for handle it."""
-
-    slug: str = "dns"
 
     def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
         super().__init__(FILE_HASSIO_DNS, SCHEMA_DNS_CONFIG)
+        self.slug = "dns"
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
         self.resolv_template: Optional[jinja2.Template] = None
@@ -89,29 +89,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         self._data[ATTR_SERVERS] = value
 
     @property
-    def version(self) -> Optional[str]:
-        """Return current version of DNS."""
-        return self._data.get(ATTR_VERSION)
-
-    @version.setter
-    def version(self, value: str) -> None:
-        """Return current version of DNS."""
-        self._data[ATTR_VERSION] = value
-
-    @property
-    def image(self) -> str:
-        """Return current image of DNS."""
-        if self._data.get(ATTR_IMAGE):
-            return self._data[ATTR_IMAGE]
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-dns"
-
-    @image.setter
-    def image(self, value: str) -> None:
-        """Return current image of DNS."""
-        self._data[ATTR_IMAGE] = value
-
-    @property
-    def latest_version(self) -> Optional[str]:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return latest version of CoreDNS."""
         return self.sys_updater.version_dns
 
@@ -119,14 +97,6 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
         return self.instance.in_progress
-
-    @property
-    def need_update(self) -> bool:
-        """Return True if an update is available."""
-        try:
-            return pkg_parse(self.version) < pkg_parse(self.latest_version)
-        except (TypeError, ValueError):
-            return False
 
     async def load(self) -> None:
         """Load DNS setup."""
@@ -147,7 +117,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
             if not self.version:
                 self.version = await self.instance.get_latest_version()
 
-            await self.instance.attach(tag=self.version)
+            await self.instance.attach(version=self.version)
         except DockerError:
             _LOGGER.info(
                 "No CoreDNS plugin Docker image %s found.", self.instance.image
@@ -194,7 +164,7 @@ class CoreDNS(JsonConfig, CoreSysAttributes):
         # Init Hosts
         self.write_hosts()
 
-    async def update(self, version: Optional[str] = None) -> None:
+    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update CoreDNS plugin."""
         version = version or self.latest_version
         old_image = self.image

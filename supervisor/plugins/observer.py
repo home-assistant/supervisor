@@ -9,65 +9,34 @@ import secrets
 from typing import Awaitable, Optional
 
 import aiohttp
-from packaging.version import parse as pkg_parse
+from awesomeversion import AwesomeVersion
 
-from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION
-from ..coresys import CoreSys, CoreSysAttributes
+from ..const import ATTR_ACCESS_TOKEN
+from ..coresys import CoreSys
 from ..docker.observer import DockerObserver
 from ..docker.stats import DockerStats
 from ..exceptions import DockerError, ObserverError, ObserverUpdateError
-from ..utils.json import JsonConfig
 from .const import FILE_HASSIO_OBSERVER
+from .base import PluginBase
 from .validate import SCHEMA_OBSERVER_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Observer(CoreSysAttributes, JsonConfig):
+class Observer(PluginBase):
     """Supervisor observer instance."""
-
-    slug: str = "observer"
 
     def __init__(self, coresys: CoreSys):
         """Initialize observer handler."""
         super().__init__(FILE_HASSIO_OBSERVER, SCHEMA_OBSERVER_CONFIG)
+        self.slug = "observer"
         self.coresys: CoreSys = coresys
         self.instance: DockerObserver = DockerObserver(coresys)
 
     @property
-    def version(self) -> Optional[str]:
-        """Return version of observer."""
-        return self._data.get(ATTR_VERSION)
-
-    @version.setter
-    def version(self, value: str) -> None:
-        """Set current version of observer."""
-        self._data[ATTR_VERSION] = value
-
-    @property
-    def image(self) -> str:
-        """Return current image of observer."""
-        if self._data.get(ATTR_IMAGE):
-            return self._data[ATTR_IMAGE]
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-observer"
-
-    @image.setter
-    def image(self, value: str) -> None:
-        """Return current image of observer."""
-        self._data[ATTR_IMAGE] = value
-
-    @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return version of latest observer."""
         return self.sys_updater.version_observer
-
-    @property
-    def need_update(self) -> bool:
-        """Return true if a observer update is available."""
-        try:
-            return pkg_parse(self.version) < pkg_parse(self.latest_version)
-        except (TypeError, ValueError):
-            return False
 
     @property
     def supervisor_token(self) -> str:
@@ -87,7 +56,7 @@ class Observer(CoreSysAttributes, JsonConfig):
             if not self.version:
                 self.version = await self.instance.get_latest_version()
 
-            await self.instance.attach(tag=self.version)
+            await self.instance.attach(version=self.version)
         except DockerError:
             _LOGGER.info(
                 "No observer plugin Docker image %s found.", self.instance.image
@@ -128,7 +97,7 @@ class Observer(CoreSysAttributes, JsonConfig):
         self.image = self.sys_updater.image_observer
         self.save_data()
 
-    async def update(self, version: Optional[str] = None) -> None:
+    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update local HA observer."""
         version = version or self.latest_version
         old_image = self.image

@@ -33,7 +33,7 @@ class HaCli(PluginBase):
         self.instance: DockerCli = DockerCli(coresys)
 
     @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return version of latest cli."""
         return self.sys_updater.version_cli
 
