@@ -65,7 +65,7 @@ class HomeAssistantCore(CoreSysAttributes):
                     await self.instance.get_latest_version()
                 )
 
-            await self.instance.attach(tag=self.sys_homeassistant.version)
+            await self.instance.attach(version=self.sys_homeassistant.version)
         except DockerError:
             _LOGGER.info(
                 "No Home Assistant Docker image %s found.", self.sys_homeassistant.image

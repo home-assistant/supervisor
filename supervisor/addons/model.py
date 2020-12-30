@@ -555,7 +555,7 @@ class AddonModel(CoreSysAttributes, ABC):
             return False
 
         # Home Assistant
-        version = config.get(ATTR_HOMEASSISTANT)
+        version: Optional[AwesomeVersion] = config.get(ATTR_HOMEASSISTANT)
         try:
             return self.sys_homeassistant.version >= version
         except (AwesomeVersionCompare, TypeError):
