@@ -14,6 +14,7 @@ from .exceptions import (
     HomeAssistantError,
     SupervisorUpdateError,
 )
+from .homeassistant.core import LANDINGPAGE
 from .resolution.const import ContextType, IssueType, UnhealthyReason
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -221,7 +222,7 @@ class Core(CoreSysAttributes):
             await self.sys_tasks.load()
 
             # If landingpage / run upgrade in background
-            if self.sys_homeassistant.version == "landingpage":
+            if self.sys_homeassistant.version == LANDINGPAGE:
                 self.sys_create_task(self.sys_homeassistant.core.install())
 
             # Start observe the host Hardware

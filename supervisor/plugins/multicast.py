@@ -7,55 +7,31 @@ from contextlib import suppress
 import logging
 from typing import Awaitable, Optional
 
-from packaging.version import parse as pkg_parse
+from awesomeversion import AwesomeVersion
 
-from ..const import ATTR_IMAGE, ATTR_VERSION
-from ..coresys import CoreSys, CoreSysAttributes
+from ..coresys import CoreSys
 from ..docker.multicast import DockerMulticast
 from ..docker.stats import DockerStats
 from ..exceptions import DockerError, MulticastError, MulticastUpdateError
-from ..utils.json import JsonConfig
+from .base import PluginBase
 from .const import FILE_HASSIO_MULTICAST
 from .validate import SCHEMA_MULTICAST_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Multicast(JsonConfig, CoreSysAttributes):
+class PluginMulticast(PluginBase):
     """Home Assistant core object for handle it."""
-
-    slug: str = "multicast"
 
     def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
         super().__init__(FILE_HASSIO_MULTICAST, SCHEMA_MULTICAST_CONFIG)
+        self.slug = "multicast"
         self.coresys: CoreSys = coresys
         self.instance: DockerMulticast = DockerMulticast(coresys)
 
     @property
-    def version(self) -> Optional[str]:
-        """Return current version of Multicast."""
-        return self._data.get(ATTR_VERSION)
-
-    @version.setter
-    def version(self, value: str) -> None:
-        """Return current version of Multicast."""
-        self._data[ATTR_VERSION] = value
-
-    @property
-    def image(self) -> str:
-        """Return current image of Multicast."""
-        if self._data.get(ATTR_IMAGE):
-            return self._data[ATTR_IMAGE]
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-multicast"
-
-    @image.setter
-    def image(self, value: str) -> None:
-        """Return current image of Multicast."""
-        self._data[ATTR_IMAGE] = value
-
-    @property
-    def latest_version(self) -> Optional[str]:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return latest version of Multicast."""
         return self.sys_updater.version_multicast
 
@@ -63,14 +39,6 @@ class Multicast(JsonConfig, CoreSysAttributes):
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
         return self.instance.in_progress
-
-    @property
-    def need_update(self) -> bool:
-        """Return True if an update is available."""
-        try:
-            return pkg_parse(self.version) < pkg_parse(self.latest_version)
-        except (TypeError, ValueError):
-            return False
 
     async def load(self) -> None:
         """Load multicast setup."""
@@ -80,7 +48,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
             if not self.version:
                 self.version = await self.instance.get_latest_version()
 
-            await self.instance.attach(tag=self.version)
+            await self.instance.attach(version=self.version)
         except DockerError:
             _LOGGER.info(
                 "No Multicast plugin Docker image %s found.", self.instance.image
@@ -121,7 +89,7 @@ class Multicast(JsonConfig, CoreSysAttributes):
         self.image = self.sys_updater.image_multicast
         self.save_data()
 
-    async def update(self, version: Optional[str] = None) -> None:
+    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update Multicast plugin."""
         version = version or self.latest_version
         old_image = self.image

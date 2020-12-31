@@ -9,15 +9,14 @@ from pathlib import Path, PurePath
 import shutil
 from typing import Awaitable, Optional
 
+from awesomeversion import AwesomeVersion
 import jinja2
-from packaging.version import parse as pkg_parse
 
-from ..const import ATTR_IMAGE, ATTR_VERSION
-from ..coresys import CoreSys, CoreSysAttributes
+from ..coresys import CoreSys
 from ..docker.audio import DockerAudio
 from ..docker.stats import DockerStats
 from ..exceptions import AudioError, AudioUpdateError, DockerError
-from ..utils.json import JsonConfig
+from .base import PluginBase
 from .const import FILE_HASSIO_AUDIO
 from .validate import SCHEMA_AUDIO_CONFIG
 
@@ -27,14 +26,13 @@ PULSE_CLIENT_TMPL: Path = Path(__file__).parents[1].joinpath("data/pulse-client.
 ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
 
 
-class Audio(JsonConfig, CoreSysAttributes):
+class PluginAudio(PluginBase):
     """Home Assistant core object for handle audio."""
-
-    slug: str = "audio"
 
     def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
         super().__init__(FILE_HASSIO_AUDIO, SCHEMA_AUDIO_CONFIG)
+        self.slug = "audio"
         self.coresys: CoreSys = coresys
         self.instance: DockerAudio = DockerAudio(coresys)
         self.client_template: Optional[jinja2.Template] = None
@@ -50,29 +48,7 @@ class Audio(JsonConfig, CoreSysAttributes):
         return self.sys_config.path_extern_audio.joinpath("asound")
 
     @property
-    def version(self) -> Optional[str]:
-        """Return current version of Audio."""
-        return self._data.get(ATTR_VERSION)
-
-    @version.setter
-    def version(self, value: str) -> None:
-        """Set current version of Audio."""
-        self._data[ATTR_VERSION] = value
-
-    @property
-    def image(self) -> str:
-        """Return current image of Audio."""
-        if self._data.get(ATTR_IMAGE):
-            return self._data[ATTR_IMAGE]
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-audio"
-
-    @image.setter
-    def image(self, value: str) -> None:
-        """Return current image of Audio."""
-        self._data[ATTR_IMAGE] = value
-
-    @property
-    def latest_version(self) -> Optional[str]:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return latest version of Audio."""
         return self.sys_updater.version_audio
 
@@ -80,14 +56,6 @@ class Audio(JsonConfig, CoreSysAttributes):
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
         return self.instance.in_progress
-
-    @property
-    def need_update(self) -> bool:
-        """Return True if an update is available."""
-        try:
-            return pkg_parse(self.version) < pkg_parse(self.latest_version)
-        except (TypeError, ValueError):
-            return False
 
     async def load(self) -> None:
         """Load Audio setup."""
@@ -103,7 +71,7 @@ class Audio(JsonConfig, CoreSysAttributes):
             if not self.version:
                 self.version = await self.instance.get_latest_version()
 
-            await self.instance.attach(tag=self.version)
+            await self.instance.attach(version=self.version)
         except DockerError:
             _LOGGER.info("No Audio plugin Docker image %s found.", self.instance.image)
 

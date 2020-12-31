@@ -7,6 +7,8 @@ import shutil
 from typing import Optional
 from uuid import UUID
 
+from awesomeversion import AwesomeVersion, AwesomeVersionException
+
 from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
@@ -126,7 +128,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._data[ATTR_WAIT_BOOT] = value
 
     @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return last available version of Home Assistant."""
         return self.sys_updater.version_homeassistant
 
@@ -143,12 +145,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._data[ATTR_IMAGE] = value
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> Optional[AwesomeVersion]:
         """Return version of local version."""
         return self._data.get(ATTR_VERSION)
 
     @version.setter
-    def version(self, value: str) -> None:
+    def version(self, value: AwesomeVersion) -> None:
         """Set installed version."""
         self._data[ATTR_VERSION] = value
 
@@ -220,9 +222,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def need_update(self) -> bool:
         """Return true if a Home Assistant update is available."""
-        if not self.latest_version:
+        try:
+            return self.version != self.latest_version
+        except (AwesomeVersionException, TypeError):
             return False
-        return self.version != self.latest_version
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""

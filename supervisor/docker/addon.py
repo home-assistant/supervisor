@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, Union
 
+from awesomeversion import AwesomeVersion
 import docker
 import requests
 
@@ -72,7 +73,7 @@ class DockerAddon(DockerInterface):
         return self.addon.timeout
 
     @property
-    def version(self) -> str:
+    def version(self) -> AwesomeVersion:
         """Return version of Docker image."""
         if self.addon.legacy:
             return self.addon.version
@@ -355,7 +356,7 @@ class DockerAddon(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.addon.version,
+            tag=self.addon.version.string,
             name=self.name,
             hostname=self.addon.hostname,
             detach=True,
@@ -390,37 +391,37 @@ class DockerAddon(DockerInterface):
             self.sys_capture_exception(err)
 
     def _install(
-        self, tag: str, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> None:
         """Pull Docker image or build it.
 
         Need run inside executor.
         """
         if self.addon.need_build:
-            self._build(tag)
+            self._build(version)
         else:
-            super()._install(tag, image, latest)
+            super()._install(version, image, latest)
 
-    def _build(self, tag: str) -> None:
+    def _build(self, version: AwesomeVersion) -> None:
         """Build a Docker container.
 
         Need run inside executor.
         """
         build_env = AddonBuild(self.coresys, self.addon)
 
-        _LOGGER.info("Starting build for %s:%s", self.image, tag)
+        _LOGGER.info("Starting build for %s:%s", self.image, version)
         try:
             image, log = self.sys_docker.images.build(
-                use_config_proxy=False, **build_env.get_docker_args(tag)
+                use_config_proxy=False, **build_env.get_docker_args(version)
             )
 
-            _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)
+            _LOGGER.debug("Build %s:%s done: %s", self.image, version, log)
 
             # Update meta data
             self._meta = image.attrs
 
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Can't build %s:%s: %s", self.image, tag, err)
+            _LOGGER.error("Can't build %s:%s: %s", self.image, version, err)
             if hasattr(err, "build_log"):
                 log = "\n".join(
                     [
@@ -432,7 +433,7 @@ class DockerAddon(DockerInterface):
                 _LOGGER.error("Build log: \n%s", log)
             raise DockerError() from err
 
-        _LOGGER.info("Build %s:%s done", self.image, tag)
+        _LOGGER.info("Build %s:%s done", self.image, version)
 
     @process_lock
     def export_image(self, tar_file: Path) -> Awaitable[None]:

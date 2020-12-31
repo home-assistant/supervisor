@@ -4,7 +4,7 @@ import re
 from typing import Optional, Union
 import uuid
 
-from packaging import version as pkg_version
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from .const import (
@@ -55,23 +55,17 @@ RE_REGISTRY = re.compile(r"^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$")
 # pylint: disable=invalid-name
 network_port = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 wait_boot = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
-docker_image = vol.Match(r"^[\w{}]+/[\-\w{}]+$")
+docker_image = vol.Match(r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$")
 uuid_match = vol.Match(r"^[0-9a-f]{32}$")
 sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
 
 
-def version_tag(value: Union[str, None, int, float]) -> Optional[str]:
+def version_tag(value: Union[str, None, int, float]) -> Optional[AwesomeVersion]:
     """Validate main version handling."""
     if value is None:
         return None
-
-    try:
-        value = str(value)
-        pkg_version.parse(value)
-    except (pkg_version.InvalidVersion, TypeError):
-        raise vol.Invalid(f"Invalid version format {value}") from None
-    return value
+    return AwesomeVersion(value)
 
 
 def dns_url(url: str) -> str:
@@ -142,14 +136,14 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_CHANNEL, default=UpdateChannel.STABLE): vol.Coerce(
             UpdateChannel
         ),
-        vol.Optional(ATTR_HOMEASSISTANT): vol.All(version_tag, str),
-        vol.Optional(ATTR_SUPERVISOR): vol.All(version_tag, str),
-        vol.Optional(ATTR_HASSOS): vol.All(version_tag, str),
-        vol.Optional(ATTR_CLI): vol.All(version_tag, str),
-        vol.Optional(ATTR_DNS): vol.All(version_tag, str),
-        vol.Optional(ATTR_AUDIO): vol.All(version_tag, str),
-        vol.Optional(ATTR_OBSERVER): vol.All(version_tag, str),
-        vol.Optional(ATTR_MULTICAST): vol.All(version_tag, str),
+        vol.Optional(ATTR_HOMEASSISTANT): version_tag,
+        vol.Optional(ATTR_SUPERVISOR): version_tag,
+        vol.Optional(ATTR_HASSOS): version_tag,
+        vol.Optional(ATTR_CLI): version_tag,
+        vol.Optional(ATTR_DNS): version_tag,
+        vol.Optional(ATTR_AUDIO): version_tag,
+        vol.Optional(ATTR_OBSERVER): version_tag,
+        vol.Optional(ATTR_MULTICAST): version_tag,
         vol.Optional(ATTR_IMAGE, default=dict): vol.Schema(
             {
                 vol.Optional(ATTR_HOMEASSISTANT): docker_image,
@@ -173,7 +167,9 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_TIMEZONE, default="UTC"): validate_timezone,
         vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
-        vol.Optional(ATTR_VERSION, default=SUPERVISOR_VERSION): version_tag,
+        vol.Optional(
+            ATTR_VERSION, default=AwesomeVersion(SUPERVISOR_VERSION)
+        ): version_tag,
         vol.Optional(
             ATTR_ADDONS_CUSTOM_LIST,
             default=["https://github.com/hassio-addons/repository"],

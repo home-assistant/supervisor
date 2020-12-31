@@ -101,7 +101,7 @@ class Addon(AddonModel):
     async def load(self) -> None:
         """Async initialize of object."""
         with suppress(DockerError):
-            await self.instance.attach(tag=self.version)
+            await self.instance.attach(version=self.version)
 
             # Evaluate state
             if await self.instance.is_running():
