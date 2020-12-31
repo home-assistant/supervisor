@@ -47,7 +47,7 @@ class HassOS(CoreSysAttributes):
         """Return true if a HassOS update is available."""
         try:
             return self.version < self.latest_version
-        except AwesomeVersionException:
+        except (AwesomeVersionException, TypeError):
             return False
 
     @property
