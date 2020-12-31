@@ -88,6 +88,6 @@ def test_version_complex():
         1,
         1.1,
     ):
-        assert validate.version_tag(version).string == str(version)
+        assert validate.version_tag(version) == str(version)
 
     assert validate.version_tag(None) is None
