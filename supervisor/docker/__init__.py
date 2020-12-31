@@ -24,7 +24,7 @@ from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-MIN_SUPPORTED_DOCKER = AwesomeVersion("19.03.0")
+MIN_SUPPORTED_DOCKER = "19.03.0"
 DOCKER_NETWORK_HOST = "host"
 
 
