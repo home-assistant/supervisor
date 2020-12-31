@@ -22,8 +22,8 @@ from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerError, JsonFile
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
 from ..validate import dns_url
-from .const import FILE_HASSIO_DNS
 from .base import PluginBase
+from .const import FILE_HASSIO_DNS
 from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class HostEntry:
     names: List[str] = attr.ib()
 
 
-class CoreDNS(PluginBase):
+class PluginDns(PluginBase):
     """Home Assistant core object for handle it."""
 
     def __init__(self, coresys: CoreSys):

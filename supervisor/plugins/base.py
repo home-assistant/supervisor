@@ -62,13 +62,5 @@ class PluginBase(ABC, JsonConfig, CoreSysAttributes):
         """Update system plugin."""
 
     @abstractmethod
-    async def restart(self) -> None:
-        """Restart system plugin."""
-
-    @abstractmethod
-    async def stop(self) -> None:
-        """Stop system plugin."""
-
-    @abstractmethod
     async def repair(self) -> None:
         """Repair system plugin."""

@@ -13,14 +13,14 @@ from ..coresys import CoreSys
 from ..docker.multicast import DockerMulticast
 from ..docker.stats import DockerStats
 from ..exceptions import DockerError, MulticastError, MulticastUpdateError
-from .const import FILE_HASSIO_MULTICAST
 from .base import PluginBase
+from .const import FILE_HASSIO_MULTICAST
 from .validate import SCHEMA_MULTICAST_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Multicast(PluginBase):
+class PluginMulticast(PluginBase):
     """Home Assistant core object for handle it."""
 
     def __init__(self, coresys: CoreSys):

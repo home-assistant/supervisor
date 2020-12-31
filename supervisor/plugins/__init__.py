@@ -5,11 +5,11 @@ import logging
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError
 from ..resolution.const import ContextType, IssueType, SuggestionType
-from .audio import Audio
-from .cli import HaCli
-from .dns import CoreDNS
-from .multicast import Multicast
-from .observer import Observer
+from .audio import PluginAudio
+from .cli import PluginCli
+from .dns import PluginDns
+from .multicast import PluginMulticast
+from .observer import PluginObserver
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -21,34 +21,34 @@ class PluginManager(CoreSysAttributes):
         """Initialize plugin manager."""
         self.coresys: CoreSys = coresys
 
-        self._cli: HaCli = HaCli(coresys)
-        self._dns: CoreDNS = CoreDNS(coresys)
-        self._audio: Audio = Audio(coresys)
-        self._observer: Observer = Observer(coresys)
-        self._multicast: Multicast = Multicast(coresys)
+        self._cli: PluginCli = PluginCli(coresys)
+        self._dns: PluginDns = PluginDns(coresys)
+        self._audio: PluginAudio = PluginAudio(coresys)
+        self._observer: PluginObserver = PluginObserver(coresys)
+        self._multicast: PluginMulticast = PluginMulticast(coresys)
 
     @property
-    def cli(self) -> HaCli:
+    def cli(self) -> PluginCli:
         """Return cli handler."""
         return self._cli
 
     @property
-    def dns(self) -> CoreDNS:
+    def dns(self) -> PluginDns:
         """Return dns handler."""
         return self._dns
 
     @property
-    def audio(self) -> Audio:
+    def audio(self) -> PluginAudio:
         """Return audio handler."""
         return self._audio
 
     @property
-    def observer(self) -> Observer:
+    def observer(self) -> PluginObserver:
         """Return observer handler."""
         return self._observer
 
     @property
-    def multicast(self) -> Multicast:
+    def multicast(self) -> PluginMulticast:
         """Return multicast handler."""
         return self._multicast
 

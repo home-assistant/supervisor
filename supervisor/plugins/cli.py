@@ -15,14 +15,14 @@ from ..coresys import CoreSys
 from ..docker.cli import DockerCli
 from ..docker.stats import DockerStats
 from ..exceptions import CliError, CliUpdateError, DockerError
-from .const import FILE_HASSIO_CLI
 from .base import PluginBase
+from .const import FILE_HASSIO_CLI
 from .validate import SCHEMA_CLI_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class HaCli(PluginBase):
+class PluginCli(PluginBase):
     """HA cli interface inside supervisor."""
 
     def __init__(self, coresys: CoreSys):

@@ -16,14 +16,14 @@ from ..coresys import CoreSys
 from ..docker.observer import DockerObserver
 from ..docker.stats import DockerStats
 from ..exceptions import DockerError, ObserverError, ObserverUpdateError
-from .const import FILE_HASSIO_OBSERVER
 from .base import PluginBase
+from .const import FILE_HASSIO_OBSERVER
 from .validate import SCHEMA_OBSERVER_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Observer(PluginBase):
+class PluginObserver(PluginBase):
     """Supervisor observer instance."""
 
     def __init__(self, coresys: CoreSys):

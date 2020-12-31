@@ -16,8 +16,8 @@ from ..coresys import CoreSys
 from ..docker.audio import DockerAudio
 from ..docker.stats import DockerStats
 from ..exceptions import AudioError, AudioUpdateError, DockerError
-from .const import FILE_HASSIO_AUDIO
 from .base import PluginBase
+from .const import FILE_HASSIO_AUDIO
 from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ PULSE_CLIENT_TMPL: Path = Path(__file__).parents[1].joinpath("data/pulse-client.
 ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
 
 
-class Audio(PluginBase):
+class PluginAudio(PluginBase):
     """Home Assistant core object for handle audio."""
 
     def __init__(self, coresys: CoreSys):
