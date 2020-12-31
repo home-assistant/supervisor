@@ -66,7 +66,7 @@ class Supervisor(CoreSysAttributes):
 
         try:
             return self.version < self.latest_version
-        except AwesomeVersionException:
+        except (AwesomeVersionException, TypeError):
             return False
 
     @property
