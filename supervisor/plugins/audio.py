@@ -71,7 +71,7 @@ class PluginAudio(PluginBase):
             if not self.version:
                 self.version = await self.instance.get_latest_version()
 
-            await self.instance.attach(tag=self.version.string)
+            await self.instance.attach(version=self.version)
         except DockerError:
             _LOGGER.info("No Audio plugin Docker image %s found.", self.instance.image)
 

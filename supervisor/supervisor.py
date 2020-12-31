@@ -41,7 +41,7 @@ class Supervisor(CoreSysAttributes):
     async def load(self) -> None:
         """Prepare Home Assistant object."""
         try:
-            await self.instance.attach(tag="latest")
+            await self.instance.attach(version=self.version)
         except DockerError:
             _LOGGER.critical("Can't setup Supervisor Docker container!")
 
