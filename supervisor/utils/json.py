@@ -18,10 +18,11 @@ _DEFAULT: Dict[str, Any] = {}
 
 
 class JSONEncoder(json.JSONEncoder):
-    """JSONEncoder that supports Home Assistant objects."""
+    """JSONEncoder that supports Supervisor objects."""
 
     def default(self, o: Any) -> Any:
-        """Convert Home Assistant objects.
+        """Convert Supervisor special objects.
+
         Hand other objects to the original method.
         """
         if isinstance(o, datetime):

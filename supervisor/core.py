@@ -7,7 +7,6 @@ from typing import Awaitable, List, Optional
 import async_timeout
 
 from .const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
-from .homeassistant.core import LANDINGPAGE
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     HassioError,
@@ -15,6 +14,7 @@ from .exceptions import (
     HomeAssistantError,
     SupervisorUpdateError,
 )
+from .homeassistant.core import LANDINGPAGE
 from .resolution.const import ContextType, IssueType, UnhealthyReason
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

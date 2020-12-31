@@ -233,7 +233,9 @@ class DockerInterface(CoreSysAttributes):
 
         with suppress(docker.errors.DockerException, requests.RequestException):
             if not self._meta and self.image:
-                self._meta = self.sys_docker.images.get(f"{self.image}:{version!s}").attrs
+                self._meta = self.sys_docker.images.get(
+                    f"{self.image}:{version!s}"
+                ).attrs
 
         # Successfull?
         if not self._meta:
