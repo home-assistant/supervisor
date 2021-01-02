@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Dict
 
 from atomicwrites import atomic_write
-from awesomeversion import AwesomeVersion
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -31,8 +30,6 @@ class JSONEncoder(json.JSONEncoder):
             return list(o)
         if hasattr(o, "as_dict"):
             return o.as_dict()
-        if isinstance(o, AwesomeVersion):
-            return o.string
 
         return json.JSONEncoder.default(self, o)
 
