@@ -248,6 +248,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                web.get("/auth", api_auth.auth),
                 web.post("/auth", api_auth.auth),
                 web.post("/auth/reset", api_auth.reset),
                 web.delete("/auth/cache", api_auth.cache),
