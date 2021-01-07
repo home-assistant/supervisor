@@ -5,7 +5,7 @@ from typing import Dict
 
 from aiohttp import BasicAuth, web
 from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE, WWW_AUTHENTICATE
-from aiohttp.web_exceptions import HTTPBadRequest, HTTPUnauthorized
+from aiohttp.web_exceptions import HTTPUnauthorized
 import voluptuous as vol
 
 from ..addons.addon import Addon
@@ -67,17 +67,11 @@ class APIAuth(CoreSysAttributes):
 
         # Json
         if request.headers.get(CONTENT_TYPE) == CONTENT_TYPE_JSON:
-            if request.method == "GET":
-                raise HTTPBadRequest(text="json auth requires HTTP POST instead of GET")
             data = await request.json()
             return await self._process_dict(request, addon, data)
 
         # URL encoded
         if request.headers.get(CONTENT_TYPE) == CONTENT_TYPE_URL:
-            if request.method == "GET":
-                raise HTTPBadRequest(
-                    text="URL encoded auth requires HTTP POST instead of GET"
-                )
             data = await request.post()
             return await self._process_dict(request, addon, data)
 
