@@ -88,7 +88,7 @@ class StoreManager(CoreSysAttributes):
                 self.sys_resolution.create_issue(
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
-                    refrence=repository.slug,
+                    reference=repository.slug,
                     suggestions=[SuggestionType.EXECUTE_RELOAD],
                 )
             else:
