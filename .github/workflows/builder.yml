@@ -89,7 +89,7 @@ jobs:
 
       - name: Build wheels
         if: needs.init.outputs.requirements == 'true'
-        uses: home-assistant/wheels@action
+        uses: home-assistant/wheels@master
         with:
           tag: ${{ env.WHEELS_TAG }}
           arch: ${{ matrix.arch }}
