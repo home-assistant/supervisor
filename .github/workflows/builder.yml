@@ -61,6 +61,12 @@ jobs:
         with:
           type: ${{ env.BUILD_TYPE }}
 
+      - name: Wait for wheels-build to finish
+        if: steps.version.outputs.publish == 'false'
+        uses: home-assistant/actions/waitforjob@master
+        with:
+          job: build-wheels-complete
+
   build:
     name: Build ${{ matrix.arch }} supervisor
     needs: init
@@ -73,12 +79,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - name: Wait for wheels-build to finish
-        if: needs.init.outputs.publish == 'false'
-        uses: home-assistant/actions/waitforjob@master
-        with:
-          job: "Build wheels (${{ matrix.arch }})"
 
       - name: Set version
         if: needs.init.outputs.publish == 'true'

@@ -35,24 +35,21 @@ jobs:
         run: |
           if [[ "${{ steps.changed_files.outputs.all }}" =~ requrirements.txt ]]; then
             echo "::set-output name=changed::true"
-          elif [[ "${{ steps.changed_files.outputs.all }}" =~ requrirements_tests.txt ]]; then
-            echo "::set-output name=changed::true"
           fi
 
   build-wheels:
     name: Build ${{ matrix.arch }} wheels
     needs: init
+    if: needs.init.outputs.requirements == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         arch: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
       - name: Checkout the repository
-        if: needs.init.outputs.requirements == 'true'
         uses: actions/checkout@v2
 
       - name: Build wheels
-        if: needs.init.outputs.requirements == 'true'
         uses: home-assistant/wheels@action
         with:
           tag: ${{ env.WHEELS_TAG }}
@@ -62,3 +59,11 @@ jobs:
           apk: "build-base;libffi-dev;openssl-dev"
           skip-binary: aiohttp
           requirements: "requirements.txt"
+
+  build-wheels-complete:
+    name: Finish step for wheels build
+    needs: init
+    runs-on: ubuntu-latest
+    steps:
+      - name: Finish step for wheels build
+        runs: Done
