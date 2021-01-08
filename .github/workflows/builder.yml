@@ -74,8 +74,8 @@ jobs:
             echo "::set-output name=changed::true"
           fi
 
-  build-wheels:
-    name: Build ${{ matrix.arch }} wheels
+  build:
+    name: Build ${{ matrix.arch }} supervisor
     needs: init
     runs-on: ubuntu-latest
     strategy:
@@ -83,8 +83,9 @@ jobs:
         arch: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
       - name: Checkout the repository
-        if: needs.init.outputs.requirements == 'true'
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Build wheels
         if: needs.init.outputs.requirements == 'true'
@@ -97,19 +98,6 @@ jobs:
           apk: "build-base;libffi-dev;openssl-dev"
           skip-binary: aiohttp
           requirements: "requirements.txt"
-
-  build:
-    name: Build ${{ matrix.arch }} supervisor
-    needs: build-wheels
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: ${{ fromJson(needs.init.outputs.architectures) }}
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       - name: Set version
         if: needs.init.outputs.publish == 'true'
