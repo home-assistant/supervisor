@@ -18,6 +18,7 @@ from .homeassistant import APIHomeAssistant
 from .host import APIHost
 from .info import APIInfo
 from .ingress import APIIngress
+from .jobs import APIJobs
 from .multicast import APIMulticast
 from .network import APINetwork
 from .observer import APIObserver
@@ -72,6 +73,7 @@ class RestAPI(CoreSysAttributes):
         self._register_network()
         self._register_observer()
         self._register_os()
+        self._register_jobs()
         self._register_panel()
         self._register_proxy()
         self._register_resolution()
@@ -110,12 +112,21 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/network/info", api_network.info),
+                web.post("/network/reload", api_network.reload),
                 web.get(
                     "/network/interface/{interface}/info", api_network.interface_info
                 ),
                 web.post(
                     "/network/interface/{interface}/update",
                     api_network.interface_update,
+                ),
+                web.get(
+                    "/network/interface/{interface}/accesspoints",
+                    api_network.scan_accesspoints,
+                ),
+                web.post(
+                    "/network/interface/{interface}/vlan/{vlan}",
+                    api_network.create_vlan,
                 ),
             ]
         )
@@ -130,6 +141,19 @@ class RestAPI(CoreSysAttributes):
                 web.get("/os/info", api_os.info),
                 web.post("/os/update", api_os.update),
                 web.post("/os/config/sync", api_os.config_sync),
+            ]
+        )
+
+    def _register_jobs(self) -> None:
+        """Register Jobs functions."""
+        api_jobs = APIJobs()
+        api_jobs.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/jobs/info", api_jobs.info),
+                web.post("/jobs/options", api_jobs.options),
+                web.post("/jobs/reset", api_jobs.reset),
             ]
         )
 
@@ -224,6 +248,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                web.get("/auth", api_auth.auth),
                 web.post("/auth", api_auth.auth),
                 web.post("/auth/reset", api_auth.reset),
                 web.delete("/auth/cache", api_auth.cache),
@@ -243,6 +268,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/supervisor/logs", api_supervisor.logs),
                 web.post("/supervisor/update", api_supervisor.update),
                 web.post("/supervisor/reload", api_supervisor.reload),
+                web.post("/supervisor/restart", api_supervisor.restart),
                 web.post("/supervisor/options", api_supervisor.options),
                 web.post("/supervisor/repair", api_supervisor.repair),
             ]
@@ -342,6 +368,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.post("/ingress/session", api_ingress.create_session),
+                web.post("/ingress/validate_session", api_ingress.validate_session),
                 web.get("/ingress/panels", api_ingress.panels),
                 web.view("/ingress/{token}/{path:.*}", api_ingress.handler),
             ]

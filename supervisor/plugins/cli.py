@@ -8,65 +8,34 @@ import logging
 import secrets
 from typing import Awaitable, Optional
 
-from packaging.version import parse as pkg_parse
+from awesomeversion import AwesomeVersion
 
-from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_VERSION
-from ..coresys import CoreSys, CoreSysAttributes
+from ..const import ATTR_ACCESS_TOKEN
+from ..coresys import CoreSys
 from ..docker.cli import DockerCli
 from ..docker.stats import DockerStats
 from ..exceptions import CliError, CliUpdateError, DockerError
-from ..utils.json import JsonConfig
+from .base import PluginBase
 from .const import FILE_HASSIO_CLI
 from .validate import SCHEMA_CLI_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class HaCli(CoreSysAttributes, JsonConfig):
+class PluginCli(PluginBase):
     """HA cli interface inside supervisor."""
-
-    slug: str = "cli"
 
     def __init__(self, coresys: CoreSys):
         """Initialize cli handler."""
         super().__init__(FILE_HASSIO_CLI, SCHEMA_CLI_CONFIG)
+        self.slug = "cli"
         self.coresys: CoreSys = coresys
         self.instance: DockerCli = DockerCli(coresys)
 
     @property
-    def version(self) -> Optional[str]:
-        """Return version of cli."""
-        return self._data.get(ATTR_VERSION)
-
-    @version.setter
-    def version(self, value: str) -> None:
-        """Set current version of cli."""
-        self._data[ATTR_VERSION] = value
-
-    @property
-    def image(self) -> str:
-        """Return current image of cli."""
-        if self._data.get(ATTR_IMAGE):
-            return self._data[ATTR_IMAGE]
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-cli"
-
-    @image.setter
-    def image(self, value: str) -> None:
-        """Return current image of cli."""
-        self._data[ATTR_IMAGE] = value
-
-    @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return version of latest cli."""
         return self.sys_updater.version_cli
-
-    @property
-    def need_update(self) -> bool:
-        """Return true if a cli update is available."""
-        try:
-            return pkg_parse(self.version) < pkg_parse(self.latest_version)
-        except (TypeError, ValueError):
-            return True
 
     @property
     def supervisor_token(self) -> str:
@@ -86,7 +55,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
             if not self.version:
                 self.version = await self.instance.get_latest_version()
 
-            await self.instance.attach(tag=self.version)
+            await self.instance.attach(version=self.version)
         except DockerError:
             _LOGGER.info("No cli plugin Docker image %s found.", self.instance.image)
 
@@ -126,7 +95,7 @@ class HaCli(CoreSysAttributes, JsonConfig):
         self.image = self.sys_updater.image_cli
         self.save_data()
 
-    async def update(self, version: Optional[str] = None) -> None:
+    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update local HA cli."""
         version = version or self.latest_version
         old_image = self.image

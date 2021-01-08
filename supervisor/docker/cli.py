@@ -39,7 +39,7 @@ class DockerCli(DockerInterface, CoreSysAttributes):
             self.image,
             entrypoint=["/init"],
             command=["/bin/bash", "-c", "sleep infinity"],
-            version=self.sys_plugins.cli.version,
+            tag=self.sys_plugins.cli.version.string,
             init=False,
             ipv4=self.sys_docker.network.cli,
             name=self.name,

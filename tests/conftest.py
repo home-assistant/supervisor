@@ -1,5 +1,6 @@
 """Common test functions."""
 from pathlib import Path
+import re
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
 
@@ -10,13 +11,11 @@ import pytest
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.coresys import CoreSys
-from supervisor.dbus.const import DBUS_NAME_NM, DBUS_OBJECT_BASE
 from supervisor.dbus.network import NetworkManager
-from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.docker import DockerAPI
 from supervisor.utils.gdbus import DBus
 
-from tests.common import load_fixture, load_json_fixture
+from tests.common import exists_fixture, load_fixture, load_json_fixture
 
 # pylint: disable=redefined-outer-name, protected-access
 
@@ -53,38 +52,60 @@ def docker() -> DockerAPI:
 def dbus() -> DBus:
     """Mock DBUS."""
 
-    async def mock_get_properties(_, interface):
-        return load_json_fixture(f"{interface.replace('.', '_')}.json")
+    dbus_commands = []
+
+    async def mock_get_properties(dbus_obj, interface):
+        latest = dbus_obj.object_path.split("/")[-1]
+        fixture = interface.replace(".", "_")
+
+        if latest.isnumeric():
+            fixture = f"{fixture}_{latest}"
+
+        return load_json_fixture(f"{fixture}.json")
+
+    async def mock_wait_signal(_, __):
+        pass
 
     async def mock_send(_, command, silent=False):
         if silent:
             return ""
 
-        filetype = "xml" if "--xml" in command else "fixture"
-        fixture = f"{command[6].replace('/', '_')[1:]}.{filetype}"
-        return load_fixture(fixture)
+        fixture = command[6].replace("/", "_")[1:]
+        if command[1] == "introspect":
+            filetype = "xml"
+
+            if not exists_fixture(f"{fixture}.{filetype}"):
+                fixture = re.sub(r"_[0-9]+$", "", fixture)
+
+                # special case
+                if exists_fixture(f"{fixture}_*.{filetype}"):
+                    fixture = f"{fixture}_*"
+        else:
+            fixture = f"{fixture}-{command[10].split('.')[-1]}"
+            filetype = "fixture"
+
+            dbus_commands.append(fixture)
+
+        return load_fixture(f"{fixture}.{filetype}")
 
     with patch("supervisor.utils.gdbus.DBus._send", new=mock_send), patch(
+        "supervisor.utils.gdbus.DBus.wait_signal", new=mock_wait_signal
+    ), patch(
         "supervisor.dbus.interface.DBusInterface.is_connected",
         return_value=True,
-    ), patch("supervisor.utils.gdbus.DBus.get_properties", new=mock_get_properties):
-
-        dbus_obj = DBus(DBUS_NAME_NM, DBUS_OBJECT_BASE)
-
-        yield dbus_obj
+    ), patch(
+        "supervisor.utils.gdbus.DBus.get_properties", new=mock_get_properties
+    ):
+        yield dbus_commands
 
 
 @pytest.fixture
 async def network_manager(dbus) -> NetworkManager:
     """Mock NetworkManager."""
-
-    async def dns_update():
-        pass
-
-    with patch("supervisor.dbus.network.NetworkManager.dns", return_value=MagicMock()):
-        nm_obj = NetworkManager()
-    nm_obj.dns.update = dns_update
+    nm_obj = NetworkManager()
     nm_obj.dbus = dbus
+
+    # Init
     await nm_obj.connect()
     await nm_obj.update()
 
@@ -92,7 +113,7 @@ async def network_manager(dbus) -> NetworkManager:
 
 
 @pytest.fixture
-async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSys:
+async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system_data"), patch(
         "supervisor.bootstrap.setup_diagnostics"
@@ -106,10 +127,11 @@ async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSy
         coresys_obj = await initialize_coresys()
 
     # Mock save json
-    coresys_obj.ingress.save_data = MagicMock()
-    coresys_obj.auth.save_data = MagicMock()
-    coresys_obj.updater.save_data = MagicMock()
-    coresys_obj.config.save_data = MagicMock()
+    coresys_obj._ingress.save_data = MagicMock()
+    coresys_obj._auth.save_data = MagicMock()
+    coresys_obj._updater.save_data = MagicMock()
+    coresys_obj._config.save_data = MagicMock()
+    coresys_obj._jobs.save_data = MagicMock()
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
@@ -117,11 +139,14 @@ async def coresys(loop, docker, dbus, network_manager, aiohttp_client) -> CoreSy
     coresys_obj._machine_id = uuid4()
 
     # Mock host communication
-    coresys_obj._dbus = dbus
-    coresys_obj._dbus.network = network_manager
+    coresys_obj._dbus._network = network_manager
 
     # Mock docker
     coresys_obj._docker = docker
+
+    # Set internet state
+    coresys_obj.supervisor._connectivity = True
+    coresys_obj.host.network._connectivity = True
 
     yield coresys_obj
 
@@ -154,19 +179,9 @@ async def api_client(aiohttp_client, coresys: CoreSys):
 
 
 @pytest.fixture
-async def network_interface(dbus):
-    """Fixture for a network interface."""
-    interface = NetworkInterface()
-    await interface.connect(dbus, "/org/freedesktop/NetworkManager/ActiveConnection/1")
-    await interface.connection.update_information()
-    yield interface
-
-
-@pytest.fixture
 def store_manager(coresys: CoreSys):
     """Fixture for the store manager."""
     sm_obj = coresys.store
-    sm_obj.repositories = set(coresys.config.addons_repositories)
     with patch("supervisor.store.data.StoreData.update", return_value=MagicMock()):
         yield sm_obj
 

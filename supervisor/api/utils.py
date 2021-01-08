@@ -19,6 +19,7 @@ from ..const import (
 )
 from ..exceptions import APIError, APIForbidden, DockerAPIError, HassioError
 from ..utils import check_exception_chain, get_message_from_exception_chain
+from ..utils.json import JSONEncoder
 from ..utils.log_format import format_message
 
 
@@ -112,12 +113,16 @@ def api_return_error(
             JSON_MESSAGE: message or "Unknown error, see supervisor",
         },
         status=400,
+        dumps=lambda x: json.dumps(x, cls=JSONEncoder),
     )
 
 
 def api_return_ok(data: Optional[Dict[str, Any]] = None) -> web.Response:
     """Return an API ok answer."""
-    return web.json_response({JSON_RESULT: RESULT_OK, JSON_DATA: data or {}})
+    return web.json_response(
+        {JSON_RESULT: RESULT_OK, JSON_DATA: data or {}},
+        dumps=lambda x: json.dumps(x, cls=JSONEncoder),
+    )
 
 
 async def api_validate(

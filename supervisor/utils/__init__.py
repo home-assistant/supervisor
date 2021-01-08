@@ -3,6 +3,7 @@ import asyncio
 from datetime import datetime
 from ipaddress import IPv4Address
 import logging
+from pathlib import Path
 import re
 import socket
 from typing import Any, Optional
@@ -132,3 +133,26 @@ def get_message_from_exception_chain(err: Exception) -> str:
         return ""
 
     return get_message_from_exception_chain(err.__context__)
+
+
+async def remove_folder(folder: Path, content_only: bool = False) -> None:
+    """Remove folder and reset privileged.
+
+    Is needed to avoid issue with:
+        - CAP_DAC_OVERRIDE
+        - CAP_DAC_READ_SEARCH
+    """
+    del_folder = f"{folder}" + "/{,.[!.],..?}*" if content_only else f"{folder}"
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "bash", "-c", f"rm -rf {del_folder}", stdout=asyncio.subprocess.DEVNULL
+        )
+
+        _, error_msg = await proc.communicate()
+    except OSError as err:
+        error_msg = str(err)
+    else:
+        if proc.returncode == 0:
+            return
+
+    _LOGGER.error("Can't remove folder %s: %s", folder, error_msg)

@@ -1,6 +1,23 @@
 name: Build supervisor
 
 on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Channel"
+        required: true
+        default: "dev"
+      version:
+        description: "Version"
+        required: true
+      publish:
+        description: "Publish"
+        required: true
+        default: "false"
+      stable:
+        description: "Stable"
+        required: true
+        default: "false"
   pull_request:
     branches: ["main"]
   release:
@@ -75,7 +92,7 @@ jobs:
         run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
 
       - name: Build supervisor
-        uses: home-assistant/builder@2020.10.0
+        uses: home-assistant/builder@2020.11.0
         with:
           args: |
             $BUILD_ARGS \
@@ -85,7 +102,7 @@ jobs:
 
   version:
     name: Update version
-    needs: ["init", "build"]
+    needs: ["init", "run_supervisor"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
@@ -107,3 +124,65 @@ jobs:
           key: ${{ env.BUILD_NAME }}
           version: ${{ needs.init.outputs.version }}
           channel: ${{ needs.init.outputs.channel }}
+
+  run_supervisor:
+    runs-on: ubuntu-latest
+    name: Run the Supervisor
+    needs: ["build"]
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+
+      - name: Build the Supervisor
+        uses: home-assistant/builder@2020.11.0
+        with:
+          args: |
+            --test \
+            --amd64 \
+            --target /data \
+            --generic runner
+
+      - name: Create the Supervisor
+        run: |
+          mkdir -p /tmp/supervisor/data
+          docker create --name hassio_supervisor \
+            --privileged \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor:unconfined \
+            -v /run/docker.sock:/run/docker.sock \
+            -v /run/dbus:/run/dbus \
+            -v /tmp/supervisor/data:/data \
+            -v /etc/machine-id:/etc/machine-id:ro \
+            -e SUPERVISOR_SHARE="/tmp/supervisor/data" \
+            -e SUPERVISOR_NAME=hassio_supervisor \
+            -e SUPERVISOR_DEV=1 \
+            -e SUPERVISOR_MACHINE="qemux86-64" \
+          homeassistant/amd64-hassio-supervisor:runner
+
+      - name: Start the Supervisor
+        run: docker start hassio_supervisor
+
+      - name: Wait for Supervisor to come up
+        run: |
+          SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
+          ping="error"
+          while [ "$ping" != "ok" ]; do
+            ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r .result)
+            sleep 5
+          done
+
+      - name: Check the Supervisor
+        run: |
+          echo "Checking supervisor info"
+          test=$(docker exec hassio_cli ha supervisor info --no-progress --raw-json | jq -r .result)
+          if [ "$test" != "ok" ];then
+            docker logs hassio_supervisor
+            exit 1
+          fi
+
+          echo "Checking supervisor network info"
+          test=$(docker exec hassio_cli ha network info --no-progress --raw-json | jq -r .result)
+          if [ "$test" != "ok" ];then
+            docker logs hassio_supervisor
+            exit 1
+          fi

@@ -93,6 +93,7 @@ from ..const import (
 from ..coresys import CoreSys
 from ..discovery.validate import valid_discovery_service
 from ..validate import (
+    docker_image,
     docker_ports,
     docker_ports_description,
     network_port,
@@ -144,7 +145,6 @@ _SCHEMA_LENGTH_PARTS = (
     "p_max",
 )
 
-RE_DOCKER_IMAGE = re.compile(r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$")
 RE_DOCKER_IMAGE_BUILD = re.compile(
     r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)(:[\.\-\w{}]+)?$"
 )
@@ -155,6 +155,7 @@ RE_MACHINE = re.compile(
     r"^!?(?:"
     r"|intel-nuc"
     r"|odroid-c2"
+    r"|odroid-c4"
     r"|odroid-n2"
     r"|odroid-xu"
     r"|qemuarm-64"
@@ -185,7 +186,7 @@ def _simple_startup(value) -> str:
 SCHEMA_ADDON_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_NAME): vol.Coerce(str),
-        vol.Required(ATTR_VERSION): vol.All(version_tag, str),
+        vol.Required(ATTR_VERSION): version_tag,
         vol.Required(ATTR_SLUG): vol.Coerce(str),
         vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
         vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
@@ -212,7 +213,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_PANEL_ICON, default="mdi:puzzle"): vol.Coerce(str),
         vol.Optional(ATTR_PANEL_TITLE): vol.Coerce(str),
         vol.Optional(ATTR_PANEL_ADMIN, default=True): vol.Boolean(),
-        vol.Optional(ATTR_HOMEASSISTANT): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_HOMEASSISTANT): vol.Maybe(version_tag),
         vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_PID, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_IPC, default=False): vol.Boolean(),
@@ -266,7 +267,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
             ),
             False,
         ),
-        vol.Optional(ATTR_IMAGE): vol.Match(RE_DOCKER_IMAGE),
+        vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_TIMEOUT, default=10): vol.All(
             vol.Coerce(int), vol.Range(min=10, max=300)
         ),
@@ -293,8 +294,8 @@ SCHEMA_BUILD_CONFIG = vol.Schema(
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_USER = vol.Schema(
     {
-        vol.Required(ATTR_VERSION): vol.Coerce(str),
-        vol.Optional(ATTR_IMAGE): vol.Coerce(str),
+        vol.Required(ATTR_VERSION): version_tag,
+        vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_INGRESS_TOKEN, default=secrets.token_urlsafe): vol.Coerce(

@@ -37,7 +37,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_plugins.dns.version,
+            tag=self.sys_plugins.dns.version.string,
             init=False,
             dns=False,
             ipv4=self.sys_docker.network.dns,
@@ -46,7 +46,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
             detach=True,
             environment={ENV_TIME: self.sys_config.timezone},
             volumes={
-                str(self.sys_config.path_extern_dns): {"bind": "/config", "mode": "ro"}
+                str(self.sys_config.path_extern_dns): {"bind": "/config", "mode": "rw"}
             },
         )
 

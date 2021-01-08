@@ -5,20 +5,29 @@ import logging
 import re
 from typing import Any, Awaitable, Dict, List, Optional
 
+from awesomeversion import AwesomeVersion
+from awesomeversion.strategy import AwesomeVersionStrategy
 import docker
-from packaging import version as pkg_version
 import requests
 
 from . import CommandReturn
-from ..const import ATTR_PASSWORD, ATTR_USERNAME, LABEL_ARCH, LABEL_VERSION
+from ..const import (
+    ATTR_PASSWORD,
+    ATTR_REGISTRY,
+    ATTR_USERNAME,
+    LABEL_ARCH,
+    LABEL_VERSION,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
+DOCKER_HUB = "hub.docker.com"
 
 
 class DockerInterface(CoreSysAttributes):
@@ -68,9 +77,11 @@ class DockerInterface(CoreSysAttributes):
             return None
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> Optional[AwesomeVersion]:
         """Return version of Docker image."""
-        return self.meta_labels.get(LABEL_VERSION)
+        if LABEL_VERSION not in self.meta_labels:
+            return None
+        return AwesomeVersion(self.meta_labels[LABEL_VERSION])
 
     @property
     def arch(self) -> Optional[str]:
@@ -82,24 +93,55 @@ class DockerInterface(CoreSysAttributes):
         """Return True if a task is in progress."""
         return self.lock.locked()
 
-    @process_lock
-    def install(self, tag: str, image: Optional[str] = None, latest: bool = False):
-        """Pull docker image."""
-        return self.sys_run_in_executor(self._install, tag, image, latest)
+    def _get_credentials(self, image: str) -> dict:
+        """Return a dictionay with credentials for docker login."""
+        registry = None
+        credentials = {}
+        matcher = IMAGE_WITH_HOST.match(image)
 
-    def _docker_login(self, hostname: str) -> None:
-        """Try to log in to the registry if there are credentials available."""
-        if hostname in self.sys_docker.config.registries:
-            credentials = self.sys_docker.config.registries[hostname]
+        # Custom registry
+        if matcher:
+            if matcher.group(1) in self.sys_docker.config.registries:
+                registry = matcher.group(1)
+                credentials[ATTR_REGISTRY] = registry
 
-            self.sys_docker.docker.login(
-                registry=hostname,
-                username=credentials[ATTR_USERNAME],
-                password=credentials[ATTR_PASSWORD],
+        # If no match assume "dockerhub" as registry
+        elif DOCKER_HUB in self.sys_docker.config.registries:
+            registry = DOCKER_HUB
+
+        if registry:
+            stored = self.sys_docker.config.registries[registry]
+            credentials[ATTR_USERNAME] = stored[ATTR_USERNAME]
+            credentials[ATTR_PASSWORD] = stored[ATTR_PASSWORD]
+
+            _LOGGER.debug(
+                "Logging in to %s as %s",
+                registry,
+                stored[ATTR_USERNAME],
             )
 
+        return credentials
+
+    def _docker_login(self, image: str) -> None:
+        """Try to log in to the registry if there are credentials available."""
+        if not self.sys_docker.config.registries:
+            return
+
+        credentials = self._get_credentials(image)
+        if not credentials:
+            return
+
+        self.sys_docker.docker.login(**credentials)
+
+    @process_lock
+    def install(
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
+    ):
+        """Pull docker image."""
+        return self.sys_run_in_executor(self._install, version, image, latest)
+
     def _install(
-        self, tag: str, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> None:
         """Pull Docker image.
 
@@ -107,28 +149,33 @@ class DockerInterface(CoreSysAttributes):
         """
         image = image or self.image
 
-        _LOGGER.info("Downloading docker image %s with tag %s.", image, tag)
+        _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
         try:
-            # If the image name contains a path to a registry, try to log in
-            path = IMAGE_WITH_HOST.match(image)
-            if path:
-                self._docker_login(path.group(1))
-            docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
+            if self.sys_docker.config.registries:
+                # Try login if we have defined credentials
+                self._docker_login(image)
+
+            docker_image = self.sys_docker.images.pull(f"{image}:{version!s}")
             if latest:
-                _LOGGER.info("Tagging image %s with version %s as latest", image, tag)
+                _LOGGER.info(
+                    "Tagging image %s with version %s as latest", image, version
+                )
                 docker_image.tag(image, tag="latest")
         except docker.errors.APIError as err:
-            _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
-            if err.status_code == 404:
-                free_space = self.sys_host.info.free_space
+            _LOGGER.error("Can't install %s:%s -> %s.", image, version, err)
+            if err.status_code == 429:
+                self.sys_resolution.create_issue(
+                    IssueType.DOCKER_RATELIMIT,
+                    ContextType.SYSTEM,
+                    suggestions=[SuggestionType.REGISTRY_LOGIN],
+                )
                 _LOGGER.info(
-                    "This error is often caused by not having enough disk space available. "
-                    "Available space in /data is: %s GiB",
-                    free_space,
+                    "Your IP address has made too many requests to Docker Hub which activated a rate limit. "
+                    "For more details see https://www.home-assistant.io/more-info/dockerhub-rate-limit"
                 )
             raise DockerError() from err
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Unknown error with %s:%s -> %s", image, tag, err)
+            _LOGGER.error("Unknown error with %s:%s -> %s", image, version, err)
             self.sys_capture_exception(err)
             raise DockerError() from err
         else:
@@ -144,7 +191,7 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         with suppress(docker.errors.DockerException, requests.RequestException):
-            self.sys_docker.images.get(f"{self.image}:{self.version}")
+            self.sys_docker.images.get(f"{self.image}:{self.version!s}")
             return True
         return False
 
@@ -172,11 +219,11 @@ class DockerInterface(CoreSysAttributes):
         return docker_container.status == "running"
 
     @process_lock
-    def attach(self, tag: str):
+    def attach(self, version: AwesomeVersion):
         """Attach to running Docker container."""
-        return self.sys_run_in_executor(self._attach, tag)
+        return self.sys_run_in_executor(self._attach, version)
 
-    def _attach(self, tag: str) -> None:
+    def _attach(self, version: AwesomeVersion) -> None:
         """Attach to running docker container.
 
         Need run inside executor.
@@ -186,7 +233,9 @@ class DockerInterface(CoreSysAttributes):
 
         with suppress(docker.errors.DockerException, requests.RequestException):
             if not self._meta and self.image:
-                self._meta = self.sys_docker.images.get(f"{self.image}:{tag}").attrs
+                self._meta = self.sys_docker.images.get(
+                    f"{self.image}:{version!s}"
+                ).attrs
 
         # Successfull?
         if not self._meta:
@@ -277,7 +326,7 @@ class DockerInterface(CoreSysAttributes):
 
             with suppress(docker.errors.ImageNotFound):
                 self.sys_docker.images.remove(
-                    image=f"{self.image}:{self.version}", force=True
+                    image=f"{self.image}:{self.version!s}", force=True
                 )
 
         except (docker.errors.DockerException, requests.RequestException) as err:
@@ -288,13 +337,13 @@ class DockerInterface(CoreSysAttributes):
 
     @process_lock
     def update(
-        self, tag: str, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> Awaitable[None]:
         """Update a Docker image."""
-        return self.sys_run_in_executor(self._update, tag, image, latest)
+        return self.sys_run_in_executor(self._update, version, image, latest)
 
     def _update(
-        self, tag: str, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> None:
         """Update a docker image.
 
@@ -303,11 +352,11 @@ class DockerInterface(CoreSysAttributes):
         image = image or self.image
 
         _LOGGER.info(
-            "Updating image %s:%s to %s:%s", self.image, self.version, image, tag
+            "Updating image %s:%s to %s:%s", self.image, self.version, image, version
         )
 
         # Update docker image
-        self._install(tag, image=image, latest=latest)
+        self._install(version, image=image, latest=latest)
 
         # Stop container & cleanup
         with suppress(DockerError):
@@ -348,7 +397,7 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            origin = self.sys_docker.images.get(f"{self.image}:{self.version}")
+            origin = self.sys_docker.images.get(f"{self.image}:{self.version!s}")
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
             raise DockerError() from err
@@ -464,23 +513,21 @@ class DockerInterface(CoreSysAttributes):
         # Check return value
         return int(docker_container.attrs["State"]["ExitCode"]) != 0
 
-    def get_latest_version(self) -> Awaitable[str]:
+    def get_latest_version(self) -> Awaitable[AwesomeVersion]:
         """Return latest version of local image."""
         return self.sys_run_in_executor(self._get_latest_version)
 
-    def _get_latest_version(self) -> str:
+    def _get_latest_version(self) -> AwesomeVersion:
         """Return latest version of local image.
 
         Need run inside executor.
         """
-        available_version: List[str] = []
+        available_version: List[AwesomeVersion] = []
         try:
             for image in self.sys_docker.images.list(self.image):
                 for tag in image.tags:
-                    version = tag.partition(":")[2]
-                    try:
-                        pkg_version.parse(version)
-                    except (TypeError, pkg_version.InvalidVersion):
+                    version = AwesomeVersion(tag.partition(":")[2])
+                    if version.strategy == AwesomeVersionStrategy.UNKNOWN:
                         continue
                     available_version.append(version)
 
@@ -488,14 +535,14 @@ class DockerInterface(CoreSysAttributes):
                 raise ValueError()
 
         except (docker.errors.DockerException, ValueError) as err:
-            _LOGGER.debug("No version found for %s", self.image)
+            _LOGGER.info("No version found for %s", self.image)
             raise DockerNotFound() from err
         except requests.RequestException as err:
             _LOGGER.warning("Communication issues with dockerd on Host: %s", err)
             raise DockerRequestError() from err
         else:
-            _LOGGER.debug("Found %s versions: %s", self.image, available_version)
+            _LOGGER.info("Found %s versions: %s", self.image, available_version)
 
         # Sort version and return latest version
-        available_version.sort(key=pkg_version.parse, reverse=True)
+        available_version.sort(reverse=True)
         return available_version[0]

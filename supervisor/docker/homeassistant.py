@@ -107,7 +107,7 @@ class DockerHomeAssistant(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_homeassistant.version,
+            tag=self.sys_homeassistant.version.string,
             name=self.name,
             hostname=self.name,
             detach=True,
@@ -183,6 +183,10 @@ class DockerHomeAssistant(DockerInterface):
 
         # we run on an old image, stop and start it
         if docker_container.image.id != docker_image.id:
+            return False
+
+        # Check of correct state
+        if docker_container.status not in ("exited", "running", "created"):
             return False
 
         return True

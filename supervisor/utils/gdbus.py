@@ -17,6 +17,7 @@ from ..exceptions import (
     DBusInterfaceError,
     DBusNotConnectedError,
     DBusParseError,
+    DBusProgramError,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ RE_GVARIANT_STRING: re.Pattern[Any] = re.compile(
     r"(?<=(?: |{|\[|\(|<))'(.*?)'(?=(?:|]|}|,|\)|>))"
 )
 RE_GVARIANT_BINARY: re.Pattern[Any] = re.compile(
-    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|\[byte (.*?)\]|\[(0x[0-9A-Za-z]{2}.*?)\]"
+    r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|\[byte (.*?)\]|\[(0x[0-9A-Za-z]{2}.*?)\]|<byte (.*?)>"
 )
 RE_GVARIANT_BINARY_STRING: re.Pattern[Any] = re.compile(
     r"\"[^\"\\]*(?:\\.[^\"\\]*)*\"|<?b\'(.*?)\'>?"
@@ -47,7 +48,9 @@ RE_GVARIANT_TUPLE_C: re.Pattern[Any] = re.compile(
 RE_BIN_STRING_OCT: re.Pattern[Any] = re.compile(r"\\\\(\d{3})")
 RE_BIN_STRING_HEX: re.Pattern[Any] = re.compile(r"\\\\x([0-9A-Za-z]{2})")
 
-RE_MONITOR_OUTPUT: re.Pattern[Any] = re.compile(r".+?: (?P<signal>[^ ].+) (?P<data>.*)")
+RE_MONITOR_OUTPUT: re.Pattern[Any] = re.compile(
+    r".+?: (?P<signal>[^\s].+?) (?P<data>.*)"
+)
 
 # Map GDBus to errors
 MAP_GDBUS_ERROR: Dict[str, Any] = {
@@ -143,8 +146,8 @@ class DBus:
         # Handle Bytes
         json_raw = RE_GVARIANT_BINARY.sub(
             lambda x: x.group(0)
-            if not (x.group(1) or x.group(2))
-            else _convert_bytes(x.group(1) or x.group(2)),
+            if not (x.group(1) or x.group(2) or x.group(3))
+            else _convert_bytes(x.group(1) or x.group(2) or x.group(3)),
             json_raw,
         )
         json_raw = RE_GVARIANT_BINARY_STRING.sub(
@@ -250,8 +253,8 @@ class DBus:
             raise exception()
 
         # General
-        _LOGGER.error("D-Bus return: %s", error.strip())
-        raise DBusFatalError()
+        _LOGGER.debug("D-Bus return: %s", error.strip())
+        raise DBusProgramError(error.strip())
 
     def attach_signals(self, filters=None):
         """Generate a signals wrapper."""

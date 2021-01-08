@@ -1,9 +1,11 @@
 """Tools file for Supervisor."""
+from datetime import datetime
 import json
 import logging
 from pathlib import Path
 from typing import Any, Dict
 
+from atomicwrites import atomic_write
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -14,10 +16,29 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 _DEFAULT: Dict[str, Any] = {}
 
 
+class JSONEncoder(json.JSONEncoder):
+    """JSONEncoder that supports Supervisor objects."""
+
+    def default(self, o: Any) -> Any:
+        """Convert Supervisor special objects.
+
+        Hand other objects to the original method.
+        """
+        if isinstance(o, datetime):
+            return o.isoformat()
+        if isinstance(o, set):
+            return list(o)
+        if hasattr(o, "as_dict"):
+            return o.as_dict()
+
+        return json.JSONEncoder.default(self, o)
+
+
 def write_json_file(jsonfile: Path, data: Any) -> None:
     """Write a JSON file."""
     try:
-        jsonfile.write_text(json.dumps(data, indent=2))
+        with atomic_write(jsonfile, overwrite=True) as fp:
+            fp.write(json.dumps(data, indent=2, cls=JSONEncoder))
         jsonfile.chmod(0o600)
     except (OSError, ValueError, TypeError) as err:
         _LOGGER.error("Can't write %s: %s", jsonfile, err)
@@ -65,7 +86,7 @@ class JsonConfig:
         try:
             self._data = self._schema(self._data)
         except vol.Invalid as ex:
-            _LOGGER.error(
+            _LOGGER.critical(
                 "Can't parse %s: %s", self._file, humanize_error(self._data, ex)
             )
 
@@ -79,7 +100,7 @@ class JsonConfig:
         try:
             self._data = self._schema(self._data)
         except vol.Invalid as ex:
-            _LOGGER.error("Can't parse data: %s", humanize_error(self._data, ex))
+            _LOGGER.critical("Can't parse data: %s", humanize_error(self._data, ex))
 
             # Load last valid data
             _LOGGER.warning("Resetting %s to last version", self._file)

@@ -3,6 +3,7 @@ import os
 import re
 
 from aiohttp import hdrs
+import attr
 
 from ..const import HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
@@ -61,6 +62,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "host": coresys.host.info.operating_system,
                 "kernel": coresys.host.info.kernel,
                 "machine": coresys.machine,
+                "images": list(coresys.resolution.evaluate.cached_images),
             },
             "versions": {
                 "audio": coresys.plugins.audio.version,
@@ -72,6 +74,14 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "observer": coresys.plugins.observer.version,
                 "os": coresys.hassos.version,
                 "supervisor": coresys.supervisor.version,
+            },
+            "resolution": {
+                "issues": [attr.asdict(issue) for issue in coresys.resolution.issues],
+                "suggestions": [
+                    attr.asdict(suggestion)
+                    for suggestion in coresys.resolution.suggestions
+                ],
+                "unhealthy": coresys.resolution.unhealthy,
             },
         }
     )

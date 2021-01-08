@@ -7,6 +7,7 @@ from typing import Set
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
+from ..jobs.decorator import Job, JobCondition
 from ..utils.dt import utcnow
 from .snapshot import Snapshot
 from .utils import create_slug
@@ -121,6 +122,7 @@ class SnapshotManager(CoreSysAttributes):
         self.snapshots_obj[snapshot.slug] = snapshot
         return snapshot
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_snapshot_full(self, name="", password=None):
         """Create a full snapshot."""
         if self.lock.locked():
@@ -142,13 +144,13 @@ class SnapshotManager(CoreSysAttributes):
                 _LOGGER.info("Snapshotting %s store folders", snapshot.slug)
                 await snapshot.store_folders()
 
-        except Exception as excep:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
-            print(excep)
+            self.sys_capture_exception(err)
             return None
 
         else:
-            _LOGGER.info("Crating full-snapshot with slug %s completed", snapshot.slug)
+            _LOGGER.info("Creating full-snapshot with slug %s completed", snapshot.slug)
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
 
@@ -156,6 +158,7 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_snapshot_partial(
         self, name="", addons=None, folders=None, password=None
     ):
@@ -192,13 +195,14 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.info("Snapshotting %s store folders", snapshot.slug)
                     await snapshot.store_folders(folders)
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
+            self.sys_capture_exception(err)
             return None
 
         else:
             _LOGGER.info(
-                "Crating partial-snapshot with slug %s completed", snapshot.slug
+                "Creating partial-snapshot with slug %s completed", snapshot.slug
             )
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
@@ -207,6 +211,15 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
+            JobCondition.INTERNET_HOST,
+            JobCondition.INTERNET_SYSTEM,
+            JobCondition.RUNNING,
+        ]
+    )
     async def do_restore_full(self, snapshot, password=None):
         """Restore a snapshot."""
         if self.lock.locked():
@@ -271,8 +284,9 @@ class SnapshotManager(CoreSysAttributes):
                 await task_hass
                 await self.sys_homeassistant.core.start()
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
+            self.sys_capture_exception(err)
             return False
 
         else:
@@ -283,6 +297,15 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
+            JobCondition.INTERNET_HOST,
+            JobCondition.INTERNET_SYSTEM,
+            JobCondition.RUNNING,
+        ]
+    )
     async def do_restore_partial(
         self, snapshot, homeassistant=False, addons=None, folders=None, password=None
     ):
@@ -349,8 +372,9 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.warning("Need restart HomeAssistant for API")
                     await self.sys_homeassistant.core.restart()
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", snapshot.slug)
+            self.sys_capture_exception(err)
             return False
 
         else:

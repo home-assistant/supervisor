@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
-from packaging import version as pkg_version
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 import voluptuous as vol
 
 from ..const import (
@@ -183,12 +183,12 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_REPOSITORY]
 
     @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> AwesomeVersion:
         """Return latest version of add-on."""
         return self.data[ATTR_VERSION]
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> AwesomeVersion:
         """Return version of add-on."""
         return self.data[ATTR_VERSION]
 
@@ -554,15 +554,10 @@ class AddonModel(CoreSysAttributes, ABC):
             return False
 
         # Home Assistant
-        version = config.get(ATTR_HOMEASSISTANT)
-        if version is None or self.sys_homeassistant.version is None:
-            return True
-
+        version: Optional[AwesomeVersion] = config.get(ATTR_HOMEASSISTANT)
         try:
-            return pkg_version.parse(
-                self.sys_homeassistant.version
-            ) >= pkg_version.parse(version)
-        except pkg_version.InvalidVersion:
+            return self.sys_homeassistant.version >= version
+        except (AwesomeVersionException, TypeError):
             return True
 
     def _image(self, config) -> str:

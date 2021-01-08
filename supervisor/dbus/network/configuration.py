@@ -1,71 +1,76 @@
 """NetworkConnection object4s for Network Manager."""
-from typing import List
+from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
+from typing import List, Optional, Union
 
 import attr
 
-from ...utils.gdbus import DBus
 
-
-class NetworkAttributes:
-    """NetworkAttributes object for Network Manager."""
-
-    def __init__(self, object_path: str, properties: dict) -> None:
-        """Initialize NetworkAttributes object."""
-        self._properties = properties
-        self.object_path = object_path
-
-
-@attr.s
-class AddressData:
-    """AddressData object for Network Manager."""
-
-    address: str = attr.ib()
-    prefix: int = attr.ib()
-
-
-@attr.s
+@attr.s(slots=True)
 class IpConfiguration:
     """NetworkSettingsIPConfig object for Network Manager."""
 
-    gateway: str = attr.ib()
-    method: str = attr.ib()
-    nameservers: List[int] = attr.ib()
-    address_data: AddressData = attr.ib()
+    gateway: Optional[Union[IPv6Address, IPv6Address]] = attr.ib()
+    nameservers: List[Union[IPv6Address, IPv6Address]] = attr.ib()
+    address: List[Union[IPv4Interface, IPv6Interface]] = attr.ib()
 
 
-@attr.s
+@attr.s(slots=True)
 class DNSConfiguration:
     """DNS configuration Object."""
 
-    nameservers: List[str] = attr.ib()
+    nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
     domains: List[str] = attr.ib()
     interface: str = attr.ib()
     priority: int = attr.ib()
     vpn: bool = attr.ib()
 
 
-@attr.s
-class NetworkSettings:
-    """NetworkSettings object for Network Manager."""
+@attr.s(slots=True)
+class ConnectionProperties:
+    """Connection Properties object for Network Manager."""
 
-    dbus: DBus = attr.ib()
-
-
-@attr.s
-class NetworkDevice:
-    """Device properties."""
-
-    dbus: DBus = attr.ib()
-    interface: str = attr.ib()
-    ip4_address: int = attr.ib()
-    device_type: int = attr.ib()
-    real: bool = attr.ib()
+    id: Optional[str] = attr.ib()
+    uuid: Optional[str] = attr.ib()
+    type: Optional[str] = attr.ib()
+    interface_name: Optional[str] = attr.ib()
 
 
-@attr.s
+@attr.s(slots=True)
 class WirelessProperties:
-    """WirelessProperties object for Network Manager."""
+    """Wireless Properties object for Network Manager."""
 
-    properties: dict = attr.ib()
-    security: dict = attr.ib()
-    ssid: str = attr.ib()
+    ssid: Optional[str] = attr.ib()
+    assigned_mac: Optional[str] = attr.ib()
+    mode: Optional[str] = attr.ib()
+    powersave: Optional[int] = attr.ib()
+
+
+@attr.s(slots=True)
+class WirelessSecurityProperties:
+    """Wireless Security Properties object for Network Manager."""
+
+    auth_alg: Optional[str] = attr.ib()
+    key_mgmt: Optional[str] = attr.ib()
+    psk: Optional[str] = attr.ib()
+
+
+@attr.s(slots=True)
+class EthernetProperties:
+    """Ethernet properties object for Network Manager."""
+
+    assigned_mac: Optional[str] = attr.ib()
+
+
+@attr.s(slots=True)
+class VlanProperties:
+    """Ethernet properties object for Network Manager."""
+
+    id: Optional[int] = attr.ib()
+    parent: Optional[str] = attr.ib()
+
+
+@attr.s(slots=True)
+class IpProperties:
+    """IP properties object for Network Manager."""
+
+    method: Optional[str] = attr.ib()

@@ -7,6 +7,7 @@ import logging
 from typing import Optional
 
 import aiohttp
+from awesomeversion import AwesomeVersion
 
 from .const import (
     ATTR_AUDIO,
@@ -18,13 +19,15 @@ from .const import (
     ATTR_IMAGE,
     ATTR_MULTICAST,
     ATTR_OBSERVER,
+    ATTR_OTA,
     ATTR_SUPERVISOR,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
     UpdateChannel,
 )
 from .coresys import CoreSysAttributes
-from .exceptions import HassioUpdaterError
+from .exceptions import UpdaterError, UpdaterJobError
+from .jobs.decorator import Job, JobCondition
 from .utils import AsyncThrottle
 from .utils.json import JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG
@@ -42,57 +45,57 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     async def load(self) -> None:
         """Update internal data."""
-        with suppress(HassioUpdaterError):
+        with suppress(UpdaterError):
             await self.fetch_data()
 
     async def reload(self) -> None:
         """Update internal data."""
-        with suppress(HassioUpdaterError):
+        with suppress(UpdaterError):
             await self.fetch_data()
 
     @property
-    def version_homeassistant(self) -> Optional[str]:
+    def version_homeassistant(self) -> Optional[AwesomeVersion]:
         """Return latest version of Home Assistant."""
         return self._data.get(ATTR_HOMEASSISTANT)
 
     @property
-    def version_supervisor(self) -> Optional[str]:
+    def version_supervisor(self) -> Optional[AwesomeVersion]:
         """Return latest version of Supervisor."""
         return self._data.get(ATTR_SUPERVISOR)
 
     @property
-    def version_hassos(self) -> Optional[str]:
+    def version_hassos(self) -> Optional[AwesomeVersion]:
         """Return latest version of HassOS."""
         return self._data.get(ATTR_HASSOS)
 
     @property
-    def version_cli(self) -> Optional[str]:
+    def version_cli(self) -> Optional[AwesomeVersion]:
         """Return latest version of CLI."""
         return self._data.get(ATTR_CLI)
 
     @property
-    def version_dns(self) -> Optional[str]:
+    def version_dns(self) -> Optional[AwesomeVersion]:
         """Return latest version of DNS."""
         return self._data.get(ATTR_DNS)
 
     @property
-    def version_audio(self) -> Optional[str]:
+    def version_audio(self) -> Optional[AwesomeVersion]:
         """Return latest version of Audio."""
         return self._data.get(ATTR_AUDIO)
 
     @property
-    def version_observer(self) -> Optional[str]:
+    def version_observer(self) -> Optional[AwesomeVersion]:
         """Return latest version of Observer."""
         return self._data.get(ATTR_OBSERVER)
 
     @property
-    def version_multicast(self) -> Optional[str]:
+    def version_multicast(self) -> Optional[AwesomeVersion]:
         """Return latest version of Multicast."""
         return self._data.get(ATTR_MULTICAST)
 
     @property
     def image_homeassistant(self) -> Optional[str]:
-        """Return latest version of Home Assistant."""
+        """Return image of Home Assistant docker."""
         if ATTR_HOMEASSISTANT not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_HOMEASSISTANT].format(
@@ -101,7 +104,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def image_supervisor(self) -> Optional[str]:
-        """Return latest version of Supervisor."""
+        """Return image of Supervisor docker."""
         if ATTR_SUPERVISOR not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_SUPERVISOR].format(
@@ -110,28 +113,28 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def image_cli(self) -> Optional[str]:
-        """Return latest version of CLI."""
+        """Return image of CLI docker."""
         if ATTR_CLI not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_CLI].format(arch=self.sys_arch.supervisor)
 
     @property
     def image_dns(self) -> Optional[str]:
-        """Return latest version of DNS."""
+        """Return image of DNS docker."""
         if ATTR_DNS not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_DNS].format(arch=self.sys_arch.supervisor)
 
     @property
     def image_audio(self) -> Optional[str]:
-        """Return latest version of Audio."""
+        """Return image of Audio docker."""
         if ATTR_AUDIO not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_AUDIO].format(arch=self.sys_arch.supervisor)
 
     @property
     def image_observer(self) -> Optional[str]:
-        """Return latest version of Observer."""
+        """Return image of Observer docker."""
         if ATTR_OBSERVER not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_OBSERVER].format(
@@ -140,12 +143,17 @@ class Updater(JsonConfig, CoreSysAttributes):
 
     @property
     def image_multicast(self) -> Optional[str]:
-        """Return latest version of Multicast."""
+        """Return image of Multicast docker."""
         if ATTR_MULTICAST not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_MULTICAST].format(
             arch=self.sys_arch.supervisor
         )
+
+    @property
+    def ota_url(self) -> Optional[str]:
+        """Return OTA url for OS."""
+        return self._data.get(ATTR_OTA)
 
     @property
     def channel(self) -> UpdateChannel:
@@ -158,6 +166,10 @@ class Updater(JsonConfig, CoreSysAttributes):
         self._data[ATTR_CHANNEL] = value
 
     @AsyncThrottle(timedelta(seconds=30))
+    @Job(
+        conditions=[JobCondition.INTERNET_SYSTEM],
+        on_condition=UpdaterJobError,
+    )
     async def fetch_data(self):
         """Fetch current versions from Github.
 
@@ -173,34 +185,39 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
-            raise HassioUpdaterError() from err
+            raise UpdaterError() from err
 
         except json.JSONDecodeError as err:
             _LOGGER.warning("Can't parse versions from %s: %s", url, err)
-            raise HassioUpdaterError() from err
+            raise UpdaterError() from err
 
         # data valid?
         if not data or data.get(ATTR_CHANNEL) != self.channel:
             _LOGGER.warning("Invalid data from %s", url)
-            raise HassioUpdaterError()
+            raise UpdaterError()
 
         try:
             # Update supervisor version
-            self._data[ATTR_SUPERVISOR] = data["supervisor"]
+            self._data[ATTR_SUPERVISOR] = AwesomeVersion(data["supervisor"])
 
             # Update Home Assistant core version
-            self._data[ATTR_HOMEASSISTANT] = data["homeassistant"][machine]
+            self._data[ATTR_HOMEASSISTANT] = AwesomeVersion(
+                data["homeassistant"][machine]
+            )
 
             # Update HassOS version
             if self.sys_hassos.board:
-                self._data[ATTR_HASSOS] = data["hassos"][self.sys_hassos.board]
+                self._data[ATTR_HASSOS] = AwesomeVersion(
+                    data["hassos"][self.sys_hassos.board]
+                )
+                self._data[ATTR_OTA] = data["ota"]
 
             # Update Home Assistant plugins
-            self._data[ATTR_CLI] = data["cli"]
-            self._data[ATTR_DNS] = data["dns"]
-            self._data[ATTR_AUDIO] = data["audio"]
-            self._data[ATTR_OBSERVER] = data["observer"]
-            self._data[ATTR_MULTICAST] = data["multicast"]
+            self._data[ATTR_CLI] = AwesomeVersion(data["cli"])
+            self._data[ATTR_DNS] = AwesomeVersion(data["dns"])
+            self._data[ATTR_AUDIO] = AwesomeVersion(data["audio"])
+            self._data[ATTR_OBSERVER] = AwesomeVersion(data["observer"])
+            self._data[ATTR_MULTICAST] = AwesomeVersion(data["multicast"])
 
             # Update images for that versions
             self._data[ATTR_IMAGE][ATTR_HOMEASSISTANT] = data["image"]["core"]
@@ -213,7 +230,7 @@ class Updater(JsonConfig, CoreSysAttributes):
 
         except KeyError as err:
             _LOGGER.warning("Can't process version data: %s", err)
-            raise HassioUpdaterError() from err
+            raise UpdaterError() from err
 
         else:
             self.save_data()

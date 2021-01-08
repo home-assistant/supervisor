@@ -3,12 +3,16 @@ import asyncio
 import functools as ft
 import logging
 from pathlib import Path
-import shutil
+from typing import Dict, Optional
 
 import git
 
 from ..const import ATTR_BRANCH, ATTR_URL, URL_HASSIO_ADDONS
-from ..coresys import CoreSysAttributes
+from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import StoreGitError, StoreJobError
+from ..jobs.decorator import Job, JobCondition
+from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..utils import remove_folder
 from ..validate import RE_REPOSITORY
 from .utils import get_hash_from_repository
 
@@ -18,30 +22,34 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class GitRepo(CoreSysAttributes):
     """Manage Add-on Git repository."""
 
-    def __init__(self, coresys, path, url):
-        """Initialize Git base wrapper."""
-        self.coresys = coresys
-        self.repo = None
-        self.path = path
-        self.lock = asyncio.Lock()
+    builtin: bool
 
-        self.data = RE_REPOSITORY.match(url).groupdict()
+    def __init__(self, coresys: CoreSys, path: Path, url: str):
+        """Initialize Git base wrapper."""
+        self.coresys: CoreSys = coresys
+        self.repo: Optional[git.Repo] = None
+        self.path: Path = path
+        self.lock: asyncio.Lock = asyncio.Lock()
+
+        self.data: Dict[str, str] = RE_REPOSITORY.match(url).groupdict()
 
     @property
-    def url(self):
+    def url(self) -> str:
         """Return repository URL."""
         return self.data[ATTR_URL]
 
     @property
-    def branch(self):
+    def branch(self) -> str:
         """Return repository branch."""
         return self.data[ATTR_BRANCH]
 
-    async def load(self):
+    async def load(self) -> None:
         """Init Git add-on repository."""
         if not self.path.is_dir():
-            return await self.clone()
+            await self.clone()
+            return
 
+        # Load repository
         async with self.lock:
             try:
                 _LOGGER.info("Loading add-on %s repository", self.path)
@@ -52,13 +60,35 @@ class GitRepo(CoreSysAttributes):
                 git.NoSuchPathError,
                 git.GitCommandError,
             ) as err:
-                _LOGGER.error("Can't load %s repo: %s.", self.path, err)
-                await self._remove()
-                return False
+                _LOGGER.error("Can't load %s", self.path)
+                self.sys_resolution.create_issue(
+                    IssueType.FATAL_ERROR,
+                    ContextType.STORE,
+                    reference=self.path.stem,
+                    suggestions=[SuggestionType.EXECUTE_RESET],
+                )
+                raise StoreGitError() from err
 
-            return True
+        # Fix possible corruption
+        async with self.lock:
+            try:
+                _LOGGER.debug("Integrity check add-on %s repository", self.path)
+                await self.sys_run_in_executor(self.repo.git.execute, ["git", "fsck"])
+            except git.GitCommandError as err:
+                _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
+                self.sys_resolution.create_issue(
+                    IssueType.CORRUPT_REPOSITORY,
+                    ContextType.STORE,
+                    reference=self.path.stem,
+                    suggestions=[SuggestionType.EXECUTE_RESET],
+                )
+                raise StoreGitError() from err
 
-    async def clone(self):
+    @Job(
+        conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
+        on_condition=StoreJobError,
+    )
+    async def clone(self) -> None:
         """Clone git add-on repository."""
         async with self.lock:
             git_args = {
@@ -86,16 +116,27 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
-                await self._remove()
-                return False
+                self.sys_resolution.create_issue(
+                    IssueType.FATAL_ERROR,
+                    ContextType.STORE,
+                    reference=self.path.stem,
+                    suggestions=[
+                        SuggestionType.EXECUTE_RELOAD
+                        if self.builtin
+                        else SuggestionType.EXECUTE_REMOVE
+                    ],
+                )
+                raise StoreGitError() from err
 
-            return True
-
+    @Job(
+        conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
+        on_condition=StoreJobError,
+    )
     async def pull(self):
         """Pull Git add-on repo."""
         if self.lock.locked():
             _LOGGER.warning("There is already a task in progress")
-            return False
+            return
 
         async with self.lock:
             _LOGGER.info("Update add-on %s repository", self.url)
@@ -124,9 +165,13 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't update %s repo: %s.", self.url, err)
-                return False
-
-            return True
+                self.sys_resolution.create_issue(
+                    IssueType.CORRUPT_REPOSITORY,
+                    ContextType.STORE,
+                    reference=self.path.stem,
+                    suggestions=[SuggestionType.EXECUTE_RESET],
+                )
+                raise StoreGitError() from err
 
     async def _remove(self):
         """Remove a repository."""
@@ -136,18 +181,13 @@ class GitRepo(CoreSysAttributes):
 
         if not self.path.is_dir():
             return
-
-        def log_err(funct, path, _):
-            """Log error."""
-            _LOGGER.warning("Can't remove %s", path)
-
-        await self.sys_run_in_executor(
-            ft.partial(shutil.rmtree, self.path, onerror=log_err)
-        )
+        await remove_folder(self.path)
 
 
 class GitRepoHassIO(GitRepo):
     """Supervisor add-ons repository."""
+
+    builtin: bool = False
 
     def __init__(self, coresys):
         """Initialize Git Supervisor add-on repository."""
@@ -156,6 +196,8 @@ class GitRepoHassIO(GitRepo):
 
 class GitRepoCustom(GitRepo):
     """Custom add-ons repository."""
+
+    builtin: bool = False
 
     def __init__(self, coresys, url):
         """Initialize custom Git Supervisor addo-n repository."""

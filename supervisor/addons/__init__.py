@@ -10,6 +10,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     AddonConfigurationError,
     AddonsError,
+    AddonsJobError,
     AddonsNotSupportedError,
     CoreDNSError,
     DockerAPIError,
@@ -18,6 +19,8 @@ from ..exceptions import (
     HomeAssistantAPIError,
     HostAppArmorError,
 )
+from ..jobs.decorator import Job, JobCondition
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..store.addon import AddonStore
 from ..utils import check_exception_chain
 from .addon import Addon
@@ -140,6 +143,14 @@ class AddonManager(CoreSysAttributes):
                 _LOGGER.warning("Can't stop Add-on %s: %s", addon.slug, err)
                 self.sys_capture_exception(err)
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+            JobCondition.HEALTHY,
+        ],
+        on_condition=AddonsJobError,
+    )
     async def install(self, slug: str) -> None:
         """Install an add-on."""
         if slug in self.local:
@@ -234,6 +245,14 @@ class AddonManager(CoreSysAttributes):
 
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+            JobCondition.HEALTHY,
+        ],
+        on_condition=AddonsJobError,
+    )
     async def update(self, slug: str) -> None:
         """Update add-on."""
         if slug not in self.local:
@@ -276,6 +295,14 @@ class AddonManager(CoreSysAttributes):
         if last_state == AddonState.STARTED:
             await addon.start()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+            JobCondition.HEALTHY,
+        ],
+        on_condition=AddonsJobError,
+    )
     async def rebuild(self, slug: str) -> None:
         """Perform a rebuild of local build add-on."""
         if slug not in self.local:
@@ -311,6 +338,14 @@ class AddonManager(CoreSysAttributes):
         if last_state == AddonState.STARTED:
             await addon.start()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.INTERNET_HOST,
+            JobCondition.HEALTHY,
+        ],
+        on_condition=AddonsJobError,
+    )
     async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
         if slug not in self.local:
@@ -333,6 +368,7 @@ class AddonManager(CoreSysAttributes):
             with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
 
+    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_HOST])
     async def repair(self) -> None:
         """Repair local add-ons."""
         needs_repair: List[Addon] = []
@@ -349,10 +385,6 @@ class AddonManager(CoreSysAttributes):
 
         for addon in needs_repair:
             _LOGGER.info("Repairing for add-on: %s", addon.slug)
-            await self.sys_run_in_executor(
-                self.sys_docker.network.stale_cleanup, addon.instance.name
-            )
-
             with suppress(DockerError, KeyError):
                 # Need pull a image again
                 if not addon.need_build:
@@ -380,7 +412,12 @@ class AddonManager(CoreSysAttributes):
                     continue
             except DockerError as err:
                 _LOGGER.warning("Add-on %s is corrupt: %s", addon.slug, err)
-                self.sys_core.healthy = False
+                self.sys_resolution.create_issue(
+                    IssueType.CORRUPT_DOCKER,
+                    ContextType.ADDON,
+                    reference=addon.slug,
+                    suggestions=[SuggestionType.EXECUTE_REPAIR],
+                )
                 self.sys_capture_exception(err)
             else:
                 self.sys_plugins.dns.add_host(

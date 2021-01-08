@@ -16,6 +16,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JsonFileError
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import read_json_file
 from .utils import extract_hash_from_path
 from .validate import SCHEMA_REPOSITORY_CONFIG
@@ -32,7 +33,7 @@ class StoreData(CoreSysAttributes):
         self.repositories: Dict[str, Any] = {}
         self.addons: Dict[str, Any] = {}
 
-    def update(self):
+    def update(self) -> None:
         """Read data from add-on repository."""
         self.repositories.clear()
         self.addons.clear()
@@ -51,7 +52,7 @@ class StoreData(CoreSysAttributes):
             if repository_element.is_dir():
                 self._read_git_repository(repository_element)
 
-    def _read_git_repository(self, path):
+    def _read_git_repository(self, path: Path) -> None:
         """Process a custom repository folder."""
         slug = extract_hash_from_path(path)
 
@@ -72,7 +73,7 @@ class StoreData(CoreSysAttributes):
         self.repositories[slug] = repository_info
         self._read_addons_folder(path, slug)
 
-    def _read_addons_folder(self, path, repository):
+    def _read_addons_folder(self, path: Path, repository: Dict) -> None:
         """Read data from add-ons folder."""
         try:
             # Generate a list without artefact, safe for corruptions
@@ -82,11 +83,15 @@ class StoreData(CoreSysAttributes):
                 if ".git" not in addon.parts
             ]
         except OSError as err:
-            self.sys_core.healthy = False
+            self.sys_resolution.create_issue(
+                IssueType.CORRUPT_REPOSITORY,
+                ContextType.STORE,
+                reference=path.stem,
+                suggestions=[SuggestionType.EXECUTE_RESET],
+            )
             _LOGGER.critical(
                 "Can't process %s because of Filesystem issues: %s", repository, err
             )
-            self.sys_capture_exception(err)
             return
 
         for addon in addon_list:

@@ -48,7 +48,7 @@ class APICoreDNS(CoreSysAttributes):
             ATTR_UPDATE_AVAILABLE: self.sys_plugins.dns.need_update,
             ATTR_HOST: str(self.sys_docker.network.dns),
             ATTR_SERVERS: self.sys_plugins.dns.servers,
-            ATTR_LOCALS: self.sys_host.network.dns_servers,
+            ATTR_LOCALS: self.sys_plugins.dns.locals,
         }
 
     @api_process

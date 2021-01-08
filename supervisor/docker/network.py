@@ -33,12 +33,11 @@ class DockerNetwork:
     def containers(self) -> List[docker.models.containers.Container]:
         """Return of connected containers from network."""
         containers: List[docker.models.containers.Container] = []
-        for cid, data in self.network.attrs.get("Containers", {}).items():
+        for cid, _ in self.network.attrs.get("Containers", {}).items():
             try:
                 containers.append(self.docker.containers.get(cid))
             except docker.errors.NotFound:
-                _LOGGER.warning("Docker network is corrupt! %s - running autofix", cid)
-                self.stale_cleanup(data.get("Name", cid))
+                _LOGGER.warning("Docker network is corrupt! %s", cid)
             except (docker.errors.DockerException, requests.RequestException) as err:
                 _LOGGER.error("Unknown error with container lookup %s", err)
 
@@ -109,13 +108,22 @@ class DockerNetwork:
         """
         ipv4_address = str(ipv4) if ipv4 else None
 
+        # Reload Network information
+        with suppress(docker.errors.DockerException, requests.RequestException):
+            self.network.reload()
+
+        # Check stale Network
+        if container.name in (
+            val.get("Name") for val in self.network.attrs.get("Containers", {}).values()
+        ):
+            self.stale_cleanup(container.name)
+
+        # Attach Network
         try:
             self.network.connect(container, aliases=alias, ipv4_address=ipv4_address)
         except docker.errors.APIError as err:
             _LOGGER.error("Can't link container to hassio-net: %s", err)
             raise DockerError() from err
-
-        self.network.reload()
 
     def detach_default_bridge(
         self, container: docker.models.containers.Container
@@ -140,5 +148,9 @@ class DockerNetwork:
 
         Fix: https://github.com/moby/moby/issues/23302
         """
-        with suppress(docker.errors.DockerException, requests.RequestException):
+        try:
             self.network.disconnect(container_name, force=True)
+        except docker.errors.NotFound:
+            pass
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerError() from err

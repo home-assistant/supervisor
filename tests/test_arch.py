@@ -123,6 +123,16 @@ async def test_odroid_c2_arch(coresys, sys_machine, sys_supervisor):
     assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
 
 
+async def test_odroid_c4_arch(coresys, sys_machine, sys_supervisor):
+    """Test arch for odroid-c4."""
+    sys_machine.return_value = "odroid-c4"
+    sys_supervisor.arch = "aarch64"
+    await coresys.arch.load()
+
+    assert coresys.arch.default == "aarch64"
+    assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
+
+
 async def test_odroid_n2_arch(coresys, sys_machine, sys_supervisor):
     """Test arch for odroid-n2."""
     sys_machine.return_value = "odroid-n2"

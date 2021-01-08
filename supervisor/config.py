@@ -5,6 +5,8 @@ import os
 from pathlib import Path, PurePath
 from typing import List, Optional
 
+from awesomeversion import AwesomeVersion
+
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
     ATTR_DEBUG,
@@ -64,12 +66,12 @@ class CoreConfig(JsonConfig):
         self._data[ATTR_TIMEZONE] = value
 
     @property
-    def version(self) -> str:
+    def version(self) -> AwesomeVersion:
         """Return config version."""
         return self._data[ATTR_VERSION]
 
     @version.setter
-    def version(self, value: str) -> None:
+    def version(self, value: AwesomeVersion) -> None:
         """Set config version."""
         self._data[ATTR_VERSION] = value
 

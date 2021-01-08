@@ -9,6 +9,13 @@ class HassioNotSupportedError(HassioError):
     """Function is not supported."""
 
 
+# JobManager
+
+
+class JobException(HassioError):
+    """Base job exception."""
+
+
 # HomeAssistant
 
 
@@ -32,6 +39,10 @@ class HomeAssistantAuthError(HomeAssistantAPIError):
     """Home Assistant Auth API exception."""
 
 
+class HomeAssistantJobError(HomeAssistantError, JobException):
+    """Raise on Home Assistant job error."""
+
+
 # Supervisor
 
 
@@ -41,6 +52,10 @@ class SupervisorError(HassioError):
 
 class SupervisorUpdateError(SupervisorError):
     """Supervisor update error."""
+
+
+class SupervisorJobError(SupervisorError, JobException):
+    """Raise on job errors."""
 
 
 # HassOS
@@ -128,6 +143,10 @@ class AddonsNotSupportedError(HassioNotSupportedError):
     """Addons don't support a function."""
 
 
+class AddonsJobError(AddonsError, JobException):
+    """Raise on job errors."""
+
+
 # Arch
 
 
@@ -138,8 +157,12 @@ class HassioArchNotFound(HassioNotSupportedError):
 # Updater
 
 
-class HassioUpdaterError(HassioError):
+class UpdaterError(HassioError):
     """Error on Updater."""
+
+
+class UpdaterJobError(UpdaterError, JobException):
+    """Raise on job error."""
 
 
 # Auth
@@ -170,6 +193,14 @@ class HostServiceError(HostError):
 
 class HostAppArmorError(HostError):
     """Host apparmor functions failed."""
+
+
+class HostNetworkError(HostError):
+    """Error with host network."""
+
+
+class HostNetworkNotFound(HostError):
+    """Return if host interface is not found."""
 
 
 # API
@@ -215,6 +246,10 @@ class DBusFatalError(DBusError):
 
 class DBusParseError(DBusError):
     """DBus parse error."""
+
+
+class DBusProgramError(DBusError):
+    """DBus application error."""
 
 
 # util/apparmor
@@ -281,3 +316,30 @@ class ResolutionError(HassioError):
 
 class ResolutionNotFound(ResolutionError):
     """Raise if suggestion/issue was not found."""
+
+
+class ResolutionFixupError(HassioError):
+    """Rasie if a fixup fails."""
+
+
+class ResolutionFixupJobError(ResolutionFixupError, JobException):
+    """Raise on job error."""
+
+
+# Store
+
+
+class StoreError(HassioError):
+    """Raise if an error on store is happening."""
+
+
+class StoreGitError(StoreError):
+    """Raise if something on git is happening."""
+
+
+class StoreNotFound(StoreError):
+    """Raise if slug is not known."""
+
+
+class StoreJobError(StoreError, JobException):
+    """Raise on job error with git."""

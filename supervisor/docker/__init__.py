@@ -6,14 +6,14 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import attr
+from awesomeversion import AwesomeVersion
 import docker
-from packaging import version as pkg_version
 import requests
 
 from ..const import (
     ATTR_REGISTRIES,
     DNS_SUFFIX,
-    DOCKER_IMAGE_DENYLIST,
+    DOCKER_NETWORK,
     FILE_HASSIO_DOCKER,
     SOCKET_DOCKER,
 )
@@ -25,6 +25,7 @@ from .network import DockerNetwork
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 MIN_SUPPORTED_DOCKER = "19.03.0"
+DOCKER_NETWORK_HOST = "host"
 
 
 @attr.s(frozen=True)
@@ -39,37 +40,26 @@ class CommandReturn:
 class DockerInfo:
     """Return docker information."""
 
-    version: str = attr.ib()
+    version: AwesomeVersion = attr.ib()
     storage: str = attr.ib()
     logging: str = attr.ib()
 
     @staticmethod
     def new(data: Dict[str, Any]):
         """Create a object from docker info."""
-        return DockerInfo(data["ServerVersion"], data["Driver"], data["LoggingDriver"])
+        return DockerInfo(
+            AwesomeVersion(data["ServerVersion"]), data["Driver"], data["LoggingDriver"]
+        )
 
     @property
     def supported_version(self) -> bool:
         """Return true, if docker version is supported."""
-        version_local = pkg_version.parse(self.version)
-        version_min = pkg_version.parse(MIN_SUPPORTED_DOCKER)
-
-        return version_local >= version_min
+        return self.version >= MIN_SUPPORTED_DOCKER
 
     @property
     def inside_lxc(self) -> bool:
         """Return True if the docker run inside lxc."""
         return Path("/dev/lxd/sock").exists()
-
-    def check_requirements(self) -> None:
-        """Show wrong configurations."""
-        if self.storage != "overlay2":
-            _LOGGER.error("Docker storage driver %s is not supported!", self.storage)
-
-        if self.logging != "journald":
-            _LOGGER.error("Docker logging driver %s is not supported!", self.logging)
-
-        return self.storage != "overlay2" or self.logging != "journald"
 
 
 class DockerConfig(JsonConfig):
@@ -123,7 +113,7 @@ class DockerAPI:
     def run(
         self,
         image: str,
-        version: str = "latest",
+        tag: str = "latest",
         dns: bool = True,
         ipv4: Optional[IPv4Address] = None,
         **kwargs: Any,
@@ -149,7 +139,7 @@ class DockerAPI:
         # Create container
         try:
             container = self.docker.containers.create(
-                f"{image}:{version}", use_config_proxy=False, **kwargs
+                f"{image}:{tag}", use_config_proxy=False, **kwargs
             )
         except docker.errors.NotFound as err:
             _LOGGER.error("Image %s not exists for %s", image, name)
@@ -171,6 +161,19 @@ class DockerAPI:
             else:
                 with suppress(DockerError):
                     self.network.detach_default_bridge(container)
+        else:
+            host_network: docker.models.networks.Network = self.docker.networks.get(
+                DOCKER_NETWORK_HOST
+            )
+
+            # Check if container is register on host
+            # https://github.com/moby/moby/issues/23302
+            if name in (
+                val.get("Name")
+                for val in host_network.attrs.get("Containers", {}).values()
+            ):
+                with suppress(docker.errors.NotFound):
+                    host_network.disconnect(name, force=True)
 
         # Run container
         try:
@@ -191,7 +194,7 @@ class DockerAPI:
     def run_command(
         self,
         image: str,
-        version: str = "latest",
+        tag: str = "latest",
         command: Optional[str] = None,
         **kwargs: Any,
     ) -> CommandReturn:
@@ -203,9 +206,10 @@ class DockerAPI:
         stderr = kwargs.get("stderr", True)
 
         _LOGGER.info("Runing command '%s' on %s", command, image)
+        container = None
         try:
             container = self.docker.containers.run(
-                f"{image}:{version}",
+                f"{image}:{tag}",
                 command=command,
                 network=self.network.name,
                 use_config_proxy=False,
@@ -222,8 +226,9 @@ class DockerAPI:
 
         finally:
             # cleanup container
-            with suppress(docker.errors.DockerException, requests.RequestException):
-                container.remove(force=True)
+            if container:
+                with suppress(docker.errors.DockerException, requests.RequestException):
+                    container.remove(force=True)
 
         return CommandReturn(result.get("StatusCode"), output)
 
@@ -265,28 +270,38 @@ class DockerAPI:
         except docker.errors.APIError as err:
             _LOGGER.warning("Error for networks prune: %s", err)
 
-    def check_denylist_images(self) -> bool:
-        """Return a boolean if the host has images in the denylist."""
-        denied_images = set()
-
+        _LOGGER.info("Fix stale container on hassio network")
         try:
-            for image in self.images.list():
-                for tag in image.tags:
-                    image_name = tag.split(":")[0]
-                    if (
-                        image_name in DOCKER_IMAGE_DENYLIST
-                        and image_name not in denied_images
-                    ):
-                        denied_images.add(image_name)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
-            raise DockerError() from err
+            self.prune_networks(DOCKER_NETWORK)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for networks hassio prune: %s", err)
 
-        if not denied_images:
-            return False
+        _LOGGER.info("Fix stale container on host network")
+        try:
+            self.prune_networks(DOCKER_NETWORK_HOST)
+        except docker.errors.APIError as err:
+            _LOGGER.warning("Error for networks host prune: %s", err)
 
-        _LOGGER.error(
-            "Found images: '%s' which are not supported, remove these from the host!",
-            ", ".join(denied_images),
-        )
-        return True
+    def prune_networks(self, network_name: str) -> None:
+        """Prune stale container from network.
+
+        Fix: https://github.com/moby/moby/issues/23302
+        """
+        network: docker.models.networks.Network = self.docker.networks.get(network_name)
+
+        for cid, data in network.attrs.get("Containers", {}).items():
+            try:
+                self.docker.containers.get(cid)
+                continue
+            except docker.errors.NotFound:
+                _LOGGER.debug(
+                    "Docker network %s is corrupt on container: %s", network_name, cid
+                )
+            except (docker.errors.DockerException, requests.RequestException):
+                _LOGGER.warning(
+                    "Docker fatal error on container %s on %s", cid, network_name
+                )
+                continue
+
+            with suppress(docker.errors.DockerException, requests.RequestException):
+                network.disconnect(data.get("Name", cid), force=True)
