@@ -76,7 +76,7 @@ jobs:
 
       - name: Wait for tests
         if: needs.init.outputs.publish == 'false'
-        uses: home-assistant/actions/waitforjob
+        uses: home-assistant/actions/waitforjob@master
         with:
           job: build-wheels
 
