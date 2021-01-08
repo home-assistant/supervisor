@@ -35,6 +35,7 @@ on:
 env:
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
+  WHEELS_TAG: 3.8-alpine3.12
 
 jobs:
   init:
@@ -45,6 +46,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
       publish: ${{ steps.version.outputs.publish }}
+      requirements: ${{ steps.requirements.outputs.changed }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
@@ -61,6 +63,17 @@ jobs:
         with:
           type: ${{ env.BUILD_TYPE }}
 
+      - name: Get changed files
+        id: changed_files
+        uses: jitterbit/get-changed-files@v1
+
+      - name: Check if requirements files changed
+        id: requirements
+        run: |
+          if [[ "${{ steps.changed_files.outputs.all }}" =~ requirements.txt ]]; then
+            echo "::set-output name=changed::true"
+          fi
+
   build:
     name: Build ${{ matrix.arch }} supervisor
     needs: init
@@ -73,6 +86,19 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
+      - name: Build wheels
+        if: needs.init.outputs.requirements == 'true'
+        uses: home-assistant/wheels@master
+        with:
+          tag: ${{ env.WHEELS_TAG }}
+          arch: ${{ matrix.arch }}
+          wheels-host: ${{ secrets.WHEELS_HOST }}
+          wheels-key: ${{ secrets.WHEELS_KEY }}
+          wheels-user: wheels
+          apk: "build-base;libffi-dev;openssl-dev"
+          skip-binary: aiohttp
+          requirements: "requirements.txt"
 
       - name: Set version
         if: needs.init.outputs.publish == 'true'
