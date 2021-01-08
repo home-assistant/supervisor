@@ -62,7 +62,7 @@ jobs:
 
   build-wheels-complete:
     name: Finish step for wheels build
-    needs: init
+    needs: build-wheels
     runs-on: ubuntu-latest
     steps:
       - name: Finish step for wheels build

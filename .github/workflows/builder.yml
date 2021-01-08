@@ -65,7 +65,7 @@ jobs:
         if: steps.version.outputs.publish == 'false'
         uses: home-assistant/actions/waitforjob@master
         with:
-          job: build-wheels-complete
+          job: "Finish step for wheels build"
 
   build:
     name: Build ${{ matrix.arch }} supervisor
