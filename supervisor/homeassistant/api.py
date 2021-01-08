@@ -13,6 +13,7 @@ from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils import check_port
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+_ALLOWED_401_REASONS = ["invalid user/password"]
 
 
 class HomeAssistantAPI(CoreSysAttributes):
@@ -88,7 +89,7 @@ class HomeAssistantAPI(CoreSysAttributes):
                     params=params,
                 ) as resp:
                     # Access token expired
-                    if resp.status == 401:
+                    if resp.status == 401 and resp.reason not in _ALLOWED_401_REASONS:
                         self.access_token = None
                         continue
                     yield resp
