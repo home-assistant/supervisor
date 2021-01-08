@@ -19,6 +19,7 @@ from ..const import (
     ATTR_NAME,
     ATTR_OPERATING_SYSTEM,
     ATTR_SERVICES,
+    ATTR_SSD_LIFE_TIME,
     ATTR_STATE,
     CONTENT_TYPE_BINARY,
 )
@@ -43,6 +44,7 @@ class APIHost(CoreSysAttributes):
             ATTR_DISK_FREE: self.sys_host.info.free_space,
             ATTR_DISK_TOTAL: self.sys_host.info.total_space,
             ATTR_DISK_USED: self.sys_host.info.used_space,
+            ATTR_SSD_LIFE_TIME: self.sys_host.info.ssd_life_time,
             ATTR_FEATURES: self.sys_host.features,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_KERNEL: self.sys_host.info.kernel,
