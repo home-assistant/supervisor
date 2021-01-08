@@ -40,7 +40,7 @@ jobs:
           fi
 
   build-wheels:
-    name: Build wheels
+    name: Build ${{ matrix.arch }} wheels
     needs: init
     runs-on: ubuntu-latest
     strategy:

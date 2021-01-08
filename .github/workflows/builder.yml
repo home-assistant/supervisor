@@ -78,7 +78,7 @@ jobs:
         if: needs.init.outputs.publish == 'false'
         uses: home-assistant/actions/waitforjob@master
         with:
-          job: build-wheels
+          job: Build wheels (${{ matrix.arch }})
 
       - name: Set version
         if: needs.init.outputs.publish == 'true'
