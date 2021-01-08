@@ -1,16 +1,20 @@
 name: Build wheels
 
 on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - requirements.txt
   push:
-    branches: ["wheels"]
-#    paths:
-#      - requirements.txt
+    branches: ["main"]
+    paths:
+      - requirements.txt
 
 env:
   WHEELS_TAG: 3.8-alpine3.12
 
 jobs:
-  build:
+  build-wheels:
     name: Build wheels
     runs-on: ubuntu-latest
     steps:

@@ -74,6 +74,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Wait for tests
+        if: needs.init.outputs.publish == 'false'
+        uses: home-assistant/actions/waitforjob
+        with:
+          job: build-wheels
+
       - name: Set version
         if: needs.init.outputs.publish == 'true'
         uses: home-assistant/actions/helpers/version@master
