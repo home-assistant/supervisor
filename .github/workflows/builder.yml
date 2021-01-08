@@ -74,7 +74,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Wait for tests
+      - name: Wait for wheels-build to finish
         if: needs.init.outputs.publish == 'false'
         uses: home-assistant/actions/waitforjob@master
         with:
