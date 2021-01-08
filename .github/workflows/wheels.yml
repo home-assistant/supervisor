@@ -66,4 +66,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Finish step for wheels build
-        runs: Done
+        run: echo finished
