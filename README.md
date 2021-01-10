@@ -18,7 +18,7 @@ The development of the Supervisor is not difficult but tricky.
 
 - You can use the builder to create your Supervisor: https://github.com/home-assistant/hassio-builder
 - Access a HassOS device or VM and pull your Supervisor.
-- Set the developer modus with the CLI tool: `ha supervisor options --channel=dev`
+- Set the developer modus with the CLI tool: `ha supervisor options --channel dev`
 - Tag it as `homeassistant/xy-hassio-supervisor:latest`
 - Restart the service with `systemctl restart hassos-supervisor | journalctl -fu hassos-supervisor`
 - Test your changes
