@@ -5,6 +5,7 @@
   "appPort": "9123:8123",
   "postCreateCommand": "pre-commit install",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
+  "containerEnv": {"NVM_DIR":"/usr/local/share/nvm"},
   "extensions": [
     "ms-python.python",
     "ms-python.vscode-pylance",
