@@ -18,6 +18,7 @@ DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED = (
     "org.freedesktop.NetworkManager.Connection.Active.PropertiesChanged"
 )
 DBUS_NAME_SYSTEMD = "org.freedesktop.systemd1"
+DBUS_NAME_LOGIND = "org.freedesktop.login1"
 
 DBUS_OBJECT_BASE = "/"
 DBUS_OBJECT_DNS = "/org/freedesktop/NetworkManager/DnsManager"
@@ -25,6 +26,7 @@ DBUS_OBJECT_SETTINGS = "/org/freedesktop/NetworkManager/Settings"
 DBUS_OBJECT_HOSTNAME = "/org/freedesktop/hostname1"
 DBUS_OBJECT_NM = "/org/freedesktop/NetworkManager"
 DBUS_OBJECT_SYSTEMD = "/org/freedesktop/systemd1"
+DBUS_OBJECT_LOGIND = "/org/freedesktop/login1"
 
 DBUS_ATTR_ACTIVE_CONNECTIONS = "ActiveConnections"
 DBUS_ATTR_ACTIVE_CONNECTION = "ActiveConnection"

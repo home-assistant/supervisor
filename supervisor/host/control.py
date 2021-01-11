@@ -19,7 +19,9 @@ class SystemControl(CoreSysAttributes):
 
     def _check_dbus(self, flag):
         """Check if systemd is connect or raise error."""
-        if flag == MANAGER and self.sys_dbus.systemd.is_connected:
+        if flag == MANAGER and (
+            self.sys_dbus.systemd.is_connected or self.sys_dbus.logind.is_connected
+        ):
             return
         if flag == HOSTNAME and self.sys_dbus.hostname.is_connected:
             return
@@ -31,21 +33,35 @@ class SystemControl(CoreSysAttributes):
         """Reboot host system."""
         self._check_dbus(MANAGER)
 
-        _LOGGER.info("Initialize host reboot over systemd")
+        use_logind = self.sys_dbus.logind.is_connected
+        _LOGGER.info(
+            "Initialize host reboot using %s", "logind" if use_logind else "systemd"
+        )
+
         try:
             await self.sys_core.shutdown()
         finally:
-            await self.sys_dbus.systemd.reboot()
+            if use_logind:
+                await self.sys_dbus.logind.reboot()
+            else:
+                await self.sys_dbus.systemd.reboot()
 
     async def shutdown(self):
         """Shutdown host system."""
         self._check_dbus(MANAGER)
 
-        _LOGGER.info("Initialize host power off over systemd")
+        use_logind = self.sys_dbus.logind.is_connected
+        _LOGGER.info(
+            "Initialize host power off %s", "logind" if use_logind else "systemd"
+        )
+
         try:
             await self.sys_core.shutdown()
         finally:
-            await self.sys_dbus.systemd.power_off()
+            if use_logind:
+                await self.sys_dbus.logind.power_off()
+            else:
+                await self.sys_dbus.systemd.power_off()
 
     async def set_hostname(self, hostname):
         """Set local a new Hostname."""
