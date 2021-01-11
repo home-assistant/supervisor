@@ -137,6 +137,9 @@ class GitRepo(CoreSysAttributes):
         if self.lock.locked():
             _LOGGER.warning("There is already a task in progress")
             return
+        if self.repo is None:
+            _LOGGER.warning("No valid repository for %s", self.url)
+            return
 
         async with self.lock:
             _LOGGER.info("Update add-on %s repository", self.url)
