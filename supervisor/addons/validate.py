@@ -193,7 +193,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_MACHINE): vol.All([vol.Match(RE_MACHINE)], vol.Unique()),
         vol.Optional(ATTR_URL): vol.Url(),
         vol.Required(ATTR_STARTUP): vol.All(_simple_startup, vol.Coerce(AddonStartup)),
-        vol.Required(ATTR_BOOT): vol.Coerce(AddonBoot),
+        vol.Optional(ATTR_BOOT, default=AddonBoot.AUTO): vol.Coerce(AddonBoot),
         vol.Optional(ATTR_INIT, default=True): vol.Boolean(),
         vol.Optional(ATTR_ADVANCED, default=False): vol.Boolean(),
         vol.Optional(ATTR_STAGE, default=AddonStage.STABLE): vol.Coerce(AddonStage),
