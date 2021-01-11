@@ -160,7 +160,7 @@ class GitRepo(CoreSysAttributes):
                 await self.sys_run_in_executor(
                     ft.partial(
                         self.repo.git.submodule.root.update,
-                        {
+                        **{
                             "recursive": False,
                             "init": True,
                             "force_remove": True,
