@@ -245,8 +245,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
         vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
         vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [vol.Coerce(str)],
-        vol.Required(ATTR_OPTIONS): dict,
-        vol.Required(ATTR_SCHEMA): vol.Any(
+        vol.Optional(ATTR_OPTIONS, default={}): dict,
+        vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
             vol.Schema(
                 {
                     vol.Coerce(str): vol.Any(
