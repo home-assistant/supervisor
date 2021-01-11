@@ -38,7 +38,9 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def timeout(self) -> int:
         """Return timeout for Docker actions."""
-        return 60
+        # Synchronized homeassistant/core.py:async_stop
+        # to avoid killing Home Assistant Core.
+        return 120 + 60 + 30 + 10
 
     @property
     def ip_address(self) -> IPv4Address:
