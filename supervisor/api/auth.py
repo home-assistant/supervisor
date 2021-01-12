@@ -61,23 +61,31 @@ class APIAuth(CoreSysAttributes):
         if not addon.access_auth_api:
             raise APIForbidden("Can't use Home Assistant auth!")
 
+        unauthorized = HTTPUnauthorized(
+            headers={WWW_AUTHENTICATE: 'Basic realm="Home Assistant Authentication"'}
+        )
+
         # BasicAuth
         if AUTHORIZATION in request.headers:
-            return await self._process_basic(request, addon)
+            if not await self._process_basic(request, addon):
+                raise unauthorized
+            return True
 
         # Json
         if request.headers.get(CONTENT_TYPE) == CONTENT_TYPE_JSON:
             data = await request.json()
-            return await self._process_dict(request, addon, data)
+            if not await self._process_dict(request, addon, data):
+                raise unauthorized
+            return True
 
         # URL encoded
         if request.headers.get(CONTENT_TYPE) == CONTENT_TYPE_URL:
             data = await request.post()
-            return await self._process_dict(request, addon, data)
+            if not await self._process_dict(request, addon, data):
+                raise unauthorized
+            return True
 
-        raise HTTPUnauthorized(
-            headers={WWW_AUTHENTICATE: 'Basic realm="Home Assistant Authentication"'}
-        )
+        raise unauthorized
 
     @api_process
     async def reset(self, request: web.Request) -> None:
