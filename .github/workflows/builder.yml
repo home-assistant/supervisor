@@ -71,9 +71,7 @@ jobs:
       - name: Check if requirements files changed
         id: requirements
         run: |
-          if [ "${{ steps.changed_files.outputs.all }}"" == "true" ]; then
-            echo "::set-output name=changed::true"
-          elif [[ "${{ steps.changed_files.outputs.all }}" =~ requirements.txt ]]; then
+          if [[ "${{ steps.changed_files.outputs.all }}" =~ requirements.txt ]]; then
             echo "::set-output name=changed::true"
           fi
 
