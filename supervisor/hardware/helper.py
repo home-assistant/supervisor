@@ -7,11 +7,11 @@ import re
 import shutil
 from typing import Any, Dict, List, Optional, Set, Union
 
-import attr
-import pyudev
-
 from ..const import ATTR_DEVICES, ATTR_NAME, ATTR_TYPE, CHAN_ID, CHAN_TYPE
+from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotSupportedError
+from .const import UdevSubsysteme
+from .data import Device
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -31,53 +31,19 @@ RE_TTY: re.Pattern = re.compile(r"tty[A-Z]+")
 RE_VIDEO_DEVICES = re.compile(r"^(?:vchiq|cec\d+|video\d+)")
 
 
-@attr.s(slots=True, frozen=True)
-class Device:
-    """Represent a device."""
-
-    name: str = attr.ib()
-    path: Path = attr.ib()
-    subsystem: str = attr.ib()
-    links: List[Path] = attr.ib()
-    attributes: Dict[str, str] = attr.ib()
-
-
-class Hardware:
+class HwHelper(CoreSysAttributes):
     """Representation of an interface to procfs, sysfs and udev."""
 
-    def __init__(self):
+    def __init__(self, coresys: CoreSys):
         """Init hardware object."""
-        self.context = pyudev.Context()
-
-    @property
-    def devices(self) -> List[Device]:
-        """Return a list of all available devices."""
-        dev_list: List[Device] = []
-
-        # Exctract all devices
-        for device in self.context.list_devices():
-            # Skip devices without mapping
-            if not device.device_node:
-                continue
-
-            dev_list.append(
-                Device(
-                    device.sys_name,
-                    Path(device.device_node),
-                    device.subsystem,
-                    [Path(node) for node in device.device_links],
-                    {attr: device.properties[attr] for attr in device.properties},
-                )
-            )
-
-        return dev_list
+        self.coresys = coresys
 
     @property
     def video_devices(self) -> List[Device]:
         """Return all available video devices."""
         dev_list: List[Device] = []
 
-        for device in self.devices:
+        for device in self.sys_hardware.devices:
             if not RE_VIDEO_DEVICES.match(device.name):
                 continue
             dev_list.append(device)
@@ -88,8 +54,8 @@ class Hardware:
     def serial_devices(self) -> List[Device]:
         """Return all serial and connected devices."""
         dev_list: List[Device] = []
-        for device in self.devices:
-            if device.subsystem != "tty" or (
+        for device in self.sys_hardware.devices:
+            if device.subsystem != UdevSubsysteme.SERIAL or (
                 "ID_VENDOR" not in device.attributes
                 and not RE_TTY.search(str(device.path))
             ):
@@ -108,15 +74,23 @@ class Hardware:
     @property
     def usb_devices(self) -> List[Device]:
         """Return all usb and connected devices."""
-        return [device for device in self.devices if device.subsystem == "usb"]
+        return [
+            device
+            for device in self.sys_hardware.devices
+            if device.subsystem == UdevSubsysteme.USB
+        ]
 
     @property
     def input_devices(self) -> Set[str]:
         """Return all input devices."""
         dev_list: Set[str] = set()
-        for device in self.context.list_devices(subsystem="input"):
-            if "NAME" in device.properties:
-                dev_list.add(device.properties["NAME"].replace('"', "").strip())
+        for device in self.sys_hardware.devices:
+            if (
+                device.subsystem != UdevSubsysteme.INPUT
+                or "NAME" not in device.properties
+            ):
+                continue
+            dev_list.add(device.properties["NAME"].replace('"', "").strip())
 
         return dev_list
 
@@ -124,8 +98,11 @@ class Hardware:
     def disk_devices(self) -> List[Device]:
         """Return all disk devices."""
         dev_list: List[Device] = []
-        for device in self.devices:
-            if device.subsystem != "block" or "ID_NAME" not in device.attributes:
+        for device in self.sys_hardware.devices:
+            if (
+                device.subsystem != UdevSubsysteme.DISK
+                or "ID_NAME" not in device.attributes
+            ):
                 continue
             dev_list.append(device)
 

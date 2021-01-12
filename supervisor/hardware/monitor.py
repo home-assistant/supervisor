@@ -1,14 +1,17 @@
 """Supervisor Hardware monitor based on udev."""
 from datetime import timedelta
 import logging
+from pathlib import Path
 from pprint import pformat
 from typing import Optional
 
 import pyudev
 
+from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..resolution.const import UnhealthyReason
 from ..utils import AsyncCallFilter
+from .data import Device
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -26,7 +29,7 @@ class HwMonitor(CoreSysAttributes):
     async def load(self) -> None:
         """Start hardware monitor."""
         try:
-            self.monitor = pyudev.Monitor.from_netlink(self.context)
+            self.monitor = pyudev.Monitor.from_netlink(self.context, "kernel")
             self.observer = pyudev.MonitorObserver(self.monitor, self._udev_events)
         except OSError:
             self.sys_resolution.unhealthy = UnhealthyReason.PRIVILEGED
@@ -53,9 +56,28 @@ class HwMonitor(CoreSysAttributes):
 
     def _async_udev_events(self, action: str, device: pyudev.Device):
         """Incomming events from udev into loop."""
-        # Sound changes
-        if device.subsystem == "sound":
-            self._action_sound(device)
+        if self.sys_core.state in (CoreState.RUNNING, CoreState.FREEZE):
+            # Sound changes
+            if device.subsystem == "sound":
+                self._action_sound(device)
+
+        # Update device List
+        if not device.device_node:
+            return
+
+        device = Device(
+            device.sys_name,
+            Path(device.device_node),
+            device.subsystem,
+            [Path(node) for node in device.device_links],
+            {attr: device.properties[attr] for attr in device.properties},
+        )
+
+        # Process the action
+        if action == "add":
+            self.sys_hardware.update_device(device)
+        if action == "remove":
+            self.sys_hardware.delete_device(device)
 
     @AsyncCallFilter(timedelta(seconds=5))
     def _action_sound(self, device: pyudev.Device):

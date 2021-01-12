@@ -118,6 +118,7 @@ V_URL = "url"
 V_PORT = "port"
 V_MATCH = "match"
 V_LIST = "list"
+V_DEVICE = "device"
 
 RE_SCHEMA_ELEMENT = re.compile(
     r"^(?:"
@@ -125,6 +126,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|email"
     r"|url"
     r"|port"
+    r"|device"
     r"|str(?:\((?P<s_min>\d+)?,(?P<s_max>\d+)?\))?"
     r"|password(?:\((?P<p_min>\d+)?,(?P<p_max>\d+)?\))?"
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
@@ -424,6 +426,8 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
         return vol.Match(match.group("match"))(str(value))
     elif typ.startswith(V_LIST):
         return vol.In(match.group("list").split("|"))(str(value))
+    elif typ.startswith(V_DEVICE):
+        return str(value)
 
     raise vol.Invalid(f"Fatal error for {key} type {typ}") from None
 
@@ -557,6 +561,9 @@ def _single_ui_option(
     elif value.startswith(V_MATCH):
         ui_node["type"] = "string"
     elif value.startswith(V_LIST):
+        ui_node["type"] = "select"
+        ui_node["options"] = match.group("list").split("|")
+    elif value.startswith(V_DEVICE):
         ui_node["type"] = "select"
         ui_node["options"] = match.group("list").split("|")
 

@@ -130,13 +130,13 @@ class DockerAddon(DockerInterface):
 
         # Extend add-on config
         for device in self.addon.devices:
-            if not Path(device.split(":")[0]).exists():
+            if not self.sys_hardware.exists_device_node(Path(device.split(":")[0])):
                 continue
             devices.append(device)
 
         # Auto mapping UART devices
         if self.addon.with_uart:
-            for device in self.sys_hardware.serial_devices:
+            for device in self.sys_hardware.helper.serial_devices:
                 devices.append(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
                 if self.addon.with_udev:
                     continue
@@ -147,7 +147,7 @@ class DockerAddon(DockerInterface):
 
         # Use video devices
         if self.addon.with_video:
-            for device in self.sys_hardware.video_devices:
+            for device in self.sys_hardware.helper.video_devices:
                 devices.append(f"{device.path!s}:{device.path!s}:rwm")
 
         # Return None if no devices is present
@@ -284,7 +284,7 @@ class DockerAddon(DockerInterface):
         # Init other hardware mappings
 
         # GPIO support
-        if self.addon.with_gpio and self.sys_hardware.support_gpio:
+        if self.addon.with_gpio and self.sys_hardware.helper.support_gpio:
             for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
                 volumes.update({gpio_path: {"bind": gpio_path, "mode": "rw"}})
 
@@ -300,7 +300,7 @@ class DockerAddon(DockerInterface):
             )
 
         # USB support
-        if self.addon.with_usb and self.sys_hardware.usb_devices:
+        if self.addon.with_usb and self.sys_hardware.helper.usb_devices:
             volumes.update({"/dev/bus/usb": {"bind": "/dev/bus/usb", "mode": "rw"}})
 
         # Kernel Modules support

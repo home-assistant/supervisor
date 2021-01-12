@@ -29,22 +29,24 @@ class APIHardware(CoreSysAttributes):
         serial: List[str] = []
 
         # Create Serial list with device links
-        for device in self.sys_hardware.serial_devices:
+        for device in self.sys_hardware.helper.serial_devices:
             serial.append(device.path.as_posix())
             for link in device.links:
                 serial.append(link.as_posix())
 
         return {
             ATTR_SERIAL: serial,
-            ATTR_INPUT: list(self.sys_hardware.input_devices),
+            ATTR_INPUT: list(self.sys_hardware.helper.input_devices),
             ATTR_DISK: [
-                device.path.as_posix() for device in self.sys_hardware.disk_devices
+                device.path.as_posix()
+                for device in self.sys_hardware.helper.disk_devices
             ],
-            ATTR_GPIO: list(self.sys_hardware.gpio_devices),
+            ATTR_GPIO: list(self.sys_hardware.helper.gpio_devices),
             ATTR_USB: [
-                device.path.as_posix() for device in self.sys_hardware.usb_devices
+                device.path.as_posix()
+                for device in self.sys_hardware.helper.usb_devices
             ],
-            ATTR_AUDIO: self.sys_hardware.audio_devices,
+            ATTR_AUDIO: self.sys_hardware.helper.audio_devices,
         }
 
     @api_process
@@ -66,4 +68,4 @@ class APIHardware(CoreSysAttributes):
     @api_process
     def trigger(self, request: web.Request) -> Awaitable[None]:
         """Trigger a udev device reload."""
-        return asyncio.shield(self.sys_hardware.udev_trigger())
+        return asyncio.shield(self.sys_hardware.helper.udev_trigger())
