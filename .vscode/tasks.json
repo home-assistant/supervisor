@@ -2,9 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Run Testenv",
+      "label": "Run Supervisor",
       "type": "shell",
-      "command": "./scripts/test_env.sh",
+      "command": "./scripts/run-supervisor.sh",
       "group": {
         "kind": "test",
         "isDefault": true
@@ -16,7 +16,21 @@
       "problemMatcher": []
     },
     {
-      "label": "Run Testenv CLI",
+      "label": "Build Supervisor",
+      "type": "shell",
+      "command": "./scripts/build-supervisor.sh",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Supervisor CLI",
       "type": "shell",
       "command": "docker exec -ti hassio_cli /usr/bin/cli.sh",
       "group": {
@@ -30,7 +44,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Update UI",
+      "label": "Update Supervisor Panel",
       "type": "shell",
       "command": "./scripts/update-frontend.sh",
       "group": {

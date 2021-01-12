@@ -2,6 +2,11 @@ FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.8
 
 WORKDIR /workspaces
 
+# Set Docker daemon config
+RUN \
+    mkdir -p /etc/docker \
+    && echo '{"storage-driver": "vfs"}' > /etc/docker/daemon.json
+
 # Install Node/Yarn for Frontent
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
