@@ -12,6 +12,11 @@ network settings or installing and updating software.
 
 Installation instructions can be found at https://home-assistant.io/getting-started.
 
+## Development
+
+For small changes and bugfixes you can just follow this, but for significant changes open a RFC first.
+Development instructions can be found [here][development].
+
 ## Release
 
 Releases are done in 3 stages (channels) with this structure:
@@ -23,4 +28,5 @@ Releases are done in 3 stages (channels) with this structure:
 5. The [`stable.json][stable] file is updated
 6. The build that was pushed to `beta` will now be pushed to `stable`
 
+[development]: https://developers.home-assistant.io/docs/supervisor/development
 [stable]: https://github.com/home-assistant/version/blob/master/stable.json
