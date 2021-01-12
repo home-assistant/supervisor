@@ -65,12 +65,15 @@ jobs:
 
       - name: Get changed files
         id: changed_files
+        if: steps.version.outputs.publish == 'false'
         uses: jitterbit/get-changed-files@v1
 
       - name: Check if requirements files changed
         id: requirements
         run: |
-          if [[ "${{ steps.changed_files.outputs.all }}" =~ requirements.txt ]]; then
+          if [ "${{ steps.changed_files.outputs.all }}"" == "true" ]; then
+            echo "::set-output name=changed::true"
+          elif [[ "${{ steps.changed_files.outputs.all }}" =~ requirements.txt ]]; then
             echo "::set-output name=changed::true"
           fi
 
