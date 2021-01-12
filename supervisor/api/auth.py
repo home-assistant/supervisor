@@ -29,6 +29,10 @@ SCHEMA_PASSWORD_RESET = vol.Schema(
     }
 )
 
+REALM_HEADER: Dict[str, str] = {
+    WWW_AUTHENTICATE: 'Basic realm="Home Assistant Authentication"'
+}
+
 
 class APIAuth(CoreSysAttributes):
     """Handle RESTful API for auth functions."""
@@ -63,7 +67,9 @@ class APIAuth(CoreSysAttributes):
 
         # BasicAuth
         if AUTHORIZATION in request.headers:
-            return await self._process_basic(request, addon)
+            if not await self._process_basic(request, addon):
+                raise HTTPUnauthorized(headers=REALM_HEADER)
+            return True
 
         # Json
         if request.headers.get(CONTENT_TYPE) == CONTENT_TYPE_JSON:
@@ -75,9 +81,7 @@ class APIAuth(CoreSysAttributes):
             data = await request.post()
             return await self._process_dict(request, addon, data)
 
-        raise HTTPUnauthorized(
-            headers={WWW_AUTHENTICATE: 'Basic realm="Home Assistant Authentication"'}
-        )
+        raise HTTPUnauthorized(headers=REALM_HEADER)
 
     @api_process
     async def reset(self, request: web.Request) -> None:
