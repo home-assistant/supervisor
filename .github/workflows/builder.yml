@@ -65,7 +65,7 @@ jobs:
 
       - name: Get changed files
         id: changed_files
-        if: steps.version.outputs.publish == 'true'
+        if: steps.version.outputs.publish == 'false'
         uses: jitterbit/get-changed-files@v1
 
       - name: Check if requirements files changed
