@@ -48,7 +48,7 @@ class HardwareManager(CoreSysAttributes):
         """Remove a device from the list."""
         self._devices.pop(device.name, None)
 
-    def exists_device(self, device_node: Path) -> bool:
+    def exists_device_node(self, device_node: Path) -> bool:
         """Check if device exists on Host."""
         for device in self.devices:
             if device_node == device.path:
