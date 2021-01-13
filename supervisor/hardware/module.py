@@ -57,7 +57,7 @@ class HardwareManager(CoreSysAttributes):
                 return True
         return False
 
-    def _import_fresh(self) -> None:
+    def _import_devices(self) -> None:
         """Import fresh from udev database."""
         self._devices.clear()
 
@@ -77,7 +77,7 @@ class HardwareManager(CoreSysAttributes):
 
     async def load(self) -> None:
         """Load hardware backend."""
-        self._import_fresh()
+        self._import_devices()
         await self.monitor.load()
 
     async def unload(self) -> None:
