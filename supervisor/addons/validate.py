@@ -1,5 +1,6 @@
 """Validate add-ons options schema."""
 import logging
+from pathlib import Path
 import re
 import secrets
 from typing import Any, Dict, List, Union
@@ -427,6 +428,8 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     elif typ.startswith(V_LIST):
         return vol.In(match.group("list").split("|"))(str(value))
     elif typ.startswith(V_DEVICE):
+        if not coresys.hardware.exists_device_node(Path(value)):
+            raise vol.Invalid(f"Device {value} does not exists!")
         return str(value)
 
     raise vol.Invalid(f"Fatal error for {key} type {typ}") from None
