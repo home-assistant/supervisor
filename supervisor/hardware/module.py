@@ -42,7 +42,7 @@ class HardwareManager(CoreSysAttributes):
 
     def update_device(self, device: Device) -> None:
         """Update or add a (new) Device."""
-        self._devices[device.name] = Device
+        self._devices[device.name] = device
 
     def delete_device(self, device: Device) -> None:
         """Remove a device from the list."""
