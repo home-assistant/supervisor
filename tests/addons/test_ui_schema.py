@@ -1,12 +1,11 @@
 """Test add-ons schema to UI schema convertion."""
 
-from supervisor.addons.validate import schema_ui_options
+from supervisor.addons.options import UiOptions
 
 
 def test_simple_schema(coresys):
     """Test with simple schema."""
-    assert schema_ui_options(
-        coresys,
+    assert UiOptions(coresys)(
         {"name": "str", "password": "password", "fires": "bool", "alias": "str?"},
     ) == [
         {"name": "name", "required": True, "type": "string"},
@@ -18,8 +17,7 @@ def test_simple_schema(coresys):
 
 def test_group_schema(coresys):
     """Test with group schema."""
-    assert schema_ui_options(
-        coresys,
+    assert UiOptions(coresys)(
         {
             "name": "str",
             "password": "password",
@@ -48,8 +46,7 @@ def test_group_schema(coresys):
 
 def test_group_list(coresys):
     """Test with group schema."""
-    assert schema_ui_options(
-        coresys,
+    assert UiOptions(coresys)(
         {
             "name": "str",
             "password": "password",

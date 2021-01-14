@@ -60,8 +60,9 @@ from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from ..utils.tar import atomic_contents_add, secure_path
 from .model import AddonModel, Data
+from .options import AddonOptions
 from .utils import remove_data
-from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
+from .validate import SCHEMA_ADDON_SNAPSHOT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -538,7 +539,7 @@ class Addon(AddonModel):
 
         # create voluptuous
         new_schema = vol.Schema(
-            vol.All(dict, validate_options(self.coresys, new_raw_schema))
+            vol.All(dict, AddonOptions(self.coresys, new_raw_schema))
         )
 
         # validate

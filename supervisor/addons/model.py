@@ -71,7 +71,8 @@ from ..const import (
     AddonStartup,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from .validate import RE_SERVICE, RE_VOLUME, schema_ui_options, validate_options
+from .options import AddonOptions, UiOptions
+from .validate import RE_SERVICE, RE_VOLUME
 
 Data = Dict[str, Any]
 
@@ -523,7 +524,7 @@ class AddonModel(CoreSysAttributes, ABC):
 
         if isinstance(raw_schema, bool):
             return vol.Schema(dict)
-        return vol.Schema(vol.All(dict, validate_options(self.coresys, raw_schema)))
+        return vol.Schema(vol.All(dict, AddonOptions(self.coresys, raw_schema)))
 
     @property
     def schema_ui(self) -> Optional[List[Dict[str, Any]]]:
@@ -532,7 +533,7 @@ class AddonModel(CoreSysAttributes, ABC):
 
         if isinstance(raw_schema, bool):
             return None
-        return schema_ui_options(self.coresys, raw_schema)
+        return UiOptions(self.coresys)(raw_schema)
 
     def __eq__(self, other):
         """Compaired add-on objects."""
