@@ -299,6 +299,10 @@ class DockerAddon(DockerInterface):
                 }
             )
 
+        # Host udev support
+        if self.addon.with_udev:
+            volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}})
+
         # USB support
         if self.addon.with_usb and self.sys_hardware.helper.usb_devices:
             volumes.update({"/dev/bus/usb": {"bind": "/dev/bus/usb", "mode": "rw"}})
