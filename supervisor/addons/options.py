@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Union
 import voluptuous as vol
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import HardwareNotFound
+from ..hardware.data import Device
 from ..validate import network_port
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -60,8 +62,9 @@ class AddonOptions(CoreSysAttributes):
         raw_schema: Dict[str, Any],
     ):
         """Validate schema."""
-        self.coresys = coresys
-        self.raw_schema = raw_schema
+        self.coresys: CoreSys = coresys
+        self.raw_schema: Dict[str, Any] = raw_schema
+        self.devices: List[Device] = []
 
     def __call__(self, struct):
         """Create schema validator for add-ons options."""
@@ -137,9 +140,12 @@ class AddonOptions(CoreSysAttributes):
         elif typ.startswith(V_LIST):
             return vol.In(match.group("list").split("|"))(str(value))
         elif typ.startswith(V_DEVICE):
-            if not self.sys_hardware.exists_device_node(Path(value)):
-                raise vol.Invalid(f"Device {value} does not exists!")
-            return str(value)
+            try:
+                device = self.sys_hardware.get_by_path(Path(value))
+            except HardwareNotFound:
+                raise vol.Invalid(f"Device {value} does not exists!") from None
+            self.devices.append(device)
+            return str(device.path)
 
         raise vol.Invalid(f"Fatal error for {key} type {typ}") from None
 

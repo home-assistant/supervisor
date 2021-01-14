@@ -6,6 +6,7 @@ from typing import Dict, List
 import pyudev
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import HardwareNotFound
 from .data import Device
 from .helper import HwHelper
 from .monitor import HwMonitor
@@ -47,6 +48,15 @@ class HardwareManager(CoreSysAttributes):
         """Return List of devices."""
         return list(self._devices.values())
 
+    def get_by_path(self, device_node: Path) -> Device:
+        """Get Device by path."""
+        for device in self.devices:
+            if device_node == device.path:
+                return device
+            if device_node in device.links:
+                return device
+        raise HardwareNotFound()
+
     def update_device(self, device: Device) -> None:
         """Update or add a (new) Device."""
         self._devices[device.name] = device
@@ -57,12 +67,11 @@ class HardwareManager(CoreSysAttributes):
 
     def exists_device_node(self, device_node: Path) -> bool:
         """Check if device exists on Host."""
-        for device in self.devices:
-            if device_node == device.path:
-                return True
-            if device_node in device.links:
-                return True
-        return False
+        try:
+            self.get_by_path(device_node)
+        except HardwareNotFound:
+            return False
+        return True
 
     def _import_devices(self) -> None:
         """Import fresh from udev database."""
