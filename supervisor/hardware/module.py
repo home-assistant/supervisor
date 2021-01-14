@@ -9,6 +9,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from .data import Device
 from .helper import HwHelper
 from .monitor import HwMonitor
+from .policy import HwPolicy
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class HardwareManager(CoreSysAttributes):
 
         self._montior: HwMonitor = HwMonitor(coresys)
         self._helper: HwHelper = HwHelper(coresys)
+        self._policy: HwPolicy = HwPolicy(coresys)
 
     @property
     def monitor(self) -> HwMonitor:
@@ -34,6 +36,11 @@ class HardwareManager(CoreSysAttributes):
     def helper(self) -> HwHelper:
         """Return Hardware Helper instance."""
         return self._helper
+
+    @property
+    def policy(self) -> HwPolicy:
+        """Return Hardware policy instance."""
+        return self._policy
 
     @property
     def devices(self) -> List[Device]:

@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Set, Union
 from ..const import ATTR_DEVICES, ATTR_NAME, ATTR_TYPE, CHAN_ID, CHAN_TYPE
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotSupportedError
-from .const import UdevSubsysteme
+from .const import UdevSubsystem
 from .data import Device
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ class HwHelper(CoreSysAttributes):
         """Return all serial and connected devices."""
         dev_list: List[Device] = []
         for device in self.sys_hardware.devices:
-            if device.subsystem != UdevSubsysteme.SERIAL or (
+            if device.subsystem != UdevSubsystem.SERIAL or (
                 "ID_VENDOR" not in device.attributes
                 and not RE_TTY.search(str(device.path))
             ):
@@ -77,7 +77,7 @@ class HwHelper(CoreSysAttributes):
         return [
             device
             for device in self.sys_hardware.devices
-            if device.subsystem == UdevSubsysteme.USB
+            if device.subsystem == UdevSubsystem.USB
         ]
 
     @property
@@ -86,7 +86,7 @@ class HwHelper(CoreSysAttributes):
         dev_list: Set[str] = set()
         for device in self.sys_hardware.devices:
             if (
-                device.subsystem != UdevSubsysteme.INPUT
+                device.subsystem != UdevSubsystem.INPUT
                 or "NAME" not in device.properties
             ):
                 continue
@@ -100,7 +100,7 @@ class HwHelper(CoreSysAttributes):
         dev_list: List[Device] = []
         for device in self.sys_hardware.devices:
             if (
-                device.subsystem != UdevSubsysteme.DISK
+                device.subsystem != UdevSubsystem.DISK
                 or "ID_NAME" not in device.attributes
             ):
                 continue

@@ -127,7 +127,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|email"
     r"|url"
     r"|port"
-    r"|device"
+    r"|device(?:\((?P<filter>\w+)\))?"
     r"|str(?:\((?P<s_min>\d+)?,(?P<s_max>\d+)?\))?"
     r"|password(?:\((?P<p_min>\d+)?,(?P<p_max>\d+)?\))?"
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
@@ -435,7 +435,7 @@ def _single_validate(coresys: CoreSys, typ: str, value: Any, key: str):
     raise vol.Invalid(f"Fatal error for {key} type {typ}") from None
 
 
-def _nested_validate_list(coresys, typ, data_list, key):
+def _nested_validate_list(coresys: CoreSys, typ: Any, data_list: List[Any], key: str):
     """Validate nested items."""
     options = []
 
@@ -455,7 +455,9 @@ def _nested_validate_list(coresys, typ, data_list, key):
     return options
 
 
-def _nested_validate_dict(coresys, typ, data_dict, key):
+def _nested_validate_dict(
+    coresys: CoreSys, typ: Dict[Any, Any], data_dict: Dict[Any, Any], key: str
+):
     """Validate nested items."""
     options = {}
 
@@ -482,7 +484,9 @@ def _nested_validate_dict(coresys, typ, data_dict, key):
     return options
 
 
-def _check_missing_options(origin, exists, root):
+def _check_missing_options(
+    origin: Dict[Any, Any], exists: Dict[Any, Any], root: str
+) -> None:
     """Check if all options are exists."""
     missing = set(origin) - set(exists)
     for miss_opt in missing:
@@ -491,7 +495,9 @@ def _check_missing_options(origin, exists, root):
         raise vol.Invalid(f"Missing option {miss_opt} in {root}") from None
 
 
-def schema_ui_options(raw_schema: Dict[str, Any]) -> List[Dict[str, Any]]:
+def schema_ui_options(
+    coresys: CoreSys, raw_schema: Dict[str, Any]
+) -> List[Dict[str, Any]]:
     """Generate UI schema."""
     ui_schema: List[Dict[str, Any]] = []
 
@@ -499,19 +505,23 @@ def schema_ui_options(raw_schema: Dict[str, Any]) -> List[Dict[str, Any]]:
     for key, value in raw_schema.items():
         if isinstance(value, list):
             # nested value list
-            _nested_ui_list(ui_schema, value, key)
+            _nested_ui_list(coresys, ui_schema, value, key)
         elif isinstance(value, dict):
             # nested value dict
-            _nested_ui_dict(ui_schema, value, key)
+            _nested_ui_dict(coresys, ui_schema, value, key)
         else:
             # normal value
-            _single_ui_option(ui_schema, value, key)
+            _single_ui_option(coresys, ui_schema, value, key)
 
     return ui_schema
 
 
 def _single_ui_option(
-    ui_schema: List[Dict[str, Any]], value: str, key: str, multiple: bool = False
+    coresys: CoreSys,
+    ui_schema: List[Dict[str, Any]],
+    value: str,
+    key: str,
+    multiple: bool = False,
 ) -> None:
     """Validate a single element."""
     ui_node: Dict[str, Union[str, bool, float, List[str]]] = {"name": key}
@@ -568,13 +578,13 @@ def _single_ui_option(
         ui_node["options"] = match.group("list").split("|")
     elif value.startswith(V_DEVICE):
         ui_node["type"] = "select"
-        ui_node["options"] = match.group("list").split("|")
+        ui_node["options"] = coresys.hardware.list_devices(filter=match.group("filter"))
 
     ui_schema.append(ui_node)
 
 
 def _nested_ui_list(
-    ui_schema: List[Dict[str, Any]], option_list: List[Any], key: str
+    coresys: CoreSys, ui_schema: List[Dict[str, Any]], option_list: List[Any], key: str
 ) -> None:
     """UI nested list items."""
     try:
@@ -584,12 +594,13 @@ def _nested_ui_list(
         return
 
     if isinstance(element, dict):
-        _nested_ui_dict(ui_schema, element, key, multiple=True)
+        _nested_ui_dict(coresys, ui_schema, element, key, multiple=True)
     else:
-        _single_ui_option(ui_schema, element, key, multiple=True)
+        _single_ui_option(coresys, ui_schema, element, key, multiple=True)
 
 
 def _nested_ui_dict(
+    coresys: CoreSys,
     ui_schema: List[Dict[str, Any]],
     option_dict: Dict[str, Any],
     key: str,
@@ -602,9 +613,9 @@ def _nested_ui_dict(
     for c_key, c_value in option_dict.items():
         # Nested?
         if isinstance(c_value, list):
-            _nested_ui_list(nested_schema, c_value, c_key)
+            _nested_ui_list(coresys, nested_schema, c_value, c_key)
         else:
-            _single_ui_option(nested_schema, c_value, c_key)
+            _single_ui_option(coresys, nested_schema, c_value, c_key)
 
     ui_node["schema"] = nested_schema
     ui_schema.append(ui_node)

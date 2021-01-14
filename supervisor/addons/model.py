@@ -532,7 +532,7 @@ class AddonModel(CoreSysAttributes, ABC):
 
         if isinstance(raw_schema, bool):
             return None
-        return schema_ui_options(raw_schema)
+        return schema_ui_options(self.coresys, raw_schema)
 
     def __eq__(self, other):
         """Compaired add-on objects."""

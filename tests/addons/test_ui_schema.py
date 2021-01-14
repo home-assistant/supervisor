@@ -3,10 +3,11 @@
 from supervisor.addons.validate import schema_ui_options
 
 
-def test_simple_schema():
+def test_simple_schema(coresys):
     """Test with simple schema."""
     assert schema_ui_options(
-        {"name": "str", "password": "password", "fires": "bool", "alias": "str?"}
+        coresys,
+        {"name": "str", "password": "password", "fires": "bool", "alias": "str?"},
     ) == [
         {"name": "name", "required": True, "type": "string"},
         {"format": "password", "name": "password", "required": True, "type": "string"},
@@ -15,16 +16,17 @@ def test_simple_schema():
     ]
 
 
-def test_group_schema():
+def test_group_schema(coresys):
     """Test with group schema."""
     assert schema_ui_options(
+        coresys,
         {
             "name": "str",
             "password": "password",
             "fires": "bool",
             "alias": "str?",
             "extended": {"name": "str", "data": ["str"], "path": "str?"},
-        }
+        },
     ) == [
         {"name": "name", "required": True, "type": "string"},
         {"format": "password", "name": "password", "required": True, "type": "string"},
@@ -44,16 +46,17 @@ def test_group_schema():
     ]
 
 
-def test_group_list():
+def test_group_list(coresys):
     """Test with group schema."""
     assert schema_ui_options(
+        coresys,
         {
             "name": "str",
             "password": "password",
             "fires": "bool",
             "alias": "str?",
             "extended": [{"name": "str", "data": ["str?"], "path": "str?"}],
-        }
+        },
     ) == [
         {"name": "name", "required": True, "type": "string"},
         {"format": "password", "name": "password", "required": True, "type": "string"},

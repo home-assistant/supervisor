@@ -5,6 +5,7 @@ from typing import Dict
 
 from ..const import ENV_TIME, MACHINE_ID
 from ..coresys import CoreSysAttributes
+from ..hardware.const import PolicyGroup
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -66,6 +67,9 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             hostname=self.name.replace("_", "-"),
             detach=True,
             privileged=True,
+            device_cgroup_rules=self.sys_hardware.policy.get_cgroups_rules(
+                PolicyGroup.AUDIO
+            ),
             environment={ENV_TIME: self.sys_config.timezone},
             volumes=self.volumes,
         )
