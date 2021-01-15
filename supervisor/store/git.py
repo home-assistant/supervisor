@@ -33,6 +33,10 @@ class GitRepo(CoreSysAttributes):
 
         self.data: Dict[str, str] = RE_REPOSITORY.match(url).groupdict()
 
+    def __repr__(self) -> str:
+        """Return internal representation."""
+        return f"<Git: {self.path!s}>"
+
     @property
     def url(self) -> str:
         """Return repository URL."""
@@ -160,15 +164,13 @@ class GitRepo(CoreSysAttributes):
                 )
 
                 # Update submodules
-                if len(self.repo.submodules) > 0:
+                for submodule in self.repo.submodules:
                     await self.sys_run_in_executor(
                         ft.partial(
-                            self.repo.git.submodule.root.update,
+                            submodule.update,
                             **{
                                 "recursive": False,
                                 "init": True,
-                                "force_remove": True,
-                                "force_reset": True,
                             },
                         )
                     )
