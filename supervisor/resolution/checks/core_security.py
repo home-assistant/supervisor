@@ -37,10 +37,11 @@ class CheckCoreSecurity(CheckBase):
 
     async def approve_check(self) -> bool:
         """Approve check if it is affected by issue."""
-        if not self.sys_homeassistant.version:
+        try:
+            if self.sys_homeassistant.version >= AwesomeVersion("2021.1.3"):
+                return False
+        except AwesomeVersionException:
             return True
-        if self.sys_homeassistant.version >= AwesomeVersion("2021.1.3"):
-            return False
         if not Path(self.sys_config.path_homeassistant, "custom_components").exists():
             return False
         return True
