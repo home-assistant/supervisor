@@ -48,7 +48,7 @@ class ResolutionNotify(CoreSysAttributes):
                     messages.append(
                         {
                             "title": "Security notification",
-                            "message": "The Supervisor detected that this version of Home Assistant is insecure. [Update as soon as possible.](/hassio/dashboard)\n\nFor more information see the [Security bulletin](https://www.home-assistant.io/blog/2021/01/14/security-bulletin/).",
+                            "message": "The Supervisor detected that this version of Home Assistant could be insecure. [Update as soon as possible.](/hassio/dashboard)\n\nFor more information see the [Security bulletin](https://www.home-assistant.io/blog/2021/01/14/security-bulletin/).",
                             "notification_id": "supervisor_update_home_assistant_2021_1_3",
                         }
                     )
