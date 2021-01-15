@@ -8,7 +8,8 @@ import logging
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
-from .const import IssueType
+from .checks.core_version import VersionReference
+from .const import ContextType, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -39,6 +40,15 @@ class ResolutionNotify(CoreSysAttributes):
                         "notification_id": "supervisor_issue_free_space",
                     }
                 )
+            if issue.type == IssueType.VERSION and issue.context == ContextType.CORE:
+                if issue.reference == VersionReference.CUSTOM_COMPONENTS_BELOW_2021_1_3:
+                    messages.append(
+                        {
+                            "title": "Security notification",
+                            "message": "The Supervisor detected that this version of Home Assistant is insecure. [Update as soon as possible.](/hassio/dashboard)\n\nFor more information see the [Security bulletin](https://www.home-assistant.io/blog/2021/01/14/security-bulletin/).",
+                            "notification_id": "supervisor_update_home_assistant_2021_1_3",
+                        }
+                    )
 
         for message in messages:
             try:
