@@ -50,7 +50,7 @@ class IssueType(str, Enum):
     DOCKER_RATELIMIT = "docker_ratelimit"
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
-    VERSION = "version"
+    SECURITY = "security"
     MISSING_IMAGE = "missing_image"
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"

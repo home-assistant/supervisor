@@ -1,23 +1,23 @@
-"""Helpers to check core version."""
+"""Helpers to check core security."""
 from enum import Enum
 from pathlib import Path
 from typing import List
 
-from ...const import SUPERVISOR_DATA, CoreState
-from ..const import ContextType, IssueType
+from awesomeversion import AwesomeVersion
+
+from ...const import CoreState
+from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
 
-CC_PATH = Path(SUPERVISOR_DATA, "homeassistant", "custom_components")
 
-
-class VersionReference(str, Enum):
+class SecurityReference(str, Enum):
     """Version references."""
 
     CUSTOM_COMPONENTS_BELOW_2021_1_3 = "custom_components_below_2021_1_3"
 
 
-class CheckCoreVersion(CheckBase):
-    """CheckCoreVersion class for check."""
+class CheckCoreSecurity(CheckBase):
+    """CheckCoreSecurity class for check."""
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
@@ -25,28 +25,29 @@ class CheckCoreVersion(CheckBase):
             # Can't determine version.
             return
 
-        if self.sys_homeassistant.version < "2021.1.3":
-            if CC_PATH.exists():
+        if self.sys_homeassistant.version < AwesomeVersion("2021.1.3"):
+            if Path(self.sys_config.path_homeassistant, "custom_components").exists():
                 self.sys_resolution.create_issue(
-                    IssueType.VERSION,
+                    IssueType.SECURITY,
                     ContextType.CORE,
-                    reference=VersionReference.CUSTOM_COMPONENTS_BELOW_2021_1_3,
+                    reference=SecurityReference.CUSTOM_COMPONENTS_BELOW_2021_1_3,
+                    suggestions=[SuggestionType.EXECUTE_UPDATE],
                 )
 
     async def approve_check(self) -> bool:
         """Approve check if it is affected by issue."""
         if not self.sys_homeassistant.version:
             return True
-        if self.sys_homeassistant.version >= "2021.1.3":
+        if self.sys_homeassistant.version >= AwesomeVersion("2021.1.3"):
             return False
-        if not CC_PATH.exists():
+        if not Path(self.sys_config.path_homeassistant, "custom_components").exists():
             return False
         return True
 
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.VERSION
+        return IssueType.SECURITY
 
     @property
     def context(self) -> ContextType:

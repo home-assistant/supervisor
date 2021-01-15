@@ -4,7 +4,7 @@ from typing import List
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .checks.base import CheckBase
-from .checks.core_version import CheckCoreVersion
+from .checks.core_security import CheckCoreSecurity
 from .checks.free_space import CheckFreeSpace
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -17,13 +17,13 @@ class ResolutionCheck(CoreSysAttributes):
         """Initialize the checks class."""
         self.coresys = coresys
 
-        self._core_version = CheckCoreVersion(coresys)
+        self._core_security = CheckCoreSecurity(coresys)
         self._free_space = CheckFreeSpace(coresys)
 
     @property
     def all_tests(self) -> List[CheckBase]:
         """Return all list of all checks."""
-        return [self._core_version, self._free_space]
+        return [self._core_security, self._free_space]
 
     async def check_system(self) -> None:
         """Check the system."""

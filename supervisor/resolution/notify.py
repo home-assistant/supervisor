@@ -8,7 +8,7 @@ import logging
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
-from .checks.core_version import VersionReference
+from .checks.core_security import SecurityReference
 from .const import ContextType, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -40,8 +40,11 @@ class ResolutionNotify(CoreSysAttributes):
                         "notification_id": "supervisor_issue_free_space",
                     }
                 )
-            if issue.type == IssueType.VERSION and issue.context == ContextType.CORE:
-                if issue.reference == VersionReference.CUSTOM_COMPONENTS_BELOW_2021_1_3:
+            if issue.type == IssueType.SECURITY and issue.context == ContextType.CORE:
+                if (
+                    issue.reference
+                    == SecurityReference.CUSTOM_COMPONENTS_BELOW_2021_1_3
+                ):
                     messages.append(
                         {
                             "title": "Security notification",
