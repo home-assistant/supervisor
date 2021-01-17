@@ -109,7 +109,7 @@ class DockerHomeAssistant(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            tag=self.sys_homeassistant.version.string,
+            tag=(self.sys_homeassistant.version),
             name=self.name,
             hostname=self.name,
             detach=True,

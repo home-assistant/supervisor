@@ -59,7 +59,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            tag=self.sys_plugins.audio.version.string,
+            tag=str(self.sys_plugins.audio.version),
             init=False,
             ipv4=self.sys_docker.network.audio,
             name=self.name,

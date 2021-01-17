@@ -356,7 +356,7 @@ class DockerAddon(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            tag=self.addon.version.string,
+            tag=str(self.addon.version),
             name=self.name,
             hostname=self.addon.hostname,
             detach=True,

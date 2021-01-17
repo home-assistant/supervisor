@@ -37,7 +37,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            tag=self.sys_plugins.multicast.version.string,
+            tag=str(self.sys_plugins.multicast.version),
             init=False,
             name=self.name,
             hostname=self.name.replace("_", "-"),
