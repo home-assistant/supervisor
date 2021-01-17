@@ -67,10 +67,10 @@ class HassOS(CoreSysAttributes):
         if raw_url is None:
             _LOGGER.error("Don't have an URL for OTA updates!")
             raise HassOSNotSupportedError()
-        url = raw_url.format(version=version.string, board=self.board)
+        url = raw_url.format(version=str(version), board=self.board)
 
         _LOGGER.info("Fetch OTA update from %s", url)
-        raucb = Path(self.sys_config.path_tmp, f"hassos-{version.string}.raucb")
+        raucb = Path(self.sys_config.path_tmp, f"hassos-{version!s}.raucb")
         try:
             timeout = aiohttp.ClientTimeout(total=60 * 60, connect=180)
             async with self.sys_websession.get(url, timeout=timeout) as request:

@@ -74,7 +74,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         try:
             docker_container = self.sys_docker.containers.get(self.name)
 
-            docker_container.image.tag(self.image, tag=self.version.string)
+            docker_container.image.tag(self.image, tag=str(self.version))
             docker_container.image.tag(self.image, tag="latest")
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't retag Supervisor version: %s", err)
