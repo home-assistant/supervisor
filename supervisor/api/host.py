@@ -17,6 +17,7 @@ from ..const import (
     ATTR_HOSTNAME,
     ATTR_KERNEL,
     ATTR_NAME,
+    ATTR_NO_WAIT,
     ATTR_OPERATING_SYSTEM,
     ATTR_SERVICES,
     ATTR_STATE,
@@ -28,6 +29,8 @@ from .utils import api_process, api_process_raw, api_validate
 SERVICE = "service"
 
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): vol.Coerce(str)})
+# pylint: disable=no-value-for-parameter
+SCHEMA_RESTART = vol.Schema({vol.Optional(ATTR_NO_WAIT): vol.Boolean()})
 
 
 class APIHost(CoreSysAttributes):
@@ -61,9 +64,16 @@ class APIHost(CoreSysAttributes):
             )
 
     @api_process
-    def reboot(self, request):
+    async def reboot(self, request):
         """Reboot host."""
-        return asyncio.shield(self.sys_host.control.reboot())
+        body = await api_validate(SCHEMA_RESTART, request)
+
+        reboot_task = asyncio.create_task(self.sys_host.control.reboot())
+
+        if ATTR_NO_WAIT in body and body[ATTR_NO_WAIT]:
+            return None
+
+        return await asyncio.shield(reboot_task)
 
     @api_process
     def shutdown(self, request):
