@@ -3,6 +3,8 @@ import logging
 from typing import List
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..jobs.const import JobCondition
+from ..jobs.decorator import Job
 from .data import Suggestion
 from .fixups.base import FixupBase
 from .fixups.clear_full_snapshot import FixupClearFullSnapshot
@@ -41,6 +43,7 @@ class ResolutionFixup(CoreSysAttributes):
             self._store_execute_remove,
         ]
 
+    @Job(conditions=[JobCondition.HEALTHY])
     async def run_autofix(self) -> None:
         """Run all startup fixes."""
         _LOGGER.info("Starting system autofix at state %s", self.sys_core.state)
