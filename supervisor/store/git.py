@@ -164,16 +164,16 @@ class GitRepo(CoreSysAttributes):
                 )
 
                 # Update submodules
-                for submodule in self.repo.submodules:
-                    await self.sys_run_in_executor(
-                        ft.partial(
-                            submodule.update,
-                            **{
-                                "recursive": False,
-                                "init": True,
-                            },
-                        )
+                await self.sys_run_in_executor(
+                    ft.partial(
+                        self.repo.git.submodule,
+                        "update",
+                        "--init",
+                        "--recursive",
+                        "--depth",
+                        "1",
                     )
+                )
 
                 # Cleanup old data
                 await self.sys_run_in_executor(ft.partial(self.repo.git.clean, "-xdf"))
