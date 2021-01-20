@@ -1,4 +1,4 @@
-"""Test Zwave MQTT discovery."""
+"""Test Zwave JS discovery."""
 
 import pytest
 import voluptuous as vol
