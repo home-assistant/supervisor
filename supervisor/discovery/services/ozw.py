@@ -10,7 +10,7 @@ SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_HOST): str,
         vol.Required(ATTR_PORT): network_port,
-        vol.Required(ATTR_USERNAME): vol.Coerce(str),
-        vol.Required(ATTR_PASSWORD): vol.Coerce(str),
+        vol.Required(ATTR_USERNAME): str,
+        vol.Required(ATTR_PASSWORD): str,
     }
 )
