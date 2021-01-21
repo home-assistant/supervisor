@@ -21,7 +21,8 @@ class FixupStoreExecuteReset(FixupBase):
     """Storage class for fixup."""
 
     @Job(
-        conditions=[JobCondition.INTERNET_SYSTEM], on_condition=ResolutionFixupJobError
+        conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.FREE_SPACE],
+        on_condition=ResolutionFixupJobError,
     )
     async def process_fixup(self, reference: Optional[str] = None) -> None:
         """Initialize the fixup class."""
