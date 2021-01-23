@@ -13,7 +13,7 @@ from .base import CheckBase
 class SecurityReference(str, Enum):
     """Version references."""
 
-    CUSTOM_COMPONENTS_BELOW_2021_1_3 = "custom_components_below_2021_1_3"
+    CUSTOM_COMPONENTS_BELOW_2021_1_5 = "custom_components_below_2021_1_5"
 
 
 class CheckCoreSecurity(CheckBase):
@@ -22,14 +22,14 @@ class CheckCoreSecurity(CheckBase):
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         try:
-            if self.sys_homeassistant.version < AwesomeVersion("2021.1.3"):
+            if self.sys_homeassistant.version < AwesomeVersion("2021.1.5"):
                 if Path(
                     self.sys_config.path_homeassistant, "custom_components"
                 ).exists():
                     self.sys_resolution.create_issue(
                         IssueType.SECURITY,
                         ContextType.CORE,
-                        reference=SecurityReference.CUSTOM_COMPONENTS_BELOW_2021_1_3,
+                        reference=SecurityReference.CUSTOM_COMPONENTS_BELOW_2021_1_5,
                         suggestions=[SuggestionType.EXECUTE_UPDATE],
                     )
         except AwesomeVersionException:
@@ -38,7 +38,7 @@ class CheckCoreSecurity(CheckBase):
     async def approve_check(self) -> bool:
         """Approve check if it is affected by issue."""
         try:
-            if self.sys_homeassistant.version >= AwesomeVersion("2021.1.3"):
+            if self.sys_homeassistant.version >= AwesomeVersion("2021.1.5"):
                 return False
         except AwesomeVersionException:
             return True

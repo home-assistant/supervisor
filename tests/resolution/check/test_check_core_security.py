@@ -31,6 +31,10 @@ async def test_check(coresys: CoreSys, tmp_path):
         await core_security.run_check()
         assert len(coresys.resolution.issues) == 0
 
+        coresys.homeassistant._data["version"] = AwesomeVersion("2021.1.5")
+        await core_security.run_check()
+        assert len(coresys.resolution.issues) == 0
+
         coresys.homeassistant._data["version"] = AwesomeVersion("2021.1.2")
         await core_security.run_check()
         assert len(coresys.resolution.issues) == 0
