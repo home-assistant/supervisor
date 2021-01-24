@@ -32,7 +32,7 @@ class CheckCoreSecurity(CheckBase):
                         reference=SecurityReference.CUSTOM_COMPONENTS_BELOW_2021_1_5,
                         suggestions=[SuggestionType.EXECUTE_UPDATE],
                     )
-        except AwesomeVersionException:
+        except (AwesomeVersionException, OSError):
             return
 
     async def approve_check(self) -> bool:
