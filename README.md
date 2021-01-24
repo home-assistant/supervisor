@@ -21,12 +21,12 @@ Development instructions can be found [here][development].
 
 Releases are done in 3 stages (channels) with this structure:
 
-1. Pull requests are merged to the `main` branch
+1. Pull requests are merged to the `main` branch.
 2. A new build is pushed to the `dev` stage.
-3. Releases are published
+3. Releases are published.
 4. A new build is pushed to the `beta` stage.
-5. The [`stable.json][stable] file is updated
-6. The build that was pushed to `beta` will now be pushed to `stable`
+5. The [`stable.json`][stable] file is updated.
+6. The build that was pushed to `beta` will now be pushed to `stable`.
 
 [development]: https://developers.home-assistant.io/docs/supervisor/development
 [stable]: https://github.com/home-assistant/version/blob/master/stable.json
