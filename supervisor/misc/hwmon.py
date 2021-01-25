@@ -7,7 +7,6 @@ from typing import Optional
 import pyudev
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..resolution.const import UnhealthyReason
 from ..utils import AsyncCallFilter
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
