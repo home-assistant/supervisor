@@ -29,8 +29,10 @@ class HwMonitor(CoreSysAttributes):
             self.monitor = pyudev.Monitor.from_netlink(self.context)
             self.observer = pyudev.MonitorObserver(self.monitor, self._udev_events)
         except OSError:
-            self.sys_resolution.unhealthy = UnhealthyReason.PRIVILEGED
-            _LOGGER.critical("Not privileged to run udev monitor!")
+            _LOGGER.critical("udev monitor could not be initialized!")
+            _LOGGER.critical(
+                "This is likely because you are using an unsupported system, some features may not work becuase of this"
+            )
         else:
             self.observer.start()
             _LOGGER.info("Started Supervisor hardware monitor")
