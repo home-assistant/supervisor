@@ -43,7 +43,7 @@ NO_SECURITY_CHECK = re.compile(
 # Observer allow API calls
 OBSERVER_CHECK = re.compile(
     r"^(?:"
-    r"|/[^/]+/info"
+    r"|/.+/info"
     r")$"
 )
 
@@ -63,7 +63,7 @@ ADDONS_API_BYPASS = re.compile(
 ADDONS_ROLE_ACCESS = {
     ROLE_DEFAULT: re.compile(
         r"^(?:"
-        r"|/[^/]+/info"
+        r"|/.+/info"
         r"|/addons"
         r")$"
     ),
