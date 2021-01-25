@@ -2,7 +2,7 @@
 import logging
 from typing import Any, Awaitable, Dict
 
-from packaging.version import parse as pkg_parse
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 import sentry_sdk
 
 from ...exceptions import (
@@ -30,7 +30,7 @@ from .settings import NetworkManagerSettings
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-MINIMAL_VERSION = "1.14.6"
+MINIMAL_VERSION = AwesomeVersion("1.14.6")
 
 
 class NetworkManager(DBusInterface):
@@ -67,9 +67,9 @@ class NetworkManager(DBusInterface):
         return self.properties[DBUS_ATTR_CONNECTION_ENABLED]
 
     @property
-    def version(self) -> bool:
+    def version(self) -> AwesomeVersion:
         """Return if connectivity check is enabled."""
-        return self.properties[DBUS_ATTR_VERSION]
+        return AwesomeVersion(self.properties[DBUS_ATTR_VERSION])
 
     @dbus_connected
     def activate_connection(
@@ -121,9 +121,9 @@ class NetworkManager(DBusInterface):
         self.properties = await self.dbus.get_properties(DBUS_NAME_NM)
 
         try:
-            if pkg_parse(self.version) >= pkg_parse(MINIMAL_VERSION):
+            if self.version >= MINIMAL_VERSION:
                 return
-        except (TypeError, ValueError, KeyError):
+        except (AwesomeVersionException, KeyError):
             pass
 
         _LOGGER.error("Version '%s' of NetworkManager is not supported!", self.version)
