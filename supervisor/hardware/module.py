@@ -5,6 +5,8 @@ from typing import Dict, List
 
 import pyudev
 
+from supervisor.hardware.const import UdevSubsystem
+
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotFound
 from .data import Device
@@ -72,6 +74,13 @@ class HardwareManager(CoreSysAttributes):
         except HardwareNotFound:
             return False
         return True
+
+    def check_subsystem_parents(self, device: Device, subsystem: UdevSubsystem) -> bool:
+        """Return True if the device is part of the given subsystem parent."""
+        udev_device: pyudev.Device = pyudev.Devices.from_device_file(
+            self._udev, str(Device.path)
+        )
+        return udev_device.find_parent(subsystem.value) is not None
 
     def _import_devices(self) -> None:
         """Import fresh from udev database."""

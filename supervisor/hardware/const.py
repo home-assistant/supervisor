@@ -9,6 +9,7 @@ class UdevSubsystem(str, Enum):
     USB = "usb"
     INPUT = "input"
     DISK = "block"
+    PCI = "pci"
 
 
 class PolicyGroup(str, Enum):

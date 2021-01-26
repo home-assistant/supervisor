@@ -28,7 +28,7 @@ from ..const import (
 )
 from ..coresys import CoreSys
 from ..exceptions import CoreDNSError, DockerError
-from ..hardware.const import PolicyGroup
+from ..hardware.const import PolicyGroup, UdevSubsystem
 from ..utils import process_lock
 from .interface import DockerInterface
 
@@ -328,7 +328,10 @@ class DockerAddon(DockerInterface):
             volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}})
 
         # USB support
-        if self.addon.with_usb and self.sys_hardware.helper.usb_devices:
+        if (self.addon.with_usb and self.sys_hardware.helper.usb_devices) or any(
+            self.sys_hardware.check_subsystem_parents(device, UdevSubsystem.USB)
+            for device in self.addon.devices
+        ):
             volumes.update({"/dev/bus/usb": {"bind": "/dev/bus/usb", "mode": "rw"}})
 
         # Kernel Modules support
