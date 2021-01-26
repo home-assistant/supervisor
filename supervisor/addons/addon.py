@@ -10,7 +10,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Dict, List, Optional
+from typing import Any, Awaitable, Dict, List, Optional, Set
 
 import aiohttp
 import voluptuous as vol
@@ -55,6 +55,7 @@ from ..exceptions import (
     HostAppArmorError,
     JsonFileError,
 )
+from ..hardware.data import Device
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
@@ -395,6 +396,20 @@ class Addon(AddonModel):
         """Return path to asound config for Docker."""
         return Path(self.sys_config.path_extern_tmp, f"{self.slug}_pulse")
 
+    @property
+    def devices(self) -> Set[Device]:
+        """Create a schema for add-on options."""
+        raw_schema = self.data[ATTR_SCHEMA]
+        if isinstance(raw_schema, bool) or not raw_schema:
+            return set()
+
+        # Validate devices
+        options_validator = AddonOptions(self.coresys, raw_schema)
+        with suppress(vol.Invalid):
+            options_validator(self.options)
+
+        return options_validator.devices
+
     def save_persist(self) -> None:
         """Save data of add-on."""
         self.sys_addons.data.save_data()
@@ -443,20 +458,17 @@ class Addon(AddonModel):
 
     async def write_options(self) -> None:
         """Return True if add-on options is written to data."""
-        schema = self.schema
-        options = self.options
-
         # Update secrets for validation
         await self.sys_homeassistant.secrets.reload()
 
         try:
-            options = schema(options)
+            options = self.schema(self.options)
             write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error(
                 "Add-on %s has invalid options: %s",
                 self.slug,
-                humanize_error(options, ex),
+                humanize_error(self.options, ex),
             )
         except JsonFileError:
             _LOGGER.error("Add-on %s can't write options", self.slug)

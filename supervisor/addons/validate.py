@@ -144,10 +144,10 @@ def _simple_startup(value) -> str:
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_CONFIG = vol.Schema(
     {
-        vol.Required(ATTR_NAME): vol.Coerce(str),
+        vol.Required(ATTR_NAME): str,
         vol.Required(ATTR_VERSION): version_tag,
-        vol.Required(ATTR_SLUG): vol.Coerce(str),
-        vol.Required(ATTR_DESCRIPTON): vol.Coerce(str),
+        vol.Required(ATTR_SLUG): str,
+        vol.Required(ATTR_DESCRIPTON): str,
         vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
         vol.Optional(ATTR_MACHINE): vol.All([vol.Match(RE_MACHINE)], vol.Unique()),
         vol.Optional(ATTR_URL): vol.Url(),
@@ -170,21 +170,21 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_INGRESS_PORT, default=8099): vol.Any(
             network_port, vol.Equal(0)
         ),
-        vol.Optional(ATTR_INGRESS_ENTRY): vol.Coerce(str),
-        vol.Optional(ATTR_PANEL_ICON, default="mdi:puzzle"): vol.Coerce(str),
-        vol.Optional(ATTR_PANEL_TITLE): vol.Coerce(str),
+        vol.Optional(ATTR_INGRESS_ENTRY): str,
+        vol.Optional(ATTR_PANEL_ICON, default="mdi:puzzle"): str,
+        vol.Optional(ATTR_PANEL_TITLE): str,
         vol.Optional(ATTR_PANEL_ADMIN, default=True): vol.Boolean(),
         vol.Optional(ATTR_HOMEASSISTANT): vol.Maybe(version_tag),
         vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_PID, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_IPC, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_DBUS, default=False): vol.Boolean(),
-        vol.Optional(ATTR_DEVICES): [vol.Match(r"^(.*):(.*):([rwm]{1,3})$")],
+        vol.Optional(ATTR_DEVICES): [vol.All(str, lambda x: x.split(":")[0])],
         vol.Optional(ATTR_AUTO_UART, default=False): vol.Boolean(),
         vol.Optional(ATTR_UDEV, default=False): vol.Boolean(),
         vol.Optional(ATTR_TMPFS): vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
         vol.Optional(ATTR_MAP, default=list): [vol.Match(RE_VOLUME)],
-        vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): vol.Coerce(str)},
+        vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): str},
         vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],
         vol.Optional(ATTR_APPARMOR, default=True): vol.Boolean(),
         vol.Optional(ATTR_FULL_ACCESS, default=False): vol.Boolean(),
@@ -203,26 +203,20 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_AUTH_API, default=False): vol.Boolean(),
         vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
         vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
-        vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [vol.Coerce(str)],
+        vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [str],
         vol.Optional(ATTR_OPTIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
             vol.Schema(
                 {
-                    vol.Coerce(str): vol.Any(
+                    str: vol.Any(
                         SCHEMA_ELEMENT,
                         [
                             vol.Any(
                                 SCHEMA_ELEMENT,
-                                {
-                                    vol.Coerce(str): vol.Any(
-                                        SCHEMA_ELEMENT, [SCHEMA_ELEMENT]
-                                    )
-                                },
+                                {str: vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])},
                             )
                         ],
-                        vol.Schema(
-                            {vol.Coerce(str): vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}
-                        ),
+                        vol.Schema({str: vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}),
                     )
                 }
             ),
@@ -259,15 +253,13 @@ SCHEMA_ADDON_USER = vol.Schema(
         vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
-        vol.Optional(ATTR_INGRESS_TOKEN, default=secrets.token_urlsafe): vol.Coerce(
-            str
-        ),
+        vol.Optional(ATTR_INGRESS_TOKEN, default=secrets.token_urlsafe): str,
         vol.Optional(ATTR_OPTIONS, default=dict): dict,
         vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
         vol.Optional(ATTR_BOOT): vol.Coerce(AddonBoot),
         vol.Optional(ATTR_NETWORK): docker_ports,
-        vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(str),
+        vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_PROTECTED, default=True): vol.Boolean(),
         vol.Optional(ATTR_INGRESS_PANEL, default=False): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG, default=False): vol.Boolean(),
@@ -278,16 +270,16 @@ SCHEMA_ADDON_USER = vol.Schema(
 
 SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_CONFIG.extend(
     {
-        vol.Required(ATTR_LOCATON): vol.Coerce(str),
-        vol.Required(ATTR_REPOSITORY): vol.Coerce(str),
+        vol.Required(ATTR_LOCATON): str,
+        vol.Required(ATTR_REPOSITORY): str,
     }
 )
 
 
 SCHEMA_ADDONS_FILE = vol.Schema(
     {
-        vol.Optional(ATTR_USER, default=dict): {vol.Coerce(str): SCHEMA_ADDON_USER},
-        vol.Optional(ATTR_SYSTEM, default=dict): {vol.Coerce(str): SCHEMA_ADDON_SYSTEM},
+        vol.Optional(ATTR_USER, default=dict): {str: SCHEMA_ADDON_USER},
+        vol.Optional(ATTR_SYSTEM, default=dict): {str: SCHEMA_ADDON_SYSTEM},
     }
 )
 
@@ -297,7 +289,7 @@ SCHEMA_ADDON_SNAPSHOT = vol.Schema(
         vol.Required(ATTR_USER): SCHEMA_ADDON_USER,
         vol.Required(ATTR_SYSTEM): SCHEMA_ADDON_SYSTEM,
         vol.Required(ATTR_STATE): vol.Coerce(AddonState),
-        vol.Required(ATTR_VERSION): vol.Coerce(str),
+        vol.Required(ATTR_VERSION): version_tag,
     },
     extra=vol.REMOVE_EXTRA,
 )

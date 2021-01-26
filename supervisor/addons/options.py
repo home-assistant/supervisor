@@ -2,7 +2,7 @@
 import logging
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Set, Union
 
 import voluptuous as vol
 
@@ -64,7 +64,7 @@ class AddonOptions(CoreSysAttributes):
         """Validate schema."""
         self.coresys: CoreSys = coresys
         self.raw_schema: Dict[str, Any] = raw_schema
-        self.devices: List[Device] = []
+        self.devices: Set[Device] = set()
 
     def __call__(self, struct):
         """Create schema validator for add-ons options."""
@@ -144,7 +144,7 @@ class AddonOptions(CoreSysAttributes):
                 device = self.sys_hardware.get_by_path(Path(value))
             except HardwareNotFound:
                 raise vol.Invalid(f"Device {value} does not exists!") from None
-            self.devices.append(device)
+            self.devices.add(device)
             return str(device.path)
 
         raise vol.Invalid(f"Fatal error for {key} type {typ}") from None
@@ -294,6 +294,7 @@ class UiOptions(CoreSysAttributes):
             ui_node["options"] = match.group("list").split("|")
         elif value.startswith(V_DEVICE):
             ui_node["type"] = "select"
+            # FIXME
             ui_node["options"] = self.sys_hardware.list_devices(
                 filter=match.group("filter")
             )

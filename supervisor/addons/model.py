@@ -297,9 +297,9 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_HOST_DBUS]
 
     @property
-    def devices(self) -> List[str]:
-        """Return devices of add-on."""
-        return self.data.get(ATTR_DEVICES, [])
+    def static_devices(self) -> List[Path]:
+        """Return static devices of add-on."""
+        return [Path(node) for node in self.data.get(ATTR_DEVICES, [])]
 
     @property
     def tmpfs(self) -> Optional[str]:
@@ -523,7 +523,7 @@ class AddonModel(CoreSysAttributes, ABC):
         raw_schema = self.data[ATTR_SCHEMA]
 
         if isinstance(raw_schema, bool):
-            return vol.Schema(dict)
+            raw_schema = {}
         return vol.Schema(vol.All(dict, AddonOptions(self.coresys, raw_schema)))
 
     @property

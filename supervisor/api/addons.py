@@ -237,7 +237,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_PRIVILEGED: addon.privileged,
             ATTR_FULL_ACCESS: addon.with_full_access,
             ATTR_APPARMOR: addon.apparmor,
-            ATTR_DEVICES: _pretty_devices(addon),
+            ATTR_DEVICES: addon.static_devices,
             ATTR_ICON: addon.with_icon,
             ATTR_LOGO: addon.with_logo,
             ATTR_CHANGELOG: addon.with_changelog,
@@ -286,6 +286,8 @@ class APIAddons(CoreSysAttributes):
                     ATTR_VERSION: addon.version,
                     ATTR_UPDATE_AVAILABLE: addon.need_update,
                     ATTR_WATCHDOG: addon.watchdog,
+                    ATTR_DEVICES: addon.static_devices
+                    + [device.path for device in addon.devices],
                 }
             )
 

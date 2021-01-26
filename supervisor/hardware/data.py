@@ -9,11 +9,11 @@ import attr
 class Device:
     """Represent a device."""
 
-    name: str = attr.ib()
-    path: Path = attr.ib()
-    subsystem: str = attr.ib()
-    links: List[Path] = attr.ib()
-    attributes: Dict[str, str] = attr.ib()
+    name: str = attr.ib(eq=False)
+    path: Path = attr.ib(eq=True)
+    subsystem: str = attr.ib(eq=False)
+    links: List[Path] = attr.ib(eq=False)
+    attributes: Dict[str, str] = attr.ib(eq=False)
 
     @property
     def cgroups_major(self) -> int:
