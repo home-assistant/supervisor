@@ -58,13 +58,6 @@ class HwHelper(CoreSysAttributes):
                 and not RE_TTY.search(str(device.path))
             ):
                 continue
-
-            # Cleanup not usable device links
-            for link in device.links.copy():
-                if link.match("/dev/serial/by-id/*"):
-                    continue
-                device.links.remove(link)
-
             dev_list.append(device)
 
         return dev_list
@@ -150,15 +143,6 @@ class HwHelper(CoreSysAttributes):
     def support_gpio(self) -> bool:
         """Return True if device support GPIOs."""
         return SOC_DEVICES.exists() and GPIO_DEVICES.exists()
-
-    @property
-    def gpio_devices(self) -> Set[str]:
-        """Return list of GPIO interface on device."""
-        dev_list: Set[str] = set()
-        for interface in GPIO_DEVICES.glob("gpio*"):
-            dev_list.add(interface.name)
-
-        return dev_list
 
     @property
     def last_boot(self) -> Optional[str]:
