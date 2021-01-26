@@ -17,8 +17,8 @@ jobs:
     steps:
       - name: Check labels
         run: |
-          labels=$(jq -r .pull_request.labels ${{github.event_path }})
+          labels=$(jq -r '.pull_request.labels[] | .name' ${{github.event_path }})
           echo "$labels"
-          if [ "$labels" == "[]" ]; then
+          if [ "$labels" == "cla-signed" ]; then
             exit 1
           fi
