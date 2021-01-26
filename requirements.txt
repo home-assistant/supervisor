@@ -12,7 +12,6 @@ debugpy==1.2.1
 docker==4.4.1
 gitpython==3.1.12
 jinja2==2.11.2
-packaging==20.4
 pulsectl==20.5.1
 pytz==2020.5
 pyudev==0.22.0
