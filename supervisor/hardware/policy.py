@@ -30,4 +30,4 @@ class HwPolicy(CoreSysAttributes):
 
     def get_cgroups_rule(self, device: Device) -> str:
         """Generate a cgroups rule for given device."""
-        return f"c {device.cgroups_major}:* rwm"
+        return f"c {device.cgroups_major}:{device.cgroups_minor} rwm"

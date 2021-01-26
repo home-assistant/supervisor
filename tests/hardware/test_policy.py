@@ -18,7 +18,7 @@ def test_device_policy(coresys):
         {"MAJOR": "5", "MINOR": "10"},
     )
 
-    assert coresys.hardware.policy.get_cgroups_rule(device) == "c 5:* rwm"
+    assert coresys.hardware.policy.get_cgroups_rule(device) == "c 5:10 rwm"
 
 
 def test_policy_group(coresys):
