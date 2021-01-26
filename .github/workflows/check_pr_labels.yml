@@ -1,0 +1,22 @@
+name: Check PR
+
+on:
+  pull_request:
+    branches: ["main"]
+
+env:
+  BUILD_NAME: supervisor
+  BUILD_TYPE: supervisor
+  WHEELS_TAG: 3.8-alpine3.12
+
+jobs:
+  init:
+    name: Check labels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+
+      - name: Check labels
+        run: |
+          jq -r .pull_request.labels ${{github.event_path }}
