@@ -51,6 +51,7 @@ def test_device_path_lookup(coresys):
     assert coresys.hardware.exists_device_node(Path("/dev/ttyS1"))
     assert coresys.hardware.exists_device_node(Path("/dev/ttyS0"))
     assert coresys.hardware.exists_device_node(Path("/dev/serial/by-id/xyx"))
+    assert coresys.hardware.exists_device_node(Path("/sys/bus/usb/001"))
 
     assert not coresys.hardware.exists_device_node(Path("/dev/ttyS2"))
     assert not coresys.hardware.exists_device_node(Path("/dev/ttyUSB1"))

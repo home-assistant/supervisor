@@ -53,7 +53,7 @@ class HardwareManager(CoreSysAttributes):
     def get_by_path(self, device_node: Path) -> Device:
         """Get Device by path."""
         for device in self.devices:
-            if device_node == device.path:
+            if device_node in (device.path, device.sysfs):
                 return device
             if device_node in device.links:
                 return device
