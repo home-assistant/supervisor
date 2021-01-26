@@ -8,6 +8,7 @@ ENV \
 # Install base
 RUN \
     apk add --no-cache \
+        eudev \
         eudev-libs \
         git \
         glib \
