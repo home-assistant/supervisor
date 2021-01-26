@@ -28,6 +28,7 @@ from ..const import (
 )
 from ..coresys import CoreSys
 from ..exceptions import CoreDNSError, DockerError
+from ..hardware.const import PolicyGroup
 from ..utils import process_lock
 from .interface import DockerInterface
 
@@ -124,34 +125,56 @@ class DockerAddon(DockerInterface):
         }
 
     @property
-    def devices(self) -> List[str]:
+    def devices(self) -> Optional[List[str]]:
         """Return needed devices."""
-        devices = []
+        devices = set()
 
         # Extend add-on config
-        for device in self.addon.devices:
-            if not self.sys_hardware.exists_device_node(Path(device.split(":")[0])):
+        for device_path in self.addon.static_devices:
+            if not self.sys_hardware.exists_device_node(device_path):
+                _LOGGER.debug("Ignore static device path %s", device_path)
                 continue
-            devices.append(device)
+            devices.add(f"{device_path.as_posix()}:{device_path.as_posix()}:rwm")
 
-        # Auto mapping UART devices
-        if self.addon.with_uart:
+        # Auto mapping UART devices / LINKS
+        # This function get removed once device options are used
+        if self.addon.with_uart and not self.devices:
             for device in self.sys_hardware.helper.serial_devices:
-                devices.append(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
-                if self.addon.with_udev:
-                    continue
                 for device_link in device.links:
-                    devices.append(
+                    devices.add(
                         f"{device_link.as_posix()}:{device_link.as_posix()}:rwm"
                     )
 
-        # Use video devices
-        if self.addon.with_video:
-            for device in self.sys_hardware.helper.video_devices:
-                devices.append(f"{device.path!s}:{device.path!s}:rwm")
-
         # Return None if no devices is present
-        return devices or None
+        if devices:
+            return list(devices)
+        return None
+
+    @property
+    def cgroups_rules(self) -> Optional[List[str]]:
+        """Return a list of needed cgroups permission."""
+        rules = set()
+
+        # Attach correct cgroups
+        for device in self.devices:
+            rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
+
+        # Video
+        if self.addon.with_video:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO))
+
+        # GPIO
+        if self.addon.with_gpio:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO))
+
+        # UART
+        if self.addon.with_uart:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART))
+
+        # Return None if no rules is present
+        if rules:
+            return list(rules)
+        return None
 
     @property
     def ports(self) -> Optional[Dict[str, Union[str, int, None]]]:
@@ -373,6 +396,7 @@ class DockerAddon(DockerInterface):
             ports=self.ports,
             extra_hosts=self.network_mapping,
             devices=self.devices,
+            device_cgroup_rules=self.cgroups_rules,
             cap_add=self.addon.privileged,
             security_opt=self.security_opt,
             environment=self.environment,
