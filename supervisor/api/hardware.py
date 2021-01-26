@@ -1,5 +1,4 @@
 """Init file for Supervisor hardware RESTful API."""
-import asyncio
 import logging
 from typing import Any, Awaitable, Dict, List
 
@@ -66,6 +65,6 @@ class APIHardware(CoreSysAttributes):
         }
 
     @api_process
-    def trigger(self, request: web.Request) -> Awaitable[None]:
+    async def trigger(self, request: web.Request) -> Awaitable[None]:
         """Trigger a udev device reload."""
-        return asyncio.shield(self.sys_hardware.helper.udev_trigger())
+        _LOGGER.warning("DEPRICATED hardware trigger function called")

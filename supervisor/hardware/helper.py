@@ -1,5 +1,4 @@
 """Read hardware info from system."""
-import asyncio
 from datetime import datetime
 import logging
 from pathlib import Path
@@ -9,7 +8,6 @@ from typing import Any, Dict, List, Optional, Set, Union
 
 from ..const import ATTR_DEVICES, ATTR_NAME, ATTR_TYPE, CHAN_ID, CHAN_TYPE
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HardwareNotSupportedError
 from .const import UdevSubsystem
 from .data import Device
 
@@ -194,16 +192,3 @@ class HwHelper(CoreSysAttributes):
         """Return free space (GiB) on disk for path."""
         _, _, free = shutil.disk_usage(path)
         return round(free / (1024.0 ** 3), 1)
-
-    async def udev_trigger(self) -> None:
-        """Trigger a udev reload."""
-        proc = await asyncio.create_subprocess_shell(
-            "udevadm trigger && udevadm settle"
-        )
-
-        await proc.wait()
-        if proc.returncode == 0:
-            return
-
-        _LOGGER.warning("udevadm device triggering failed!")
-        raise HardwareNotSupportedError()
