@@ -19,16 +19,31 @@ def test_initial_device_initialize(coresys):
 def test_device_path_lookup(coresys):
     """Test device lookup."""
     for device in (
-        Device("ttyACM0", Path("/dev/ttyACM0"), "tty", [], {"ID_VENDOR": "xy"}),
+        Device(
+            "ttyACM0",
+            Path("/dev/ttyACM0"),
+            Path("/sys/bus/usb/001"),
+            "tty",
+            [],
+            {"ID_VENDOR": "xy"},
+        ),
         Device(
             "ttyUSB0",
             Path("/dev/ttyUSB0"),
+            Path("/sys/bus/usb/000"),
             "tty",
             [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
             {"ID_VENDOR": "xy"},
         ),
-        Device("ttyS0", Path("/dev/ttyS0"), "tty", [], {}),
-        Device("video1", Path("/dev/video1"), "misc", [], {"ID_VENDOR": "xy"}),
+        Device("ttyS0", Path("/dev/ttyS0"), Path("/sys/bus/usb/002"), "tty", [], {}),
+        Device(
+            "video1",
+            Path("/dev/video1"),
+            Path("/sys/bus/usb/003"),
+            "misc",
+            [],
+            {"ID_VENDOR": "xy"},
+        ),
     ):
         coresys.hardware.update_device(device)
 
