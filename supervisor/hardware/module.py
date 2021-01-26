@@ -77,8 +77,8 @@ class HardwareManager(CoreSysAttributes):
 
     def check_subsystem_parents(self, device: Device, subsystem: UdevSubsystem) -> bool:
         """Return True if the device is part of the given subsystem parent."""
-        udev_device: pyudev.Device = pyudev.Devices.from_device_file(
-            self._udev, str(Device.path)
+        udev_device: pyudev.Device = pyudev.Devices.from_sys_path(
+            self._udev, str(Device.sysfs)
         )
         return udev_device.find_parent(subsystem.value) is not None
 
@@ -95,6 +95,7 @@ class HardwareManager(CoreSysAttributes):
             self._devices[device.sys_name] = Device(
                 device.sys_name,
                 Path(device.device_node),
+                Path(device.sys_path),
                 device.subsystem,
                 [Path(node) for node in device.device_links],
                 {attr: device.properties[attr] for attr in device.properties},

@@ -10,7 +10,8 @@ class Device:
     """Represent a device."""
 
     name: str = attr.ib(eq=False)
-    path: Path = attr.ib(eq=True)
+    path: Path = attr.ib(eq=False)
+    sysfs: Path = attr.ib(eq=True)
     subsystem: str = attr.ib(eq=False)
     links: List[Path] = attr.ib(eq=False)
     attributes: Dict[str, str] = attr.ib(eq=False)

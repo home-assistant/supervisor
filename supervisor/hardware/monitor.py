@@ -68,6 +68,7 @@ class HwMonitor(CoreSysAttributes):
         device = Device(
             device.sys_name,
             Path(device.device_node),
+            Path(device.sys_path),
             device.subsystem,
             [Path(node) for node in device.device_links],
             {attr: device.properties[attr] for attr in device.properties},
