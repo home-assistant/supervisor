@@ -18,6 +18,7 @@ jobs:
       - name: Check labels
         run: |
           labels=$(jq -r .pull_request.labels ${{github.event_path }})
+          echo "$labels"
           if [ "$labels" == "[]" ]; then
             exit 1
           fi
