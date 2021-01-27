@@ -28,6 +28,35 @@ def test_basic_config():
     assert not valid_config["docker_api"]
 
 
+def test_migration_startup():
+    """Migrate Startup Type."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    config["startup"] = "before"
+
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+
+    assert valid_config["startup"].value == "services"
+
+    config["startup"] = "after"
+
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+
+    assert valid_config["startup"].value == "application"
+
+
+def test_migration_auto_uart():
+    """Migrate auto uart Type."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    config["auto_uart"] = True
+
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+
+    assert valid_config["uart"]
+    assert "auto_uart" not in valid_config
+
+
 def test_invalid_repository():
     """Validate basic config with invalid repositories."""
     config = load_json_fixture("basic-addon-config.json")

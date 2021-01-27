@@ -1,6 +1,8 @@
 """Validate add-ons options schema."""
+import logging
 import re
 import secrets
+from typing import Any, Dict
 import uuid
 
 import voluptuous as vol
@@ -71,6 +73,7 @@ from ..const import (
     ATTR_SYSTEM,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
+    ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
     ATTR_USB,
@@ -99,6 +102,8 @@ from ..validate import (
     version_tag,
 )
 from .options import RE_SCHEMA_ELEMENT
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share|media)(?::(rw|ro))?$")
 RE_SERVICE = re.compile(r"^(?P<service>mqtt|mysql):(?P<rights>provide|want|need)$")
@@ -132,17 +137,41 @@ RE_MACHINE = re.compile(
 )
 
 
-def _simple_startup(value) -> str:
-    """Define startup schema."""
-    if value == "before":
-        return AddonStartup.SERVICES.value
-    if value == "after":
-        return AddonStartup.APPLICATION.value
-    return value
+def _migrate_addon_config(protocol=False):
+    """Migrate addon config."""
+
+    def _migrate(config: Dict[str, Any]):
+        name = config.get(ATTR_NAME)
+        if not name:
+            raise vol.Invalid("Invalid Add-on config!")
+
+        # Startup 2018-03-30
+        if config.get(ATTR_STARTUP) in ("before", "after"):
+            value = config[ATTR_STARTUP]
+            if protocol:
+                _LOGGER.warning(
+                    "Add-on config 'startup' with %s is depircated - %s", value, name
+                )
+            if value == "before":
+                config[ATTR_STARTUP] = AddonStartup.SERVICES.value
+            elif value == "after":
+                config[ATTR_STARTUP] = AddonStartup.APPLICATION.value
+
+        # UART 2021-01-20
+        if ATTR_AUTO_UART in config:
+            if protocol:
+                _LOGGER.warning(
+                    "Add-on config 'auto_uart' is depircated, use 'uart' - %s", name
+                )
+            config[ATTR_UART] = config.pop(ATTR_AUTO_UART)
+
+        return config
+
+    return _migrate
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_ADDON_CONFIG = vol.Schema(
+_SCHEMA_ADDON_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_NAME): str,
         vol.Required(ATTR_VERSION): version_tag,
@@ -151,8 +180,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
         vol.Optional(ATTR_MACHINE): vol.All([vol.Match(RE_MACHINE)], vol.Unique()),
         vol.Optional(ATTR_URL): vol.Url(),
-        vol.Optional(ATTR_STARTUP, default=AddonStartup.APPLICATION): vol.All(
-            _simple_startup, vol.Coerce(AddonStartup)
+        vol.Optional(ATTR_STARTUP, default=AddonStartup.APPLICATION): vol.Coerce(
+            AddonStartup
         ),
         vol.Optional(ATTR_BOOT, default=AddonBoot.AUTO): vol.Coerce(AddonBoot),
         vol.Optional(ATTR_INIT, default=True): vol.Boolean(),
@@ -180,7 +209,6 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_HOST_IPC, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_DBUS, default=False): vol.Boolean(),
         vol.Optional(ATTR_DEVICES): [vol.All(str, lambda x: x.split(":")[0])],
-        vol.Optional(ATTR_AUTO_UART, default=False): vol.Boolean(),
         vol.Optional(ATTR_UDEV, default=False): vol.Boolean(),
         vol.Optional(ATTR_TMPFS): vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
         vol.Optional(ATTR_MAP, default=list): [vol.Match(RE_VOLUME)],
@@ -192,6 +220,7 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_VIDEO, default=False): vol.Boolean(),
         vol.Optional(ATTR_GPIO, default=False): vol.Boolean(),
         vol.Optional(ATTR_USB, default=False): vol.Boolean(),
+        vol.Optional(ATTR_UART, default=False): vol.Boolean(),
         vol.Optional(ATTR_DEVICETREE, default=False): vol.Boolean(),
         vol.Optional(ATTR_KERNEL_MODULES, default=False): vol.Boolean(),
         vol.Optional(ATTR_HASSIO_API, default=False): vol.Boolean(),
@@ -229,6 +258,8 @@ SCHEMA_ADDON_CONFIG = vol.Schema(
     },
     extra=vol.REMOVE_EXTRA,
 )
+
+SCHEMA_ADDON_CONFIG = vol.All(_migrate_addon_config(True), _SCHEMA_ADDON_CONFIG)
 
 
 # pylint: disable=no-value-for-parameter
@@ -268,11 +299,14 @@ SCHEMA_ADDON_USER = vol.Schema(
 )
 
 
-SCHEMA_ADDON_SYSTEM = SCHEMA_ADDON_CONFIG.extend(
-    {
-        vol.Required(ATTR_LOCATON): str,
-        vol.Required(ATTR_REPOSITORY): str,
-    }
+SCHEMA_ADDON_SYSTEM = vol.All(
+    _migrate_addon_config(),
+    _SCHEMA_ADDON_CONFIG.extend(
+        {
+            vol.Required(ATTR_LOCATON): str,
+            vol.Required(ATTR_REPOSITORY): str,
+        }
+    ),
 )
 
 
