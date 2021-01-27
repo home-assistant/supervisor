@@ -8,6 +8,7 @@ import voluptuous as vol
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotFound
+from ..hardware.const import UdevSubsystem
 from ..hardware.data import Device
 from ..validate import network_port
 
@@ -31,7 +32,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|email"
     r"|url"
     r"|port"
-    r"|device(?:\((?P<filter>(?:subsystem=\w+)*)\))?"
+    r"|device(?:\((?P<filter>subsystem=[a-z]+)\))?"
     r"|str(?:\((?P<s_min>\d+)?,(?P<s_max>\d+)?\))?"
     r"|password(?:\((?P<p_min>\d+)?,(?P<p_max>\d+)?\))?"
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
@@ -148,9 +149,7 @@ class AddonOptions(CoreSysAttributes):
             # Have filter
             if match.group("filter"):
                 str_filter = match.group("filter")
-                device_filter = dict(
-                    value.split("=") for value in str_filter.split(";")
-                )
+                device_filter = _create_device_filter(str_filter)
                 if device not in self.sys_hardware.filter_devices(**device_filter):
                     raise vol.Invalid(
                         f"Device {value} don't match the filter {str_filter}!"
@@ -310,9 +309,7 @@ class UiOptions(CoreSysAttributes):
 
             # Have filter
             if match.group("filter"):
-                device_filter = dict(
-                    value.split("=") for value in match.group("filter").split(";")
-                )
+                device_filter = _create_device_filter(match.group("filter"))
                 ui_node["options"] = [
                     device.path.as_posix()
                     for device in self.sys_hardware.filter_devices(**device_filter)
@@ -367,3 +364,17 @@ class UiOptions(CoreSysAttributes):
 
         ui_node["schema"] = nested_schema
         ui_schema.append(ui_node)
+
+
+def _create_device_filter(str_filter: str) -> Dict[str, Any]:
+    """Generate device Filter."""
+    raw_filter = dict(value.split("=") for value in str_filter.split(";"))
+
+    clean_filter = {}
+    for key, value in raw_filter.items():
+        if key == "subsystem":
+            clean_filter[key] = UdevSubsystem(value)
+        else:
+            clean_filter[key] = value
+
+    return clean_filter

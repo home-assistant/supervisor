@@ -1,6 +1,5 @@
 """Test HardwareManager Module."""
 from pathlib import Path
-import unittest
 
 from supervisor.hardware.const import UdevSubsystem
 from supervisor.hardware.data import Device
@@ -90,10 +89,20 @@ def test_device_filter(coresys):
     ):
         coresys.hardware.update_device(device)
 
-    unittest.TestCase().assertCountEqual(
-        coresys.hardware.filter_devices(), coresys.hardware.devices
-    )
-    unittest.TestCase().assertCountEqual(
-        coresys.hardware.filter_devices(subsystem=UdevSubsystem.SERIAL),
-        [device for device in coresys.hardware.devices if device.subsystem == "tty"],
+    assert sorted(
+        [device.path for device in coresys.hardware.filter_devices()]
+    ) == sorted([device.path for device in coresys.hardware.devices])
+    assert sorted(
+        [
+            device.path
+            for device in coresys.hardware.filter_devices(
+                subsystem=UdevSubsystem.SERIAL
+            )
+        ]
+    ) == sorted(
+        [
+            device.path
+            for device in coresys.hardware.devices
+            if device.subsystem == "tty"
+        ]
     )
