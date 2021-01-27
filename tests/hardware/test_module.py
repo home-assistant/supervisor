@@ -64,7 +64,7 @@ def test_device_filter(coresys):
         Device(
             "ttyACM0",
             Path("/dev/ttyACM0"),
-            Path("/sys/bus/usb/001"),
+            Path("/sys/bus/usb/000"),
             "tty",
             [],
             {"ID_VENDOR": "xy"},
@@ -72,7 +72,7 @@ def test_device_filter(coresys):
         Device(
             "ttyUSB0",
             Path("/dev/ttyUSB0"),
-            Path("/sys/bus/usb/000"),
+            Path("/sys/bus/usb/001"),
             "tty",
             [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
             {"ID_VENDOR": "xy"},

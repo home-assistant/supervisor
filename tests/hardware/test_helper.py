@@ -9,11 +9,11 @@ def test_video_devices(coresys):
     """Test video device filter."""
     for device in (
         Device(
-            "test-dev", Path("/dev/test-dev"), Path("/sys/bus/usb/002"), "xy", [], {}
+            "test-dev", Path("/dev/test-dev"), Path("/sys/bus/usb/000"), "xy", [], {}
         ),
-        Device("vchiq", Path("/dev/vchiq"), Path("/sys/bus/usb/002"), "xy", [], {}),
+        Device("vchiq", Path("/dev/vchiq"), Path("/sys/bus/usb/001"), "xy", [], {}),
         Device("cec0", Path("/dev/cec0"), Path("/sys/bus/usb/002"), "xy", [], {}),
-        Device("video1", Path("/dev/video1"), Path("/sys/bus/usb/002"), "xy", [], {}),
+        Device("video1", Path("/dev/video1"), Path("/sys/bus/usb/003"), "xy", [], {}),
     ):
         coresys.hardware.update_device(device)
 
@@ -30,7 +30,7 @@ def test_serial_devices(coresys):
         Device(
             "ttyACM0",
             Path("/dev/ttyACM0"),
-            Path("/sys/bus/usb/002"),
+            Path("/sys/bus/usb/000"),
             "tty",
             [],
             {"ID_VENDOR": "xy"},
@@ -38,7 +38,7 @@ def test_serial_devices(coresys):
         Device(
             "ttyUSB0",
             Path("/dev/ttyUSB0"),
-            Path("/sys/bus/usb/002"),
+            Path("/sys/bus/usb/001"),
             "tty",
             [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
             {"ID_VENDOR": "xy"},
@@ -47,7 +47,7 @@ def test_serial_devices(coresys):
         Device(
             "video1",
             Path("/dev/video1"),
-            Path("/sys/bus/usb/002"),
+            Path("/sys/bus/usb/003"),
             "misc",
             [],
             {"ID_VENDOR": "xy"},
@@ -68,13 +68,13 @@ def test_usb_devices(coresys):
     """Test usb device filter."""
     for device in (
         Device(
-            "usb1", Path("/dev/bus/usb/1/1"), Path("/sys/bus/usb/002"), "usb", [], {}
+            "usb1", Path("/dev/bus/usb/1/1"), Path("/sys/bus/usb/000"), "usb", [], {}
         ),
         Device(
-            "usb2", Path("/dev/bus/usb/2/1"), Path("/sys/bus/usb/002"), "usb", [], {}
+            "usb2", Path("/dev/bus/usb/2/1"), Path("/sys/bus/usb/001"), "usb", [], {}
         ),
         Device("cec0", Path("/dev/cec0"), Path("/sys/bus/usb/002"), "xy", [], {}),
-        Device("video1", Path("/dev/video1"), Path("/sys/bus/usb/002"), "xy", [], {}),
+        Device("video1", Path("/dev/video1"), Path("/sys/bus/usb/003"), "xy", [], {}),
     ):
         coresys.hardware.update_device(device)
 
@@ -90,7 +90,7 @@ def test_block_devices(coresys):
         Device(
             "sda",
             Path("/dev/sda"),
-            Path("/sys/bus/usb/002"),
+            Path("/sys/bus/usb/000"),
             "block",
             [],
             {"ID_NAME": "xy"},
@@ -98,7 +98,7 @@ def test_block_devices(coresys):
         Device(
             "sdb",
             Path("/dev/sdb"),
-            Path("/sys/bus/usb/002"),
+            Path("/sys/bus/usb/001"),
             "block",
             [],
             {"ID_NAME": "xy"},
@@ -107,7 +107,7 @@ def test_block_devices(coresys):
         Device(
             "video1",
             Path("/dev/video1"),
-            Path("/sys/bus/usb/002"),
+            Path("/sys/bus/usb/003"),
             "xy",
             [],
             {"ID_NAME": "xy"},
