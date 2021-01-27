@@ -3,7 +3,7 @@
 # Start udev service
 # ==============================================================================
 
-if bashio::bashio::fs.directory_exists /run/udev; then
+if bashio::fs.directory_exists /run/udev; then
     bashio::log.info "Using udev information from host"
     bashio::exit.ok
 fi
