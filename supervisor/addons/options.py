@@ -13,17 +13,17 @@ from ..validate import network_port
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-V_STR = "str"
-V_INT = "int"
-V_FLOAT = "float"
-V_BOOL = "bool"
-V_PASSWORD = "password"
-V_EMAIL = "email"
-V_URL = "url"
-V_PORT = "port"
-V_MATCH = "match"
-V_LIST = "list"
-V_DEVICE = "device"
+_STR = "str"
+_INT = "int"
+_FLOAT = "float"
+_BOOL = "bool"
+_PASSWORD = "password"
+_EMAIL = "email"
+_URL = "url"
+_PORT = "port"
+_MATCH = "match"
+_LIST = "list"
+_DEVICE = "device"
 
 RE_SCHEMA_ELEMENT = re.compile(
     r"^(?:"
@@ -31,7 +31,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|email"
     r"|url"
     r"|port"
-    r"|device(?:\((?P<filter>\w+)\))?"
+    r"|device(?:\((?P<filter>(?:subsystem=\w+)*)\))?"
     r"|str(?:\((?P<s_min>\d+)?,(?P<s_max>\d+)?\))?"
     r"|password(?:\((?P<p_min>\d+)?,(?P<p_max>\d+)?\))?"
     r"|int(?:\((?P<i_min>\d+)?,(?P<i_max>\d+)?\))?"
@@ -121,29 +121,42 @@ class AddonOptions(CoreSysAttributes):
             if group_value:
                 range_args[group_name[2:]] = float(group_value)
 
-        if typ.startswith(V_STR) or typ.startswith(V_PASSWORD):
+        if typ.startswith(_STR) or typ.startswith(_PASSWORD):
             return vol.All(str(value), vol.Range(**range_args))(value)
-        elif typ.startswith(V_INT):
+        elif typ.startswith(_INT):
             return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
-        elif typ.startswith(V_FLOAT):
+        elif typ.startswith(_FLOAT):
             return vol.All(vol.Coerce(float), vol.Range(**range_args))(value)
-        elif typ.startswith(V_BOOL):
+        elif typ.startswith(_BOOL):
             return vol.Boolean()(value)
-        elif typ.startswith(V_EMAIL):
+        elif typ.startswith(_EMAIL):
             return vol.Email()(value)
-        elif typ.startswith(V_URL):
+        elif typ.startswith(_URL):
             return vol.Url()(value)
-        elif typ.startswith(V_PORT):
+        elif typ.startswith(_PORT):
             return network_port(value)
-        elif typ.startswith(V_MATCH):
+        elif typ.startswith(_MATCH):
             return vol.Match(match.group("match"))(str(value))
-        elif typ.startswith(V_LIST):
+        elif typ.startswith(_LIST):
             return vol.In(match.group("list").split("|"))(str(value))
-        elif typ.startswith(V_DEVICE):
+        elif typ.startswith(_DEVICE):
             try:
                 device = self.sys_hardware.get_by_path(Path(value))
             except HardwareNotFound:
                 raise vol.Invalid(f"Device {value} does not exists!") from None
+
+            # Have filter
+            if match.group("filter"):
+                str_filter = match.group("filter")
+                device_filter = dict(
+                    value.split("=") for value in str_filter.split(";")
+                )
+                if device not in self.sys_hardware.filter_devices(**device_filter):
+                    raise vol.Invalid(
+                        f"Device {value} don't match the filter {str_filter}!"
+                    )
+
+            # Device valid
             self.devices.add(device)
             return str(device.path)
 
@@ -268,36 +281,46 @@ class UiOptions(CoreSysAttributes):
             ui_node["required"] = True
 
         # Data types
-        if value.startswith(V_STR):
+        if value.startswith(_STR):
             ui_node["type"] = "string"
-        elif value.startswith(V_PASSWORD):
+        elif value.startswith(_PASSWORD):
             ui_node["type"] = "string"
             ui_node["format"] = "password"
-        elif value.startswith(V_INT):
+        elif value.startswith(_INT):
             ui_node["type"] = "integer"
-        elif value.startswith(V_FLOAT):
+        elif value.startswith(_FLOAT):
             ui_node["type"] = "float"
-        elif value.startswith(V_BOOL):
+        elif value.startswith(_BOOL):
             ui_node["type"] = "boolean"
-        elif value.startswith(V_EMAIL):
+        elif value.startswith(_EMAIL):
             ui_node["type"] = "string"
             ui_node["format"] = "email"
-        elif value.startswith(V_URL):
+        elif value.startswith(_URL):
             ui_node["type"] = "string"
             ui_node["format"] = "url"
-        elif value.startswith(V_PORT):
+        elif value.startswith(_PORT):
             ui_node["type"] = "integer"
-        elif value.startswith(V_MATCH):
+        elif value.startswith(_MATCH):
             ui_node["type"] = "string"
-        elif value.startswith(V_LIST):
+        elif value.startswith(_LIST):
             ui_node["type"] = "select"
             ui_node["options"] = match.group("list").split("|")
-        elif value.startswith(V_DEVICE):
+        elif value.startswith(_DEVICE):
             ui_node["type"] = "select"
-            # FIXME
-            ui_node["options"] = self.sys_hardware.list_devices(
-                filter=match.group("filter")
-            )
+
+            # Have filter
+            if match.group("filter"):
+                device_filter = dict(
+                    value.split("=") for value in match.group("filter").split(";")
+                )
+                ui_node["options"] = [
+                    device.path.as_posix()
+                    for device in self.sys_hardware.filter_devices(**device_filter)
+                ]
+            else:
+                ui_node["options"] = [
+                    device.path.as_posix() for device in self.sys_hardware.devices()
+                ]
 
         ui_schema.append(ui_node)
 

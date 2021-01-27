@@ -1,7 +1,7 @@
 """Hardware Manager of Supervisor."""
 import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import pyudev
 
@@ -59,6 +59,15 @@ class HardwareManager(CoreSysAttributes):
                 return device
         raise HardwareNotFound()
 
+    def filter_devices(self, subsystem: Optional[UdevSubsystem] = None) -> List[Device]:
+        """Return a filtered list."""
+        devices = set()
+        for device in self.devices:
+            if subsystem and device.subsystem != subsystem:
+                continue
+            devices.add(device)
+        return list(devices)
+
     def update_device(self, device: Device) -> None:
         """Update or add a (new) Device."""
         self._devices[device.name] = device
@@ -78,7 +87,7 @@ class HardwareManager(CoreSysAttributes):
     def check_subsystem_parents(self, device: Device, subsystem: UdevSubsystem) -> bool:
         """Return True if the device is part of the given subsystem parent."""
         udev_device: pyudev.Device = pyudev.Devices.from_sys_path(
-            self._udev, str(Device.sysfs)
+            self._udev, str(device.sysfs)
         )
         return udev_device.find_parent(subsystem.value) is not None
 

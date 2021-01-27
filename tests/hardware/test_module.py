@@ -1,6 +1,8 @@
 """Test HardwareManager Module."""
 from pathlib import Path
+import unittest
 
+from supervisor.hardware.const import UdevSubsystem
 from supervisor.hardware.data import Device
 
 # pylint: disable=protected-access
@@ -55,3 +57,43 @@ def test_device_path_lookup(coresys):
 
     assert not coresys.hardware.exists_device_node(Path("/dev/ttyS2"))
     assert not coresys.hardware.exists_device_node(Path("/dev/ttyUSB1"))
+
+
+def test_device_filter(coresys):
+    """Test device filter."""
+    for device in (
+        Device(
+            "ttyACM0",
+            Path("/dev/ttyACM0"),
+            Path("/sys/bus/usb/001"),
+            "tty",
+            [],
+            {"ID_VENDOR": "xy"},
+        ),
+        Device(
+            "ttyUSB0",
+            Path("/dev/ttyUSB0"),
+            Path("/sys/bus/usb/000"),
+            "tty",
+            [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
+            {"ID_VENDOR": "xy"},
+        ),
+        Device("ttyS0", Path("/dev/ttyS0"), Path("/sys/bus/usb/002"), "tty", [], {}),
+        Device(
+            "video1",
+            Path("/dev/video1"),
+            Path("/sys/bus/usb/003"),
+            "misc",
+            [],
+            {"ID_VENDOR": "xy"},
+        ),
+    ):
+        coresys.hardware.update_device(device)
+
+    unittest.TestCase().assertCountEqual(
+        coresys.hardware.filter_devices(), coresys.hardware.devices
+    )
+    unittest.TestCase().assertCountEqual(
+        coresys.hardware.filter_devices(subsystem=UdevSubsystem.SERIAL),
+        [device for device in coresys.hardware.devices if device.subsystem == "tty"],
+    )
