@@ -157,7 +157,7 @@ class DockerAddon(DockerInterface):
         rules = set()
 
         # Attach correct cgroups
-        for device in self.devices:
+        for device in self.addon.devices:
             rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
 
         # Video
