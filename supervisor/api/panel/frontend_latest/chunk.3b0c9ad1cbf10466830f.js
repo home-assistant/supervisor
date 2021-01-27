@@ -3,7 +3,7 @@
         open
         ?scrimClickAction=${e}
         ?escapeKeyAction=${e}
-        @closed=${this._dialogClosed}
+        @closing=${this._dialogClosed}
         defaultAction="ignore"
         .heading=${this._params.title?this._params.title:this._params.confirmation&&this.hass.localize("ui.dialogs.generic.default_confirmation_title")}
       >
@@ -67,4 +67,4 @@
           color: var(--warning-color);
         }
       `]}}]}}),i.oi)}}]);
-//# sourceMappingURL=chunk.2bcd032c31fa95258744.js.map
+//# sourceMappingURL=chunk.3b0c9ad1cbf10466830f.js.map
