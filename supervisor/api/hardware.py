@@ -3,9 +3,11 @@ import logging
 from typing import Any, Awaitable, Dict, List
 
 from aiohttp import web
+import attr
 
 from ..const import (
     ATTR_AUDIO,
+    ATTR_DEVICES,
     ATTR_DISK,
     ATTR_GPIO,
     ATTR_INPUT,
@@ -34,6 +36,7 @@ class APIHardware(CoreSysAttributes):
                 serial.append(link.as_posix())
 
         return {
+            ATTR_DEVICES: [attr.asdict(device) for device in self.sys_hardware.devices],
             ATTR_SERIAL: serial,
             ATTR_INPUT: list(self.sys_hardware.helper.input_devices),
             ATTR_DISK: [
