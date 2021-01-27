@@ -33,6 +33,8 @@ class APIHardware(CoreSysAttributes):
         for device in self.sys_hardware.helper.serial_devices:
             serial.append(device.path.as_posix())
             for link in device.links:
+                if not link.match("/dev/serial/by-id/*"):
+                    continue
                 serial.append(link.as_posix())
 
         return {
