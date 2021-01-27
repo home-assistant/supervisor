@@ -12,7 +12,6 @@ from ..const import (
     ATTR_ARCH,
     ATTR_AUDIO,
     ATTR_AUTH_API,
-    ATTR_AUTO_UART,
     ATTR_BOOT,
     ATTR_DESCRIPTON,
     ATTR_DEVICES,
@@ -56,6 +55,7 @@ from ..const import (
     ATTR_STDIN,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
+    ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
     ATTR_USB,
@@ -388,7 +388,7 @@ class AddonModel(CoreSysAttributes, ABC):
     @property
     def with_uart(self) -> bool:
         """Return True if we should map all UART device."""
-        return self.data[ATTR_AUTO_UART]
+        return self.data[ATTR_UART]
 
     @property
     def with_udev(self) -> bool:

@@ -18,7 +18,6 @@ from ..const import (
     ATTR_AUDIO_INPUT,
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTH_API,
-    ATTR_AUTO_UART,
     ATTR_AUTO_UPDATE,
     ATTR_BOOT,
     ATTR_BUILD_FROM,
@@ -158,12 +157,12 @@ def _migrate_addon_config(protocol=False):
                 config[ATTR_STARTUP] = AddonStartup.APPLICATION.value
 
         # UART 2021-01-20
-        if ATTR_AUTO_UART in config:
+        if "auto_uart" in config:
             if protocol:
                 _LOGGER.warning(
                     "Add-on config 'auto_uart' is depircated, use 'uart' - %s", name
                 )
-            config[ATTR_UART] = config.pop(ATTR_AUTO_UART)
+            config[ATTR_UART] = config.pop("auto_uart")
 
         return config
 
