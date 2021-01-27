@@ -1,20 +1,11 @@
 """Init file for Supervisor hardware RESTful API."""
 import logging
-from typing import Any, Awaitable, Dict, List
+from typing import Any, Awaitable, Dict
 
 from aiohttp import web
 import attr
 
-from ..const import (
-    ATTR_AUDIO,
-    ATTR_DEVICES,
-    ATTR_DISK,
-    ATTR_GPIO,
-    ATTR_INPUT,
-    ATTR_OUTPUT,
-    ATTR_SERIAL,
-    ATTR_USB,
-)
+from ..const import ATTR_AUDIO, ATTR_DEVICES, ATTR_INPUT, ATTR_OUTPUT
 from ..coresys import CoreSysAttributes
 from .utils import api_process
 
@@ -27,30 +18,8 @@ class APIHardware(CoreSysAttributes):
     @api_process
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Show hardware info."""
-        serial: List[str] = []
-
-        # Create Serial list with device links
-        for device in self.sys_hardware.helper.serial_devices:
-            serial.append(device.path.as_posix())
-            for link in device.links:
-                if not link.match("/dev/serial/by-id/*"):
-                    continue
-                serial.append(link.as_posix())
-
         return {
-            ATTR_DEVICES: [attr.asdict(device) for device in self.sys_hardware.devices],
-            ATTR_SERIAL: serial,
-            ATTR_INPUT: list(self.sys_hardware.helper.input_devices),
-            ATTR_DISK: [
-                device.path.as_posix()
-                for device in self.sys_hardware.helper.disk_devices
-            ],
-            ATTR_GPIO: list(self.sys_hardware.helper.gpio_devices),
-            ATTR_USB: [
-                device.path.as_posix()
-                for device in self.sys_hardware.helper.usb_devices
-            ],
-            ATTR_AUDIO: self.sys_hardware.helper.audio_devices,
+            ATTR_DEVICES: [attr.asdict(device) for device in self.sys_hardware.devices]
         }
 
     @api_process

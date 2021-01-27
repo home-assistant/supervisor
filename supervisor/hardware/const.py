@@ -10,6 +10,7 @@ class UdevSubsystem(str, Enum):
     INPUT = "input"
     DISK = "block"
     PCI = "pci"
+    AUDIO = "sound"
 
 
 class PolicyGroup(str, Enum):

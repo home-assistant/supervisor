@@ -5,120 +5,22 @@ from unittest.mock import patch
 from supervisor.hardware.data import Device
 
 
-def test_video_devices(coresys):
-    """Test video device filter."""
-    for device in (
-        Device(
-            "test-dev", Path("/dev/test-dev"), Path("/sys/bus/usb/000"), "xy", [], {}
-        ),
-        Device("vchiq", Path("/dev/vchiq"), Path("/sys/bus/usb/001"), "xy", [], {}),
-        Device("cec0", Path("/dev/cec0"), Path("/sys/bus/usb/002"), "xy", [], {}),
-        Device("video1", Path("/dev/video1"), Path("/sys/bus/usb/003"), "xy", [], {}),
-    ):
-        coresys.hardware.update_device(device)
-
-    assert [device.name for device in coresys.hardware.helper.video_devices] == [
-        "vchiq",
-        "cec0",
-        "video1",
-    ]
-
-
-def test_serial_devices(coresys):
-    """Test serial device filter."""
-    for device in (
-        Device(
-            "ttyACM0",
-            Path("/dev/ttyACM0"),
-            Path("/sys/bus/usb/000"),
-            "tty",
-            [],
-            {"ID_VENDOR": "xy"},
-        ),
-        Device(
-            "ttyUSB0",
-            Path("/dev/ttyUSB0"),
-            Path("/sys/bus/usb/001"),
-            "tty",
-            [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
-            {"ID_VENDOR": "xy"},
-        ),
-        Device("ttyS0", Path("/dev/ttyS0"), Path("/sys/bus/usb/002"), "tty", [], {}),
-        Device(
-            "video1",
-            Path("/dev/video1"),
-            Path("/sys/bus/usb/003"),
-            "misc",
-            [],
-            {"ID_VENDOR": "xy"},
-        ),
-    ):
-        coresys.hardware.update_device(device)
-
-    assert [
-        (device.name, device.links) for device in coresys.hardware.helper.serial_devices
-    ] == [
-        ("ttyACM0", []),
-        ("ttyUSB0", [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")]),
-        ("ttyS0", []),
-    ]
-
-
-def test_usb_devices(coresys):
+def test_have_audio(coresys):
     """Test usb device filter."""
-    for device in (
-        Device(
-            "usb1", Path("/dev/bus/usb/1/1"), Path("/sys/bus/usb/000"), "usb", [], {}
-        ),
-        Device(
-            "usb2", Path("/dev/bus/usb/2/1"), Path("/sys/bus/usb/001"), "usb", [], {}
-        ),
-        Device("cec0", Path("/dev/cec0"), Path("/sys/bus/usb/002"), "xy", [], {}),
-        Device("video1", Path("/dev/video1"), Path("/sys/bus/usb/003"), "xy", [], {}),
-    ):
-        coresys.hardware.update_device(device)
+    assert not coresys.hardware.helper.support_audio
 
-    assert [device.name for device in coresys.hardware.helper.usb_devices] == [
-        "usb1",
-        "usb2",
-    ]
-
-
-def test_block_devices(coresys):
-    """Test usb device filter."""
-    for device in (
+    coresys.hardware.update_device(
         Device(
             "sda",
             Path("/dev/sda"),
             Path("/sys/bus/usb/000"),
-            "block",
+            "sound",
             [],
             {"ID_NAME": "xy"},
-        ),
-        Device(
-            "sdb",
-            Path("/dev/sdb"),
-            Path("/sys/bus/usb/001"),
-            "block",
-            [],
-            {"ID_NAME": "xy"},
-        ),
-        Device("cec0", Path("/dev/cec0"), Path("/sys/bus/usb/002"), "xy", [], {}),
-        Device(
-            "video1",
-            Path("/dev/video1"),
-            Path("/sys/bus/usb/003"),
-            "xy",
-            [],
-            {"ID_NAME": "xy"},
-        ),
-    ):
-        coresys.hardware.update_device(device)
+        )
+    )
 
-    assert [device.name for device in coresys.hardware.helper.disk_devices] == [
-        "sda",
-        "sdb",
-    ]
+    assert coresys.hardware.helper.support_audio
 
 
 def test_free_space(coresys):

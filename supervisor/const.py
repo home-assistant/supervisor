@@ -359,9 +359,6 @@ ROLE_ADMIN = "admin"
 
 ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_ADMIN]
 
-CHAN_ID = "chan_id"
-CHAN_TYPE = "chan_type"
-
 
 class AddonBoot(str, Enum):
     """Boot mode for the add-on."""
