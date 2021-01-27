@@ -149,7 +149,7 @@ def _migrate_addon_config(protocol=False):
             value = config[ATTR_STARTUP]
             if protocol:
                 _LOGGER.warning(
-                    "Add-on config 'startup' with %s is depircated - %s", value, name
+                    "Add-on config 'startup' with '%s' is depircated - %s", value, name
                 )
             if value == "before":
                 config[ATTR_STARTUP] = AddonStartup.SERVICES.value
@@ -163,6 +163,15 @@ def _migrate_addon_config(protocol=False):
                     "Add-on config 'auto_uart' is depircated, use 'uart' - %s", name
                 )
             config[ATTR_UART] = config.pop("auto_uart")
+
+        # Device 2021-01-20
+        if ATTR_DEVICES in config and any(":" in line for line in config[ATTR_DEVICES]):
+            if protocol:
+                _LOGGER.warning(
+                    "Add-on config 'devices' use a depircated format, new it's only the simple path - %s",
+                    name,
+                )
+            config[ATTR_DEVICES] = [line.split(":")[0] for line in config[ATTR_DEVICES]]
 
         return config
 
@@ -207,7 +216,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_HOST_PID, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_IPC, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_DBUS, default=False): vol.Boolean(),
-        vol.Optional(ATTR_DEVICES): [vol.All(str, lambda x: x.split(":")[0])],
+        vol.Optional(ATTR_DEVICES): [str],
         vol.Optional(ATTR_UDEV, default=False): vol.Boolean(),
         vol.Optional(ATTR_TMPFS): vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
         vol.Optional(ATTR_MAP, default=list): [vol.Match(RE_VOLUME)],

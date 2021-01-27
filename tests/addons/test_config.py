@@ -57,6 +57,17 @@ def test_migration_auto_uart():
     assert "auto_uart" not in valid_config
 
 
+def test_migration_devices():
+    """Migrate devices Type."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    config["devices"] = ["test:test:rw", "bla"]
+
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+
+    assert valid_config["devices"] == ["test", "bla"]
+
+
 def test_invalid_repository():
     """Validate basic config with invalid repositories."""
     config = load_json_fixture("basic-addon-config.json")
