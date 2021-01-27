@@ -78,10 +78,10 @@ class HwHelper(CoreSysAttributes):
         for device in self.sys_hardware.devices:
             if (
                 device.subsystem != UdevSubsystem.INPUT
-                or "NAME" not in device.properties
+                or "NAME" not in device.attributes
             ):
                 continue
-            dev_list.add(device.properties["NAME"].replace('"', "").strip())
+            dev_list.add(device.attributes["NAME"].replace('"', "").strip())
 
         return dev_list
 

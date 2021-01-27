@@ -63,7 +63,7 @@ class HardwareManager(CoreSysAttributes):
         """Return a filtered list."""
         devices = set()
         for device in self.devices:
-            if subsystem and device.subsystem != subsystem.value:
+            if subsystem and device.subsystem != subsystem:
                 continue
             devices.add(device)
         return list(devices)
