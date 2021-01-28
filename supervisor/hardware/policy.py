@@ -11,8 +11,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 GROUP_CGROUPS: Dict[PolicyGroup, List[int]] = {
     PolicyGroup.UART: [204, 188, 166, 244],
-    PolicyGroup.GPIO: [254],
-    PolicyGroup.VIDEO: [239, 29],
+    PolicyGroup.GPIO: [254, 245],
+    PolicyGroup.VIDEO: [239, 29, 81, 251, 242, 226],
     PolicyGroup.AUDIO: [116],
 }
 

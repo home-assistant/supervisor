@@ -130,34 +130,51 @@ class DockerAddon(DockerInterface):
         devices = set()
         map_strict = False
 
+        def _create_dev(device_path: Path) -> str:
+            """Add device to list."""
+            devices.add(f"{device_path.as_posix()}:{device_path.as_posix()}:rwm")
+
         # Static devices
         for device_path in self.addon.static_devices:
             if not self.sys_hardware.exists_device_node(device_path):
                 _LOGGER.debug("Ignore static device path %s", device_path)
                 continue
-            devices.add(f"{device_path.as_posix()}:{device_path.as_posix()}:rwm")
+            _create_dev(device_path)
 
         # Dynamic devices
         for device in self.addon.devices:
             map_strict = True
-            devices.add(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
+            _create_dev(device.path)
 
         # Auto mapping UART devices / LINKS
         if self.addon.with_uart:
             for device in self.sys_hardware.filter_devices(
                 subsystem=UdevSubsystem.SERIAL
             ):
-                devices.add(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
+                _create_dev(device.path)
                 if map_strict or not device.by_id:
                     continue
-                devices.add(f"{device.by_id.as_posix()}:{device.by_id.as_posix()}:rwm")
+                _create_dev(device.by_id)
 
         # Auto mapping GPIO
         if self.addon.with_gpio:
-            for device in self.sys_hardware.filter_devices(
-                subsystem=UdevSubsystem.SERIAL
+            for subsystem in (
+                UdevSubsystem.GPIO,
+                UdevSubsystem.GPIOMEM,
             ):
-                devices.add(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
+                for device in self.sys_hardware.filter_devices(subsystem=subsystem):
+                    _create_dev(device.path)
+
+        # Auto mapping Video
+        if self.addon.with_video:
+            for subsystem in (
+                UdevSubsystem.VIDEO,
+                UdevSubsystem.CEC,
+                UdevSubsystem.VCHIQ,
+                UdevSubsystem.MEDIA,
+            ):
+                for device in self.sys_hardware.filter_devices(subsystem=subsystem):
+                    _create_dev(device.path)
 
         # Return None if no devices is present
         if devices:
