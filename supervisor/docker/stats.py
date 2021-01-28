@@ -32,7 +32,7 @@ class DockerStats:
         with suppress(KeyError):
             self._calc_network(stats["networks"])
 
-        with suppress(KeyError):
+        with suppress(KeyError, TypeError):
             self._calc_block_io(stats["blkio_stats"])
 
     def _calc_cpu_percent(self, stats):
