@@ -11,6 +11,7 @@ from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..resolution.const import UnhealthyReason
 from ..utils import AsyncCallFilter
+from .const import UdevSubsystem
 from .data import Device
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
