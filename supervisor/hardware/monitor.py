@@ -58,7 +58,7 @@ class HwMonitor(CoreSysAttributes):
         """Incomming events from udev into loop."""
         if self.sys_core.state in (CoreState.RUNNING, CoreState.FREEZE):
             # Sound changes
-            if device.subsystem == "sound":
+            if device.subsystem == UdevSubsystem.AUDIO:
                 self._action_sound(device)
 
         # Update device List

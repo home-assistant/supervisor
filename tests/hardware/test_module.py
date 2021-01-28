@@ -103,6 +103,6 @@ def test_device_filter(coresys):
         [
             device.path
             for device in coresys.hardware.devices
-            if device.subsystem == "tty"
+            if device.subsystem == UdevSubsystem.SERIAL
         ]
     )
