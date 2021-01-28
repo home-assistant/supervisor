@@ -3,13 +3,32 @@ import logging
 from typing import Any, Awaitable, Dict
 
 from aiohttp import web
-import attr
 
-from ..const import ATTR_AUDIO, ATTR_DEVICES, ATTR_INPUT, ATTR_OUTPUT
+from ..const import ATTR_AUDIO, ATTR_DEVICES, ATTR_INPUT, ATTR_NAME, ATTR_OUTPUT
 from ..coresys import CoreSysAttributes
+from ..hardware.const import (
+    ATTR_ATTRIBUTES,
+    ATTR_BY_ID,
+    ATTR_DEV_PATH,
+    ATTR_SUBSYSTEM,
+    ATTR_SYSFS,
+)
+from ..hardware.data import Device
 from .utils import api_process
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def device_struct(device: Device) -> Dict[str, Any]:
+    """Return a dict with information of a interface to be used in th API."""
+    return {
+        ATTR_NAME: device.name,
+        ATTR_SYSFS: device.sysfs,
+        ATTR_DEV_PATH: device.path,
+        ATTR_SUBSYSTEM: device.subsystem,
+        ATTR_BY_ID: device.by_id,
+        ATTR_ATTRIBUTES: device.attributes,
+    }
 
 
 class APIHardware(CoreSysAttributes):
@@ -19,7 +38,9 @@ class APIHardware(CoreSysAttributes):
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Show hardware info."""
         return {
-            ATTR_DEVICES: [attr.asdict(device) for device in self.sys_hardware.devices]
+            ATTR_DEVICES: [
+                device_struct(device) for device in self.sys_hardware.devices
+            ]
         }
 
     @api_process

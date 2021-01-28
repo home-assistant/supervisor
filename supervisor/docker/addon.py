@@ -137,6 +137,7 @@ class DockerAddon(DockerInterface):
             devices.add(f"{device_path.as_posix()}:{device_path.as_posix()}:rwm")
 
         # Auto mapping UART devices / LINKS
+        # Depricated: Add-on need in future self create device links based on API data
         if self.addon.with_uart and not self.addon.devices and not self.addon.with_udev:
             for device in self.sys_hardware.filter_devices(
                 subsystem=UdevSubsystem.SERIAL
