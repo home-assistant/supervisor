@@ -160,7 +160,7 @@ def _migrate_addon_config(protocol=False):
         if "auto_uart" in config:
             if protocol:
                 _LOGGER.warning(
-                    "Add-on config 'auto_uart' is depircated, use 'uart' - %s", name
+                    "Add-on config 'auto_uart' is deprecated, use 'uart' - %s", name
                 )
             config[ATTR_UART] = config.pop("auto_uart")
 
