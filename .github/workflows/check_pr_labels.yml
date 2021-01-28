@@ -3,7 +3,7 @@ name: Check PR
 on:
   pull_request:
     branches: ["main"]
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [labeled, unlabeled]
 
 jobs:
   init:
