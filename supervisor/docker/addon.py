@@ -128,23 +128,36 @@ class DockerAddon(DockerInterface):
     def devices(self) -> Optional[List[str]]:
         """Return needed devices."""
         devices = set()
+        map_strict = False
 
-        # Extend add-on config
+        # Static devices
         for device_path in self.addon.static_devices:
             if not self.sys_hardware.exists_device_node(device_path):
                 _LOGGER.debug("Ignore static device path %s", device_path)
                 continue
             devices.add(f"{device_path.as_posix()}:{device_path.as_posix()}:rwm")
 
+        # Dynamic devices
+        for device in self.addon.devices:
+            map_strict = True
+            devices.add(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
+
         # Auto mapping UART devices / LINKS
-        # Deprecated: In the future the add-on needs to create device links based on API data by itself
-        if self.addon.with_uart and not self.addon.devices and not self.addon.with_udev:
+        if self.addon.with_uart:
             for device in self.sys_hardware.filter_devices(
                 subsystem=UdevSubsystem.SERIAL
             ):
-                if not device.by_id:
+                devices.add(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
+                if map_strict or not device.by_id:
                     continue
                 devices.add(f"{device.by_id.as_posix()}:{device.by_id.as_posix()}:rwm")
+
+        # Auto mapping GPIO
+        if self.addon.with_gpio:
+            for device in self.sys_hardware.filter_devices(
+                subsystem=UdevSubsystem.SERIAL
+            ):
+                devices.add(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
 
         # Return None if no devices is present
         if devices:
