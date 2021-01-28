@@ -311,12 +311,13 @@ class UiOptions(CoreSysAttributes):
             if match.group("filter"):
                 device_filter = _create_device_filter(match.group("filter"))
                 ui_node["options"] = [
-                    device.path.as_posix()
+                    (device.by_id or device.path).as_posix()
                     for device in self.sys_hardware.filter_devices(**device_filter)
                 ]
             else:
                 ui_node["options"] = [
-                    device.path.as_posix() for device in self.sys_hardware.devices()
+                    (device.by_id or device.path).as_posix()
+                    for device in self.sys_hardware.devices()
                 ]
 
         ui_schema.append(ui_node)
