@@ -160,7 +160,7 @@ def _migrate_addon_config(protocol=False):
         if "auto_uart" in config:
             if protocol:
                 _LOGGER.warning(
-                    "Add-on config 'auto_uart' is depircated, use 'uart' - %s", name
+                    "Add-on config 'auto_uart' is deprecated, use 'uart' - %s", name
                 )
             config[ATTR_UART] = config.pop("auto_uart")
 
@@ -168,7 +168,7 @@ def _migrate_addon_config(protocol=False):
         if ATTR_DEVICES in config and any(":" in line for line in config[ATTR_DEVICES]):
             if protocol:
                 _LOGGER.warning(
-                    "Add-on config 'devices' use a depircated format, new it's only the simple path - %s",
+                    "Add-on config 'devices' use a deprecated format, the new format uses a list of paths only - %s",
                     name,
                 )
             config[ATTR_DEVICES] = [line.split(":")[0] for line in config[ATTR_DEVICES]]
