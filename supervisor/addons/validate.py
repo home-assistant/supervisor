@@ -149,7 +149,9 @@ def _migrate_addon_config(protocol=False):
             value = config[ATTR_STARTUP]
             if protocol:
                 _LOGGER.warning(
-                    "Add-on config 'startup' with '%s' is depircated. Please report this to the maintainer of %s", value, name
+                    "Add-on config 'startup' with '%s' is depircated. Please report this to the maintainer of %s",
+                    value,
+                    name,
                 )
             if value == "before":
                 config[ATTR_STARTUP] = AddonStartup.SERVICES.value
@@ -160,7 +162,8 @@ def _migrate_addon_config(protocol=False):
         if "auto_uart" in config:
             if protocol:
                 _LOGGER.warning(
-                    "Add-on config 'auto_uart' is deprecated, use 'uart'. Please report this to the maintainer of %s", name
+                    "Add-on config 'auto_uart' is deprecated, use 'uart'. Please report this to the maintainer of %s",
+                    name,
                 )
             config[ATTR_UART] = config.pop("auto_uart")
 
