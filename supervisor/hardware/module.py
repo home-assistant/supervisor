@@ -98,7 +98,7 @@ class HardwareManager(CoreSysAttributes):
         # Exctract all devices
         for device in self._udev.list_devices():
             # Skip devices without mapping
-            if not device.device_node:
+            if not device.device_node or self.helper.hide_virtual_device(device):
                 continue
 
             self._devices[device.sys_name] = Device(

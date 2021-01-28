@@ -6,17 +6,21 @@ import re
 import shutil
 from typing import Optional, Union
 
+import pyudev
+
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import UdevSubsystem
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-PROC_STAT: Path = Path("/proc/stat")
-RE_BOOT_TIME: re.Pattern = re.compile(r"btime (\d+)")
+_PROC_STAT: Path = Path("/proc/stat")
+_RE_BOOT_TIME: re.Pattern = re.compile(r"btime (\d+)")
 
-GPIO_DEVICES: Path = Path("/sys/class/gpio")
-SOC_DEVICES: Path = Path("/sys/devices/platform/soc")
+_GPIO_DEVICES: Path = Path("/sys/class/gpio")
+_SOC_DEVICES: Path = Path("/sys/devices/platform/soc")
+
+_RE_HIDE_SYSFS: re.Pattern = re.compile(r"/sys/devices/virtual/(?:tty|block)/.*")
 
 
 class HwHelper(CoreSysAttributes):
@@ -34,25 +38,29 @@ class HwHelper(CoreSysAttributes):
     @property
     def support_gpio(self) -> bool:
         """Return True if device support GPIOs."""
-        return SOC_DEVICES.exists() and GPIO_DEVICES.exists()
+        return _SOC_DEVICES.exists() and _GPIO_DEVICES.exists()
 
     @property
     def last_boot(self) -> Optional[str]:
         """Return last boot time."""
         try:
-            with PROC_STAT.open("r") as stat_file:
+            with _PROC_STAT.open("r") as stat_file:
                 stats: str = stat_file.read()
         except OSError as err:
             _LOGGER.error("Can't read stat data: %s", err)
             return None
 
         # parse stat file
-        found: Optional[re.Match] = RE_BOOT_TIME.search(stats)
+        found: Optional[re.Match] = _RE_BOOT_TIME.search(stats)
         if not found:
             _LOGGER.error("Can't found last boot time!")
             return None
 
         return datetime.utcfromtimestamp(int(found.group(1)))
+
+    def hide_virtual_device(self, udev_device: pyudev.Device) -> bool:
+        """Small helper to hide not needed Devices."""
+        return _RE_HIDE_SYSFS.match(udev_device.sys_path) is not None
 
     def get_disk_total_space(self, path: Union[str, Path]) -> float:
         """Return total space (GiB) on disk for path."""

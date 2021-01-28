@@ -1,6 +1,6 @@
 """Test hardware utils."""
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from supervisor.hardware.data import Device
 
@@ -21,6 +21,20 @@ def test_have_audio(coresys):
     )
 
     assert coresys.hardware.helper.support_audio
+
+
+def test_hide_virtual_device(coresys):
+    """Test hidding virtual devices."""
+    udev_device = MagicMock()
+
+    udev_device.sys_path = "/sys/devices/platform/test"
+    assert not coresys.hardware.helper.hide_virtual_device(udev_device)
+
+    udev_device.sys_path = "/sys/devices/virtual/block/test"
+    assert coresys.hardware.helper.hide_virtual_device(udev_device)
+
+    udev_device.sys_path = "/sys/devices/virtual/tty/test"
+    assert coresys.hardware.helper.hide_virtual_device(udev_device)
 
 
 def test_free_space(coresys):

@@ -62,7 +62,9 @@ class HwMonitor(CoreSysAttributes):
                 self._action_sound(device)
 
         # Update device List
-        if not device.device_node:
+        if not device.device_node or self.sys_hardware.helper.hide_virtual_device(
+            device
+        ):
             return
 
         device = Device(
