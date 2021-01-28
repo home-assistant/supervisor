@@ -301,7 +301,7 @@ class HardwareError(HassioError):
 
 
 class HardwareNotFound(HardwareError):
-    """Hardware path or device don't exists on Host."""
+    """Hardware path or device doesn't exist on the Host."""
 
 
 class HardwareNotSupportedError(HassioNotSupportedError):
