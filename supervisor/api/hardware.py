@@ -1,23 +1,34 @@
 """Init file for Supervisor hardware RESTful API."""
-import asyncio
 import logging
-from typing import Any, Awaitable, Dict, List
+from typing import Any, Awaitable, Dict
 
 from aiohttp import web
 
-from ..const import (
-    ATTR_AUDIO,
-    ATTR_DISK,
-    ATTR_GPIO,
-    ATTR_INPUT,
-    ATTR_OUTPUT,
-    ATTR_SERIAL,
-    ATTR_USB,
-)
+from ..const import ATTR_AUDIO, ATTR_DEVICES, ATTR_INPUT, ATTR_NAME, ATTR_OUTPUT
 from ..coresys import CoreSysAttributes
+from ..hardware.const import (
+    ATTR_ATTRIBUTES,
+    ATTR_BY_ID,
+    ATTR_DEV_PATH,
+    ATTR_SUBSYSTEM,
+    ATTR_SYSFS,
+)
+from ..hardware.data import Device
 from .utils import api_process
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def device_struct(device: Device) -> Dict[str, Any]:
+    """Return a dict with information of a interface to be used in th API."""
+    return {
+        ATTR_NAME: device.name,
+        ATTR_SYSFS: device.sysfs,
+        ATTR_DEV_PATH: device.path,
+        ATTR_SUBSYSTEM: device.subsystem,
+        ATTR_BY_ID: device.by_id,
+        ATTR_ATTRIBUTES: device.attributes,
+    }
 
 
 class APIHardware(CoreSysAttributes):
@@ -26,25 +37,10 @@ class APIHardware(CoreSysAttributes):
     @api_process
     async def info(self, request: web.Request) -> Dict[str, Any]:
         """Show hardware info."""
-        serial: List[str] = []
-
-        # Create Serial list with device links
-        for device in self.sys_hardware.serial_devices:
-            serial.append(device.path.as_posix())
-            for link in device.links:
-                serial.append(link.as_posix())
-
         return {
-            ATTR_SERIAL: serial,
-            ATTR_INPUT: list(self.sys_hardware.input_devices),
-            ATTR_DISK: [
-                device.path.as_posix() for device in self.sys_hardware.disk_devices
-            ],
-            ATTR_GPIO: list(self.sys_hardware.gpio_devices),
-            ATTR_USB: [
-                device.path.as_posix() for device in self.sys_hardware.usb_devices
-            ],
-            ATTR_AUDIO: self.sys_hardware.audio_devices,
+            ATTR_DEVICES: [
+                device_struct(device) for device in self.sys_hardware.devices
+            ]
         }
 
     @api_process
@@ -64,6 +60,6 @@ class APIHardware(CoreSysAttributes):
         }
 
     @api_process
-    def trigger(self, request: web.Request) -> Awaitable[None]:
+    async def trigger(self, request: web.Request) -> Awaitable[None]:
         """Trigger a udev device reload."""
-        return asyncio.shield(self.sys_hardware.udev_trigger())
+        _LOGGER.warning("Ignoring DEPRECATED hardware trigger function call.")

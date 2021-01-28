@@ -82,6 +82,7 @@ from ..const import (
     ATTR_STARTUP,
     ATTR_STATE,
     ATTR_STDIN,
+    ATTR_UART,
     ATTR_UDEV,
     ATTR_UPDATE_AVAILABLE,
     ATTR_URL,
@@ -237,7 +238,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_PRIVILEGED: addon.privileged,
             ATTR_FULL_ACCESS: addon.with_full_access,
             ATTR_APPARMOR: addon.apparmor,
-            ATTR_DEVICES: _pretty_devices(addon),
+            ATTR_DEVICES: addon.static_devices,
             ATTR_ICON: addon.with_icon,
             ATTR_LOGO: addon.with_logo,
             ATTR_CHANGELOG: addon.with_changelog,
@@ -250,6 +251,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
             ATTR_GPIO: addon.with_gpio,
             ATTR_USB: addon.with_usb,
+            ATTR_UART: addon.with_uart,
             ATTR_KERNEL_MODULES: addon.with_kernel_modules,
             ATTR_DEVICETREE: addon.with_devicetree,
             ATTR_UDEV: addon.with_udev,
@@ -286,6 +288,8 @@ class APIAddons(CoreSysAttributes):
                     ATTR_VERSION: addon.version,
                     ATTR_UPDATE_AVAILABLE: addon.need_update,
                     ATTR_WATCHDOG: addon.watchdog,
+                    ATTR_DEVICES: addon.static_devices
+                    + [device.path for device in addon.devices],
                 }
             )
 

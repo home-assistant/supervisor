@@ -28,6 +28,8 @@ class JSONEncoder(json.JSONEncoder):
             return o.isoformat()
         if isinstance(o, set):
             return list(o)
+        if isinstance(o, Path):
+            return str(o)
         if hasattr(o, "as_dict"):
             return o.as_dict()
 

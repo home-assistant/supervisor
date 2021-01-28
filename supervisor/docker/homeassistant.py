@@ -1,13 +1,14 @@
 """Init file for Supervisor Docker object."""
 from ipaddress import IPv4Address
 import logging
-from typing import Awaitable, Dict, Optional
+from typing import Awaitable, Dict, List, Optional
 
 import docker
 import requests
 
 from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_HASSIO, LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerError
+from ..hardware.const import PolicyGroup
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -46,6 +47,15 @@ class DockerHomeAssistant(DockerInterface):
     def ip_address(self) -> IPv4Address:
         """Return IP address of this container."""
         return self.sys_docker.network.gateway
+
+    @property
+    def cgroups_rules(self) -> List[str]:
+        """Return a list of needed cgroups permission."""
+        return (
+            self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART)
+            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO)
+            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO)
+        )
 
     @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
@@ -117,6 +127,7 @@ class DockerHomeAssistant(DockerInterface):
             init=False,
             network_mode="host",
             volumes=self.volumes,
+            device_cgroup_rules=self.cgroups_rules,
             extra_hosts={
                 "supervisor": self.sys_docker.network.supervisor,
                 "observer": self.sys_docker.network.observer,

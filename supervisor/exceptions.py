@@ -296,6 +296,14 @@ class DockerNotFound(DockerError):
 # Hardware
 
 
+class HardwareError(HassioError):
+    """General Hardware Error on Supervisor."""
+
+
+class HardwareNotFound(HardwareError):
+    """Hardware path or device doesn't exist on the Host."""
+
+
 class HardwareNotSupportedError(HassioNotSupportedError):
     """Raise if hardware function is not supported."""
 

@@ -3,6 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def stub_auth():

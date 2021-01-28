@@ -12,7 +12,6 @@ from ..const import (
     ATTR_ARCH,
     ATTR_AUDIO,
     ATTR_AUTH_API,
-    ATTR_AUTO_UART,
     ATTR_BOOT,
     ATTR_DESCRIPTON,
     ATTR_DEVICES,
@@ -56,6 +55,7 @@ from ..const import (
     ATTR_STDIN,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
+    ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
     ATTR_USB,
@@ -71,7 +71,8 @@ from ..const import (
     AddonStartup,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from .validate import RE_SERVICE, RE_VOLUME, schema_ui_options, validate_options
+from .options import AddonOptions, UiOptions
+from .validate import RE_SERVICE, RE_VOLUME
 
 Data = Dict[str, Any]
 
@@ -296,9 +297,9 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_HOST_DBUS]
 
     @property
-    def devices(self) -> List[str]:
-        """Return devices of add-on."""
-        return self.data.get(ATTR_DEVICES, [])
+    def static_devices(self) -> List[Path]:
+        """Return static devices of add-on."""
+        return [Path(node) for node in self.data.get(ATTR_DEVICES, [])]
 
     @property
     def tmpfs(self) -> Optional[str]:
@@ -387,7 +388,7 @@ class AddonModel(CoreSysAttributes, ABC):
     @property
     def with_uart(self) -> bool:
         """Return True if we should map all UART device."""
-        return self.data[ATTR_AUTO_UART]
+        return self.data[ATTR_UART]
 
     @property
     def with_udev(self) -> bool:
@@ -522,8 +523,8 @@ class AddonModel(CoreSysAttributes, ABC):
         raw_schema = self.data[ATTR_SCHEMA]
 
         if isinstance(raw_schema, bool):
-            return vol.Schema(dict)
-        return vol.Schema(vol.All(dict, validate_options(self.coresys, raw_schema)))
+            raw_schema = {}
+        return vol.Schema(vol.All(dict, AddonOptions(self.coresys, raw_schema)))
 
     @property
     def schema_ui(self) -> Optional[List[Dict[str, Any]]]:
@@ -532,7 +533,7 @@ class AddonModel(CoreSysAttributes, ABC):
 
         if isinstance(raw_schema, bool):
             return None
-        return schema_ui_options(raw_schema)
+        return UiOptions(self.coresys)(raw_schema)
 
     def __eq__(self, other):
         """Compaired add-on objects."""

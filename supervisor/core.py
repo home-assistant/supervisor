@@ -95,6 +95,8 @@ class Core(CoreSysAttributes):
         setup_loads: List[Awaitable[None]] = [
             # rest api views
             self.sys_api.load(),
+            # Load Host Hardware
+            self.sys_hardware.load(),
             # Load DBus
             self.sys_dbus.load(),
             # Load Host
@@ -179,7 +181,7 @@ class Core(CoreSysAttributes):
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
-            if self.sys_hardware.last_boot == self.sys_config.last_boot:
+            if self.sys_hardware.helper.last_boot == self.sys_config.last_boot:
                 _LOGGER.info("Supervisor reboot detected")
                 return
 
@@ -225,9 +227,6 @@ class Core(CoreSysAttributes):
             if self.sys_homeassistant.version == LANDINGPAGE:
                 self.sys_create_task(self.sys_homeassistant.core.install())
 
-            # Start observe the host Hardware
-            await self.sys_hwmonitor.load()
-
             # Upate Host/Deivce information
             self.sys_create_task(self.sys_host.reload())
             self.sys_create_task(self.sys_updater.reload())
@@ -262,7 +261,7 @@ class Core(CoreSysAttributes):
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
-                        self.sys_hwmonitor.unload(),
+                        self.sys_hardware.unload(),
                     ]
                 )
         except asyncio.TimeoutError:
@@ -296,7 +295,7 @@ class Core(CoreSysAttributes):
 
     def _update_last_boot(self):
         """Update last boot time."""
-        self.sys_config.last_boot = self.sys_hardware.last_boot
+        self.sys_config.last_boot = self.sys_hardware.helper.last_boot
         self.sys_config.save_data()
 
     async def repair(self):

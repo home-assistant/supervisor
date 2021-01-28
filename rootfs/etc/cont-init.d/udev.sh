@@ -2,9 +2,16 @@
 # ==============================================================================
 # Start udev service
 # ==============================================================================
+
+if bashio::fs.directory_exists /run/udev; then
+    bashio::log.info "Using udev information from host"
+    bashio::exit.ok
+fi
+
+
+bashio::log.info "Setup udev backend inside container"
 udevd --daemon
 
-bashio::log.info "Update udev information"
 if udevadm trigger; then
     udevadm settle || true
 else

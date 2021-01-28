@@ -28,6 +28,7 @@ from ..const import (
 )
 from ..coresys import CoreSys
 from ..exceptions import CoreDNSError, DockerError
+from ..hardware.const import PolicyGroup, UdevSubsystem
 from ..utils import process_lock
 from .interface import DockerInterface
 
@@ -124,34 +125,57 @@ class DockerAddon(DockerInterface):
         }
 
     @property
-    def devices(self) -> List[str]:
+    def devices(self) -> Optional[List[str]]:
         """Return needed devices."""
-        devices = []
+        devices = set()
 
         # Extend add-on config
-        for device in self.addon.devices:
-            if not Path(device.split(":")[0]).exists():
+        for device_path in self.addon.static_devices:
+            if not self.sys_hardware.exists_device_node(device_path):
+                _LOGGER.debug("Ignore static device path %s", device_path)
                 continue
-            devices.append(device)
+            devices.add(f"{device_path.as_posix()}:{device_path.as_posix()}:rwm")
 
-        # Auto mapping UART devices
-        if self.addon.with_uart:
-            for device in self.sys_hardware.serial_devices:
-                devices.append(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
-                if self.addon.with_udev:
+        # Auto mapping UART devices / LINKS
+        # Deprecated: In the future the add-on needs to create device links based on API data by itself
+        if self.addon.with_uart and not self.addon.devices and not self.addon.with_udev:
+            for device in self.sys_hardware.filter_devices(
+                subsystem=UdevSubsystem.SERIAL
+            ):
+                if not device.by_id:
                     continue
-                for device_link in device.links:
-                    devices.append(
-                        f"{device_link.as_posix()}:{device_link.as_posix()}:rwm"
-                    )
-
-        # Use video devices
-        if self.addon.with_video:
-            for device in self.sys_hardware.video_devices:
-                devices.append(f"{device.path!s}:{device.path!s}:rwm")
+                devices.add(f"{device.by_id.as_posix()}:{device.by_id.as_posix()}:rwm")
 
         # Return None if no devices is present
-        return devices or None
+        if devices:
+            return list(devices)
+        return None
+
+    @property
+    def cgroups_rules(self) -> Optional[List[str]]:
+        """Return a list of needed cgroups permission."""
+        rules = set()
+
+        # Attach correct cgroups
+        for device in self.addon.devices:
+            rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
+
+        # Video
+        if self.addon.with_video:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO))
+
+        # GPIO
+        if self.addon.with_gpio:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO))
+
+        # UART
+        if self.addon.with_uart:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART))
+
+        # Return None if no rules is present
+        if rules:
+            return list(rules)
+        return None
 
     @property
     def ports(self) -> Optional[Dict[str, Union[str, int, None]]]:
@@ -284,7 +308,7 @@ class DockerAddon(DockerInterface):
         # Init other hardware mappings
 
         # GPIO support
-        if self.addon.with_gpio and self.sys_hardware.support_gpio:
+        if self.addon.with_gpio and self.sys_hardware.helper.support_gpio:
             for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
                 volumes.update({gpio_path: {"bind": gpio_path, "mode": "rw"}})
 
@@ -299,8 +323,15 @@ class DockerAddon(DockerInterface):
                 }
             )
 
+        # Host udev support
+        if self.addon.with_udev:
+            volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}})
+
         # USB support
-        if self.addon.with_usb and self.sys_hardware.usb_devices:
+        if (self.addon.with_usb and self.sys_hardware.helper.usb_devices) or any(
+            self.sys_hardware.check_subsystem_parents(device, UdevSubsystem.USB)
+            for device in self.addon.devices
+        ):
             volumes.update({"/dev/bus/usb": {"bind": "/dev/bus/usb", "mode": "rw"}})
 
         # Kernel Modules support
@@ -369,6 +400,7 @@ class DockerAddon(DockerInterface):
             ports=self.ports,
             extra_hosts=self.network_mapping,
             devices=self.devices,
+            device_cgroup_rules=self.cgroups_rules,
             cap_add=self.addon.privileged,
             security_opt=self.security_opt,
             environment=self.environment,

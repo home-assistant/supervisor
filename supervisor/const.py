@@ -89,7 +89,7 @@ ATTR_AUDIO = "audio"
 ATTR_AUDIO_INPUT = "audio_input"
 ATTR_AUDIO_OUTPUT = "audio_output"
 ATTR_AUTH_API = "auth_api"
-ATTR_AUTO_UART = "auto_uart"
+ATTR_UART = "uart"
 ATTR_AUTO_UPDATE = "auto_update"
 ATTR_AVAILABLE = "available"
 ATTR_BLK_READ = "blk_read"
@@ -358,9 +358,6 @@ ROLE_MANAGER = "manager"
 ROLE_ADMIN = "admin"
 
 ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_ADMIN]
-
-CHAN_ID = "chan_id"
-CHAN_TYPE = "chan_type"
 
 
 class AddonBoot(str, Enum):

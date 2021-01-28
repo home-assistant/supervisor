@@ -11,7 +11,6 @@ import sentry_sdk
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV
 from .docker import DockerAPI
-from .misc.hardware import Hardware
 
 if TYPE_CHECKING:
     from .addons import AddonManager
@@ -26,7 +25,7 @@ if TYPE_CHECKING:
     from .host import HostManager
     from .ingress import Ingress
     from .jobs import JobManager
-    from .misc.hwmon import HwMonitor
+    from .hardware.module import HardwareManager
     from .misc.scheduler import Scheduler
     from .misc.tasks import Tasks
     from .plugins import PluginManager
@@ -59,7 +58,6 @@ class CoreSys:
 
         # Global objects
         self._config: CoreConfig = CoreConfig()
-        self._hardware: Hardware = Hardware()
         self._docker: DockerAPI = DockerAPI()
 
         # Internal objects pointers
@@ -81,7 +79,7 @@ class CoreSys:
         self._scheduler: Optional[Scheduler] = None
         self._store: Optional[StoreManager] = None
         self._discovery: Optional[Discovery] = None
-        self._hwmonitor: Optional[HwMonitor] = None
+        self._hardware: Optional[HardwareManager] = None
         self._plugins: Optional[PluginManager] = None
         self._resolution: Optional[ResolutionManager] = None
         self._jobs: Optional[JobManager] = None
@@ -110,11 +108,6 @@ class CoreSys:
     def config(self) -> CoreConfig:
         """Return CoreConfig object."""
         return self._config
-
-    @property
-    def hardware(self) -> Hardware:
-        """Return Hardware object."""
-        return self._hardware
 
     @property
     def docker(self) -> DockerAPI:
@@ -360,18 +353,18 @@ class CoreSys:
         self._host = value
 
     @property
-    def hwmonitor(self) -> HwMonitor:
-        """Return HwMonitor object."""
-        if self._hwmonitor is None:
-            raise RuntimeError("HwMonitor not set!")
-        return self._hwmonitor
+    def hardware(self) -> HardwareManager:
+        """Return HardwareManager object."""
+        if self._hardware is None:
+            raise RuntimeError("HardwareManager not set!")
+        return self._hardware
 
-    @hwmonitor.setter
-    def hwmonitor(self, value: HwMonitor) -> None:
-        """Set a HwMonitor object."""
-        if self._hwmonitor:
-            raise RuntimeError("HwMonitor already set!")
-        self._hwmonitor = value
+    @hardware.setter
+    def hardware(self, value: HardwareManager) -> None:
+        """Set a HardwareManager object."""
+        if self._hardware:
+            raise RuntimeError("HardwareManager already set!")
+        self._hardware = value
 
     @property
     def ingress(self) -> Ingress:
@@ -490,11 +483,6 @@ class CoreSysAttributes:
         return self.coresys.config
 
     @property
-    def sys_hardware(self) -> Hardware:
-        """Return Hardware object."""
-        return self.coresys.hardware
-
-    @property
     def sys_docker(self) -> DockerAPI:
         """Return DockerAPI object."""
         return self.coresys.docker
@@ -585,9 +573,9 @@ class CoreSysAttributes:
         return self.coresys.host
 
     @property
-    def sys_hwmonitor(self) -> HwMonitor:
+    def sys_hardware(self) -> HardwareManager:
         """Return HwMonitor object."""
-        return self.coresys.hwmonitor
+        return self.coresys.hardware
 
     @property
     def sys_ingress(self) -> Ingress:
