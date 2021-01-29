@@ -546,3 +546,28 @@ class DockerInterface(CoreSysAttributes):
         # Sort version and return latest version
         available_version.sort(reverse=True)
         return available_version[0]
+
+    @process_lock
+    def run_inside(self, command: str) -> Awaitable[CommandReturn]:
+        """Execute a command inside Docker container."""
+        return self.sys_run_in_executor(self._run_inside, command)
+
+    def _run_inside(self, command: str) -> CommandReturn:
+        """Execute a command inside Docker container.
+
+        Need run inside executor.
+        """
+        try:
+            docker_container = self.sys_docker.containers.get(self.name)
+        except docker.errors.NotFound:
+            raise DockerNotFound() from None
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        # Execute
+        try:
+            code, output = docker_container.exec_run(command)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        return CommandReturn(code, output)

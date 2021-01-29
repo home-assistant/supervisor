@@ -17,9 +17,6 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 _PROC_STAT: Path = Path("/proc/stat")
 _RE_BOOT_TIME: re.Pattern = re.compile(r"btime (\d+)")
 
-_GPIO_DEVICES: Path = Path("/sys/class/gpio")
-_SOC_DEVICES: Path = Path("/sys/devices/platform/soc")
-
 _RE_HIDE_SYSFS: re.Pattern = re.compile(r"/sys/devices/virtual/(?:tty|block)/.*")
 
 
@@ -33,12 +30,17 @@ class HwHelper(CoreSysAttributes):
     @property
     def support_audio(self) -> bool:
         """Return True if the system have audio support."""
-        return len(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.AUDIO))
+        return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.AUDIO))
 
     @property
     def support_gpio(self) -> bool:
         """Return True if device support GPIOs."""
-        return _SOC_DEVICES.exists() and _GPIO_DEVICES.exists()
+        return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.GPIO))
+
+    @property
+    def support_usb(self) -> bool:
+        """Return True if the device have USB ports."""
+        return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.USB))
 
     @property
     def last_boot(self) -> Optional[str]:

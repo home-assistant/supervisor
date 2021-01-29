@@ -9,6 +9,7 @@ from supervisor.hardware.const import UdevSubsystem
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotFound
+from .container import HwContainer
 from .data import Device
 from .helper import HwHelper
 from .monitor import HwMonitor
@@ -29,6 +30,7 @@ class HardwareManager(CoreSysAttributes):
         self._montior: HwMonitor = HwMonitor(coresys)
         self._helper: HwHelper = HwHelper(coresys)
         self._policy: HwPolicy = HwPolicy(coresys)
+        self._container: HwContainer = HwContainer(coresys)
 
     @property
     def monitor(self) -> HwMonitor:
@@ -44,6 +46,11 @@ class HardwareManager(CoreSysAttributes):
     def policy(self) -> HwPolicy:
         """Return Hardware policy instance."""
         return self._policy
+
+    @property
+    def container(self) -> HwContainer:
+        """Return Hardware container instance."""
+        return self._container
 
     @property
     def devices(self) -> List[Device]:

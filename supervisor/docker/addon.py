@@ -128,7 +128,6 @@ class DockerAddon(DockerInterface):
     def devices(self) -> Optional[List[str]]:
         """Return needed devices."""
         devices = set()
-        map_strict = False
 
         def _create_dev(device_path: Path) -> str:
             """Add device to list."""
@@ -143,7 +142,6 @@ class DockerAddon(DockerInterface):
 
         # Dynamic devices
         for device in self.addon.devices:
-            map_strict = True
             _create_dev(device.path)
 
         # Auto mapping UART devices / LINKS
@@ -152,9 +150,6 @@ class DockerAddon(DockerInterface):
                 subsystem=UdevSubsystem.SERIAL
             ):
                 _create_dev(device.path)
-                if map_strict or not device.by_id:
-                    continue
-                _create_dev(device.by_id)
 
         # Auto mapping GPIO
         if self.addon.with_gpio:
@@ -340,6 +335,8 @@ class DockerAddon(DockerInterface):
         # GPIO support
         if self.addon.with_gpio and self.sys_hardware.helper.support_gpio:
             for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
+                if not Path(gpio_path).exists():
+                    continue
                 volumes.update({gpio_path: {"bind": gpio_path, "mode": "rw"}})
 
         # DeviceTree support
@@ -355,13 +352,10 @@ class DockerAddon(DockerInterface):
 
         # Host udev support
         if self.addon.with_udev:
-            volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}})
+            volumes.update({"/run/udev": {"bind": "/run/udev", "mode": "ro"}})
 
         # USB support
-        if (self.addon.with_usb and self.sys_hardware.helper.usb_devices) or any(
-            self.sys_hardware.check_subsystem_parents(device, UdevSubsystem.USB)
-            for device in self.addon.devices
-        ):
+        if self.addon.with_usb and self.sys_hardware.helper.support_usb:
             volumes.update({"/dev/bus/usb": {"bind": "/dev/bus/usb", "mode": "rw"}})
 
         # Kernel Modules support
@@ -395,6 +389,13 @@ class DockerAddon(DockerInterface):
                         "mode": "ro",
                     },
                 }
+            )
+
+        # With UART
+        if self.addon.with_uart:
+            mount = self.sys_hardware.container.get_udev_id_mount(UdevSubsystem.SERIAL)
+            volumes.update(
+                {str(mount.as_posix()): {"bind": str(mount.as_posix()), "mode": "ro"}}
             )
 
         return volumes

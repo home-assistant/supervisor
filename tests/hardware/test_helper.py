@@ -23,6 +23,42 @@ def test_have_audio(coresys):
     assert coresys.hardware.helper.support_audio
 
 
+def test_have_usb(coresys):
+    """Test usb device filter."""
+    assert not coresys.hardware.helper.support_usb
+
+    coresys.hardware.update_device(
+        Device(
+            "sda",
+            Path("/dev/sda"),
+            Path("/sys/bus/usb/000"),
+            "usb",
+            [],
+            {"ID_NAME": "xy"},
+        )
+    )
+
+    assert coresys.hardware.helper.support_usb
+
+
+def test_have_gpio(coresys):
+    """Test usb device filter."""
+    assert not coresys.hardware.helper.support_gpio
+
+    coresys.hardware.update_device(
+        Device(
+            "sda",
+            Path("/dev/sda"),
+            Path("/sys/bus/usb/000"),
+            "gpio",
+            [],
+            {"ID_NAME": "xy"},
+        )
+    )
+
+    assert coresys.hardware.helper.support_gpio
+
+
 def test_hide_virtual_device(coresys):
     """Test hidding virtual devices."""
     udev_device = MagicMock()

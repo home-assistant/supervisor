@@ -32,6 +32,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         volumes = {
             str(self.sys_config.path_extern_audio): {"bind": "/data", "mode": "rw"},
             "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
+            "/run/udev": {"bind": "/run/udev", "mode": "ro"},
         }
 
         # Machine ID

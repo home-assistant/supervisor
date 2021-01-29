@@ -1,5 +1,4 @@
 """Supervisor Hardware monitor based on udev."""
-from datetime import timedelta
 import logging
 from pathlib import Path
 from pprint import pformat
@@ -10,7 +9,6 @@ import pyudev
 from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..resolution.const import UnhealthyReason
-from ..utils import AsyncCallFilter
 from .const import UdevSubsystem
 from .data import Device
 
@@ -55,36 +53,74 @@ class HwMonitor(CoreSysAttributes):
         _LOGGER.debug("Hardware monitor: %s - %s", action, pformat(device))
         self.sys_loop.call_soon_threadsafe(self._async_udev_events, action, device)
 
-    def _async_udev_events(self, action: str, device: pyudev.Device):
+    def _async_udev_events(self, action: str, udev_device: pyudev.Device):
         """Incomming events from udev into loop."""
-        if self.sys_core.state in (CoreState.RUNNING, CoreState.FREEZE):
-            # Sound changes
-            if device.subsystem == UdevSubsystem.AUDIO:
-                self._action_sound(device)
-
         # Update device List
-        if not device.device_node or self.sys_hardware.helper.hide_virtual_device(
-            device
+        if not udev_device.device_node or self.sys_hardware.helper.hide_virtual_device(
+            udev_device
         ):
             return
 
         device = Device(
-            device.sys_name,
-            Path(device.device_node),
-            Path(device.sys_path),
-            device.subsystem,
-            [Path(node) for node in device.device_links],
-            {attr: device.properties[attr] for attr in device.properties},
+            udev_device.sys_name,
+            Path(udev_device.device_node),
+            Path(udev_device.sys_path),
+            udev_device.subsystem,
+            [Path(node) for node in udev_device.device_links],
+            {attr: udev_device.properties[attr] for attr in udev_device.properties},
         )
 
-        # Process the action
+        # Update internal Database
         if action == "add":
             self.sys_hardware.update_device(device)
         if action == "remove":
             self.sys_hardware.delete_device(device)
 
-    @AsyncCallFilter(timedelta(seconds=5))
-    def _action_sound(self, device: pyudev.Device):
+        # Process device
+        if self.sys_core.state in (CoreState.RUNNING, CoreState.FREEZE):
+            # New Sound device
+            if device.subsystem == UdevSubsystem.AUDIO and action == "add":
+                self._action_sound_add(device)
+
+            # New serial device
+            if device.subsystem == UdevSubsystem.SERIAL and action == "add":
+                self._action_tty_add(device)
+
+            # New input device
+            if device.subsystem == UdevSubsystem.INPUT and action == "add":
+                self._action_input_add(device)
+
+    def _action_sound_add(self, device: Device):
         """Process sound actions."""
-        _LOGGER.info("Detecting changed audio hardware")
-        self.sys_loop.call_later(5, self.sys_create_task, self.sys_host.sound.update())
+        _LOGGER.info("Detecting changed audio hardware - %s", device.path)
+        self.sys_loop.call_later(2, self.sys_create_task, self.sys_host.sound.update())
+
+    def _action_tty_add(self, device: Device):
+        """Process tty actions."""
+        _LOGGER.info(
+            "Detecting changed serial hardware %s - %s", device.path, device.by_id
+        )
+        if not device.by_id:
+            return
+
+        # Start process TTY
+        self.sys_loop.call_later(
+            2,
+            self.sys_create_task,
+            self.sys_hardware.container.process_serial_device(device),
+        )
+
+    def _action_input_add(self, device: Device):
+        """Process input actions."""
+        _LOGGER.info(
+            "Detecting changed serial hardware %s - %s", device.path, device.by_id
+        )
+        if not device.by_id:
+            return
+
+        # Start process input
+        self.sys_loop.call_later(
+            2,
+            self.sys_create_task,
+            self.sys_hardware.container.process_serial_device(device),
+        )
