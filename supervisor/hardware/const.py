@@ -17,6 +17,14 @@ class UdevSubsystem(str, Enum):
     DISK = "block"
     PCI = "pci"
     AUDIO = "sound"
+    VIDEO = "video4linux"
+    MEDIA = "media"
+    GPIO = "GPIO"
+    GPIOMEM = "GPIOMEM"
+    VCHIQ = "vchiq"
+    GRAPHICS = "graphics"
+    CEC = "CEC"
+    DRM = "drm"
 
 
 class PolicyGroup(str, Enum):

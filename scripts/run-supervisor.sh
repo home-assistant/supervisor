@@ -23,9 +23,10 @@ function run_supervisor() {
         --privileged \
         --security-opt seccomp=unconfined \
         --security-opt apparmor:unconfined \
-        -v /run/docker.sock:/run/docker.sock \
-        -v /run/dbus:/run/dbus \
-        -v "/workspaces/test_supervisor":/data \
+        -v /run/docker.sock:/run/docker.sock:rw \
+        -v /run/dbus:/run/dbus:ro \
+        -v /run/udev:/run/udev:ro \
+        -v "/workspaces/test_supervisor":/data:rw \
         -v /etc/machine-id:/etc/machine-id:ro \
         -v /workspaces/supervisor:/usr/src/supervisor \
         -e SUPERVISOR_SHARE="/workspaces/test_supervisor" \
@@ -55,6 +56,24 @@ function init_dbus() {
     dbus-daemon --system --print-address
 }
 
+
+function init_udev() {
+    if pgrep systemd-udevd; then
+        echo "udev is running"
+        return 0
+    fi
+
+    echo "Startup udev"
+
+    # cleanups
+    mkdir -p /run/udev
+
+    # run
+    /lib/systemd/systemd-udevd --daemon
+    sleep 3
+    udevadm trigger && udevadm settle
+}
+
 echo "Run Supervisor"
 
 start_docker
@@ -65,6 +84,7 @@ if [ "$( docker container inspect -f '{{.State.Status}}' hassio_supervisor )" ==
     echo "Restarting Supervisor"
     docker rm -f hassio_supervisor
     init_dbus
+    init_udev
     cleanup_lastboot
     run_supervisor
     stop_docker
@@ -76,6 +96,7 @@ else
     cleanup_lastboot
     cleanup_docker
     init_dbus
+    init_udev
     run_supervisor
     stop_docker
 fi

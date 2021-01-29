@@ -26,4 +26,8 @@ def test_policy_group(coresys):
     assert coresys.hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO) == [
         "c 239:* rwm",
         "c 29:* rwm",
+        "c 81:* rwm",
+        "c 251:* rwm",
+        "c 242:* rwm",
+        "c 226:* rwm",
     ]
