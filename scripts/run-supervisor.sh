@@ -70,6 +70,8 @@ function init_udev() {
 
     # run
     /lib/systemd/systemd-udevd --daemon
+    sleep 3
+    udevadm trigger && udevadm settle
 }
 
 echo "Run Supervisor"
