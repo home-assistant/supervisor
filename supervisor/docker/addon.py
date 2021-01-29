@@ -144,11 +144,16 @@ class DockerAddon(DockerInterface):
         for device in self.addon.devices:
             _create_dev(device.path)
 
-        # Auto mapping UART devices / LINKS
+        # Auto mapping UART devices
         if self.addon.with_uart:
             for device in self.sys_hardware.filter_devices(
                 subsystem=UdevSubsystem.SERIAL
             ):
+                _create_dev(device.path)
+
+        # Auto mapping USB devices
+        if self.addon.with_usb:
+            for device in self.sys_hardware.filter_devices(subsystem=UdevSubsystem.USB):
                 _create_dev(device.path)
 
         # Auto mapping GPIO
@@ -196,6 +201,10 @@ class DockerAddon(DockerInterface):
         # UART
         if self.addon.with_uart:
             rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART))
+
+        # USB
+        if self.addon.with_usb:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB))
 
         # Return None if no rules is present
         if rules:

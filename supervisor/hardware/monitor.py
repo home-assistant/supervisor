@@ -162,6 +162,8 @@ class HwMonitor(CoreSysAttributes):
 
     def _action_usb(self, device: Device, action: UdevAction):
         """Process usb actions."""
+        if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.USB, device):
+            return
         _LOGGER.info("Detecting changed usb hardware %s", device.path)
 
         # Start process USB

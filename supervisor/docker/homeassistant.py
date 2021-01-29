@@ -55,6 +55,7 @@ class DockerHomeAssistant(DockerInterface):
             self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART)
             + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO)
             + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO)
+            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB)
         )
 
     @property

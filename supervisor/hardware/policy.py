@@ -14,6 +14,7 @@ _GROUP_CGROUPS: Dict[PolicyGroup, List[int]] = {
     PolicyGroup.GPIO: [254, 245],
     PolicyGroup.VIDEO: [239, 29, 81, 251, 242, 226],
     PolicyGroup.AUDIO: [116],
+    PolicyGroup.USB: [189],
 }
 
 
