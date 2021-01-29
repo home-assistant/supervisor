@@ -23,10 +23,10 @@ function run_supervisor() {
         --privileged \
         --security-opt seccomp=unconfined \
         --security-opt apparmor:unconfined \
-        -v /run/docker.sock:/run/docker.sock \
-        -v /run/dbus:/run/dbus \
-        -v /run/udev:/run/udev \
-        -v "/workspaces/test_supervisor":/data \
+        -v /run/docker.sock:/run/docker.sock:rw \
+        -v /run/dbus:/run/dbus:ro \
+        -v /run/udev:/run/udev:ro \
+        -v "/workspaces/test_supervisor":/data:rw \
         -v /etc/machine-id:/etc/machine-id:ro \
         -v /workspaces/supervisor:/usr/src/supervisor \
         -e SUPERVISOR_SHARE="/workspaces/test_supervisor" \
