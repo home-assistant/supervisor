@@ -128,7 +128,6 @@ class DockerAddon(DockerInterface):
     def devices(self) -> Optional[List[str]]:
         """Return needed devices."""
         devices = set()
-        map_strict = False
 
         def _create_dev(device_path: Path) -> str:
             """Add device to list."""
@@ -143,7 +142,6 @@ class DockerAddon(DockerInterface):
 
         # Dynamic devices
         for device in self.addon.devices:
-            map_strict = True
             _create_dev(device.path)
 
         # Auto mapping UART devices / LINKS
@@ -152,9 +150,6 @@ class DockerAddon(DockerInterface):
                 subsystem=UdevSubsystem.SERIAL
             ):
                 _create_dev(device.path)
-                if map_strict or not device.by_id:
-                    continue
-                _create_dev(device.by_id)
 
         # Auto mapping GPIO
         if self.addon.with_gpio:
