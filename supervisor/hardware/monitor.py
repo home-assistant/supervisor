@@ -109,15 +109,15 @@ class HwMonitor(CoreSysAttributes):
             if device.subsystem == UdevSubsystem.AUDIO:
                 self._action_sound(device, forward_action)
 
-            # New serial device
+            # serial device
             elif device.subsystem == UdevSubsystem.SERIAL:
                 self._action_tty(device, forward_action)
 
-            # New input device
+            # input device
             elif device.subsystem == UdevSubsystem.INPUT:
                 self._action_input(device, forward_action)
 
-            # New USB device
+            # USB device
             elif device.subsystem == UdevSubsystem.USB:
                 self._action_usb(device, forward_action)
 
@@ -125,7 +125,7 @@ class HwMonitor(CoreSysAttributes):
         """Process sound actions."""
         if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.AUDIO, device):
             return
-        _LOGGER.info("Detecting changed audio hardware - %s", device.path)
+        _LOGGER.info("Detecting %s audio hardware - %s", action, device.path)
         self.sys_loop.call_later(2, self.sys_create_task, self.sys_host.sound.update())
 
     def _action_tty(self, device: Device, action: UdevAction):
@@ -135,14 +135,7 @@ class HwMonitor(CoreSysAttributes):
         ):
             return
         _LOGGER.info(
-            "Detecting changed serial hardware %s - %s", device.path, device.by_id
-        )
-
-        # Start process TTY
-        self.sys_loop.call_later(
-            1,
-            self.sys_create_task,
-            self.sys_hardware.container.process_serial_device(device, action),
+            "Detecting %s serial hardware %s - %s", action, device.path, device.by_id
         )
 
     def _action_input(self, device: Device, action: UdevAction):
@@ -150,25 +143,11 @@ class HwMonitor(CoreSysAttributes):
         if not device.by_id:
             return
         _LOGGER.info(
-            "Detecting changed serial hardware %s - %s", device.path, device.by_id
-        )
-
-        # Start process input
-        self.sys_loop.call_later(
-            1,
-            self.sys_create_task,
-            self.sys_hardware.container.process_serial_device(device, action),
+            "Detecting %s serial hardware %s - %s", action, device.path, device.by_id
         )
 
     def _action_usb(self, device: Device, action: UdevAction):
         """Process usb actions."""
         if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.USB, device):
             return
-        _LOGGER.info("Detecting changed usb hardware %s", device.path)
-
-        # Start process USB
-        self.sys_loop.call_later(
-            1,
-            self.sys_create_task,
-            self.sys_hardware.container.process_usb_device(device, action),
-        )
+        _LOGGER.info("Detecting %s usb hardware %s", action, device.path)

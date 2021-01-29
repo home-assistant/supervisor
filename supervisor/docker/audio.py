@@ -1,6 +1,5 @@
 """Audio docker object."""
 import logging
-from pathlib import Path
 from typing import Dict
 
 from ..const import ENV_TIME, MACHINE_ID
@@ -30,6 +29,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Return Volumes for the mount."""
         volumes = {
+            "/dev": {"bind": "/dev", "mode": "ro"},
             str(self.sys_config.path_extern_audio): {"bind": "/data", "mode": "rw"},
             "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
             "/run/udev": {"bind": "/run/udev", "mode": "ro"},
@@ -38,12 +38,6 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         # Machine ID
         if MACHINE_ID.exists():
             volumes.update({str(MACHINE_ID): {"bind": str(MACHINE_ID), "mode": "ro"}})
-
-        # SND support
-        if Path("/dev/snd").exists():
-            volumes.update({"/dev/snd": {"bind": "/dev/snd", "mode": "rw"}})
-        else:
-            _LOGGER.warning("Kernel have no audio support")
 
         return volumes
 

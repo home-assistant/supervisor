@@ -27,8 +27,8 @@ from ..const import (
     SECURITY_PROFILE,
 )
 from ..coresys import CoreSys
-from ..exceptions import CoreDNSError, DockerError
-from ..hardware.const import PolicyGroup, UdevSubsystem
+from ..exceptions import CoreDNSError, DockerError, HardwareNotFound
+from ..hardware.const import PolicyGroup
 from ..utils import process_lock
 from .interface import DockerInterface
 
@@ -125,68 +125,20 @@ class DockerAddon(DockerInterface):
         }
 
     @property
-    def devices(self) -> Optional[List[str]]:
-        """Return needed devices."""
-        devices = set()
-
-        def _create_dev(device_path: Path) -> str:
-            """Add device to list."""
-            devices.add(f"{device_path.as_posix()}:{device_path.as_posix()}:rwm")
-
-        # Static devices
-        for device_path in self.addon.static_devices:
-            if not self.sys_hardware.exists_device_node(device_path):
-                _LOGGER.debug("Ignore static device path %s", device_path)
-                continue
-            _create_dev(device_path)
-
-        # Dynamic devices
-        for device in self.addon.devices:
-            _create_dev(device.path)
-
-        # Auto mapping UART devices
-        if self.addon.with_uart:
-            for device in self.sys_hardware.filter_devices(
-                subsystem=UdevSubsystem.SERIAL
-            ):
-                _create_dev(device.path)
-
-        # Auto mapping USB devices
-        if self.addon.with_usb:
-            for device in self.sys_hardware.filter_devices(subsystem=UdevSubsystem.USB):
-                _create_dev(device.path)
-
-        # Auto mapping GPIO
-        if self.addon.with_gpio:
-            for subsystem in (
-                UdevSubsystem.GPIO,
-                UdevSubsystem.GPIOMEM,
-            ):
-                for device in self.sys_hardware.filter_devices(subsystem=subsystem):
-                    _create_dev(device.path)
-
-        # Auto mapping Video
-        if self.addon.with_video:
-            for subsystem in (
-                UdevSubsystem.VIDEO,
-                UdevSubsystem.CEC,
-                UdevSubsystem.VCHIQ,
-                UdevSubsystem.MEDIA,
-            ):
-                for device in self.sys_hardware.filter_devices(subsystem=subsystem):
-                    _create_dev(device.path)
-
-        # Return None if no devices is present
-        if devices:
-            return list(devices)
-        return None
-
-    @property
     def cgroups_rules(self) -> Optional[List[str]]:
         """Return a list of needed cgroups permission."""
         rules = set()
 
-        # Attach correct cgroups
+        # Attach correct cgroups for static devices
+        for device_path in self.addon.static_devices:
+            try:
+                device = self.sys_hardware.get_by_path(device_path)
+            except HardwareNotFound:
+                _LOGGER.debug("Ignore static device path %s", device_path)
+            else:
+                rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
+
+        # Attach correct cgroups for devices
         for device in self.addon.devices:
             rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
 
@@ -276,7 +228,10 @@ class DockerAddon(DockerInterface):
         """Generate volumes for mappings."""
         addon_mapping = self.addon.map_volumes
 
-        volumes = {str(self.addon.path_extern_data): {"bind": "/data", "mode": "rw"}}
+        volumes = {
+            "dev": {"bind": "/dev", "mode": "ro"},
+            str(self.addon.path_extern_data): {"bind": "/data", "mode": "rw"},
+        }
 
         # setup config mappings
         if MAP_CONFIG in addon_mapping:
@@ -396,13 +351,6 @@ class DockerAddon(DockerInterface):
                 }
             )
 
-        # With UART
-        if self.addon.with_uart:
-            mount = self.sys_hardware.container.get_udev_id_mount(UdevSubsystem.SERIAL)
-            volumes.update(
-                {str(mount.as_posix()): {"bind": str(mount.as_posix()), "mode": "ro"}}
-            )
-
         return volumes
 
     def _run(self) -> None:
@@ -435,7 +383,6 @@ class DockerAddon(DockerInterface):
             pid_mode=self.pid_mode,
             ports=self.ports,
             extra_hosts=self.network_mapping,
-            devices=self.devices,
             device_cgroup_rules=self.cgroups_rules,
             cap_add=self.addon.privileged,
             security_opt=self.security_opt,
