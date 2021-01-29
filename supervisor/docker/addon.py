@@ -229,7 +229,7 @@ class DockerAddon(DockerInterface):
         addon_mapping = self.addon.map_volumes
 
         volumes = {
-            "dev": {"bind": "/dev", "mode": "ro"},
+            "/dev": {"bind": "/dev", "mode": "ro"},
             str(self.addon.path_extern_data): {"bind": "/data", "mode": "rw"},
         }
 
