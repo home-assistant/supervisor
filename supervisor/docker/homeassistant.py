@@ -60,7 +60,10 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Return Volumes for the mount."""
-        volumes = {"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}}
+        volumes = {
+            "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
+            "/run/udev": {"bind": "/run/udev", "mode": "ro"},
+        }
 
         # Add folders
         volumes.update(

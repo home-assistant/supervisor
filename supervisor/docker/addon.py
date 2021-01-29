@@ -340,6 +340,8 @@ class DockerAddon(DockerInterface):
         # GPIO support
         if self.addon.with_gpio and self.sys_hardware.helper.support_gpio:
             for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
+                if not gpio_path.exists():
+                    continue
                 volumes.update({gpio_path: {"bind": gpio_path, "mode": "rw"}})
 
         # DeviceTree support
@@ -355,13 +357,10 @@ class DockerAddon(DockerInterface):
 
         # Host udev support
         if self.addon.with_udev:
-            volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}})
+            volumes.update({"/run/udev": {"bind": "/run/udev", "mode": "ro"}})
 
         # USB support
-        if (self.addon.with_usb and self.sys_hardware.helper.usb_devices) or any(
-            self.sys_hardware.check_subsystem_parents(device, UdevSubsystem.USB)
-            for device in self.addon.devices
-        ):
+        if self.addon.with_usb and self.sys_hardware.helper.support_usb:
             volumes.update({"/dev/bus/usb": {"bind": "/dev/bus/usb", "mode": "rw"}})
 
         # Kernel Modules support
