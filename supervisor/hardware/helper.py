@@ -30,17 +30,17 @@ class HwHelper(CoreSysAttributes):
     @property
     def support_audio(self) -> bool:
         """Return True if the system have audio support."""
-        return len(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.AUDIO)) > 0
+        return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.AUDIO))
 
     @property
     def support_gpio(self) -> bool:
         """Return True if device support GPIOs."""
-        return len(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.GPIO)) > 0
+        return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.GPIO))
 
     @property
     def support_usb(self) -> bool:
         """Return True if the device have USB ports."""
-        return len(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.USB)) > 0
+        return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.USB))
 
     @property
     def last_boot(self) -> Optional[str]:
