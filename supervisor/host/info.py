@@ -75,7 +75,7 @@ class InfoCenter(CoreSysAttributes):
     @property
     def ssd_life_time(self) -> float:
         """Return the estimated life-time usage (in %) of the SSD storing the data directory."""
-        return self.coresys.hardware.get_disk_ssd_life_time(
+        return self.sys_hardware.helper.get_disk_ssd_life_time(
             self.coresys.config.path_supervisor
         )
 
