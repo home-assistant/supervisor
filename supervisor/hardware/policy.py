@@ -24,6 +24,10 @@ class HwPolicy(CoreSysAttributes):
         """Init hardware policy object."""
         self.coresys = coresys
 
+    def is_match_cgroup(self, group: PolicyGroup, device: Device) -> bool:
+        """Return true if device is in cgroup Policy."""
+        return device.cgroups_major in _GROUP_CGROUPS.get(group, [])
+
     def get_cgroups_rules(self, group: PolicyGroup) -> List[str]:
         """Generate cgroups rules for a policy group."""
         return [f"c {dev}:* rwm" for dev in _GROUP_CGROUPS.get(group, [])]

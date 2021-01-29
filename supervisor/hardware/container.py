@@ -9,7 +9,7 @@ from supervisor.const import AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.interface import DockerInterface
 from ..exceptions import DockerError, DockerNotFound, HardwareError
-from .const import UdevSubsystem
+from .const import UdevAction, UdevSubsystem
 from .data import Device
 
 _UDEV_BY_ID = {
@@ -32,24 +32,52 @@ class HwContainer(CoreSysAttributes):
         """Return mount path for udev device by-id path."""
         return _UDEV_BY_ID.get(subystem)
 
-    async def process_serial_device(self, device: Device) -> None:
+    async def process_serial_device(self, device: Device, action: UdevAction) -> None:
         """Process a new Serial device."""
         # Add to all needed add-ons
         for addon in self.sys_addons.installed:
             if addon.state != AddonState.STARTED or addon.with_uart:
                 continue
             with suppress(HardwareError):
-                await self._create_device(addon.instance, device)
+                if action == UdevAction.ADD:
+                    await self._create_device(addon.instance, device)
+                else:
+                    await self._remove_device(addon.instance, device)
 
         # Process on Home Assistant Core
         with suppress(HardwareError):
-            await self._create_device(self.sys_homeassistant.core.instance, device)
+            if action == UdevAction.ADD:
+                await self._create_device(self.sys_homeassistant.core.instance, device)
+            else:
+                await self._remove_device(self.sys_homeassistant.core.instance, device)
 
-    async def process_input_device(self, device: Device) -> None:
+    async def process_input_device(self, device: Device, action: UdevAction) -> None:
         """Process a new Serial device."""
         # Process on Home Assistant Core
         with suppress(HardwareError):
-            await self._create_device(self.sys_homeassistant.core.instance, device)
+            if action == UdevAction.ADD:
+                await self._create_device(self.sys_homeassistant.core.instance, device)
+            else:
+                await self._remove_device(self.sys_homeassistant.core.instance, device)
+
+    async def process_usb_device(self, device: Device, action: UdevAction) -> None:
+        """Process a new USB device."""
+        # Add to all needed add-ons
+        for addon in self.sys_addons.installed:
+            if addon.state != AddonState.STARTED or addon.with_usb:
+                continue
+            with suppress(HardwareError):
+                if action == UdevAction.ADD:
+                    await self._create_device(addon.instance, device)
+                else:
+                    await self._remove_device(addon.instance, device)
+
+        # Process on Home Assistant Core
+        with suppress(HardwareError):
+            if action == UdevAction.ADD:
+                await self._create_device(self.sys_homeassistant.core.instance, device)
+            else:
+                await self._remove_device(self.sys_homeassistant.core.instance, device)
 
     async def _create_device(self, instance: DockerInterface, device: Device) -> None:
         """Add device into container."""
@@ -68,6 +96,29 @@ class HwContainer(CoreSysAttributes):
 
         _LOGGER.warning(
             "Container response with '%s' during process %s",
-            answer.output.encode(),
+            answer.output.decode(),
+            device.path,
+        )
+
+    async def _remove_device(self, instance: DockerInterface, device: Device) -> None:
+        """Remove device into container."""
+        try:
+            answer = await instance.run_inside(
+                f'sh -c "rm -f {device.path.as_posix()}"'
+            )
+        except DockerNotFound:
+            return
+        except DockerError as err:
+            _LOGGER.warning(
+                "Can't remove new device %s to %s", device.path, instance.name
+            )
+            raise HardwareError() from err
+
+        if answer.exit_code == 0:
+            return
+
+        _LOGGER.warning(
+            "Container response with '%s' during process %s",
+            answer.output.decode(),
             device.path,
         )
