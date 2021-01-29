@@ -80,7 +80,7 @@ def test_try_get_emmc_life_time(coresys, tmp_path):
     fake_life_time.write_text("0x01 0x02\n")
 
     with patch(
-        "supervisor.misc.hardware.BLOCK_DEVICE_EMMC_LIFE_TIME",
+        "supervisor.hardware.helper._BLOCK_DEVICE_EMMC_LIFE_TIME",
         str(tmp_path / "fake-{}-lifetime"),
     ):
         value = coresys.hardware.helper._try_get_emmc_life_time("mmcblk0")
