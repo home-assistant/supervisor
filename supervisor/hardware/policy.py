@@ -9,7 +9,7 @@ from .data import Device
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-GROUP_CGROUPS: Dict[PolicyGroup, List[int]] = {
+_GROUP_CGROUPS: Dict[PolicyGroup, List[int]] = {
     PolicyGroup.UART: [204, 188, 166, 244],
     PolicyGroup.GPIO: [254, 245],
     PolicyGroup.VIDEO: [239, 29, 81, 251, 242, 226],
@@ -26,7 +26,7 @@ class HwPolicy(CoreSysAttributes):
 
     def get_cgroups_rules(self, group: PolicyGroup) -> List[str]:
         """Generate cgroups rules for a policy group."""
-        return [f"c {dev}:* rwm" for dev in GROUP_CGROUPS.get(group, [])]
+        return [f"c {dev}:* rwm" for dev in _GROUP_CGROUPS.get(group, [])]
 
     def get_cgroups_rule(self, device: Device) -> str:
         """Generate a cgroups rule for given device."""

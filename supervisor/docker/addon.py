@@ -340,7 +340,7 @@ class DockerAddon(DockerInterface):
         # GPIO support
         if self.addon.with_gpio and self.sys_hardware.helper.support_gpio:
             for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
-                if not gpio_path.exists():
+                if not Path(gpio_path).exists():
                     continue
                 volumes.update({gpio_path: {"bind": gpio_path, "mode": "rw"}})
 
@@ -394,6 +394,13 @@ class DockerAddon(DockerInterface):
                         "mode": "ro",
                     },
                 }
+            )
+
+        # With UART
+        if self.addon.with_uart:
+            mount = self.sys_hardware.container.get_udev_id_mount(UdevSubsystem.SERIAL)
+            volumes.update(
+                {str(mount.as_posix()): {"bind": str(mount.as_posix()), "mode": "ro"}}
             )
 
         return volumes
