@@ -44,7 +44,7 @@ inputs:
       description: Can be found in the Supervisor panel -> System tab.
   - type: input
     attributes:
-      label: What is version of Home Assistant Core is installed?
+      label: What version of Home Assistant Core is installed?
       required: true
       placeholder: core-
       description: >
