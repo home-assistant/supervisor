@@ -33,7 +33,7 @@ inputs:
       label: Which operating system are you running on?
       required: true
       choices:
-        - Home Assistant Operating System (HassOS)
+        - Home Assistant Operating System
         - Debian
         - Other (e.g., Raspbian/Raspberry Pi OS/Fedora)
   - type: input
