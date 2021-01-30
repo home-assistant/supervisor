@@ -13,7 +13,7 @@ inputs:
         [fr]: https://community.home-assistant.io/c/feature-requests
   - type: input
     attributes:
-      label: Supervisor version
+      label: What is the version of the Supervisor used?
       required: true
       placeholder: supervisor-
       description: >
