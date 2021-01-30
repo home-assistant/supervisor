@@ -14,6 +14,7 @@ _GROUP_CGROUPS: Dict[PolicyGroup, List[int]] = {
     PolicyGroup.GPIO: [254, 245],
     PolicyGroup.VIDEO: [239, 29, 81, 251, 242, 226],
     PolicyGroup.AUDIO: [116],
+    PolicyGroup.USB: [189],
 }
 
 
@@ -23,6 +24,10 @@ class HwPolicy(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Init hardware policy object."""
         self.coresys = coresys
+
+    def is_match_cgroup(self, group: PolicyGroup, device: Device) -> bool:
+        """Return true if device is in cgroup Policy."""
+        return device.cgroups_major in _GROUP_CGROUPS.get(group, [])
 
     def get_cgroups_rules(self, group: PolicyGroup) -> List[str]:
         """Generate cgroups rules for a policy group."""

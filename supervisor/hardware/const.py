@@ -35,3 +35,10 @@ class PolicyGroup(str, Enum):
     USB = "usb"
     VIDEO = "video"
     AUDIO = "audio"
+
+
+class UdevAction(str, Enum):
+    """Udev device action."""
+
+    ADD = "add"
+    REMOVE = "remove"

@@ -8,7 +8,7 @@ import requests
 
 from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_HASSIO, LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerError
-from ..hardware.const import PolicyGroup, UdevSubsystem
+from ..hardware.const import PolicyGroup
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -55,12 +55,14 @@ class DockerHomeAssistant(DockerInterface):
             self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART)
             + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO)
             + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO)
+            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB)
         )
 
     @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Return Volumes for the mount."""
         volumes = {
+            "/dev": {"bind": "/dev", "mode": "ro"},
             "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
             "/run/udev": {"bind": "/run/udev", "mode": "ro"},
         }
@@ -105,16 +107,6 @@ class DockerHomeAssistant(DockerInterface):
                 },
             }
         )
-
-        # udev helper
-        for mount in (
-            self.sys_hardware.container.get_udev_id_mount(UdevSubsystem.SERIAL),
-            self.sys_hardware.container.get_udev_id_mount(UdevSubsystem.DISK),
-            self.sys_hardware.container.get_udev_id_mount(UdevSubsystem.INPUT),
-        ):
-            volumes.update(
-                {str(mount.as_posix()): {"bind": str(mount.as_posix()), "mode": "ro"}}
-            )
 
         return volumes
 
