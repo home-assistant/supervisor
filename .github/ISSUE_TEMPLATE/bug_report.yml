@@ -1,0 +1,80 @@
+name: Bug Report
+about: Report an issue related to the Home Assistant Supervisor.
+labels: bug
+title: ""
+issue_body: true
+inputs:
+  - type: description
+    attributes:
+      value: |
+        This issue form is for reporting bugs with **supported** setups only!
+
+        If you have a feature or enhancement request, please use the [feature request][fr] section of our [Community Forum][fr].
+        [fr]: https://community.home-assistant.io/c/feature-requests
+  - type: input
+    attributes:
+      label: Supervisor version
+      required: true
+      placeholder: supervisor-
+      description: >
+        Can be found in the Supervisor panel -> System tab. Starts with
+        `supervisor-....`.
+  - type: dropdown
+    attributes:
+      label: What type of installation are you running?
+      required: true
+      description: >
+        If you don't know, you can find it in: Configuration panel -> Info.
+      choices:
+        - Home Assistant OS
+        - Home Assistant Supervised
+  - type: dropdown
+    attributes:
+      label: Which operating system are you running on?
+      required: true
+      choices:
+        - Home Assistant Operating System (HassOS)
+        - Debian
+        - Other (e.g., Raspbian/Raspberry Pi OS/Fedora)
+  - type: input
+    attributes:
+      label: What is the version of your installed operating system?
+      required: true
+      placeholder: 5.10
+      description: Can be found in the Supervisor panel -> System tab.
+  - type: input
+    attributes:
+      label: What is version of Home Assistant Core is installed?
+      required: true
+      placeholder: core-
+      description: >
+        Can be found in the Supervisor panel -> System tab. Starts with
+        `core-....`.
+  - type: textarea
+    attributes:
+      label: Describe the issue you are experiencing
+      required: true
+      description: Provide a clear and concise description of what the bug is.
+  - type: textarea
+    attributes:
+      label: Steps to reproduce the issue
+      required: true
+      description: |
+        Please tell us exactly how to reproduce your issue.
+        Provide clear and concise step by step instructions and add code snippets if needed.
+      value: |
+        1.
+        2.
+        3.
+        ...
+  - type: textarea
+    attributes:
+      label: Anything in the Supervisor logs that might be useful for us?
+      required: false
+      description: >
+        The Supervisor logs can be found in the Supervisor panel -> System tab.
+  - type: description
+    attributes:
+      value: |
+        If you have any additional information for us, use the field below.
+        Please note, you can attach screenshots or screen recordings here.
