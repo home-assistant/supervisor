@@ -17,7 +17,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 _PROC_STAT: Path = Path("/proc/stat")
 _RE_BOOT_TIME: re.Pattern = re.compile(r"btime (\d+)")
 
-_RE_HIDE_SYSFS: re.Pattern = re.compile(r"/sys/devices/virtual/(?:tty|block)/.*")
+_RE_HIDE_SYSFS: re.Pattern = re.compile(r"/sys/devices/virtual/(?:tty|block|vc)/.*")
 
 
 class HwHelper(CoreSysAttributes):
