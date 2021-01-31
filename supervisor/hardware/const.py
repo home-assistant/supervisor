@@ -37,8 +37,18 @@ class PolicyGroup(str, Enum):
     AUDIO = "audio"
 
 
-class UdevAction(str, Enum):
-    """Udev device action."""
+class HardwareAction(str, Enum):
+    """Hardware device action."""
 
     ADD = "add"
     REMOVE = "remove"
+
+
+class UdevKernelAction(str, Enum):
+    """Udev kernel device action."""
+
+    ADD = "add"
+    REMOVE = "remove"
+    CHANGE = "change"
+    BIND = "bind"
+    UNBIND = "unbind"
