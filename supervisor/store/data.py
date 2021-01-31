@@ -18,6 +18,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JsonFileError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import read_json_file
+from .const import StoreType
 from .utils import extract_hash_from_path
 from .validate import SCHEMA_REPOSITORY_CONFIG
 
@@ -87,7 +88,9 @@ class StoreData(CoreSysAttributes):
                 IssueType.CORRUPT_REPOSITORY,
                 ContextType.STORE,
                 reference=path.stem,
-                suggestions=[SuggestionType.EXECUTE_RESET],
+                suggestions=[SuggestionType.EXECUTE_RESET]
+                if path.stem != StoreType.LOCAL
+                else [],
             )
             _LOGGER.critical(
                 "Can't process %s because of Filesystem issues: %s", repository, err
