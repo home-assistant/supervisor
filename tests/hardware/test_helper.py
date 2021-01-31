@@ -72,7 +72,7 @@ def test_hide_virtual_device(coresys):
     udev_device.sys_path = "/sys/devices/virtual/tty/tty1"
     assert coresys.hardware.helper.hide_virtual_device(udev_device)
 
-    udev_device.sys_path = "/sys/devices/virtual/vs/vcs1"
+    udev_device.sys_path = "/sys/devices/virtual/vc/vcs1"
     assert coresys.hardware.helper.hide_virtual_device(udev_device)
 
 
