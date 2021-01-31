@@ -37,7 +37,7 @@ class PolicyGroup(str, Enum):
     AUDIO = "audio"
 
 
-class HardwreAction(str, Enum):
+class HardwareAction(str, Enum):
     """Hardware device action."""
 
     ADD = "add"

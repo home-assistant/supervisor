@@ -11,7 +11,7 @@ from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotFound
 from ..resolution.const import UnhealthyReason
-from .const import HardwreAction, PolicyGroup, UdevKernelAction, UdevSubsystem
+from .const import HardwareAction, PolicyGroup, UdevKernelAction, UdevSubsystem
 from .data import Device
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ class HwMonitor(CoreSysAttributes):
                 return
             else:
                 self.sys_hardware.delete_device(device)
-                hw_action = HardwreAction.REMOVE
+                hw_action = HardwareAction.REMOVE
 
         ##
         # Add
@@ -100,7 +100,7 @@ class HwMonitor(CoreSysAttributes):
                 {attr: udev.properties[attr] for attr in udev.properties},
             )
             self.sys_hardware.update_device(device)
-            hw_action = HardwreAction.ADD
+            hw_action = HardwareAction.ADD
 
         # Process Action
         if (
@@ -128,14 +128,14 @@ class HwMonitor(CoreSysAttributes):
             elif device.subsystem == UdevSubsystem.GPIO:
                 self._action_gpio(device, hw_action)
 
-    def _action_sound(self, device: Device, action: HardwreAction):
+    def _action_sound(self, device: Device, action: HardwareAction):
         """Process sound actions."""
         if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.AUDIO, device):
             return
         _LOGGER.info("Detecting %s audio hardware - %s", action, device.path)
         self.sys_loop.call_later(2, self.sys_create_task, self.sys_host.sound.update())
 
-    def _action_tty(self, device: Device, action: HardwreAction):
+    def _action_tty(self, device: Device, action: HardwareAction):
         """Process tty actions."""
         if not device.by_id or not self.sys_hardware.policy.is_match_cgroup(
             PolicyGroup.UART, device
@@ -145,7 +145,7 @@ class HwMonitor(CoreSysAttributes):
             "Detecting %s serial hardware %s - %s", action, device.path, device.by_id
         )
 
-    def _action_input(self, device: Device, action: HardwreAction):
+    def _action_input(self, device: Device, action: HardwareAction):
         """Process input actions."""
         if not device.by_id:
             return
@@ -153,13 +153,13 @@ class HwMonitor(CoreSysAttributes):
             "Detecting %s serial hardware %s - %s", action, device.path, device.by_id
         )
 
-    def _action_usb(self, device: Device, action: HardwreAction):
+    def _action_usb(self, device: Device, action: HardwareAction):
         """Process usb actions."""
         if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.USB, device):
             return
         _LOGGER.info("Detecting %s usb hardware %s", action, device.path)
 
-    def _action_gpio(self, device: Device, action: HardwreAction):
+    def _action_gpio(self, device: Device, action: HardwareAction):
         """Process gpio actions."""
         if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.GPIO, device):
             return
