@@ -74,7 +74,7 @@ class JobManager(JsonConfig, CoreSysAttributes):
         self._data[ATTR_IGNORE_CONDITIONS] = value
 
     def get_job(self, name: str) -> SupervisorJob:
-        """Return a job, create one if it does not exsist."""
+        """Return a job, create one if it does not exist."""
         if name not in self._jobs:
             self._jobs[name] = SupervisorJob(self.coresys, name)
 
