@@ -84,13 +84,14 @@ class StoreData(CoreSysAttributes):
                 if ".git" not in addon.parts
             ]
         except OSError as err:
+            suggestion = None
+            if path.stem != StoreType.LOCAL:
+                suggestion = [SuggestionType.EXECUTE_RESET]
             self.sys_resolution.create_issue(
                 IssueType.CORRUPT_REPOSITORY,
                 ContextType.STORE,
                 reference=path.stem,
-                suggestions=[SuggestionType.EXECUTE_RESET]
-                if path.stem != StoreType.LOCAL
-                else [],
+                suggestions=suggestion
             )
             _LOGGER.critical(
                 "Can't process %s because of Filesystem issues: %s", repository, err
