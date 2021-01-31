@@ -91,7 +91,7 @@ class StoreData(CoreSysAttributes):
                 IssueType.CORRUPT_REPOSITORY,
                 ContextType.STORE,
                 reference=path.stem,
-                suggestions=suggestion
+                suggestions=suggestion,
             )
             _LOGGER.critical(
                 "Can't process %s because of Filesystem issues: %s", repository, err
