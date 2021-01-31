@@ -18,6 +18,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JsonFileError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import read_json_file
+from .const import StoreType
 from .utils import extract_hash_from_path
 from .validate import SCHEMA_REPOSITORY_CONFIG
 
@@ -83,11 +84,14 @@ class StoreData(CoreSysAttributes):
                 if ".git" not in addon.parts
             ]
         except OSError as err:
+            suggestion = None
+            if path.stem != StoreType.LOCAL:
+                suggestion = [SuggestionType.EXECUTE_RESET]
             self.sys_resolution.create_issue(
                 IssueType.CORRUPT_REPOSITORY,
                 ContextType.STORE,
                 reference=path.stem,
-                suggestions=[SuggestionType.EXECUTE_RESET],
+                suggestions=suggestion,
             )
             _LOGGER.critical(
                 "Can't process %s because of Filesystem issues: %s", repository, err

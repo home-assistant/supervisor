@@ -147,9 +147,10 @@ class GitRepo(CoreSysAttributes):
 
         async with self.lock:
             _LOGGER.info("Update add-on %s repository", self.url)
-            branch = self.repo.active_branch.name
 
             try:
+                branch = self.repo.active_branch.name
+
                 # Download data
                 await self.sys_run_in_executor(
                     ft.partial(
@@ -182,6 +183,7 @@ class GitRepo(CoreSysAttributes):
                 git.InvalidGitRepositoryError,
                 git.NoSuchPathError,
                 git.GitCommandError,
+                ValueError,
             ) as err:
                 _LOGGER.error("Can't update %s repo: %s.", self.url, err)
                 self.sys_resolution.create_issue(
