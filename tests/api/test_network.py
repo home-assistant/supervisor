@@ -155,7 +155,7 @@ async def test_api_network_interface_update_invalid(api_client):
     """Test network manager api."""
     resp = await api_client.post("/network/interface/invalid/update", json={})
     result = await resp.json()
-    assert result["message"] == "Interface invalid does not exsist"
+    assert result["message"] == "Interface invalid does not exist"
 
     resp = await api_client.post(f"/network/interface/{TEST_INTERFACE}/update", json={})
     result = await resp.json()

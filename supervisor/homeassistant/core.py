@@ -210,7 +210,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 IssueType.UPDATE_ROLLBACK, ContextType.CORE
             )
 
-            # Make a copy of the current log file if it exsist
+            # Make a copy of the current log file if it exists
             logfile = self.sys_config.path_homeassistant / "home-assistant.log"
             if logfile.exists():
                 backup = (
