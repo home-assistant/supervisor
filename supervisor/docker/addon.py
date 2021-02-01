@@ -93,13 +93,6 @@ class DockerAddon(DockerInterface):
         return f"addon_{self.addon.slug}"
 
     @property
-    def ipc(self) -> Optional[str]:
-        """Return the IPC namespace."""
-        if self.addon.host_ipc:
-            return "host"
-        return None
-
-    @property
     def full_access(self) -> bool:
         """Return True if full access is enabled."""
         return not self.addon.protected and self.addon.with_full_access
@@ -196,9 +189,17 @@ class DockerAddon(DockerInterface):
     @property
     def tmpfs(self) -> Optional[Dict[str, str]]:
         """Return tmpfs for Docker add-on."""
-        options = self.addon.tmpfs
-        if options:
-            return {"/tmpfs": f"{options}"}
+        tmpfs = {}
+
+        if self.addon.with_tmpfs:
+            tmpfs["/tmpfs"] = ""
+
+        if not self.addon.host_ipc:
+            tmpfs["/dev/shm"] = ""
+
+        # Return None if no tmpfs is present
+        if tmpfs:
+            return tmpfs
         return None
 
     @property
@@ -377,7 +378,6 @@ class DockerAddon(DockerInterface):
             detach=True,
             init=self.addon.default_init,
             privileged=self.full_access,
-            ipc_mode=self.ipc,
             stdin_open=self.addon.with_stdin,
             network_mode=self.network_mode,
             pid_mode=self.pid_mode,
