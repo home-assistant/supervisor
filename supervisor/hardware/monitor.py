@@ -31,7 +31,10 @@ class HwMonitor(CoreSysAttributes):
         try:
             self.monitor = pyudev.Monitor.from_netlink(self.context, "kernel")
             self.observer = pyudev.MonitorObserver(
-                self.monitor, callback=self._udev_events
+                self.monitor,
+                callback=lambda x: self.sys_loop.call_soon_threadsafe(
+                    self._async_udev_events, x
+                ),
             )
         except OSError:
             self.sys_resolution.unhealthy = UnhealthyReason.PRIVILEGED
@@ -48,17 +51,7 @@ class HwMonitor(CoreSysAttributes):
         self.observer.stop()
         _LOGGER.info("Stopped Supervisor hardware monitor")
 
-    def _udev_events(self, kernel: pyudev.Device):
-        """Incomming events from udev.
-
-        This is inside a observe thread and need pass into our eventloop.
-        """
-        _LOGGER.debug("Hardware monitor: %s - %s", kernel.action, pformat(kernel))
-        self.sys_loop.call_soon_threadsafe(
-            self._async_udev_events, kernel.action, kernel
-        )
-
-    def _async_udev_events(self, action: str, kernel: pyudev.Device):
+    def _async_udev_events(self, kernel: pyudev.Device):
         """Incomming events from udev into loop."""
         # Update device List
         if not kernel.device_node or self.sys_hardware.helper.hide_virtual_device(
@@ -67,6 +60,7 @@ class HwMonitor(CoreSysAttributes):
             return
 
         # Load kernel module
+        _LOGGER.debug("Hardware monitor: %s - %s", kernel.action, pformat(kernel))
         try:
             udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
         except pyudev.DeviceNotFoundAtPathError:
@@ -78,7 +72,7 @@ class HwMonitor(CoreSysAttributes):
         ##
         # Remove
         if (
-            action in (UdevKernelAction.REMOVE, UdevKernelAction.UNBIND)
+            kernel.action in (UdevKernelAction.REMOVE, UdevKernelAction.UNBIND)
             and udev is None
         ):
             try:
@@ -91,7 +85,10 @@ class HwMonitor(CoreSysAttributes):
 
         ##
         # Add
-        if action in (UdevKernelAction.ADD, UdevKernelAction.BIND) and udev is not None:
+        if (
+            kernel.action in (UdevKernelAction.ADD, UdevKernelAction.BIND)
+            and udev is not None
+        ):
             device = Device(
                 udev.sys_name,
                 Path(udev.device_node),
