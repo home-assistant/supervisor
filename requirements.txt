@@ -13,7 +13,7 @@ docker==4.4.1
 gitpython==3.1.12
 jinja2==2.11.3
 pulsectl==20.5.1
-pytz==2020.5
+pytz==2021.1
 pyudev==0.22.0
 ruamel.yaml==0.15.100
 sentry-sdk==0.19.5
