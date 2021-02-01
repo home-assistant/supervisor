@@ -60,9 +60,9 @@ class HwMonitor(CoreSysAttributes):
             kernel
         ):
             return
-
-        # Load kernel module
         _LOGGER.debug("Hardware monitor: %s - %s", kernel.action, pformat(kernel))
+
+        # Lookup udev device data
         try:
             udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
         except pyudev.DeviceNotFoundAtPathError:
