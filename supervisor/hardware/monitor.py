@@ -70,24 +70,12 @@ class HwMonitor(CoreSysAttributes):
         ):
             return
 
-        try:
-            # We get pure Kernel events only inside container.
-            # But udev itself need also time to initialize the device
-            # before we can use it correctly
-            while True:
-                await asyncio.sleep(2)
-                udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
-                if udev.is_initialized:
-                    break
-        except pyudev.DeviceNotFoundAtPathError:
-            udev = None
-
         hw_action = None
         device = None
 
         ##
         # Remove
-        if kernel.action == UdevKernelAction.REMOVE and udev is None:
+        if kernel.action == UdevKernelAction.REMOVE:
             try:
                 device = self.sys_hardware.get_by_path(Path(kernel.sys_path))
             except HardwareNotFound:
@@ -98,7 +86,28 @@ class HwMonitor(CoreSysAttributes):
 
         ##
         # Add
-        if kernel.action == UdevKernelAction.ADD and udev is not None:
+        if kernel.action == UdevKernelAction.ADD:
+            # We get pure Kernel events only inside container.
+            # But udev itself need also time to initialize the device
+            # before we can use it correctly
+            udev = None
+            for _ in range(3):
+                await asyncio.sleep(2)
+                try:
+                    udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
+                except pyudev.DeviceNotFoundAtPathError:
+                    continue
+
+                # Is ready
+                if udev.is_initialized:
+                    break
+
+            if not udev:
+                _LOGGER.warning(
+                    "Ignore device %s / failes to initialize by udev", kernel.sys_path
+                )
+                return
+
             device = Device(
                 udev.sys_name,
                 Path(udev.device_node),
