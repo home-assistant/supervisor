@@ -30,6 +30,8 @@ class HwMonitor(CoreSysAttributes):
         """Start hardware monitor."""
         try:
             self.monitor = pyudev.Monitor.from_netlink(self.context, "kernel")
+            self.monitor.set_receive_buffer_size(32 * 1024 * 1024)
+
             self.observer = pyudev.MonitorObserver(
                 self.monitor,
                 callback=lambda x: self.sys_loop.call_soon_threadsafe(
