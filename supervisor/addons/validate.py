@@ -176,7 +176,7 @@ def _migrate_addon_config(protocol=False):
                 )
             config[ATTR_DEVICES] = [line.split(":")[0] for line in config[ATTR_DEVICES]]
 
-        # UART 2021-02-01
+        # TMPFS 2021-02-01
         if ATTR_TMPFS in config and not isinstance(config[ATTR_TMPFS], bool):
             if protocol:
                 _LOGGER.warning(
