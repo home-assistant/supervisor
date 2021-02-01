@@ -48,6 +48,14 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
         """Return additional Docker build arguments."""
         return self._data[ATTR_ARGS]
 
+    @property
+    def is_valid(self) -> bool:
+        """Return true if the build env is valid."""
+        return all(
+            self.addon.path_location.is_dir(),
+            Path(self.addon.path_location, "Dockerfile").is_file(),
+        )
+
     def get_docker_args(self, version: AwesomeVersion):
         """Create a dict with Docker build arguments."""
         args = {
