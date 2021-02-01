@@ -97,11 +97,10 @@ class HwMonitor(CoreSysAttributes):
                     udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
                 except pyudev.DeviceNotFoundAtPathError:
                     continue
-
-                # Is ready
                 if udev.is_initialized:
                     break
 
+            # Is not ready
             if not udev:
                 _LOGGER.warning(
                     "Ignore device %s / failes to initialize by udev", kernel.sys_path
