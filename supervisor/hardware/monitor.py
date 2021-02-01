@@ -33,10 +33,7 @@ class HwMonitor(CoreSysAttributes):
             self.monitor.set_receive_buffer_size(32 * 1024 * 1024)
 
             self.observer = pyudev.MonitorObserver(
-                self.monitor,
-                callback=lambda x: self.sys_loop.call_soon_threadsafe(
-                    self._async_udev_events, x
-                ),
+                self.monitor, callback=self._udev_events
             )
         except OSError:
             self.sys_resolution.unhealthy = UnhealthyReason.PRIVILEGED
@@ -53,20 +50,30 @@ class HwMonitor(CoreSysAttributes):
         self.observer.stop()
         _LOGGER.info("Stopped Supervisor hardware monitor")
 
-    def _async_udev_events(self, kernel: pyudev.Device):
+    def _udev_events(self, kernel: pyudev.Device):
+        """Incomming events from udev.
+
+        This is inside a observe thread and need pass into our eventloop.
+        """
+        _LOGGER.debug("Hardware monitor: %s - %s", kernel.action, pformat(kernel))
+        try:
+            udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
+        except pyudev.DeviceNotFoundAtPathError:
+            udev = None
+
+        self.sys_loop.call_soon_threadsafe(
+            self._async_udev_events, kernel.action, kernel, udev
+        )
+
+    def _async_udev_events(
+        self, action: str, kernel: pyudev.Device, udev: Optional[pyudev.Device]
+    ):
         """Incomming events from udev into loop."""
         # Update device List
         if not kernel.device_node or self.sys_hardware.helper.hide_virtual_device(
             kernel
         ):
             return
-        _LOGGER.debug("Hardware monitor: %s - %s", kernel.action, pformat(kernel))
-
-        # Lookup udev device data
-        try:
-            udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
-        except pyudev.DeviceNotFoundAtPathError:
-            udev = None
 
         hw_action = None
         device = None
