@@ -68,6 +68,17 @@ def test_migration_devices():
     assert valid_config["devices"] == ["test", "bla"]
 
 
+def test_migration_tmpfs():
+    """Migrate tmpfs Type."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    config["tmpfs"] = "test:test:rw"
+
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+
+    assert valid_config["tmpfs"]
+
+
 def test_invalid_repository():
     """Validate basic config with invalid repositories."""
     config = load_json_fixture("basic-addon-config.json")

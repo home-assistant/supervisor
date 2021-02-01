@@ -176,6 +176,15 @@ def _migrate_addon_config(protocol=False):
                 )
             config[ATTR_DEVICES] = [line.split(":")[0] for line in config[ATTR_DEVICES]]
 
+        # UART 2021-02-01
+        if ATTR_TMPFS in config and not isinstance(config[ATTR_TMPFS], bool):
+            if protocol:
+                _LOGGER.warning(
+                    "Add-on config 'tmpfs' use a deprecated format, new it's only a boolean. Please report this to the maintainer of %s",
+                    name,
+                )
+            config[ATTR_TMPFS] = True
+
         return config
 
     return _migrate
@@ -221,7 +230,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_HOST_DBUS, default=False): vol.Boolean(),
         vol.Optional(ATTR_DEVICES): [str],
         vol.Optional(ATTR_UDEV, default=False): vol.Boolean(),
-        vol.Optional(ATTR_TMPFS): vol.Match(r"^size=(\d)*[kmg](,uid=\d{1,4})?(,rw)?$"),
+        vol.Optional(ATTR_TMPFS, default=False): vol.Boolean(),
         vol.Optional(ATTR_MAP, default=list): [vol.Match(RE_VOLUME)],
         vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): str},
         vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],

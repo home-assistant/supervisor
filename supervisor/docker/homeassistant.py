@@ -144,6 +144,7 @@ class DockerHomeAssistant(DockerInterface):
                 ENV_TOKEN: self.sys_homeassistant.supervisor_token,
                 ENV_TOKEN_HASSIO: self.sys_homeassistant.supervisor_token,
             },
+            tmpfs={"/dev/shm": "", "/tmp": ""},
         )
 
         self._meta = docker_container.attrs

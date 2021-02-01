@@ -302,11 +302,6 @@ class AddonModel(CoreSysAttributes, ABC):
         return [Path(node) for node in self.data.get(ATTR_DEVICES, [])]
 
     @property
-    def tmpfs(self) -> Optional[str]:
-        """Return tmpfs of add-on."""
-        return self.data.get(ATTR_TMPFS)
-
-    @property
     def environment(self) -> Optional[Dict[str, str]]:
         """Return environment of add-on."""
         return self.data.get(ATTR_ENVIRONMENT)
@@ -409,6 +404,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def with_devicetree(self) -> bool:
         """Return True if the add-on read access to devicetree."""
         return self.data[ATTR_DEVICETREE]
+
+    @property
+    def with_tmpfs(self) -> Optional[str]:
+        """Return if tmp is in memory of add-on."""
+        return self.data[ATTR_TMPFS]
 
     @property
     def access_auth_api(self) -> bool:
