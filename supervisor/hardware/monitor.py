@@ -75,7 +75,7 @@ class HwMonitor(CoreSysAttributes):
             # But udev itself need also time to initialize the device
             # before we can use it correctly
             while True:
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
                 udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
                 if udev.is_initialized:
                     break
