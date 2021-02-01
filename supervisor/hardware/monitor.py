@@ -86,7 +86,7 @@ class HwMonitor(CoreSysAttributes):
 
         ##
         # Add
-        if kernel.action == UdevKernelAction.ADD:
+        if kernel.action in (UdevKernelAction.ADD, UdevKernelAction.CHANGE):
             # We get pure Kernel events only inside container.
             # But udev itself need also time to initialize the device
             # before we can use it correctly
@@ -116,7 +116,10 @@ class HwMonitor(CoreSysAttributes):
                 {attr: udev.properties[attr] for attr in udev.properties},
             )
             self.sys_hardware.update_device(device)
-            hw_action = HardwareAction.ADD
+
+            # If it's a new device - process actions
+            if kernel.action == UdevKernelAction.ADD:
+                hw_action = HardwareAction.ADD
 
         # Process Action
         if (
