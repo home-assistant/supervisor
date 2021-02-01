@@ -60,7 +60,7 @@ class HwMonitor(CoreSysAttributes):
 
         if kernel.action in (UdevKernelAction.UNBIND, UdevKernelAction.BIND):
             return
-        self.sys_loop.create_task(self._async_udev_events(kernel))
+        self.sys_create_task(self._async_udev_events(kernel))
 
     async def _async_udev_events(self, kernel: pyudev.Device):
         """Incomming events from udev into loop."""
@@ -141,7 +141,7 @@ class HwMonitor(CoreSysAttributes):
         if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.AUDIO, device):
             return
         _LOGGER.info("Detecting %s audio hardware - %s", action, device.path)
-        await self.sys_create_task, self.sys_host.sound.update()
+        await self.sys_create_task(self.sys_host.sound.update())
 
     async def _action_tty(self, device: Device, action: HardwareAction):
         """Process tty actions."""
