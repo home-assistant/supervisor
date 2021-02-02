@@ -36,13 +36,17 @@ class DeprecationMiddleware(CoreSysAttributes):
     ) -> Response:
         """Check if the requested path is deprecated."""
         if request.path in DEPRECATED_PATHS:
+
             now = datetime.datetime.now()
-            if request.path not in self._trottle or (
-                now - self._trottle[request.path]
-            ) > DEPRECATED_PATHS[request.path].get(
+            origin = self.get_origin(request)
+            grace = DEPRECATED_PATHS[request.path].get(
                 "grace_period", DEFAULT_GRACE_PERIOD
+            )
+            if (
+                origin not in self._trottle.get(request.path, {})
+                or (now - self._trottle[request.path][origin]) > grace
             ):
-                self._trottle[request.path] = now
+                self._trottle[request.path] = {origin: now}
                 self.write_log(request)
 
         return await handler(request)
@@ -50,21 +54,10 @@ class DeprecationMiddleware(CoreSysAttributes):
     def write_log(self, request: Request):
         """Write the log entry."""
         request_from = request[REQUEST_FROM]
+        origin = self.get_origin(request)
         more_info = ""
 
-        if isinstance(request_from, HomeAssistant):
-            request_from = "Home Assistant"
-
-        # Host
-        elif isinstance(request_from, HostManager):
-            request_from = "Host"
-
-        # Observer
-        elif isinstance(request_from, PluginObserver):
-            request_from = "observer"
-
-        # addon
-        elif isinstance(request_from, Addon):
+        if isinstance(request_from, Addon):
             addon = request_from
             if addon:
                 more_info = (
@@ -80,6 +73,28 @@ class DeprecationMiddleware(CoreSysAttributes):
         _LOGGER.warning(
             "Access to deprecated API '%s' detected from %s - %s",
             request.path,
-            request_from,
+            origin,
             more_info,
         )
+
+    def get_origin(self, request: Request):
+        """Determine where the request was sendt from."""
+        origin = request[REQUEST_FROM]
+
+        # Home Assistant
+        if isinstance(origin, HomeAssistant):
+            origin = "Home Assistant"
+
+        # Host
+        elif isinstance(origin, HostManager):
+            origin = "Host"
+
+        # Observer
+        elif isinstance(origin, PluginObserver):
+            origin = "observer"
+
+        # addon
+        elif isinstance(origin, Addon):
+            origin = origin.name
+
+        return origin
