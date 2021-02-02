@@ -4,8 +4,12 @@ import logging
 
 from aiohttp.web import Request, RequestHandler, Response, middleware
 
+from ..addons import Addon
+from ..const import REQUEST_FROM
 from ..coresys import CoreSys, CoreSysAttributes
-from .utils import excract_supervisor_token
+from ..homeassistant import HomeAssistant
+from ..host import HostManager
+from ..plugins import PluginObserver
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -45,25 +49,23 @@ class DeprecationMiddleware(CoreSysAttributes):
 
     def write_log(self, request: Request):
         """Write the log entry."""
-        request_from = "unknown"
+        request_from = request[REQUEST_FROM]
         more_info = ""
 
-        supervisor_token = excract_supervisor_token(request)
-
-        if supervisor_token == self.sys_homeassistant.supervisor_token:
+        if isinstance(request_from, HomeAssistant):
             request_from = "Home Assistant"
 
         # Host
-        elif supervisor_token == self.sys_plugins.cli.supervisor_token:
+        elif isinstance(request_from, HostManager):
             request_from = "Host"
 
         # Observer
-        elif supervisor_token == self.sys_plugins.observer.supervisor_token:
+        elif isinstance(request_from, PluginObserver):
             request_from = "observer"
 
         # addon
-        else:
-            addon = self.sys_addons.from_token(supervisor_token)
+        elif isinstance(request_from, Addon):
+            addon = request_from
             if addon:
                 more_info = (
                     f"please report this to the maintainer of the {addon.name} add-on"
