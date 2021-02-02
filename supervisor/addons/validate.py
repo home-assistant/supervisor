@@ -149,7 +149,7 @@ def _migrate_addon_config(protocol=False):
             value = config[ATTR_STARTUP]
             if protocol:
                 _LOGGER.warning(
-                    "Add-on config 'startup' with '%s' is depircated. Please report this to the maintainer of %s",
+                    "Add-on config 'startup' with '%s' is deprecated. Please report this to the maintainer of %s",
                     value,
                     name,
                 )
