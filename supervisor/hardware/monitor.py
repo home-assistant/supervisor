@@ -1,4 +1,5 @@
 """Supervisor Hardware monitor based on udev."""
+import asyncio
 import logging
 from pathlib import Path
 from pprint import pformat
@@ -33,7 +34,10 @@ class HwMonitor(CoreSysAttributes):
             self.monitor.set_receive_buffer_size(32 * 1024 * 1024)
 
             self.observer = pyudev.MonitorObserver(
-                self.monitor, callback=self._udev_events
+                self.monitor,
+                callback=lambda x: self.sys_loop.call_soon_threadsafe(
+                    self._udev_events, x
+                ),
             )
         except OSError:
             self.sys_resolution.unhealthy = UnhealthyReason.PRIVILEGED
@@ -51,23 +55,14 @@ class HwMonitor(CoreSysAttributes):
         _LOGGER.info("Stopped Supervisor hardware monitor")
 
     def _udev_events(self, kernel: pyudev.Device):
-        """Incomming events from udev.
-
-        This is inside a observe thread and need pass into our eventloop.
-        """
+        """Incomming events from udev."""
         _LOGGER.debug("Hardware monitor: %s - %s", kernel.action, pformat(kernel))
-        try:
-            udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
-        except pyudev.DeviceNotFoundAtPathError:
-            udev = None
 
-        self.sys_loop.call_soon_threadsafe(
-            self._async_udev_events, kernel.action, kernel, udev
-        )
+        if kernel.action in (UdevKernelAction.UNBIND, UdevKernelAction.BIND):
+            return
+        self.sys_create_task(self._async_udev_events(kernel))
 
-    def _async_udev_events(
-        self, action: str, kernel: pyudev.Device, udev: Optional[pyudev.Device]
-    ):
+    async def _async_udev_events(self, kernel: pyudev.Device):
         """Incomming events from udev into loop."""
         # Update device List
         if not kernel.device_node or self.sys_hardware.helper.hide_virtual_device(
@@ -80,10 +75,7 @@ class HwMonitor(CoreSysAttributes):
 
         ##
         # Remove
-        if (
-            kernel.action in (UdevKernelAction.REMOVE, UdevKernelAction.UNBIND)
-            and udev is None
-        ):
+        if kernel.action == UdevKernelAction.REMOVE:
             try:
                 device = self.sys_hardware.get_by_path(Path(kernel.sys_path))
             except HardwareNotFound:
@@ -94,10 +86,27 @@ class HwMonitor(CoreSysAttributes):
 
         ##
         # Add
-        if (
-            kernel.action in (UdevKernelAction.ADD, UdevKernelAction.BIND)
-            and udev is not None
-        ):
+        if kernel.action in (UdevKernelAction.ADD, UdevKernelAction.CHANGE):
+            # We get pure Kernel events only inside container.
+            # But udev itself need also time to initialize the device
+            # before we can use it correctly
+            udev = None
+            for _ in range(3):
+                await asyncio.sleep(2)
+                try:
+                    udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
+                except pyudev.DeviceNotFoundAtPathError:
+                    continue
+                if udev.is_initialized:
+                    break
+
+            # Is not ready
+            if not udev:
+                _LOGGER.warning(
+                    "Ignore device %s / failes to initialize by udev", kernel.sys_path
+                )
+                return
+
             device = Device(
                 udev.sys_name,
                 Path(udev.device_node),
@@ -107,7 +116,10 @@ class HwMonitor(CoreSysAttributes):
                 {attr: udev.properties[attr] for attr in udev.properties},
             )
             self.sys_hardware.update_device(device)
-            hw_action = HardwareAction.ADD
+
+            # If it's a new device - process actions
+            if kernel.action == UdevKernelAction.ADD:
+                hw_action = HardwareAction.ADD
 
         # Process Action
         if (
@@ -117,32 +129,32 @@ class HwMonitor(CoreSysAttributes):
         ):
             # New Sound device
             if device.subsystem == UdevSubsystem.AUDIO:
-                self._action_sound(device, hw_action)
+                await self._action_sound(device, hw_action)
 
             # serial device
             elif device.subsystem == UdevSubsystem.SERIAL:
-                self._action_tty(device, hw_action)
+                await self._action_tty(device, hw_action)
 
             # input device
             elif device.subsystem == UdevSubsystem.INPUT:
-                self._action_input(device, hw_action)
+                await self._action_input(device, hw_action)
 
             # USB device
             elif device.subsystem == UdevSubsystem.USB:
-                self._action_usb(device, hw_action)
+                await self._action_usb(device, hw_action)
 
             # GPIO device
             elif device.subsystem == UdevSubsystem.GPIO:
-                self._action_gpio(device, hw_action)
+                await self._action_gpio(device, hw_action)
 
-    def _action_sound(self, device: Device, action: HardwareAction):
+    async def _action_sound(self, device: Device, action: HardwareAction):
         """Process sound actions."""
         if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.AUDIO, device):
             return
         _LOGGER.info("Detecting %s audio hardware - %s", action, device.path)
-        self.sys_loop.call_later(2, self.sys_create_task, self.sys_host.sound.update())
+        await self.sys_create_task(self.sys_host.sound.update())
 
-    def _action_tty(self, device: Device, action: HardwareAction):
+    async def _action_tty(self, device: Device, action: HardwareAction):
         """Process tty actions."""
         if not device.by_id or not self.sys_hardware.policy.is_match_cgroup(
             PolicyGroup.UART, device
@@ -152,7 +164,7 @@ class HwMonitor(CoreSysAttributes):
             "Detecting %s serial hardware %s - %s", action, device.path, device.by_id
         )
 
-    def _action_input(self, device: Device, action: HardwareAction):
+    async def _action_input(self, device: Device, action: HardwareAction):
         """Process input actions."""
         if not device.by_id:
             return
@@ -160,13 +172,13 @@ class HwMonitor(CoreSysAttributes):
             "Detecting %s serial hardware %s - %s", action, device.path, device.by_id
         )
 
-    def _action_usb(self, device: Device, action: HardwareAction):
+    async def _action_usb(self, device: Device, action: HardwareAction):
         """Process usb actions."""
         if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.USB, device):
             return
         _LOGGER.info("Detecting %s usb hardware %s", action, device.path)
 
-    def _action_gpio(self, device: Device, action: HardwareAction):
+    async def _action_gpio(self, device: Device, action: HardwareAction):
         """Process gpio actions."""
         if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.GPIO, device):
             return
