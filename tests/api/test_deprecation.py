@@ -9,7 +9,7 @@ from supervisor.addons.addon import Addon
 from supervisor.api import RestAPI
 from supervisor.const import HEADER_TOKEN
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,protected-access
 
 
 @pytest.fixture
