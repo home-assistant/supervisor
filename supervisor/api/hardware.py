@@ -62,4 +62,3 @@ class APIHardware(CoreSysAttributes):
     @api_process
     async def trigger(self, request: web.Request) -> Awaitable[None]:
         """Trigger a udev device reload."""
-        _LOGGER.warning("Ignoring DEPRECATED hardware trigger function call.")

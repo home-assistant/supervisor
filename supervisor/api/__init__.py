@@ -10,6 +10,7 @@ from .addons import APIAddons
 from .audio import APIAudio
 from .auth import APIAuth
 from .cli import APICli
+from .deprecation import DeprecationMiddleware
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
 from .docker import APIDocker
@@ -43,11 +44,13 @@ class RestAPI(CoreSysAttributes):
         """Initialize Docker base wrapper."""
         self.coresys: CoreSys = coresys
         self.security: SecurityMiddleware = SecurityMiddleware(coresys)
+        self.deprecation: DeprecationMiddleware = DeprecationMiddleware(coresys)
         self.webapp: web.Application = web.Application(
             client_max_size=MAX_CLIENT_SIZE,
             middlewares=[
                 self.security.system_validation,
                 self.security.token_validation,
+                self.deprecation.check_deprecation,
             ],
         )
 
