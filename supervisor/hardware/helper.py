@@ -130,7 +130,7 @@ class HwHelper(CoreSysAttributes):
         # Return the pessimistic estimate (0x02 -> 10%-20%, return 20%)
         return life_time_value * 10.0
 
-    def get_disk_ssd_life_time(self, path: Union[str, Path]) -> float:
+    def get_disk_life_time(self, path: Union[str, Path]) -> float:
         """Return life time estimate of the underlying SSD drive."""
         mount_source = self._get_mount_source(str(path))
         if mount_source == "overlay":
