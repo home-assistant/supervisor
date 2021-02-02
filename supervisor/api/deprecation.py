@@ -68,7 +68,7 @@ class DeprecationMiddleware(CoreSysAttributes):
                 more_info = f"please report this to the maintainer of {addon.name}"
                 request_from = addon.name
                 if addon.need_update:
-                    more_info = f"You are currently running version {addon.version}, there is an update pending for {addon.latest_version}. If that does not help {more_info}"
+                    more_info = f"you are currently running version {addon.version}, there is an update pending for {addon.latest_version}. If that does not help {more_info}"
 
         if more_info == "" and DEPRECATED_PATHS[request.path].get("message"):
             more_info = DEPRECATED_PATHS[request.path]["message"]
