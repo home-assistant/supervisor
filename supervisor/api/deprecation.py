@@ -65,7 +65,9 @@ class DeprecationMiddleware(CoreSysAttributes):
         else:
             addon = self.sys_addons.from_token(supervisor_token)
             if addon:
-                more_info = f"please report this to the maintainer of {addon.name}"
+                more_info = (
+                    f"please report this to the maintainer of the {addon.name} add-on"
+                )
                 request_from = addon.name
                 if addon.need_update:
                     more_info = f"you are currently running version {addon.version}, there is an update pending for {addon.latest_version}. If that does not help {more_info}"
