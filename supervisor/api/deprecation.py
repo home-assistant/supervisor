@@ -13,8 +13,7 @@ DEFAULT_GRACE_PERIOD = datetime.timedelta(seconds=10)
 
 DEPRECATED_PATHS = {
     "/hardware/trigger": {
-        "message": "Ignoring DEPRECATED hardware trigger function call",
-        "grace_period": datetime.timedelta(seconds=60),
+        "grace_period": datetime.timedelta(hours=1),
     }
 }
 
@@ -47,7 +46,8 @@ class DeprecationMiddleware(CoreSysAttributes):
     def write_log(self, request: Request):
         """Write the log entry."""
         request_from = "unknown"
-        more_info = None
+        more_info = ""
+
         supervisor_token = excract_supervisor_token(request)
 
         if supervisor_token == self.sys_homeassistant.supervisor_token:
@@ -65,12 +65,13 @@ class DeprecationMiddleware(CoreSysAttributes):
         else:
             addon = self.sys_addons.from_token(supervisor_token)
             if addon:
+                more_info = f"please report this to the maintainer of {addon.name}"
                 request_from = addon.name
+                if addon.need_update:
+                    more_info = f"You are currently running version {addon.version}, there is an update pending for {addon.latest_version}. If that does not help {more_info}"
 
-        if DEPRECATED_PATHS[request.path].get("message"):
+        if more_info == "" and DEPRECATED_PATHS[request.path].get("message"):
             more_info = DEPRECATED_PATHS[request.path]["message"]
-        else:
-            more_info = f"report this to the maintainer of {request_from}"
 
         _LOGGER.warning(
             "Access to deprecated API '%s' detected from %s - %s",
