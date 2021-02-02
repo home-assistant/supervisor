@@ -53,7 +53,7 @@ class DeprecationMiddleware(CoreSysAttributes):
 
     def write_log(self, request: Request):
         """Write the log entry."""
-        request_from = request[REQUEST_FROM]
+        request_from = request.get(REQUEST_FROM, "unknown")
         origin = self.get_origin(request)
         more_info = ""
 
@@ -79,7 +79,7 @@ class DeprecationMiddleware(CoreSysAttributes):
 
     def get_origin(self, request: Request):
         """Determine where the request was sendt from."""
-        origin = request[REQUEST_FROM]
+        origin = request.get(REQUEST_FROM, "unknown")
 
         # Home Assistant
         if isinstance(origin, HomeAssistant):
