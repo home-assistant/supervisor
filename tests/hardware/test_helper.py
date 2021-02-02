@@ -1,4 +1,5 @@
 """Test hardware utils."""
+# pylint: disable=protected-access
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -98,3 +99,29 @@ def test_used_space(coresys):
         used = coresys.hardware.helper.get_disk_used_space("/data")
 
     assert used == 8.0
+
+
+def test_get_mountinfo(coresys):
+    """Test mountinfo helper."""
+    mountinfo = coresys.hardware.helper._get_mountinfo("/proc")
+    assert mountinfo[4] == "/proc"
+
+
+def test_get_mount_source(coresys):
+    """Test mount source helper."""
+    # For /proc the mount source is known to be "proc"...
+    mount_source = coresys.hardware.helper._get_mount_source("/proc")
+    assert mount_source == "proc"
+
+
+def test_try_get_emmc_life_time(coresys, tmp_path):
+    """Test eMMC life time helper."""
+    fake_life_time = tmp_path / "fake-mmcblk0-lifetime"
+    fake_life_time.write_text("0x01 0x02\n")
+
+    with patch(
+        "supervisor.hardware.helper._BLOCK_DEVICE_EMMC_LIFE_TIME",
+        str(tmp_path / "fake-{}-lifetime"),
+    ):
+        value = coresys.hardware.helper._try_get_emmc_life_time("mmcblk0")
+    assert value == 20.0

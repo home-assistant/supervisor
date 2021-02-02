@@ -72,6 +72,13 @@ class InfoCenter(CoreSysAttributes):
             self.coresys.config.path_supervisor
         )
 
+    @property
+    def disk_life_time(self) -> float:
+        """Return the estimated life-time usage (in %) of the SSD storing the data directory."""
+        return self.sys_hardware.helper.get_disk_life_time(
+            self.coresys.config.path_supervisor
+        )
+
     async def get_dmesg(self) -> bytes:
         """Return host dmesg output."""
         proc = await asyncio.create_subprocess_shell(
