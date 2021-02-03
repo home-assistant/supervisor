@@ -334,7 +334,8 @@ SCHEMA_ADDONS_FILE = vol.Schema(
     {
         vol.Optional(ATTR_USER, default=dict): {str: SCHEMA_ADDON_USER},
         vol.Optional(ATTR_SYSTEM, default=dict): {str: SCHEMA_ADDON_SYSTEM},
-    }
+    },
+    extra=vol.REMOVE_EXTRA,
 )
 
 
