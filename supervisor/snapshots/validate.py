@@ -101,7 +101,7 @@ SCHEMA_SNAPSHOT = vol.Schema(
                     {
                         vol.Required(ATTR_SLUG): vol.Coerce(str),
                         vol.Required(ATTR_NAME): vol.Coerce(str),
-                        vol.Required(ATTR_VERSION): vol.Coerce(str),
+                        vol.Required(ATTR_VERSION): version_tag,
                         vol.Optional(ATTR_SIZE, default=0): vol.Coerce(float),
                     },
                     extra=vol.REMOVE_EXTRA,
