@@ -594,7 +594,7 @@ class Addon(AddonModel):
     async def stop(self) -> None:
         """Stop add-on."""
         try:
-            return await self.instance.stop()
+            await self.instance.stop()
         except DockerRequestError as err:
             raise AddonsError() from err
         except DockerError as err:
