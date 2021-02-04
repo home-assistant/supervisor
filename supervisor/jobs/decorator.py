@@ -99,8 +99,9 @@ class Job:
             and self._coresys.core.state != CoreState.RUNNING
         ):
             _LOGGER.warning(
-                "'%s' blocked from execution, system is not running",
+                "'%s' blocked from execution, system is not running - %s",
                 self._method.__qualname__,
+                self._coresys.core.state,
             )
             return False
 
