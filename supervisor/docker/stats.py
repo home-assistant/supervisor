@@ -14,7 +14,9 @@ class DockerStats:
         self._blk_write = 0
 
         try:
-            self._memory_usage = stats["memory_stats"]["usage"]
+            self._memory_usage = (
+                stats["memory_stats"]["usage"] - stats["memory_stats"]["stats"]["cache"]
+            )
             self._memory_limit = stats["memory_stats"]["limit"]
         except KeyError:
             self._memory_usage = 0
