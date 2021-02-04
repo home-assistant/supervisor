@@ -348,6 +348,7 @@ class RestAPI(CoreSysAttributes):
                 web.post(
                     "/addons/{addon}/options/validate", api_addons.options_validate
                 ),
+                web.get("/addons/{addon}/options/config", api_addons.options_config),
                 web.post("/addons/{addon}/rebuild", api_addons.rebuild),
                 web.get("/addons/{addon}/logs", api_addons.logs),
                 web.get("/addons/{addon}/icon", api_addons.icon),

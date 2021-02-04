@@ -102,7 +102,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
-from ..exceptions import APIError
+from ..exceptions import APIError, APIForbidden
 from ..validate import docker_ports
 from .utils import api_process, api_process_raw, api_validate
 
@@ -344,6 +344,19 @@ class APIAddons(CoreSysAttributes):
         return data
 
     @api_process
+    async def options_config(self, request: web.Request) -> None:
+        """Validate user options for add-on."""
+        slug: str = request.match_info.get("addon")
+        if slug != "self":
+            raise APIForbidden("This can be only read by the Add-on itself!")
+
+        addon = self._extract_addon_installed(request)
+        try:
+            return addon.schema(addon.options)
+        except vol.Invalid:
+            raise APIError("Invalid configuration data for the add-on") from None
+
+    @api_process
     async def security(self, request: web.Request) -> None:
         """Store security options for add-on."""
         addon = self._extract_addon_installed(request)
@@ -470,14 +483,6 @@ class APIAddons(CoreSysAttributes):
 
         data = await request.read()
         await asyncio.shield(addon.write_stdin(data))
-
-
-def _pretty_devices(addon: AnyAddon) -> List[str]:
-    """Return a simplified device list."""
-    dev_list = addon.devices
-    if not dev_list:
-        return []
-    return [row.split(":")[0] for row in dev_list]
 
 
 def _pretty_services(addon: AnyAddon) -> List[str]:
