@@ -44,7 +44,7 @@ from ..const import (
     FOLDER_HOMEASSISTANT,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import AddonsError
+from ..exceptions import AddonsError, SnapshotCreateError
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile, atomic_contents_add, secure_path
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
@@ -401,6 +401,7 @@ class Snapshot(CoreSysAttributes):
                 self._data[ATTR_FOLDERS].append(name)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
+                raise SnapshotCreateError() from err
 
         # Save folder sequential
         # avoid issue on slow IO

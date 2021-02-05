@@ -293,6 +293,21 @@ class DockerNotFound(DockerError):
     """Docker object don't Exists."""
 
 
+# Snapshot
+
+
+class SnapshotError(HassioError):
+    """Base snapshot error."""
+
+
+class SnapshotCreateError(SnapshotError):
+    """Create snapshot error."""
+
+
+class SnapshotRestoreError(SnapshotError):
+    """Restore snapshot error."""
+
+
 # Hardware
 
 

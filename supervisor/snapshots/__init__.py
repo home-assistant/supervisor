@@ -147,6 +147,7 @@ class SnapshotManager(CoreSysAttributes):
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
             self.sys_capture_exception(err)
+            self.remove(snapshot)
             return None
 
         else:
@@ -198,6 +199,7 @@ class SnapshotManager(CoreSysAttributes):
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Snapshot %s error", snapshot.slug)
             self.sys_capture_exception(err)
+            self.remove(snapshot)
             return None
 
         else:
