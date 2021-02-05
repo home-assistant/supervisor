@@ -400,8 +400,9 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.info("Snapshot folder %s done", name)
                 self._data[ATTR_FOLDERS].append(name)
             except (tarfile.TarError, OSError) as err:
-                _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
-                raise SnapshotCreateError() from err
+                raise SnapshotCreateError(
+                    f"Can't snapshot folder {name}: {err}"
+                ) from err
 
         # Save folder sequential
         # avoid issue on slow IO
