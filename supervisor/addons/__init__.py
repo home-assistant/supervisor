@@ -281,9 +281,9 @@ class AddonManager(CoreSysAttributes):
             await addon.instance.update(store.version, store.image)
         except DockerError as err:
             raise AddonsError() from err
-        else:
-            _LOGGER.info("Add-on '%s' successfully updated", slug)
-            self.data.update(store)
+
+        _LOGGER.info("Add-on '%s' successfully updated", slug)
+        self.data.update(store)
 
         # Cleanup
         with suppress(DockerError):
