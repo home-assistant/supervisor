@@ -462,7 +462,7 @@ class Addon(AddonModel):
         await self.sys_homeassistant.secrets.reload()
 
         try:
-            options = self.schema(self.options)
+            options = self.schema(self.options) or self.options
             write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error(
