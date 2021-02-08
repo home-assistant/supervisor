@@ -125,6 +125,14 @@ class Supervisor(CoreSysAttributes):
             _LOGGER.warning("Version %s is already installed", version)
             return
 
+        # First update own AppArmor
+        try:
+            await self.update_apparmor()
+        except SupervisorError as err:
+            _LOGGER.critical("Abort update because of an issue with AppArmor!")
+            raise SupervisorUpdateError() from err
+
+        # Update container
         _LOGGER.info("Update Supervisor to version %s", version)
         try:
             await self.instance.install(
@@ -144,8 +152,6 @@ class Supervisor(CoreSysAttributes):
             self.sys_config.version = version
             self.sys_config.save_data()
 
-        with suppress(SupervisorError):
-            await self.update_apparmor()
         self.sys_create_task(self.sys_core.stop())
 
     @Job(conditions=[JobCondition.RUNNING], on_condition=SupervisorJobError)
