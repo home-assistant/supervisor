@@ -276,17 +276,18 @@ class AddonManager(CoreSysAttributes):
 
         # Update instance
         last_state: AddonState = addon.state
+        old_image = addon.image
         try:
             await addon.instance.update(store.version, store.image)
-
-            # Cleanup
-            with suppress(DockerError):
-                await addon.instance.cleanup()
         except DockerError as err:
             raise AddonsError() from err
-        else:
-            self.data.update(store)
-            _LOGGER.info("Add-on '%s' successfully updated", slug)
+
+        _LOGGER.info("Add-on '%s' successfully updated", slug)
+        self.data.update(store)
+
+        # Cleanup
+        with suppress(DockerError):
+            await addon.instance.cleanup(old_image=old_image)
 
         # Setup/Fix AppArmor profile
         await addon.install_apparmor()
