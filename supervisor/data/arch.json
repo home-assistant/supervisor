@@ -10,6 +10,8 @@
   "odroid-c4": ["aarch64", "armv7", "armhf"],
   "odroid-n2": ["aarch64", "armv7", "armhf"],
   "odroid-xu": ["armv7", "armhf"],
+  "jethub-d1": ["aarch64", "armv7", "armhf"],
+  "jethub-h1": ["aarch64", "armv7", "armhf"],
   "qemux86": ["i386"],
   "qemux86-64": ["amd64", "i386"],
   "qemuarm": ["armhf"],

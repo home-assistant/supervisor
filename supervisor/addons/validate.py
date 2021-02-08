@@ -121,6 +121,8 @@ RE_MACHINE = re.compile(
     r"|odroid-c4"
     r"|odroid-n2"
     r"|odroid-xu"
+    r"|jethub-d1"
+    r"|jethub-h1"
     r"|qemuarm-64"
     r"|qemuarm"
     r"|qemux86-64"

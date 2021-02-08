@@ -153,6 +153,26 @@ async def test_odroid_xu_arch(coresys, sys_machine, sys_supervisor):
     assert coresys.arch.supported == ["armv7", "armhf"]
 
 
+async def test_jethub_d1_arch(coresys, sys_machine, sys_supervisor):
+    """Test arch for jethub-d1."""
+    sys_machine.return_value = "jethub-d1"
+    sys_supervisor.arch = "aarch64"
+    await coresys.arch.load()
+
+    assert coresys.arch.default == "aarch64"
+    assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
+
+
+async def test_jethub_h1_arch(coresys, sys_machine, sys_supervisor):
+    """Test arch for jethub-h1."""
+    sys_machine.return_value = "jethub-h1"
+    sys_supervisor.arch = "aarch64"
+    await coresys.arch.load()
+
+    assert coresys.arch.default == "aarch64"
+    assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
+
+
 async def test_intel_nuc_arch(coresys, sys_machine, sys_supervisor):
     """Test arch for intel-nuc."""
     sys_machine.return_value = "intel-nuc"
