@@ -6,7 +6,7 @@ from typing import Set
 
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
-from ..exceptions import AddonsError
+from ..exceptions import AddonsError, SnapshotError, SnapshotJobError
 from ..jobs.decorator import Job, JobCondition
 from ..utils.dt import utcnow
 from .snapshot import Snapshot
@@ -122,7 +122,10 @@ class SnapshotManager(CoreSysAttributes):
         self.snapshots_obj[snapshot.slug] = snapshot
         return snapshot
 
-    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
+    @Job(
+        conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING],
+        on_condition=SnapshotJobError,
+    )
     async def do_snapshot_full(self, name="", password=None):
         """Create a full snapshot."""
         if self.lock.locked():
@@ -145,10 +148,10 @@ class SnapshotManager(CoreSysAttributes):
                 await snapshot.store_folders()
 
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Snapshot %s error", snapshot.slug)
-            self.sys_capture_exception(err)
-            self.remove(snapshot)
-            return None
+            _LOGGER.error(err)
+            if snapshot.tarfile.exists():
+                self.remove(snapshot)
+            raise SnapshotError(err) from err
 
         else:
             _LOGGER.info("Creating full-snapshot with slug %s completed", snapshot.slug)
@@ -159,7 +162,10 @@ class SnapshotManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
-    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
+    @Job(
+        conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING],
+        on_condition=SnapshotJobError,
+    )
     async def do_snapshot_partial(
         self, name="", addons=None, folders=None, password=None
     ):
@@ -197,10 +203,10 @@ class SnapshotManager(CoreSysAttributes):
                     await snapshot.store_folders(folders)
 
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Snapshot %s error", snapshot.slug)
-            self.sys_capture_exception(err)
-            self.remove(snapshot)
-            return None
+            _LOGGER.error(err)
+            if snapshot.tarfile.exists():
+                self.remove(snapshot)
+            raise SnapshotError(err) from err
 
         else:
             _LOGGER.info(

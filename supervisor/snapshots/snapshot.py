@@ -320,9 +320,10 @@ class Snapshot(CoreSysAttributes):
             # Take snapshot
             try:
                 await addon.snapshot(addon_file)
-            except AddonsError:
-                _LOGGER.error("Can't create snapshot for %s", addon.slug)
-                return
+            except AddonsError as err:
+                raise SnapshotCreateError(
+                    f"Can't create snapshot for {addon.slug}"
+                ) from err
 
             # Store to config
             self._data[ATTR_ADDONS].append(
@@ -340,7 +341,9 @@ class Snapshot(CoreSysAttributes):
             try:
                 await _addon_save(addon)
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
+                raise SnapshotCreateError(
+                    f"Can't save Add-on {addon.slug}: {err}"
+                ) from err
 
     async def restore_addons(self, addon_list: Optional[List[str]] = None):
         """Restore a list add-on from snapshot."""
@@ -383,8 +386,7 @@ class Snapshot(CoreSysAttributes):
 
             # Check if exists
             if not origin_dir.is_dir():
-                _LOGGER.warning("Can't find snapshot folder %s", name)
-                return
+                raise SnapshotCreateError(f"Can't find snapshot folder {name}")
 
             # Take snapshot
             try:
@@ -410,7 +412,7 @@ class Snapshot(CoreSysAttributes):
             try:
                 await self.sys_run_in_executor(_folder_save, folder)
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't save folder %s: %s", folder, err)
+                raise SnapshotCreateError(f"Can't save folder {folder}: {err}") from err
 
     async def restore_folders(self, folder_list: Optional[List[str]] = None):
         """Backup Supervisor data into snapshot."""

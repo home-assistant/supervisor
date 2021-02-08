@@ -308,6 +308,10 @@ class SnapshotRestoreError(SnapshotError):
     """Restore snapshot error."""
 
 
+class SnapshotJobError(JobException, SnapshotError):
+    """Raise on job error."""
+
+
 # Hardware
 
 
