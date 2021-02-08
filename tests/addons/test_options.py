@@ -252,3 +252,50 @@ def test_ui_simple_device_schema(coresys):
         ]
     )
     assert data[-1]["type"] == "select"
+
+
+def test_ui_simple_device_schema_no_filter(coresys):
+    """Test with simple schema without filter."""
+    for device in (
+        Device(
+            "ttyACM0",
+            Path("/dev/ttyACM0"),
+            Path("/sys/bus/usb/002"),
+            "tty",
+            [],
+            {"ID_VENDOR": "xy"},
+        ),
+        Device(
+            "ttyUSB0",
+            Path("/dev/ttyUSB0"),
+            Path("/sys/bus/usb/001"),
+            "tty",
+            [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
+            {"ID_VENDOR": "xy"},
+        ),
+        Device("ttyS0", Path("/dev/ttyS0"), Path("/sys/bus/usb/003"), "tty", [], {}),
+        Device(
+            "video1",
+            Path("/dev/video1"),
+            Path("/sys/bus/usb/004"),
+            "misc",
+            [],
+            {"ID_VENDOR": "xy"},
+        ),
+    ):
+        coresys.hardware.update_device(device)
+
+    data = UiOptions(coresys)(
+        {
+            "name": "str",
+            "password": "password",
+            "fires": "bool",
+            "alias": "str?",
+            "input": "device",
+        },
+    )
+
+    assert sorted(data[-1]["options"]) == sorted(
+        ["/dev/serial/by-id/xyx", "/dev/ttyACM0", "/dev/ttyS0", "/dev/video1"]
+    )
+    assert data[-1]["type"] == "select"

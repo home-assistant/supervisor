@@ -317,7 +317,7 @@ class UiOptions(CoreSysAttributes):
             else:
                 ui_node["options"] = [
                     (device.by_id or device.path).as_posix()
-                    for device in self.sys_hardware.devices()
+                    for device in self.sys_hardware.devices
                 ]
 
         ui_schema.append(ui_node)
