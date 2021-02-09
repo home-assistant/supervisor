@@ -9,13 +9,37 @@ from .data import Device
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-_GROUP_CGROUPS: Dict[PolicyGroup, List[int]] = {
-    PolicyGroup.UART: [204, 188, 166, 244],
-    PolicyGroup.GPIO: [254, 245],
-    PolicyGroup.VIDEO: [239, 29, 81, 251, 242, 226],
-    PolicyGroup.AUDIO: [116],
-    PolicyGroup.USB: [189],
+# fmt: off
+
+_CGROUPS: Dict[PolicyGroup, List[int]] = {
+    PolicyGroup.UART: [
+        204,  # ttyAMA / ttySAC
+        188,  # ttyUSB
+        166,  # ttyACM
+        244   # ttyAML
+    ],
+    PolicyGroup.GPIO: [
+        254,  # gpiochip
+        245   # gpiomem
+    ],
+    PolicyGroup.VIDEO: [
+        239,
+        29,
+        81,
+        251,
+        242,
+        226
+    ],
+    PolicyGroup.AUDIO: [
+        116   # /dev/snd (sound)
+    ],
+    PolicyGroup.USB: [
+        189,  # /dev/bus/usb (usb)
+        180   # hiddev (usbmisc)
+    ],
 }
+
+# fmt: on
 
 
 class HwPolicy(CoreSysAttributes):
@@ -27,11 +51,11 @@ class HwPolicy(CoreSysAttributes):
 
     def is_match_cgroup(self, group: PolicyGroup, device: Device) -> bool:
         """Return true if device is in cgroup Policy."""
-        return device.cgroups_major in _GROUP_CGROUPS.get(group, [])
+        return device.cgroups_major in _CGROUPS.get(group, [])
 
     def get_cgroups_rules(self, group: PolicyGroup) -> List[str]:
         """Generate cgroups rules for a policy group."""
-        return [f"c {dev}:* rwm" for dev in _GROUP_CGROUPS.get(group, [])]
+        return [f"c {dev}:* rwm" for dev in _CGROUPS.get(group, [])]
 
     def get_cgroups_rule(self, device: Device) -> str:
         """Generate a cgroups rule for given device."""
