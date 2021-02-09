@@ -13,14 +13,14 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 _CGROUPS: Dict[PolicyGroup, List[int]] = {
     PolicyGroup.UART: [
-        204,  # ttyAMA / ttySAC
-        188,  # ttyUSB
-        166,  # ttyACM
-        244   # ttyAML
+        204,  # ttyAMA / ttySAC (tty)
+        188,  # ttyUSB (tty)
+        166,  # ttyACM (tty)
+        244   # ttyAML (tty)
     ],
     PolicyGroup.GPIO: [
-        254,  # gpiochip
-        245   # gpiomem
+        254,  # gpiochip (gpio)
+        245   # gpiomem (gpiomem)
     ],
     PolicyGroup.VIDEO: [
         239,
@@ -35,7 +35,8 @@ _CGROUPS: Dict[PolicyGroup, List[int]] = {
     ],
     PolicyGroup.USB: [
         189,  # /dev/bus/usb (usb)
-        180   # hiddev (usbmisc)
+        180,  # hiddev (usbmisc)
+        243   # hidraw (hidraw)
     ],
 }
 
