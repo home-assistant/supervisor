@@ -13,7 +13,7 @@ inputs:
         [fr]: https://community.home-assistant.io/c/feature-requests
   - type: input
     attributes:
-      label: What is the version of the Supervisor used?
+      label: What is the used version of the Supervisor?
       required: true
       placeholder: supervisor-
       description: >
@@ -40,7 +40,7 @@ inputs:
     attributes:
       label: What is the version of your installed operating system?
       required: true
-      placeholder: 5.10
+      placeholder: "5.11"
       description: Can be found in the Supervisor panel -> System tab.
   - type: input
     attributes:
