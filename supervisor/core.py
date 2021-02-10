@@ -150,7 +150,7 @@ class Core(CoreSysAttributes):
             _LOGGER.warning("System running in a unsupported environment!")
         if not self.healthy:
             _LOGGER.critical(
-                "System running in a unhealthy state and will require manual intervention!"
+                "System is running in an unhealthy state and needs manual intervention!"
             )
 
         # Check internet on startup
