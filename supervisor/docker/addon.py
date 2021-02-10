@@ -27,8 +27,9 @@ from ..const import (
     SECURITY_PROFILE,
 )
 from ..coresys import CoreSys
-from ..exceptions import CoreDNSError, DockerError, HardwareNotFound
+from ..exceptions import CoreDNSError, DockerError, DockerNotFound, HardwareNotFound
 from ..hardware.const import PolicyGroup
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from .interface import DockerInterface
 
@@ -370,26 +371,35 @@ class DockerAddon(DockerInterface):
         self._stop()
 
         # Create & Run container
-        docker_container = self.sys_docker.run(
-            self.image,
-            tag=str(self.addon.version),
-            name=self.name,
-            hostname=self.addon.hostname,
-            detach=True,
-            init=self.addon.default_init,
-            privileged=self.full_access,
-            stdin_open=self.addon.with_stdin,
-            network_mode=self.network_mode,
-            pid_mode=self.pid_mode,
-            ports=self.ports,
-            extra_hosts=self.network_mapping,
-            device_cgroup_rules=self.cgroups_rules,
-            cap_add=self.addon.privileged,
-            security_opt=self.security_opt,
-            environment=self.environment,
-            volumes=self.volumes,
-            tmpfs=self.tmpfs,
-        )
+        try:
+            docker_container = self.sys_docker.run(
+                self.image,
+                tag=str(self.addon.version),
+                name=self.name,
+                hostname=self.addon.hostname,
+                detach=True,
+                init=self.addon.default_init,
+                privileged=self.full_access,
+                stdin_open=self.addon.with_stdin,
+                network_mode=self.network_mode,
+                pid_mode=self.pid_mode,
+                ports=self.ports,
+                extra_hosts=self.network_mapping,
+                device_cgroup_rules=self.cgroups_rules,
+                cap_add=self.addon.privileged,
+                security_opt=self.security_opt,
+                environment=self.environment,
+                volumes=self.volumes,
+                tmpfs=self.tmpfs,
+            )
+        except DockerNotFound:
+            self.sys_resolution.create_issue(
+                IssueType.MISSING_IMAGE,
+                ContextType.ADDON,
+                reference=self.addon.slug,
+                suggestion=[SuggestionType.EXECUTE_REPAIR],
+            )
+            raise
 
         self._meta = docker_container.attrs
         _LOGGER.info(

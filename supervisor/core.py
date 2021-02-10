@@ -15,7 +15,7 @@ from .exceptions import (
     SupervisorUpdateError,
 )
 from .homeassistant.core import LANDINGPAGE
-from .resolution.const import ContextType, IssueType, UnhealthyReason
+from .resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -212,6 +212,14 @@ class Core(CoreSysAttributes):
                     self.sys_capture_exception(err)
             else:
                 _LOGGER.info("Skiping start of Home Assistant")
+
+            # Core is not running
+            if self.sys_homeassistant.core.error_state:
+                self.sys_resolution.create_issue(
+                    IssueType.FATAL_ERROR,
+                    ContextType.CORE,
+                    suggestions=[SuggestionType.EXECUTE_REPAIR],
+                )
 
             # start addon mark as application
             await self.sys_addons.boot(AddonStartup.APPLICATION)
