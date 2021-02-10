@@ -10,7 +10,7 @@ cpe==1.2.1
 cryptography==3.4.3
 debugpy==1.2.1
 docker==4.4.1
-gitpython==3.1.12
+gitpython==3.1.13
 jinja2==2.11.3
 pulsectl==20.5.1
 pytz==2021.1
