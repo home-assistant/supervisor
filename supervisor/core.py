@@ -150,7 +150,7 @@ class Core(CoreSysAttributes):
             _LOGGER.warning("System running in a unsupported environment!")
         if not self.healthy:
             _LOGGER.critical(
-                "System running in a unhealthy state and need manual intervention!"
+                "System is running in an unhealthy state and needs manual intervention!"
             )
 
         # Check internet on startup
@@ -171,7 +171,7 @@ class Core(CoreSysAttributes):
             except SupervisorUpdateError as err:
                 _LOGGER.critical(
                     "Can't update Supervisor! This will break some Add-ons or affect "
-                    "future version of Home Assistant!"
+                    "future versions of Home Assistant!"
                 )
                 self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
                 self.sys_capture_exception(err)
