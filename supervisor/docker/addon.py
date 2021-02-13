@@ -193,7 +193,7 @@ class DockerAddon(DockerInterface):
         tmpfs = {}
 
         if self.addon.with_tmpfs:
-            tmpfs["/tmpfs"] = ""
+            tmpfs["/tmp"] = ""
 
         if not self.addon.host_ipc:
             tmpfs["/dev/shm"] = ""
