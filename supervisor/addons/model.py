@@ -71,6 +71,7 @@ from ..const import (
     AddonStartup,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.const import Capabilities
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE, RE_VOLUME
 
@@ -307,7 +308,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data.get(ATTR_ENVIRONMENT)
 
     @property
-    def privileged(self) -> List[str]:
+    def privileged(self) -> List[Capabilities]:
         """Return list of privilege."""
         return self.data.get(ATTR_PRIVILEGED, [])
 

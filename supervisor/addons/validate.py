@@ -82,7 +82,6 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
-    PRIVILEGED_ALL,
     ROLE_ALL,
     ROLE_DEFAULT,
     AddonBoot,
@@ -91,6 +90,7 @@ from ..const import (
     AddonState,
 )
 from ..discovery.validate import valid_discovery_service
+from ..docker.const import Capabilities
 from ..validate import (
     docker_image,
     docker_ports,
@@ -233,7 +233,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_TMPFS, default=False): vol.Boolean(),
         vol.Optional(ATTR_MAP, default=list): [vol.Match(RE_VOLUME)],
         vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): str},
-        vol.Optional(ATTR_PRIVILEGED): [vol.In(PRIVILEGED_ALL)],
+        vol.Optional(ATTR_PRIVILEGED): [vol.Coerce(Capabilities)],
         vol.Optional(ATTR_APPARMOR, default=True): vol.Boolean(),
         vol.Optional(ATTR_FULL_ACCESS, default=False): vol.Boolean(),
         vol.Optional(ATTR_AUDIO, default=False): vol.Boolean(),
