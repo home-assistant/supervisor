@@ -6,18 +6,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..const import (
-    PRIVILEGED_DAC_READ_SEARCH,
-    PRIVILEGED_NET_ADMIN,
-    PRIVILEGED_SYS_ADMIN,
-    PRIVILEGED_SYS_MODULE,
-    PRIVILEGED_SYS_PTRACE,
-    PRIVILEGED_SYS_RAWIO,
-    ROLE_ADMIN,
-    ROLE_MANAGER,
-    SECURITY_DISABLE,
-    SECURITY_PROFILE,
-)
+from ..const import ROLE_ADMIN, ROLE_MANAGER, SECURITY_DISABLE, SECURITY_PROFILE
+from ..docker.const import Capabilities
 
 if TYPE_CHECKING:
     from .model import AddonModel
@@ -46,16 +36,19 @@ def rating_security(addon: AddonModel) -> int:
         rating += 1
 
     # Privileged options
-    if any(
-        privilege in addon.privileged
-        for privilege in (
-            PRIVILEGED_NET_ADMIN,
-            PRIVILEGED_SYS_ADMIN,
-            PRIVILEGED_SYS_RAWIO,
-            PRIVILEGED_SYS_PTRACE,
-            PRIVILEGED_SYS_MODULE,
-            PRIVILEGED_DAC_READ_SEARCH,
+    if (
+        any(
+            privilege in addon.privileged
+            for privilege in (
+                Capabilities.NET_ADMIN,
+                Capabilities.SYS_ADMIN,
+                Capabilities.SYS_RAWIO,
+                Capabilities.SYS_PTRACE,
+                Capabilities.SYS_MODULE,
+                Capabilities.DAC_READ_SEARCH,
+            )
         )
+        or addon.with_kernel_modules
     ):
         rating += -1
 
