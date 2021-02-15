@@ -35,6 +35,7 @@ class PolicyGroup(str, Enum):
     USB = "usb"
     VIDEO = "video"
     AUDIO = "audio"
+    BLUETOOTH = "bluetooth"
 
 
 class HardwareAction(str, Enum):

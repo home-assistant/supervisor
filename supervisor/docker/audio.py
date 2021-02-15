@@ -61,9 +61,8 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
-            privileged=True,
             device_cgroup_rules=self.sys_hardware.policy.get_cgroups_rules(
-                PolicyGroup.AUDIO
+                PolicyGroup.AUDIO, PolicyGroup.BLUETOOTH
             ),
             environment={ENV_TIME: self.sys_config.timezone},
             volumes=self.volumes,
