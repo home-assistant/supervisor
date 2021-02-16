@@ -27,7 +27,7 @@ _CGROUPS: Dict[PolicyGroup, List[int]] = {
         29,
         81,
         251,
-        242,
+        242,  # vchiq (vchiq)
         226
     ],
     PolicyGroup.AUDIO: [
