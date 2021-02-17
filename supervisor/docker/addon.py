@@ -168,7 +168,7 @@ class DockerAddon(DockerInterface):
             if rules:
                 _LOGGER.warning(
                     "Add-on %s request full access and selective device access!",
-                    self.addon.slug,
+                    self.addon.name,
                 )
             rules = set(self.sys_hardware.policy.get_full_access())
 
