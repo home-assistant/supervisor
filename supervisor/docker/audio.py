@@ -2,6 +2,8 @@
 import logging
 from typing import Dict, List
 
+from supervisor.docker.const import Capabilities
+
 from ..const import ENV_TIME, MACHINE_ID
 from ..coresys import CoreSysAttributes
 from ..hardware.const import PolicyGroup
@@ -48,6 +50,11 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             PolicyGroup.AUDIO
         ) + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.BLUETOOTH)
 
+    @property
+    def capabilities(self) -> List[str]:
+        """Generate needed capabilities."""
+        return [cap.value for cap in (Capabilities.SYS_NICE, Capabilities.SYS_RESOURCE)]
+
     def _run(self) -> None:
         """Run Docker image.
 
@@ -68,6 +75,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
+            cap_add=self.capabilities,
             device_cgroup_rules=self.cgroups_rules,
             environment={ENV_TIME: self.sys_config.timezone},
             volumes=self.volumes,
