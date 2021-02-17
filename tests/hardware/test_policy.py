@@ -20,6 +20,17 @@ def test_device_policy(coresys):
 
     assert coresys.hardware.policy.get_cgroups_rule(device) == "c 5:10 rwm"
 
+    disk = Device(
+        "sda0",
+        Path("/dev/sda0"),
+        Path("/sys/bus/usb/001"),
+        "block",
+        [],
+        {"MAJOR": "5", "MINOR": "10"},
+    )
+
+    assert coresys.hardware.policy.get_cgroups_rule(disk) == "b 5:10 rwm"
+
 
 def test_policy_group(coresys):
     """Test policy group generator."""
@@ -46,3 +57,29 @@ def test_device_in_policy(coresys):
 
     assert coresys.hardware.policy.is_match_cgroup(PolicyGroup.UART, device)
     assert not coresys.hardware.policy.is_match_cgroup(PolicyGroup.GPIO, device)
+
+
+def test_allowed_access(coresys):
+    """Test if is allow to access for device."""
+
+    disk = Device(
+        "sda0",
+        Path("/dev/sda0"),
+        Path("/sys/bus/usb/001"),
+        "block",
+        [],
+        {"MAJOR": "5", "MINOR": "10", "ID_FS_LABEL": "hassos-overlay"},
+    )
+
+    assert not coresys.hardware.policy.allowed_for_access(disk)
+
+    device = Device(
+        "ttyACM0",
+        Path("/dev/ttyACM0"),
+        Path("/sys/bus/usb/001"),
+        "tty",
+        [],
+        {"MAJOR": "204", "MINOR": "10"},
+    )
+
+    assert coresys.hardware.policy.allowed_for_access(device)

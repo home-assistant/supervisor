@@ -3,7 +3,7 @@ import logging
 from typing import Dict, List
 
 from ..coresys import CoreSys, CoreSysAttributes
-from .const import PolicyGroup
+from .const import PolicyGroup, UdevSubsystem
 from .data import Device
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -63,4 +63,17 @@ class HwPolicy(CoreSysAttributes):
 
     def get_cgroups_rule(self, device: Device) -> str:
         """Generate a cgroups rule for given device."""
-        return f"c {device.cgroups_major}:{device.cgroups_minor} rwm"
+        cgroup_type = "c" if device.subsystem != UdevSubsystem.DISK else "b"
+
+        return f"{cgroup_type} {device.cgroups_major}:{device.cgroups_minor} rwm"
+
+    def get_full_access(self) -> str:
+        """Get full access to all devices."""
+        return "a *:* rwm"
+
+    def allowed_for_access(self, device: Device) -> bool:
+        """Return True if allow to access to this device."""
+        if self.sys_hardware.disk.is_system_partition(device):
+            return False
+
+        return True

@@ -95,11 +95,6 @@ class DockerAddon(DockerInterface):
         return f"addon_{self.addon.slug}"
 
     @property
-    def full_access(self) -> bool:
-        """Return True if full access is enabled."""
-        return not self.addon.protected and self.addon.with_full_access
-
-    @property
     def environment(self) -> Dict[str, Optional[str]]:
         """Return environment for Docker add-on."""
         addon_env = self.addon.environment or {}
@@ -130,11 +125,26 @@ class DockerAddon(DockerInterface):
                 device = self.sys_hardware.get_by_path(device_path)
             except HardwareNotFound:
                 _LOGGER.debug("Ignore static device path %s", device_path)
-            else:
-                rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
+
+            # Check access
+            if not self.sys_hardware.policy.allowed_for_access(device):
+                _LOGGER.error(
+                    "Add-on %s try to access to blocked device %s!",
+                    self.addon.name,
+                    device.name,
+                )
+                continue
+            rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
 
         # Attach correct cgroups for devices
         for device in self.addon.devices:
+            if not self.sys_hardware.policy.allowed_for_access(device):
+                _LOGGER.error(
+                    "Add-on %s try to access to blocked device %s!",
+                    self.addon.name,
+                    device.name,
+                )
+                continue
             rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
 
         # Video
@@ -152,6 +162,10 @@ class DockerAddon(DockerInterface):
         # USB
         if self.addon.with_usb:
             rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB))
+
+        # Full Access
+        if not self.addon.protected and self.addon.with_full_access:
+            return [self.sys_hardware.policy.get_full_access()]
 
         # Return None if no rules is present
         if rules:
@@ -394,7 +408,6 @@ class DockerAddon(DockerInterface):
                 hostname=self.addon.hostname,
                 detach=True,
                 init=self.addon.default_init,
-                privileged=self.full_access,
                 stdin_open=self.addon.with_stdin,
                 network_mode=self.network_mode,
                 pid_mode=self.pid_mode,
