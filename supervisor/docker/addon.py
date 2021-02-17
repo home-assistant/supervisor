@@ -130,7 +130,7 @@ class DockerAddon(DockerInterface):
             if not self.sys_hardware.policy.allowed_for_access(device):
                 _LOGGER.error(
                     "Add-on %s try to access to blocked device %s!",
-                    self.addon.slug,
+                    self.addon.name,
                     device.name,
                 )
                 continue
@@ -141,7 +141,7 @@ class DockerAddon(DockerInterface):
             if not self.sys_hardware.policy.allowed_for_access(device):
                 _LOGGER.error(
                     "Add-on %s try to access to blocked device %s!",
-                    self.addon.slug,
+                    self.addon.name,
                     device.name,
                 )
                 continue
