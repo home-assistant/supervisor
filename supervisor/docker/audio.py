@@ -2,10 +2,9 @@
 import logging
 from typing import Dict, List
 
-from supervisor.docker.const import Capabilities
-
 from ..const import ENV_TIME, MACHINE_ID
 from ..coresys import CoreSysAttributes
+from ..docker.const import Capabilities
 from ..hardware.const import PolicyGroup
 from .interface import DockerInterface
 
