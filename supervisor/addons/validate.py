@@ -153,6 +153,8 @@ def _warn_addon_config(config: Dict[str, Any]):
             name,
         )
 
+    return config
+
 
 def _migrate_addon_config(protocol=False):
     """Migrate addon config."""
