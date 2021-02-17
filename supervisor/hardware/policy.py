@@ -27,7 +27,7 @@ _CGROUPS: Dict[PolicyGroup, List[int]] = {
         29,
         81,
         251,
-        242,
+        242,  # vchiq (vchiq)
         226
     ],
     PolicyGroup.AUDIO: [
@@ -38,6 +38,9 @@ _CGROUPS: Dict[PolicyGroup, List[int]] = {
         180,  # hiddev (usbmisc)
         243   # hidraw (hidraw)
     ],
+    PolicyGroup.BLUETOOTH: [
+        13    # /dev/input (input)
+    ]
 }
 
 # fmt: on

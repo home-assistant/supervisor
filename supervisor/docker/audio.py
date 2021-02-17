@@ -1,6 +1,6 @@
 """Audio docker object."""
 import logging
-from typing import Dict
+from typing import Dict, List
 
 from ..const import ENV_TIME, MACHINE_ID
 from ..coresys import CoreSysAttributes
@@ -41,6 +41,13 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
 
         return volumes
 
+    @property
+    def cgroups_rules(self) -> List[str]:
+        """Return a list of needed cgroups permission."""
+        return self.sys_hardware.policy.get_cgroups_rules(
+            PolicyGroup.AUDIO
+        ) + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.BLUETOOTH)
+
     def _run(self) -> None:
         """Run Docker image.
 
@@ -61,10 +68,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
-            privileged=True,
-            device_cgroup_rules=self.sys_hardware.policy.get_cgroups_rules(
-                PolicyGroup.AUDIO
-            ),
+            device_cgroup_rules=self.cgroups_rules,
             environment={ENV_TIME: self.sys_config.timezone},
             volumes=self.volumes,
         )

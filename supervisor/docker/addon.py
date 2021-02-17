@@ -6,7 +6,7 @@ from ipaddress import IPv4Address, ip_address
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, Set, Union
 
 from awesomeversion import AwesomeVersion
 import docker
@@ -31,6 +31,7 @@ from ..exceptions import CoreDNSError, DockerError, DockerNotFound, HardwareNotF
 from ..hardware.const import PolicyGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
+from .const import Capabilities
 from .interface import DockerInterface
 
 if TYPE_CHECKING:
@@ -226,6 +227,20 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
+    def capabilities(self) -> Optional[List[str]]:
+        """Generate needed capabilities."""
+        capabilities: Set[Capabilities] = set(self.addon.privileged)
+
+        # Need work with kernel modules
+        if self.addon.with_kernel_modules:
+            capabilities.add(Capabilities.SYS_MODULE)
+
+        # Return None if no capabilities is present
+        if capabilities:
+            return [cap.value for cap in capabilities]
+        return None
+
+    @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Generate volumes for mappings."""
         addon_mapping = self.addon.map_volumes
@@ -386,7 +401,7 @@ class DockerAddon(DockerInterface):
                 ports=self.ports,
                 extra_hosts=self.network_mapping,
                 device_cgroup_rules=self.cgroups_rules,
-                cap_add=self.addon.privileged,
+                cap_add=self.capabilities,
                 security_opt=self.security_opt,
                 environment=self.environment,
                 volumes=self.volumes,
@@ -397,7 +412,7 @@ class DockerAddon(DockerInterface):
                 IssueType.MISSING_IMAGE,
                 ContextType.ADDON,
                 reference=self.addon.slug,
-                suggestion=[SuggestionType.EXECUTE_REPAIR],
+                suggestions=[SuggestionType.EXECUTE_REPAIR],
             )
             raise
 
