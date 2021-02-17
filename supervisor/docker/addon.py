@@ -412,7 +412,7 @@ class DockerAddon(DockerInterface):
                 IssueType.MISSING_IMAGE,
                 ContextType.ADDON,
                 reference=self.addon.slug,
-                suggestion=[SuggestionType.EXECUTE_REPAIR],
+                suggestions=[SuggestionType.EXECUTE_REPAIR],
             )
             raise
 
