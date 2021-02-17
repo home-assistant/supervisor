@@ -66,12 +66,8 @@ def rating_security(addon: AddonModel) -> int:
     if addon.host_pid:
         rating += -2
 
-    # Full Access
-    if addon.with_full_access:
-        rating += -2
-
-    # Docker Access
-    if addon.access_docker_api:
+    # Docker Access & full Access
+    if addon.access_docker_api or addon.with_full_access:
         rating = 1
 
     return max(min(6, rating), 1)

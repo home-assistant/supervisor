@@ -54,28 +54,28 @@ class InfoCenter(CoreSysAttributes):
     @property
     def total_space(self) -> float:
         """Return total space (GiB) on disk for supervisor data directory."""
-        return self.sys_hardware.helper.get_disk_total_space(
+        return self.sys_hardware.disk.get_disk_total_space(
             self.coresys.config.path_supervisor
         )
 
     @property
     def used_space(self) -> float:
         """Return used space (GiB) on disk for supervisor data directory."""
-        return self.sys_hardware.helper.get_disk_used_space(
+        return self.sys_hardware.disk.get_disk_used_space(
             self.coresys.config.path_supervisor
         )
 
     @property
     def free_space(self) -> float:
         """Return available space (GiB) on disk for supervisor data directory."""
-        return self.sys_hardware.helper.get_disk_free_space(
+        return self.sys_hardware.disk.get_disk_free_space(
             self.coresys.config.path_supervisor
         )
 
     @property
     def disk_life_time(self) -> float:
         """Return the estimated life-time usage (in %) of the SSD storing the data directory."""
-        return self.sys_hardware.helper.get_disk_life_time(
+        return self.sys_hardware.disk.get_disk_life_time(
             self.coresys.config.path_supervisor
         )
 
