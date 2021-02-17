@@ -143,7 +143,10 @@ def _warn_addon_config(config: Dict[str, Any]):
         raise vol.Invalid("Invalid Add-on config!")
 
     if config.get(ATTR_FULL_ACCESS, False) and (
-        config.get(ATTR_DEVICES) or config.get(ATTR_UART) or config.get(ATTR_USB)
+        config.get(ATTR_DEVICES)
+        or config.get(ATTR_UART)
+        or config.get(ATTR_USB)
+        or config.get(ATTR_GPIO)
     ):
         _LOGGER.warning(
             "Add-on have full device access, and selective device access in the configuration. Please report this to the maintainer of %s",
