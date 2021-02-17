@@ -136,6 +136,21 @@ RE_MACHINE = re.compile(
 )
 
 
+def _warn_addon_config(config: Dict[str, Any]):
+    """Warn about miss configs."""
+    name = config.get(ATTR_NAME)
+    if not name:
+        raise vol.Invalid("Invalid Add-on config!")
+
+    if config.get(ATTR_FULL_ACCESS, False) and (
+        config.get(ATTR_DEVICES) or config.get(ATTR_UART) or config.get(ATTR_USB)
+    ):
+        _LOGGER.warning(
+            "Add-on have full device access, and selective device access in the configuration. Please report this to the maintainer of %s",
+            name,
+        )
+
+
 def _migrate_addon_config(protocol=False):
     """Migrate addon config."""
 
@@ -279,7 +294,9 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
     extra=vol.REMOVE_EXTRA,
 )
 
-SCHEMA_ADDON_CONFIG = vol.All(_migrate_addon_config(True), _SCHEMA_ADDON_CONFIG)
+SCHEMA_ADDON_CONFIG = vol.All(
+    _migrate_addon_config(True), _warn_addon_config, _SCHEMA_ADDON_CONFIG
+)
 
 
 # pylint: disable=no-value-for-parameter
