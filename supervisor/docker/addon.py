@@ -165,7 +165,7 @@ class DockerAddon(DockerInterface):
 
         # Full Access
         if not self.addon.protected and self.addon.with_full_access:
-            rules = set(self.sys_hardware.policy.get_full_access())
+            return [self.sys_hardware.policy.get_full_access()]
 
         # Return None if no rules is present
         if rules:
