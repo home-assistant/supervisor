@@ -125,6 +125,7 @@ class DockerAddon(DockerInterface):
                 device = self.sys_hardware.get_by_path(device_path)
             except HardwareNotFound:
                 _LOGGER.debug("Ignore static device path %s", device_path)
+                continue
 
             # Check access
             if not self.sys_hardware.policy.allowed_for_access(device):
