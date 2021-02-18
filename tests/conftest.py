@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from aiohttp import web
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.api import RestAPI
@@ -147,6 +148,11 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     # Set internet state
     coresys_obj.supervisor._connectivity = True
     coresys_obj.host.network._connectivity = True
+
+    # WebSocket
+    coresys_obj.homeassistant._websocket._client = AsyncMock(
+        ha_version=AwesomeVersion("2021.2.4")
+    )
 
     yield coresys_obj
 
