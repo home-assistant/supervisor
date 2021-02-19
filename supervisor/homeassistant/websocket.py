@@ -145,7 +145,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
     def supervisor_update_event(self, key: str, data: Optional[Dict[str, Any]] = None):
         """Send a supervisor/event command."""
         if self.sys_core.state not in CLOSING_STATES:
-            self.sys_loop.call_soon_threadsafe(
+            self.sys_loop.call_soon(
                 self.sys_loop.create_task,
                 self.async_supervisor_update_event(key, data),
             )
@@ -153,6 +153,6 @@ class HomeAssistantWebSocket(CoreSysAttributes):
     def send_command(self, message: Dict[str, Any]):
         """Send a supervisor/event command."""
         if self.sys_core.state not in CLOSING_STATES:
-            self.sys_loop.call_soon_threadsafe(
+            self.sys_loop.call_soon(
                 self.sys_loop.create_task, self.async_send_command(message)
             )
