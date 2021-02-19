@@ -15,7 +15,6 @@ from .exceptions import (
     SupervisorUpdateError,
 )
 from .homeassistant.core import LANDINGPAGE
-from .homeassistant.websocket import CLOSING_STATES
 from .resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -56,13 +55,9 @@ class Core(CoreSysAttributes):
             )
         finally:
             self._state = new_state
-            if self.sys_core.state not in CLOSING_STATES:
-                self.sys_loop.call_soon_threadsafe(
-                    self.sys_loop.create_task,
-                    self.sys_homeassistant.websocket.async_supervisor_update_event(
-                        "info", {"state": new_state}
-                    ),
-                )
+            self.sys_homeassistant.websocket.supervisor_update_event(
+                "info", {"state": new_state}
+            )
 
     async def connect(self):
         """Connect Supervisor container."""

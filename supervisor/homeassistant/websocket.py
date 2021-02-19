@@ -16,6 +16,7 @@ from ..exceptions import (
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 CLOSING_STATES = [
+    CoreState.SHUTDOWN,
     CoreState.STOPPING,
     CoreState.CLOSE,
 ]
@@ -106,6 +107,10 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             raise HomeAssistantWSNotSupported(
                 f"Can't execute in a ${self.sys_core.state} state"
             )
+        if not await self.sys_homeassistant.api.check_api_state():
+            # No core access, don't try.
+            return
+
         if not self._client:
             self._client = await self._get_ws_client()
 
@@ -136,3 +141,18 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             pass
         except HomeAssistantWSError as err:
             _LOGGER.error(err)
+
+    def supervisor_update_event(self, key: str, data: Optional[Dict[str, Any]] = None):
+        """Send a supervisor/event command."""
+        if self.sys_core.state not in CLOSING_STATES:
+            self.sys_loop.call_soon_threadsafe(
+                self.sys_loop.create_task,
+                self.async_supervisor_update_event(key, data),
+            )
+
+    def send_command(self, message: Dict[str, Any]):
+        """Send a supervisor/event command."""
+        if self.sys_core.state not in CLOSING_STATES:
+            self.sys_loop.call_soon_threadsafe(
+                self.sys_loop.create_task, self.async_send_command(message)
+            )
