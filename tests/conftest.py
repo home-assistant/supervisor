@@ -21,6 +21,12 @@ from tests.common import exists_fixture, load_fixture, load_json_fixture
 # pylint: disable=redefined-outer-name, protected-access
 
 
+async def mock_async_return_true() -> bool:
+    """Mock methods to return True."""
+
+    return True
+
+
 @pytest.fixture
 def docker() -> DockerAPI:
     """Mock DockerAPI."""
@@ -150,6 +156,7 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     coresys_obj.host.network._connectivity = True
 
     # WebSocket
+    coresys_obj.homeassistant.api.check_api_state = mock_async_return_true
     coresys_obj.homeassistant._websocket._client = AsyncMock(
         ha_version=AwesomeVersion("2021.2.4")
     )

@@ -124,6 +124,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 message_type,
                 MIN_VERSION[message_type],
             )
+            return
 
         try:
             return await self._client.async_send_command(message)

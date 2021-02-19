@@ -1,10 +1,10 @@
 """Test websocket."""
 # pylint: disable=protected-access, import-error
+import logging
+
 from awesomeversion import AwesomeVersion
-import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HomeAssistantWSNotSupported
 
 
 async def test_send_command(coresys: CoreSys):
@@ -28,13 +28,20 @@ async def test_send_command(coresys: CoreSys):
     )
 
 
-async def test_send_command_old_core_version(coresys: CoreSys):
+async def test_send_command_old_core_version(coresys: CoreSys, caplog):
     """Test websocket error on listen."""
+    caplog.set_level(logging.INFO)
     client = coresys.homeassistant.websocket._client
     client.ha_version = AwesomeVersion("1970.1.1")
 
-    with pytest.raises(HomeAssistantWSNotSupported):
-        await coresys.homeassistant.websocket.async_send_command({"type": "test"})
+    await coresys.homeassistant.websocket.async_send_command(
+        {"type": "supervisor/event"}
+    )
+
+    assert (
+        "WebSocket command supervisor/event is not supported untill core-2021.2.4"
+        in caplog.text
+    )
 
     await coresys.homeassistant.websocket.async_supervisor_update_event(
         "test", {"lorem": "ipsum"}
