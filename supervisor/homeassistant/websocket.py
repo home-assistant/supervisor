@@ -1,5 +1,4 @@
 """Home Assistant Websocket API."""
-import asyncio
 import logging
 from typing import Any, Dict, Optional
 
@@ -36,24 +35,16 @@ class WSClient:
         self.client = client
         self.message_id = 0
 
-        self._loop = asyncio.get_running_loop()
-        self._result_futures: Dict[str, asyncio.Future] = {}
-
     async def async_send_command(self, message: Dict[str, Any]):
         """Send a websocket command."""
-        self.message_id = message_id = message["id"] = self.message_id + 1
-        self._result_futures[message_id] = future = self._loop.create_future()
+        self.message_id += 1
+        message["id"] = self.message_id
 
         _LOGGER.debug("Sending: %s", message)
         try:
             await self.client.send_json(message)
         except HomeAssistantWSNotSupported:
             return
-
-        try:
-            await future
-        finally:
-            self._result_futures.pop(message_id)
 
         response = await self.client.receive_json()
 
@@ -142,3 +133,5 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             )
         except HomeAssistantWSNotSupported:
             pass
+        except HomeAssistantWSError as err:
+            _LOGGER.error(err)
