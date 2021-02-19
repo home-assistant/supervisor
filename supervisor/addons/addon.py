@@ -74,7 +74,7 @@ RE_WEBUI = re.compile(
 
 RE_WATCHDOG = re.compile(
     r"^(?:(?P<s_prefix>https?|tcp)|\[PROTO:(?P<t_proto>\w+)\])"
-    r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$"
+    r":\/\/\[HOST\]:(?:\[PORT:)?(?P<t_port>\d+)\]?(?P<s_suffix>.*)$"
 )
 
 RE_OLD_AUDIO = re.compile(r"\d+,\d+")
