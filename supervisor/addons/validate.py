@@ -230,7 +230,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_PORTS): docker_ports,
         vol.Optional(ATTR_PORTS_DESCRIPTION): docker_ports_description,
         vol.Optional(ATTR_WATCHDOG): vol.Match(
-            r"^(?:https?|\[PROTO:\w+\]|tcp):\/\/\[HOST\]:\[PORT:\d+\].*$"
+            r"^(?:https?|\[PROTO:\w+\]|tcp):\/\/\[HOST\]:(\[PORT:\d+\]|\d+).*$"
         ),
         vol.Optional(ATTR_WEBUI): vol.Match(
             r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"
