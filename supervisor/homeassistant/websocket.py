@@ -118,7 +118,9 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         except HomeAssistantAPIError as err:
             raise HomeAssistantWSError from err
 
-    async def async_supervisor_update_event(self, key: str, data: Dict[str, Any]):
+    async def async_supervisor_update_event(
+        self, key: str, data: Optional[Dict[str, Any]] = None
+    ):
         """Send a supervisor/event command."""
         try:
             await self.async_send_command(
@@ -127,7 +129,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                     "data": {
                         "event": "supervisor-update",
                         "update_key": key,
-                        "data": data,
+                        "data": data or {},
                     },
                 }
             )
