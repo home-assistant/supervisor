@@ -21,7 +21,7 @@ CLOSING_STATES = [
     CoreState.CLOSE,
 ]
 
-MIN_VERSION = "2021.2.4"
+MIN_VERSION = {"supervisor/event": "2021.2.4"}
 
 
 class WSClient:
@@ -96,8 +96,6 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             f"{self.sys_homeassistant.api_url}/api/websocket",
             self.sys_homeassistant.api.access_token,
         )
-        if client.ha_version < MIN_VERSION:
-            _LOGGER.info("No WebSocket support untill core-%s", MIN_VERSION)
 
         return client
 
@@ -114,8 +112,18 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         if not self._client:
             self._client = await self._get_ws_client()
 
-        if self._client.ha_version < MIN_VERSION:
-            raise HomeAssistantWSNotSupported
+        message_type = message.get("type")
+
+        if (
+            message_type is not None
+            and message_type in MIN_VERSION
+            and self._client.ha_version < MIN_VERSION[message_type]
+        ):
+            _LOGGER.info(
+                "WebSocket command %s is not supported untill core-%s. Ignoring WebSocket message.",
+                message_type,
+                MIN_VERSION[message_type],
+            )
 
         try:
             return await self._client.async_send_command(message)
