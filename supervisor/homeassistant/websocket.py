@@ -16,7 +16,6 @@ from ..exceptions import (
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 CLOSING_STATES = [
-    CoreState.SHUTDOWN,
     CoreState.STOPPING,
     CoreState.CLOSE,
 ]
