@@ -55,6 +55,9 @@ class Core(CoreSysAttributes):
             )
         finally:
             self._state = new_state
+            self.sys_homeassistant.websocket.supervisor_update_event(
+                "info", {"state": new_state}
+            )
 
     async def connect(self):
         """Connect Supervisor container."""
