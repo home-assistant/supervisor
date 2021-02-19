@@ -3,8 +3,8 @@ about: Report an issue related to the Home Assistant Supervisor.
 labels: bug
 title: ""
 issue_body: true
-inputs:
-  - type: description
+body:
+  - type: markdown
     attributes:
       value: |
         This issue form is for reporting bugs with **supported** setups only!
@@ -13,54 +13,60 @@ inputs:
 
         [fr]: https://community.home-assistant.io/c/feature-requests
   - type: textarea
+    validations:
+      required: true
     attributes:
       label: Describe the issue you are experiencing
-      required: true
       description: Provide a clear and concise description of what the bug is.
-  - type: description
+  - type: markdown
     attributes:
       value: |
         ## Environment
   - type: input
+    validations:
+      required: true
     attributes:
       label: What is the used version of the Supervisor?
-      required: true
       placeholder: supervisor-
       description: >
         Can be found in the Supervisor panel -> System tab. Starts with
         `supervisor-....`.
   - type: dropdown
+    validations:
+      required: true
     attributes:
       label: What type of installation are you running?
-      required: true
       description: >
         If you don't know, you can find it in: Configuration panel -> Info.
       choices:
         - Home Assistant OS
         - Home Assistant Supervised
   - type: dropdown
+    validations:
+      required: true
     attributes:
       label: Which operating system are you running on?
-      required: true
       choices:
         - Home Assistant Operating System
         - Debian
         - Other (e.g., Raspbian/Raspberry Pi OS/Fedora)
   - type: input
+    validations:
+      required: true
     attributes:
       label: What is the version of your installed operating system?
-      required: true
       placeholder: "5.11"
       description: Can be found in the Supervisor panel -> System tab.
   - type: input
+    validations:
+      required: true
     attributes:
       label: What version of Home Assistant Core is installed?
-      required: true
       placeholder: core-
       description: >
         Can be found in the Supervisor panel -> System tab. Starts with
         `core-....`.
-  - type: description
+  - type: markdown
     attributes:
       value: |
         # Details
@@ -77,9 +83,10 @@ inputs:
         3.
         ...
   - type: textarea
+    validations:
+      required: true
     attributes:
       label: Anything in the Supervisor logs that might be useful for us?
-      required: false
       description: >
         The Supervisor logs can be found in the Supervisor panel -> System tab.
       value: |
@@ -87,11 +94,11 @@ inputs:
         # Put your logs below this line
 
         ```
-  - type: description
+  - type: markdown
     attributes:
       value: |
         ## Additional information
-  - type: description
+  - type: markdown
     attributes:
       value: |
         If you have any additional information for us, use the field below.
