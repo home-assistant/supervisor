@@ -97,7 +97,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             self.sys_homeassistant.api.access_token,
         )
         if client.ha_version < MIN_VERSION:
-            _LOGGER.warning("No WebSocket support untill core-%s", MIN_VERSION)
+            _LOGGER.info("No WebSocket support untill core-%s", MIN_VERSION)
 
         return client
 
