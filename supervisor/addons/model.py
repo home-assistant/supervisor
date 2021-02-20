@@ -45,6 +45,7 @@ from ..const import (
     ATTR_PORTS,
     ATTR_PORTS_DESCRIPTION,
     ATTR_PRIVILEGED,
+    ATTR_REALTIME,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
     ATTR_SERVICES,
@@ -395,6 +396,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def with_kernel_modules(self) -> bool:
         """Return True if the add-on access to kernel modules."""
         return self.data[ATTR_KERNEL_MODULES]
+
+    @property
+    def with_realtime(self) -> bool:
+        """Return True if the add-on need realtime schedule functions."""
+        return self.data[ATTR_REALTIME]
 
     @property
     def with_full_access(self) -> bool:
