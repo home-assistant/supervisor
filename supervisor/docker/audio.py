@@ -2,6 +2,8 @@
 import logging
 from typing import Dict, List
 
+import docker
+
 from ..const import ENV_TIME, MACHINE_ID
 from ..coresys import CoreSysAttributes
 from ..docker.const import Capabilities
@@ -54,6 +56,11 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         """Generate needed capabilities."""
         return [cap.value for cap in (Capabilities.SYS_NICE, Capabilities.SYS_RESOURCE)]
 
+    @property
+    def ulimits(self) -> List[docker.types.Ulimit]:
+        """Generate ulimits for audio."""
+        return [docker.types.Ulimit(name="rtprio", soft=99)]
+
     def _run(self) -> None:
         """Run Docker image.
 
@@ -75,6 +82,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             hostname=self.name.replace("_", "-"),
             detach=True,
             cap_add=self.capabilities,
+            ulimits=self.ulimits,
             device_cgroup_rules=self.cgroups_rules,
             environment={ENV_TIME: self.sys_config.timezone},
             volumes=self.volumes,
