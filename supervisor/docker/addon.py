@@ -494,7 +494,7 @@ class DockerAddon(DockerInterface):
         """
         build_env = AddonBuild(self.coresys, self.addon)
         if not build_env.is_valid:
-            _LOGGER.error("Invalid build envoirement, can't build this add-on!")
+            _LOGGER.error("Invalid build environment, can't build this add-on!")
             raise DockerError()
 
         _LOGGER.info("Starting build for %s:%s", self.image, version)
