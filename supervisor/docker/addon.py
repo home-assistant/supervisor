@@ -265,7 +265,7 @@ class DockerAddon(DockerInterface):
         limits: List[docker.types.Ulimit] = []
 
         # Need schedule functions
-        if self.addon.with_realtime:
+        if self.addon.with_realtime and self.sys_docker.info.support_cpu_realtime:
             limits.append(docker.types.Ulimit(name="rtprio", soft=99))
 
         # Return None if no capabilities is present

@@ -59,6 +59,8 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
     @property
     def ulimits(self) -> List[docker.types.Ulimit]:
         """Generate ulimits for audio."""
+        if not self.sys_docker.info.support_cpu_realtime:
+            return None
         return [docker.types.Ulimit(name="rtprio", soft=99)]
 
     @property
