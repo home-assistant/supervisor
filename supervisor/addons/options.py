@@ -58,14 +58,14 @@ class AddonOptions(CoreSysAttributes):
     """Validate Add-ons Options."""
 
     def __init__(
-        self,
-        coresys: CoreSys,
-        raw_schema: Dict[str, Any],
+        self, coresys: CoreSys, raw_schema: Dict[str, Any], name: str, slug: str
     ):
         """Validate schema."""
         self.coresys: CoreSys = coresys
         self.raw_schema: Dict[str, Any] = raw_schema
         self.devices: Set[Device] = set()
+        self._name = name
+        self._slug = slug
 
     def __call__(self, struct):
         """Create schema validator for add-ons options."""
@@ -75,7 +75,12 @@ class AddonOptions(CoreSysAttributes):
         for key, value in struct.items():
             # Ignore unknown options / remove from list
             if key not in self.raw_schema:
-                _LOGGER.warning("Unknown options %s", key)
+                _LOGGER.warning(
+                    "Option '%s' does not exist in the schema for %s (%s)",
+                    key,
+                    self._name,
+                    self._slug,
+                )
                 continue
 
             typ = self.raw_schema[key]
@@ -90,7 +95,9 @@ class AddonOptions(CoreSysAttributes):
                     # normal value
                     options[key] = self._single_validate(typ, value, key)
             except (IndexError, KeyError):
-                raise vol.Invalid(f"Type error for {key}") from None
+                raise vol.Invalid(
+                    f"Type error for option '{key}' in {self._name} ({self._slug})"
+                ) from None
 
         self._check_missing_options(self.raw_schema, options, "root")
         return options
@@ -100,20 +107,26 @@ class AddonOptions(CoreSysAttributes):
         """Validate a single element."""
         # if required argument
         if value is None:
-            raise vol.Invalid(f"Missing required option '{key}'") from None
+            raise vol.Invalid(
+                f"Missing required option '{key}' in {self._name} ({self._slug})"
+            ) from None
 
         # Lookup secret
         if str(value).startswith("!secret "):
             secret: str = value.partition(" ")[2]
             value = self.sys_homeassistant.secrets.get(secret)
             if value is None:
-                raise vol.Invalid(f"Unknown secret {secret}") from None
+                raise vol.Invalid(
+                    f"Unknown secret '{secret}' in {self._name} ({self._slug})"
+                ) from None
 
         # parse extend data from type
         match = RE_SCHEMA_ELEMENT.match(typ)
 
         if not match:
-            raise vol.Invalid(f"Unknown type {typ}") from None
+            raise vol.Invalid(
+                f"Unknown type '{typ}' in {self._name} ({self._slug})"
+            ) from None
 
         # prepare range
         range_args = {}
@@ -144,7 +157,9 @@ class AddonOptions(CoreSysAttributes):
             try:
                 device = self.sys_hardware.get_by_path(Path(value))
             except HardwareNotFound:
-                raise vol.Invalid(f"Device {value} does not exists!") from None
+                raise vol.Invalid(
+                    f"Device '{value}' does not exists! in {self._name} ({self._slug})"
+                ) from None
 
             # Have filter
             if match.group("filter"):
@@ -152,14 +167,16 @@ class AddonOptions(CoreSysAttributes):
                 device_filter = _create_device_filter(str_filter)
                 if device not in self.sys_hardware.filter_devices(**device_filter):
                     raise vol.Invalid(
-                        f"Device {value} don't match the filter {str_filter}!"
+                        f"Device '{value}' don't match the filter {str_filter}! in {self._name} ({self._slug})"
                     )
 
             # Device valid
             self.devices.add(device)
             return str(device.path)
 
-        raise vol.Invalid(f"Fatal error for {key} type {typ}") from None
+        raise vol.Invalid(
+            f"Fatal error for option '{key}' with type '{typ}' in {self._name} ({self._slug})"
+        ) from None
 
     def _nested_validate_list(self, typ: Any, data_list: List[Any], key: str):
         """Validate nested items."""
@@ -167,7 +184,9 @@ class AddonOptions(CoreSysAttributes):
 
         # Make sure it is a list
         if not isinstance(data_list, list):
-            raise vol.Invalid(f"Invalid list for {key}") from None
+            raise vol.Invalid(
+                f"Invalid list for option '{key}' in {self._name} ({self._slug})"
+            ) from None
 
         # Process list
         for element in data_list:
@@ -188,13 +207,17 @@ class AddonOptions(CoreSysAttributes):
 
         # Make sure it is a dict
         if not isinstance(data_dict, dict):
-            raise vol.Invalid(f"Invalid dict for {key}") from None
+            raise vol.Invalid(
+                f"Invalid dict for option '{key}' in {self._name} ({self._slug})"
+            ) from None
 
         # Process dict
         for c_key, c_value in data_dict.items():
             # Ignore unknown options / remove from list
             if c_key not in typ:
-                _LOGGER.warning("Unknown options %s", c_key)
+                _LOGGER.warning(
+                    "Unknown option '%s' for %s (%s)", c_key, self._name, self._slug
+                )
                 continue
 
             # Nested?
@@ -216,7 +239,9 @@ class AddonOptions(CoreSysAttributes):
         for miss_opt in missing:
             if isinstance(origin[miss_opt], str) and origin[miss_opt].endswith("?"):
                 continue
-            raise vol.Invalid(f"Missing option {miss_opt} in {root}") from None
+            raise vol.Invalid(
+                f"Missing option '{miss_opt}' in {root} in {self._name} ({self._slug})"
+            ) from None
 
 
 class UiOptions(CoreSysAttributes):

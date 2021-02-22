@@ -276,6 +276,10 @@ class DockerAddon(DockerInterface):
     @property
     def cpu_rt_runtime(self) -> Optional[int]:
         """Limit CPU real-time runtime in microseconds."""
+        if not self.sys_docker.info.support_cpu_realtime:
+            return None
+
+        # If need CPU RT
         if self.addon.with_realtime:
             return 950000
         return None
@@ -490,7 +494,7 @@ class DockerAddon(DockerInterface):
         """
         build_env = AddonBuild(self.coresys, self.addon)
         if not build_env.is_valid:
-            _LOGGER.error("Invalid build envoirement, can't build this add-on!")
+            _LOGGER.error("Invalid build environment, can't build this add-on!")
             raise DockerError()
 
         _LOGGER.info("Starting build for %s:%s", self.image, version)

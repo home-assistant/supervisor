@@ -1,6 +1,6 @@
 """Audio docker object."""
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import docker
 
@@ -61,6 +61,13 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         """Generate ulimits for audio."""
         return [docker.types.Ulimit(name="rtprio", soft=99)]
 
+    @property
+    def cpu_rt_runtime(self) -> Optional[int]:
+        """Limit CPU real-time runtime in microseconds."""
+        if not self.sys_docker.info.support_cpu_realtime:
+            return None
+        return 950000
+
     def _run(self) -> None:
         """Run Docker image.
 
@@ -83,7 +90,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             detach=True,
             cap_add=self.capabilities,
             ulimits=self.ulimits,
-            cpu_rt_runtime=950000,
+            cpu_rt_runtime=self.cpu_rt_runtime,
             device_cgroup_rules=self.cgroups_rules,
             environment={ENV_TIME: self.sys_config.timezone},
             volumes=self.volumes,

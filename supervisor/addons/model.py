@@ -531,7 +531,9 @@ class AddonModel(CoreSysAttributes, ABC):
 
         if isinstance(raw_schema, bool):
             raw_schema = {}
-        return vol.Schema(vol.All(dict, AddonOptions(self.coresys, raw_schema)))
+        return vol.Schema(
+            vol.All(dict, AddonOptions(self.coresys, raw_schema, self.name, self.slug))
+        )
 
     @property
     def schema_ui(self) -> Optional[List[Dict[str, Any]]]:
