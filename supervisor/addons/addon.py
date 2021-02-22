@@ -404,7 +404,7 @@ class Addon(AddonModel):
             return set()
 
         # Validate devices
-        options_validator = AddonOptions(self.coresys, raw_schema)
+        options_validator = AddonOptions(self.coresys, raw_schema, self.name, self.slug)
         with suppress(vol.Invalid):
             options_validator(self.options)
 
