@@ -76,7 +76,7 @@ class AddonOptions(CoreSysAttributes):
             # Ignore unknown options / remove from list
             if key not in self.raw_schema:
                 _LOGGER.warning(
-                    "Option '%s' does not exsist in the schema for %s (%s)",
+                    "Option '%s' does not exist in the schema for %s (%s)",
                     key,
                     self._name,
                     self._slug,

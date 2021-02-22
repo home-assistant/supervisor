@@ -341,6 +341,6 @@ def test_log_entry(coresys, caplog):
     )
     assert options == {}
     assert (
-        "Option 'test' does not exsist in the schema for Mock Add-on (mock_addon)"
+        "Option 'test' does not exist in the schema for Mock Add-on (mock_addon)"
         in caplog.text
     )
