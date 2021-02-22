@@ -274,6 +274,13 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
+    def cpu_rt_runtime(self) -> Optional[int]:
+        """Limit CPU real-time runtime in microseconds."""
+        if self.addon.with_realtime:
+            return 950000
+        return None
+
+    @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Generate volumes for mappings."""
         addon_mapping = self.addon.map_volumes
@@ -435,6 +442,7 @@ class DockerAddon(DockerInterface):
                 device_cgroup_rules=self.cgroups_rules,
                 cap_add=self.capabilities,
                 ulimits=self.ulimits,
+                cpu_rt_runtime=self.cpu_rt_runtime,
                 security_opt=self.security_opt,
                 environment=self.environment,
                 volumes=self.volumes,
