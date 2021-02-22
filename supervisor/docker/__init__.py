@@ -2,7 +2,6 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 import attr
@@ -55,11 +54,6 @@ class DockerInfo:
     def supported_version(self) -> bool:
         """Return true, if docker version is supported."""
         return self.version >= MIN_SUPPORTED_DOCKER
-
-    @property
-    def inside_lxc(self) -> bool:
-        """Return True if the docker run inside lxc."""
-        return Path("/dev/lxd/sock").exists()
 
 
 class DockerConfig(JsonConfig):
