@@ -2,6 +2,8 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
+import os
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import attr
@@ -13,6 +15,7 @@ from ..const import (
     ATTR_REGISTRIES,
     DNS_SUFFIX,
     DOCKER_NETWORK,
+    ENV_SUPERVISOR_CPU_RT,
     FILE_HASSIO_DOCKER,
     SOCKET_DOCKER,
 )
@@ -54,6 +57,13 @@ class DockerInfo:
     def supported_version(self) -> bool:
         """Return true, if docker version is supported."""
         return self.version >= MIN_SUPPORTED_DOCKER
+
+    @property
+    def support_cpu_realtime(self) -> bool:
+        """Return true, if CONFIG_RT_GROUP_SCHED is loaded."""
+        if not Path("/sys/fs/cgroup/cpu.rt_runtime_us").exists():
+            return False
+        return bool(os.environ.get(ENV_SUPERVISOR_CPU_RT, 0))
 
 
 class DockerConfig(JsonConfig):
