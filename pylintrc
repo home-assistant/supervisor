@@ -1,6 +1,8 @@
 [MASTER]
 reports=no
-jobs=2
+# Disabled as Pylint 2.6+ is experiencing issue handling multiple processes
+# correctly. Astroid 2.5 did improve this, but causes new issues.
+;jobs=2
 
 good-names=id,i,j,k,ex,Run,_,fp,T
 
