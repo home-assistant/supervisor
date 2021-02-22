@@ -244,6 +244,9 @@ class Core(CoreSysAttributes):
             self.sys_create_task(self.sys_resolution.fixup.run_autofix())
 
             self.state = CoreState.RUNNING
+            await self.sys_homeassistant.websocket.async_supervisor_update_event(
+                "supervisor", {}
+            )
             _LOGGER.info("Supervisor is up and running")
 
     async def stop(self):
