@@ -155,10 +155,10 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         """Send a supervisor/event command."""
         if self.sys_core.state in CLOSING_STATES:
             return
-        self.sys_loop.create_task(self.async_supervisor_update_event(key, data))
+        self.sys_create_task(self.async_supervisor_update_event(key, data))
 
     def send_command(self, message: Dict[str, Any]):
         """Send a supervisor/event command."""
         if self.sys_core.state in CLOSING_STATES:
             return
-        self.sys_loop.create_task(self.async_send_command(message))
+        self.sys_create_task(self.async_send_command(message))
