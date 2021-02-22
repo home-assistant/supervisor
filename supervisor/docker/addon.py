@@ -276,6 +276,10 @@ class DockerAddon(DockerInterface):
     @property
     def cpu_rt_runtime(self) -> Optional[int]:
         """Limit CPU real-time runtime in microseconds."""
+        if not self.sys_docker.info.support_cpu_realtime:
+            return None
+
+        # If need CPU RT
         if self.addon.with_realtime:
             return 950000
         return None
