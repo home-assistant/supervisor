@@ -289,6 +289,7 @@ ATTR_FREQUENCY = "frequency"
 ATTR_ACCESSPOINTS = "accesspoints"
 ATTR_UNHEALTHY = "unhealthy"
 ATTR_OTA = "ota"
+ATTR_REALTIME = "realtime"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

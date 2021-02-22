@@ -250,9 +250,34 @@ class DockerAddon(DockerInterface):
         if self.addon.with_kernel_modules:
             capabilities.add(Capabilities.SYS_MODULE)
 
+        # Need schedule functions
+        if self.addon.with_realtime:
+            capabilities.add(Capabilities.SYS_NICE)
+
         # Return None if no capabilities is present
         if capabilities:
             return [cap.value for cap in capabilities]
+        return None
+
+    @property
+    def ulimits(self) -> Optional[List[docker.types.Ulimit]]:
+        """Generate ulimits for add-on."""
+        limits: List[docker.types.Ulimit] = []
+
+        # Need schedule functions
+        if self.addon.with_realtime:
+            limits.append(docker.types.Ulimit(name="rtprio", soft=99))
+
+        # Return None if no capabilities is present
+        if limits:
+            return limits
+        return None
+
+    @property
+    def cpu_rt_runtime(self) -> Optional[int]:
+        """Limit CPU real-time runtime in microseconds."""
+        if self.addon.with_realtime:
+            return 950000
         return None
 
     @property
@@ -416,6 +441,8 @@ class DockerAddon(DockerInterface):
                 extra_hosts=self.network_mapping,
                 device_cgroup_rules=self.cgroups_rules,
                 cap_add=self.capabilities,
+                ulimits=self.ulimits,
+                cpu_rt_runtime=self.cpu_rt_runtime,
                 security_opt=self.security_opt,
                 environment=self.environment,
                 volumes=self.volumes,
