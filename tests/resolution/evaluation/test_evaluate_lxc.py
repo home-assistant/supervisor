@@ -1,5 +1,6 @@
 """Test evaluation base."""
 # pylint: disable=import-error,protected-access
+from pathlib import Path
 from unittest.mock import patch
 
 from supervisor.const import CoreState
@@ -14,12 +15,14 @@ async def test_evaluation(coresys: CoreSys):
 
     assert lxc.reason not in coresys.resolution.unsupported
 
-    coresys.docker.info.inside_lxc = True
-    await lxc()
+    with patch.object(Path, "exists") as mock_exists:
+        mock_exists.return_value = True
+        await lxc()
     assert lxc.reason in coresys.resolution.unsupported
 
-    coresys.docker.info.inside_lxc = False
-    await lxc()
+    with patch.object(Path, "exists") as mock_exists:
+        mock_exists.return_value = False
+        await lxc()
     assert lxc.reason not in coresys.resolution.unsupported
 
 
