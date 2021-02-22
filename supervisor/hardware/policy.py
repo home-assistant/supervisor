@@ -10,6 +10,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 # fmt: off
+# https://www.kernel.org/doc/Documentation/admin-guide/devices.txt
 
 _CGROUPS: Dict[PolicyGroup, List[int]] = {
     PolicyGroup.UART: [
