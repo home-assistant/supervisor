@@ -8,7 +8,7 @@ from supervisor.addons.options import AddonOptions, UiOptions
 from supervisor.hardware.data import Device
 
 MOCK_ADDON_NAME = "Mock Add-on"
-MOC_ADDON_SLUG = "mock_addon"
+MOCK_ADDON_SLUG = "mock_addon"
 
 
 def test_simple_schema(coresys):
@@ -17,14 +17,14 @@ def test_simple_schema(coresys):
         coresys,
         {"name": "str", "password": "password", "fires": "bool", "alias": "str?"},
         MOCK_ADDON_NAME,
-        MOC_ADDON_SLUG,
+        MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "fires": True, "alias": "test"})
 
     assert AddonOptions(
         coresys,
         {"name": "str", "password": "password", "fires": "bool", "alias": "str?"},
         MOCK_ADDON_NAME,
-        MOC_ADDON_SLUG,
+        MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "fires": True})
 
     with pytest.raises(vol.error.Invalid):
@@ -32,7 +32,7 @@ def test_simple_schema(coresys):
             coresys,
             {"name": "str", "password": "password", "fires": "bool", "alias": "str?"},
             MOCK_ADDON_NAME,
-            MOC_ADDON_SLUG,
+            MOCK_ADDON_SLUG,
         )({"name": "Pascal", "password": "1234", "fires": "hah"})
 
     with pytest.raises(vol.error.Invalid):
@@ -40,7 +40,7 @@ def test_simple_schema(coresys):
             coresys,
             {"name": "str", "password": "password", "fires": "bool", "alias": "str?"},
             MOCK_ADDON_NAME,
-            MOC_ADDON_SLUG,
+            MOCK_ADDON_SLUG,
         )({"name": "Pascal", "fires": True})
 
 
@@ -50,7 +50,7 @@ def test_complex_schema_list(coresys):
         coresys,
         {"name": "str", "password": "password", "extend": ["str"]},
         MOCK_ADDON_NAME,
-        MOC_ADDON_SLUG,
+        MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "extend": ["test", "blu"]})
 
     with pytest.raises(vol.error.Invalid):
@@ -58,7 +58,7 @@ def test_complex_schema_list(coresys):
             coresys,
             {"name": "str", "password": "password", "extend": ["str"]},
             MOCK_ADDON_NAME,
-            MOC_ADDON_SLUG,
+            MOCK_ADDON_SLUG,
         )({"name": "Pascal", "password": "1234", "extend": ["test", 1]})
 
     with pytest.raises(vol.error.Invalid):
@@ -66,7 +66,7 @@ def test_complex_schema_list(coresys):
             coresys,
             {"name": "str", "password": "password", "extend": ["str"]},
             MOCK_ADDON_NAME,
-            MOC_ADDON_SLUG,
+            MOCK_ADDON_SLUG,
         )({"name": "Pascal", "password": "1234", "extend": "test"})
 
 
@@ -76,7 +76,7 @@ def test_complex_schema_dict(coresys):
         coresys,
         {"name": "str", "password": "password", "extend": {"test": "int"}},
         MOCK_ADDON_NAME,
-        MOC_ADDON_SLUG,
+        MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "extend": {"test": 1}})
 
     with pytest.raises(vol.error.Invalid):
@@ -84,7 +84,7 @@ def test_complex_schema_dict(coresys):
             coresys,
             {"name": "str", "password": "password", "extend": {"test": "int"}},
             MOCK_ADDON_NAME,
-            MOC_ADDON_SLUG,
+            MOCK_ADDON_SLUG,
         )({"name": "Pascal", "password": "1234", "extend": {"wrong": 1}})
 
     with pytest.raises(vol.error.Invalid):
@@ -92,7 +92,7 @@ def test_complex_schema_dict(coresys):
             coresys,
             {"name": "str", "password": "password", "extend": ["str"]},
             MOCK_ADDON_NAME,
-            MOC_ADDON_SLUG,
+            MOCK_ADDON_SLUG,
         )({"name": "Pascal", "password": "1234", "extend": "test"})
 
 
@@ -131,14 +131,14 @@ def test_simple_device_schema(coresys):
         coresys,
         {"name": "str", "password": "password", "input": "device"},
         MOCK_ADDON_NAME,
-        MOC_ADDON_SLUG,
+        MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "input": "/dev/ttyUSB0"})
 
     data = AddonOptions(
         coresys,
         {"name": "str", "password": "password", "input": "device"},
         MOCK_ADDON_NAME,
-        MOC_ADDON_SLUG,
+        MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "input": "/dev/serial/by-id/xyx"})
     assert data["input"] == "/dev/ttyUSB0"
 
@@ -146,7 +146,7 @@ def test_simple_device_schema(coresys):
         coresys,
         {"name": "str", "password": "password", "input": "device(subsystem=tty)"},
         MOCK_ADDON_NAME,
-        MOC_ADDON_SLUG,
+        MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "input": "/dev/ttyACM0"})
 
     with pytest.raises(vol.error.Invalid):
@@ -154,7 +154,7 @@ def test_simple_device_schema(coresys):
             coresys,
             {"name": "str", "password": "password", "input": "device"},
             MOCK_ADDON_NAME,
-            MOC_ADDON_SLUG,
+            MOCK_ADDON_SLUG,
         )({"name": "Pascal", "password": "1234", "input": "/dev/not_exists"})
 
     with pytest.raises(vol.error.Invalid):
@@ -162,7 +162,7 @@ def test_simple_device_schema(coresys):
             coresys,
             {"name": "str", "password": "password", "input": "device(subsystem=tty)"},
             MOCK_ADDON_NAME,
-            MOC_ADDON_SLUG,
+            MOCK_ADDON_SLUG,
         )({"name": "Pascal", "password": "1234", "input": "/dev/video1"})
 
 
@@ -336,7 +336,7 @@ def test_ui_simple_device_schema_no_filter(coresys):
 
 def test_log_entry(coresys, caplog):
     """Test log entry when no option match in schema."""
-    options = AddonOptions(coresys, {}, MOCK_ADDON_NAME, MOC_ADDON_SLUG)(
+    options = AddonOptions(coresys, {}, MOCK_ADDON_NAME, MOCK_ADDON_SLUG)(
         {"test": "str"}
     )
     assert options == {}
