@@ -1,4 +1,5 @@
 """Home Assistant Websocket API."""
+import asyncio
 import logging
 from typing import Any, Dict, Optional
 
@@ -30,6 +31,9 @@ class WSClient:
 
     async def async_send_command(self, message: Dict[str, Any]):
         """Send a websocket command."""
+        while self.client._waiting is not None:  # pylint: disable=protected-access
+            await asyncio.sleep(0.001)
+
         self.message_id += 1
         message["id"] = self.message_id
 
