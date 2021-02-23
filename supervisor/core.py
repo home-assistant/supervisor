@@ -47,6 +47,8 @@ class Core(CoreSysAttributes):
     @state.setter
     def state(self, new_state: CoreState) -> None:
         """Set core into new state."""
+        if self._state == new_state:
+            return
         try:
             RUN_SUPERVISOR_STATE.write_text(new_state.value)
         except OSError as err:

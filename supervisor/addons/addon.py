@@ -22,6 +22,8 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTO_UPDATE,
     ATTR_BOOT,
+    ATTR_DATA,
+    ATTR_EVENT,
     ATTR_IMAGE,
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PANEL,
@@ -32,8 +34,10 @@ from ..const import (
     ATTR_PORTS,
     ATTR_PROTECTED,
     ATTR_SCHEMA,
+    ATTR_SLUG,
     ATTR_STATE,
     ATTR_SYSTEM,
+    ATTR_TYPE,
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
@@ -56,6 +60,7 @@ from ..exceptions import (
     JsonFileError,
 )
 from ..hardware.data import Device
+from ..homeassistant.const import WSEvent, WSType
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
@@ -89,11 +94,33 @@ class Addon(AddonModel):
         """Initialize data holder."""
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
-        self.state: AddonState = AddonState.UNKNOWN
+        self._state: AddonState = AddonState.UNKNOWN
 
     def __repr__(self) -> str:
         """Return internal representation."""
         return f"<Addon: {self.slug}>"
+
+    @property
+    def state(self) -> AddonState:
+        """Return state of the add-on."""
+        return self._state
+
+    @state.setter
+    def state(self, new_state: AddonState) -> None:
+        """Set the add-on into new state."""
+        if self._state == new_state:
+            return
+        self._state = new_state
+        self.sys_homeassistant.websocket.send_command(
+            {
+                ATTR_TYPE: WSType.SUPERVISOR_EVENT,
+                ATTR_DATA: {
+                    ATTR_EVENT: WSEvent.ADDON,
+                    ATTR_SLUG: self.slug,
+                    ATTR_STATE: new_state,
+                },
+            }
+        )
 
     @property
     def in_progress(self) -> bool:
