@@ -103,6 +103,16 @@ class AddonModel(CoreSysAttributes, ABC):
         """Return True if add-on is detached."""
 
     @property
+    def available_arch(self) -> bool:
+        """Return True if the running arch is supported by the add-on."""
+        return self._available_arch(self.data)
+
+    @property
+    def available_homeassistant(self) -> bool:
+        """Return True if the running version of Home Assistant is supported by the add-on."""
+        return self._available_homeassistant(self.data)
+
+    @property
     def available(self) -> bool:
         """Return True if this add-on is available on this platform."""
         return self._available(self.data)
@@ -550,8 +560,8 @@ class AddonModel(CoreSysAttributes, ABC):
             return False
         return self.slug == other.slug
 
-    def _available(self, config) -> bool:
-        """Return True if this add-on is available on this platform."""
+    def _available_arch(self, config) -> bool:
+        """Return True if the running arch is supported by the add-on."""
         # Architecture
         if not self.sys_arch.is_supported(config[ATTR_ARCH]):
             return False
@@ -563,12 +573,19 @@ class AddonModel(CoreSysAttributes, ABC):
         elif machine and self.sys_machine not in machine:
             return False
 
-        # Home Assistant
+        return True
+
+    def _available_homeassistant(self, config) -> bool:
+        """Return True if the running version of Home Assistant is supported by the add-on."""
         version: Optional[AwesomeVersion] = config.get(ATTR_HOMEASSISTANT)
         try:
             return self.sys_homeassistant.version >= version
         except (AwesomeVersionException, TypeError):
             return True
+
+    def _available(self, config) -> bool:
+        """Return True if this add-on is available on this platform."""
+        return self._available_arch(config) and self._available_homeassistant(config)
 
     def _image(self, config) -> str:
         """Generate image name from data."""

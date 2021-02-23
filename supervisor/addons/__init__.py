@@ -164,7 +164,15 @@ class AddonManager(CoreSysAttributes):
 
         if not store.available:
             _LOGGER.error("Add-on %s not supported on that platform", slug)
-            raise AddonsNotSupportedError()
+
+            if not store.available_arch:
+                raise AddonsNotSupportedError(
+                    "Architecture is not supported by the add-on"
+                )
+            if not store.available_homeassistant:
+                raise AddonsNotSupportedError(
+                    "Home Assistant version is not supported by the add-on"
+                )
 
         self.data.install(store)
         addon = Addon(self.coresys, slug)
