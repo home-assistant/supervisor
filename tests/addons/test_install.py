@@ -54,7 +54,7 @@ async def test_addon_not_available_homeassistant(coresys: CoreSys, caplog):
 
     with pytest.raises(
         AddonsNotSupportedError,
-        match="Home Assistant version is not supported by the add-on",
+        match="Home Assistant version is not supported by the add-on, you need at least version 2",
     ):
         await coresys.addons.install(addon.slug)
 

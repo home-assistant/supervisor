@@ -171,7 +171,7 @@ class AddonManager(CoreSysAttributes):
                 )
             if not store.available_homeassistant:
                 raise AddonsNotSupportedError(
-                    "Home Assistant version is not supported by the add-on"
+                    f"Home Assistant version is not supported by the add-on, you need at least version {store.homeassistant_version}"
                 )
 
         self.data.install(store)
