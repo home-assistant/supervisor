@@ -5,6 +5,7 @@ import logging
 from awesomeversion import AwesomeVersion
 
 from supervisor.coresys import CoreSys
+from supervisor.homeassistant.const import WSEvent, WSType
 
 
 async def test_send_command(coresys: CoreSys):
@@ -18,9 +19,9 @@ async def test_send_command(coresys: CoreSys):
     )
     client.async_send_command.assert_called_with(
         {
-            "type": "supervisor/event",
+            "type": WSType.SUPERVISOR_EVENT,
             "data": {
-                "event": "supervisor-update",
+                "event": WSEvent.SUPERVISOR_UPDATE,
                 "update_key": "test",
                 "data": {"lorem": "ipsum"},
             },

@@ -5,23 +5,16 @@ from typing import Any, Dict, Optional
 import aiohttp
 from awesomeversion import AwesomeVersion
 
-from ..const import CoreState
+from ..const import ATTR_ACCESS_TOKEN, ATTR_DATA, ATTR_EVENT, ATTR_TYPE, ATTR_UPDATE_KEY
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     HomeAssistantAPIError,
     HomeAssistantWSError,
     HomeAssistantWSNotSupported,
 )
+from .const import CLOSING_STATES, MIN_VERSION, WSEvent, WSType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-CLOSING_STATES = [
-    CoreState.SHUTDOWN,
-    CoreState.STOPPING,
-    CoreState.CLOSE,
-]
-
-MIN_VERSION = {"supervisor/event": "2021.2.4"}
 
 
 class WSClient:
@@ -68,13 +61,13 @@ class WSClient:
         hello_message = await client.receive_json()
 
         try:
-            await client.send_json({"type": "auth", "access_token": token})
+            await client.send_json({ATTR_TYPE: WSType.AUTH, ATTR_ACCESS_TOKEN: token})
         except HomeAssistantWSNotSupported:
             return
 
         auth_ok_message = await client.receive_json()
 
-        if auth_ok_message["type"] != "auth_ok":
+        if auth_ok_message[ATTR_TYPE] != "auth_ok":
             raise HomeAssistantAPIError("AUTH NOT OK")
 
         return cls(AwesomeVersion(hello_message["ha_version"]), client)
@@ -138,11 +131,11 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         try:
             await self.async_send_command(
                 {
-                    "type": "supervisor/event",
-                    "data": {
-                        "event": "supervisor-update",
-                        "update_key": key,
-                        "data": data or {},
+                    ATTR_TYPE: WSType.SUPERVISOR_EVENT,
+                    ATTR_DATA: {
+                        ATTR_EVENT: WSEvent.SUPERVISOR_UPDATE,
+                        ATTR_UPDATE_KEY: key,
+                        ATTR_DATA: data or {},
                     },
                 }
             )
