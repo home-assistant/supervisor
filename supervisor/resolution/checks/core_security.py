@@ -57,6 +57,11 @@ class CheckCoreSecurity(CheckBase):
         return ContextType.CORE
 
     @property
+    def multible(self) -> bool:
+        """Return True if they can have multible issues referenced by reference."""
+        return False
+
+    @property
     def states(self) -> List[CoreState]:
         """Return a list of valid states when this check can run."""
         return [CoreState.RUNNING, CoreState.STARTUP]
