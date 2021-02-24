@@ -34,7 +34,7 @@ class Job(CoreSysAttributes):
         self._lock: Optional[asyncio.Semaphore] = None
         self._method = None
 
-    def _post_init(self, args: List[Any]) -> None:
+    def _post_init(self, args: Tuple[Any]) -> None:
         """Runtime init."""
         if self.name is None:
             self.name = str(self._method.__qualname__).lower().replace(".", "_")
