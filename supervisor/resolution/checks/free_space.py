@@ -1,6 +1,6 @@
 """Helpers to check and fix issues with free space."""
 import logging
-from typing import List
+from typing import List, Optional
 
 from ...const import SNAPSHOT_FULL, CoreState
 from ..const import (
@@ -46,7 +46,7 @@ class CheckFreeSpace(CheckBase):
             IssueType.FREE_SPACE, ContextType.SYSTEM, suggestions=suggestions
         )
 
-    async def approve_check(self) -> bool:
+    async def approve_check(self, reference: Optional[str] = None) -> bool:
         """Approve check if it is affected by issue."""
         if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
             return False
