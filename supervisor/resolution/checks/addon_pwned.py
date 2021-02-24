@@ -14,6 +14,8 @@ class CheckAddonPwned(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
+        await self.sys_homeassistant.secrets.reload()
+
         for addon in self.sys_addons.installed:
             secrets = addon.pwned
             if not secrets:
