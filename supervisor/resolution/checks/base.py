@@ -65,9 +65,9 @@ class CheckBase(ABC, CoreSysAttributes):
         """Return a ContextType enum."""
 
     @property
-    @abstractproperty
     def multible(self) -> bool:
         """Return True if they can have multible issues referenced by reference."""
+        return self.context in (ContextType.ADDON, ContextType.PLUGIN)
 
     @property
     def states(self) -> List[CoreState]:

@@ -76,11 +76,6 @@ class CheckAddonPwned(CheckBase):
         return ContextType.ADDON
 
     @property
-    def multible(self) -> bool:
-        """Return True if they can have multible issues referenced by reference."""
-        return True
-
-    @property
     def states(self) -> List[CoreState]:
         """Return a list of valid states when this check can run."""
         return [CoreState.RUNNING]
