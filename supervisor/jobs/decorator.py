@@ -1,7 +1,7 @@
 """Job decorator."""
 import asyncio
 import logging
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 import sentry_sdk
 
