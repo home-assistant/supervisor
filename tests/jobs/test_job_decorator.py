@@ -272,15 +272,15 @@ async def test_exectution_limit_single_wait(
         def __init__(self, coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
-            self.check = []
+            self.run = asyncio.Lock()
 
         @Job(limit=ExecutionLimit.SINGLE_WAIT)
-        async def execute(self, test: int, sleep: float):
+        async def execute(self, sleep: float):
             """Execute the class method."""
-            await asyncio.sleep(sleep)
-            self.check.append(test)
+            assert not self.run.locked()
+            async with self.run:
+                await asyncio.sleep(sleep)
 
     test = TestClass(coresys)
 
-    await asyncio.wait([test.execute(1, 0.2), test.execute(2, 0)])
-    assert test.check == [1, 2]
+    await asyncio.gather(*[test.execute(0.1), test.execute(0.1), test.execute(0.1)])
