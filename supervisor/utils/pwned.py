@@ -5,7 +5,7 @@ import logging
 
 import aiohttp
 
-from ..exceptions import HassioError
+from ..exceptions import PwnedError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _API_CALL = "https://api.pwnedpasswords.com/range/{hash}"
@@ -18,7 +18,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
             _API_CALL.format(hash=sha1_pw[:5]), timeout=aiohttp.ClientTimeout(total=10)
         ) as request:
             if request.status != 200:
-                raise HassioError()
+                raise PwnedError()
             data = await request.text()
 
         buffer = io.StringIO(data)
@@ -29,6 +29,6 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
 
     except (aiohttp.ClientError, asyncio.TimeoutError) as err:
         _LOGGER.warning("Can't fetch freegeoip data: %s", err)
-        raise HassioError() from err
+        raise PwnedError() from err
 
     return False

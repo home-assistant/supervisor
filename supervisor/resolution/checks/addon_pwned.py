@@ -3,7 +3,7 @@ from contextlib import suppress
 from typing import List, Optional
 
 from ...const import AddonState, CoreState
-from ...exceptions import HassioError
+from ...exceptions import PwnedError
 from ...utils.pwned import check_pwned_password
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
@@ -26,7 +26,7 @@ class CheckAddonPwned(CheckBase):
                 try:
                     if not await check_pwned_password(self.sys_websession, secret):
                         continue
-                except HassioError:
+                except PwnedError:
                     continue
 
                 # Check possible suggestion
@@ -58,7 +58,7 @@ class CheckAddonPwned(CheckBase):
 
         # Check if still pwned
         for secret in secrets:
-            with suppress(HassioError):
+            with suppress(PwnedError):
                 if not await check_pwned_password(self.sys_websession, secret):
                     continue
             return True

@@ -282,6 +282,13 @@ class JsonFileError(HassioError):
     """Invalid json file."""
 
 
+# util/pwned
+
+
+class PwnedError(HassioError):
+    """Errors while checking pwned passwords."""
+
+
 # docker/api
 
 
