@@ -102,7 +102,7 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
-        # Skeep Landingpage
+        # Skip check on landingpage
         if (
             self.sys_homeassistant.version is None
             or self.sys_homeassistant.version == LANDINGPAGE
