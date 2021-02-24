@@ -1,7 +1,7 @@
 """Test the condition decorators."""
 # pylint: disable=protected-access,import-error
 import asyncio
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -206,6 +206,31 @@ async def test_running(coresys: CoreSys):
     assert await test.execute()
 
     coresys.core.state = CoreState.FREEZE
+    assert not await test.execute()
+
+
+async def test_core_running(coresys: CoreSys):
+    """Test the core_running decorator."""
+    coresys.homeassistant._api = AsyncMock()
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.CORE_RUNNING])
+        async def execute(self):
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+
+    coresys.homeassistant.api.check_api_state.return_value = True
+    assert await test.execute()
+
+    coresys.homeassistant.api.check_api_state.return_value = False
     assert not await test.execute()
 
 

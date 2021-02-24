@@ -61,7 +61,7 @@ class Job(CoreSysAttributes):
             job = self.sys_jobs.get_job(self.name)
 
             # Handle condition
-            if self.conditions and not self._check_conditions():
+            if self.conditions and not await self._check_conditions():
                 if self.on_condition is None:
                     return
                 raise self.on_condition()
@@ -86,7 +86,7 @@ class Job(CoreSysAttributes):
 
         return wrapper
 
-    def _check_conditions(self):
+    async def _check_conditions(self):
         """Check conditions."""
         used_conditions = set(self.conditions) - set(self.sys_jobs.ignore_conditions)
         ignored_conditions = set(self.conditions) & set(self.sys_jobs.ignore_conditions)
@@ -147,6 +147,17 @@ class Job(CoreSysAttributes):
         ):
             _LOGGER.warning(
                 "'%s' blocked from execution, no host internet connection",
+                self._method.__qualname__,
+            )
+            return False
+
+        if (
+            JobCondition.CORE_RUNNING in self.conditions
+            and not await self.sys_homeassistant.api.check_api_state()
+        ):
+
+            _LOGGER.warning(
+                "'%s' blocked from execution, Home Assistant Core is not running",
                 self._method.__qualname__,
             )
             return False
