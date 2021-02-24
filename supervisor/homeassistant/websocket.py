@@ -40,11 +40,15 @@ class WSClient:
         _LOGGER.debug("Sending: %s", message)
         try:
             await self.client.send_json(message)
-        except HomeAssistantWSNotSupported:
+        except (HomeAssistantWSNotSupported, ConnectionError):
             self._lock.release()
             return
 
-        response = await self.client.receive_json()
+        try:
+            response = await self.client.receive_json()
+        except ConnectionError:
+            self._lock.release()
+            return
 
         _LOGGER.debug("Received: %s", response)
         self._lock.release()
