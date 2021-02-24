@@ -1,5 +1,6 @@
 """Test the condition decorators."""
 # pylint: disable=protected-access,import-error
+import asyncio
 from unittest.mock import patch
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HassioError, JobException
+from supervisor.jobs.const import ExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.resolution.const import UnhealthyReason
 
@@ -257,3 +259,28 @@ async def test_exception_conditions(coresys: CoreSys):
     coresys.core.state = CoreState.FREEZE
     with pytest.raises(HassioError):
         await test.execute()
+
+
+async def test_exectution_limit_single_wait(
+    coresys: CoreSys, loop: asyncio.BaseEventLoop
+):
+    """Test the ignore conditions decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.check = []
+
+        @Job(limit=ExecutionLimit.SINGLE_WAIT)
+        async def execute(self, test: int, sleep: float):
+            """Execute the class method."""
+            await asyncio.sleep(sleep)
+            self.check.append(test)
+
+    test = TestClass(coresys)
+
+    await asyncio.wait([test.execute(1, 0.2), test.execute(2, 0)])
+    assert test.check == [1, 2]
