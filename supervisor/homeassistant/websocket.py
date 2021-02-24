@@ -1,4 +1,5 @@
 """Home Assistant Websocket API."""
+import asyncio
 import logging
 from typing import Any, Dict, Optional
 
@@ -24,29 +25,34 @@ class WSClient:
         self, ha_version: AwesomeVersion, client: aiohttp.ClientWebSocketResponse
     ):
         """Initialise the WS client."""
-        self.ha_version = ha_version
-        self.client = client
-        self.message_id = 0
+        self.ha_version: AwesomeVersion = ha_version
+        self.client: aiohttp.ClientWebSocketResponse = client
+        self.message_id: int = 0
+        self._lock: asyncio.Lock = asyncio.Lock()
 
     async def async_send_command(self, message: Dict[str, Any]):
         """Send a websocket command."""
-        self.message_id += 1
-        message["id"] = self.message_id
+        async with self._lock:
+            self.message_id += 1
+            message["id"] = self.message_id
 
-        _LOGGER.debug("Sending: %s", message)
-        try:
-            await self.client.send_json(message)
-        except HomeAssistantWSNotSupported:
-            return
+            _LOGGER.debug("Sending: %s", message)
+            try:
+                await self.client.send_json(message)
+            except ConnectionError:
+                return
 
-        response = await self.client.receive_json()
+            try:
+                response = await self.client.receive_json()
+            except ConnectionError:
+                return
 
-        _LOGGER.debug("Received: %s", response)
+            _LOGGER.debug("Received: %s", response)
 
-        if response["success"]:
-            return response["result"]
+            if response["success"]:
+                return response["result"]
 
-        raise HomeAssistantWSError(response)
+            raise HomeAssistantWSError(response)
 
     @classmethod
     async def connect_with_auth(
