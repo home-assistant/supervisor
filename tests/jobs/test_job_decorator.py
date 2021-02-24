@@ -8,7 +8,7 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HassioError, JobException
-from supervisor.jobs.const import ExecutionLimit
+from supervisor.jobs.const import JobExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.resolution.const import UnhealthyReason
 
@@ -274,7 +274,7 @@ async def test_exectution_limit_single_wait(
             self.coresys = coresys
             self.run = asyncio.Lock()
 
-        @Job(limit=ExecutionLimit.SINGLE_WAIT)
+        @Job(limit=JobExecutionLimit.SINGLE_WAIT)
         async def execute(self, sleep: float):
             """Execute the class method."""
             assert not self.run.locked()

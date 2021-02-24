@@ -19,7 +19,7 @@ class JobCondition(str, Enum):
     RUNNING = "running"
 
 
-class ExecutionLimit(str, Enum):
+class JobExecutionLimit(str, Enum):
     """Job Execution limits."""
 
     SINGLE_WAIT = "single_wait"

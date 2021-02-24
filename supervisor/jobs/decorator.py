@@ -9,7 +9,7 @@ from ..const import CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import HassioError, JobException
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
-from .const import ExecutionLimit, JobCondition
+from .const import JobCondition, JobExecutionLimit
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -23,7 +23,7 @@ class Job(CoreSysAttributes):
         conditions: Optional[List[JobCondition]] = None,
         cleanup: bool = True,
         on_condition: Optional[JobException] = None,
-        limit: Optional[ExecutionLimit] = None,
+        limit: Optional[JobExecutionLimit] = None,
     ):
         """Initialize the Job class."""
         self.name = name
@@ -156,11 +156,11 @@ class Job(CoreSysAttributes):
     async def _acquire_exection_limit(self) -> None:
         """Process exection limits."""
 
-        if self.limit == ExecutionLimit.SINGLE_WAIT:
+        if self.limit == JobExecutionLimit.SINGLE_WAIT:
             await self._lock.acquire()
 
     def _release_exception_limits(self) -> None:
         """Release possible exception limits."""
 
-        if self.limit == ExecutionLimit.SINGLE_WAIT:
+        if self.limit == JobExecutionLimit.SINGLE_WAIT:
             self._lock.release()
