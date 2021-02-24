@@ -1,19 +1,20 @@
 """Job decorator."""
+import asyncio
 import logging
 from typing import Any, List, Optional
 
 import sentry_sdk
 
 from ..const import CoreState
-from ..coresys import CoreSys
+from ..coresys import CoreSysAttributes
 from ..exceptions import HassioError, JobException
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
-from .const import JobCondition
+from .const import ExecutionLimit, JobCondition
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
-class Job:
+class Job(CoreSysAttributes):
     """Supervisor job decorator."""
 
     def __init__(
@@ -22,14 +23,32 @@ class Job:
         conditions: Optional[List[JobCondition]] = None,
         cleanup: bool = True,
         on_condition: Optional[JobException] = None,
+        limit: Optional[ExecutionLimit] = None,
     ):
         """Initialize the Job class."""
         self.name = name
         self.conditions = conditions
         self.cleanup = cleanup
         self.on_condition = on_condition
-        self._coresys: Optional[CoreSys] = None
+        self.limit = limit
+        self._lock: Optional[asyncio.Semaphore] = None
         self._method = None
+
+    def _post_init(self, args: List[Any]) -> None:
+        """Runtime init."""
+        if self.name is None:
+            self.name = str(self._method.__qualname__).lower().replace(".", "_")
+
+        # Coresys
+        try:
+            self.coresys = args[0].coresys
+        except AttributeError:
+            pass
+        if not self.coresys:
+            raise JobException(f"coresys is missing on {self.name}")
+
+        if self._lock is None:
+            self._lock = asyncio.Semaphore()
 
     def __call__(self, method):
         """Call the wrapper logic."""
@@ -37,24 +56,19 @@ class Job:
 
         async def wrapper(*args, **kwargs) -> Any:
             """Wrap the method."""
-            if self.name is None:
-                self.name = str(self._method.__qualname__).lower().replace(".", "_")
+            self._post_init(args)
 
-            # Evaluate coresys
-            try:
-                self._coresys = args[0].coresys
-            except AttributeError:
-                pass
-            if not self._coresys:
-                raise JobException(f"coresys is missing on {self.name}")
-
-            job = self._coresys.jobs.get_job(self.name)
+            job = self.sys_jobs.get_job(self.name)
 
             # Handle condition
             if self.conditions and not self._check_conditions():
                 if self.on_condition is None:
                     return
                 raise self.on_condition()
+
+            # Handle exection limits
+            if self.limit:
+                await self._acquire_exection_limit()
 
             # Execute Job
             try:
@@ -67,18 +81,15 @@ class Job:
                 raise JobException() from err
             finally:
                 if self.cleanup:
-                    self._coresys.jobs.remove_job(job)
+                    self.sys_jobs.remove_job(job)
+                self._release_exception_limits()
 
         return wrapper
 
     def _check_conditions(self):
         """Check conditions."""
-        used_conditions = set(self.conditions) - set(
-            self._coresys.jobs.ignore_conditions
-        )
-        ignored_conditions = set(self.conditions) & set(
-            self._coresys.jobs.ignore_conditions
-        )
+        used_conditions = set(self.conditions) - set(self.sys_jobs.ignore_conditions)
+        ignored_conditions = set(self.conditions) & set(self.sys_jobs.ignore_conditions)
 
         # Check if somethings is ignored
         if ignored_conditions:
@@ -87,7 +98,7 @@ class Job:
                 ignored_conditions,
             )
 
-        if JobCondition.HEALTHY in used_conditions and not self._coresys.core.healthy:
+        if JobCondition.HEALTHY in used_conditions and not self.sys_core.healthy:
             _LOGGER.warning(
                 "'%s' blocked from execution, system is not healthy",
                 self._method.__qualname__,
@@ -96,33 +107,31 @@ class Job:
 
         if (
             JobCondition.RUNNING in used_conditions
-            and self._coresys.core.state != CoreState.RUNNING
+            and self.sys_core.state != CoreState.RUNNING
         ):
             _LOGGER.warning(
                 "'%s' blocked from execution, system is not running - %s",
                 self._method.__qualname__,
-                self._coresys.core.state,
+                self.sys_core.state,
             )
             return False
 
         if (
             JobCondition.FREE_SPACE in used_conditions
-            and self._coresys.host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD
+            and self.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD
         ):
             _LOGGER.warning(
                 "'%s' blocked from execution, not enough free space (%sGB) left on the device",
                 self._method.__qualname__,
-                self._coresys.host.info.free_space,
+                self.sys_host.info.free_space,
             )
-            self._coresys.resolution.create_issue(
-                IssueType.FREE_SPACE, ContextType.SYSTEM
-            )
+            self.sys_resolution.create_issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
             return False
 
         if (
             JobCondition.INTERNET_SYSTEM in self.conditions
-            and not self._coresys.supervisor.connectivity
-            and self._coresys.core.state in (CoreState.SETUP, CoreState.RUNNING)
+            and not self.sys_supervisor.connectivity
+            and self.sys_core.state in (CoreState.SETUP, CoreState.RUNNING)
         ):
             _LOGGER.warning(
                 "'%s' blocked from execution, no supervisor internet connection",
@@ -132,9 +141,9 @@ class Job:
 
         if (
             JobCondition.INTERNET_HOST in self.conditions
-            and self._coresys.host.network.connectivity is not None
-            and not self._coresys.host.network.connectivity
-            and self._coresys.core.state in (CoreState.SETUP, CoreState.RUNNING)
+            and self.sys_host.network.connectivity is not None
+            and not self.sys_host.network.connectivity
+            and self.sys_core.state in (CoreState.SETUP, CoreState.RUNNING)
         ):
             _LOGGER.warning(
                 "'%s' blocked from execution, no host internet connection",
@@ -143,3 +152,15 @@ class Job:
             return False
 
         return True
+
+    async def _acquire_exection_limit(self) -> None:
+        """Process exection limits."""
+
+        if self.limit == ExecutionLimit.SINGLE_WAIT:
+            await self._lock.acquire()
+
+    def _release_exception_limits(self) -> None:
+        """Release possible exception limits."""
+
+        if self.limit == ExecutionLimit.SINGLE_WAIT:
+            self._lock.release()
