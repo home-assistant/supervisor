@@ -612,7 +612,7 @@ class Addon(AddonModel):
         try:
             await self.instance.run()
         except DockerRequestError as err:
-            self.state = AddonState.STOPPED
+            self.state = AddonState.ERROR
             raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
@@ -625,6 +625,7 @@ class Addon(AddonModel):
         try:
             await self.instance.stop()
         except DockerRequestError as err:
+            self.state = AddonState.ERROR
             raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR

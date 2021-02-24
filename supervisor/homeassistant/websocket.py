@@ -32,27 +32,27 @@ class WSClient:
 
     async def async_send_command(self, message: Dict[str, Any]):
         """Send a websocket command."""
-        while self._lock.locked():
-            await asyncio.sleep(0)
+        await self._lock.acquire()
 
-        async with self._lock:
-            self.message_id += 1
-            message["id"] = self.message_id
+        self.message_id += 1
+        message["id"] = self.message_id
 
-            _LOGGER.debug("Sending: %s", message)
-            try:
-                await self.client.send_json(message)
-            except HomeAssistantWSNotSupported:
-                return
+        _LOGGER.debug("Sending: %s", message)
+        try:
+            await self.client.send_json(message)
+        except HomeAssistantWSNotSupported:
+            self._lock.release()
+            return
 
-            response = await self.client.receive_json()
+        response = await self.client.receive_json()
 
-            _LOGGER.debug("Received: %s", response)
+        _LOGGER.debug("Received: %s", response)
+        self._lock.release()
 
-            if response["success"]:
-                return response["result"]
+        if response["success"]:
+            return response["result"]
 
-            raise HomeAssistantWSError(response)
+        raise HomeAssistantWSError(response)
 
     @classmethod
     async def connect_with_auth(
