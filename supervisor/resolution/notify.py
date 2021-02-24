@@ -52,6 +52,14 @@ class ResolutionNotify(CoreSysAttributes):
                             "notification_id": "supervisor_update_home_assistant_2021_1_5",
                         }
                     )
+            if issue.type == IssueType.PWNED and issue.context == ContextType.ADDON:
+                messages.append(
+                    {
+                        "title": f"Insecure Secrets on {issue.reference}",
+                        "message": f"The Add-on {issue.reference} use secrets which are detected as not secure, see see https://www.home-assistant.io/more-info/pwned-passwords for more information.",
+                        "notification_id": f"supervisor_issue_pwned_{issue.reference}",
+                    }
+                )
 
         for message in messages:
             try:
