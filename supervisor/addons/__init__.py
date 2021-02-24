@@ -274,6 +274,11 @@ class AddonManager(CoreSysAttributes):
             _LOGGER.error("Add-on %s not supported on that platform", slug)
             raise AddonsNotSupportedError()
 
+        # Create snapshot before upgrade
+        await self.sys_snapshots.do_snapshot_partial(
+            name=f"{addon.slug}_{addon.version}", addons=[addon.slug]
+        )
+
         # Update instance
         last_state: AddonState = addon.state
         old_image = addon.image
