@@ -7,10 +7,12 @@ from typing import Any, AsyncContextManager, Dict, Optional
 
 import aiohttp
 from aiohttp import hdrs
+from awesomeversion import AwesomeVersionCompare
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils import check_port
+from .core import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -101,6 +103,12 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
+        # Skeep Landingpage
+        try:
+            assert self.sys_homeassistant.version != LANDINGPAGE
+        except (AwesomeVersionCompare, AssertionError):
+            return False
+
         # Check if port is up
         if not await self.sys_run_in_executor(
             check_port,
