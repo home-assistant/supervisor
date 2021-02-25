@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from ...const import AddonState, CoreState
 from ...exceptions import PwnedError
+from ...jobs.const import JobCondition
+from ...jobs.decorator import Job
 from ...utils.pwned import check_pwned_password
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
@@ -12,6 +14,7 @@ from .base import CheckBase
 class CheckAddonPwned(CheckBase):
     """CheckAddonPwned class for check."""
 
+    @Job(conditions=[JobCondition.INTERNET_SYSTEM])
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         await self.sys_homeassistant.secrets.reload()
@@ -43,6 +46,7 @@ class CheckAddonPwned(CheckBase):
                 )
                 break
 
+    @Job(conditions=[JobCondition.INTERNET_SYSTEM])
     async def approve_check(self, reference: Optional[str] = None) -> bool:
         """Approve check if it is affected by issue."""
         addon = self.sys_addons.get(reference)
