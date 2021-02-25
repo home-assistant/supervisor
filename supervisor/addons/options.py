@@ -1,4 +1,5 @@
 """Add-on Options / UI rendering."""
+import hashlib
 import logging
 from pathlib import Path
 import re
@@ -64,6 +65,7 @@ class AddonOptions(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.raw_schema: Dict[str, Any] = raw_schema
         self.devices: Set[Device] = set()
+        self.pwned: Set[str] = set()
         self._name = name
         self._slug = slug
 
@@ -136,6 +138,8 @@ class AddonOptions(CoreSysAttributes):
                 range_args[group_name[2:]] = float(group_value)
 
         if typ.startswith(_STR) or typ.startswith(_PASSWORD):
+            if typ.startswith(_PASSWORD):
+                self.pwned.add(hashlib.sha1(str(value).encode()).hexdigest())
             return vol.All(str(value), vol.Range(**range_args))(value)
         elif typ.startswith(_INT):
             return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)

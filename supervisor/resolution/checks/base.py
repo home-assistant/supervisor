@@ -6,7 +6,6 @@ from typing import List, Optional
 from ...const import CoreState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import ContextType, IssueType
-from ..data import Issue
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -24,31 +23,35 @@ class CheckBase(ABC, CoreSysAttributes):
             return
 
         # Check if system is affected by the issue
-        affected: Optional[Issue] = None
+        affected: bool = False
         for issue in self.sys_resolution.issues:
             if issue.type != self.issue or issue.context != self.context:
                 continue
-            affected = issue
-            break
+            affected = True
+
+            # Check if issue still exists
+            _LOGGER.debug(
+                "Run approve check for %s/%s - %s",
+                self.issue,
+                self.context,
+                issue.reference,
+            )
+            if await self.approve_check(reference=issue.reference):
+                continue
+            self.sys_resolution.dismiss_issue(issue)
 
         # System is not affected
-        if affected is None:
-            _LOGGER.debug("Run check for %s/%s", self.issue, self.context)
-            await self.run_check()
+        if affected and not self.multiple:
             return
-
-        # Check if issue still exists
-        if await self.approve_check():
-            return
-
-        self.sys_resolution.dismiss_issue(affected)
+        _LOGGER.info("Run check for %s/%s", self.issue, self.context)
+        await self.run_check()
 
     @abstractmethod
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
 
     @abstractmethod
-    async def approve_check(self) -> bool:
+    async def approve_check(self, reference: Optional[str] = None) -> bool:
         """Approve check if it is affected by issue."""
 
     @property
@@ -60,6 +63,11 @@ class CheckBase(ABC, CoreSysAttributes):
     @abstractproperty
     def context(self) -> ContextType:
         """Return a ContextType enum."""
+
+    @property
+    def multiple(self) -> bool:
+        """Return True if they can have multiple issues referenced by reference."""
+        return self.context in (ContextType.ADDON, ContextType.PLUGIN)
 
     @property
     def states(self) -> List[CoreState]:

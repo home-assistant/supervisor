@@ -3,6 +3,7 @@ import logging
 from typing import List
 
 from ..coresys import CoreSys, CoreSysAttributes
+from .checks.addon_pwned import CheckAddonPwned
 from .checks.base import CheckBase
 from .checks.core_security import CheckCoreSecurity
 from .checks.free_space import CheckFreeSpace
@@ -19,11 +20,12 @@ class ResolutionCheck(CoreSysAttributes):
 
         self._core_security = CheckCoreSecurity(coresys)
         self._free_space = CheckFreeSpace(coresys)
+        self._addon_pwned = CheckAddonPwned(coresys)
 
     @property
     def all_tests(self) -> List[CheckBase]:
         """Return all list of all checks."""
-        return [self._core_security, self._free_space]
+        return [self._core_security, self._free_space, self._addon_pwned]
 
     async def check_system(self) -> None:
         """Check the system."""

@@ -166,6 +166,22 @@ def test_simple_device_schema(coresys):
         )({"name": "Pascal", "password": "1234", "input": "/dev/video1"})
 
 
+def test_simple_schema_password(coresys):
+    """Test with simple schema password pwned."""
+    validate = AddonOptions(
+        coresys,
+        {"name": "str", "password": "password", "fires": "bool", "alias": "str?"},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )
+
+    assert validate(
+        {"name": "Pascal", "password": "1234", "fires": True, "alias": "test"}
+    )
+
+    assert validate.pwned == {"7110eda4d09e062aa5e4a390b0a572ac0d2c0220"}
+
+
 def test_ui_simple_schema(coresys):
     """Test with simple schema."""
     assert UiOptions(coresys)(

@@ -425,7 +425,7 @@ class Addon(AddonModel):
 
     @property
     def devices(self) -> Set[Device]:
-        """Create a schema for add-on options."""
+        """Extract devices from add-on options."""
         raw_schema = self.data[ATTR_SCHEMA]
         if isinstance(raw_schema, bool) or not raw_schema:
             return set()
@@ -436,6 +436,20 @@ class Addon(AddonModel):
             options_validator(self.options)
 
         return options_validator.devices
+
+    @property
+    def pwned(self) -> Set[str]:
+        """Extract pwned data for add-on options."""
+        raw_schema = self.data[ATTR_SCHEMA]
+        if isinstance(raw_schema, bool) or not raw_schema:
+            return set()
+
+        # Validate devices
+        options_validator = AddonOptions(self.coresys, raw_schema, self.name, self.slug)
+        with suppress(vol.Invalid):
+            options_validator(self.options)
+
+        return options_validator.pwned
 
     def save_persist(self) -> None:
         """Save data of add-on."""

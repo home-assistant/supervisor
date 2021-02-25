@@ -56,6 +56,7 @@ class IssueType(str, Enum):
     UPDATE_ROLLBACK = "update_rollback"
     FATAL_ERROR = "fatal_error"
     DNS_LOOP = "dns_loop"
+    PWNED = "pwned"
 
 
 class SuggestionType(str, Enum):
@@ -68,4 +69,5 @@ class SuggestionType(str, Enum):
     EXECUTE_RESET = "execute_reset"
     EXECUTE_RELOAD = "execute_reload"
     EXECUTE_REMOVE = "execute_remove"
+    EXECUTE_STOP = "execute_stop"
     REGISTRY_LOGIN = "registry_login"
