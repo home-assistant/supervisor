@@ -1,6 +1,7 @@
 """Test the condition decorators."""
 # pylint: disable=protected-access,import-error
 import asyncio
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -284,3 +285,63 @@ async def test_exectution_limit_single_wait(
     test = TestClass(coresys)
 
     await asyncio.gather(*[test.execute(0.1), test.execute(0.1), test.execute(0.1)])
+
+
+async def test_exectution_limit_throttle_wait(
+    coresys: CoreSys, loop: asyncio.BaseEventLoop
+):
+    """Test the ignore conditions decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.run = asyncio.Lock()
+            self.call = 0
+
+        @Job(limit=JobExecutionLimit.THROTTLE_WAIT, throttle_period=timedelta(hours=1))
+        async def execute(self, sleep: float):
+            """Execute the class method."""
+            assert not self.run.locked()
+            async with self.run:
+                await asyncio.sleep(sleep)
+            self.call += 1
+
+    test = TestClass(coresys)
+
+    await asyncio.gather(*[test.execute(0.1), test.execute(0.1), test.execute(0.1)])
+    assert test.call == 1
+
+    await asyncio.gather(*[test.execute(0.1)])
+    assert test.call == 1
+
+
+async def test_exectution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+    """Test the ignore conditions decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.run = asyncio.Lock()
+            self.call = 0
+
+        @Job(limit=JobExecutionLimit.THROTTLE, throttle_period=timedelta(hours=1))
+        async def execute(self, sleep: float):
+            """Execute the class method."""
+            assert not self.run.locked()
+            async with self.run:
+                await asyncio.sleep(sleep)
+            self.call += 1
+
+    test = TestClass(coresys)
+
+    await asyncio.gather(*[test.execute(0.1), test.execute(0.1), test.execute(0.1)])
+    assert test.call == 1
+
+    await asyncio.gather(*[test.execute(0.1)])
+    assert test.call == 1

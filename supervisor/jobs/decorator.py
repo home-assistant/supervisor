@@ -75,19 +75,22 @@ class Job(CoreSysAttributes):
             # Handle exection limits
             if self.limit == JobExecutionLimit.SINGLE_WAIT:
                 await self._acquire_exection_limit()
-            elif self.limit in (
-                JobExecutionLimit.THROTTLE,
-                JobExecutionLimit.THROTTLE_WAIT,
-            ):
+            elif self.limit == JobExecutionLimit.THROTTLE:
                 time_since_last_call = datetime.now() - self._last_call
-                if time_since_last_call > self.throttle_period:
-                    if self.limit == JobExecutionLimit.THROTTLE_WAIT:
+                if time_since_last_call < self.throttle_period:
+                    return
+            elif self.limit == JobExecutionLimit.THROTTLE_WAIT:
+                time_since_last_call = datetime.now() - self._last_call
+                if time_since_last_call < self.throttle_period:
+                    if self._lock.locked():
                         await self._acquire_exection_limit()
                         self._release_exception_limits()
                     return
+                await self._acquire_exection_limit()
 
             # Execute Job
             try:
+                self._last_call = datetime.now()
                 return await self._method(*args, **kwargs)
             except HassioError as err:
                 raise err
@@ -99,7 +102,6 @@ class Job(CoreSysAttributes):
                 if self.cleanup:
                     self.sys_jobs.remove_job(job)
                 self._release_exception_limits()
-                self._last_call = datetime.now()
 
         return wrapper
 
