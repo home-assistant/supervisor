@@ -56,7 +56,7 @@ class ResolutionNotify(CoreSysAttributes):
                 messages.append(
                     {
                         "title": f"Insecure Secrets on {issue.reference}",
-                        "message": f"The Add-on {issue.reference} use secrets which are detected as not secure, see see https://www.home-assistant.io/more-info/pwned-passwords for more information.",
+                        "message": f"The Add-on {issue.reference} uses secrets which are detected as not secure, see see https://www.home-assistant.io/more-info/pwned-passwords for more information.",
                         "notification_id": f"supervisor_issue_pwned_{issue.reference}",
                     }
                 )
