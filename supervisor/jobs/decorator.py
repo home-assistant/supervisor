@@ -1,6 +1,7 @@
 """Job decorator."""
 import asyncio
 from datetime import datetime, timedelta
+from functools import wraps
 import logging
 from typing import Any, List, Optional, Tuple
 
@@ -58,6 +59,7 @@ class Job(CoreSysAttributes):
         """Call the wrapper logic."""
         self._method = method
 
+        @wraps(method)
         async def wrapper(*args, **kwargs) -> Any:
             """Wrap the method."""
             self._post_init(args)
