@@ -7,7 +7,8 @@ from typing import Dict, Optional, Union
 from ruamel.yaml import YAML, YAMLError
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..utils import AsyncThrottle
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class HomeAssistantSecrets(CoreSysAttributes):
         """Reload secrets."""
         await self._read_secrets()
 
-    @AsyncThrottle(timedelta(seconds=60))
+    @Job(limit=JobExecutionLimit.THROTTLE_WAIT, throttle_period=timedelta(seconds=60))
     async def _read_secrets(self):
         """Read secrets.yaml into memory."""
         if not self.path_secrets.exists():

@@ -1,5 +1,7 @@
 """Job decorator."""
 import asyncio
+from datetime import datetime, timedelta
+from functools import wraps
 import logging
 from typing import Any, List, Optional, Tuple
 
@@ -24,6 +26,7 @@ class Job(CoreSysAttributes):
         cleanup: bool = True,
         on_condition: Optional[JobException] = None,
         limit: Optional[JobExecutionLimit] = None,
+        throttle_period: Optional[timedelta] = None,
     ):
         """Initialize the Job class."""
         self.name = name
@@ -31,8 +34,17 @@ class Job(CoreSysAttributes):
         self.cleanup = cleanup
         self.on_condition = on_condition
         self.limit = limit
+        self.throttle_period = throttle_period
         self._lock: Optional[asyncio.Semaphore] = None
         self._method = None
+        self._last_call = datetime.min
+
+        # Validate Options
+        if (
+            self.limit in (JobExecutionLimit.THROTTLE, JobExecutionLimit.THROTTLE_WAIT)
+            and self.throttle_period is None
+        ):
+            raise RuntimeError("Using Job without a Throttle period!")
 
     def _post_init(self, args: Tuple[Any]) -> None:
         """Runtime init."""
@@ -45,8 +57,9 @@ class Job(CoreSysAttributes):
         except AttributeError:
             pass
         if not self.coresys:
-            raise JobException(f"coresys is missing on {self.name}")
+            raise RuntimeError(f"Job on {self.name} need to be an coresys object!")
 
+        # Others
         if self._lock is None:
             self._lock = asyncio.Semaphore()
 
@@ -54,6 +67,7 @@ class Job(CoreSysAttributes):
         """Call the wrapper logic."""
         self._method = method
 
+        @wraps(method)
         async def wrapper(*args, **kwargs) -> Any:
             """Wrap the method."""
             self._post_init(args)
@@ -67,11 +81,22 @@ class Job(CoreSysAttributes):
                 raise self.on_condition()
 
             # Handle exection limits
-            if self.limit:
+            if self.limit == JobExecutionLimit.SINGLE_WAIT:
                 await self._acquire_exection_limit()
+            elif self.limit == JobExecutionLimit.THROTTLE:
+                time_since_last_call = datetime.now() - self._last_call
+                if time_since_last_call < self.throttle_period:
+                    return
+            elif self.limit == JobExecutionLimit.THROTTLE_WAIT:
+                await self._acquire_exection_limit()
+                time_since_last_call = datetime.now() - self._last_call
+                if time_since_last_call < self.throttle_period:
+                    self._release_exception_limits()
+                    return
 
             # Execute Job
             try:
+                self._last_call = datetime.now()
                 return await self._method(*args, **kwargs)
             except HassioError as err:
                 raise err
@@ -155,12 +180,18 @@ class Job(CoreSysAttributes):
 
     async def _acquire_exection_limit(self) -> None:
         """Process exection limits."""
-
-        if self.limit == JobExecutionLimit.SINGLE_WAIT:
-            await self._lock.acquire()
+        if self.limit not in (
+            JobExecutionLimit.SINGLE_WAIT,
+            JobExecutionLimit.THROTTLE_WAIT,
+        ):
+            return
+        await self._lock.acquire()
 
     def _release_exception_limits(self) -> None:
         """Release possible exception limits."""
-
-        if self.limit == JobExecutionLimit.SINGLE_WAIT:
-            self._lock.release()
+        if self.limit not in (
+            JobExecutionLimit.SINGLE_WAIT,
+            JobExecutionLimit.THROTTLE_WAIT,
+        ):
+            return
+        self._lock.release()

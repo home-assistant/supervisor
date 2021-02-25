@@ -30,7 +30,7 @@ async def test_check(coresys: CoreSys):
         "supervisor.resolution.checks.addon_pwned.check_pwned_password",
         AsyncMock(return_value=True),
     ) as mock:
-        await addon_pwned.run_check()
+        await addon_pwned.run_check.__wrapped__(addon_pwned)
         assert not mock.called
 
     addon.pwned.add("123456")
@@ -38,7 +38,7 @@ async def test_check(coresys: CoreSys):
         "supervisor.resolution.checks.addon_pwned.check_pwned_password",
         AsyncMock(return_value=False),
     ) as mock:
-        await addon_pwned.run_check()
+        await addon_pwned.run_check.__wrapped__(addon_pwned)
         assert mock.called
 
     assert len(coresys.resolution.issues) == 0
@@ -47,7 +47,7 @@ async def test_check(coresys: CoreSys):
         "supervisor.resolution.checks.addon_pwned.check_pwned_password",
         AsyncMock(return_value=True),
     ) as mock:
-        await addon_pwned.run_check()
+        await addon_pwned.run_check.__wrapped__(addon_pwned)
         assert mock.called
 
     assert len(coresys.resolution.issues) == 1

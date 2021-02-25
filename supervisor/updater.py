@@ -9,6 +9,8 @@ from typing import Optional
 import aiohttp
 from awesomeversion import AwesomeVersion
 
+from supervisor.jobs.const import JobExecutionLimit
+
 from .const import (
     ATTR_AUDIO,
     ATTR_CHANNEL,
@@ -28,7 +30,6 @@ from .const import (
 from .coresys import CoreSysAttributes
 from .exceptions import UpdaterError, UpdaterJobError
 from .jobs.decorator import Job, JobCondition
-from .utils import AsyncThrottle
 from .utils.json import JsonConfig
 from .validate import SCHEMA_UPDATER_CONFIG
 
@@ -165,10 +166,11 @@ class Updater(JsonConfig, CoreSysAttributes):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
 
-    @AsyncThrottle(timedelta(seconds=30))
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=UpdaterJobError,
+        limit=JobExecutionLimit.THROTTLE_WAIT,
+        throttle_period=timedelta(seconds=30),
     )
     async def fetch_data(self):
         """Fetch current versions from Github.
