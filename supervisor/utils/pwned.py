@@ -22,7 +22,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
             data = await request.text()
 
         buffer = io.StringIO(data)
-        for line in buffer.readline():
+        for line in buffer:
             if sha1_pw != line.split(":")[0]:
                 continue
             return True

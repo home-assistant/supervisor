@@ -244,7 +244,6 @@ class Core(CoreSysAttributes):
             self.sys_create_task(self.sys_host.reload())
             self.sys_create_task(self.sys_updater.reload())
             self.sys_create_task(self.sys_resolution.healthcheck())
-            self.sys_create_task(self.sys_resolution.fixup.run_autofix())
 
             self.state = CoreState.RUNNING
             self.sys_homeassistant.websocket.supervisor_update_event("supervisor", {})
