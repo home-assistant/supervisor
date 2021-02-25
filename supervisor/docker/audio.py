@@ -59,9 +59,8 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
     @property
     def ulimits(self) -> List[docker.types.Ulimit]:
         """Generate ulimits for audio."""
-        if not self.sys_docker.info.support_cpu_realtime:
-            return None
-        return [docker.types.Ulimit(name="rtprio", soft=99)]
+        # Pulseaudio by default tries to use real-time scheduling with priority of 5.
+        return [docker.types.Ulimit(name="rtprio", soft=10, hard=10)]
 
     @property
     def cpu_rt_runtime(self) -> Optional[int]:

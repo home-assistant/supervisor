@@ -265,8 +265,12 @@ class DockerAddon(DockerInterface):
         limits: List[docker.types.Ulimit] = []
 
         # Need schedule functions
-        if self.addon.with_realtime and self.sys_docker.info.support_cpu_realtime:
-            limits.append(docker.types.Ulimit(name="rtprio", soft=99))
+        if self.addon.with_realtime:
+            limits.append(docker.types.Ulimit(name="rtprio", soft=90, hard=99))
+
+            # Set available memory for memlock to 128MB
+            mem = 128 * 1024 * 1024
+            limits.append(docker.types.Ulimit(name="memlock", soft=mem, hard=mem))
 
         # Return None if no capabilities is present
         if limits:
