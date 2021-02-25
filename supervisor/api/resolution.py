@@ -1,5 +1,6 @@
 """Handle REST API for resoulution."""
-from typing import Any, Dict
+import asyncio
+from typing import Any, Awaitable, Dict
 
 from aiohttp import web
 import attr
@@ -56,3 +57,8 @@ class APIResoulution(CoreSysAttributes):
             self.sys_resolution.dismiss_issue(issue)
         except ResolutionNotFound:
             raise APIError("The supplied UUID is not a valid issue") from None
+
+    @api_process
+    def healthcheck(self, request: web.Request) -> Awaitable[None]:
+        """Run backend healthcheck."""
+        return asyncio.shield(self.sys_resolution.healthcheck())

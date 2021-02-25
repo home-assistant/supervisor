@@ -238,6 +238,7 @@ class RestAPI(CoreSysAttributes):
                     "/resolution/issue/{issue}",
                     api_resolution.dismiss_issue,
                 ),
+                web.post("/resolution/healthcheck", api_resolution.healthcheck),
             ]
         )
 

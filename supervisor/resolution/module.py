@@ -1,7 +1,8 @@
 """Supervisor resolution center."""
-from datetime import time
 import logging
 from typing import List, Optional
+
+from supervisor.const import CoreState
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
@@ -141,11 +142,14 @@ class ResolutionManager(CoreSysAttributes):
 
         # Schedule the healthcheck
         self.sys_scheduler.register_task(self.healthcheck, SCHEDULED_HEALTHCHECK)
-        self.sys_scheduler.register_task(self.fixup.run_autofix, time(hour=2))
 
     async def healthcheck(self):
         """Scheduled task to check for known issues."""
         await self.check.check_system()
+
+        # Run autofix if possible
+        if self.sys_core.state == CoreState.RUNNING:
+            await self.fixup.run_autofix()
 
         # Create notification for any known issues
         await self.notify.issue_notifications()
