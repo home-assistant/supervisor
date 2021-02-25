@@ -44,7 +44,7 @@ class Job(CoreSysAttributes):
             self.limit in (JobExecutionLimit.THROTTLE, JobExecutionLimit.THROTTLE_WAIT)
             and self.throttle_period is None
         ):
-            raise RuntimeError(f"Job on {self.name} use Throttle without period!")
+            raise RuntimeError("Using Job without a Throttle period!")
 
     def _post_init(self, args: Tuple[Any]) -> None:
         """Runtime init."""
