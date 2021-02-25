@@ -67,8 +67,12 @@ class ResolutionManager(CoreSysAttributes):
     @issues.setter
     def issues(self, issue: Issue) -> None:
         """Add issues."""
-        if issue not in self._issues:
-            self._issues.append(issue)
+        if issue in self._issues:
+            return
+        _LOGGER.info(
+            "Create new issue %s - %s / %s", issue.type, issue.context, issue.reference
+        )
+        self._issues.append(issue)
 
     @property
     def suggestions(self) -> List[Suggestion]:
@@ -78,8 +82,15 @@ class ResolutionManager(CoreSysAttributes):
     @suggestions.setter
     def suggestions(self, suggestion: Suggestion) -> None:
         """Add suggestion."""
-        if suggestion not in self._suggestions:
-            self._suggestions.append(suggestion)
+        if suggestion in self._suggestions:
+            return
+        _LOGGER.info(
+            "Create new suggestion %s - %s / %s",
+            suggestion.type,
+            suggestion.context,
+            suggestion.reference,
+        )
+        self._suggestions.append(suggestion)
 
     @property
     def unsupported(self) -> List[UnsupportedReason]:
