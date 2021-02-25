@@ -388,12 +388,6 @@ class APIAddons(CoreSysAttributes):
         }
 
     @api_process
-    def install(self, request: web.Request) -> Awaitable[None]:
-        """Install add-on."""
-        addon = self._extract_addon(request)
-        return asyncio.shield(addon.install())
-
-    @api_process
     def uninstall(self, request: web.Request) -> Awaitable[None]:
         """Uninstall add-on."""
         addon = self._extract_addon_installed(request)
@@ -410,12 +404,6 @@ class APIAddons(CoreSysAttributes):
         """Stop add-on."""
         addon = self._extract_addon_installed(request)
         return asyncio.shield(addon.stop())
-
-    @api_process
-    def update(self, request: web.Request) -> Awaitable[None]:
-        """Update add-on."""
-        addon: Addon = self._extract_addon_installed(request)
-        return asyncio.shield(addon.update())
 
     @api_process
     def restart(self, request: web.Request) -> Awaitable[None]:
