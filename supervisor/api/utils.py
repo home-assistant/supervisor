@@ -62,7 +62,7 @@ def api_process(method):
         except (APIError, APIForbidden, HassioError) as err:
             return api_return_error(error=err)
 
-        if isinstance(answer, dict):
+        if isinstance(answer, (dict, list)):
             return api_return_ok(data=answer)
         if isinstance(answer, web.Response):
             return answer
