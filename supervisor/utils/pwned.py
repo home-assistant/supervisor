@@ -13,6 +13,7 @@ _API_CALL = "https://api.pwnedpasswords.com/range/{hash}"
 
 async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) -> bool:
     """Check if password is pwned."""
+    sha1_pw = sha1_pw.upper()
     try:
         async with websession.get(
             _API_CALL.format(hash=sha1_pw[:5]), timeout=aiohttp.ClientTimeout(total=10)
@@ -23,7 +24,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
 
         buffer = io.StringIO(data)
         for line in buffer:
-            if sha1_pw != line.split(":")[0]:
+            if not sha1_pw.endswith(line.split(":")[0]):
                 continue
             return True
 
