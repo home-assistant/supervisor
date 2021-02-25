@@ -52,6 +52,7 @@ class Job(CoreSysAttributes):
         if not self.coresys:
             raise RuntimeError(f"Job on {self.name} need to be an coresys object!")
 
+        # Others
         if self._lock is None:
             self._lock = asyncio.Semaphore()
 
