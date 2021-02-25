@@ -1,7 +1,7 @@
 """Init file for Supervisor Home Assistant RESTful API."""
 import asyncio
 import logging
-from typing import Any, Awaitable, Dict, List
+from typing import Any, Awaitable, Dict, List, Optional
 
 from aiohttp import web
 import voluptuous as vol
@@ -153,6 +153,13 @@ class APIAddons(CoreSysAttributes):
             raise APIError("Addon is not installed")
         return addon
 
+    def _homeassistant_version(self, addon: AnyAddon) -> Optional[str]:
+        """Return the required Home Assistant version."""
+        if addon.is_installed:
+            store = self.sys_addons.store.get(addon.slug)
+            return store.homeassistant_version
+        return addon.homeassistant_version
+
     @api_process
     async def list(self, request: web.Request) -> Dict[str, Any]:
         """Return all add-ons or repositories."""
@@ -171,7 +178,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_INSTALLED: addon.is_installed,
                 ATTR_AVAILABLE: addon.available,
                 ATTR_DETACHED: addon.is_detached,
-                ATTR_HOMEASSISTANT: addon.homeassistant_version,
+                ATTR_HOMEASSISTANT: self._homeassistant_version(addon),
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
                 ATTR_URL: addon.url,
@@ -224,7 +231,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_SCHEMA: addon.schema_ui,
             ATTR_ARCH: addon.supported_arch,
             ATTR_MACHINE: addon.supported_machine,
-            ATTR_HOMEASSISTANT: addon.homeassistant_version,
+            ATTR_HOMEASSISTANT: self._homeassistant_version(addon),
             ATTR_URL: addon.url,
             ATTR_STATE: AddonState.UNKNOWN,
             ATTR_DETACHED: addon.is_detached,
