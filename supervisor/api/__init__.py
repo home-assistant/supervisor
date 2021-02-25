@@ -477,7 +477,6 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/store", api_store.store_info),
-                web.post("/store/reload", api_store.reload),
                 web.get("/store/addons", api_store.addons_list),
                 web.get("/store/addons/{addon}", api_store.addons_addon_info),
                 web.get("/store/addons/{addon}/{version}", api_store.addons_addon_info),
@@ -493,6 +492,7 @@ class RestAPI(CoreSysAttributes):
                     "/store/addons/{addon}/update/{version}",
                     api_store.addons_addon_update,
                 ),
+                web.post("/store/reload", api_store.reload),
                 web.get("/store/repositories", api_store.repositories_list),
                 web.get(
                     "/store/repositories/{repository}",
