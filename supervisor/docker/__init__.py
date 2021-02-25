@@ -61,7 +61,7 @@ class DockerInfo:
     @property
     def support_cpu_realtime(self) -> bool:
         """Return true, if CONFIG_RT_GROUP_SCHED is loaded."""
-        if not Path("/sys/fs/cgroup/cpu.rt_runtime_us").exists():
+        if not Path("/sys/fs/cgroup/cpu/cpu.rt_runtime_us").exists():
             return False
         return bool(os.environ.get(ENV_SUPERVISOR_CPU_RT, 0))
 
