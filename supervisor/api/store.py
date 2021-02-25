@@ -4,6 +4,7 @@ from typing import Any, Awaitable, Dict, List
 
 from aiohttp import web
 
+from ..addons import AnyAddon
 from ..api.utils import api_process
 from ..const import (
     ATTR_ADDONS,
@@ -36,12 +37,18 @@ from ..store.repository import Repository
 class APIStore(CoreSysAttributes):
     """Handle RESTful API for store functions."""
 
-    def _extract_addon(self, request: web.Request) -> AddonStore:
+    def _extract_addon(self, request: web.Request, installed=False) -> AnyAddon:
         """Return add-on, throw an exception it it doesn't exist."""
         addon_slug: str = request.match_info.get("addon")
         addon_version: str = request.match_info.get("version", "latest")
 
-        addon = self.sys_addons.store.get(addon_slug)
+        if installed:
+            addon = self.sys_addons.local.get(addon_slug)
+            if addon is None or not addon.is_installed:
+                raise APIError(f"Addon {addon_slug} is not installed")
+        else:
+            addon = self.sys_addons.store.get(addon_slug)
+
         if not addon:
             raise APIError(
                 f"Addon {addon_slug} with version {addon_version} does not exist in the store"
@@ -128,9 +135,7 @@ class APIStore(CoreSysAttributes):
     @api_process
     def addons_addon_update(self, request: web.Request) -> Awaitable[None]:
         """Update add-on."""
-        addon = self._extract_addon(request)
-        if not addon.is_installed:
-            raise APIError(f"Addon {addon.slug} is not installed")
+        addon = self._extract_addon(request, installed=True)
         return asyncio.shield(addon.update())
 
     @api_process

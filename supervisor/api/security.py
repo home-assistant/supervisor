@@ -99,6 +99,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/os/.+"
         r"|/resolution/.+"
         r"|/snapshots.*"
+        r"|/store.*"
         r"|/supervisor/.+"
         r")$"
     ),
