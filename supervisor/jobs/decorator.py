@@ -1,5 +1,6 @@
 """Job decorator."""
 import asyncio
+from datetime import datetime, timedelta
 import logging
 from typing import Any, List, Optional, Tuple
 
@@ -24,6 +25,7 @@ class Job(CoreSysAttributes):
         cleanup: bool = True,
         on_condition: Optional[JobException] = None,
         limit: Optional[JobExecutionLimit] = None,
+        throttle_period: Optional[timedelta] = None,
     ):
         """Initialize the Job class."""
         self.name = name
@@ -31,8 +33,10 @@ class Job(CoreSysAttributes):
         self.cleanup = cleanup
         self.on_condition = on_condition
         self.limit = limit
+        self.throttle_period = throttle_period
         self._lock: Optional[asyncio.Semaphore] = None
         self._method = None
+        self._last_call = datetime.min
 
     def _post_init(self, args: Tuple[Any]) -> None:
         """Runtime init."""
@@ -67,8 +71,18 @@ class Job(CoreSysAttributes):
                 raise self.on_condition()
 
             # Handle exection limits
-            if self.limit:
+            if self.limit == JobExecutionLimit.SINGLE_WAIT:
                 await self._acquire_exection_limit()
+            elif self.limit in (
+                JobExecutionLimit.THROTTLE,
+                JobExecutionLimit.THROTTLE_WAIT,
+            ):
+                time_since_last_call = datetime.now() - self._last_call
+                if time_since_last_call > self.throttle_period:
+                    if self.limit == JobExecutionLimit.THROTTLE_WAIT:
+                        await self._acquire_exection_limit()
+                        self._release_exception_limits()
+                    return
 
             # Execute Job
             try:
@@ -83,6 +97,7 @@ class Job(CoreSysAttributes):
                 if self.cleanup:
                     self.sys_jobs.remove_job(job)
                 self._release_exception_limits()
+                self._last_call = datetime.now()
 
         return wrapper
 
@@ -155,12 +170,18 @@ class Job(CoreSysAttributes):
 
     async def _acquire_exection_limit(self) -> None:
         """Process exection limits."""
-
-        if self.limit == JobExecutionLimit.SINGLE_WAIT:
-            await self._lock.acquire()
+        if self.limit not in (
+            JobExecutionLimit.SINGLE_WAIT,
+            JobExecutionLimit.THROTTLE_WAIT,
+        ):
+            return
+        await self._lock.acquire()
 
     def _release_exception_limits(self) -> None:
         """Release possible exception limits."""
-
-        if self.limit == JobExecutionLimit.SINGLE_WAIT:
-            self._lock.release()
+        if self.limit not in (
+            JobExecutionLimit.SINGLE_WAIT,
+            JobExecutionLimit.THROTTLE_WAIT,
+        ):
+            return
+        self._lock.release()

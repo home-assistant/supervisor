@@ -23,3 +23,5 @@ class JobExecutionLimit(str, Enum):
     """Job Execution limits."""
 
     SINGLE_WAIT = "single_wait"
+    THROTTLE = "throttle"
+    THROTTLE_WAIT = "throttle_wait"

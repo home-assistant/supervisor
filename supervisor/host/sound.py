@@ -9,7 +9,8 @@ from pulsectl import Pulse, PulseError, PulseIndexError, PulseOperationFailed
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import PulseAudioError
-from ..utils import AsyncThrottle
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -217,7 +218,7 @@ class SoundControl(CoreSysAttributes):
         await self.sys_run_in_executor(_activate_profile)
         await self.update()
 
-    @AsyncThrottle(timedelta(seconds=10))
+    @Job(limit=JobExecutionLimit.THROTTLE_WAIT, throttle_period=timedelta(seconds=10))
     async def update(self):
         """Update properties over dbus."""
         _LOGGER.info("Updating PulseAudio information")

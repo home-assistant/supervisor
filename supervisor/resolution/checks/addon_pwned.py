@@ -1,10 +1,11 @@
 """Helpers to check core security."""
 from contextlib import suppress
+from datetime import timedelta
 from typing import List, Optional
 
 from ...const import AddonState, CoreState
 from ...exceptions import PwnedError
-from ...jobs.const import JobCondition
+from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
 from ...utils.pwned import check_pwned_password
 from ..const import ContextType, IssueType, SuggestionType
@@ -14,7 +15,11 @@ from .base import CheckBase
 class CheckAddonPwned(CheckBase):
     """CheckAddonPwned class for check."""
 
-    @Job(conditions=[JobCondition.INTERNET_SYSTEM])
+    @Job(
+        conditions=[JobCondition.INTERNET_SYSTEM],
+        limit=JobExecutionLimit.THROTTLE,
+        throttle_period=timedelta(hours=24),
+    )
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         await self.sys_homeassistant.secrets.reload()

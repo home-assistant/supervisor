@@ -1,12 +1,11 @@
 """Tools file for Supervisor."""
 import asyncio
-from datetime import datetime
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
 import re
 import socket
-from typing import Any, Optional
+from typing import Any
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -33,65 +32,6 @@ def process_lock(method):
             return await method(api, *args, **kwargs)
 
     return wrap_api
-
-
-class AsyncThrottle:
-    """A class for throttling the execution of tasks.
-
-    Decorator that prevents a function from being called more than once every
-    time period with blocking.
-    """
-
-    def __init__(self, delta):
-        """Initialize async throttle."""
-        self.throttle_period = delta
-        self.time_of_last_call = datetime.min
-        self.synchronize: Optional[asyncio.Lock] = None
-
-    def __call__(self, method):
-        """Throttle function."""
-
-        async def wrapper(*args, **kwargs):
-            """Throttle function wrapper."""
-            if not self.synchronize:
-                self.synchronize = asyncio.Lock()
-
-            async with self.synchronize:
-                now = datetime.now()
-                time_since_last_call = now - self.time_of_last_call
-
-                if time_since_last_call > self.throttle_period:
-                    self.time_of_last_call = now
-                    return await method(*args, **kwargs)
-
-        return wrapper
-
-
-class AsyncCallFilter:
-    """A class for throttling the execution of tasks, with a filter.
-
-    Decorator that prevents a function from being called more than once every
-    time period.
-    """
-
-    def __init__(self, delta):
-        """Initialize async throttle."""
-        self.throttle_period = delta
-        self.time_of_last_call = datetime.min
-
-    def __call__(self, method):
-        """Throttle function."""
-
-        async def wrapper(*args, **kwargs):
-            """Throttle function wrapper."""
-            now = datetime.now()
-            time_since_last_call = now - self.time_of_last_call
-
-            if time_since_last_call > self.throttle_period:
-                self.time_of_last_call = now
-                return await method(*args, **kwargs)
-
-        return wrapper
 
 
 def check_port(address: IPv4Address, port: int) -> bool:
