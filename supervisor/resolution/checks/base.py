@@ -41,7 +41,7 @@ class CheckBase(ABC, CoreSysAttributes):
             self.sys_resolution.dismiss_issue(issue)
 
         # System is not affected
-        if affected and not self.multible:
+        if affected and not self.multiple:
             return
         _LOGGER.info("Run check for %s/%s", self.issue, self.context)
         await self.run_check()
@@ -65,8 +65,8 @@ class CheckBase(ABC, CoreSysAttributes):
         """Return a ContextType enum."""
 
     @property
-    def multible(self) -> bool:
-        """Return True if they can have multible issues referenced by reference."""
+    def multiple(self) -> bool:
+        """Return True if they can have multiple issues referenced by reference."""
         return self.context in (ContextType.ADDON, ContextType.PLUGIN)
 
     @property
