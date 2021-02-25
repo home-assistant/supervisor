@@ -50,10 +50,17 @@ class Job(CoreSysAttributes):
         except AttributeError:
             pass
         if not self.coresys:
-            raise JobException(f"coresys is missing on {self.name}")
+            raise RuntimeError(f"Job on {self.name} need to be an coresys object!")
 
         if self._lock is None:
             self._lock = asyncio.Semaphore()
+
+        # Validate Options
+        if (
+            self.limit in (JobExecutionLimit.THROTTLE, JobExecutionLimit.THROTTLE_WAIT)
+            and self.throttle_period is None
+        ):
+            raise RuntimeError(f"Job on {self.name} use Throttle without period!")
 
     def __call__(self, method):
         """Call the wrapper logic."""
