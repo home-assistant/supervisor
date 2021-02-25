@@ -138,7 +138,7 @@ class AddonOptions(CoreSysAttributes):
                 range_args[group_name[2:]] = float(group_value)
 
         if typ.startswith(_STR) or typ.startswith(_PASSWORD):
-            if typ.startswith(_PASSWORD):
+            if typ.startswith(_PASSWORD) and value:
                 self.pwned.add(hashlib.sha1(str(value).encode()).hexdigest())
             return vol.All(str(value), vol.Range(**range_args))(value)
         elif typ.startswith(_INT):

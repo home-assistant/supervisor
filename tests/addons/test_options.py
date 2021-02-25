@@ -181,6 +181,11 @@ def test_simple_schema_password(coresys):
 
     assert validate.pwned == {"7110eda4d09e062aa5e4a390b0a572ac0d2c0220"}
 
+    validate.pwned.clear()
+    assert validate({"name": "Pascal", "password": "", "fires": True, "alias": "test"})
+
+    assert not validate.pwned
+
 
 def test_ui_simple_schema(coresys):
     """Test with simple schema."""
