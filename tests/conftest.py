@@ -14,6 +14,8 @@ from supervisor.bootstrap import initialize_coresys
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
+from supervisor.store.addon import AddonStore
+from supervisor.store.repository import Repository
 from supervisor.utils.gdbus import DBus
 
 from tests.common import exists_fixture, load_fixture, load_json_fixture
@@ -206,3 +208,25 @@ def run_dir(tmp_path):
         tmp_state = Path(tmp_path, "supervisor")
         mock_run.write_text = tmp_state.write_text
         yield tmp_state
+
+
+@pytest.fixture
+def store_addon(coresys: CoreSys, tmp_path):
+    """Store add-on fixture."""
+    addon_obj = AddonStore(coresys, "test_store_addon")
+
+    coresys.addons.store[addon_obj.slug] = addon_obj
+    coresys.store.data.addons[addon_obj.slug] = load_json_fixture("add-on.json")
+    yield addon_obj
+
+
+@pytest.fixture
+def repository(coresys: CoreSys):
+    """Repository fixture."""
+    repository_obj = Repository(
+        coresys, "https://github.com/awesome-developer/awesome-repo"
+    )
+
+    coresys.store.repositories[repository_obj.slug] = repository_obj
+
+    yield repository_obj

@@ -20,12 +20,12 @@ if TYPE_CHECKING:
     from .core import Core
     from .dbus import DBusManager
     from .discovery import Discovery
+    from .hardware.module import HardwareManager
     from .hassos import HassOS
     from .homeassistant import HomeAssistant
     from .host import HostManager
     from .ingress import Ingress
     from .jobs import JobManager
-    from .hardware.module import HardwareManager
     from .misc.scheduler import Scheduler
     from .misc.tasks import Tasks
     from .plugins import PluginManager
