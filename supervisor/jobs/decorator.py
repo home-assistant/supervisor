@@ -39,6 +39,13 @@ class Job(CoreSysAttributes):
         self._method = None
         self._last_call = datetime.min
 
+        # Validate Options
+        if (
+            self.limit in (JobExecutionLimit.THROTTLE, JobExecutionLimit.THROTTLE_WAIT)
+            and self.throttle_period is None
+        ):
+            raise RuntimeError(f"Job on {self.name} use Throttle without period!")
+
     def _post_init(self, args: Tuple[Any]) -> None:
         """Runtime init."""
         if self.name is None:
@@ -55,13 +62,6 @@ class Job(CoreSysAttributes):
         # Others
         if self._lock is None:
             self._lock = asyncio.Semaphore()
-
-        # Validate Options
-        if (
-            self.limit in (JobExecutionLimit.THROTTLE, JobExecutionLimit.THROTTLE_WAIT)
-            and self.throttle_period is None
-        ):
-            raise RuntimeError(f"Job on {self.name} use Throttle without period!")
 
     def __call__(self, method):
         """Call the wrapper logic."""
