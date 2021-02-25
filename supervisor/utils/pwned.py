@@ -28,7 +28,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
             return True
 
     except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-        _LOGGER.warning("Can't fetch freegeoip data: %s", err)
+        _LOGGER.warning("Can't fetch hibp data: %s", err)
         raise PwnedError() from err
 
     return False
