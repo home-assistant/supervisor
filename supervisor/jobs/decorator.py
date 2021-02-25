@@ -88,13 +88,11 @@ class Job(CoreSysAttributes):
                 if time_since_last_call < self.throttle_period:
                     return
             elif self.limit == JobExecutionLimit.THROTTLE_WAIT:
+                await self._acquire_exection_limit()
                 time_since_last_call = datetime.now() - self._last_call
                 if time_since_last_call < self.throttle_period:
-                    if self._lock.locked():
-                        await self._acquire_exection_limit()
-                        self._release_exception_limits()
+                    self._release_exception_limits()
                     return
-                await self._acquire_exection_limit()
 
             # Execute Job
             try:
