@@ -7,6 +7,7 @@ import aiohttp
 from awesomeversion import AwesomeVersion
 
 from ..const import ATTR_ACCESS_TOKEN, ATTR_DATA, ATTR_EVENT, ATTR_TYPE, ATTR_UPDATE_KEY
+from ..core import LANDINGPAGE
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     HomeAssistantAPIError,
@@ -109,6 +110,13 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             return
 
         if not self._client:
+
+            # Skip check on landingpage
+            if (
+                self.sys_homeassistant.version is None
+                or self.sys_homeassistant.version == LANDINGPAGE
+            ):
+                return
             self._client = await self._get_ws_client()
 
         message_type = message.get("type")
