@@ -33,7 +33,7 @@ class SnapshotManager(CoreSysAttributes):
         """Return snapshot object."""
         return self.snapshots_obj.get(slug)
 
-    def _create_snapshot(self, name, sys_type, password):
+    def _create_snapshot(self, name, sys_type, password, homeassistant=True):
         """Initialize a new snapshot object from name."""
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
@@ -44,9 +44,10 @@ class SnapshotManager(CoreSysAttributes):
         snapshot.new(slug, name, date_str, sys_type, password)
 
         # set general data
-        snapshot.store_homeassistant()
-        snapshot.store_repositories()
-        snapshot.store_dockerconfig()
+        if homeassistant:
+            snapshot.store_homeassistant()
+            snapshot.store_repositories()
+            snapshot.store_dockerconfig()
 
         return snapshot
 
@@ -160,7 +161,7 @@ class SnapshotManager(CoreSysAttributes):
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_snapshot_partial(
-        self, name="", addons=None, folders=None, password=None
+        self, name="", addons=None, folders=None, password=None, homeassistant=True
     ):
         """Create a partial snapshot."""
         if self.lock.locked():
@@ -169,7 +170,14 @@ class SnapshotManager(CoreSysAttributes):
 
         addons = addons or []
         folders = folders or []
-        snapshot = self._create_snapshot(name, SNAPSHOT_PARTIAL, password)
+
+        if len(addons) == 0 and len(folders) == 0 and not homeassistant:
+            _LOGGER.error("Nothing to create snapshot for")
+            return
+
+        snapshot = self._create_snapshot(
+            name, SNAPSHOT_PARTIAL, password, homeassistant
+        )
 
         _LOGGER.info("Creating new partial-snapshot with slug %s", snapshot.slug)
         try:
