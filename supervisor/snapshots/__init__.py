@@ -46,8 +46,9 @@ class SnapshotManager(CoreSysAttributes):
         # set general data
         if homeassistant:
             snapshot.store_homeassistant()
-            snapshot.store_repositories()
-            snapshot.store_dockerconfig()
+
+        snapshot.store_repositories()
+        snapshot.store_dockerconfig()
 
         return snapshot
 
