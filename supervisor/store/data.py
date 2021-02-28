@@ -11,6 +11,7 @@ from ..const import (
     ATTR_LOCATON,
     ATTR_REPOSITORY,
     ATTR_SLUG,
+    ATTR_TANSLATIONS,
     REPOSITORY_CORE,
     REPOSITORY_LOCAL,
 )
@@ -120,6 +121,7 @@ class StoreData(CoreSysAttributes):
             # store
             addon_config[ATTR_REPOSITORY] = repository
             addon_config[ATTR_LOCATON] = str(addon.parent)
+            addon_config[ATTR_TANSLATIONS] = self._read_addon_translations(addon.parent)
             self.addons[addon_slug] = addon_config
 
     def _set_builtin_repositories(self):
@@ -136,3 +138,20 @@ class StoreData(CoreSysAttributes):
 
         # local repository
         self.repositories[REPOSITORY_LOCAL] = builtin_data[REPOSITORY_LOCAL]
+
+    def _read_addon_translations(self, addon_path: Path) -> dict:
+        """Read translations from add-ons folder."""
+        translations_dir = addon_path / "translations"
+        translations = {}
+
+        if not translations_dir.exists():
+            return translations
+
+        for translation in translations_dir.glob("*.json"):
+            try:
+                translations[translation.stem] = read_json_file(translation)
+            except JsonFileError:
+                _LOGGER.warning("Can't read translations from %s", translation)
+                continue
+
+        return translations
