@@ -23,6 +23,7 @@ def find_one_filetype(
     for file in path.glob(f"**/{filename}.*"):
         if file.suffix in filetypes:
             return file
+    return None
 
 
 def read_json_or_yaml_file(path: Path) -> dict:
