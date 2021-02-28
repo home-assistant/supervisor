@@ -55,8 +55,8 @@ class ResolutionNotify(CoreSysAttributes):
             if issue.type == IssueType.PWNED and issue.context == ContextType.ADDON:
                 messages.append(
                     {
-                        "title": f"Insecure Secrets on {issue.reference}",
-                        "message": f"The Add-on {issue.reference} uses secrets which are detected as not secure, see see https://www.home-assistant.io/more-info/pwned-passwords for more information.",
+                        "title": f"Insecure secrets on {issue.reference}",
+                        "message": f"The add-on {issue.reference} uses secrets which are detected as not secure, see https://www.home-assistant.io/more-info/pwned-passwords for more information.",
                         "notification_id": f"supervisor_issue_pwned_{issue.reference}",
                     }
                 )
@@ -69,7 +69,7 @@ class ResolutionNotify(CoreSysAttributes):
                     json=message,
                 ) as resp:
                     if resp.status in (200, 201):
-                        _LOGGER.debug("Sucessfully created persistent_notification")
+                        _LOGGER.debug("Successfully created persistent_notification")
                     else:
                         _LOGGER.error("Can't create persistant notification")
             except HomeAssistantAPIError:
