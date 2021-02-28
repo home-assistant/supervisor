@@ -5,11 +5,36 @@ import logging
 from pathlib import Path
 import re
 import socket
-from typing import Any
+from typing import Any, List, Optional
+
+from ..exceptions import HassioError
+from .json import read_json_file
+from .yaml import read_yaml_file
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_STRING: re.Pattern = re.compile(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))")
+
+
+def find_one_filetype(
+    path: Path, filename: str, filetypes: List[str]
+) -> Optional[Path]:
+    """Find first file matching filetypes."""
+    for file in path.glob(f"**/{filename}.*"):
+        if file.suffix in filetypes:
+            return file
+    return None
+
+
+def read_json_or_yaml_file(path: Path) -> dict:
+    """Read JSON or YAML file."""
+    if path.suffix == ".json":
+        return read_json_file(path)
+
+    if path.suffix in [".yaml", ".yml"]:
+        return read_yaml_file(path)
+
+    raise HassioError(f"{path} is not JSON or YAML")
 
 
 def convert_to_ascii(raw: bytes) -> str:

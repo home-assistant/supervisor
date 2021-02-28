@@ -279,7 +279,14 @@ class AppArmorInvalidError(AppArmorError):
 
 
 class JsonFileError(HassioError):
-    """Invalid json file."""
+    """Invalid JSON file."""
+
+
+# util/yaml
+
+
+class YamlFileError(HassioError):
+    """Invalid YAML file."""
 
 
 # util/pwned
