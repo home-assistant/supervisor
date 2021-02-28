@@ -4,11 +4,10 @@ import logging
 from pathlib import Path
 from typing import Dict, Optional, Union
 
-from ruamel.yaml import YAML, YAMLError
-
 from ..coresys import CoreSys, CoreSysAttributes
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
+from ..utils.yaml import read_yaml_file
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -49,17 +48,8 @@ class HomeAssistantSecrets(CoreSysAttributes):
             return
 
         # Read secrets
-        try:
-            yaml = YAML()
-            yaml.allow_duplicate_keys = True
-            data = await self.sys_run_in_executor(yaml.load, self.path_secrets) or {}
-
-            # Filter to only get supported values
-            self.secrets = {
-                k: v for k, v in data.items() if isinstance(v, (bool, float, int, str))
-            }
-
-        except (YAMLError, AttributeError) as err:
-            _LOGGER.error("Can't process Home Assistant secrets: %s", err)
-        else:
-            _LOGGER.debug("Reloading Home Assistant secrets: %s", len(self.secrets))
+        secrets = await self.sys_run_in_executor(read_yaml_file, self.path_secrets)
+        self.secrets = {
+            k: v for k, v in secrets.items() if isinstance(v, (bool, float, int, str))
+        }
+        _LOGGER.debug("Reloading Home Assistant secrets: %s", len(self.secrets))
