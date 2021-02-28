@@ -71,6 +71,7 @@ from ..const import (
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_SYSTEM,
+    ATTR_TANSLATIONS,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_UART,
@@ -276,6 +277,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
         vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [str],
         vol.Optional(ATTR_OPTIONS, default={}): dict,
+        vol.Optional(ATTR_TANSLATIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
             vol.Schema(
                 {

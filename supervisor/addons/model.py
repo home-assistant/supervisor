@@ -187,7 +187,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_REPOSITORY]
 
     @property
-    def translations(self) -> str:
+    def translations(self) -> dict:
         """Return add-on translations."""
         return self.data[ATTR_TANSLATIONS]
 
