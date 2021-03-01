@@ -6,11 +6,12 @@ from typing import Any, Dict
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons.validate import SCHEMA_ADDON_CONFIG
+from ..addons.validate import SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_TRANSLATION
 from ..const import (
     ATTR_LOCATON,
     ATTR_REPOSITORY,
     ATTR_SLUG,
+    ATTR_TANSLATIONS,
     FILE_SUFFIX_CONFIGURATION,
     REPOSITORY_CORE,
     REPOSITORY_LOCAL,
@@ -129,6 +130,7 @@ class StoreData(CoreSysAttributes):
             # store
             addon_config[ATTR_REPOSITORY] = repository
             addon_config[ATTR_LOCATON] = str(addon.parent)
+            addon_config[ATTR_TANSLATIONS] = self._read_addon_translations(addon.parent)
             self.addons[addon_slug] = addon_config
 
     def _set_builtin_repositories(self):
@@ -145,3 +147,29 @@ class StoreData(CoreSysAttributes):
 
         # local repository
         self.repositories[REPOSITORY_LOCAL] = builtin_data[REPOSITORY_LOCAL]
+
+    def _read_addon_translations(self, addon_path: Path) -> dict:
+        """Read translations from add-ons folder."""
+        translations_dir = addon_path / "translations"
+        translations = {}
+
+        if not translations_dir.exists():
+            return translations
+
+        translation_files = [
+            translation
+            for translation in translations_dir.glob("*")
+            if translation.suffix in FILE_SUFFIX_CONFIGURATION
+        ]
+
+        for translation in translation_files:
+            try:
+                translations[translation.stem] = SCHEMA_ADDON_TRANSLATION(
+                    read_json_or_yaml_file(translation)
+                )
+
+            except (JsonFileError, YamlFileError, vol.Invalid):
+                _LOGGER.warning("Can't read translations from %s", translation)
+                continue
+
+        return translations

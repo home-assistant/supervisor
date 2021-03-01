@@ -21,6 +21,7 @@ from ..const import (
     ATTR_AUTO_UPDATE,
     ATTR_BOOT,
     ATTR_BUILD_FROM,
+    ATTR_CONFIGURATION,
     ATTR_DESCRIPTON,
     ATTR_DEVICES,
     ATTR_DEVICETREE,
@@ -71,6 +72,7 @@ from ..const import (
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_SYSTEM,
+    ATTR_TANSLATIONS,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_UART,
@@ -343,12 +345,18 @@ SCHEMA_ADDON_USER = vol.Schema(
 )
 
 
+SCHEMA_ADDON_TRANSLATION = vol.Schema(
+    {vol.Optional(ATTR_CONFIGURATION): {str: str}}, extra=vol.REMOVE_EXTRA
+)
+
+
 SCHEMA_ADDON_SYSTEM = vol.All(
     _migrate_addon_config(),
     _SCHEMA_ADDON_CONFIG.extend(
         {
             vol.Required(ATTR_LOCATON): str,
             vol.Required(ATTR_REPOSITORY): str,
+            vol.Optional(ATTR_TANSLATIONS, default={}): SCHEMA_ADDON_TRANSLATION,
         }
     ),
 )

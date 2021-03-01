@@ -54,6 +54,7 @@ from ..const import (
     ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STDIN,
+    ATTR_TANSLATIONS,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_UART,
@@ -184,6 +185,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def repository(self) -> str:
         """Return repository of add-on."""
         return self.data[ATTR_REPOSITORY]
+
+    @property
+    def translations(self) -> dict:
+        """Return add-on translations."""
+        return self.data[ATTR_TANSLATIONS]
 
     @property
     def latest_version(self) -> AwesomeVersion:
