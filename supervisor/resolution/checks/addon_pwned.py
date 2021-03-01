@@ -57,7 +57,7 @@ class CheckAddonPwned(CheckBase):
         addon = self.sys_addons.get(reference)
 
         # Uninstalled
-        if not addon:
+        if not addon or not addon.is_installed:
             return False
 
         # Not in use anymore
