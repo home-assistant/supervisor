@@ -5,10 +5,10 @@ from typing import Dict, Optional
 
 import voluptuous as vol
 
-from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_URL
+from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_URL, FILE_SUFFIX_CONFIGURATION
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JsonFileError, StoreError
-from ..utils.json import read_json_file
+from ..exceptions import JsonFileError, StoreError, YamlFileError
+from ..utils import read_json_or_yaml_file
 from .const import StoreType
 from .git import GitRepoCustom, GitRepoHassIO
 from .utils import get_hash_from_repository
@@ -80,14 +80,18 @@ class Repository(CoreSysAttributes):
             return True
 
         # If exists?
-        repository_file = Path(self.git.path, "repository.json")
+        for filetype in FILE_SUFFIX_CONFIGURATION:
+            repository_file = Path(self.git.path / f"repository{filetype}")
+            if not repository_file.exists():
+                continue
+
         if not repository_file.exists():
             return False
 
         # If valid?
         try:
-            SCHEMA_REPOSITORY_CONFIG(read_json_file(repository_file))
-        except (JsonFileError, vol.Invalid):
+            SCHEMA_REPOSITORY_CONFIG(read_json_or_yaml_file(repository_file))
+        except (JsonFileError, YamlFileError, vol.Invalid):
             return False
 
         return True

@@ -12,12 +12,14 @@ from ..const import (
     ATTR_REPOSITORY,
     ATTR_SLUG,
     ATTR_TANSLATIONS,
+    FILE_SUFFIX_CONFIGURATION,
     REPOSITORY_CORE,
     REPOSITORY_LOCAL,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JsonFileError
+from ..exceptions import JsonFileError, YamlFileError
 from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..utils import find_one_filetype, read_json_or_yaml_file
 from ..utils.json import read_json_file
 from .const import StoreType
 from .utils import extract_hash_from_path
@@ -59,10 +61,15 @@ class StoreData(CoreSysAttributes):
         slug = extract_hash_from_path(path)
 
         # exists repository json
-        repository_file = Path(path, "repository.json")
+        repository_file = find_one_filetype(
+            path, "repository", FILE_SUFFIX_CONFIGURATION
+        )
+
         try:
-            repository_info = SCHEMA_REPOSITORY_CONFIG(read_json_file(repository_file))
-        except JsonFileError:
+            repository_info = SCHEMA_REPOSITORY_CONFIG(
+                read_json_or_yaml_file(repository_file)
+            )
+        except (JsonFileError, YamlFileError):
             _LOGGER.warning(
                 "Can't read repository information from %s", repository_file
             )
@@ -81,8 +88,10 @@ class StoreData(CoreSysAttributes):
             # Generate a list without artefact, safe for corruptions
             addon_list = [
                 addon
-                for addon in path.glob("**/config.json")
+                for addon in path.glob("**/config.*")
                 if ".git" not in addon.parts
+                and ".github" not in addon.parts
+                and addon.suffix in FILE_SUFFIX_CONFIGURATION
             ]
         except OSError as err:
             suggestion = None
@@ -101,7 +110,7 @@ class StoreData(CoreSysAttributes):
 
         for addon in addon_list:
             try:
-                addon_config = read_json_file(addon)
+                addon_config = read_json_or_yaml_file(addon)
             except JsonFileError:
                 _LOGGER.warning("Can't read %s from repository %s", addon, repository)
                 continue

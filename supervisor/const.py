@@ -21,6 +21,8 @@ FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
 FILE_HASSIO_SERVICES = Path(SUPERVISOR_DATA, "services.json")
 FILE_HASSIO_UPDATER = Path(SUPERVISOR_DATA, "updater.json")
 
+FILE_SUFFIX_CONFIGURATION = [".yaml", ".yml", ".json"]
+
 MACHINE_ID = Path("/etc/machine-id")
 SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 SOCKET_DOCKER = Path("/run/docker.sock")
