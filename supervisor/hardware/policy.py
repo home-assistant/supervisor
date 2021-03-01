@@ -16,19 +16,15 @@ _CGROUPS: Dict[PolicyGroup, List[int]] = {
     PolicyGroup.UART: [
         204,  # ttyAMA / ttySAC (tty)
         188,  # ttyUSB (tty)
-        166,  # ttyACM (tty)
-        244   # ttyAML (tty)
+        166   # ttyACM (tty)
     ],
     PolicyGroup.GPIO: [
         254,  # gpiochip (gpio)
         245   # gpiomem (gpiomem)
     ],
     PolicyGroup.VIDEO: [
-        239,
-        29,
+        29,   # /dev/fb (graphics)
         81,
-        251,
-        242,  # vchiq (vchiq)
         226
     ],
     PolicyGroup.AUDIO: [
@@ -37,10 +33,32 @@ _CGROUPS: Dict[PolicyGroup, List[int]] = {
     PolicyGroup.USB: [
         189,  # /dev/bus/usb (usb)
         180,  # hiddev (usbmisc)
-        243   # hidraw (hidraw)
     ],
     PolicyGroup.BLUETOOTH: [
         13    # /dev/input (input)
+    ]
+}
+
+_CGROUPS_DYNAMIC_MAJOR: Dict[PolicyGroup, List[UdevSubsystem]] = {
+    PolicyGroup.USB: [
+        UdevSubsystem.HIDRAW
+    ],
+    PolicyGroup.GPIO: [
+        UdevSubsystem.GPIO,
+        UdevSubsystem.GPIOMEM
+    ],
+    PolicyGroup.VIDEO: [
+        UdevSubsystem.VCHIQ,
+        UdevSubsystem.MEDIA,
+        UdevSubsystem.CEC,
+        UdevSubsystem.RPI_H264MEM,
+        UdevSubsystem.RPI_HEVCMEM
+    ]
+}
+
+_CGROUPS_DYNAMIC_MINOR: Dict[PolicyGroup, List[UdevSubsystem]] = {
+    PolicyGroup.UART: [
+        UdevSubsystem.SERIAL
     ]
 }
 
@@ -60,12 +78,33 @@ class HwPolicy(CoreSysAttributes):
 
     def get_cgroups_rules(self, group: PolicyGroup) -> List[str]:
         """Generate cgroups rules for a policy group."""
-        return [f"c {dev}:* rwm" for dev in _CGROUPS.get(group, [])]
+        cgroups: List[str] = [f"c {dev}:* rwm" for dev in _CGROUPS[group]]
+
+        # Lookup dynamic device groups from host
+        if group in _CGROUPS_DYNAMIC_MAJOR:
+            majors = {
+                device.major
+                for device in self.sys_hardware.devices
+                if device.subsystem in _CGROUPS_DYNAMIC_MAJOR[group]
+                and device.cgroups_major not in _CGROUPS[group]
+            }
+            cgroups.extend([f"c {dev}:* rwm" for dev in majors])
+
+        # Lookup dynamic devices from host
+        if group in _CGROUPS_DYNAMIC_MINOR:
+            for device in self.sys_hardware.devices:
+                if (
+                    device.subsystem not in _CGROUPS_DYNAMIC_MINOR[group]
+                    or device.cgroups_major in _CGROUPS[group]
+                ):
+                    continue
+                cgroups.append(self.get_cgroups_rule(device))
+
+        return cgroups
 
     def get_cgroups_rule(self, device: Device) -> str:
         """Generate a cgroups rule for given device."""
         cgroup_type = "c" if device.subsystem != UdevSubsystem.DISK else "b"
-
         return f"{cgroup_type} {device.cgroups_major}:{device.cgroups_minor} rwm"
 
     def get_full_access(self) -> str:

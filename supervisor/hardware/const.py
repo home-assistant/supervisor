@@ -23,8 +23,11 @@ class UdevSubsystem(str, Enum):
     GPIOMEM = "gpiomem"
     VCHIQ = "vchiq"
     GRAPHICS = "graphics"
-    CEC = "CEC"
+    CEC = "cec"
     DRM = "drm"
+    HIDRAW = "hidraw"
+    RPI_HEVCMEM = "rpivid-hevcmem"
+    RPI_H264MEM = "rpivid-h264mem"
 
 
 class PolicyGroup(str, Enum):
