@@ -364,7 +364,9 @@ SCHEMA_ADDON_SYSTEM = vol.All(
         {
             vol.Required(ATTR_LOCATON): str,
             vol.Required(ATTR_REPOSITORY): str,
-            vol.Required(ATTR_TRANSLATIONS): {str: SCHEMA_ADDON_TRANSLATIONS},
+            vol.Required(ATTR_TRANSLATIONS, default=dict): {
+                str: SCHEMA_ADDON_TRANSLATIONS
+            },
         }
     ),
 )
