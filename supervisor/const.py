@@ -32,6 +32,17 @@ DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
 
+# This needs to match the dockerd --cpu-rt-runtime= argument.
+DOCKER_CPU_RUNTIME_TOTAL = 950_000
+
+# The rt runtimes are guarantees, hence we cannot allocate more
+# time than available! Support up to 5 containers with equal time
+# allocated.
+# Note that the time is multiplied by CPU count. This means that
+# a single container can schedule up to 950/5*4 = 760ms in RT priority
+# on a quad core system.
+DOCKER_CPU_RUNTIME_ALLOCATION = int(DOCKER_CPU_RUNTIME_TOTAL / 5)
+
 DNS_SUFFIX = "local.hass.io"
 
 LABEL_ARCH = "io.hass.arch"

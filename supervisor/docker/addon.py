@@ -14,6 +14,7 @@ import requests
 
 from ..addons.build import AddonBuild
 from ..const import (
+    DOCKER_CPU_RUNTIME_ALLOCATION,
     ENV_TIME,
     ENV_TOKEN,
     ENV_TOKEN_HASSIO,
@@ -285,7 +286,7 @@ class DockerAddon(DockerInterface):
 
         # If need CPU RT
         if self.addon.with_realtime:
-            return 950000
+            return DOCKER_CPU_RUNTIME_ALLOCATION
         return None
 
     @property
