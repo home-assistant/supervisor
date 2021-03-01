@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import docker
 
-from ..const import ENV_TIME, MACHINE_ID
+from ..const import DOCKER_CPU_RUNTIME_ALLOCATION, ENV_TIME, MACHINE_ID
 from ..coresys import CoreSysAttributes
 from ..docker.const import Capabilities
 from ..hardware.const import PolicyGroup
@@ -67,7 +67,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         """Limit CPU real-time runtime in microseconds."""
         if not self.sys_docker.info.support_cpu_realtime:
             return None
-        return 950000
+        return DOCKER_CPU_RUNTIME_ALLOCATION
 
     def _run(self) -> None:
         """Run Docker image.
