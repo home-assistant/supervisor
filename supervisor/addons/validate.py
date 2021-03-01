@@ -278,7 +278,6 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
         vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [str],
         vol.Optional(ATTR_OPTIONS, default={}): dict,
-        vol.Optional(ATTR_TANSLATIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
             vol.Schema(
                 {
@@ -346,12 +345,18 @@ SCHEMA_ADDON_USER = vol.Schema(
 )
 
 
+SCHEMA_ADDON_TRANSLATION = vol.Schema(
+    {vol.Optional(ATTR_CONFIGURATION): {str: str}}, extra=vol.REMOVE_EXTRA
+)
+
+
 SCHEMA_ADDON_SYSTEM = vol.All(
     _migrate_addon_config(),
     _SCHEMA_ADDON_CONFIG.extend(
         {
             vol.Required(ATTR_LOCATON): str,
             vol.Required(ATTR_REPOSITORY): str,
+            vol.Optional(ATTR_TANSLATIONS, default={}): SCHEMA_ADDON_TRANSLATION,
         }
     ),
 )
@@ -374,9 +379,4 @@ SCHEMA_ADDON_SNAPSHOT = vol.Schema(
         vol.Required(ATTR_VERSION): version_tag,
     },
     extra=vol.REMOVE_EXTRA,
-)
-
-
-SCHEMA_ADDON_TRANSLATION = vol.Schema(
-    {vol.Optional(ATTR_CONFIGURATION): {str: str}}, extra=vol.REMOVE_EXTRA
 )
