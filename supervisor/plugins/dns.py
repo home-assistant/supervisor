@@ -18,7 +18,12 @@ from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys
 from ..docker.dns import DockerDNS
 from ..docker.stats import DockerStats
-from ..exceptions import CoreDNSError, CoreDNSUpdateError, DockerError, JsonFileError
+from ..exceptions import (
+    ConfigurationFileError,
+    CoreDNSError,
+    CoreDNSUpdateError,
+    DockerError,
+)
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
 from ..validate import dns_url
@@ -286,7 +291,7 @@ class PluginDns(PluginBase):
                     "debug": debug,
                 },
             )
-        except JsonFileError as err:
+        except ConfigurationFileError as err:
             _LOGGER.error("Can't update coredns config: %s", err)
             raise CoreDNSError() from err
 

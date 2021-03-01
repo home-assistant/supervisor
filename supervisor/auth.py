@@ -8,13 +8,13 @@ from .addons.addon import Addon
 from .const import ATTR_ADDON, ATTR_PASSWORD, ATTR_USERNAME, FILE_HASSIO_AUTH
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import AuthError, AuthPasswordResetError, HomeAssistantAPIError
-from .utils.json import JsonConfig
+from .utils.common import FileConfiguration
 from .validate import SCHEMA_AUTH_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Auth(JsonConfig, CoreSysAttributes):
+class Auth(FileConfiguration, CoreSysAttributes):
     """Manage SSO for Add-ons with Home Assistant user."""
 
     def __init__(self, coresys: CoreSys) -> None:

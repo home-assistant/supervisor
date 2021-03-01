@@ -13,7 +13,7 @@ from voluptuous.humanize import humanize_error
 from ..const import ATTR_CONFIG, ATTR_DISCOVERY, FILE_HASSIO_DISCOVERY
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DiscoveryError, HomeAssistantAPIError
-from ..utils.json import JsonConfig
+from ..utils.common import FileConfiguration
 from .validate import SCHEMA_DISCOVERY_CONFIG, valid_discovery_config
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ class Message:
     uuid: UUID = attr.ib(factory=lambda: uuid4().hex, eq=False)
 
 
-class Discovery(CoreSysAttributes, JsonConfig):
+class Discovery(CoreSysAttributes, FileConfiguration):
     """Home Assistant Discovery handler."""
 
     def __init__(self, coresys: CoreSys):

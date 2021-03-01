@@ -2,12 +2,12 @@
 from typing import Any, Dict
 
 from ..const import FILE_HASSIO_SERVICES
-from ..utils.json import JsonConfig
+from ..utils.common import FileConfiguration
 from .const import SERVICE_MQTT, SERVICE_MYSQL
 from .validate import SCHEMA_SERVICES_CONFIG
 
 
-class ServicesData(JsonConfig):
+class ServicesData(FileConfiguration):
     """Class to handle services data."""
 
     def __init__(self):

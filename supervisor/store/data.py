@@ -17,9 +17,9 @@ from ..const import (
     REPOSITORY_LOCAL,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JsonFileError, YamlFileError
+from ..exceptions import ConfigurationFileError
 from ..resolution.const import ContextType, IssueType, SuggestionType
-from ..utils import find_one_filetype, read_json_or_yaml_file
+from ..utils.common import find_one_filetype, read_json_or_yaml_file
 from ..utils.json import read_json_file
 from .const import StoreType
 from .utils import extract_hash_from_path
@@ -69,7 +69,7 @@ class StoreData(CoreSysAttributes):
             repository_info = SCHEMA_REPOSITORY_CONFIG(
                 read_json_or_yaml_file(repository_file)
             )
-        except (JsonFileError, YamlFileError):
+        except ConfigurationFileError:
             _LOGGER.warning(
                 "Can't read repository information from %s", repository_file
             )
@@ -111,7 +111,7 @@ class StoreData(CoreSysAttributes):
         for addon in addon_list:
             try:
                 addon_config = read_json_or_yaml_file(addon)
-            except JsonFileError:
+            except ConfigurationFileError:
                 _LOGGER.warning("Can't read %s from repository %s", addon, repository)
                 continue
 
@@ -138,7 +138,7 @@ class StoreData(CoreSysAttributes):
         try:
             builtin_file = Path(__file__).parent.joinpath("built-in.json")
             builtin_data = read_json_file(builtin_file)
-        except JsonFileError:
+        except ConfigurationFileError:
             _LOGGER.warning("Can't read built-in json")
             return
 
@@ -168,7 +168,7 @@ class StoreData(CoreSysAttributes):
                     read_json_or_yaml_file(translation)
                 )
 
-            except (JsonFileError, YamlFileError, vol.Invalid):
+            except (ConfigurationFileError, vol.Invalid):
                 _LOGGER.warning("Can't read translations from %s", translation)
                 continue
 

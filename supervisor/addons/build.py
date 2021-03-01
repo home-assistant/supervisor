@@ -6,16 +6,22 @@ from typing import TYPE_CHECKING, Dict
 
 from awesomeversion import AwesomeVersion
 
-from ..const import ATTR_ARGS, ATTR_BUILD_FROM, ATTR_SQUASH, META_ADDON
+from ..const import (
+    ATTR_ARGS,
+    ATTR_BUILD_FROM,
+    ATTR_SQUASH,
+    FILE_SUFFIX_CONFIGURATION,
+    META_ADDON,
+)
 from ..coresys import CoreSys, CoreSysAttributes
-from ..utils.json import JsonConfig
+from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
     from . import AnyAddon
 
 
-class AddonBuild(JsonConfig, CoreSysAttributes):
+class AddonBuild(FileConfiguration, CoreSysAttributes):
     """Handle build options for add-ons."""
 
     def __init__(self, coresys: CoreSys, addon: AnyAddon) -> None:
@@ -24,7 +30,10 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
         self.addon = addon
 
         super().__init__(
-            Path(self.addon.path_location, "build.json"), SCHEMA_BUILD_CONFIG
+            find_one_filetype(
+                self.addon.path_location, "build", FILE_SUFFIX_CONFIGURATION
+            ),
+            SCHEMA_BUILD_CONFIG,
         )
 
     def save_data(self):

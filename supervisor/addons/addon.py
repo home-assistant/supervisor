@@ -54,10 +54,10 @@ from ..exceptions import (
     AddonConfigurationError,
     AddonsError,
     AddonsNotSupportedError,
+    ConfigurationFileError,
     DockerError,
     DockerRequestError,
     HostAppArmorError,
-    JsonFileError,
 )
 from ..hardware.data import Device
 from ..homeassistant.const import WSEvent, WSType
@@ -511,7 +511,7 @@ class Addon(AddonModel):
                 self.slug,
                 humanize_error(self.options, ex),
             )
-        except JsonFileError:
+        except ConfigurationFileError:
             _LOGGER.error("Add-on %s can't write options", self.slug)
         else:
             _LOGGER.debug("Add-on %s write options: %s", self.slug, options)
@@ -710,7 +710,7 @@ class Addon(AddonModel):
             # Store local configs/state
             try:
                 write_json_file(temp_path.joinpath("addon.json"), data)
-            except JsonFileError as err:
+            except ConfigurationFileError as err:
                 _LOGGER.error("Can't save meta for %s", self.slug)
                 raise AddonsError() from err
 
@@ -766,7 +766,7 @@ class Addon(AddonModel):
             # Read snapshot data
             try:
                 data = read_json_file(Path(temp, "addon.json"))
-            except JsonFileError as err:
+            except ConfigurationFileError as err:
                 raise AddonsError() from err
 
             # Validate

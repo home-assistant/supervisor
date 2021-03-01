@@ -20,7 +20,7 @@ from ..const import (
     SOCKET_DOCKER,
 )
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
-from ..utils.json import JsonConfig
+from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
 from .network import DockerNetwork
 
@@ -66,7 +66,7 @@ class DockerInfo:
         return bool(os.environ.get(ENV_SUPERVISOR_CPU_RT, 0))
 
 
-class DockerConfig(JsonConfig):
+class DockerConfig(FileConfiguration):
     """Home Assistant core object for Docker configuration."""
 
     def __init__(self):
