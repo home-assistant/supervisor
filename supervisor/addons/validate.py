@@ -21,6 +21,7 @@ from ..const import (
     ATTR_AUTO_UPDATE,
     ATTR_BOOT,
     ATTR_BUILD_FROM,
+    ATTR_CONFIGURATION,
     ATTR_DESCRIPTON,
     ATTR_DEVICES,
     ATTR_DEVICETREE,
@@ -373,4 +374,9 @@ SCHEMA_ADDON_SNAPSHOT = vol.Schema(
         vol.Required(ATTR_VERSION): version_tag,
     },
     extra=vol.REMOVE_EXTRA,
+)
+
+
+SCHEMA_ADDON_TRANSLATION = vol.Schema(
+    {vol.Optional(ATTR_CONFIGURATION): {str: str}}, extra=vol.REMOVE_EXTRA
 )

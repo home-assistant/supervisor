@@ -6,7 +6,7 @@ from typing import Any, Dict
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons.validate import SCHEMA_ADDON_CONFIG
+from ..addons.validate import SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_TRANSLATION
 from ..const import (
     ATTR_LOCATON,
     ATTR_REPOSITORY,
@@ -156,10 +156,19 @@ class StoreData(CoreSysAttributes):
         if not translations_dir.exists():
             return translations
 
-        for translation in translations_dir.glob("*.json"):
+        translation_files = [
+            translation
+            for translation in translations_dir.glob("*")
+            if translation.suffix in FILE_SUFFIX_CONFIGURATION
+        ]
+
+        for translation in translation_files:
             try:
-                translations[translation.stem] = read_json_file(translation)
-            except JsonFileError:
+                translations[translation.stem] = SCHEMA_ADDON_TRANSLATION(
+                    read_json_or_yaml_file(translation)
+                )
+
+            except (JsonFileError, YamlFileError, vol.Invalid):
                 _LOGGER.warning("Can't read translations from %s", translation)
                 continue
 
