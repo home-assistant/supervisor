@@ -5,7 +5,7 @@ import platform
 from typing import List
 
 from .coresys import CoreSys, CoreSysAttributes
-from .exceptions import HassioArchNotFound, JsonFileError
+from .exceptions import ConfigurationFileError, HassioArchNotFound
 from .utils.json import read_json_file
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class CpuArch(CoreSysAttributes):
         """Load data and initialize default arch."""
         try:
             arch_data = read_json_file(ARCH_JSON)
-        except JsonFileError:
+        except ConfigurationFileError:
             _LOGGER.warning("Can't read arch json file from %s", ARCH_JSON)
             return
 

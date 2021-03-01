@@ -289,6 +289,13 @@ class YamlFileError(HassioError):
     """Invalid YAML file."""
 
 
+# util/common
+
+
+class ConfigurationFileError(JsonFileError, YamlFileError):
+    """Invalid JSON or YAML file."""
+
+
 # util/pwned
 
 

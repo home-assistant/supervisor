@@ -25,7 +25,7 @@ from ..const import (
     FILE_HASSIO_HOMEASSISTANT,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..utils.json import JsonConfig
+from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_HASS_CONFIG
 from .api import HomeAssistantAPI
 from .core import HomeAssistantCore
@@ -35,7 +35,7 @@ from .websocket import HomeAssistantWebSocket
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class HomeAssistant(JsonConfig, CoreSysAttributes):
+class HomeAssistant(FileConfiguration, CoreSysAttributes):
     """Home Assistant core object for handle it."""
 
     def __init__(self, coresys: CoreSys):

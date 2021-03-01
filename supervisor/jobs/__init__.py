@@ -3,7 +3,7 @@ import logging
 from typing import Dict, List, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..utils.json import JsonConfig
+from ..utils.common import FileConfiguration
 from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
 from .validate import SCHEMA_JOBS_CONFIG
 
@@ -49,7 +49,7 @@ class SupervisorJob(CoreSysAttributes):
         )
 
 
-class JobManager(JsonConfig, CoreSysAttributes):
+class JobManager(FileConfiguration, CoreSysAttributes):
     """Job class."""
 
     def __init__(self, coresys: CoreSys):

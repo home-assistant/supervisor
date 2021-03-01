@@ -6,10 +6,10 @@ from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSysAttributes
-from ..utils.json import JsonConfig
+from ..utils.common import FileConfiguration
 
 
-class PluginBase(ABC, JsonConfig, CoreSysAttributes):
+class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     """Base class for plugins."""
 
     slug: str = ""

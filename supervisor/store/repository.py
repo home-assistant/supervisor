@@ -7,8 +7,8 @@ import voluptuous as vol
 
 from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_URL, FILE_SUFFIX_CONFIGURATION
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JsonFileError, StoreError, YamlFileError
-from ..utils import read_json_or_yaml_file
+from ..exceptions import ConfigurationFileError, StoreError
+from ..utils.common import read_json_or_yaml_file
 from .const import StoreType
 from .git import GitRepoCustom, GitRepoHassIO
 from .utils import get_hash_from_repository
@@ -91,7 +91,7 @@ class Repository(CoreSysAttributes):
         # If valid?
         try:
             SCHEMA_REPOSITORY_CONFIG(read_json_or_yaml_file(repository_file))
-        except (JsonFileError, YamlFileError, vol.Invalid):
+        except (ConfigurationFileError, vol.Invalid):
             return False
 
         return True

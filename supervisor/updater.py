@@ -30,13 +30,13 @@ from .const import (
 from .coresys import CoreSysAttributes
 from .exceptions import UpdaterError, UpdaterJobError
 from .jobs.decorator import Job, JobCondition
-from .utils.json import JsonConfig
+from .utils.common import FileConfiguration
 from .validate import SCHEMA_UPDATER_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Updater(JsonConfig, CoreSysAttributes):
+class Updater(FileConfiguration, CoreSysAttributes):
     """Fetch last versions from version.json."""
 
     def __init__(self, coresys):
