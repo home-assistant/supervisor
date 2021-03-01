@@ -72,9 +72,9 @@ from ..const import (
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_SYSTEM,
-    ATTR_TANSLATIONS,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
+    ATTR_TRANSLATIONS,
     ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
@@ -364,7 +364,7 @@ SCHEMA_ADDON_SYSTEM = vol.All(
         {
             vol.Required(ATTR_LOCATON): str,
             vol.Required(ATTR_REPOSITORY): str,
-            vol.Required(ATTR_TANSLATIONS): SCHEMA_ADDON_TRANSLATIONS,
+            vol.Required(ATTR_TRANSLATIONS): {str: SCHEMA_ADDON_TRANSLATIONS},
         }
     ),
 )

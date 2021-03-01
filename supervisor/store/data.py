@@ -11,7 +11,7 @@ from ..const import (
     ATTR_LOCATON,
     ATTR_REPOSITORY,
     ATTR_SLUG,
-    ATTR_TANSLATIONS,
+    ATTR_TRANSLATIONS,
     FILE_SUFFIX_CONFIGURATION,
     REPOSITORY_CORE,
     REPOSITORY_LOCAL,
@@ -130,7 +130,9 @@ class StoreData(CoreSysAttributes):
             # store
             addon_config[ATTR_REPOSITORY] = repository
             addon_config[ATTR_LOCATON] = str(addon.parent)
-            addon_config[ATTR_TANSLATIONS] = self._read_addon_translations(addon.parent)
+            addon_config[ATTR_TRANSLATIONS] = self._read_addon_translations(
+                addon.parent
+            )
             self.addons[addon_slug] = addon_config
 
     def _set_builtin_repositories(self):
@@ -168,8 +170,10 @@ class StoreData(CoreSysAttributes):
                     read_json_or_yaml_file(translation)
                 )
 
-            except (ConfigurationFileError, vol.Invalid):
-                _LOGGER.warning("Can't read translations from %s", translation)
+            except (ConfigurationFileError, vol.Invalid) as err:
+                _LOGGER.warning(
+                    "Can't read translations from %s - %s", translation, err
+                )
                 continue
 
         return translations
