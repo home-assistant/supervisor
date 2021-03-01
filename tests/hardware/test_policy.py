@@ -35,11 +35,8 @@ def test_device_policy(coresys):
 def test_policy_group(coresys):
     """Test policy group generator."""
     assert coresys.hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO) == [
-        "c 239:* rwm",
         "c 29:* rwm",
         "c 81:* rwm",
-        "c 251:* rwm",
-        "c 242:* rwm",
         "c 226:* rwm",
     ]
 
@@ -83,3 +80,93 @@ def test_allowed_access(coresys):
     )
 
     assert coresys.hardware.policy.allowed_for_access(device)
+
+
+def test_dynamic_group_alloc_minor(coresys):
+    """Test dynamic cgroup generation based on minor."""
+    for device in (
+        Device(
+            "ttyACM0",
+            Path("/dev/ttyACM0"),
+            Path("/sys/bus/usb/001"),
+            "tty",
+            [],
+            {"MAJOR": "204", "MINOR": "10"},
+        ),
+        Device(
+            "ttyUSB0",
+            Path("/dev/ttyUSB0"),
+            Path("/sys/bus/usb/000"),
+            "tty",
+            [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
+            {"MAJOR": "188", "MINOR": "10"},
+        ),
+        Device(
+            "ttyS0",
+            Path("/dev/ttyS0"),
+            Path("/sys/bus/usb/002"),
+            "tty",
+            [],
+            {"MAJOR": "4", "MINOR": "65"},
+        ),
+        Device(
+            "video1",
+            Path("/dev/video1"),
+            Path("/sys/bus/usb/003"),
+            "misc",
+            [],
+            {"MAJOR": "38", "MINOR": "10"},
+        ),
+    ):
+        coresys.hardware.update_device(device)
+
+    assert coresys.hardware.policy.get_cgroups_rules(PolicyGroup.UART) == [
+        "c 204:* rwm",
+        "c 188:* rwm",
+        "c 166:* rwm",
+        "c 4:65 rwm",
+    ]
+
+
+def test_dynamic_group_alloc_major(coresys):
+    """Test dynamic cgroup generation based on minor."""
+    for device in (
+        Device(
+            "gpio16",
+            Path("/dev/gpio16"),
+            Path("/sys/bus/usb/001"),
+            "gpio",
+            [],
+            {"MAJOR": "254", "MINOR": "10"},
+        ),
+        Device(
+            "gpiomem",
+            Path("/dev/gpiomem"),
+            Path("/sys/bus/usb/000"),
+            "gpiomem",
+            [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
+            {"MAJOR": "239", "MINOR": "10"},
+        ),
+        Device(
+            "ttyS0",
+            Path("/dev/ttyS0"),
+            Path("/sys/bus/usb/002"),
+            "tty",
+            [],
+            {"MAJOR": "4", "MINOR": "65"},
+        ),
+        Device(
+            "video1",
+            Path("/dev/video1"),
+            Path("/sys/bus/usb/003"),
+            "misc",
+            [],
+            {"MAJOR": "38", "MINOR": "10"},
+        ),
+    ):
+        coresys.hardware.update_device(device)
+
+    assert coresys.hardware.policy.get_cgroups_rules(PolicyGroup.GPIO) == [
+        "c 254:* rwm",
+        "c 239:* rwm",
+    ]

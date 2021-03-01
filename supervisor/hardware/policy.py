@@ -19,8 +19,6 @@ _CGROUPS: Dict[PolicyGroup, List[int]] = {
         166   # ttyACM (tty)
     ],
     PolicyGroup.GPIO: [
-        254,  # gpiochip (gpio)
-        245   # gpiomem (gpiomem)
     ],
     PolicyGroup.VIDEO: [
         29,   # /dev/fb (graphics)
@@ -83,7 +81,7 @@ class HwPolicy(CoreSysAttributes):
         # Lookup dynamic device groups from host
         if group in _CGROUPS_DYNAMIC_MAJOR:
             majors = {
-                device.major
+                device.cgroups_major
                 for device in self.sys_hardware.devices
                 if device.subsystem in _CGROUPS_DYNAMIC_MAJOR[group]
                 and device.cgroups_major not in _CGROUPS[group]
