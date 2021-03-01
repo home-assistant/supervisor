@@ -14,6 +14,7 @@ class TestAddon:
     slug = "my_test"
     pwned = set()
     state = AddonState.STARTED
+    is_installed = True
 
 
 async def test_check(coresys: CoreSys):
@@ -75,6 +76,13 @@ async def test_approve(coresys: CoreSys):
     with patch(
         "supervisor.resolution.checks.addon_pwned.check_pwned_password",
         AsyncMock(return_value=False),
+    ):
+        assert not await addon_pwned.approve_check(reference=addon.slug)
+
+    addon.is_installed = False
+    with patch(
+        "supervisor.resolution.checks.addon_pwned.check_pwned_password",
+        AsyncMock(return_value=True),
     ):
         assert not await addon_pwned.approve_check(reference=addon.slug)
 
