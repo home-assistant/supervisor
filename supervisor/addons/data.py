@@ -1,6 +1,5 @@
 """Init file for Supervisor add-on data."""
 from copy import deepcopy
-import logging
 from typing import Any, Dict
 
 from ..const import (
@@ -16,8 +15,6 @@ from ..store.addon import AddonStore
 from ..utils.common import FileConfiguration
 from .addon import Addon
 from .validate import SCHEMA_ADDONS_FILE
-
-_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 Config = Dict[str, Any]
 

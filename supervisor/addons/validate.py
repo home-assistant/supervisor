@@ -72,9 +72,9 @@ from ..const import (
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_SYSTEM,
-    ATTR_TANSLATIONS,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
+    ATTR_TRANSLATIONS,
     ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
@@ -322,6 +322,20 @@ SCHEMA_BUILD_CONFIG = vol.Schema(
     extra=vol.REMOVE_EXTRA,
 )
 
+SCHEMA_TRANSLATION_CONFIGURATION = vol.Schema(
+    {
+        vol.Required(ATTR_NAME): str,
+        vol.Optional(ATTR_DESCRIPTON): vol.Maybe(str),
+    },
+    extra=vol.REMOVE_EXTRA,
+)
+
+
+SCHEMA_ADDON_TRANSLATIONS = vol.Schema(
+    {vol.Optional(ATTR_CONFIGURATION): {str: SCHEMA_TRANSLATION_CONFIGURATION}},
+    extra=vol.REMOVE_EXTRA,
+)
+
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_ADDON_USER = vol.Schema(
@@ -344,19 +358,15 @@ SCHEMA_ADDON_USER = vol.Schema(
     extra=vol.REMOVE_EXTRA,
 )
 
-
-SCHEMA_ADDON_TRANSLATION = vol.Schema(
-    {vol.Optional(ATTR_CONFIGURATION): {str: str}}, extra=vol.REMOVE_EXTRA
-)
-
-
 SCHEMA_ADDON_SYSTEM = vol.All(
     _migrate_addon_config(),
     _SCHEMA_ADDON_CONFIG.extend(
         {
             vol.Required(ATTR_LOCATON): str,
             vol.Required(ATTR_REPOSITORY): str,
-            vol.Optional(ATTR_TANSLATIONS, default={}): SCHEMA_ADDON_TRANSLATION,
+            vol.Required(ATTR_TRANSLATIONS, default=dict): {
+                str: SCHEMA_ADDON_TRANSLATIONS
+            },
         }
     ),
 )
