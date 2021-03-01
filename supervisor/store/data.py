@@ -6,7 +6,7 @@ from typing import Any, Dict
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons.validate import SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_TRANSLATION
+from ..addons.validate import SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_TRANSLATIONS
 from ..const import (
     ATTR_LOCATON,
     ATTR_REPOSITORY,
@@ -164,7 +164,7 @@ class StoreData(CoreSysAttributes):
 
         for translation in translation_files:
             try:
-                translations[translation.stem] = SCHEMA_ADDON_TRANSLATION(
+                translations[translation.stem] = SCHEMA_ADDON_TRANSLATIONS(
                     read_json_or_yaml_file(translation)
                 )
 

@@ -146,6 +146,7 @@ class Addon(AddonModel):
     @property
     def data(self) -> Data:
         """Return add-on data/config."""
+        _LOGGER.critical(self.sys_addons.data.system[self.slug])
         return self.sys_addons.data.system[self.slug]
 
     @property
