@@ -332,7 +332,10 @@ SCHEMA_TRANSLATION_CONFIGURATION = vol.Schema(
 
 
 SCHEMA_ADDON_TRANSLATIONS = vol.Schema(
-    {vol.Optional(ATTR_CONFIGURATION): {str: SCHEMA_TRANSLATION_CONFIGURATION}},
+    {
+        vol.Optional(ATTR_CONFIGURATION): {str: SCHEMA_TRANSLATION_CONFIGURATION},
+        vol.Optional(ATTR_NETWORK): {str: str},
+    },
     extra=vol.REMOVE_EXTRA,
 )
 
