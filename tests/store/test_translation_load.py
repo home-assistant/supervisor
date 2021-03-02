@@ -21,7 +21,10 @@ def test_loading_traslations(coresys: CoreSys, tmp_path):
     for file in ("no.yaml", "de.yaml"):
         write_json_or_yaml_file(
             tmp_path / "translations" / file,
-            {"configuration": {"test": {"name": "test", "test": "test"}}},
+            {
+                "configuration": {"test": {"name": "test", "test": "test"}},
+                "network": {"80/tcp": "Webserver port"},
+            },
         )
 
     translations = coresys.store.data._read_addon_translations(tmp_path)
@@ -32,3 +35,5 @@ def test_loading_traslations(coresys: CoreSys, tmp_path):
     assert translations["de"]["configuration"]["test"]["name"] == "test"
 
     assert "test" not in translations["en"]["configuration"]["test"]
+
+    assert translations["no"]["network"]["80/tcp"] == "Webserver port"
