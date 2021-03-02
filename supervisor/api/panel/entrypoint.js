@@ -1,9 +1,9 @@
 
 try {
-  new Function("import('/api/hassio/app/frontend_latest/entrypoint.a5b7c2a9.js')")();
+  new Function("import('/api/hassio/app/frontend_latest/entrypoint.b954f17a.js')")();
 } catch (err) {
   var el = document.createElement('script');
-  el.src = '/api/hassio/app/frontend_es5/entrypoint.3a11130b.js';
+  el.src = '/api/hassio/app/frontend_es5/entrypoint.f1b08733.js';
   document.body.appendChild(el);
 }
   
