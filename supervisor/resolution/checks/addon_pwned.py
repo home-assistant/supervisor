@@ -16,7 +16,7 @@ class CheckAddonPwned(CheckBase):
     """CheckAddonPwned class for check."""
 
     @Job(
-        conditions=[JobCondition.INTERNET_SYSTEM],
+        conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.HEALTHY],
         limit=JobExecutionLimit.THROTTLE,
         throttle_period=timedelta(hours=24),
     )
