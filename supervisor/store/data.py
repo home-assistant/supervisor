@@ -65,6 +65,9 @@ class StoreData(CoreSysAttributes):
             path, "repository", FILE_SUFFIX_CONFIGURATION
         )
 
+        if repository_file is None:
+            return
+
         try:
             repository_info = SCHEMA_REPOSITORY_CONFIG(
                 read_json_or_yaml_file(repository_file)
