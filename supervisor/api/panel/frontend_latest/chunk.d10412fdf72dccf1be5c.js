@@ -1060,7 +1060,7 @@
                                 ${this.supervisor.localize("addon.dashboard.option.watchdog.title")}
                               </span>
                               <span slot="description">
-                                ${this.supervisor.localize("addon.dashboard.option.boot.description")}
+                                ${this.supervisor.localize("addon.dashboard.option.watchdog.description")}
                               </span>
                               <ha-switch
                                 @change=${this._watchdogToggled}
@@ -1075,7 +1075,7 @@
                                 ${this.supervisor.localize("addon.dashboard.option.auto_update.title")}
                               </span>
                               <span slot="description">
-                                ${this.supervisor.localize("addon.dashboard.option.boot.description")}
+                                ${this.supervisor.localize("addon.dashboard.option.auto_update.description")}
                               </span>
                               <ha-switch
                                 @change=${this._autoUpdateToggled}
@@ -1470,4 +1470,4 @@
           }
         }
       `]}},{kind:"method",key:"firstUpdated",value:async function(){if(""===this.route.path){const e=(0,l.io)("addon");e&&(0,a.c)(this,`/hassio/addon/${e}`,!0)}this.addEventListener("hass-api-called",(e=>this._apiCalled(e)))}},{kind:"method",key:"_apiCalled",value:async function(e){var t;const r=null===(t=e.detail.path)||void 0===t?void 0:t.split("/");if(!r||0===r.length)return;const i=r[r.length-1];["uninstall","install","update","start","stop"].includes(i)&&(0,s.B)(this,"supervisor-collection-refresh",{collection:"supervisor"}),"uninstall"===i?window.history.back():await this._routeDataChanged()}},{kind:"method",key:"updated",value:function(e){e.has("route")&&!this.addon&&this._routeDataChanged()}},{kind:"method",key:"_routeDataChanged",value:async function(){const e=this.route.path.split("/")[1];if(e)try{const t=await(0,d.AD)(this.hass,e);this.addon=t}catch(e){this._error=`Error fetching addon info: ${(0,c.js)(e)}`,this.addon=void 0}}}]}}),n.oi)},5493:(e,t,r)=>{"use strict";r.d(t,{Q2:()=>i,io:()=>n,ou:()=>o});const i=()=>{const e={},t=new URLSearchParams(location.search);for(const[r,i]of t.entries())e[r]=i;return e},n=e=>new URLSearchParams(window.location.search).get(e),o=e=>{const t=new URLSearchParams;return Object.entries(e).forEach((([e,r])=>{t.append(e,r)})),t.toString()}}}]);
-//# sourceMappingURL=chunk.f92596d32ab5cb76b9b4.js.map
+//# sourceMappingURL=chunk.d10412fdf72dccf1be5c.js.map
