@@ -66,6 +66,7 @@ class StoreData(CoreSysAttributes):
         )
 
         if repository_file is None:
+            _LOGGER.warning("No repository information exists at %s", path)
             return
 
         try:
