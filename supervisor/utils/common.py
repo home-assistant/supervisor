@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..exceptions import ConfigurationFileError, HassioError
+from ..exceptions import ConfigurationFileError
 from .json import read_json_file, write_json_file
 from .yaml import read_yaml_file, write_yaml_file
 
@@ -33,7 +33,7 @@ def read_json_or_yaml_file(path: Path) -> dict:
     if path.suffix in [".yaml", ".yml"]:
         return read_yaml_file(path)
 
-    raise HassioError(f"{path} is not JSON or YAML")
+    raise ConfigurationFileError(f"{path} is not JSON or YAML")
 
 
 def write_json_or_yaml_file(path: Path, data: dict) -> None:
@@ -44,7 +44,7 @@ def write_json_or_yaml_file(path: Path, data: dict) -> None:
     if path.suffix in [".yaml", ".yml"]:
         return write_yaml_file(path, data)
 
-    raise HassioError(f"{path} is not JSON or YAML")
+    raise ConfigurationFileError(f"{path} is not JSON or YAML")
 
 
 class FileConfiguration:
