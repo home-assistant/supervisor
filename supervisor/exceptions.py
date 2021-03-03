@@ -275,25 +275,25 @@ class AppArmorInvalidError(AppArmorError):
     """AppArmor profile validate error."""
 
 
+# util/common
+
+
+class ConfigurationFileError(HassioError):
+    """Invalid JSON or YAML file."""
+
+
 # util/json
 
 
-class JsonFileError(HassioError):
+class JsonFileError(ConfigurationFileError):
     """Invalid JSON file."""
 
 
 # util/yaml
 
 
-class YamlFileError(HassioError):
+class YamlFileError(ConfigurationFileError):
     """Invalid YAML file."""
-
-
-# util/common
-
-
-class ConfigurationFileError(JsonFileError, YamlFileError):
-    """Invalid JSON or YAML file."""
 
 
 # util/pwned
