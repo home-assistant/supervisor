@@ -16,12 +16,14 @@ _DEFAULT: Dict[str, Any] = {}
 
 
 def find_one_filetype(
-    path: Path, filename: str, filetypes: List[str]
+    path: Path, filename: str, filetypes: List[str], default: Optional[str] = None
 ) -> Optional[Path]:
     """Find first file matching filetypes."""
     for file in path.glob(f"**/{filename}.*"):
         if file.suffix in filetypes:
             return file
+    if default is not None:
+        return path / default
     return None
 
 

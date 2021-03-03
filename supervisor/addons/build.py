@@ -31,7 +31,10 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
 
         super().__init__(
             find_one_filetype(
-                self.addon.path_location, "build", FILE_SUFFIX_CONFIGURATION
+                self.addon.path_location,
+                "build",
+                FILE_SUFFIX_CONFIGURATION,
+                "build.json",
             ),
             SCHEMA_BUILD_CONFIG,
         )
