@@ -20,7 +20,7 @@ def find_one_filetype(path: Path, filename: str, filetypes: List[str]) -> Path:
     for file in path.glob(f"**/{filename}.*"):
         if file.suffix in filetypes:
             return file
-    return ConfigurationFileError(f"{path!s}/{filename}.({filetypes}) not exists!")
+    raise ConfigurationFileError(f"{path!s}/{filename}.({filetypes}) not exists!")
 
 
 def read_json_or_yaml_file(path: Path) -> dict:
