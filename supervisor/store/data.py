@@ -61,11 +61,11 @@ class StoreData(CoreSysAttributes):
         slug = extract_hash_from_path(path)
 
         # exists repository json
-        repository_file = find_one_filetype(
-            path, "repository", FILE_SUFFIX_CONFIGURATION
-        )
-
-        if repository_file is None:
+        try:
+            repository_file = find_one_filetype(
+                path, "repository", FILE_SUFFIX_CONFIGURATION
+            )
+        except ConfigurationFileError:
             _LOGGER.warning("No repository information exists at %s", path)
             return
 

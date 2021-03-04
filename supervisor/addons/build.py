@@ -14,6 +14,7 @@ from ..const import (
     META_ADDON,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import ConfigurationFileError
 from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
 
@@ -29,12 +30,14 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.addon = addon
 
-        super().__init__(
-            find_one_filetype(
+        try:
+            build_file = find_one_filetype(
                 self.addon.path_location, "build", FILE_SUFFIX_CONFIGURATION
-            ),
-            SCHEMA_BUILD_CONFIG,
-        )
+            )
+        except ConfigurationFileError:
+            build_file = self.addon.path_location / "build.json"
+
+        super().__init__(build_file, SCHEMA_BUILD_CONFIG)
 
     def save_data(self):
         """Ignore save function."""

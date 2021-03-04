@@ -1,5 +1,9 @@
 """test yaml."""
+
+import pytest
+
 from supervisor.const import FILE_SUFFIX_CONFIGURATION
+from supervisor.exceptions import ConfigurationFileError
 from supervisor.utils.common import find_one_filetype, read_json_or_yaml_file
 from supervisor.utils.json import write_json_file
 from supervisor.utils.yaml import read_yaml_file, write_yaml_file
@@ -32,8 +36,8 @@ def test_get_file_from_type(tmp_path):
 
     tempfile = tmp_path / "test.config"
     write_yaml_file(tempfile, {"test": "test"})
-    found = find_one_filetype(tmp_path, "test4", FILE_SUFFIX_CONFIGURATION)
-    assert not found
+    with pytest.raises(ConfigurationFileError):
+        find_one_filetype(tmp_path, "test4", FILE_SUFFIX_CONFIGURATION)
 
 
 def test_read_json_or_yaml_file(tmp_path):

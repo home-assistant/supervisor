@@ -1,7 +1,7 @@
 """Common utils."""
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -15,14 +15,12 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 _DEFAULT: Dict[str, Any] = {}
 
 
-def find_one_filetype(
-    path: Path, filename: str, filetypes: List[str]
-) -> Optional[Path]:
+def find_one_filetype(path: Path, filename: str, filetypes: List[str]) -> Path:
     """Find first file matching filetypes."""
     for file in path.glob(f"**/{filename}.*"):
         if file.suffix in filetypes:
             return file
-    return None
+    raise ConfigurationFileError(f"{path!s}/{filename}.({filetypes}) not exists!")
 
 
 def read_json_or_yaml_file(path: Path) -> dict:
