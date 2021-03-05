@@ -43,10 +43,10 @@
     <property type="t" name="RxBytes" access="read"/>
   </interface>
   <interface name="org.freedesktop.NetworkManager.Device.Wireless">
-    <method name="GetAccessPoints">
+    <method name="Getaccess points">
       <arg type="ao" name="access_points" direction="out"/>
     </method>
-    <method name="GetAllAccessPoints">
+    <method name="GetAllaccess points">
       <arg type="ao" name="access_points" direction="out"/>
     </method>
     <method name="RequestScan">
@@ -65,7 +65,7 @@
     <property type="s" name="PermHwAddress" access="read"/>
     <property type="u" name="Mode" access="read"/>
     <property type="u" name="Bitrate" access="read"/>
-    <property type="ao" name="AccessPoints" access="read"/>
+    <property type="ao" name="access points" access="read"/>
     <property type="o" name="ActiveAccessPoint" access="read"/>
     <property type="u" name="WirelessCapabilities" access="read"/>
     <property type="x" name="LastScan" access="read"/>
