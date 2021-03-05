@@ -303,6 +303,10 @@ class PwnedError(HassioError):
     """Errors while checking pwned passwords."""
 
 
+class PwnedConnectivityError(PwnedError):
+    """Connectivity errors while checking pwned passwords."""
+
+
 # docker/api
 
 
