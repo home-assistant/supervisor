@@ -35,6 +35,7 @@ class CheckAddonPwned(CheckBase):
                     if not await check_pwned_password(self.sys_websession, secret):
                         continue
                 except PwnedError:
+                    self.sys_supervisor.connectivity = False
                     continue
 
                 # Check possible suggestion

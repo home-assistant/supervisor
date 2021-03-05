@@ -8,6 +8,7 @@ from typing import List, Optional, Union
 
 import attr
 
+from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
     DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED,
@@ -46,6 +47,16 @@ class NetworkManager(CoreSysAttributes):
         """Return true current connectivity state."""
         return self._connectivity
 
+    @connectivity.setter
+    def connectivity(self, state: bool) -> None:
+        """Set host connectivity state."""
+        if self._connectivity == state:
+            return
+        self._connectivity = state
+        self.sys_homeassistant.websocket.supervisor_update_event(
+            "network", {ATTR_HOST_INTERNET: state}
+        )
+
     @property
     def interfaces(self) -> List[Interface]:
         """Return a dictionary of active interfaces."""
@@ -79,10 +90,10 @@ class NetworkManager(CoreSysAttributes):
         # Check connectivity
         try:
             state = await self.sys_dbus.network.check_connectivity()
-            self._connectivity = state[0] == 4
+            self.connectivity = state[0] == 4
         except DBusError as err:
             _LOGGER.warning("Can't update connectivity information: %s", err)
-            self._connectivity = False
+            self.connectivity = False
 
     def get(self, inet_name: str) -> Interface:
         """Return interface from interface name."""
