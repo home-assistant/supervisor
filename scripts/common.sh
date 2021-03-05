@@ -9,7 +9,7 @@ function start_docker() {
     DOCKER_PID=$!
 
     #Fix for Debian WSL Docker uses legacy IP Tables. Check if we are running in Microsoft WSL and are root, and are on debian, and running in a docker container
-    if [[ $(grep icrosoft.*WSL /proc/version) ]]  && [[ $(id) == *'uid=0'* ]]  && [ -e /etc/debian_version ]  && [[ $(cat /proc/1/cgroup|grep docker 2>&1 > /dev/null) ]]; then
+    if [[ $(grep icrosoft.*WSL /proc/version) ]]  && [[ $(id) == *'uid=0'* ]]  && [ -e /etc/debian_version ]  && [[ $(grep docker /proc/1/cgroup 2>&1 > /dev/null) ]]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy
     fi
     echo "Waiting for docker to initialize..."
