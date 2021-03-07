@@ -13,7 +13,7 @@ from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from supervisor.jobs.decorator import Job, JobCondition
 
-from .const import SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
+from .const import ATTR_SUPERVISOR_INTERNET, SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
@@ -52,6 +52,16 @@ class Supervisor(CoreSysAttributes):
     def connectivity(self) -> bool:
         """Return true if we are connected to the internet."""
         return self._connectivity
+
+    @connectivity.setter
+    def connectivity(self, state: bool) -> None:
+        """Set supervisor connectivity state."""
+        if self._connectivity == state:
+            return
+        self._connectivity = state
+        self.sys_homeassistant.websocket.supervisor_update_event(
+            "network", {ATTR_SUPERVISOR_INTERNET: state}
+        )
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -98,6 +108,7 @@ class Supervisor(CoreSysAttributes):
                 data = await request.text()
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            self.sys_supervisor.connectivity = False
             _LOGGER.warning("Can't fetch AppArmor profile: %s", err)
             raise SupervisorError() from err
 
@@ -198,6 +209,6 @@ class Supervisor(CoreSysAttributes):
                 "https://version.home-assistant.io/online.txt", timeout=timeout
             )
         except (ClientError, asyncio.TimeoutError):
-            self._connectivity = False
+            self.connectivity = False
         else:
-            self._connectivity = True
+            self.connectivity = True
