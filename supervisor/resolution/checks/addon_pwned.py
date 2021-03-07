@@ -36,7 +36,7 @@ class CheckAddonPwned(CheckBase):
                         continue
                 except PwnedConnectivityError:
                     self.sys_supervisor.connectivity = False
-                    continue
+                    return
                 except PwnedError:
                     continue
 
