@@ -83,7 +83,7 @@ class CheckBase(ABC, CoreSysAttributes):
     def enabled(self) -> bool:
         """Return True if the check is enabled."""
         return (
-            self.sys_resolution.check.data[ATTR_CHECKS]
+            self.sys_resolution.check.data.get(ATTR_CHECKS, True)
             .get(self.name, {})
             .get(ATTR_ENABLED, True)
         )

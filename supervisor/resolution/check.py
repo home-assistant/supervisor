@@ -44,7 +44,8 @@ class ResolutionCheck(FileConfiguration, CoreSysAttributes):
         count = len(filtered)
         if count != 1:
             raise ResolutionError(
-                f"Unexpected number of checks matching {name}, result was {count}"
+                f"Unexpected number of checks matching {name}, result was {count}",
+                _LOGGER.error,
             )
         return filtered[0]
 

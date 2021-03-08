@@ -37,6 +37,7 @@ class APIResoulution(CoreSysAttributes):
             ATTR_CHECKS: [
                 {ATTR_ENABLED: check.enabled, ATTR_NAME: check.name}
                 for check in self.sys_resolution.check.all_checks
+                if check.can_disable
             ],
         }
 

@@ -57,13 +57,21 @@ async def test_if_check_cleanup_issue(coresys: CoreSys):
     assert len(coresys.resolution.issues) == 0
 
 
-def test_enable_disable_checks(coresys: CoreSys):
+async def test_enable_disable_checks(coresys: CoreSys):
     """Test enable and disable check."""
+    coresys.core.state = CoreState.RUNNING
     # Ensure the check was enabled
     assert coresys.resolution.check._get_check("free_space").enabled
 
     coresys.resolution.check.disable("free_space")
     assert not coresys.resolution.check._get_check("free_space").enabled
+
+    with patch(
+        "supervisor.resolution.checks.free_space.CheckFreeSpace.run_check",
+        return_value=False,
+    ) as free_space:
+        await coresys.resolution.check.check_system()
+        free_space.assert_not_called()
 
     coresys.resolution.check.enable("free_space")
     assert coresys.resolution.check._get_check("free_space").enabled
