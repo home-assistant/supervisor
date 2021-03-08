@@ -3,7 +3,7 @@ codecov==2.1.11
 coverage==5.5
 flake8-docstrings==1.5.0
 flake8==3.8.4
-pre-commit==2.10.1
+pre-commit==2.11.0
 pydocstyle==5.1.1
 pylint==2.7.2
 pytest-aiohttp==0.3.0
