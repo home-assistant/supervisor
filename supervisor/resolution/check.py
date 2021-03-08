@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from ..const import ATTR_CHECKS, ATTR_ENABLED
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import ResolutionError
+from ..exceptions import ResolutionCheckError
 from ..utils.common import FileConfiguration
 from .checks.addon_pwned import CheckAddonPwned
 from .checks.base import CheckBase
@@ -43,7 +43,7 @@ class ResolutionCheck(FileConfiguration, CoreSysAttributes):
         filtered = [x for x in self.all_checks if x.name == name]
         count = len(filtered)
         if count != 1:
-            raise ResolutionError(
+            raise ResolutionCheckError(
                 f"Unexpected number of checks matching {name}, result was {count}",
                 _LOGGER.error,
             )
@@ -69,7 +69,9 @@ class ResolutionCheck(FileConfiguration, CoreSysAttributes):
         """Disable check."""
         check = self._get_check(name)
         if not check.can_disable:
-            raise ResolutionError(f"{check.name} can not be disabled", _LOGGER.error)
+            raise ResolutionCheckError(
+                f"{check.name} can not be disabled", _LOGGER.error
+            )
 
         if not check.enabled:
             return

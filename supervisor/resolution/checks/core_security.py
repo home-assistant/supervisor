@@ -65,3 +65,8 @@ class CheckCoreSecurity(CheckBase):
     def name(self) -> str:
         """Return the check name."""
         return "core_security"
+
+    @property
+    def can_disable(self) -> bool:
+        """Don't allow disable."""
+        return False

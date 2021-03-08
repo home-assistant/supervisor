@@ -78,3 +78,6 @@ async def test_enable_disable_checks(coresys: CoreSys):
 
     with pytest.raises(ResolutionError):
         coresys.resolution.check.enable("does_not_exsist")
+
+    with pytest.raises(ResolutionError):
+        coresys.resolution.check.disable("core_security")
