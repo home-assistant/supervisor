@@ -89,6 +89,7 @@ class HassOS(CoreSysAttributes):
             return raucb
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            self.sys_supervisor.connectivity = False
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
 
         except OSError as err:

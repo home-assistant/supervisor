@@ -186,6 +186,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
                 data = await request.json(content_type=None)
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            self.sys_supervisor.connectivity = False
             _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
             raise UpdaterError() from err
 

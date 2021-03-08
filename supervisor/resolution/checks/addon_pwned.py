@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import List, Optional
 
 from ...const import AddonState, CoreState
-from ...exceptions import PwnedError
+from ...exceptions import PwnedConnectivityError, PwnedError
 from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
 from ...utils.pwned import check_pwned_password
@@ -34,6 +34,9 @@ class CheckAddonPwned(CheckBase):
                 try:
                     if not await check_pwned_password(self.sys_websession, secret):
                         continue
+                except PwnedConnectivityError:
+                    self.sys_supervisor.connectivity = False
+                    return
                 except PwnedError:
                     continue
 
