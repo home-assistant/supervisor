@@ -1,9 +1,12 @@
 """Test check."""
-# pylint: disable=import-error
+# pylint: disable=import-error,protected-access
 from unittest.mock import patch
+
+import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import ResolutionError
 from supervisor.resolution.const import IssueType
 
 
@@ -52,3 +55,18 @@ async def test_if_check_cleanup_issue(coresys: CoreSys):
         await coresys.resolution.check.check_system()
 
     assert len(coresys.resolution.issues) == 0
+
+
+def test_enable_disable_checks(coresys: CoreSys):
+    """Test enable and disable check."""
+    # Ensure the check was enabled
+    assert coresys.resolution.check._get_check("free_space").enabled
+
+    coresys.resolution.check.disable("free_space")
+    assert not coresys.resolution.check._get_check("free_space").enabled
+
+    coresys.resolution.check.enable("free_space")
+    assert coresys.resolution.check._get_check("free_space").enabled
+
+    with pytest.raises(ResolutionError):
+        coresys.resolution.check.enable("does_not_exsist")

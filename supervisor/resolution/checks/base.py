@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod, abstractproperty
 import logging
 from typing import List, Optional
 
-from ...const import CoreState
+from ...const import ATTR_CHECKS, ATTR_ENABLED, CoreState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import ContextType, IssueType
 
@@ -46,6 +46,11 @@ class CheckBase(ABC, CoreSysAttributes):
         _LOGGER.info("Run check for %s/%s", self.issue, self.context)
         await self.run_check()
 
+    @property
+    @abstractproperty
+    def name(self) -> str:
+        """Return the check name."""
+
     @abstractmethod
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
@@ -73,3 +78,17 @@ class CheckBase(ABC, CoreSysAttributes):
     def states(self) -> List[CoreState]:
         """Return a list of valid states when this check can run."""
         return []
+
+    @property
+    def enabled(self) -> bool:
+        """Return True if the check is enabled."""
+        return (
+            self.sys_resolution.check.data[ATTR_CHECKS]
+            .get(self.name, {})
+            .get(ATTR_ENABLED, True)
+        )
+
+    @property
+    def can_disable(self) -> bool:
+        """Return True if the check can be disabled."""
+        return True

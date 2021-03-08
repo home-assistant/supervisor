@@ -1,5 +1,10 @@
 """Constants for the resoulution manager."""
 from enum import Enum
+from pathlib import Path
+
+from ..const import SUPERVISOR_DATA
+
+FILE_CONFIG_CHECK = Path(SUPERVISOR_DATA, "checks.json")
 
 SCHEDULED_HEALTHCHECK = 3600
 

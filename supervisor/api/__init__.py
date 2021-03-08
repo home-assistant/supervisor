@@ -229,6 +229,12 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/resolution/info", api_resolution.info),
                 web.post(
+                    "/resolution/check/{check}/disable", api_resolution.disable_check
+                ),
+                web.post(
+                    "/resolution/check/{check}/enable", api_resolution.enable_check
+                ),
+                web.post(
                     "/resolution/suggestion/{suggestion}",
                     api_resolution.apply_suggestion,
                 ),

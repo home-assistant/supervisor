@@ -5,9 +5,18 @@ from typing import Any, Awaitable, Dict
 from aiohttp import web
 import attr
 
-from ..const import ATTR_ISSUES, ATTR_SUGGESTIONS, ATTR_UNHEALTHY, ATTR_UNSUPPORTED
+from ..const import (
+    ATTR_CHECKS,
+    ATTR_ENABLED,
+    ATTR_ISSUES,
+    ATTR_NAME,
+    ATTR_SUGGESTIONS,
+    ATTR_UNHEALTHY,
+    ATTR_UNSUPPORTED,
+    REQUEST_FROM,
+)
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, ResolutionNotFound
+from ..exceptions import APIError, ResolutionError, ResolutionNotFound
 from .utils import api_process
 
 
@@ -25,6 +34,10 @@ class APIResoulution(CoreSysAttributes):
                 for suggestion in self.sys_resolution.suggestions
             ],
             ATTR_ISSUES: [attr.asdict(issue) for issue in self.sys_resolution.issues],
+            ATTR_CHECKS: [
+                {ATTR_ENABLED: check.enabled, ATTR_NAME: check.name}
+                for check in self.sys_resolution.check.all_checks
+            ],
         }
 
     @api_process
@@ -62,3 +75,29 @@ class APIResoulution(CoreSysAttributes):
     def healthcheck(self, request: web.Request) -> Awaitable[None]:
         """Run backend healthcheck."""
         return asyncio.shield(self.sys_resolution.healthcheck())
+
+    @api_process
+    async def enable_check(self, request: web.Request) -> None:
+        """Enable check."""
+        if request[REQUEST_FROM] != self.sys_homeassistant:
+            raise APIError(
+                "Access to this endpoint is only allowed from Home Assistant"
+            )
+
+        try:
+            self.sys_resolution.check.enable(request.match_info.get("check"))
+        except ResolutionError as err:
+            raise APIError(err) from err
+
+    @api_process
+    async def disable_check(self, request: web.Request) -> None:
+        """Disable check."""
+        if request[REQUEST_FROM] != self.sys_homeassistant:
+            raise APIError(
+                "Access to this endpoint is only allowed from Home Assistant"
+            )
+
+        try:
+            self.sys_resolution.check.disable(request.match_info.get("check"))
+        except ResolutionError as err:
+            raise APIError(err) from err
