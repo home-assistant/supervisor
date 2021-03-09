@@ -5,25 +5,20 @@ from typing import Any, Dict, List, Optional
 from ..const import ATTR_CHECKS, ATTR_ENABLED
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionCheckError
-from ..utils.common import FileConfiguration
 from .checks.addon_pwned import CheckAddonPwned
 from .checks.base import CheckBase
 from .checks.core_security import CheckCoreSecurity
 from .checks.free_space import CheckFreeSpace
-from .const import FILE_CONFIG_CHECK
-from .validate import SCHEMA_CHECK_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class ResolutionCheck(FileConfiguration, CoreSysAttributes):
+class ResolutionCheck(CoreSysAttributes):
     """Checks class for resolution."""
 
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the checks class."""
-        super().__init__(FILE_CONFIG_CHECK, SCHEMA_CHECK_CONFIG)
         self.coresys = coresys
-
         self._core_security = CheckCoreSecurity(coresys)
         self._free_space = CheckFreeSpace(coresys)
         self._addon_pwned = CheckAddonPwned(coresys)
@@ -31,7 +26,7 @@ class ResolutionCheck(FileConfiguration, CoreSysAttributes):
     @property
     def data(self) -> Dict[str, Any]:
         """Return data."""
-        return self._data
+        return self.sys_resolution.data[ATTR_CHECKS]
 
     @property
     def all_checks(self) -> List[CheckBase]:
@@ -76,7 +71,6 @@ class ResolutionCheck(FileConfiguration, CoreSysAttributes):
         if not check.enabled:
             return
         self._data[ATTR_CHECKS][name] = {ATTR_ENABLED: False}
-        self.save_data()
 
     def enable(self, name: str) -> None:
         """Enable check."""
@@ -84,4 +78,3 @@ class ResolutionCheck(FileConfiguration, CoreSysAttributes):
         if check.enabled:
             return
         self._data[ATTR_CHECKS][name] = {ATTR_ENABLED: True}
-        self.save_data()

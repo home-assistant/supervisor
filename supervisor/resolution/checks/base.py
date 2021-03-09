@@ -3,9 +3,10 @@ from abc import ABC, abstractmethod, abstractproperty
 import logging
 from typing import List, Optional
 
-from ...const import ATTR_CHECKS, ATTR_ENABLED, CoreState
+from ...const import ATTR_ENABLED, CoreState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import ContextType, IssueType
+from ..validate import SCHEMA_CHECK_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ class CheckBase(ABC, CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the checks class."""
         self.coresys = coresys
+        self.sys_resolution.check.data.setdefault(self.name, SCHEMA_CHECK_CONFIG({}))
 
     async def __call__(self) -> None:
         """Execute the evaluation."""
@@ -82,11 +84,7 @@ class CheckBase(ABC, CoreSysAttributes):
     @property
     def enabled(self) -> bool:
         """Return True if the check is enabled."""
-        return (
-            self.sys_resolution.check.data.get(ATTR_CHECKS, True)
-            .get(self.name, {})
-            .get(ATTR_ENABLED, True)
-        )
+        return self.sys_resolution.check.data[self.name][ATTR_ENABLED]
 
     @property
     def can_disable(self) -> bool:

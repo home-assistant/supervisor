@@ -4,7 +4,7 @@ from pathlib import Path
 
 from ..const import SUPERVISOR_DATA
 
-FILE_CONFIG_CHECK = Path(SUPERVISOR_DATA, "checks.json")
+FILE_CONFIG_RESOLUTION = Path(SUPERVISOR_DATA, "resolution.json")
 
 SCHEDULED_HEALTHCHECK = 3600
 
