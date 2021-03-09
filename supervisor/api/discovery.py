@@ -13,7 +13,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..discovery.validate import valid_discovery_service
 from ..exceptions import APIError, APIForbidden
-from .utils import api_process, api_validate
+from .utils import api_process, api_validate, require_home_assistant
 
 SCHEMA_DISCOVERY = vol.Schema(
     {
@@ -33,15 +33,10 @@ class APIDiscovery(CoreSysAttributes):
             raise APIError("Discovery message not found")
         return message
 
-    def _check_permission_ha(self, request):
-        """Check permission for API call / Home Assistant."""
-        if request[REQUEST_FROM] != self.sys_homeassistant:
-            raise APIForbidden("Only HomeAssistant can use this API!")
-
     @api_process
+    @require_home_assistant
     async def list(self, request):
         """Show register services."""
-        self._check_permission_ha(request)
 
         # Get available discovery
         discovery = []
@@ -79,12 +74,10 @@ class APIDiscovery(CoreSysAttributes):
         return {ATTR_UUID: message.uuid}
 
     @api_process
+    @require_home_assistant
     async def get_discovery(self, request):
         """Read data into a discovery message."""
         message = self._extract_message(request)
-
-        # HomeAssistant?
-        self._check_permission_ha(request)
 
         return {
             ATTR_ADDON: message.addon,

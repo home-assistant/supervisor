@@ -4,6 +4,7 @@ from typing import Any, Awaitable, Dict
 
 from aiohttp import web
 import attr
+import voluptuous as vol
 
 from ..const import (
     ATTR_CHECKS,
@@ -13,11 +14,12 @@ from ..const import (
     ATTR_SUGGESTIONS,
     ATTR_UNHEALTHY,
     ATTR_UNSUPPORTED,
-    REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, ResolutionError, ResolutionNotFound
-from .utils import api_process
+from .utils import api_process, api_validate, require_home_assistant
+
+SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Required(ATTR_ENABLED): bool})
 
 
 class APIResoulution(CoreSysAttributes):
@@ -78,27 +80,15 @@ class APIResoulution(CoreSysAttributes):
         return asyncio.shield(self.sys_resolution.healthcheck())
 
     @api_process
-    async def enable_check(self, request: web.Request) -> None:
-        """Enable check."""
-        if request[REQUEST_FROM] != self.sys_homeassistant:
-            raise APIError(
-                "Access to this endpoint is only allowed from Home Assistant"
-            )
+    @require_home_assistant
+    async def check_options(self, request: web.Request) -> None:
+        """Set check options."""
+        body = await api_validate(SCHEMA_CHECK_OPTIONS, request)
 
         try:
-            self.sys_resolution.check.enable(request.match_info.get("check"))
-        except ResolutionError as err:
-            raise APIError(err) from err
-
-    @api_process
-    async def disable_check(self, request: web.Request) -> None:
-        """Disable check."""
-        if request[REQUEST_FROM] != self.sys_homeassistant:
-            raise APIError(
-                "Access to this endpoint is only allowed from Home Assistant"
-            )
-
-        try:
-            self.sys_resolution.check.disable(request.match_info.get("check"))
+            if body[ATTR_ENABLED]:
+                self.sys_resolution.check.enable(request.match_info.get("check"))
+            else:
+                self.sys_resolution.check.disable(request.match_info.get("check"))
         except ResolutionError as err:
             raise APIError(err) from err
