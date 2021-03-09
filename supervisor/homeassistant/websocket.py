@@ -119,7 +119,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             and self._client.ha_version < MIN_VERSION[message_type]
         ):
             _LOGGER.info(
-                "WebSocket command %s is not supported untill core-%s. Ignoring WebSocket message.",
+                "WebSocket command %s is not supported until core-%s. Ignoring WebSocket message.",
                 message_type,
                 MIN_VERSION[message_type],
             )
