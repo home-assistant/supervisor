@@ -40,7 +40,7 @@ async def test_send_command_old_core_version(coresys: CoreSys, caplog):
     )
 
     assert (
-        "WebSocket command supervisor/event is not supported untill core-2021.2.4"
+        "WebSocket command supervisor/event is not supported until core-2021.2.4"
         in caplog.text
     )
 
