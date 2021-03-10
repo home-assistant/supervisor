@@ -76,7 +76,7 @@ async def test_enable_disable_checks(coresys: CoreSys):
         free_space.assert_not_called()
 
     free_space.enabled = True
-    assert not free_space.enabled
+    assert free_space.enabled
 
 
 async def test_get_checks(coresys: CoreSys):
