@@ -8,6 +8,13 @@ from supervisor.resolution.checks.free_space import CheckFreeSpace
 from supervisor.resolution.const import IssueType
 
 
+async def test_base(coresys: CoreSys):
+    """Test check basics."""
+    free_space = CheckFreeSpace(coresys)
+    assert free_space.slug == "free_space"
+    assert free_space.enabled
+
+
 async def test_check(coresys: CoreSys):
     """Test check."""
     free_space = CheckFreeSpace(coresys)

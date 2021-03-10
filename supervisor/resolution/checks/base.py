@@ -2,6 +2,7 @@
 from abc import ABC, abstractmethod, abstractproperty
 import logging
 from pathlib import Path
+import sys
 from typing import List, Optional
 
 from ...const import ATTR_ENABLED, CoreState
@@ -50,7 +51,7 @@ class CheckBase(ABC, CoreSysAttributes):
     @property
     def slug(self) -> str:
         """Return the check slug."""
-        return Path(__file__).stem
+        return Path(sys.modules[self.__class__.__module__].__file__).stem
 
     @abstractmethod
     async def run_check(self) -> None:
@@ -83,9 +84,9 @@ class CheckBase(ABC, CoreSysAttributes):
     @property
     def enabled(self) -> bool:
         """Return True if the check is enabled."""
-        return self.sys_resolution.check.data[self.name][ATTR_ENABLED]
+        return self.sys_resolution.check.data[self.slug][ATTR_ENABLED]
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
         """Enable or disbable check."""
-        self.sys_resolution.check.data[self.name][ATTR_ENABLED] = value
+        self.sys_resolution.check.data[self.slug][ATTR_ENABLED] = value

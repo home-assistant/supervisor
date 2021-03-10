@@ -11,6 +11,13 @@ from supervisor.resolution.checks.core_security import CheckCoreSecurity
 from supervisor.resolution.const import IssueType
 
 
+async def test_base(coresys: CoreSys):
+    """Test check basics."""
+    core_security = CheckCoreSecurity(coresys)
+    assert core_security.slug == "core_security"
+    assert core_security.enabled
+
+
 async def test_check(coresys: CoreSys, tmp_path):
     """Test check."""
     with patch("supervisor.config.CoreConfig.path_homeassistant", tmp_path):

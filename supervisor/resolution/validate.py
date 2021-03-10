@@ -22,7 +22,7 @@ def _get_valid_modules(folder) -> List[str]:
 
 SCHEMA_CHECK_CONFIG = vol.Schema(
     {
-        vol.Required(ATTR_ENABLED): bool,
+        vol.Required(ATTR_ENABLED, default=True): bool,
     },
     extra=vol.REMOVE_EXTRA,
 )
