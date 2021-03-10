@@ -47,12 +47,12 @@ class ResolutionCheck(CoreSysAttributes):
 
         for check in self.all_checks:
             if not check.enabled:
-                _LOGGER.info("Skipping disabled check %s", check.slug)
+                _LOGGER.warning("Skipping disabled check %s", check.slug)
                 continue
             try:
                 await check()
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Error during processing %s: %s", check.issue, err)
+                _LOGGER.error("Error during processing %s: %s", check.issue, err)
                 self.sys_capture_exception(err)
 
         _LOGGER.info("System checks complete")
