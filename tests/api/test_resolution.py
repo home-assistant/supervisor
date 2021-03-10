@@ -100,3 +100,20 @@ async def test_api_resolution_unhealthy(coresys: CoreSys, api_client):
     resp = await api_client.get("/resolution/info")
     result = await resp.json()
     assert UnhealthyReason.DOCKER == result["data"][ATTR_UNHEALTHY][-1]
+
+
+@pytest.mark.asyncio
+async def test_api_resolution_check_options(coresys: CoreSys, api_client):
+    """Test client API with checks options."""
+    free_space = coresys.resolution.check.get("free_space")
+
+    assert free_space.enabled
+    await api_client.post(
+        f"/resolution/check/{free_space.slug}/options", json={"enabled": False}
+    )
+    assert not free_space.enabled
+
+    await api_client.post(
+        f"/resolution/check/{free_space.slug}/options", json={"enabled": True}
+    )
+    assert free_space.enabled
