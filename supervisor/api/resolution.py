@@ -10,7 +10,7 @@ from ..const import (
     ATTR_CHECKS,
     ATTR_ENABLED,
     ATTR_ISSUES,
-    ATTR_NAME,
+    ATTR_SLUG,
     ATTR_SUGGESTIONS,
     ATTR_UNHEALTHY,
     ATTR_UNSUPPORTED,
@@ -37,9 +37,8 @@ class APIResoulution(CoreSysAttributes):
             ],
             ATTR_ISSUES: [attr.asdict(issue) for issue in self.sys_resolution.issues],
             ATTR_CHECKS: [
-                {ATTR_ENABLED: check.enabled, ATTR_NAME: check.name}
+                {ATTR_ENABLED: check.enabled, ATTR_SLUG: check.slug}
                 for check in self.sys_resolution.check.all_checks
-                if check.can_disable
             ],
         }
 
