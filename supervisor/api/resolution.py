@@ -17,7 +17,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, ResolutionNotFound
-from .utils import api_process, api_validate, require_home_assistant
+from .utils import api_process, api_validate
 
 SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Required(ATTR_ENABLED): bool})
 
@@ -79,7 +79,6 @@ class APIResoulution(CoreSysAttributes):
         return asyncio.shield(self.sys_resolution.healthcheck())
 
     @api_process
-    @require_home_assistant
     async def check_options(self, request: web.Request) -> None:
         """Set check options."""
         body = await api_validate(SCHEMA_CHECK_OPTIONS, request)
