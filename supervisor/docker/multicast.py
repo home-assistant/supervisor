@@ -43,6 +43,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
             hostname=self.name.replace("_", "-"),
             network_mode="host",
             detach=True,
+            security_opt=self.security_opt,
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={ENV_TIME: self.sys_config.timezone},
         )

@@ -93,6 +93,13 @@ class DockerInterface(CoreSysAttributes):
         """Return True if a task is in progress."""
         return self.lock.locked()
 
+    @property
+    def security_opt(self) -> List[str]:
+        """Control security options."""
+        # Disable Seccomp / We don't support it official and it
+        # causes problems on some types of host systems.
+        return ["seccomp=unconfined"]
+
     def _get_credentials(self, image: str) -> dict:
         """Return a dictionay with credentials for docker login."""
         registry = None

@@ -130,6 +130,7 @@ class DockerHomeAssistant(DockerInterface):
             detach=True,
             privileged=True,
             init=False,
+            security_opt=self.security_opt,
             network_mode="host",
             volumes=self.volumes,
             device_cgroup_rules=self.cgroups_rules,
