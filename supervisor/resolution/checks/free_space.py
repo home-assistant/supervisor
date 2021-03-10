@@ -63,8 +63,3 @@ class CheckFreeSpace(CheckBase):
     def states(self) -> List[CoreState]:
         """Return a list of valid states when this check can run."""
         return [CoreState.RUNNING, CoreState.STARTUP]
-
-    @property
-    def name(self) -> str:
-        """Return the check name."""
-        return "free_space"

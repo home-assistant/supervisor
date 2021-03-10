@@ -1,12 +1,12 @@
 """Baseclass for system checks."""
 from abc import ABC, abstractmethod, abstractproperty
 import logging
+from pathlib import Path
 from typing import List, Optional
 
 from ...const import ATTR_ENABLED, CoreState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import ContextType, IssueType
-from ..validate import SCHEMA_CHECK_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -17,7 +17,6 @@ class CheckBase(ABC, CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the checks class."""
         self.coresys = coresys
-        self.sys_resolution.check.data.setdefault(self.name, SCHEMA_CHECK_CONFIG({}))
 
     async def __call__(self) -> None:
         """Execute the evaluation."""
@@ -49,9 +48,9 @@ class CheckBase(ABC, CoreSysAttributes):
         await self.run_check()
 
     @property
-    @abstractproperty
-    def name(self) -> str:
-        """Return the check name."""
+    def slug(self) -> str:
+        """Return the check slug."""
+        return Path(__file__).stem
 
     @abstractmethod
     async def run_check(self) -> None:
@@ -86,7 +85,7 @@ class CheckBase(ABC, CoreSysAttributes):
         """Return True if the check is enabled."""
         return self.sys_resolution.check.data[self.name][ATTR_ENABLED]
 
-    @property
-    def can_disable(self) -> bool:
-        """Return True if the check can be disabled."""
-        return True
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        """Enable or disbable check."""
+        self.sys_resolution.check.data[self.name][ATTR_ENABLED] = value

@@ -1,19 +1,23 @@
 """Validate resolution configuration schema."""
 from pathlib import Path
+from typing import List
 
 import voluptuous as vol
 
 from ..const import ATTR_CHECKS, ATTR_ENABLED
 
-_INVALID_BASE = ("base.py", "__init__.py")
 
-
-def valid_check_name(check: str):
+def _get_valid_modules(folder) -> List[str]:
     """Validate check name."""
-    check_file = Path(__file__).parent.joinpath(f"checks/{check}.py")
-    if not check_file.exists() or check_file.name in _INVALID_BASE:
-        raise vol.Invalid(f"Check '{check}' not found!") from None
-    return check
+    module_files = Path(__file__).parent.joinpath(folder)
+    if not module_files.exists():
+        raise vol.Invalid(f"Module folder '{folder}' not found!")
+
+    return [
+        module.stem
+        for module in module_files.glob("*.py")
+        if module.name not in ("base.py", "__init__.py")
+    ]
 
 
 SCHEMA_CHECK_CONFIG = vol.Schema(
@@ -23,11 +27,19 @@ SCHEMA_CHECK_CONFIG = vol.Schema(
     extra=vol.REMOVE_EXTRA,
 )
 
+SCHEMA_CHECKS_CONFIG = vol.Schema(
+    {
+        vol.Required(check, default=SCHEMA_CHECK_CONFIG({})): SCHEMA_CHECK_CONFIG
+        for check in _get_valid_modules("checks")
+    },
+    extra=vol.REMOVE_EXTRA,
+)
+
 SCHEMA_RESOLUTION_CONFIG = vol.Schema(
     {
-        vol.Required(ATTR_CHECKS, default=dict): {
-            valid_check_name: SCHEMA_CHECK_CONFIG
-        },
+        vol.Required(
+            ATTR_CHECKS, default=SCHEMA_CHECKS_CONFIG({})
+        ): SCHEMA_CHECKS_CONFIG,
     },
     extra=vol.REMOVE_EXTRA,
 )

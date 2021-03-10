@@ -1,10 +1,10 @@
 """Helpers to checks the system."""
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from ..const import ATTR_CHECKS, ATTR_ENABLED
+from ..const import ATTR_CHECKS
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import ResolutionCheckError
+from ..exceptions import ResolutionNotFound
 from .checks.addon_pwned import CheckAddonPwned
 from .checks.base import CheckBase
 from .checks.core_security import CheckCoreSecurity
@@ -33,16 +33,13 @@ class ResolutionCheck(CoreSysAttributes):
         """Return all list of all checks."""
         return [self._core_security, self._free_space, self._addon_pwned]
 
-    def _get_check(self, name: str) -> Optional[CheckBase]:
-        """Return the check matching the name."""
-        filtered = [x for x in self.all_checks if x.name == name]
-        count = len(filtered)
-        if count != 1:
-            raise ResolutionCheckError(
-                f"Unexpected number of checks matching {name}, result was {count}",
-                _LOGGER.error,
-            )
-        return filtered[0]
+    def get(self, slug: str) -> CheckBase:
+        """Return check based on slug."""
+        for check in self.all_checks:
+            if slug != check.slug:
+                continue
+            return check
+        raise ResolutionNotFound(f"Check with slug {slug} not found!")
 
     async def check_system(self) -> None:
         """Check the system."""
@@ -50,7 +47,7 @@ class ResolutionCheck(CoreSysAttributes):
 
         for check in self.all_checks:
             if not check.enabled:
-                _LOGGER.info("Skipping disabled check %s", check.name)
+                _LOGGER.info("Skipping disabled check %s", check.slug)
                 continue
             try:
                 await check()
@@ -59,22 +56,3 @@ class ResolutionCheck(CoreSysAttributes):
                 self.sys_capture_exception(err)
 
         _LOGGER.info("System checks complete")
-
-    def disable(self, name: str) -> None:
-        """Disable check."""
-        check = self._get_check(name)
-        if not check.can_disable:
-            raise ResolutionCheckError(
-                f"{check.name} can not be disabled", _LOGGER.error
-            )
-
-        if not check.enabled:
-            return
-        self._data[ATTR_CHECKS][name] = {ATTR_ENABLED: False}
-
-    def enable(self, name: str) -> None:
-        """Enable check."""
-        check = self._get_check(name)
-        if check.enabled:
-            return
-        self._data[ATTR_CHECKS][name] = {ATTR_ENABLED: True}
