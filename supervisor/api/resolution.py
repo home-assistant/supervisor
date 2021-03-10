@@ -16,7 +16,7 @@ from ..const import (
     ATTR_UNSUPPORTED,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, ResolutionError, ResolutionNotFound
+from ..exceptions import APIError, ResolutionNotFound
 from .utils import api_process, api_validate, require_home_assistant
 
 SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Required(ATTR_ENABLED): bool})
@@ -85,9 +85,9 @@ class APIResoulution(CoreSysAttributes):
         body = await api_validate(SCHEMA_CHECK_OPTIONS, request)
 
         try:
-            if body[ATTR_ENABLED]:
-                self.sys_resolution.check.enable(request.match_info.get("check"))
-            else:
-                self.sys_resolution.check.disable(request.match_info.get("check"))
-        except ResolutionError as err:
-            raise APIError(err) from err
+            check = self.sys_resolution.check.get(request.match_info.get("check"))
+        except ResolutionNotFound:
+            raise APIError("The supplied check slug is not available") from None
+
+        check.enabled = body[ATTR_ENABLED]
+        self.sys_resolution.save_data()
