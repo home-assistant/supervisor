@@ -45,6 +45,7 @@ class DockerCli(DockerInterface, CoreSysAttributes):
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
+            security_opt=self.security_opt,
             extra_hosts={
                 "supervisor": self.sys_docker.network.supervisor,
                 "observer": self.sys_docker.network.observer,

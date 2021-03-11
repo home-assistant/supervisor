@@ -44,6 +44,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
+            security_opt=self.security_opt,
             restart_policy={"Name": "always"},
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={

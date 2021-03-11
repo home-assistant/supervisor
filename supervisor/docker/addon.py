@@ -189,7 +189,7 @@ class DockerAddon(DockerInterface):
     @property
     def security_opt(self) -> List[str]:
         """Control security options."""
-        security = []
+        security = super().security_opt
 
         # AppArmor
         apparmor = self.sys_host.apparmor.available
@@ -197,10 +197,6 @@ class DockerAddon(DockerInterface):
             security.append("apparmor:unconfined")
         elif self.addon.apparmor == SECURITY_PROFILE:
             security.append(f"apparmor={self.addon.slug}")
-
-        # Disable Seccomp / We don't support it official and it
-        # causes problems on some types of host systems.
-        security.append("seccomp=unconfined")
 
         return security
 
