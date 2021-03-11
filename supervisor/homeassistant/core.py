@@ -87,11 +87,16 @@ class HomeAssistantCore(CoreSysAttributes):
     @process_lock
     async def install_landingpage(self) -> None:
         """Install a landing page."""
-        self.sys_homeassistant.version = LANDINGPAGE
-        if await self.sys_homeassistant.core.instance.exists():
+        # Try to use a preinstalled landingpage
+        try:
+            await self.instance.attach(version=LANDINGPAGE)
+
             _LOGGER.info("Using preinstalled landingpage")
+            self.sys_homeassistant.version = LANDINGPAGE
+            self.sys_homeassistant.image = self.instance.image
             self.sys_homeassistant.save_data()
-            return
+        except DockerError:
+            pass
 
         _LOGGER.info("Setting up Home Assistant landingpage")
         while True:
@@ -113,6 +118,7 @@ class HomeAssistantCore(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 self.sys_capture_exception(err)
             else:
+                self.sys_homeassistant.version = LANDINGPAGE
                 self.sys_homeassistant.image = self.sys_updater.image_homeassistant
                 self.sys_homeassistant.save_data()
                 break
