@@ -79,8 +79,8 @@ class APIResoulution(CoreSysAttributes):
         return asyncio.shield(self.sys_resolution.healthcheck())
 
     @api_process
-    async def check_options(self, request: web.Request) -> None:
-        """Set check options."""
+    async def options_check(self, request: web.Request) -> None:
+        """Set options for check."""
         body = await api_validate(SCHEMA_CHECK_OPTIONS, request)
 
         try:

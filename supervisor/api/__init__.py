@@ -229,7 +229,7 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/resolution/info", api_resolution.info),
                 web.post(
-                    "/resolution/check/{check}/options", api_resolution.check_options
+                    "/resolution/check/{check}/options", api_resolution.options_check
                 ),
                 web.post(
                     "/resolution/suggestion/{suggestion}",
