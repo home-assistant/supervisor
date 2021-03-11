@@ -90,13 +90,14 @@ class HomeAssistantCore(CoreSysAttributes):
         # Try to use a preinstalled landingpage
         try:
             await self.instance.attach(version=LANDINGPAGE)
-
+        except DockerError:
+            pass
+        else:
             _LOGGER.info("Using preinstalled landingpage")
             self.sys_homeassistant.version = LANDINGPAGE
             self.sys_homeassistant.image = self.instance.image
             self.sys_homeassistant.save_data()
-        except DockerError:
-            pass
+            return
 
         _LOGGER.info("Setting up Home Assistant landingpage")
         while True:
