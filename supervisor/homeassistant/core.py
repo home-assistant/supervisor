@@ -87,6 +87,12 @@ class HomeAssistantCore(CoreSysAttributes):
     @process_lock
     async def install_landingpage(self) -> None:
         """Install a landing page."""
+        self.sys_homeassistant.version = LANDINGPAGE
+        if await self.sys_homeassistant.core.instance.exists():
+            _LOGGER.info("Using preinstalled landingpage")
+            self.sys_homeassistant.save_data()
+            return
+
         _LOGGER.info("Setting up Home Assistant landingpage")
         while True:
             if not self.sys_updater.image_homeassistant:
@@ -107,7 +113,6 @@ class HomeAssistantCore(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 self.sys_capture_exception(err)
             else:
-                self.sys_homeassistant.version = self.instance.version
                 self.sys_homeassistant.image = self.sys_updater.image_homeassistant
                 self.sys_homeassistant.save_data()
                 break
