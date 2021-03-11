@@ -25,12 +25,11 @@ from ..exceptions import (
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock
+from .const import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
-
-LANDINGPAGE: AwesomeVersion = AwesomeVersion("landingpage")
 
 
 @attr.s(frozen=True)
