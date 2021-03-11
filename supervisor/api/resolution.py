@@ -19,7 +19,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, ResolutionNotFound
 from .utils import api_process, api_validate
 
-SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Required(ATTR_ENABLED): bool})
+SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): bool})
 
 
 class APIResoulution(CoreSysAttributes):
@@ -88,5 +88,8 @@ class APIResoulution(CoreSysAttributes):
         except ResolutionNotFound:
             raise APIError("The supplied check slug is not available") from None
 
-        check.enabled = body[ATTR_ENABLED]
+        # Apply options
+        if ATTR_ENABLED in body:
+            check.enabled = body[ATTR_ENABLED]
+
         self.sys_resolution.save_data()
