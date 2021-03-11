@@ -10,13 +10,21 @@ from ..exceptions import PwnedConnectivityError, PwnedError
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _API_CALL = "https://api.pwnedpasswords.com/range/{hash}"
 
+_CACHE = set()
+
 
 async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) -> bool:
     """Check if password is pwned."""
     sha1_pw = sha1_pw.upper()
+
+    # Chech hit cache
+    sha1_short = sha1_pw[:5]
+    if sha1_short in _CACHE:
+        return True
+
     try:
         async with websession.get(
-            _API_CALL.format(hash=sha1_pw[:5]), timeout=aiohttp.ClientTimeout(total=10)
+            _API_CALL.format(hash=sha1_short), timeout=aiohttp.ClientTimeout(total=10)
         ) as request:
             if request.status != 200:
                 raise PwnedError()
@@ -26,6 +34,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
         for line in buffer:
             if not sha1_pw.endswith(line.split(":")[0]):
                 continue
+            _CACHE.add(sha1_short)
             return True
 
     except (aiohttp.ClientError, asyncio.TimeoutError) as err:
