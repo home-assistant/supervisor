@@ -51,7 +51,7 @@ class CheckBase(ABC, CoreSysAttributes):
     @property
     def slug(self) -> str:
         """Return the check slug."""
-        return Path(sys.modules[self.__class__.__module__].__file__).stem
+        return self.__class__.__module__.split('.')[-1]
 
     @abstractmethod
     async def run_check(self) -> None:
