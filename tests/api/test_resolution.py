@@ -109,11 +109,11 @@ async def test_api_resolution_check_options(coresys: CoreSys, api_client):
 
     assert free_space.enabled
     await api_client.post(
-        f"/resolution/check/{free_space.slug}/options", json={"enabled": False}
+        f"/resolution/check/{free_space.slug}", json={"enabled": False}
     )
     assert not free_space.enabled
 
     await api_client.post(
-        f"/resolution/check/{free_space.slug}/options", json={"enabled": True}
+        f"/resolution/check/{free_space.slug}", json={"enabled": True}
     )
     assert free_space.enabled
