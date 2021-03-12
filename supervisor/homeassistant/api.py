@@ -11,7 +11,7 @@ from aiohttp import hdrs
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils import check_port
-from .core import LANDINGPAGE
+from .const import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

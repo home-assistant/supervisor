@@ -26,10 +26,10 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.common import FileConfiguration
-from ..validate import SCHEMA_HASS_CONFIG
 from .api import HomeAssistantAPI
 from .core import HomeAssistantCore
 from .secrets import HomeAssistantSecrets
+from .validate import SCHEMA_HASS_CONFIG
 from .websocket import HomeAssistantWebSocket
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

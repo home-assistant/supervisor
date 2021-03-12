@@ -2,18 +2,13 @@
 import ipaddress
 import re
 from typing import Optional, Union
-import uuid
 
 from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from .const import (
-    ATTR_ACCESS_TOKEN,
     ATTR_ADDONS_CUSTOM_LIST,
     ATTR_AUDIO,
-    ATTR_AUDIO_INPUT,
-    ATTR_AUDIO_OUTPUT,
-    ATTR_BOOT,
     ATTR_CHANNEL,
     ATTR_CLI,
     ATTR_DEBUG,
@@ -29,19 +24,14 @@ from .const import (
     ATTR_OBSERVER,
     ATTR_OTA,
     ATTR_PASSWORD,
-    ATTR_PORT,
     ATTR_PORTS,
-    ATTR_REFRESH_TOKEN,
     ATTR_REGISTRIES,
     ATTR_SESSION,
-    ATTR_SSL,
     ATTR_SUPERVISOR,
     ATTR_TIMEZONE,
     ATTR_USERNAME,
-    ATTR_UUID,
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
-    ATTR_WATCHDOG,
     SUPERVISOR_VERSION,
     LogLevel,
     UpdateChannel,
@@ -106,28 +96,6 @@ repositories = vol.All([validate_repository], vol.Unique())
 docker_port = vol.All(str, vol.Match(r"^\d+(?:/tcp|/udp)?$"))
 docker_ports = vol.Schema({docker_port: vol.Maybe(network_port)})
 docker_ports_description = vol.Schema({docker_port: vol.Coerce(str)})
-
-
-# pylint: disable=no-value-for-parameter
-SCHEMA_HASS_CONFIG = vol.Schema(
-    {
-        vol.Optional(ATTR_UUID, default=lambda: uuid.uuid4().hex): uuid_match,
-        vol.Optional(ATTR_VERSION): version_tag,
-        vol.Optional(ATTR_IMAGE): docker_image,
-        vol.Optional(ATTR_ACCESS_TOKEN): token,
-        vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
-        vol.Optional(ATTR_PORT, default=8123): network_port,
-        vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
-        vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
-        vol.Optional(ATTR_WAIT_BOOT, default=600): vol.All(
-            vol.Coerce(int), vol.Range(min=60)
-        ),
-        vol.Optional(ATTR_AUDIO_OUTPUT, default=None): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_AUDIO_INPUT, default=None): vol.Maybe(vol.Coerce(str)),
-    },
-    extra=vol.REMOVE_EXTRA,
-)
 
 
 # pylint: disable=no-value-for-parameter

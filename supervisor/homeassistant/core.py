@@ -25,12 +25,11 @@ from ..exceptions import (
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock
+from .const import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
-
-LANDINGPAGE: AwesomeVersion = AwesomeVersion("landingpage")
 
 
 @attr.s(frozen=True)
@@ -88,6 +87,18 @@ class HomeAssistantCore(CoreSysAttributes):
     @process_lock
     async def install_landingpage(self) -> None:
         """Install a landing page."""
+        # Try to use a preinstalled landingpage
+        try:
+            await self.instance.attach(version=LANDINGPAGE)
+        except DockerError:
+            pass
+        else:
+            _LOGGER.info("Using preinstalled landingpage")
+            self.sys_homeassistant.version = LANDINGPAGE
+            self.sys_homeassistant.image = self.instance.image
+            self.sys_homeassistant.save_data()
+            return
+
         _LOGGER.info("Setting up Home Assistant landingpage")
         while True:
             if not self.sys_updater.image_homeassistant:
@@ -108,7 +119,7 @@ class HomeAssistantCore(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 self.sys_capture_exception(err)
             else:
-                self.sys_homeassistant.version = self.instance.version
+                self.sys_homeassistant.version = LANDINGPAGE
                 self.sys_homeassistant.image = self.sys_updater.image_homeassistant
                 self.sys_homeassistant.save_data()
                 break
