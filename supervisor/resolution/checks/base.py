@@ -1,8 +1,6 @@
 """Baseclass for system checks."""
 from abc import ABC, abstractmethod, abstractproperty
 import logging
-from pathlib import Path
-import sys
 from typing import List, Optional
 
 from ...const import ATTR_ENABLED, CoreState
