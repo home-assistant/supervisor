@@ -7,7 +7,6 @@ from ...const import ATTR_ENABLED, CoreState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import ContextType, IssueType
 
-CHECK_REGISTRY: List["CheckBase"] = []
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
@@ -17,13 +16,6 @@ class CheckBase(ABC, CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the checks class."""
         self.coresys = coresys
-
-    def __init_subclass__(cls, **kwargs):
-        """Initialize subclasses."""
-        super().__init_subclass__(**kwargs)
-        check = cls(None)
-        if check.slug not in CHECK_REGISTRY:
-            CHECK_REGISTRY.append(check)
 
     async def __call__(self) -> None:
         """Execute the evaluation."""

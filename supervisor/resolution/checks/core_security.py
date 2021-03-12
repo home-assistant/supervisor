@@ -6,8 +6,14 @@ from typing import List, Optional
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ...const import CoreState
+from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
+
+
+def setup(coresys: CoreSys) -> "CheckCoreSecurity":
+    """Check setup function."""
+    return CheckCoreSecurity(coresys)
 
 
 class SecurityReference(str, Enum):

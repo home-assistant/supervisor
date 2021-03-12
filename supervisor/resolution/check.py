@@ -1,13 +1,12 @@
 """Helpers to checks the system."""
+from importlib import import_module
 import logging
-import pkgutil
-import sys
 from typing import Any, Dict, List
 
 from ..const import ATTR_CHECKS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionNotFound
-from .checks.base import CHECK_REGISTRY, CheckBase
+from .checks.base import CheckBase
 from .validate import get_valid_modules
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -34,17 +33,12 @@ class ResolutionCheck(CoreSysAttributes):
 
     def load(self):
         """Load all checks."""
-        load_from = "checks"
-        base_module = f"{__package__}.{load_from}"
-        check_modules = get_valid_modules(load_from)
-        for check in check_modules:
-            full_package_name = f"{base_module}.{check}"
-            if full_package_name not in sys.modules:
-                pkgutil.find_loader(full_package_name).load_module(full_package_name)
+        package = f"{__package__}.checks"
+        for module in get_valid_modules("checks"):
+            check_module = import_module(f"{package}.{module}")
+            check = check_module.setup(self.coresys)
 
-        for check in CHECK_REGISTRY:
             if check.slug not in self._checks:
-                check.coresys = self.coresys
                 self._checks[check.slug] = check
 
     def get(self, slug: str) -> CheckBase:

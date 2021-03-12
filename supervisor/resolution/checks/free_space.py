@@ -2,6 +2,7 @@
 from typing import List, Optional
 
 from ...const import SNAPSHOT_FULL, CoreState
+from ...coresys import CoreSys
 from ..const import (
     MINIMUM_FREE_SPACE_THRESHOLD,
     MINIMUM_FULL_SNAPSHOTS,
@@ -11,6 +12,11 @@ from ..const import (
 )
 from ..data import Suggestion
 from .base import CheckBase
+
+
+def setup(coresys: CoreSys) -> "CheckFreeSpace":
+    """Check setup function."""
+    return CheckFreeSpace(coresys)
 
 
 class CheckFreeSpace(CheckBase):
