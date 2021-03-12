@@ -8,6 +8,7 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionNotFound
 from supervisor.resolution.const import IssueType
+from supervisor.resolution.validate import get_valid_modules
 
 
 async def test_check_setup(coresys: CoreSys):
@@ -86,3 +87,10 @@ async def test_get_checks(coresys: CoreSys):
         coresys.resolution.check.get("does_not_exsist")
 
     assert coresys.resolution.check.get("free_space")
+
+
+def test_dynamic_check_loader(coresys: CoreSys):
+    """Test dynamic check loader."""
+    coresys.resolution.check.load()
+    for check in get_valid_modules("checks"):
+        assert check in coresys.resolution.check._checks
