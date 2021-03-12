@@ -4,11 +4,22 @@ from typing import Any, Awaitable, Dict
 
 from aiohttp import web
 import attr
+import voluptuous as vol
 
-from ..const import ATTR_ISSUES, ATTR_SUGGESTIONS, ATTR_UNHEALTHY, ATTR_UNSUPPORTED
+from ..const import (
+    ATTR_CHECKS,
+    ATTR_ENABLED,
+    ATTR_ISSUES,
+    ATTR_SLUG,
+    ATTR_SUGGESTIONS,
+    ATTR_UNHEALTHY,
+    ATTR_UNSUPPORTED,
+)
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, ResolutionNotFound
-from .utils import api_process
+from .utils import api_process, api_validate
+
+SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): bool})
 
 
 class APIResoulution(CoreSysAttributes):
@@ -25,6 +36,10 @@ class APIResoulution(CoreSysAttributes):
                 for suggestion in self.sys_resolution.suggestions
             ],
             ATTR_ISSUES: [attr.asdict(issue) for issue in self.sys_resolution.issues],
+            ATTR_CHECKS: [
+                {ATTR_ENABLED: check.enabled, ATTR_SLUG: check.slug}
+                for check in self.sys_resolution.check.all_checks
+            ],
         }
 
     @api_process
@@ -62,3 +77,19 @@ class APIResoulution(CoreSysAttributes):
     def healthcheck(self, request: web.Request) -> Awaitable[None]:
         """Run backend healthcheck."""
         return asyncio.shield(self.sys_resolution.healthcheck())
+
+    @api_process
+    async def options_check(self, request: web.Request) -> None:
+        """Set options for check."""
+        body = await api_validate(SCHEMA_CHECK_OPTIONS, request)
+
+        try:
+            check = self.sys_resolution.check.get(request.match_info.get("check"))
+        except ResolutionNotFound:
+            raise APIError("The supplied check slug is not available") from None
+
+        # Apply options
+        if ATTR_ENABLED in body:
+            check.enabled = body[ATTR_ENABLED]
+
+        self.sys_resolution.save_data()

@@ -355,6 +355,10 @@ class ResolutionError(HassioError):
     """Raise if an error is happning on resoltuion."""
 
 
+class ResolutionCheckError(ResolutionError):
+    """Raise when there are an issue managing checks."""
+
+
 class ResolutionNotFound(ResolutionError):
     """Raise if suggestion/issue was not found."""
 

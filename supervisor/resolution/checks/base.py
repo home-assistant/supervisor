@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod, abstractproperty
 import logging
 from typing import List, Optional
 
-from ...const import CoreState
+from ...const import ATTR_ENABLED, CoreState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import ContextType, IssueType
 
@@ -41,10 +41,15 @@ class CheckBase(ABC, CoreSysAttributes):
             self.sys_resolution.dismiss_issue(issue)
 
         # System is not affected
-        if affected and not self.multiple:
+        if affected and self.context not in (ContextType.ADDON, ContextType.PLUGIN):
             return
         _LOGGER.info("Run check for %s/%s", self.issue, self.context)
         await self.run_check()
+
+    @property
+    def slug(self) -> str:
+        """Return the check slug."""
+        return self.__class__.__module__.split(".")[-1]
 
     @abstractmethod
     async def run_check(self) -> None:
@@ -65,11 +70,16 @@ class CheckBase(ABC, CoreSysAttributes):
         """Return a ContextType enum."""
 
     @property
-    def multiple(self) -> bool:
-        """Return True if they can have multiple issues referenced by reference."""
-        return self.context in (ContextType.ADDON, ContextType.PLUGIN)
-
-    @property
     def states(self) -> List[CoreState]:
         """Return a list of valid states when this check can run."""
         return []
+
+    @property
+    def enabled(self) -> bool:
+        """Return True if the check is enabled."""
+        return self.sys_resolution.check.data[self.slug][ATTR_ENABLED]
+
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        """Enable or disbable check."""
+        self.sys_resolution.check.data[self.slug][ATTR_ENABLED] = value

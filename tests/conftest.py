@@ -11,6 +11,7 @@ import pytest
 
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
+from supervisor.const import REQUEST_FROM
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
@@ -141,6 +142,7 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     coresys_obj._updater.save_data = MagicMock()
     coresys_obj._config.save_data = MagicMock()
     coresys_obj._jobs.save_data = MagicMock()
+    coresys_obj._resolution.save_data = MagicMock()
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
@@ -186,8 +188,15 @@ def sys_supervisor():
 @pytest.fixture
 async def api_client(aiohttp_client, coresys: CoreSys):
     """Fixture for RestAPI client."""
+
+    @web.middleware
+    async def _security_middleware(request: web.Request, handler: web.RequestHandler):
+        """Make request are from Core."""
+        request[REQUEST_FROM] = coresys.homeassistant
+        return await handler(request)
+
     api = RestAPI(coresys)
-    api.webapp = web.Application()
+    api.webapp = web.Application(middlewares=[_security_middleware])
     api.start = AsyncMock()
     await api.load()
     yield await aiohttp_client(api.webapp)

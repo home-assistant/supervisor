@@ -1,13 +1,15 @@
 """Supervisor resolution center."""
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from supervisor.const import CoreState
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
+from ..utils.common import FileConfiguration
 from .check import ResolutionCheck
 from .const import (
+    FILE_CONFIG_RESOLUTION,
     SCHEDULED_HEALTHCHECK,
     ContextType,
     IssueType,
@@ -19,15 +21,18 @@ from .data import Issue, Suggestion
 from .evaluate import ResolutionEvaluation
 from .fixup import ResolutionFixup
 from .notify import ResolutionNotify
+from .validate import SCHEMA_RESOLUTION_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class ResolutionManager(CoreSysAttributes):
+class ResolutionManager(FileConfiguration, CoreSysAttributes):
     """Resolution manager for supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Resolution manager."""
+        super().__init__(FILE_CONFIG_RESOLUTION, SCHEMA_RESOLUTION_CONFIG)
+
         self.coresys: CoreSys = coresys
         self._evaluate = ResolutionEvaluation(coresys)
         self._check = ResolutionCheck(coresys)
@@ -38,6 +43,11 @@ class ResolutionManager(CoreSysAttributes):
         self._issues: List[Issue] = []
         self._unsupported: List[UnsupportedReason] = []
         self._unhealthy: List[UnhealthyReason] = []
+
+    @property
+    def data(self) -> Dict[str, Any]:
+        """Return data."""
+        return self._data
 
     @property
     def evaluate(self) -> ResolutionEvaluation:

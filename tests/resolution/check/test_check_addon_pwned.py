@@ -17,6 +17,13 @@ class TestAddon:
     is_installed = True
 
 
+async def test_base(coresys: CoreSys):
+    """Test check basics."""
+    addon_pwned = CheckAddonPwned(coresys)
+    assert addon_pwned.slug == "addon_pwned"
+    assert addon_pwned.enabled
+
+
 async def test_check(coresys: CoreSys):
     """Test check."""
     addon_pwned = CheckAddonPwned(coresys)

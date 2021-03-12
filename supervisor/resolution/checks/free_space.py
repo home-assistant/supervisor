@@ -1,5 +1,4 @@
 """Helpers to check and fix issues with free space."""
-import logging
 from typing import List, Optional
 
 from ...const import SNAPSHOT_FULL, CoreState
@@ -12,8 +11,6 @@ from ..const import (
 )
 from ..data import Suggestion
 from .base import CheckBase
-
-_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class CheckFreeSpace(CheckBase):
