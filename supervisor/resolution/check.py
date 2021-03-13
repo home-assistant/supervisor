@@ -36,7 +36,8 @@ class ResolutionCheck(CoreSysAttributes):
         package = f"{__package__}.checks"
         for module in get_valid_modules("checks"):
             check_module = import_module(f"{package}.{module}")
-            self._checks[check.slug] = check_module.setup(self.coresys)
+            check = check_module.setup(self.coresys)
+            self._checks[check.slug] = check
 
     def get(self, slug: str) -> CheckBase:
         """Return check based on slug."""
