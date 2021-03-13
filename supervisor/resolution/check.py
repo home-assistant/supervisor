@@ -19,7 +19,7 @@ class ResolutionCheck(CoreSysAttributes):
         """Initialize the checks class."""
         self.coresys = coresys
         self._checks: Dict[str, CheckBase] = {}
-        self.load()
+        self._load()
 
     @property
     def data(self) -> Dict[str, Any]:
@@ -31,15 +31,13 @@ class ResolutionCheck(CoreSysAttributes):
         """Return all list of all checks."""
         return list(self._checks.values())
 
-    def load(self):
+    def _load(self):
         """Load all checks."""
         package = f"{__package__}.checks"
         for module in get_valid_modules("checks"):
             check_module = import_module(f"{package}.{module}")
             check = check_module.setup(self.coresys)
-
-            if check.slug not in self._checks:
-                self._checks[check.slug] = check
+            self._checks[check.slug] = check
 
     def get(self, slug: str) -> CheckBase:
         """Return check based on slug."""
