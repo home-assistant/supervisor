@@ -93,3 +93,13 @@ class APIResoulution(CoreSysAttributes):
             check.enabled = body[ATTR_ENABLED]
 
         self.sys_resolution.save_data()
+
+    @api_process
+    async def run_check(self, request: web.Request) -> None:
+        """Execute a backend check."""
+        try:
+            check = self.sys_resolution.check.get(request.match_info.get("check"))
+        except ResolutionNotFound:
+            raise APIError("The supplied check slug is not available") from None
+
+        await check()
