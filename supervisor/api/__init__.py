@@ -231,6 +231,7 @@ class RestAPI(CoreSysAttributes):
                 web.post(
                     "/resolution/check/{check}/options", api_resolution.options_check
                 ),
+                web.post("/resolution/check/{check}/run", api_resolution.run_check),
                 web.post(
                     "/resolution/suggestion/{suggestion}",
                     api_resolution.apply_suggestion,
