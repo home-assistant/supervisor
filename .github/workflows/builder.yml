@@ -131,7 +131,7 @@ jobs:
         if: needs.init.outputs.publish == 'true'
         uses: docker://codenotary/vcn:0.9
         with:
-          args: notarize docker://homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}
+          args: notarize --public docker://homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}
         env:
           VCN_USER: ${{ secrets.VCN_USER }}
           VCN_PASSWORD: ${{ secrets.VCN_PASSWORD }}
