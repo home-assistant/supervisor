@@ -413,6 +413,17 @@ class DockerAddon(DockerInterface):
                 }
             )
 
+        # Systemd Journal access
+        if self.addon.with_systemd_journal:
+            volumes.update(
+                {
+                    "/var/log/journal": {
+                        "bind": "/var/log/journal",
+                        "mode": "ro",
+                    }
+                }
+            )
+
         return volumes
 
     def _run(self) -> None:

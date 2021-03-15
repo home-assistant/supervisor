@@ -54,6 +54,7 @@ from ..const import (
     ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STDIN,
+    ATTR_SYSTEMD_JOURNAL,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_TRANSLATIONS,
@@ -549,6 +550,11 @@ class AddonModel(CoreSysAttributes, ABC):
         if isinstance(raw_schema, bool):
             return None
         return UiOptions(self.coresys)(raw_schema)
+
+    @property
+    def with_systemd_journal(self) -> bool:
+        """Return True if the add-on access to systemd journal."""
+        return self.data[ATTR_SYSTEMD_JOURNAL]
 
     def __eq__(self, other):
         """Compaired add-on objects."""

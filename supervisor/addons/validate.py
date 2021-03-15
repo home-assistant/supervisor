@@ -72,6 +72,7 @@ from ..const import (
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_SYSTEM,
+    ATTR_SYSTEMD_JOURNAL,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_TRANSLATIONS,
@@ -299,6 +300,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_TIMEOUT, default=10): vol.All(
             vol.Coerce(int), vol.Range(min=10, max=300)
         ),
+        vol.Optional(ATTR_SYSTEMD_JOURNAL, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )
