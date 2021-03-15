@@ -129,16 +129,12 @@ jobs:
 
       - name: Signing image
         if: needs.init.outputs.publish == 'true'
-        shell: bash
-        run: |
-          bash <(curl https://getvcn.codenotary.com -L)
-
-          vcn login
-          vcn notarize --public docker://homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}
-        env:
-          VCN_USER: ${{ secrets.VCN_USER }}
-          VCN_PASSWORD: ${{ secrets.VCN_PASSWORD }}
-          VCN_ORG: ${{ secrets.VCN_ORG }}
+        uses: home-assistant/actions/helpers/codenotary@master
+        with:
+          source: docker://homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}
+          user: ${{ secrets.VCN_USER }}
+          password: ${{ secrets.VCN_PASSWORD }}
+          organisation: ${{ secrets.VCN_ORG }}
 
   version:
     name: Update version
