@@ -1,14 +1,13 @@
 """Helpers to checks the system."""
+from importlib import import_module
 import logging
 from typing import Any, Dict, List
 
 from ..const import ATTR_CHECKS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionNotFound
-from .checks.addon_pwned import CheckAddonPwned
 from .checks.base import CheckBase
-from .checks.core_security import CheckCoreSecurity
-from .checks.free_space import CheckFreeSpace
+from .validate import get_valid_modules
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -19,9 +18,8 @@ class ResolutionCheck(CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the checks class."""
         self.coresys = coresys
-        self._core_security = CheckCoreSecurity(coresys)
-        self._free_space = CheckFreeSpace(coresys)
-        self._addon_pwned = CheckAddonPwned(coresys)
+        self._checks: Dict[str, CheckBase] = {}
+        self._load()
 
     @property
     def data(self) -> Dict[str, Any]:
@@ -31,14 +29,21 @@ class ResolutionCheck(CoreSysAttributes):
     @property
     def all_checks(self) -> List[CheckBase]:
         """Return all list of all checks."""
-        return [self._core_security, self._free_space, self._addon_pwned]
+        return list(self._checks.values())
+
+    def _load(self):
+        """Load all checks."""
+        package = f"{__package__}.checks"
+        for module in get_valid_modules("checks"):
+            check_module = import_module(f"{package}.{module}")
+            check = check_module.setup(self.coresys)
+            self._checks[check.slug] = check
 
     def get(self, slug: str) -> CheckBase:
         """Return check based on slug."""
-        for check in self.all_checks:
-            if slug != check.slug:
-                continue
-            return check
+        if slug in self._checks:
+            return self._checks[slug]
+
         raise ResolutionNotFound(f"Check with slug {slug} not found!")
 
     async def check_system(self) -> None:

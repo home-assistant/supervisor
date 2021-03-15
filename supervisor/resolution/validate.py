@@ -7,7 +7,7 @@ import voluptuous as vol
 from ..const import ATTR_CHECKS, ATTR_ENABLED
 
 
-def _get_valid_modules(folder) -> List[str]:
+def get_valid_modules(folder) -> List[str]:
     """Validate check name."""
     module_files = Path(__file__).parent.joinpath(folder)
     if not module_files.exists():
@@ -30,7 +30,7 @@ SCHEMA_CHECK_CONFIG = vol.Schema(
 SCHEMA_CHECKS_CONFIG = vol.Schema(
     {
         vol.Required(check, default=SCHEMA_CHECK_CONFIG({})): SCHEMA_CHECK_CONFIG
-        for check in _get_valid_modules("checks")
+        for check in get_valid_modules("checks")
     },
     extra=vol.REMOVE_EXTRA,
 )

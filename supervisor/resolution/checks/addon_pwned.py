@@ -4,12 +4,18 @@ from datetime import timedelta
 from typing import List, Optional
 
 from ...const import AddonState, CoreState
+from ...coresys import CoreSys
 from ...exceptions import PwnedConnectivityError, PwnedError
 from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
 from ...utils.pwned import check_pwned_password
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
+
+
+def setup(coresys: CoreSys) -> "CheckAddonPwned":
+    """Check setup function."""
+    return CheckAddonPwned(coresys)
 
 
 class CheckAddonPwned(CheckBase):
