@@ -127,6 +127,15 @@ jobs:
             --target /data \
             --generic ${{ needs.init.outputs.version }}
 
+      - name: Signing image
+        if: needs.init.outputs.publish == 'true'
+        uses: home-assistant/actions/helpers/codenotary@master
+        with:
+          source: docker://homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}
+          user: ${{ secrets.VCN_USER }}
+          password: ${{ secrets.VCN_PASSWORD }}
+          organisation: ${{ secrets.VCN_ORG }}
+
   version:
     name: Update version
     needs: ["init", "run_supervisor"]
