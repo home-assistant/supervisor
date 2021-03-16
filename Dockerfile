@@ -47,7 +47,7 @@ RUN \
         exit 1; \
     fi \
     \
-    && rm -rf /root/go \
+    && rm -rf /root/go /root/.cache \
     && mv vcn /usr/bin/vcn \
     \
     && apk del .build-dependencies \
