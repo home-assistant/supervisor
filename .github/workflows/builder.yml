@@ -136,6 +136,31 @@ jobs:
           password: ${{ secrets.VCN_PASSWORD }}
           organisation: ${{ secrets.VCN_ORG }}
 
+  codenotary:
+    name: CodeNotary signature
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set version
+        if: needs.init.outputs.publish == 'true'
+        uses: home-assistant/actions/helpers/version@master
+        with:
+          type: ${{ env.BUILD_TYPE }}
+
+      - name: Signing image
+        if: needs.init.outputs.publish == 'true'
+        uses: home-assistant/actions/helpers/codenotary@master
+        with:
+          source: dir://${{ GITHUB_WORKSPACE }}
+          user: ${{ secrets.VCN_USER }}
+          password: ${{ secrets.VCN_PASSWORD }}
+          organisation: ${{ secrets.VCN_ORG }}
+
   version:
     name: Update version
     needs: ["init", "run_supervisor"]
@@ -164,7 +189,7 @@ jobs:
   run_supervisor:
     runs-on: ubuntu-latest
     name: Run the Supervisor
-    needs: ["build"]
+    needs: ["build", "codenotary"]
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
