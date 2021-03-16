@@ -2,7 +2,10 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Set
+from typing import Awaitable, Set
+
+from awesomeversion.awesomeversion import AwesomeVersion
+from awesomeversion.exceptions import AwesomeVersionCompare
 
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
@@ -263,9 +266,7 @@ class SnapshotManager(CoreSysAttributes):
                 # Start homeassistant restore
                 _LOGGER.info("Restoring %s Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
-                task_hass = self.sys_create_task(
-                    self.sys_homeassistant.core.update(snapshot.homeassistant_version)
-                )
+                task_hass = self._update_core_task(snapshot.homeassistant_version)
 
                 # Restore repositories
                 _LOGGER.info("Restoring %s Repositories", snapshot.slug)
@@ -354,11 +355,7 @@ class SnapshotManager(CoreSysAttributes):
                 task_hass = None
                 if homeassistant:
                     _LOGGER.info("Restoring %s Home-Assistant", snapshot.slug)
-                    task_hass = self.sys_create_task(
-                        self.sys_homeassistant.core.update(
-                            snapshot.homeassistant_version
-                        )
-                    )
+                    task_hass = self._update_core_task(snapshot.homeassistant_version)
 
                 if addons:
                     _LOGGER.info("Restoring %s Repositories", snapshot.slug)
@@ -393,3 +390,16 @@ class SnapshotManager(CoreSysAttributes):
         finally:
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
+
+    def _update_core_task(self, version: AwesomeVersion) -> Awaitable[None]:
+        """Process core update if needed and make awaitable object."""
+
+        async def _core_update():
+            try:
+                if version == self.sys_homeassistant.version:
+                    return
+            except (AwesomeVersionCompare, TypeError):
+                pass
+            await self.sys_homeassistant.core.update(version)
+
+        return self.sys_create_task(_core_update())

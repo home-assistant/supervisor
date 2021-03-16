@@ -143,8 +143,9 @@ class HassOS(CoreSysAttributes):
         # Check installed version
         self._check_host()
         if version == self.version:
-            _LOGGER.warning("Version %s is already installed", version)
-            raise HassOSUpdateError()
+            raise HassOSUpdateError(
+                f"Version {version!s} is already installed", _LOGGER.warning
+            )
 
         # Fetch files from internet
         int_ota = await self._download_raucb(version)

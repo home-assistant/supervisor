@@ -182,8 +182,9 @@ class HomeAssistantCore(CoreSysAttributes):
         exists = await self.instance.exists()
 
         if exists and version == self.instance.version:
-            _LOGGER.warning("Version %s is already installed", version)
-            return
+            raise HomeAssistantUpdateError(
+                f"Version {version!s} is already installed", _LOGGER.warning
+            )
 
         # process an update
         async def _update(to_version: AwesomeVersion) -> None:
@@ -194,8 +195,9 @@ class HomeAssistantCore(CoreSysAttributes):
                     to_version, image=self.sys_updater.image_homeassistant
                 )
             except DockerError as err:
-                _LOGGER.warning("Updating Home Assistant image failed")
-                raise HomeAssistantUpdateError() from err
+                raise HomeAssistantUpdateError(
+                    "Updating Home Assistant image failed", _LOGGER.warning
+                ) from err
             else:
                 self.sys_homeassistant.version = self.instance.version
                 self.sys_homeassistant.image = self.sys_updater.image_homeassistant
@@ -344,8 +346,7 @@ class HomeAssistantCore(CoreSysAttributes):
 
         # If not valid
         if result.exit_code is None:
-            _LOGGER.error("Fatal error on config check!")
-            raise HomeAssistantError()
+            raise HomeAssistantError("Fatal error on config check!", _LOGGER.error)
 
         # Convert output
         log = convert_to_ascii(result.output)

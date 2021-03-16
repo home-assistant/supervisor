@@ -1,8 +1,21 @@
 """Core Exceptions."""
 
 
+from typing import Callable, Optional
+
+
 class HassioError(Exception):
     """Root exception."""
+
+    def __init__(
+        self,
+        message: Optional[str] = None,
+        logger: Optional[Callable[..., None]] = None,
+    ) -> None:
+        """Raise & log."""
+        if logger:
+            logger(message)
+        super().__init__(message)
 
 
 class HassioNotSupportedError(HassioError):
