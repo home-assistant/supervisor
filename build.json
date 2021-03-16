@@ -7,6 +7,9 @@
     "amd64": "homeassistant/amd64-base-python:3.8-alpine3.13",
     "i386": "homeassistant/i386-base-python:3.8-alpine3.13"
   },
+  "args": {
+    "VCN_VERSION": "0.9.4"
+  },
   "labels": {
     "io.hass.type": "supervisor"
   }
