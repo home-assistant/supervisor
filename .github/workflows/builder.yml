@@ -156,7 +156,7 @@ jobs:
         if: needs.init.outputs.publish == 'true'
         uses: home-assistant/actions/helpers/codenotary@master
         with:
-          source: dir://${{ GITHUB_WORKSPACE }}
+          source: dir://${{ github.workspace }}
           user: ${{ secrets.VCN_USER }}
           password: ${{ secrets.VCN_PASSWORD }}
           organisation: ${{ secrets.VCN_ORG }}
