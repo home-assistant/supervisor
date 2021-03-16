@@ -1,14 +1,27 @@
 ARG BUILD_FROM
+FROM ${BUILD_FROM}
 
-FROM $BUILD_FROM AS builder
+ENV \
+    S6_SERVICES_GRACETIME=10000 \
+    SUPERVISOR_API=http://localhost
 
-ARG VCN_VERSION
 ARG BUILD_ARCH
+ARG VCN_VERSION
 WORKDIR /usr/src
 
+# Install base
 RUN \
     set -x \
     && apk add --no-cache \
+        eudev \
+        eudev-libs \
+        git \
+        glib \
+        libffi \
+        libpulse \
+        musl \
+        openssl
+    && apk add --no-cache --virtual .build-dependencies \
         build-base \
         go \
         git \
@@ -32,30 +45,13 @@ RUN \
         GOARCH=amd64 go build -o vcn -ldflags="-s -w" ./cmd/vcn; \
     else \
         exit 1; \
-    fi
-
-
-FROM $BUILD_FROM
-
-ENV \
-    S6_SERVICES_GRACETIME=10000 \
-    SUPERVISOR_API=http://localhost
-
-# Install base
-COPY --from=builder /usr/src/vcn /usr/bin/vcn
-RUN \
-    apk add --no-cache \
-        eudev \
-        eudev-libs \
-        git \
-        glib \
-        libffi \
-        libpulse \
-        musl \
-        openssl
-
-ARG BUILD_ARCH
-WORKDIR /usr/src
+    fi \
+    \
+    && rm -rf /root/go \
+    && mv vcn /usr/bin/vcn \
+    \
+    && apk del .build-dependencies \
+    && rm -rf /usr/src/vcn
 
 # Install requirements
 COPY requirements.txt .
