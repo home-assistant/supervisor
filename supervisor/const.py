@@ -27,6 +27,7 @@ MACHINE_ID = Path("/etc/machine-id")
 SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 SOCKET_DOCKER = Path("/run/docker.sock")
 RUN_SUPERVISOR_STATE = Path("/run/supervisor")
+SYSTEMD_JOURNAL = Path("/var/logs/journal")
 
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
@@ -279,7 +280,7 @@ ATTR_SUPERVISOR_INTERNET = "supervisor_internet"
 ATTR_SUPPORTED = "supported"
 ATTR_SUPPORTED_ARCH = "supported_arch"
 ATTR_SYSTEM = "system"
-ATTR_SYSTEMD_JOURNAL = "systemd-journal"
+ATTR_JOURNALD = "journald"
 ATTR_TIMEOUT = "timeout"
 ATTR_TIMEZONE = "timezone"
 ATTR_TITLE = "title"

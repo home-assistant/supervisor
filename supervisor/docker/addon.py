@@ -26,6 +26,7 @@ from ..const import (
     MAP_SSL,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
+    SYSTEMD_JOURNAL,
 )
 from ..coresys import CoreSys
 from ..exceptions import CoreDNSError, DockerError, DockerNotFound, HardwareNotFound
@@ -413,12 +414,12 @@ class DockerAddon(DockerInterface):
                 }
             )
 
-        # Systemd Journal access
-        if self.addon.with_systemd_journal:
+        # System Journal access
+        if self.addon.with_journald:
             volumes.update(
                 {
-                    "/var/log/journal": {
-                        "bind": "/var/log/journal",
+                    str(SYSTEMD_JOURNAL): {
+                        "bind": str(SYSTEMD_JOURNAL),
                         "mode": "ro",
                     }
                 }
