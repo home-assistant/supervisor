@@ -85,12 +85,12 @@ class HassOS(CoreSysAttributes):
                             break
                         ota_file.write(chunk)
 
-            _LOGGER.info("OTA update is downloaded on %s", raucb)
+            _LOGGER.info("Completed download of OTA update file %s", raucb)
             return raucb
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             self.sys_supervisor.connectivity = False
-            _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
+            _LOGGER.warning("Can't fetch OTA update from %s: %s", url, err)
 
         except OSError as err:
             _LOGGER.error("Can't write OTA file: %s", err)
@@ -121,7 +121,9 @@ class HassOS(CoreSysAttributes):
         await self.sys_dbus.rauc.update()
 
         _LOGGER.info(
-            "Detect HassOS %s / BootSlot %s", self.version, self.sys_dbus.rauc.boot_slot
+            "Detect Home Assistant Operating System %s / BootSlot %s",
+            self.version,
+            self.sys_dbus.rauc.boot_slot,
         )
 
     def config_sync(self) -> Awaitable[None]:
