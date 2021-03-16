@@ -138,10 +138,11 @@ jobs:
 
   codenotary:
     name: CodeNotary signature
-    needs: build
+    needs: init
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
+        if: needs.init.outputs.publish == 'true'
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
