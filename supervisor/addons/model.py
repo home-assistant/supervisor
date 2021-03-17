@@ -32,6 +32,7 @@ from ..const import (
     ATTR_IMAGE,
     ATTR_INGRESS,
     ATTR_INIT,
+    ATTR_JOURNALD,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -549,6 +550,11 @@ class AddonModel(CoreSysAttributes, ABC):
         if isinstance(raw_schema, bool):
             return None
         return UiOptions(self.coresys)(raw_schema)
+
+    @property
+    def with_journald(self) -> bool:
+        """Return True if the add-on accesses the system journal."""
+        return self.data[ATTR_JOURNALD]
 
     def __eq__(self, other):
         """Compaired add-on objects."""

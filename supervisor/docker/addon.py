@@ -26,6 +26,7 @@ from ..const import (
     MAP_SSL,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
+    SYSTEMD_JOURNAL,
 )
 from ..coresys import CoreSys
 from ..exceptions import CoreDNSError, DockerError, DockerNotFound, HardwareNotFound
@@ -410,6 +411,17 @@ class DockerAddon(DockerInterface):
                         "bind": "/etc/asound.conf",
                         "mode": "ro",
                     },
+                }
+            )
+
+        # System Journal access
+        if self.addon.with_journald:
+            volumes.update(
+                {
+                    str(SYSTEMD_JOURNAL): {
+                        "bind": str(SYSTEMD_JOURNAL),
+                        "mode": "ro",
+                    }
                 }
             )
 

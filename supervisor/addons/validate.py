@@ -45,6 +45,7 @@ from ..const import (
     ATTR_INGRESS_PORT,
     ATTR_INGRESS_TOKEN,
     ATTR_INIT,
+    ATTR_JOURNALD,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -299,6 +300,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_TIMEOUT, default=10): vol.All(
             vol.Coerce(int), vol.Range(min=10, max=300)
         ),
+        vol.Optional(ATTR_JOURNALD, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )
