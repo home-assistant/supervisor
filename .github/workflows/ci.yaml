@@ -428,4 +428,4 @@ jobs:
           coverage report
           coverage xml
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1.2.2
+        uses: codecov/codecov-action@v1.3.1
