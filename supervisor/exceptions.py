@@ -320,6 +320,17 @@ class PwnedConnectivityError(PwnedError):
     """Connectivity errors while checking pwned passwords."""
 
 
+# util/codenotary
+
+
+class CodeNotaryError(HassioError):
+    """Error general with CodeNotary."""
+
+
+class CodeNotaryUntrusted(CodeNotaryError):
+    """Error on untrusted content."""
+
+
 # docker/api
 
 

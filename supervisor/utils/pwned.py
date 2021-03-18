@@ -2,15 +2,16 @@
 import asyncio
 import io
 import logging
+from typing import Set
 
 import aiohttp
 
 from ..exceptions import PwnedConnectivityError, PwnedError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-_API_CALL = "https://api.pwnedpasswords.com/range/{hash}"
+_API_CALL: str = "https://api.pwnedpasswords.com/range/{hash}"
 
-_CACHE = set()
+_CACHE: Set[str] = set()
 
 
 async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) -> bool:
@@ -27,7 +28,9 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
             _API_CALL.format(hash=sha1_short), timeout=aiohttp.ClientTimeout(total=10)
         ) as request:
             if request.status != 200:
-                raise PwnedError()
+                raise PwnedError(
+                    f"Pwned service response with {request.status}", _LOGGER.warning
+                )
             data = await request.text()
 
         buffer = io.StringIO(data)
@@ -38,7 +41,8 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
             return True
 
     except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-        _LOGGER.warning("Can't fetch hibp data: %s", err)
-        raise PwnedConnectivityError() from err
+        raise PwnedConnectivityError(
+            f"Can't fetch hibp data: {err}", _LOGGER.warning
+        ) from err
 
     return False
