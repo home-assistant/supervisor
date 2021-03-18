@@ -42,7 +42,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
 
     except (aiohttp.ClientError, asyncio.TimeoutError) as err:
         raise PwnedConnectivityError(
-            f"Can't fetch hibp data: {err}", _LOGGER.warning
+            f"Can't fetch HIBP data: {err}", _LOGGER.warning
         ) from err
 
     return False

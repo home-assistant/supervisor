@@ -203,7 +203,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
             await self.sys_verify_content(checksum=calc_checksum(data))
         except CodeNotaryUntrusted as err:
             _LOGGER.critical(
-                "Content-Trust is broaken for the version file fetch! - %s", err
+                "Content-Trust is broken for the version file fetch! - %s", err
             )
         except CodeNotaryError as err:
             _LOGGER.error("CodeNotary error while processing version checks: %s", err)

@@ -1,4 +1,4 @@
-"""Small wrapper for haveibeenpwned.com API."""
+"""Small wrapper for CodeNotary."""
 import asyncio
 import hashlib
 import json
