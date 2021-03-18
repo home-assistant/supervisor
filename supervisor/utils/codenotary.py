@@ -80,6 +80,7 @@ async def vcn_validate(
     # Parse data
     try:
         data_json = json.loads(data)
+        _LOGGER.debug("CodeNotary response with: %s", data_json)
     except (json.JSONDecodeError, UnicodeDecodeError) as err:
         raise CodeNotaryError(
             f"Can't parse CodeNotary output: {data!s} - {err!s}", _LOGGER.error
@@ -91,4 +92,4 @@ async def vcn_validate(
     if data_json[_ATTR_VERIFICATION][_ATTR_STATUS] == 0:
         _CACHE.add((checksum, path, org, signer))
     else:
-        raise CodeNotaryUntrusted(f"{data!s}", _LOGGER.debug)
+        raise CodeNotaryUntrusted()
