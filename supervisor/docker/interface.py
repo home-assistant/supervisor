@@ -170,9 +170,20 @@ class DockerInterface(CoreSysAttributes):
                 # Try login if we have defined credentials
                 self._docker_login(image)
 
+            # Pull new image
             docker_image = self.sys_docker.images.pull(f"{image}:{version!s}")
-            self._validate_trust(docker_image.id)
 
+            # Validate content
+            try:
+                self._validate_trust(docker_image.id)
+            except CodeNotaryError:
+                with suppress(docker.errors.DockerException):
+                    self.sys_docker.images.remove(
+                        image=f"{image}:{version!s}", force=True
+                    )
+                raise
+
+            # Tag latest
             if latest:
                 _LOGGER.info(
                     "Tagging image %s with version %s as latest", image, version
