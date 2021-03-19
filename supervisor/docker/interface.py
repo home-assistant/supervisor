@@ -602,7 +602,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _validate_trust(self, image_id: str) -> None:
         """Validate trust of content."""
-        checksum = image_id.partition(":")[1]
+        checksum = image_id.partition(":")[2]
         job = asyncio.run_coroutine_threadsafe(
             self.sys_verify_content(checksum=checksum), self.sys_loop
         )
