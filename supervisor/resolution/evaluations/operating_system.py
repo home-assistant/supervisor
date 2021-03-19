@@ -2,10 +2,16 @@
 from typing import List
 
 from ...const import CoreState
+from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 
 SUPPORTED_OS = ["Debian GNU/Linux 10 (buster)"]
+
+
+def setup(coresys: CoreSys) -> EvaluateBase:
+    """Initialize evaluation-setup function."""
+    return EvaluateOperatingSystem(coresys)
 
 
 class EvaluateOperatingSystem(EvaluateBase):

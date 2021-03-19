@@ -353,6 +353,10 @@ jobs:
         id: python
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install CodeNotary
+        shell: bash
+        run: |
+          bash <(curl https://getvcn.codenotary.com -L)
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v2.1.4

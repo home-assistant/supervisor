@@ -58,3 +58,6 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
             self.version,
             self.sys_docker.network.dns,
         )
+
+    def _validate_trust(self, image_id: str) -> None:
+        """Validate trust of content."""

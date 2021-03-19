@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Coroutine, Optional, TypeVar
@@ -12,6 +13,8 @@ import sentry_sdk
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV
 from .docker import DockerAPI
+from .exceptions import CodeNotaryUntrusted
+from .resolution.const import UnhealthyReason
 from .utils.codenotary import vcn_validate
 
 if TYPE_CHECKING:
@@ -40,6 +43,8 @@ if TYPE_CHECKING:
 
 
 T = TypeVar("T")
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class CoreSys:
@@ -613,8 +618,16 @@ class CoreSysAttributes:
         """Capture a exception."""
         sentry_sdk.capture_exception(err)
 
-    def sys_verify_content(
+    async def sys_verify_content(
         self, checksum: Optional[str] = None, path: Optional[Path] = None
-    ) -> Awaitable[bool]:
+    ) -> Awaitable[None]:
         """Verify content from HA org."""
-        return vcn_validate(checksum, path, org="home-assistant.io")
+        if not self.sys_config.content_trust:
+            _LOGGER.warning("Disabled content-trust, skip validation")
+            return
+
+        try:
+            await vcn_validate(checksum, path, org="home-assistant.io")
+        except CodeNotaryUntrusted:
+            self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
+            raise

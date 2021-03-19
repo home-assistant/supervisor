@@ -19,7 +19,15 @@ from ..const import (
     LABEL_VERSION,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
+from ..exceptions import (
+    CodeNotaryError,
+    CodeNotaryUntrusted,
+    DockerAPIError,
+    DockerError,
+    DockerNotFound,
+    DockerRequestError,
+    DockerTrustError,
+)
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from .stats import DockerStats
@@ -162,7 +170,20 @@ class DockerInterface(CoreSysAttributes):
                 # Try login if we have defined credentials
                 self._docker_login(image)
 
+            # Pull new image
             docker_image = self.sys_docker.images.pull(f"{image}:{version!s}")
+
+            # Validate content
+            try:
+                self._validate_trust(docker_image.id)
+            except CodeNotaryError:
+                with suppress(docker.errors.DockerException):
+                    self.sys_docker.images.remove(
+                        image=f"{image}:{version!s}", force=True
+                    )
+                raise
+
+            # Tag latest
             if latest:
                 _LOGGER.info(
                     "Tagging image %s with version %s as latest", image, version
@@ -182,9 +203,20 @@ class DockerInterface(CoreSysAttributes):
                 )
             raise DockerError() from err
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Unknown error with %s:%s -> %s", image, version, err)
             self.sys_capture_exception(err)
-            raise DockerError() from err
+            raise DockerError(
+                f"Unknown error with {image}:{version} -> {err!s}", _LOGGER.error
+            ) from err
+        except CodeNotaryUntrusted as err:
+            raise DockerTrustError(
+                f"Pulled image {image}:{version} failed on content-trust verification!",
+                _LOGGER.critical,
+            ) from err
+        except CodeNotaryError as err:
+            raise DockerTrustError(
+                f"Error happened on Content-Trust check for {image}:{version}: {err!s}",
+                _LOGGER.error,
+            ) from err
         else:
             self._meta = docker_image.attrs
 
@@ -578,3 +610,11 @@ class DockerInterface(CoreSysAttributes):
             raise DockerError() from err
 
         return CommandReturn(code, output)
+
+    def _validate_trust(self, image_id: str) -> None:
+        """Validate trust of content."""
+        checksum = image_id.partition(":")[2]
+        job = asyncio.run_coroutine_threadsafe(
+            self.sys_verify_content(checksum=checksum), self.sys_loop
+        )
+        job.result(timeout=20)

@@ -312,6 +312,7 @@ ATTR_WAIT_BOOT = "wait_boot"
 ATTR_WATCHDOG = "watchdog"
 ATTR_WEBUI = "webui"
 ATTR_WIFI = "wifi"
+ATTR_CONTENT_TRUST = "content_trust"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

@@ -11,6 +11,7 @@ from .const import (
     ATTR_AUDIO,
     ATTR_CHANNEL,
     ATTR_CLI,
+    ATTR_CONTENT_TRUST,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DIAGNOSTICS,
@@ -147,6 +148,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
         vol.Optional(ATTR_DEBUG, default=False): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK, default=False): vol.Boolean(),
         vol.Optional(ATTR_DIAGNOSTICS, default=None): vol.Maybe(vol.Boolean()),
+        vol.Optional(ATTR_CONTENT_TRUST, default=True): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )

@@ -11,7 +11,7 @@ from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
 
 
-def setup(coresys: CoreSys) -> "CheckCoreSecurity":
+def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
     return CheckCoreSecurity(coresys)
 

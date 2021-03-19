@@ -44,6 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         dbus \
         network-manager \
         libpulse0 \
+    && bash <(curl https://getvcn.codenotary.com -L) \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies from requirements.txt if it exists

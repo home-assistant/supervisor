@@ -18,6 +18,11 @@ DOCKER_IMAGE_DENYLIST = [
 ]
 
 
+def setup(coresys: CoreSys) -> EvaluateBase:
+    """Initialize evaluation-setup function."""
+    return EvaluateContainer(coresys)
+
+
 class EvaluateContainer(EvaluateBase):
     """Evaluate container."""
 

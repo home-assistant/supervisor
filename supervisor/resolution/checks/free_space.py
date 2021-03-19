@@ -14,7 +14,7 @@ from ..data import Suggestion
 from .base import CheckBase
 
 
-def setup(coresys: CoreSys) -> "CheckFreeSpace":
+def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
     return CheckFreeSpace(coresys)
 
