@@ -1,11 +1,11 @@
 """Common test functions."""
+import asyncio
 from pathlib import Path
 import re
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp import web
-from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
 
@@ -130,9 +130,6 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     ), patch(
         "supervisor.bootstrap.fetch_timezone",
         return_value="Europe/Zurich",
-    ), patch(
-        "aiohttp.ClientSession",
-        return_value=TestClient.session,
     ):
         coresys_obj = await initialize_coresys()
 
@@ -166,6 +163,10 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     )
 
     yield coresys_obj
+
+    await asyncio.gather(
+        coresys_obj.websession.close(), coresys_obj.websession_ssl.close()
+    )
 
 
 @pytest.fixture
