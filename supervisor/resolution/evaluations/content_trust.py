@@ -1,4 +1,4 @@
-"""Evaluation class for Job Conditions."""
+"""Evaluation class for Content Trust."""
 from typing import List
 
 from ...const import CoreState
@@ -9,11 +9,11 @@ from .base import EvaluateBase
 
 def setup(coresys: CoreSys) -> EvaluateBase:
     """Initialize evaluation-setup function."""
-    return EvaluateTrust(coresys)
+    return EvaluateContentTrust(coresys)
 
 
-class EvaluateTrust(EvaluateBase):
-    """Evaluate system trust level."""
+class EvaluateContentTrust(EvaluateBase):
+    """Evaluate system content trust level."""
 
     @property
     def reason(self) -> UnsupportedReason:
