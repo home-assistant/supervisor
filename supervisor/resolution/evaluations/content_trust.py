@@ -18,7 +18,7 @@ class EvaluateTrust(EvaluateBase):
     @property
     def reason(self) -> UnsupportedReason:
         """Return a UnsupportedReason enum."""
-        return UnsupportedReason.TRUST
+        return UnsupportedReason.CONTENT_TRUST
 
     @property
     def on_failure(self) -> str:
