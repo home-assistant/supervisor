@@ -623,7 +623,7 @@ class CoreSysAttributes:
     ) -> Awaitable[None]:
         """Verify content from HA org."""
         if not self.sys_config.content_trust:
-            _LOGGER.warning("Disabled content-trust, skeep request")
+            _LOGGER.warning("Disabled content-trust, skip validation")
             return
 
         try:
