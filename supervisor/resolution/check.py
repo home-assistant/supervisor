@@ -19,6 +19,7 @@ class ResolutionCheck(CoreSysAttributes):
         """Initialize the checks class."""
         self.coresys = coresys
         self._checks: Dict[str, CheckBase] = {}
+
         self._load()
 
     @property

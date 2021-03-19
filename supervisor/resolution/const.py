@@ -37,6 +37,7 @@ class UnsupportedReason(str, Enum):
     PRIVILEGED = "privileged"
     SYSTEMD = "systemd"
     JOB_CONDITIONS = "job_conditions"
+    TRUST = "trust"
 
 
 class UnhealthyReason(str, Enum):
@@ -46,6 +47,7 @@ class UnhealthyReason(str, Enum):
     SUPERVISOR = "supervisor"
     SETUP = "setup"
     PRIVILEGED = "privileged"
+    UNTRUSTED = "untrusted"
 
 
 class IssueType(str, Enum):

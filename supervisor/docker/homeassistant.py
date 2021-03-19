@@ -210,3 +210,6 @@ class DockerHomeAssistant(DockerInterface):
             return False
 
         return True
+
+    def _validate_trust(self, image_id: str) -> None:
+        """Validate trust of content."""

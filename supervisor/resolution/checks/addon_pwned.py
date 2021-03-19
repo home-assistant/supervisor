@@ -13,7 +13,7 @@ from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
 
 
-def setup(coresys: CoreSys) -> "CheckAddonPwned":
+def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
     return CheckAddonPwned(coresys)
 

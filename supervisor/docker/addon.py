@@ -630,3 +630,6 @@ class DockerAddon(DockerInterface):
                 _LOGGER.warning("Can't update DNS for %s", self.name)
                 self.sys_capture_exception(err)
         super()._stop(remove_container)
+
+    def _validate_trust(self, image_id: str) -> None:
+        """Validate trust of content."""

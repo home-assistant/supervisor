@@ -4,8 +4,14 @@ from pathlib import Path
 from typing import List
 
 from ...const import CoreState
+from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
+
+
+def setup(coresys: CoreSys) -> EvaluateBase:
+    """Initialize evaluation-setup function."""
+    return EvaluateLxc(coresys)
 
 
 class EvaluateLxc(EvaluateBase):

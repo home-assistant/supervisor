@@ -52,3 +52,6 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         _LOGGER.info(
             "Starting Multicast %s with version %s - Host", self.image, self.version
         )
+
+    def _validate_trust(self, image_id: str) -> None:
+        """Validate trust of content."""

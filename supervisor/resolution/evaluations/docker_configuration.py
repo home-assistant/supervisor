@@ -3,6 +3,7 @@ import logging
 from typing import List
 
 from ...const import CoreState
+from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 
@@ -10,6 +11,11 @@ EXPECTED_LOGGING = "journald"
 EXPECTED_STORAGE = "overlay2"
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def setup(coresys: CoreSys) -> EvaluateBase:
+    """Initialize evaluation-setup function."""
+    return EvaluateDockerConfiguration(coresys)
 
 
 class EvaluateDockerConfiguration(EvaluateBase):

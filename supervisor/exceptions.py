@@ -346,6 +346,10 @@ class DockerRequestError(DockerError):
     """Dockerd OS issues."""
 
 
+class DockerTrustError(DockerError):
+    """Raise if images are not trusted."""
+
+
 class DockerNotFound(DockerError):
     """Docker object don't Exists."""
 
