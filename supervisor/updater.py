@@ -28,8 +28,14 @@ from .const import (
     UpdateChannel,
 )
 from .coresys import CoreSysAttributes
-from .exceptions import UpdaterError, UpdaterJobError
+from .exceptions import (
+    CodeNotaryError,
+    CodeNotaryUntrusted,
+    UpdaterError,
+    UpdaterJobError,
+)
 from .jobs.decorator import Job, JobCondition
+from .utils.codenotary import calc_checksum
 from .utils.common import FileConfiguration
 from .validate import SCHEMA_UPDATER_CONFIG
 
@@ -180,24 +186,37 @@ class Updater(FileConfiguration, CoreSysAttributes):
         url = URL_HASSIO_VERSION.format(channel=self.channel)
         machine = self.sys_machine or "default"
 
+        # Get data
         try:
             _LOGGER.info("Fetching update data from %s", url)
             async with self.sys_websession.get(url, timeout=10) as request:
-                data = await request.json(content_type=None)
+                data = await request.read()
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             self.sys_supervisor.connectivity = False
-            _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
-            raise UpdaterError() from err
+            raise UpdaterError(
+                f"Can't fetch versions from {url}: {err}", _LOGGER.warning
+            ) from err
 
+        # Validate
+        try:
+            await self.sys_verify_content(checksum=calc_checksum(data))
+        except CodeNotaryUntrusted:
+            _LOGGER.critical("Content-Trust is broken for the version file fetch!")
+        except CodeNotaryError as err:
+            _LOGGER.error("CodeNotary error while processing version checks: %s", err)
+
+        # Parse data
+        try:
+            data = json.loads(data)
         except json.JSONDecodeError as err:
-            _LOGGER.warning("Can't parse versions from %s: %s", url, err)
-            raise UpdaterError() from err
+            raise UpdaterError(
+                f"Can't parse versions from {url}: {err}", _LOGGER.warning
+            ) from err
 
         # data valid?
         if not data or data.get(ATTR_CHANNEL) != self.channel:
-            _LOGGER.warning("Invalid data from %s", url)
-            raise UpdaterError()
+            raise UpdaterError(f"Invalid data from {url}", _LOGGER.warning)
 
         try:
             # Update supervisor version
@@ -232,8 +251,9 @@ class Updater(FileConfiguration, CoreSysAttributes):
             self._data[ATTR_IMAGE][ATTR_MULTICAST] = data["image"]["multicast"]
 
         except KeyError as err:
-            _LOGGER.warning("Can't process version data: %s", err)
-            raise UpdaterError() from err
+            raise UpdaterError(
+                f"Can't process version data: {err}", _LOGGER.warning
+            ) from err
 
         else:
             self.save_data()

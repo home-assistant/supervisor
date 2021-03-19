@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Coroutine, Optional, TypeVar
 
 import aiohttp
 import sentry_sdk
@@ -11,6 +12,7 @@ import sentry_sdk
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV
 from .docker import DockerAPI
+from .utils.codenotary import vcn_validate
 
 if TYPE_CHECKING:
     from .addons import AddonManager
@@ -610,3 +612,9 @@ class CoreSysAttributes:
     def sys_capture_exception(self, err: Exception) -> None:
         """Capture a exception."""
         sentry_sdk.capture_exception(err)
+
+    def sys_verify_content(
+        self, checksum: Optional[str] = None, path: Optional[Path] = None
+    ) -> Awaitable[bool]:
+        """Verify content from HA org."""
+        return vcn_validate(checksum, path, org="home-assistant.io")
