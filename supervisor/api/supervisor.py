@@ -114,6 +114,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG: self.sys_config.debug,
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
+            ATTR_CONTENT_TRUST: self.sys_config.content_trust,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
         }
