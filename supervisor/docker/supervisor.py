@@ -106,6 +106,3 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't fix start tag: %s", err)
             raise DockerError() from err
-
-    def _validate_trust(self, image_id: str) -> None:
-        """Validate trust of content."""
