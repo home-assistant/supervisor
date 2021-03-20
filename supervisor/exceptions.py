@@ -16,7 +16,7 @@ class HassioError(Exception):
         if logger is not None and message is not None:
             logger(message)
 
-        # Init base class
+        # Init Base
         if message is not None:
             super().__init__(message)
         else:
