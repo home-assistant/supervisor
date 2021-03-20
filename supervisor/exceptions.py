@@ -13,9 +13,14 @@ class HassioError(Exception):
         logger: Optional[Callable[..., None]] = None,
     ) -> None:
         """Raise & log."""
-        if logger:
+        if logger is not None and message is not None:
             logger(message)
-        super().__init__(message)
+
+        # Init base class
+        if message is not None:
+            super().__init__(message)
+        else:
+            super().__init__()
 
 
 class HassioNotSupportedError(HassioError):
