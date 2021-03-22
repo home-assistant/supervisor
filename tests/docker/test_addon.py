@@ -7,7 +7,7 @@ import pytest
 from supervisor.addons import validate as vd
 from supervisor.addons.addon import Addon
 from supervisor.addons.model import Data
-from supervisor.const import SYSTEMD_JOURNAL
+from supervisor.const import SYSTEMD_JOURNAL_PERSISTENT, SYSTEMD_JOURNAL_VOLATILE
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 
@@ -97,16 +97,35 @@ def test_addon_map_folder_defaults(
     assert str(docker_addon.sys_config.path_extern_share) not in volumes
 
 
-def test_journald_addon(coresys: CoreSys, addonsdata_system: Dict[str, Data]):
-    """Validate volume for journald option."""
+def test_journald_addon_volatile(coresys: CoreSys, addonsdata_system: Dict[str, Data]):
+    """Validate volume for journald option, with volatile logs."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "journald-addon-config.json"
     )
     volumes = docker_addon.volumes
 
-    assert str(SYSTEMD_JOURNAL) in volumes
-    assert volumes.get(str(SYSTEMD_JOURNAL)).get("bind") == str(SYSTEMD_JOURNAL)
-    assert volumes.get(str(SYSTEMD_JOURNAL)).get("mode") == "ro"
+    assert str(SYSTEMD_JOURNAL_PERSISTENT) in volumes
+    assert volumes.get(str(SYSTEMD_JOURNAL_PERSISTENT)).get("bind") == str(
+        SYSTEMD_JOURNAL_VOLATILE
+    )
+    assert volumes.get(str(SYSTEMD_JOURNAL_PERSISTENT)).get("mode") == "ro"
+
+
+def test_journald_addon_persistent(
+    coresys: CoreSys, addonsdata_system: Dict[str, Data]
+):
+    """Validate volume for journald option, with persistent logs."""
+    with patch("pathlib.Path.exists", return_value=True):
+        docker_addon = get_docker_addon(
+            coresys, addonsdata_system, "journald-addon-config.json"
+        )
+        volumes = docker_addon.volumes
+
+    assert str(SYSTEMD_JOURNAL_PERSISTENT) in volumes
+    assert volumes.get(str(SYSTEMD_JOURNAL_PERSISTENT)).get("bind") == str(
+        SYSTEMD_JOURNAL_PERSISTENT
+    )
+    assert volumes.get(str(SYSTEMD_JOURNAL_PERSISTENT)).get("mode") == "ro"
 
 
 def test_not_journald_addon(coresys: CoreSys, addonsdata_system: Dict[str, Data]):
@@ -116,4 +135,4 @@ def test_not_journald_addon(coresys: CoreSys, addonsdata_system: Dict[str, Data]
     )
     volumes = docker_addon.volumes
 
-    assert str(SYSTEMD_JOURNAL) not in volumes
+    assert str(SYSTEMD_JOURNAL_PERSISTENT) not in volumes
