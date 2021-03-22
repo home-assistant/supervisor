@@ -44,7 +44,7 @@ async def vcn_validate(
     if org:
         command.extend(["--org", org])
     elif signer:
-        command.extend(["--signer", signer])
+        command.extend(["--signerID", signer])
 
     if checksum:
         command.extend(["--hash", checksum])
