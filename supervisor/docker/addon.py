@@ -26,7 +26,8 @@ from ..const import (
     MAP_SSL,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
-    SYSTEMD_JOURNAL,
+    SYSTEMD_JOURNAL_PERSISTENT,
+    SYSTEMD_JOURNAL_VOLATILE,
 )
 from ..coresys import CoreSys
 from ..exceptions import CoreDNSError, DockerError, DockerNotFound, HardwareNotFound
@@ -416,10 +417,15 @@ class DockerAddon(DockerInterface):
 
         # System Journal access
         if self.addon.with_journald:
+            # Systemd uses volatile by default, unless persistent location exists.
+            bind = SYSTEMD_JOURNAL_VOLATILE
+            if SYSTEMD_JOURNAL_PERSISTENT.exists():
+                bind = SYSTEMD_JOURNAL_PERSISTENT
+
             volumes.update(
                 {
-                    str(SYSTEMD_JOURNAL): {
-                        "bind": str(SYSTEMD_JOURNAL),
+                    str(SYSTEMD_JOURNAL_PERSISTENT): {
+                        "bind": str(bind),
                         "mode": "ro",
                     }
                 }
