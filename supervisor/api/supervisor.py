@@ -150,6 +150,9 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_CONTENT_TRUST in body:
             self.sys_config.content_trust = body[ATTR_CONTENT_TRUST]
 
+        if ATTR_FORCE_SECURITY in body:
+            self.sys_config.force_security = body[ATTR_FORCE_SECURITY]
+
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
             await asyncio.shield(self.sys_store.update_repositories(new))
