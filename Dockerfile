@@ -24,7 +24,6 @@ RUN \
     && apk add --no-cache --virtual .build-dependencies \
         build-base \
         go \
-        git \
     \
     && git clone -b v${VCN_VERSION} --depth 1 \
         https://github.com/codenotary/vcn \
