@@ -11,6 +11,7 @@ URL_TEST = "https://version.home-assistant.io/stable.json"
 async def test_fetch_versions(coresys: CoreSys) -> None:
     """Test download and sync version."""
 
+    coresys.config.force_security = True
     await coresys.updater.fetch_data()
 
     async with coresys.websession.get(URL_TEST) as request:
