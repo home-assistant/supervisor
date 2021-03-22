@@ -66,6 +66,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_DEBUG_BLOCK): vol.Boolean(),
         vol.Optional(ATTR_DIAGNOSTICS): vol.Boolean(),
         vol.Optional(ATTR_CONTENT_TRUST): vol.Boolean(),
+        vol.Optional(ATTR_FORCE_SECURITY): vol.Boolean(),
     }
 )
 
