@@ -21,6 +21,7 @@ from ..const import (
     ATTR_DEBUG_BLOCK,
     ATTR_DESCRIPTON,
     ATTR_DIAGNOSTICS,
+    ATTR_FORCE_SECURITY,
     ATTR_HEALTHY,
     ATTR_ICON,
     ATTR_IP_ADDRESS,
@@ -115,6 +116,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_CONTENT_TRUST: self.sys_config.content_trust,
+            ATTR_FORCE_SECURITY: self.sys_config.force_security,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
         }

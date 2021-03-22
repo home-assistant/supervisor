@@ -16,6 +16,7 @@ from .const import (
     ATTR_DEBUG_BLOCK,
     ATTR_DIAGNOSTICS,
     ATTR_DNS,
+    ATTR_FORCE_SECURITY,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
@@ -149,6 +150,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
         vol.Optional(ATTR_DEBUG_BLOCK, default=False): vol.Boolean(),
         vol.Optional(ATTR_DIAGNOSTICS, default=None): vol.Maybe(vol.Boolean()),
         vol.Optional(ATTR_CONTENT_TRUST, default=True): vol.Boolean(),
+        vol.Optional(ATTR_FORCE_SECURITY, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )
