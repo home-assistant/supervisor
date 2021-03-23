@@ -1,11 +1,10 @@
 """Helpers to check core security."""
-from contextlib import suppress
 from datetime import timedelta
 from typing import List, Optional
 
 from ...const import AddonState, CoreState
 from ...coresys import CoreSys
-from ...exceptions import PwnedConnectivityError, PwnedError
+from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
 from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
 from ...utils.pwned import check_pwned_password
@@ -38,11 +37,13 @@ class CheckAddonPwned(CheckBase):
             # check passwords
             for secret in secrets:
                 try:
-                    if not await check_pwned_password(self.sys_websession, secret):
-                        continue
+                    await check_pwned_password(self.sys_websession, secret)
+                    continue
                 except PwnedConnectivityError:
                     self.sys_supervisor.connectivity = False
                     return
+                except PwnedSecret:
+                    pass
                 except PwnedError:
                     continue
 
@@ -76,10 +77,12 @@ class CheckAddonPwned(CheckBase):
 
         # Check if still pwned
         for secret in secrets:
-            with suppress(PwnedError):
-                if not await check_pwned_password(self.sys_websession, secret):
-                    continue
-            return True
+            try:
+                await check_pwned_password(self.sys_websession, secret)
+            except PwnedSecret:
+                return True
+            except PwnedError:
+                pass
 
         return False
 

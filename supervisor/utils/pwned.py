@@ -6,7 +6,7 @@ from typing import Set
 
 import aiohttp
 
-from ..exceptions import PwnedConnectivityError, PwnedError
+from ..exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _API_CALL: str = "https://api.pwnedpasswords.com/range/{hash}"
@@ -14,14 +14,14 @@ _API_CALL: str = "https://api.pwnedpasswords.com/range/{hash}"
 _CACHE: Set[str] = set()
 
 
-async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) -> bool:
+async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) -> None:
     """Check if password is pwned."""
     sha1_pw = sha1_pw.upper()
 
     # Chech hit cache
     sha1_short = sha1_pw[:5]
     if sha1_short in _CACHE:
-        return True
+        raise PwnedSecret()
 
     try:
         async with websession.get(
@@ -38,11 +38,9 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
             if not sha1_pw.endswith(line.split(":")[0]):
                 continue
             _CACHE.add(sha1_short)
-            return True
+            raise PwnedSecret()
 
     except (aiohttp.ClientError, asyncio.TimeoutError) as err:
         raise PwnedConnectivityError(
             f"Can't fetch HIBP data: {err}", _LOGGER.warning
         ) from err
-
-    return False

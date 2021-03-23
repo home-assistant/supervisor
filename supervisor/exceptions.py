@@ -321,6 +321,10 @@ class PwnedError(HassioError):
     """Errors while checking pwned passwords."""
 
 
+class PwnedSecret(PwnedError):
+    """Pwned secrets found."""
+
+
 class PwnedConnectivityError(PwnedError):
     """Connectivity errors while checking pwned passwords."""
 
@@ -334,6 +338,10 @@ class CodeNotaryError(HassioError):
 
 class CodeNotaryUntrusted(CodeNotaryError):
     """Error on untrusted content."""
+
+
+class CodeNotaryBackendError(CodeNotaryError):
+    """CodeNotary backend error happening."""
 
 
 # docker/api

@@ -348,8 +348,8 @@ class APIAddons(CoreSysAttributes):
         if self.sys_config.force_security:
             for secret in addon.pwned:
                 try:
-                    if not await check_pwned_password(self.sys_websession, secret):
-                        continue
+                    await check_pwned_password(self.sys_websession, secret)
+                    continue
                 except PwnedError:
                     pass
 
