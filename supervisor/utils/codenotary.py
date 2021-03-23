@@ -9,7 +9,7 @@ from typing import Optional, Set, Tuple, Union
 
 import async_timeout
 
-from ..exceptions import CodeNotaryError, CodeNotaryUntrusted
+from ..exceptions import CodeNotaryBackendError, CodeNotaryError, CodeNotaryUntrusted
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ async def vcn_validate(
         ) from err
 
     if _ATTR_ERROR in data_json:
-        raise CodeNotaryError(data_json[_ATTR_ERROR], _LOGGER.warning)
+        raise CodeNotaryBackendError(data_json[_ATTR_ERROR], _LOGGER.warning)
 
     if data_json[_ATTR_VERIFICATION][_ATTR_STATUS] == 0:
         _CACHE.add((checksum, path, org, signer))
