@@ -632,8 +632,7 @@ class CoreSysAttributes:
             self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
             self.sys_capture_exception(err)
             raise
-        except CodeNotaryError as err:
-            self.sys_capture_exception(err)
+        except CodeNotaryError:
             if self.sys_config.force_security:
                 raise
             return
