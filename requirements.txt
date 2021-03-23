@@ -5,7 +5,7 @@ attrs==20.3.0
 awesomeversion==21.2.3
 brotli==1.0.9
 cchardet==2.1.7
-colorlog==4.7.2
+colorlog==4.8.0
 cpe==1.2.1
 cryptography==3.4.6
 debugpy==1.2.1
