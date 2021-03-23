@@ -103,7 +103,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
-from ..exceptions import APIError, APIForbidden, PwnedError
+from ..exceptions import APIError, APIForbidden, PwnedError, PwnedSecret
 from ..utils.pwned import check_pwned_password
 from ..validate import docker_ports
 from .utils import api_process, api_process_raw, api_validate
@@ -350,10 +350,13 @@ class APIAddons(CoreSysAttributes):
                 try:
                     await check_pwned_password(self.sys_websession, secret)
                     continue
-                except PwnedError:
-                    pass
+                except PwnedSecret:
+                    data[ATTR_MESSAGE] = "Add-on use pwned secrets!"
+                except PwnedError as err:
+                    data[
+                        ATTR_MESSAGE
+                    ] = f"Error happening on pwned secrets check: {err!s}!"
 
-                data[ATTR_MESSAGE] = "Add-on use pwned secrets!"
                 data[ATTR_VALID] = False
                 break
 
