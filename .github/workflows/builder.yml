@@ -114,27 +114,29 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Login to GitHub Container Registry
+        if: needs.init.outputs.publish == 'true'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GIT_USER }}
+          password: ${{ secrets.GIT_TOKEN }}
+
       - name: Set build arguments
         if: needs.init.outputs.publish == 'false'
         run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
 
       - name: Build supervisor
-        uses: home-assistant/builder@2021.02.0
+        uses: home-assistant/builder@2021.03.3
         with:
           args: |
             $BUILD_ARGS \
             --${{ matrix.arch }} \
             --target /data \
+            --with-codenotary "${{ secrets.VCN_USER }}" "${{ secrets.VCN_PASSWORD }}" "${{ secrets.VCN_ORG }}" \
+            --validate-from "${{ secrets.VCN_ORG }}" \
+            --validate-cache "${{ secrets.VCN_ORG }}" \
             --generic ${{ needs.init.outputs.version }}
-
-      - name: Signing image
-        if: needs.init.outputs.publish == 'true'
-        uses: home-assistant/actions/helpers/codenotary@master
-        with:
-          source: docker://homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}
-          user: ${{ secrets.VCN_USER }}
-          password: ${{ secrets.VCN_PASSWORD }}
-          organisation: ${{ secrets.VCN_ORG }}
 
   codenotary:
     name: CodeNotary signature
@@ -196,7 +198,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build the Supervisor
-        uses: home-assistant/builder@2021.02.0
+        uses: home-assistant/builder@2021.03.3
         with:
           args: |
             --test \
