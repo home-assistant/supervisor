@@ -103,7 +103,8 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
-from ..exceptions import APIError, APIForbidden
+from ..exceptions import APIError, APIForbidden, PwnedError, PwnedSecret
+from ..utils.pwned import check_pwned_password
 from ..validate import docker_ports
 from .utils import api_process, api_process_raw, api_validate
 
@@ -338,11 +339,29 @@ class APIAddons(CoreSysAttributes):
         """Validate user options for add-on."""
         addon = self._extract_addon_installed(request)
         data = {ATTR_MESSAGE: "", ATTR_VALID: True}
+
+        # Validate config
         try:
             addon.schema(addon.options)
         except vol.Invalid as ex:
             data[ATTR_MESSAGE] = humanize_error(addon.options, ex)
             data[ATTR_VALID] = False
+
+        # Validate security
+        if self.sys_config.force_security:
+            for secret in addon.pwned:
+                try:
+                    await check_pwned_password(self.sys_websession, secret)
+                    continue
+                except PwnedSecret:
+                    data[ATTR_MESSAGE] = "Add-on use pwned secrets!"
+                except PwnedError as err:
+                    data[
+                        ATTR_MESSAGE
+                    ] = f"Error happening on pwned secrets check: {err!s}!"
+
+                data[ATTR_VALID] = False
+                break
 
         return data
 

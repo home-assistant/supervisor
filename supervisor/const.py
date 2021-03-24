@@ -314,6 +314,7 @@ ATTR_WATCHDOG = "watchdog"
 ATTR_WEBUI = "webui"
 ATTR_WIFI = "wifi"
 ATTR_CONTENT_TRUST = "content_trust"
+ATTR_FORCE_SECURITY = "force_security"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

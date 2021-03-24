@@ -13,6 +13,7 @@ from .const import (
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DIAGNOSTICS,
+    ATTR_FORCE_SECURITY,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_TIMEZONE,
@@ -156,6 +157,16 @@ class CoreConfig(FileConfiguration):
     def content_trust(self, value: bool) -> None:
         """Set content trust is enabled/disabled."""
         self._data[ATTR_CONTENT_TRUST] = value
+
+    @property
+    def force_security(self) -> bool:
+        """Return if force security is enabled/disabled."""
+        return self._data[ATTR_FORCE_SECURITY]
+
+    @force_security.setter
+    def force_security(self, value: bool) -> None:
+        """Set force security is enabled/disabled."""
+        self._data[ATTR_FORCE_SECURITY] = value
 
     @property
     def path_supervisor(self) -> Path:
