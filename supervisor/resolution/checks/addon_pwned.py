@@ -38,28 +38,25 @@ class CheckAddonPwned(CheckBase):
             for secret in secrets:
                 try:
                     await check_pwned_password(self.sys_websession, secret)
-                    continue
                 except PwnedConnectivityError:
                     self.sys_supervisor.connectivity = False
                     return
                 except PwnedSecret:
-                    pass
+                    # Check possible suggestion
+                    if addon.state == AddonState.STARTED:
+                        suggestions = [SuggestionType.EXECUTE_STOP]
+                    else:
+                        suggestions = None
+
+                    self.sys_resolution.create_issue(
+                        IssueType.PWNED,
+                        ContextType.ADDON,
+                        reference=addon.slug,
+                        suggestions=suggestions,
+                    )
+                    break
                 except PwnedError:
-                    continue
-
-                # Check possible suggestion
-                if addon.state == AddonState.STARTED:
-                    suggestions = [SuggestionType.EXECUTE_STOP]
-                else:
-                    suggestions = None
-
-                self.sys_resolution.create_issue(
-                    IssueType.PWNED,
-                    ContextType.ADDON,
-                    reference=addon.slug,
-                    suggestions=suggestions,
-                )
-                break
+                    pass
 
     @Job(conditions=[JobCondition.INTERNET_SYSTEM])
     async def approve_check(self, reference: Optional[str] = None) -> bool:
