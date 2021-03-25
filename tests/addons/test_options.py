@@ -70,6 +70,38 @@ def test_complex_schema_list(coresys):
         )({"name": "Pascal", "password": "1234", "extend": "test"})
 
 
+def test_optional_schema_list(coresys):
+    """Test with an optional list schema."""
+    assert AddonOptions(
+        coresys,
+        {"name": "str", "password": "password", "extend": ["str?"]},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )({"name": "Pascal", "password": "1234"})
+
+    assert AddonOptions(
+        coresys,
+        {"name": "str", "password": "password", "extend": ["str?"]},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )({"name": "Pascal", "password": "1234", "extend": []})
+
+    with pytest.raises(vol.error.Invalid):
+        AddonOptions(
+            coresys,
+            {"name": "str", "password": "password", "extend": ["str"]},
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )({"name": "Pascal", "password": "1234"})
+
+    assert AddonOptions(
+        coresys,
+        {"name": "str", "password": "password", "extend": ["str"]},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )({"name": "Pascal", "password": "1234", "extend": []})
+
+
 def test_complex_schema_dict(coresys):
     """Test with complex dict schema."""
     assert AddonOptions(
