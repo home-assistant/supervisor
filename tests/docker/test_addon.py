@@ -99,10 +99,11 @@ def test_addon_map_folder_defaults(
 
 def test_journald_addon_volatile(coresys: CoreSys, addonsdata_system: Dict[str, Data]):
     """Validate volume for journald option, with volatile logs."""
-    docker_addon = get_docker_addon(
-        coresys, addonsdata_system, "journald-addon-config.json"
-    )
-    volumes = docker_addon.volumes
+    with patch("pathlib.Path.exists", return_value=False):
+        docker_addon = get_docker_addon(
+            coresys, addonsdata_system, "journald-addon-config.json"
+        )
+        volumes = docker_addon.volumes
 
     assert str(SYSTEMD_JOURNAL_PERSISTENT) in volumes
     assert volumes.get(str(SYSTEMD_JOURNAL_PERSISTENT)).get("bind") == str(

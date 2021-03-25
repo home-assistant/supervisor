@@ -27,7 +27,7 @@ MACHINE_ID = Path("/etc/machine-id")
 SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 SOCKET_DOCKER = Path("/run/docker.sock")
 RUN_SUPERVISOR_STATE = Path("/run/supervisor")
-SYSTEMD_JOURNAL_PERSISTENT = Path("/var/logs/journal")
+SYSTEMD_JOURNAL_PERSISTENT = Path("/var/log/journal")
 SYSTEMD_JOURNAL_VOLATILE = Path("/run/log/journal")
 
 DOCKER_NETWORK = "hassio"
