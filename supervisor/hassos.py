@@ -180,10 +180,7 @@ class HassOS(CoreSysAttributes):
         )
         raise HassOSUpdateError()
 
-    @Job(
-        conditions=[JobCondition.HAOS],
-        on_condition=HassOSJobError,
-    )
+    @Job(conditions=[JobCondition.HAOS])
     async def mark_healthy(self) -> None:
         """Set booted partition as good for rauc."""
         try:
