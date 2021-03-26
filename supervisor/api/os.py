@@ -45,6 +45,6 @@ class APIOS(CoreSysAttributes):
         await asyncio.shield(self.sys_hassos.update(version))
 
     @api_process
-    async def config_sync(self, request: web.Request) -> Awaitable[None]:
+    def config_sync(self, request: web.Request) -> Awaitable[None]:
         """Trigger config reload on OS."""
-        await asyncio.shield(self.sys_hassos.config_sync())
+        return asyncio.shield(self.sys_hassos.config_sync())
