@@ -19,8 +19,9 @@ def read_yaml_file(path: Path) -> dict:
         return _YAML.load(path) or {}
 
     except (YAMLError, AttributeError) as err:
-        _LOGGER.error("Can't read YAML file %s - %s", path, err)
-        raise YamlFileError() from err
+        raise YamlFileError(
+            f"Can't read YAML file {path!s} - {err!s}", _LOGGER.error
+        ) from err
 
 
 def write_yaml_file(path: Path, data: dict) -> None:
@@ -30,5 +31,4 @@ def write_yaml_file(path: Path, data: dict) -> None:
             _YAML.dump(data, fp)
         path.chmod(0o600)
     except (YAMLError, OSError, ValueError, TypeError) as err:
-        _LOGGER.error("Can't write %s: %s", path, err)
-        raise YamlFileError() from err
+        raise YamlFileError(f"Can't write {path!s}: {err!s}", _LOGGER.error) from err
