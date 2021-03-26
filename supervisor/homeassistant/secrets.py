@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Optional, Union
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import YamlFileError
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from ..utils.yaml import read_yaml_file
@@ -48,7 +49,16 @@ class HomeAssistantSecrets(CoreSysAttributes):
             return
 
         # Read secrets
-        secrets = await self.sys_run_in_executor(read_yaml_file, self.path_secrets)
+        try:
+            secrets = await self.sys_run_in_executor(read_yaml_file, self.path_secrets)
+        except YamlFileError as err:
+            _LOGGER.warning("Can't read Home Assistant secrets: %s", err)
+            return
+
+        if not isinstance(secrets, dict):
+            return
+
+        # Process secrets
         self.secrets = {
             k: v for k, v in secrets.items() if isinstance(v, (bool, float, int, str))
         }
