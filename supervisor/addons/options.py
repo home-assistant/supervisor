@@ -241,8 +241,15 @@ class AddonOptions(CoreSysAttributes):
         """Check if all options are exists."""
         missing = set(origin) - set(exists)
         for miss_opt in missing:
-            if isinstance(origin[miss_opt], str) and origin[miss_opt].endswith("?"):
+            miss_schema = origin[miss_opt]
+
+            # If its a list then value in list decides if its optional like ["str?"]
+            if isinstance(miss_schema, list) and len(miss_schema) > 0:
+                miss_schema = miss_schema[0]
+
+            if isinstance(miss_schema, str) and miss_schema.endswith("?"):
                 continue
+
             raise vol.Invalid(
                 f"Missing option '{miss_opt}' in {root} in {self._name} ({self._slug})"
             ) from None
