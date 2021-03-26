@@ -140,6 +140,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
         vol.Optional(
             ATTR_VERSION, default=AwesomeVersion(SUPERVISOR_VERSION)
         ): version_tag,
+        vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(
             ATTR_ADDONS_CUSTOM_LIST,
             default=["https://github.com/hassio-addons/repository"],
