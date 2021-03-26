@@ -139,14 +139,14 @@ def test_optional_schema_list_dict(coresys):
     """Test with an optional list of dict schema."""
     assert AddonOptions(
         coresys,
-        {"name": "str", "password": "password", "extend": [{"opt": "str?"]},
+        {"name": "str", "password": "password", "extend": [{"opt": "str?"}],
         MOCK_ADDON_NAME,
         MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234"})
 
     assert AddonOptions(
         coresys,
-        {"name": "str", "password": "password", "extend": [{"opt": "str?"]},
+        {"name": "str", "password": "password", "extend": [{"opt": "str?"}],
         MOCK_ADDON_NAME,
         MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "extend": []})
@@ -154,14 +154,14 @@ def test_optional_schema_list_dict(coresys):
     with pytest.raises(vol.error.Invalid):
         AddonOptions(
             coresys,
-            {"name": "str", "password": "password", "extend": [{"req": "str"]},
+            {"name": "str", "password": "password", "extend": [{"req": "str"}],
             MOCK_ADDON_NAME,
             MOCK_ADDON_SLUG,
         )({"name": "Pascal", "password": "1234"})
 
     assert AddonOptions(
         coresys,
-        {"name": "str", "password": "password", "extend": [{"req": "str"]},
+        {"name": "str", "password": "password", "extend": [{"req": "str"}],
         MOCK_ADDON_NAME,
         MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "extend": []})
