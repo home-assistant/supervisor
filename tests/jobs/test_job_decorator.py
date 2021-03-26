@@ -103,6 +103,29 @@ async def test_free_space(coresys: CoreSys):
         assert not await test.execute()
 
 
+async def test_haos(coresys: CoreSys):
+    """Test the haos decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.HAOS])
+        async def execute(self):
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    coresys.hassos._available = True
+    assert await test.execute()
+
+    coresys.hassos._available = False
+    assert not await test.execute()
+
+
 async def test_internet_connectivity_with_core_state(coresys: CoreSys):
     """Test the different core states and the impact for internet condition."""
 
@@ -345,3 +368,31 @@ async def test_exectution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEve
 
     await asyncio.gather(*[test.execute(0.1)])
     assert test.call == 1
+
+
+async def test_exectution_limit_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+    """Test the ignore conditions decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.run = asyncio.Lock()
+
+        @Job(limit=JobExecutionLimit.ONCE, on_condition=JobException)
+        async def execute(self, sleep: float):
+            """Execute the class method."""
+            assert not self.run.locked()
+            async with self.run:
+                await asyncio.sleep(sleep)
+
+    test = TestClass(coresys)
+    run_task = loop.create_task(test.execute(0.3))
+
+    await asyncio.sleep(0.1)
+    with pytest.raises(JobException):
+        await test.execute(0.1)
+
+    await run_task

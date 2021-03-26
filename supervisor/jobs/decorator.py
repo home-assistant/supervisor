@@ -81,7 +81,7 @@ class Job(CoreSysAttributes):
                 raise self.on_condition()
 
             # Handle exection limits
-            if self.limit == JobExecutionLimit.SINGLE_WAIT:
+            if self.limit in (JobExecutionLimit.SINGLE_WAIT, JobExecutionLimit.ONCE):
                 await self._acquire_exection_limit()
             elif self.limit == JobExecutionLimit.THROTTLE:
                 time_since_last_call = datetime.now() - self._last_call
@@ -176,21 +176,34 @@ class Job(CoreSysAttributes):
             )
             return False
 
+        if JobCondition.HAOS in self.conditions and not self.sys_hassos.available:
+            _LOGGER.warning(
+                "'%s' blocked from execution, no Home Assistant OS available",
+                self._method.__qualname__,
+            )
+            return False
+
         return True
 
     async def _acquire_exection_limit(self) -> None:
         """Process exection limits."""
         if self.limit not in (
             JobExecutionLimit.SINGLE_WAIT,
+            JobExecutionLimit.ONCE,
             JobExecutionLimit.THROTTLE_WAIT,
         ):
             return
+
+        if self.limit == JobExecutionLimit.ONCE and self._lock.locked():
+            raise self.on_condition("Another job is running")
+
         await self._lock.acquire()
 
     def _release_exception_limits(self) -> None:
         """Release possible exception limits."""
         if self.limit not in (
             JobExecutionLimit.SINGLE_WAIT,
+            JobExecutionLimit.ONCE,
             JobExecutionLimit.THROTTLE_WAIT,
         ):
             return
