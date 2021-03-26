@@ -250,6 +250,15 @@ class AddonOptions(CoreSysAttributes):
             if isinstance(miss_schema, str) and miss_schema.endswith("?"):
                 continue
 
+            if isinstance(miss_schema, dict):
+                try:
+                    self._check_missing_options(miss_schema, {}, miss_opt)
+                    continue
+                except vol.Invalid:
+                    # We want to raise the exception below that says they are missing the object field
+                    # Not one that says they are missing a field within an object they didn't enter
+                    pass
+
             raise vol.Invalid(
                 f"Missing option '{miss_opt}' in {root} in {self._name} ({self._slug})"
             ) from None
