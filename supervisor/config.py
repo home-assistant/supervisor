@@ -14,6 +14,7 @@ from .const import (
     ATTR_DEBUG_BLOCK,
     ATTR_DIAGNOSTICS,
     ATTR_FORCE_SECURITY,
+    ATTR_IMAGE,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_TIMEZONE,
@@ -69,13 +70,23 @@ class CoreConfig(FileConfiguration):
 
     @property
     def version(self) -> AwesomeVersion:
-        """Return config version."""
+        """Return supervisor version."""
         return self._data[ATTR_VERSION]
 
     @version.setter
     def version(self, value: AwesomeVersion) -> None:
-        """Set config version."""
+        """Set supervisor version."""
         self._data[ATTR_VERSION] = value
+
+    @property
+    def image(self) -> Optional[str]:
+        """Return supervisor image."""
+        return self._data.get(ATTR_IMAGE)
+
+    @image.setter
+    def image(self, value: str) -> None:
+        """Set supervisor image."""
+        self._data[ATTR_IMAGE] = value
 
     @property
     def wait_boot(self) -> int:

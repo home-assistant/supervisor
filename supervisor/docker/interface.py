@@ -467,6 +467,9 @@ class DockerInterface(CoreSysAttributes):
             raise DockerError() from err
 
         for image in images_list:
+            if origin.id == image.id:
+                continue
+
             with suppress(docker.errors.DockerException, requests.RequestException):
                 _LOGGER.info("Cleanup images: %s", image.tags)
                 self.sys_docker.images.remove(image.id, force=True)
