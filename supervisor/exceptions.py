@@ -95,7 +95,7 @@ class HassOSUpdateError(HassOSError):
     """Error on update of a HassOS."""
 
 
-class HassOSNotSupportedError(HassioNotSupportedError):
+class HassOSJobError(HassOSError, JobException, HassioNotSupportedError):
     """Function not supported by HassOS."""
 
 
