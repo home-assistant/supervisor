@@ -102,6 +102,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
                 if start_tag != "latest":
                     continue
                 docker_image.tag(start_image, start_tag)
+                docker_image.tag(start_image, version.string)
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't fix start tag: %s", err)

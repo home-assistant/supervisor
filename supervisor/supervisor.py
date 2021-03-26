@@ -46,7 +46,7 @@ class Supervisor(CoreSysAttributes):
             _LOGGER.critical("Can't setup Supervisor Docker container!")
 
         with suppress(DockerError):
-            await self.instance.cleanup()
+            await self.instance.cleanup(old_image=self.sys_config.image)
 
     @property
     def connectivity(self) -> bool:
@@ -161,6 +161,7 @@ class Supervisor(CoreSysAttributes):
             raise SupervisorUpdateError() from err
         else:
             self.sys_config.version = version
+            self.sys_config.image = self.sys_updater.image_supervisor
             self.sys_config.save_data()
 
         self.sys_create_task(self.sys_core.stop())
