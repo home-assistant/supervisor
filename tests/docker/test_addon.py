@@ -105,11 +105,11 @@ def test_journald_addon_volatile(coresys: CoreSys, addonsdata_system: Dict[str, 
         )
         volumes = docker_addon.volumes
 
-    assert str(SYSTEMD_JOURNAL_PERSISTENT) in volumes
-    assert volumes.get(str(SYSTEMD_JOURNAL_PERSISTENT)).get("bind") == str(
-        SYSTEMD_JOURNAL_VOLATILE
+    assert str(SYSTEMD_JOURNAL_VOLATILE) in volumes
+    assert volumes.get(str(SYSTEMD_JOURNAL_VOLATILE)).get("bind") == str(
+        SYSTEMD_JOURNAL_PERSISTENT
     )
-    assert volumes.get(str(SYSTEMD_JOURNAL_PERSISTENT)).get("mode") == "ro"
+    assert volumes.get(str(SYSTEMD_JOURNAL_VOLATILE)).get("mode") == "ro"
 
 
 def test_journald_addon_persistent(
