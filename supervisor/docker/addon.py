@@ -418,14 +418,14 @@ class DockerAddon(DockerInterface):
         # System Journal access
         if self.addon.with_journald:
             # Systemd uses volatile by default, unless persistent location exists.
-            bind = SYSTEMD_JOURNAL_VOLATILE
+            journal = SYSTEMD_JOURNAL_VOLATILE
             if SYSTEMD_JOURNAL_PERSISTENT.exists():
-                bind = SYSTEMD_JOURNAL_PERSISTENT
+                journal = SYSTEMD_JOURNAL_PERSISTENT
 
             volumes.update(
                 {
-                    str(SYSTEMD_JOURNAL_PERSISTENT): {
-                        "bind": str(bind),
+                    str(journal): {
+                        "bind": str(SYSTEMD_JOURNAL_PERSISTENT),
                         "mode": "ro",
                     }
                 }
