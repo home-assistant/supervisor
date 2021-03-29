@@ -98,7 +98,7 @@ def test_addon_map_folder_defaults(
 
 
 def test_journald_addon(coresys: CoreSys, addonsdata_system: Dict[str, Data]):
-    """Validate volume for journald option, with volatile logs."""
+    """Validate volume for journald option."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "journald-addon-config.json"
     )
