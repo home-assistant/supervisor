@@ -189,7 +189,8 @@ class Updater(FileConfiguration, CoreSysAttributes):
         # Get data
         try:
             _LOGGER.info("Fetching update data from %s", url)
-            async with self.sys_websession.get(url, timeout=10) as request:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with self.sys_websession.get(url, timeout=timeout) as request:
                 if request.status != 200:
                     raise UpdaterError(
                         f"Fetching version from {url} response with {request.status}",
