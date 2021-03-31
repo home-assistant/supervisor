@@ -213,7 +213,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
             ) from err
         except CodeNotaryError as err:
             raise UpdaterError(
-                f"CodeNotary error while processing version checks: {err!s}",
+                f"CodeNotary error while processing version fetch: {err!s}",
                 _LOGGER.error,
             ) from err
 
