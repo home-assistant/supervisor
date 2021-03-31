@@ -63,6 +63,3 @@ class DockerCli(DockerInterface, CoreSysAttributes):
             self.version,
             self.sys_docker.network.cli,
         )
-
-    def _validate_trust(self, image_id: str) -> None:
-        """Validate trust of content."""
