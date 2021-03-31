@@ -11,20 +11,23 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from supervisor.jobs.decorator import Job, JobCondition
-
 from .const import ATTR_SUPERVISOR_INTERNET, SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
 from .exceptions import (
+    CodeNotaryError,
+    CodeNotaryUntrusted,
     DockerError,
     HostAppArmorError,
+    SupervisorAppArmorError,
     SupervisorError,
     SupervisorJobError,
     SupervisorUpdateError,
 )
+from .jobs.decorator import Job, JobCondition
 from .resolution.const import ContextType, IssueType
+from .utils.codenotary import calc_checksum
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -102,46 +105,76 @@ class Supervisor(CoreSysAttributes):
     async def update_apparmor(self) -> None:
         """Fetch last version and update profile."""
         url = URL_HASSIO_APPARMOR
+
+        # Fetch
         try:
             _LOGGER.info("Fetching AppArmor profile %s", url)
-            async with self.sys_websession.get(url, timeout=10) as request:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with self.sys_websession.get(url, timeout=timeout) as request:
+                if request.status != 200:
+                    raise SupervisorAppArmorError(
+                        f"Fetching AppArmor Profile from {url} response with {request.status}",
+                        _LOGGER.error,
+                    )
                 data = await request.text()
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             self.sys_supervisor.connectivity = False
-            _LOGGER.warning("Can't fetch AppArmor profile: %s", err)
-            raise SupervisorError() from err
+            raise SupervisorAppArmorError(
+                f"Can't fetch AppArmor profile {url}: {str(err) or 'Timeout'}",
+                _LOGGER.error,
+            ) from err
 
+        # Validate
+        try:
+            await self.sys_verify_content(checksum=calc_checksum(data))
+        except CodeNotaryUntrusted as err:
+            raise SupervisorAppArmorError(
+                "Content-Trust is broken for the AppArmor profile fetch!",
+                _LOGGER.critical,
+            ) from err
+        except CodeNotaryError as err:
+            raise SupervisorAppArmorError(
+                f"CodeNotary error while processing AppArmor fetch: {err!s}",
+                _LOGGER.error,
+            ) from err
+
+        # Load
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
             profile_file = Path(tmp_dir, "apparmor.txt")
             try:
                 profile_file.write_text(data)
             except OSError as err:
-                _LOGGER.error("Can't write temporary profile: %s", err)
-                raise SupervisorError() from err
+                raise SupervisorAppArmorError(
+                    f"Can't write temporary profile: {err!s}", _LOGGER.error
+                ) from err
 
             try:
                 await self.sys_host.apparmor.load_profile(
                     "hassio-supervisor", profile_file
                 )
             except HostAppArmorError as err:
-                _LOGGER.error("Can't update AppArmor profile!")
-                raise SupervisorError() from err
+                raise SupervisorAppArmorError(
+                    "Can't update AppArmor profile!", _LOGGER.error
+                ) from err
 
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update Home Assistant version."""
         version = version or self.latest_version
 
         if version == self.sys_supervisor.version:
-            _LOGGER.warning("Version %s is already installed", version)
-            return
+            raise SupervisorUpdateError(
+                f"Version {version!s} is already installed", _LOGGER.warning
+            )
 
         # First update own AppArmor
         try:
             await self.update_apparmor()
-        except SupervisorError as err:
-            _LOGGER.critical("Abort update because of an issue with AppArmor!")
-            raise SupervisorUpdateError() from err
+        except SupervisorAppArmorError as err:
+            raise SupervisorUpdateError(
+                f"Abort update because of an issue with AppArmor: {err!s}",
+                _LOGGER.critical,
+            ) from err
 
         # Update container
         _LOGGER.info("Update Supervisor to version %s", version)
@@ -153,12 +186,13 @@ class Supervisor(CoreSysAttributes):
                 self.sys_updater.image_supervisor, version
             )
         except DockerError as err:
-            _LOGGER.error("Update of Supervisor failed!")
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_FAILED, ContextType.SUPERVISOR
             )
             self.sys_capture_exception(err)
-            raise SupervisorUpdateError() from err
+            raise SupervisorUpdateError(
+                f"Update of Supervisor failed: {err!s}", _LOGGER.error
+            ) from err
         else:
             self.sys_config.version = version
             self.sys_config.image = self.sys_updater.image_supervisor

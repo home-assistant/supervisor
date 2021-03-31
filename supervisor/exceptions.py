@@ -80,6 +80,10 @@ class SupervisorUpdateError(SupervisorError):
     """Supervisor update error."""
 
 
+class SupervisorAppArmorError(SupervisorError):
+    """Supervisor AppArmor error."""
+
+
 class SupervisorJobError(SupervisorError, JobException):
     """Raise on job errors."""
 
