@@ -121,7 +121,8 @@ class Supervisor(CoreSysAttributes):
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             self.sys_supervisor.connectivity = False
             raise SupervisorAppArmorError(
-                f"Can't fetch AppArmor profile: {err!s}", _LOGGER.error
+                f"Can't fetch AppArmor profile {url}: {str(err) or 'Timeout'}",
+                _LOGGER.error,
             ) from err
 
         # Validate

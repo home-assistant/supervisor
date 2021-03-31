@@ -201,7 +201,8 @@ class Updater(FileConfiguration, CoreSysAttributes):
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             self.sys_supervisor.connectivity = False
             raise UpdaterError(
-                f"Can't fetch versions from {url}: {err}", _LOGGER.warning
+                f"Can't fetch versions from {url}: {str(err) or 'Timeout'}",
+                _LOGGER.warning,
             ) from err
 
         # Validate
