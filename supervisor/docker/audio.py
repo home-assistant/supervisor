@@ -6,8 +6,8 @@ import docker
 
 from ..const import DOCKER_CPU_RUNTIME_ALLOCATION, ENV_TIME, MACHINE_ID
 from ..coresys import CoreSysAttributes
-from ..docker.const import Capabilities
 from ..hardware.const import PolicyGroup
+from .const import Capabilities
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
