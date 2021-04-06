@@ -1,4 +1,4 @@
-"""Evaluation class for dbus."""
+"""Evaluation class for AppArmor."""
 from pathlib import Path
 from typing import List
 
