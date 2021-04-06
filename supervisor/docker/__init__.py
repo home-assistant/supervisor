@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import attr
-from awesomeversion import AwesomeVersion
+from awesomeversion import AwesomeVersion, AwesomeVersionCompare
 import docker
 import requests
 
@@ -56,7 +56,10 @@ class DockerInfo:
     @property
     def supported_version(self) -> bool:
         """Return true, if docker version is supported."""
-        return self.version >= MIN_SUPPORTED_DOCKER
+        try:
+            return self.version >= MIN_SUPPORTED_DOCKER
+        except AwesomeVersionCompare:
+            return False
 
     @property
     def support_cpu_realtime(self) -> bool:
