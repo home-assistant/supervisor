@@ -29,6 +29,7 @@ class UnsupportedReason(str, Enum):
 
     CONTAINER = "container"
     DBUS = "dbus"
+    APPARMOR = "apparmor"
     DOCKER_CONFIGURATION = "docker_configuration"
     DOCKER_VERSION = "docker_version"
     LXC = "lxc"
