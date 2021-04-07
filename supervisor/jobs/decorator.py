@@ -75,7 +75,7 @@ class Job(CoreSysAttributes):
             job = self.sys_jobs.get_job(self.name)
 
             # Handle condition
-            if self.conditions and not self._check_conditions():
+            if self.conditions:
                 try:
                     self._check_conditions()
                 except JobConditionException as err:
