@@ -2,8 +2,6 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from supervisor.const import CoreState
-
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
 from ..utils.common import FileConfiguration
@@ -167,10 +165,10 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
     async def healthcheck(self):
         """Scheduled task to check for known issues."""
         await self.check.check_system()
+        await self.evaluate.evaluate_system()
 
         # Run autofix if possible
-        if self.sys_core.state == CoreState.RUNNING:
-            await self.fixup.run_autofix()
+        await self.fixup.run_autofix()
 
         # Create notification for any known issues
         await self.notify.issue_notifications()

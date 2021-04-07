@@ -43,7 +43,7 @@ class ResolutionFixup(CoreSysAttributes):
             self._store_execute_remove,
         ]
 
-    @Job(conditions=[JobCondition.HEALTHY])
+    @Job(conditions=[JobCondition.HEALTHY, JobCondition.RUNNING])
     async def run_autofix(self) -> None:
         """Run all startup fixes."""
         _LOGGER.info("Starting system autofix at state %s", self.sys_core.state)
