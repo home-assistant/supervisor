@@ -9,7 +9,7 @@ import sentry_sdk
 
 from ..const import CoreState
 from ..coresys import CoreSysAttributes
-from ..exceptions import HassioError, JobException
+from ..exceptions import HassioError, JobConditionException, JobException
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
 from .const import JobCondition, JobExecutionLimit
 
@@ -76,9 +76,15 @@ class Job(CoreSysAttributes):
 
             # Handle condition
             if self.conditions and not self._check_conditions():
-                if self.on_condition is None:
-                    return
-                raise self.on_condition()
+                try:
+                    self._check_conditions()
+                except JobConditionException as err:
+                    error_msg = str(err)
+                    if self.on_condition is None:
+                        _LOGGER.info(error_msg)
+                        return
+                    _LOGGER.warning(error_msg)
+                    raise self.on_condition(error_msg) from None
 
             # Handle exection limits
             if self.limit in (JobExecutionLimit.SINGLE_WAIT, JobExecutionLimit.ONCE):
@@ -124,45 +130,35 @@ class Job(CoreSysAttributes):
             )
 
         if JobCondition.HEALTHY in used_conditions and not self.sys_core.healthy:
-            _LOGGER.warning(
-                "'%s' blocked from execution, system is not healthy",
-                self._method.__qualname__,
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, system is not healthy"
             )
-            return False
 
         if (
             JobCondition.RUNNING in used_conditions
             and self.sys_core.state != CoreState.RUNNING
         ):
-            _LOGGER.warning(
-                "'%s' blocked from execution, system is not running - %s",
-                self._method.__qualname__,
-                self.sys_core.state,
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, system is not running - {self.sys_core.state!s}"
             )
-            return False
 
         if (
             JobCondition.FREE_SPACE in used_conditions
             and self.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD
         ):
-            _LOGGER.warning(
-                "'%s' blocked from execution, not enough free space (%sGB) left on the device",
-                self._method.__qualname__,
-                self.sys_host.info.free_space,
-            )
             self.sys_resolution.create_issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
-            return False
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, not enough free space ({self.sys_host.info.free_space}GB) left on the device"
+            )
 
         if (
             JobCondition.INTERNET_SYSTEM in self.conditions
             and not self.sys_supervisor.connectivity
             and self.sys_core.state in (CoreState.SETUP, CoreState.RUNNING)
         ):
-            _LOGGER.warning(
-                "'%s' blocked from execution, no supervisor internet connection",
-                self._method.__qualname__,
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, no supervisor internet connection"
             )
-            return False
 
         if (
             JobCondition.INTERNET_HOST in self.conditions
@@ -170,20 +166,14 @@ class Job(CoreSysAttributes):
             and not self.sys_host.network.connectivity
             and self.sys_core.state in (CoreState.SETUP, CoreState.RUNNING)
         ):
-            _LOGGER.warning(
-                "'%s' blocked from execution, no host internet connection",
-                self._method.__qualname__,
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, no host internet connection"
             )
-            return False
 
         if JobCondition.HAOS in self.conditions and not self.sys_hassos.available:
-            _LOGGER.warning(
-                "'%s' blocked from execution, no Home Assistant OS available",
-                self._method.__qualname__,
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, no Home Assistant OS available"
             )
-            return False
-
-        return True
 
     async def _acquire_exection_limit(self) -> None:
         """Process exection limits."""

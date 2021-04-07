@@ -34,6 +34,10 @@ class JobException(HassioError):
     """Base job exception."""
 
 
+class JobConditionException(JobException):
+    """Exception happening for job conditions."""
+
+
 # HomeAssistant
 
 
