@@ -9,7 +9,7 @@ colorlog==4.8.0
 cpe==1.2.1
 cryptography==3.4.6
 debugpy==1.2.1
-docker==4.4.4
+docker==5.0.0
 gitpython==3.1.14
 jinja2==2.11.3
 pulsectl==21.3.4
