@@ -233,11 +233,13 @@ class Updater(FileConfiguration, CoreSysAttributes):
         try:
             # Update supervisor version
             self._data[ATTR_SUPERVISOR] = AwesomeVersion(data["supervisor"])
+            self.sys_homeassistant.websocket.supervisor_update_event("supervisor")
 
             # Update Home Assistant core version
             self._data[ATTR_HOMEASSISTANT] = AwesomeVersion(
                 data["homeassistant"][machine]
             )
+            self.sys_homeassistant.websocket.supervisor_update_event("core")
 
             # Update HassOS version
             if self.sys_hassos.board:
@@ -245,6 +247,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
                     data["hassos"][self.sys_hassos.board]
                 )
                 self._data[ATTR_OTA] = data["ota"]
+                self.sys_homeassistant.websocket.supervisor_update_event("os")
 
             # Update Home Assistant plugins
             self._data[ATTR_CLI] = AwesomeVersion(data["cli"])
@@ -267,11 +270,4 @@ class Updater(FileConfiguration, CoreSysAttributes):
                 f"Can't process version data: {err}", _LOGGER.warning
             ) from err
 
-        else:
-            self.save_data()
-
-        # Signal frontend
-        self.sys_homeassistant.websocket.supervisor_update_event("supervisor")
-        self.sys_homeassistant.websocket.supervisor_update_event("core")
-        if self.sys_hassos.board:
-            self.sys_homeassistant.websocket.supervisor_update_event("os")
+        self.save_data()
