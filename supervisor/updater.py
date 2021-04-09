@@ -230,6 +230,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         if not data or data.get(ATTR_CHANNEL) != self.channel:
             raise UpdaterError(f"Invalid data from {url}", _LOGGER.warning)
 
+        events = ["supervisor", "core"]
         try:
             # Update supervisor version
             self._data[ATTR_SUPERVISOR] = AwesomeVersion(data["supervisor"])
@@ -241,6 +242,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
             # Update HassOS version
             if self.sys_hassos.board:
+                events.append("os")
                 self._data[ATTR_HASSOS] = AwesomeVersion(
                     data["hassos"][self.sys_hassos.board]
                 )
@@ -267,5 +269,8 @@ class Updater(FileConfiguration, CoreSysAttributes):
                 f"Can't process version data: {err}", _LOGGER.warning
             ) from err
 
-        else:
-            self.save_data()
+        self.save_data()
+
+        # Send status update to core
+        for event in events:
+            self.sys_homeassistant.websocket.supervisor_update_event(event)

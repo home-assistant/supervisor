@@ -230,7 +230,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def need_update(self) -> bool:
         """Return true if a Home Assistant update is available."""
         try:
-            return self.version != self.latest_version
+            return self.version < self.latest_version
         except (AwesomeVersionException, TypeError):
             return False
 
