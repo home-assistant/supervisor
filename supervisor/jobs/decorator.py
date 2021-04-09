@@ -83,8 +83,7 @@ class Job(CoreSysAttributes):
                     if self.on_condition is None:
                         _LOGGER.info(error_msg)
                         return
-                    _LOGGER.warning(error_msg)
-                    raise self.on_condition(error_msg) from None
+                    raise self.on_condition(error_msg, _LOGGER.warning) from None
 
             # Handle exection limits
             if self.limit in (JobExecutionLimit.SINGLE_WAIT, JobExecutionLimit.ONCE):
