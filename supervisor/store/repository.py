@@ -82,8 +82,8 @@ class Repository(CoreSysAttributes):
         # If exists?
         for filetype in FILE_SUFFIX_CONFIGURATION:
             repository_file = Path(self.git.path / f"repository{filetype}")
-            if not repository_file.exists():
-                continue
+            if repository_file.exists():
+                break
 
         if not repository_file.exists():
             return False
