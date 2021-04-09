@@ -91,7 +91,8 @@ class Repository(CoreSysAttributes):
         # If valid?
         try:
             SCHEMA_REPOSITORY_CONFIG(read_json_or_yaml_file(repository_file))
-        except (ConfigurationFileError, vol.Invalid):
+        except (ConfigurationFileError, vol.Invalid) as err:
+            _LOGGER.warning("Could not validate repository configuration %s", err)
             return False
 
         return True

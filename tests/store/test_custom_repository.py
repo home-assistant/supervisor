@@ -13,9 +13,10 @@ async def test_add_valid_repository(coresys, store_manager):
     """Test add custom repository."""
     current = coresys.config.addons_repositories
     with patch("supervisor.store.repository.Repository.load", return_value=None), patch(
-        "pathlib.Path.read_text",
-        return_value=json.dumps({"name": "Awesome repository"}),
+        "supervisor.utils.common.read_yaml_file",
+        return_value={"name": "Awesome repository"},
     ), patch("pathlib.Path.exists", return_value=True):
+
         await store_manager.update_repositories(current + ["http://example.com"])
         assert store_manager.get_from_url("http://example.com").validate()
     assert "http://example.com" in coresys.config.addons_repositories
@@ -26,10 +27,8 @@ async def test_add_valid_repository_url(coresys, store_manager):
     """Test add custom repository."""
     current = coresys.config.addons_repositories
     with patch("supervisor.store.repository.Repository.load", return_value=None), patch(
-        "pathlib.Path.read_text",
-        return_value=json.dumps(
-            {"name": "Awesome repository", "url": "http://example2.com/docs"}
-        ),
+        "supervisor.utils.common.read_yaml_file",
+        return_value={"name": "Awesome repository"},
     ), patch("pathlib.Path.exists", return_value=True):
         await store_manager.update_repositories(current + ["http://example.com"])
         assert store_manager.get_from_url("http://example.com").validate()
