@@ -234,7 +234,6 @@ class Updater(FileConfiguration, CoreSysAttributes):
         try:
             # Update supervisor version
             self._data[ATTR_SUPERVISOR] = AwesomeVersion(data["supervisor"])
-            self.sys_homeassistant.websocket.supervisor_update_event("supervisor")
 
             # Update Home Assistant core version
             self._data[ATTR_HOMEASSISTANT] = AwesomeVersion(
