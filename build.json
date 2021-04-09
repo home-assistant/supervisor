@@ -12,6 +12,7 @@
     "VCN_VERSION": "0.9.4"
   },
   "labels": {
-    "io.hass.type": "supervisor"
+    "io.hass.type": "supervisor",
+    "org.opencontainers.image.source": "https://github.com/home-assistant/supervisor"
   }
 }
