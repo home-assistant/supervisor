@@ -269,3 +269,9 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
         else:
             self.save_data()
+
+        # Signal frontend
+        self.sys_homeassistant.websocket.supervisor_update_event("supervisor")
+        self.sys_homeassistant.websocket.supervisor_update_event("core")
+        if self.sys_hassos.board:
+            self.sys_homeassistant.websocket.supervisor_update_event("os")
