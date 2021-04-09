@@ -248,7 +248,6 @@ class Updater(FileConfiguration, CoreSysAttributes):
                     data["hassos"][self.sys_hassos.board]
                 )
                 self._data[ATTR_OTA] = data["ota"]
-                
 
             # Update Home Assistant plugins
             self._data[ATTR_CLI] = AwesomeVersion(data["cli"])
