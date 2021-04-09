@@ -82,8 +82,8 @@ class Repository(CoreSysAttributes):
         # If exists?
         for filetype in FILE_SUFFIX_CONFIGURATION:
             repository_file = Path(self.git.path / f"repository{filetype}")
-            if not repository_file.exists():
-                continue
+            if repository_file.exists():
+                break
 
         if not repository_file.exists():
             return False
@@ -91,7 +91,8 @@ class Repository(CoreSysAttributes):
         # If valid?
         try:
             SCHEMA_REPOSITORY_CONFIG(read_json_or_yaml_file(repository_file))
-        except (ConfigurationFileError, vol.Invalid):
+        except (ConfigurationFileError, vol.Invalid) as err:
+            _LOGGER.warning("Could not validate repository configuration %s", err)
             return False
 
         return True
