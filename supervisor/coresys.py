@@ -630,7 +630,6 @@ class CoreSysAttributes:
             await vcn_validate(checksum, path, org="home-assistant.io")
         except CodeNotaryUntrusted as err:
             self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
-            self.sys_capture_exception(err)
             raise
         except CodeNotaryError:
             if self.sys_config.force_security:
