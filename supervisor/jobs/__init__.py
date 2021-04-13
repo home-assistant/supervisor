@@ -105,7 +105,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         try:
             self.context.get()
         except LookupError:
-            self.context.set(str(uuid4().hex))
+            self.context.set(uuid4().hex)
 
         context = self.context.get()
 
