@@ -4,10 +4,11 @@ import logging
 from pathlib import Path
 from typing import Dict, Optional, Union
 
-from ruamel.yaml import YAML, YAMLError
-
 from ..coresys import CoreSys, CoreSysAttributes
-from ..utils import AsyncThrottle
+from ..exceptions import YamlFileError
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
+from ..utils.yaml import read_yaml_file
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class HomeAssistantSecrets(CoreSysAttributes):
         """Reload secrets."""
         await self._read_secrets()
 
-    @AsyncThrottle(timedelta(seconds=60))
+    @Job(limit=JobExecutionLimit.THROTTLE_WAIT, throttle_period=timedelta(seconds=60))
     async def _read_secrets(self):
         """Read secrets.yaml into memory."""
         if not self.path_secrets.exists():
@@ -49,16 +50,16 @@ class HomeAssistantSecrets(CoreSysAttributes):
 
         # Read secrets
         try:
-            yaml = YAML()
-            yaml.allow_duplicate_keys = True
-            data = await self.sys_run_in_executor(yaml.load, self.path_secrets) or {}
+            secrets = await self.sys_run_in_executor(read_yaml_file, self.path_secrets)
+        except YamlFileError as err:
+            _LOGGER.warning("Can't read Home Assistant secrets: %s", err)
+            return
 
-            # Filter to only get supported values
-            self.secrets = {
-                k: v for k, v in data.items() if isinstance(v, (bool, float, int, str))
-            }
+        if not isinstance(secrets, dict):
+            return
 
-        except (YAMLError, AttributeError) as err:
-            _LOGGER.error("Can't process Home Assistant secrets: %s", err)
-        else:
-            _LOGGER.debug("Reloading Home Assistant secrets: %s", len(self.secrets))
+        # Process secrets
+        self.secrets = {
+            k: v for k, v in secrets.items() if isinstance(v, (bool, float, int, str))
+        }
+        _LOGGER.debug("Reloading Home Assistant secrets: %s", len(self.secrets))

@@ -8,7 +8,8 @@ import logging
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
-from .const import IssueType
+from .checks.core_security import SecurityReference
+from .const import ContextType, IssueType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -39,6 +40,26 @@ class ResolutionNotify(CoreSysAttributes):
                         "notification_id": "supervisor_issue_free_space",
                     }
                 )
+            if issue.type == IssueType.SECURITY and issue.context == ContextType.CORE:
+                if (
+                    issue.reference
+                    == SecurityReference.CUSTOM_COMPONENTS_BELOW_2021_1_5
+                ):
+                    messages.append(
+                        {
+                            "title": "Security notification",
+                            "message": "The Supervisor detected that this version of Home Assistant could be insecure in combination with custom integrations. [Update as soon as possible.](/hassio/dashboard)\n\nFor more information see the [Security alert](https://www.home-assistant.io/latest-security-alert).",
+                            "notification_id": "supervisor_update_home_assistant_2021_1_5",
+                        }
+                    )
+            if issue.type == IssueType.PWNED and issue.context == ContextType.ADDON:
+                messages.append(
+                    {
+                        "title": f"Insecure secrets in {issue.reference}",
+                        "message": f"The add-on {issue.reference} uses secrets which are detected as not secure, see https://www.home-assistant.io/more-info/pwned-passwords for more information.",
+                        "notification_id": f"supervisor_issue_pwned_{issue.reference}",
+                    }
+                )
 
         for message in messages:
             try:
@@ -48,7 +69,7 @@ class ResolutionNotify(CoreSysAttributes):
                     json=message,
                 ) as resp:
                     if resp.status in (200, 201):
-                        _LOGGER.debug("Sucessfully created persistent_notification")
+                        _LOGGER.debug("Successfully created persistent_notification")
                     else:
                         _LOGGER.error("Can't create persistant notification")
             except HomeAssistantAPIError:

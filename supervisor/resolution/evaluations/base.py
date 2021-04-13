@@ -44,6 +44,11 @@ class EvaluateBase(ABC, CoreSysAttributes):
         """Return a UnsupportedReason enum."""
 
     @property
+    def slug(self) -> str:
+        """Return the check slug."""
+        return self.__class__.__module__.split(".")[-1]
+
+    @property
     @abstractproperty
     def on_failure(self) -> str:
         """Return a string that is printed when self.evaluate is False."""

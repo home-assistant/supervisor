@@ -1,6 +1,6 @@
 """Test evaluation base."""
 # pylint: disable=import-error,protected-access
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -24,7 +24,8 @@ async def test_fixup(coresys: CoreSys):
     mock_repositorie = AsyncMock()
     coresys.store.repositories["test"] = mock_repositorie
 
-    await store_execute_reload()
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+        await store_execute_reload()
 
     assert mock_repositorie.load.called
     assert mock_repositorie.update.called

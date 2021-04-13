@@ -4,6 +4,7 @@ import logging
 import os
 from typing import Awaitable
 
+from awesomeversion.awesomeversion import AwesomeVersion
 import docker
 import requests
 
@@ -32,7 +33,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         """Return True if the container run with Privileged."""
         return self.meta_host.get("Privileged", False)
 
-    def _attach(self, tag: str) -> None:
+    def _attach(self, version: AwesomeVersion) -> None:
         """Attach to running docker container.
 
         Need run inside executor.
@@ -73,24 +74,24 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         try:
             docker_container = self.sys_docker.containers.get(self.name)
 
-            docker_container.image.tag(self.image, tag=self.version)
+            docker_container.image.tag(self.image, tag=str(self.version))
             docker_container.image.tag(self.image, tag="latest")
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't retag Supervisor version: %s", err)
             raise DockerError() from err
 
-    def update_start_tag(self, image: str, version: str) -> Awaitable[None]:
+    def update_start_tag(self, image: str, version: AwesomeVersion) -> Awaitable[None]:
         """Update start tag to new version."""
         return self.sys_run_in_executor(self._update_start_tag, image, version)
 
-    def _update_start_tag(self, image: str, version: str) -> None:
+    def _update_start_tag(self, image: str, version: AwesomeVersion) -> None:
         """Update start tag to new version.
 
         Need run inside executor.
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
-            docker_image = self.sys_docker.images.get(f"{image}:{version}")
+            docker_image = self.sys_docker.images.get(f"{image}:{version!s}")
 
             # Find start tag
             for tag in docker_container.image.tags:
@@ -101,6 +102,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
                 if start_tag != "latest":
                     continue
                 docker_image.tag(start_image, start_tag)
+                docker_image.tag(start_image, version.string)
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't fix start tag: %s", err)

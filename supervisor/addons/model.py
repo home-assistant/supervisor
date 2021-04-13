@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
-from packaging import version as pkg_version
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 import voluptuous as vol
 
 from ..const import (
@@ -12,7 +12,6 @@ from ..const import (
     ATTR_ARCH,
     ATTR_AUDIO,
     ATTR_AUTH_API,
-    ATTR_AUTO_UART,
     ATTR_BOOT,
     ATTR_DESCRIPTON,
     ATTR_DEVICES,
@@ -33,6 +32,7 @@ from ..const import (
     ATTR_IMAGE,
     ATTR_INGRESS,
     ATTR_INIT,
+    ATTR_JOURNALD,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
     ATTR_LOCATON,
@@ -46,6 +46,7 @@ from ..const import (
     ATTR_PORTS,
     ATTR_PORTS_DESCRIPTION,
     ATTR_PRIVILEGED,
+    ATTR_REALTIME,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
     ATTR_SERVICES,
@@ -56,6 +57,8 @@ from ..const import (
     ATTR_STDIN,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
+    ATTR_TRANSLATIONS,
+    ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
     ATTR_USB,
@@ -71,7 +74,9 @@ from ..const import (
     AddonStartup,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from .validate import RE_SERVICE, RE_VOLUME, schema_ui_options, validate_options
+from ..docker.const import Capabilities
+from .options import AddonOptions, UiOptions
+from .validate import RE_SERVICE, RE_VOLUME
 
 Data = Dict[str, Any]
 
@@ -183,12 +188,17 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_REPOSITORY]
 
     @property
-    def latest_version(self) -> str:
+    def translations(self) -> dict:
+        """Return add-on translations."""
+        return self.data[ATTR_TRANSLATIONS]
+
+    @property
+    def latest_version(self) -> AwesomeVersion:
         """Return latest version of add-on."""
         return self.data[ATTR_VERSION]
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> AwesomeVersion:
         """Return version of add-on."""
         return self.data[ATTR_VERSION]
 
@@ -296,14 +306,9 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_HOST_DBUS]
 
     @property
-    def devices(self) -> List[str]:
-        """Return devices of add-on."""
-        return self.data.get(ATTR_DEVICES, [])
-
-    @property
-    def tmpfs(self) -> Optional[str]:
-        """Return tmpfs of add-on."""
-        return self.data.get(ATTR_TMPFS)
+    def static_devices(self) -> List[Path]:
+        """Return static devices of add-on."""
+        return [Path(node) for node in self.data.get(ATTR_DEVICES, [])]
 
     @property
     def environment(self) -> Optional[Dict[str, str]]:
@@ -311,7 +316,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data.get(ATTR_ENVIRONMENT)
 
     @property
-    def privileged(self) -> List[str]:
+    def privileged(self) -> List[Capabilities]:
         """Return list of privilege."""
         return self.data.get(ATTR_PRIVILEGED, [])
 
@@ -387,7 +392,7 @@ class AddonModel(CoreSysAttributes, ABC):
     @property
     def with_uart(self) -> bool:
         """Return True if we should map all UART device."""
-        return self.data[ATTR_AUTO_UART]
+        return self.data[ATTR_UART]
 
     @property
     def with_udev(self) -> bool:
@@ -400,6 +405,11 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_KERNEL_MODULES]
 
     @property
+    def with_realtime(self) -> bool:
+        """Return True if the add-on need realtime schedule functions."""
+        return self.data[ATTR_REALTIME]
+
+    @property
     def with_full_access(self) -> bool:
         """Return True if the add-on want full access to hardware."""
         return self.data[ATTR_FULL_ACCESS]
@@ -408,6 +418,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def with_devicetree(self) -> bool:
         """Return True if the add-on read access to devicetree."""
         return self.data[ATTR_DEVICETREE]
+
+    @property
+    def with_tmpfs(self) -> Optional[str]:
+        """Return if tmp is in memory of add-on."""
+        return self.data[ATTR_TMPFS]
 
     @property
     def access_auth_api(self) -> bool:
@@ -522,8 +537,10 @@ class AddonModel(CoreSysAttributes, ABC):
         raw_schema = self.data[ATTR_SCHEMA]
 
         if isinstance(raw_schema, bool):
-            return vol.Schema(dict)
-        return vol.Schema(vol.All(dict, validate_options(self.coresys, raw_schema)))
+            raw_schema = {}
+        return vol.Schema(
+            vol.All(dict, AddonOptions(self.coresys, raw_schema, self.name, self.slug))
+        )
 
     @property
     def schema_ui(self) -> Optional[List[Dict[str, Any]]]:
@@ -532,7 +549,12 @@ class AddonModel(CoreSysAttributes, ABC):
 
         if isinstance(raw_schema, bool):
             return None
-        return schema_ui_options(raw_schema)
+        return UiOptions(self.coresys)(raw_schema)
+
+    @property
+    def with_journald(self) -> bool:
+        """Return True if the add-on accesses the system journal."""
+        return self.data[ATTR_JOURNALD]
 
     def __eq__(self, other):
         """Compaired add-on objects."""
@@ -554,15 +576,10 @@ class AddonModel(CoreSysAttributes, ABC):
             return False
 
         # Home Assistant
-        version = config.get(ATTR_HOMEASSISTANT)
-        if version is None or self.sys_homeassistant.version is None:
-            return True
-
+        version: Optional[AwesomeVersion] = config.get(ATTR_HOMEASSISTANT)
         try:
-            return pkg_version.parse(
-                self.sys_homeassistant.version
-            ) >= pkg_version.parse(version)
-        except pkg_version.InvalidVersion:
+            return self.sys_homeassistant.version >= version
+        except (AwesomeVersionException, TypeError):
             return True
 
     def _image(self, config) -> str:

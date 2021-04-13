@@ -2,8 +2,14 @@
 from typing import List
 
 from ...const import SOCKET_DBUS, CoreState
+from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
+
+
+def setup(coresys: CoreSys) -> EvaluateBase:
+    """Initialize evaluation-setup function."""
+    return EvaluateDbus(coresys)
 
 
 class EvaluateDbus(EvaluateBase):

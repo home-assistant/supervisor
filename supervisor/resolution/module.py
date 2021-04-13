@@ -1,12 +1,13 @@
 """Supervisor resolution center."""
-from datetime import time
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
+from ..utils.common import FileConfiguration
 from .check import ResolutionCheck
 from .const import (
+    FILE_CONFIG_RESOLUTION,
     SCHEDULED_HEALTHCHECK,
     ContextType,
     IssueType,
@@ -18,15 +19,18 @@ from .data import Issue, Suggestion
 from .evaluate import ResolutionEvaluation
 from .fixup import ResolutionFixup
 from .notify import ResolutionNotify
+from .validate import SCHEMA_RESOLUTION_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class ResolutionManager(CoreSysAttributes):
+class ResolutionManager(FileConfiguration, CoreSysAttributes):
     """Resolution manager for supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Resolution manager."""
+        super().__init__(FILE_CONFIG_RESOLUTION, SCHEMA_RESOLUTION_CONFIG)
+
         self.coresys: CoreSys = coresys
         self._evaluate = ResolutionEvaluation(coresys)
         self._check = ResolutionCheck(coresys)
@@ -37,6 +41,11 @@ class ResolutionManager(CoreSysAttributes):
         self._issues: List[Issue] = []
         self._unsupported: List[UnsupportedReason] = []
         self._unhealthy: List[UnhealthyReason] = []
+
+    @property
+    def data(self) -> Dict[str, Any]:
+        """Return data."""
+        return self._data
 
     @property
     def evaluate(self) -> ResolutionEvaluation:
@@ -66,8 +75,12 @@ class ResolutionManager(CoreSysAttributes):
     @issues.setter
     def issues(self, issue: Issue) -> None:
         """Add issues."""
-        if issue not in self._issues:
-            self._issues.append(issue)
+        if issue in self._issues:
+            return
+        _LOGGER.info(
+            "Create new issue %s - %s / %s", issue.type, issue.context, issue.reference
+        )
+        self._issues.append(issue)
 
     @property
     def suggestions(self) -> List[Suggestion]:
@@ -77,8 +90,15 @@ class ResolutionManager(CoreSysAttributes):
     @suggestions.setter
     def suggestions(self, suggestion: Suggestion) -> None:
         """Add suggestion."""
-        if suggestion not in self._suggestions:
-            self._suggestions.append(suggestion)
+        if suggestion in self._suggestions:
+            return
+        _LOGGER.info(
+            "Create new suggestion %s - %s / %s",
+            suggestion.type,
+            suggestion.context,
+            suggestion.reference,
+        )
+        self._suggestions.append(suggestion)
 
     @property
     def unsupported(self) -> List[UnsupportedReason]:
@@ -141,11 +161,14 @@ class ResolutionManager(CoreSysAttributes):
 
         # Schedule the healthcheck
         self.sys_scheduler.register_task(self.healthcheck, SCHEDULED_HEALTHCHECK)
-        self.sys_scheduler.register_task(self.fixup.run_autofix, time(hour=2))
 
     async def healthcheck(self):
         """Scheduled task to check for known issues."""
         await self.check.check_system()
+        await self.evaluate.evaluate_system()
+
+        # Run autofix if possible
+        await self.fixup.run_autofix()
 
         # Create notification for any known issues
         await self.notify.issue_notifications()

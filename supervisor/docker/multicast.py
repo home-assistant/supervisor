@@ -1,8 +1,10 @@
 """HA Cli docker object."""
 import logging
+from typing import List
 
 from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
+from .const import Capabilities
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -23,6 +25,11 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         """Return name of Docker container."""
         return MULTICAST_DOCKER_NAME
 
+    @property
+    def capabilities(self) -> List[str]:
+        """Generate needed capabilities."""
+        return [Capabilities.NET_ADMIN.value]
+
     def _run(self) -> None:
         """Run Docker image.
 
@@ -37,12 +44,14 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_plugins.multicast.version,
+            tag=str(self.sys_plugins.multicast.version),
             init=False,
             name=self.name,
             hostname=self.name.replace("_", "-"),
             network_mode="host",
             detach=True,
+            security_opt=self.security_opt,
+            cap_add=self.capabilities,
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={ENV_TIME: self.sys_config.timezone},
         )

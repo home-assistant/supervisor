@@ -15,11 +15,13 @@ from ..const import (
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_CHANNEL,
+    ATTR_CONTENT_TRUST,
     ATTR_CPU_PERCENT,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DESCRIPTON,
     ATTR_DIAGNOSTICS,
+    ATTR_FORCE_SECURITY,
     ATTR_HEALTHY,
     ATTR_ICON,
     ATTR_IP_ADDRESS,
@@ -63,6 +65,8 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_DEBUG): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK): vol.Boolean(),
         vol.Optional(ATTR_DIAGNOSTICS): vol.Boolean(),
+        vol.Optional(ATTR_CONTENT_TRUST): vol.Boolean(),
+        vol.Optional(ATTR_FORCE_SECURITY): vol.Boolean(),
     }
 )
 
@@ -112,6 +116,8 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG: self.sys_config.debug,
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
+            ATTR_CONTENT_TRUST: self.sys_config.content_trust,
+            ATTR_FORCE_SECURITY: self.sys_config.force_security,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
         }
@@ -142,6 +148,12 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]
 
+        if ATTR_CONTENT_TRUST in body:
+            self.sys_config.content_trust = body[ATTR_CONTENT_TRUST]
+
+        if ATTR_FORCE_SECURITY in body:
+            self.sys_config.force_security = body[ATTR_FORCE_SECURITY]
+
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])
             await asyncio.shield(self.sys_store.update_repositories(new))
@@ -162,6 +174,8 @@ class APISupervisor(CoreSysAttributes):
 
         self.sys_updater.save_data()
         self.sys_config.save_data()
+
+        await self.sys_resolution.evaluate.evaluate_system()
 
     @api_process
     async def stats(self, request: web.Request) -> Dict[str, Any]:

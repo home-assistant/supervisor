@@ -1,0 +1,19 @@
+name: Check PR
+
+on:
+  pull_request:
+    branches: ["main"]
+    types: [labeled, unlabeled, synchronize]
+
+jobs:
+  init:
+    name: Check labels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check labels
+        run: |
+          labels=$(jq -r '.pull_request.labels[] | .name' ${{github.event_path }})
+          echo "$labels"
+          if [ "$labels" == "cla-signed" ]; then
+            exit 1
+          fi

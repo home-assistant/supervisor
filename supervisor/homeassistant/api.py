@@ -11,6 +11,7 @@ from aiohttp import hdrs
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils import check_port
+from .const import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -101,6 +102,13 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
+        # Skip check on landingpage
+        if (
+            self.sys_homeassistant.version is None
+            or self.sys_homeassistant.version == LANDINGPAGE
+        ):
+            return False
+
         # Check if port is up
         if not await self.sys_run_in_executor(
             check_port,

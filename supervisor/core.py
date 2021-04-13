@@ -14,7 +14,8 @@ from .exceptions import (
     HomeAssistantError,
     SupervisorUpdateError,
 )
-from .resolution.const import ContextType, IssueType, UnhealthyReason
+from .homeassistant.core import LANDINGPAGE
+from .resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -46,6 +47,8 @@ class Core(CoreSysAttributes):
     @state.setter
     def state(self, new_state: CoreState) -> None:
         """Set core into new state."""
+        if self._state == new_state:
+            return
         try:
             RUN_SUPERVISOR_STATE.write_text(new_state.value)
         except OSError as err:
@@ -54,6 +57,9 @@ class Core(CoreSysAttributes):
             )
         finally:
             self._state = new_state
+            self.sys_homeassistant.websocket.supervisor_update_event(
+                "info", {"state": new_state}
+            )
 
     async def connect(self):
         """Connect Supervisor container."""
@@ -94,6 +100,8 @@ class Core(CoreSysAttributes):
         setup_loads: List[Awaitable[None]] = [
             # rest api views
             self.sys_api.load(),
+            # Load Host Hardware
+            self.sys_hardware.load(),
             # Load DBus
             self.sys_dbus.load(),
             # Load Host
@@ -147,15 +155,14 @@ class Core(CoreSysAttributes):
             _LOGGER.warning("System running in a unsupported environment!")
         if not self.healthy:
             _LOGGER.critical(
-                "System running in a unhealthy state and need manual intervention!"
+                "System is running in an unhealthy state and needs manual intervention!"
             )
 
         # Check internet on startup
         await self.sys_supervisor.check_connectivity()
 
         # Mark booted partition as healthy
-        if self.sys_hassos.available:
-            await self.sys_hassos.mark_healthy()
+        await self.sys_hassos.mark_healthy()
 
         # On release channel, try update itself
         if self.sys_supervisor.need_update:
@@ -168,7 +175,7 @@ class Core(CoreSysAttributes):
             except SupervisorUpdateError as err:
                 _LOGGER.critical(
                     "Can't update Supervisor! This will break some Add-ons or affect "
-                    "future version of Home Assistant!"
+                    "future versions of Home Assistant!"
                 )
                 self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
                 self.sys_capture_exception(err)
@@ -178,7 +185,7 @@ class Core(CoreSysAttributes):
 
         try:
             # HomeAssistant is already running / supervisor have only reboot
-            if self.sys_hardware.last_boot == self.sys_config.last_boot:
+            if self.sys_hardware.helper.last_boot == self.sys_config.last_boot:
                 _LOGGER.info("Supervisor reboot detected")
                 return
 
@@ -210,6 +217,14 @@ class Core(CoreSysAttributes):
             else:
                 _LOGGER.info("Skiping start of Home Assistant")
 
+            # Core is not running
+            if self.sys_homeassistant.core.error_state:
+                self.sys_resolution.create_issue(
+                    IssueType.FATAL_ERROR,
+                    ContextType.CORE,
+                    suggestions=[SuggestionType.EXECUTE_REPAIR],
+                )
+
             # start addon mark as application
             await self.sys_addons.boot(AddonStartup.APPLICATION)
 
@@ -221,18 +236,16 @@ class Core(CoreSysAttributes):
             await self.sys_tasks.load()
 
             # If landingpage / run upgrade in background
-            if self.sys_homeassistant.version == "landingpage":
+            if self.sys_homeassistant.version == LANDINGPAGE:
                 self.sys_create_task(self.sys_homeassistant.core.install())
-
-            # Start observe the host Hardware
-            await self.sys_hwmonitor.load()
 
             # Upate Host/Deivce information
             self.sys_create_task(self.sys_host.reload())
             self.sys_create_task(self.sys_updater.reload())
-            self.sys_create_task(self.sys_resolution.fixup.run_autofix())
+            self.sys_create_task(self.sys_resolution.healthcheck())
 
             self.state = CoreState.RUNNING
+            self.sys_homeassistant.websocket.supervisor_update_event("supervisor", {})
             _LOGGER.info("Supervisor is up and running")
 
     async def stop(self):
@@ -261,7 +274,7 @@ class Core(CoreSysAttributes):
                         self.sys_websession.close(),
                         self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
-                        self.sys_hwmonitor.unload(),
+                        self.sys_hardware.unload(),
                     ]
                 )
         except asyncio.TimeoutError:
@@ -295,7 +308,7 @@ class Core(CoreSysAttributes):
 
     def _update_last_boot(self):
         """Update last boot time."""
-        self.sys_config.last_boot = self.sys_hardware.last_boot
+        self.sys_config.last_boot = self.sys_hardware.helper.last_boot
         self.sys_config.save_data()
 
     async def repair(self):

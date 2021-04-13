@@ -21,14 +21,29 @@ FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
 FILE_HASSIO_SERVICES = Path(SUPERVISOR_DATA, "services.json")
 FILE_HASSIO_UPDATER = Path(SUPERVISOR_DATA, "updater.json")
 
+FILE_SUFFIX_CONFIGURATION = [".yaml", ".yml", ".json"]
+
 MACHINE_ID = Path("/etc/machine-id")
 SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 SOCKET_DOCKER = Path("/run/docker.sock")
 RUN_SUPERVISOR_STATE = Path("/run/supervisor")
+SYSTEMD_JOURNAL_PERSISTENT = Path("/var/log/journal")
+SYSTEMD_JOURNAL_VOLATILE = Path("/run/log/journal")
 
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
+
+# This needs to match the dockerd --cpu-rt-runtime= argument.
+DOCKER_CPU_RUNTIME_TOTAL = 950_000
+
+# The rt runtimes are guarantees, hence we cannot allocate more
+# time than available! Support up to 5 containers with equal time
+# allocated.
+# Note that the time is multiplied by CPU count. This means that
+# a single container can schedule up to 950/5*4 = 760ms in RT priority
+# on a quad core system.
+DOCKER_CPU_RUNTIME_ALLOCATION = int(DOCKER_CPU_RUNTIME_TOTAL / 5)
 
 DNS_SUFFIX = "local.hass.io"
 
@@ -68,10 +83,12 @@ ENV_SUPERVISOR_DEV = "SUPERVISOR_DEV"
 ENV_SUPERVISOR_MACHINE = "SUPERVISOR_MACHINE"
 ENV_SUPERVISOR_NAME = "SUPERVISOR_NAME"
 ENV_SUPERVISOR_SHARE = "SUPERVISOR_SHARE"
+ENV_SUPERVISOR_CPU_RT = "SUPERVISOR_CPU_RT"
 
 REQUEST_FROM = "HASSIO_FROM"
 
 ATTR_ACCESS_TOKEN = "access_token"
+ATTR_ACCESSPOINTS = "accesspoints"
 ATTR_ACTIVE = "active"
 ATTR_ADDON = "addon"
 ATTR_ADDONS = "addons"
@@ -88,8 +105,8 @@ ATTR_ARGS = "args"
 ATTR_AUDIO = "audio"
 ATTR_AUDIO_INPUT = "audio_input"
 ATTR_AUDIO_OUTPUT = "audio_output"
+ATTR_AUTH = "auth"
 ATTR_AUTH_API = "auth_api"
-ATTR_AUTO_UART = "auto_uart"
 ATTR_AUTO_UPDATE = "auto_update"
 ATTR_AVAILABLE = "available"
 ATTR_BLK_READ = "blk_read"
@@ -103,13 +120,17 @@ ATTR_CARD = "card"
 ATTR_CHANGELOG = "changelog"
 ATTR_CHANNEL = "channel"
 ATTR_CHASSIS = "chassis"
+ATTR_CHECKS = "checks"
 ATTR_CLI = "cli"
 ATTR_CONFIG = "config"
+ATTR_CONFIGURATION = "configuration"
+ATTR_CONNECTED = "connected"
 ATTR_CONNECTIONS = "connections"
 ATTR_CONTAINERS = "containers"
 ATTR_CPE = "cpe"
 ATTR_CPU_PERCENT = "cpu_percent"
 ATTR_CRYPTO = "crypto"
+ATTR_DATA = "data"
 ATTR_DATE = "date"
 ATTR_DEBUG = "debug"
 ATTR_DEBUG_BLOCK = "debug_block"
@@ -123,6 +144,7 @@ ATTR_DIAGNOSTICS = "diagnostics"
 ATTR_DISCOVERY = "discovery"
 ATTR_DISK = "disk"
 ATTR_DISK_FREE = "disk_free"
+ATTR_DISK_LIFE_TIME = "disk_life_time"
 ATTR_DISK_TOTAL = "disk_total"
 ATTR_DISK_USED = "disk_used"
 ATTR_DNS = "dns"
@@ -131,11 +153,14 @@ ATTR_DOCKER_API = "docker_api"
 ATTR_DOCUMENTATION = "documentation"
 ATTR_DOMAINS = "domains"
 ATTR_ENABLE = "enable"
+ATTR_ENABLED = "enabled"
 ATTR_ENVIRONMENT = "environment"
+ATTR_EVENT = "event"
 ATTR_FEATURES = "features"
 ATTR_FILENAME = "filename"
 ATTR_FLAGS = "flags"
 ATTR_FOLDERS = "folders"
+ATTR_FREQUENCY = "frequency"
 ATTR_FULL_ACCESS = "full_access"
 ATTR_GATEWAY = "gateway"
 ATTR_GPIO = "gpio"
@@ -154,7 +179,6 @@ ATTR_HOST_PID = "host_pid"
 ATTR_HOSTNAME = "hostname"
 ATTR_ICON = "icon"
 ATTR_ID = "id"
-ATTR_ISSUES = "issues"
 ATTR_IMAGE = "image"
 ATTR_IMAGES = "images"
 ATTR_INDEX = "index"
@@ -173,6 +197,7 @@ ATTR_INTERFACES = "interfaces"
 ATTR_IP_ADDRESS = "ip_address"
 ATTR_IPV4 = "ipv4"
 ATTR_IPV6 = "ipv6"
+ATTR_ISSUES = "issues"
 ATTR_KERNEL = "kernel"
 ATTR_KERNEL_MODULES = "kernel_modules"
 ATTR_LAST_BOOT = "last_boot"
@@ -182,6 +207,7 @@ ATTR_LOCATON = "location"
 ATTR_LOGGING = "logging"
 ATTR_LOGO = "logo"
 ATTR_LONG_DESCRIPTION = "long_description"
+ATTR_MAC = "mac"
 ATTR_MACHINE = "machine"
 ATTR_MAINTAINER = "maintainer"
 ATTR_MAP = "map"
@@ -198,15 +224,17 @@ ATTR_NETWORK = "network"
 ATTR_NETWORK_DESCRIPTION = "network_description"
 ATTR_NETWORK_RX = "network_rx"
 ATTR_NETWORK_TX = "network_tx"
+ATTR_OBSERVER = "observer"
 ATTR_OPERATING_SYSTEM = "operating_system"
 ATTR_OPTIONS = "options"
+ATTR_OTA = "ota"
 ATTR_OUTPUT = "output"
 ATTR_PANEL_ADMIN = "panel_admin"
 ATTR_PANEL_ICON = "panel_icon"
 ATTR_PANEL_TITLE = "panel_title"
 ATTR_PANELS = "panels"
-ATTR_PASSWORD = "password"
 ATTR_PARENT = "parent"
+ATTR_PASSWORD = "password"
 ATTR_PORT = "port"
 ATTR_PORTS = "ports"
 ATTR_PORTS_DESCRIPTION = "ports_description"
@@ -216,7 +244,9 @@ ATTR_PRIORITY = "priority"
 ATTR_PRIVILEGED = "privileged"
 ATTR_PROTECTED = "protected"
 ATTR_PROVIDERS = "providers"
+ATTR_PSK = "psk"
 ATTR_RATING = "rating"
+ATTR_REALTIME = "realtime"
 ATTR_REFRESH_TOKEN = "refresh_token"
 ATTR_REGISTRIES = "registries"
 ATTR_REGISTRY = "registry"
@@ -229,12 +259,14 @@ ATTR_SERVERS = "servers"
 ATTR_SERVICE = "service"
 ATTR_SERVICES = "services"
 ATTR_SESSION = "session"
+ATTR_SIGNAL = "signal"
 ATTR_SIZE = "size"
 ATTR_SLUG = "slug"
 ATTR_SNAPSHOT_EXCLUDE = "snapshot_exclude"
 ATTR_SNAPSHOTS = "snapshots"
 ATTR_SOURCE = "source"
 ATTR_SQUASH = "squash"
+ATTR_SSD = "ssid"
 ATTR_SSID = "ssid"
 ATTR_SSL = "ssl"
 ATTR_STAGE = "stage"
@@ -249,15 +281,21 @@ ATTR_SUPERVISOR_INTERNET = "supervisor_internet"
 ATTR_SUPPORTED = "supported"
 ATTR_SUPPORTED_ARCH = "supported_arch"
 ATTR_SYSTEM = "system"
+ATTR_JOURNALD = "journald"
 ATTR_TIMEOUT = "timeout"
 ATTR_TIMEZONE = "timezone"
 ATTR_TITLE = "title"
 ATTR_TMPFS = "tmpfs"
 ATTR_TOTP = "totp"
+ATTR_TRANSLATIONS = "translations"
 ATTR_TYPE = "type"
+ATTR_UART = "uart"
 ATTR_UDEV = "udev"
+ATTR_UNHEALTHY = "unhealthy"
 ATTR_UNSAVED = "unsaved"
 ATTR_UNSUPPORTED = "unsupported"
+ATTR_UPDATE_AVAILABLE = "update_available"
+ATTR_UPDATE_KEY = "update_key"
 ATTR_URL = "url"
 ATTR_USB = "usb"
 ATTR_USER = "user"
@@ -268,26 +306,15 @@ ATTR_VALUE = "value"
 ATTR_VERSION = "version"
 ATTR_VERSION_LATEST = "version_latest"
 ATTR_VIDEO = "video"
+ATTR_VLAN = "vlan"
 ATTR_VOLUME = "volume"
 ATTR_VPN = "vpn"
 ATTR_WAIT_BOOT = "wait_boot"
 ATTR_WATCHDOG = "watchdog"
 ATTR_WEBUI = "webui"
-ATTR_OBSERVER = "observer"
-ATTR_UPDATE_AVAILABLE = "update_available"
 ATTR_WIFI = "wifi"
-ATTR_VLAN = "vlan"
-ATTR_SSD = "ssid"
-ATTR_AUTH = "auth"
-ATTR_PSK = "psk"
-ATTR_CONNECTED = "connected"
-ATTR_ENABLED = "enabled"
-ATTR_SIGNAL = "signal"
-ATTR_MAC = "mac"
-ATTR_FREQUENCY = "frequency"
-ATTR_ACCESSPOINTS = "accesspoints"
-ATTR_UNHEALTHY = "unhealthy"
-ATTR_OTA = "ota"
+ATTR_CONTENT_TRUST = "content_trust"
+ATTR_FORCE_SECURITY = "force_security"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
@@ -327,30 +354,6 @@ SECURITY_PROFILE = "profile"
 SECURITY_DEFAULT = "default"
 SECURITY_DISABLE = "disable"
 
-PRIVILEGED_DAC_READ_SEARCH = "DAC_READ_SEARCH"
-PRIVILEGED_IPC_LOCK = "IPC_LOCK"
-PRIVILEGED_NET_ADMIN = "NET_ADMIN"
-PRIVILEGED_SYS_ADMIN = "SYS_ADMIN"
-PRIVILEGED_SYS_MODULE = "SYS_MODULE"
-PRIVILEGED_SYS_NICE = "SYS_NICE"
-PRIVILEGED_SYS_PTRACE = "SYS_PTRACE"
-PRIVILEGED_SYS_RAWIO = "SYS_RAWIO"
-PRIVILEGED_SYS_RESOURCE = "SYS_RESOURCE"
-PRIVILEGED_SYS_TIME = "SYS_TIME"
-
-PRIVILEGED_ALL = [
-    PRIVILEGED_NET_ADMIN,
-    PRIVILEGED_SYS_ADMIN,
-    PRIVILEGED_SYS_RAWIO,
-    PRIVILEGED_IPC_LOCK,
-    PRIVILEGED_SYS_TIME,
-    PRIVILEGED_SYS_NICE,
-    PRIVILEGED_SYS_RESOURCE,
-    PRIVILEGED_SYS_PTRACE,
-    PRIVILEGED_SYS_MODULE,
-    PRIVILEGED_DAC_READ_SEARCH,
-]
-
 ROLE_DEFAULT = "default"
 ROLE_HOMEASSISTANT = "homeassistant"
 ROLE_BACKUP = "backup"
@@ -358,9 +361,6 @@ ROLE_MANAGER = "manager"
 ROLE_ADMIN = "admin"
 
 ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_ADMIN]
-
-CHAN_ID = "chan_id"
-CHAN_TYPE = "chan_type"
 
 
 class AddonBoot(str, Enum):

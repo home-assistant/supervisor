@@ -1,8 +1,26 @@
 """Core Exceptions."""
 
 
+from typing import Callable, Optional
+
+
 class HassioError(Exception):
     """Root exception."""
+
+    def __init__(
+        self,
+        message: Optional[str] = None,
+        logger: Optional[Callable[..., None]] = None,
+    ) -> None:
+        """Raise & log."""
+        if logger is not None and message is not None:
+            logger(message)
+
+        # Init Base
+        if message is not None:
+            super().__init__(message)
+        else:
+            super().__init__()
 
 
 class HassioNotSupportedError(HassioError):
@@ -14,6 +32,10 @@ class HassioNotSupportedError(HassioError):
 
 class JobException(HassioError):
     """Base job exception."""
+
+
+class JobConditionException(JobException):
+    """Exception happening for job conditions."""
 
 
 # HomeAssistant
@@ -39,6 +61,14 @@ class HomeAssistantAuthError(HomeAssistantAPIError):
     """Home Assistant Auth API exception."""
 
 
+class HomeAssistantWSError(HomeAssistantAPIError):
+    """Home Assistant websocket error."""
+
+
+class HomeAssistantWSNotSupported(HomeAssistantWSError):
+    """Raise when WebSockets are not supported."""
+
+
 class HomeAssistantJobError(HomeAssistantError, JobException):
     """Raise on Home Assistant job error."""
 
@@ -52,6 +82,10 @@ class SupervisorError(HassioError):
 
 class SupervisorUpdateError(SupervisorError):
     """Supervisor update error."""
+
+
+class SupervisorAppArmorError(SupervisorError):
+    """Supervisor AppArmor error."""
 
 
 class SupervisorJobError(SupervisorError, JobException):
@@ -69,7 +103,7 @@ class HassOSUpdateError(HassOSError):
     """Error on update of a HassOS."""
 
 
-class HassOSNotSupportedError(HassioNotSupportedError):
+class HassOSJobError(HassOSError, JobException):
     """Function not supported by HassOS."""
 
 
@@ -267,11 +301,55 @@ class AppArmorInvalidError(AppArmorError):
     """AppArmor profile validate error."""
 
 
+# util/common
+
+
+class ConfigurationFileError(HassioError):
+    """Invalid JSON or YAML file."""
+
+
 # util/json
 
 
-class JsonFileError(HassioError):
-    """Invalid json file."""
+class JsonFileError(ConfigurationFileError):
+    """Invalid JSON file."""
+
+
+# util/yaml
+
+
+class YamlFileError(ConfigurationFileError):
+    """Invalid YAML file."""
+
+
+# util/pwned
+
+
+class PwnedError(HassioError):
+    """Errors while checking pwned passwords."""
+
+
+class PwnedSecret(PwnedError):
+    """Pwned secrets found."""
+
+
+class PwnedConnectivityError(PwnedError):
+    """Connectivity errors while checking pwned passwords."""
+
+
+# util/codenotary
+
+
+class CodeNotaryError(HassioError):
+    """Error general with CodeNotary."""
+
+
+class CodeNotaryUntrusted(CodeNotaryError):
+    """Error on untrusted content."""
+
+
+class CodeNotaryBackendError(CodeNotaryError):
+    """CodeNotary backend error happening."""
 
 
 # docker/api
@@ -289,11 +367,23 @@ class DockerRequestError(DockerError):
     """Dockerd OS issues."""
 
 
+class DockerTrustError(DockerError):
+    """Raise if images are not trusted."""
+
+
 class DockerNotFound(DockerError):
     """Docker object don't Exists."""
 
 
 # Hardware
+
+
+class HardwareError(HassioError):
+    """General Hardware Error on Supervisor."""
+
+
+class HardwareNotFound(HardwareError):
+    """Hardware path or device doesn't exist on the Host."""
 
 
 class HardwareNotSupportedError(HassioNotSupportedError):
@@ -312,6 +402,10 @@ class PulseAudioError(HassioError):
 
 class ResolutionError(HassioError):
     """Raise if an error is happning on resoltuion."""
+
+
+class ResolutionCheckError(ResolutionError):
+    """Raise when there are an issue managing checks."""
 
 
 class ResolutionNotFound(ResolutionError):

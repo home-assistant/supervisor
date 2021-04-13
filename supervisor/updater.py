@@ -7,6 +7,9 @@ import logging
 from typing import Optional
 
 import aiohttp
+from awesomeversion import AwesomeVersion
+
+from supervisor.jobs.const import JobExecutionLimit
 
 from .const import (
     ATTR_AUDIO,
@@ -25,16 +28,21 @@ from .const import (
     UpdateChannel,
 )
 from .coresys import CoreSysAttributes
-from .exceptions import UpdaterError, UpdaterJobError
+from .exceptions import (
+    CodeNotaryError,
+    CodeNotaryUntrusted,
+    UpdaterError,
+    UpdaterJobError,
+)
 from .jobs.decorator import Job, JobCondition
-from .utils import AsyncThrottle
-from .utils.json import JsonConfig
+from .utils.codenotary import calc_checksum
+from .utils.common import FileConfiguration
 from .validate import SCHEMA_UPDATER_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Updater(JsonConfig, CoreSysAttributes):
+class Updater(FileConfiguration, CoreSysAttributes):
     """Fetch last versions from version.json."""
 
     def __init__(self, coresys):
@@ -53,42 +61,42 @@ class Updater(JsonConfig, CoreSysAttributes):
             await self.fetch_data()
 
     @property
-    def version_homeassistant(self) -> Optional[str]:
+    def version_homeassistant(self) -> Optional[AwesomeVersion]:
         """Return latest version of Home Assistant."""
         return self._data.get(ATTR_HOMEASSISTANT)
 
     @property
-    def version_supervisor(self) -> Optional[str]:
+    def version_supervisor(self) -> Optional[AwesomeVersion]:
         """Return latest version of Supervisor."""
         return self._data.get(ATTR_SUPERVISOR)
 
     @property
-    def version_hassos(self) -> Optional[str]:
+    def version_hassos(self) -> Optional[AwesomeVersion]:
         """Return latest version of HassOS."""
         return self._data.get(ATTR_HASSOS)
 
     @property
-    def version_cli(self) -> Optional[str]:
+    def version_cli(self) -> Optional[AwesomeVersion]:
         """Return latest version of CLI."""
         return self._data.get(ATTR_CLI)
 
     @property
-    def version_dns(self) -> Optional[str]:
+    def version_dns(self) -> Optional[AwesomeVersion]:
         """Return latest version of DNS."""
         return self._data.get(ATTR_DNS)
 
     @property
-    def version_audio(self) -> Optional[str]:
+    def version_audio(self) -> Optional[AwesomeVersion]:
         """Return latest version of Audio."""
         return self._data.get(ATTR_AUDIO)
 
     @property
-    def version_observer(self) -> Optional[str]:
+    def version_observer(self) -> Optional[AwesomeVersion]:
         """Return latest version of Observer."""
         return self._data.get(ATTR_OBSERVER)
 
     @property
-    def version_multicast(self) -> Optional[str]:
+    def version_multicast(self) -> Optional[AwesomeVersion]:
         """Return latest version of Multicast."""
         return self._data.get(ATTR_MULTICAST)
 
@@ -164,10 +172,11 @@ class Updater(JsonConfig, CoreSysAttributes):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
 
-    @AsyncThrottle(timedelta(seconds=30))
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=UpdaterJobError,
+        limit=JobExecutionLimit.THROTTLE_WAIT,
+        throttle_period=timedelta(seconds=30),
     )
     async def fetch_data(self):
         """Fetch current versions from Github.
@@ -177,42 +186,74 @@ class Updater(JsonConfig, CoreSysAttributes):
         url = URL_HASSIO_VERSION.format(channel=self.channel)
         machine = self.sys_machine or "default"
 
+        # Get data
         try:
             _LOGGER.info("Fetching update data from %s", url)
-            async with self.sys_websession.get(url, timeout=10) as request:
-                data = await request.json(content_type=None)
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with self.sys_websession.get(url, timeout=timeout) as request:
+                if request.status != 200:
+                    raise UpdaterError(
+                        f"Fetching version from {url} response with {request.status}",
+                        _LOGGER.warning,
+                    )
+                data = await request.read()
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-            _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
-            raise UpdaterError() from err
+            self.sys_supervisor.connectivity = False
+            raise UpdaterError(
+                f"Can't fetch versions from {url}: {str(err) or 'Timeout'}",
+                _LOGGER.warning,
+            ) from err
 
+        # Validate
+        try:
+            await self.sys_verify_content(checksum=calc_checksum(data))
+        except CodeNotaryUntrusted as err:
+            raise UpdaterError(
+                "Content-Trust is broken for the version file fetch!", _LOGGER.critical
+            ) from err
+        except CodeNotaryError as err:
+            raise UpdaterError(
+                f"CodeNotary error while processing version fetch: {err!s}",
+                _LOGGER.error,
+            ) from err
+
+        # Parse data
+        try:
+            data = json.loads(data)
         except json.JSONDecodeError as err:
-            _LOGGER.warning("Can't parse versions from %s: %s", url, err)
-            raise UpdaterError() from err
+            raise UpdaterError(
+                f"Can't parse versions from {url}: {err}", _LOGGER.warning
+            ) from err
 
         # data valid?
         if not data or data.get(ATTR_CHANNEL) != self.channel:
-            _LOGGER.warning("Invalid data from %s", url)
-            raise UpdaterError()
+            raise UpdaterError(f"Invalid data from {url}", _LOGGER.warning)
 
+        events = ["supervisor", "core"]
         try:
             # Update supervisor version
-            self._data[ATTR_SUPERVISOR] = data["supervisor"]
+            self._data[ATTR_SUPERVISOR] = AwesomeVersion(data["supervisor"])
 
             # Update Home Assistant core version
-            self._data[ATTR_HOMEASSISTANT] = data["homeassistant"][machine]
+            self._data[ATTR_HOMEASSISTANT] = AwesomeVersion(
+                data["homeassistant"][machine]
+            )
 
             # Update HassOS version
             if self.sys_hassos.board:
-                self._data[ATTR_HASSOS] = data["hassos"][self.sys_hassos.board]
+                events.append("os")
+                self._data[ATTR_HASSOS] = AwesomeVersion(
+                    data["hassos"][self.sys_hassos.board]
+                )
                 self._data[ATTR_OTA] = data["ota"]
 
             # Update Home Assistant plugins
-            self._data[ATTR_CLI] = data["cli"]
-            self._data[ATTR_DNS] = data["dns"]
-            self._data[ATTR_AUDIO] = data["audio"]
-            self._data[ATTR_OBSERVER] = data["observer"]
-            self._data[ATTR_MULTICAST] = data["multicast"]
+            self._data[ATTR_CLI] = AwesomeVersion(data["cli"])
+            self._data[ATTR_DNS] = AwesomeVersion(data["dns"])
+            self._data[ATTR_AUDIO] = AwesomeVersion(data["audio"])
+            self._data[ATTR_OBSERVER] = AwesomeVersion(data["observer"])
+            self._data[ATTR_MULTICAST] = AwesomeVersion(data["multicast"])
 
             # Update images for that versions
             self._data[ATTR_IMAGE][ATTR_HOMEASSISTANT] = data["image"]["core"]
@@ -224,8 +265,12 @@ class Updater(JsonConfig, CoreSysAttributes):
             self._data[ATTR_IMAGE][ATTR_MULTICAST] = data["image"]["multicast"]
 
         except KeyError as err:
-            _LOGGER.warning("Can't process version data: %s", err)
-            raise UpdaterError() from err
+            raise UpdaterError(
+                f"Can't process version data: {err}", _LOGGER.warning
+            ) from err
 
-        else:
-            self.save_data()
+        self.save_data()
+
+        # Send status update to core
+        for event in events:
+            self.sys_homeassistant.websocket.supervisor_update_event(event)

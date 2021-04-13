@@ -5,13 +5,14 @@ from pathlib import Path
 from typing import Awaitable, Optional
 
 import aiohttp
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 from cpe import CPE
-from packaging.version import parse as pkg_parse
 
 from .coresys import CoreSys, CoreSysAttributes
 from .dbus.rauc import RaucState
-from .exceptions import DBusError, HassOSNotSupportedError, HassOSUpdateError
-from .utils import process_lock
+from .exceptions import DBusError, HassOSJobError, HassOSUpdateError
+from .jobs.const import JobCondition, JobExecutionLimit
+from .jobs.decorator import Job
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -22,9 +23,8 @@ class HassOS(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize HassOS handler."""
         self.coresys: CoreSys = coresys
-        self.lock: asyncio.Lock = asyncio.Lock()
         self._available: bool = False
-        self._version: Optional[str] = None
+        self._version: Optional[AwesomeVersion] = None
         self._board: Optional[str] = None
 
     @property
@@ -33,12 +33,12 @@ class HassOS(CoreSysAttributes):
         return self._available
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> Optional[AwesomeVersion]:
         """Return version of HassOS."""
         return self._version
 
     @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return version of HassOS."""
         return self.sys_updater.version_hassos
 
@@ -46,8 +46,8 @@ class HassOS(CoreSysAttributes):
     def need_update(self) -> bool:
         """Return true if a HassOS update is available."""
         try:
-            return pkg_parse(self.version) < pkg_parse(self.latest_version)
-        except (TypeError, ValueError):
+            return self.version < self.latest_version
+        except (AwesomeVersionException, TypeError):
             return False
 
     @property
@@ -55,27 +55,23 @@ class HassOS(CoreSysAttributes):
         """Return board name."""
         return self._board
 
-    def _check_host(self) -> None:
-        """Check if HassOS is available."""
-        if not self.available:
-            _LOGGER.error("No Home Assistant Operating System available")
-            raise HassOSNotSupportedError()
-
-    async def _download_raucb(self, version: str) -> Path:
+    async def _download_raucb(self, version: AwesomeVersion) -> Path:
         """Download rauc bundle (OTA) from github."""
         raw_url = self.sys_updater.ota_url
         if raw_url is None:
-            _LOGGER.error("Don't have an URL for OTA updates!")
-            raise HassOSNotSupportedError()
-        url = raw_url.format(version=version, board=self.board)
+            raise HassOSUpdateError("Don't have an URL for OTA updates!", _LOGGER.error)
+        url = raw_url.format(version=str(version), board=self.board)
 
         _LOGGER.info("Fetch OTA update from %s", url)
-        raucb = Path(self.sys_config.path_tmp, f"hassos-{version}.raucb")
+        raucb = Path(self.sys_config.path_tmp, f"hassos-{version!s}.raucb")
         try:
             timeout = aiohttp.ClientTimeout(total=60 * 60, connect=180)
             async with self.sys_websession.get(url, timeout=timeout) as request:
                 if request.status != 200:
-                    raise HassOSUpdateError()
+                    raise HassOSUpdateError(
+                        f"Error raise form OTA Webserver: {request.status}",
+                        _LOGGER.error,
+                    )
 
                 # Download RAUCB file
                 with raucb.open("wb") as ota_file:
@@ -85,16 +81,19 @@ class HassOS(CoreSysAttributes):
                             break
                         ota_file.write(chunk)
 
-            _LOGGER.info("OTA update is downloaded on %s", raucb)
+            _LOGGER.info("Completed download of OTA update file %s", raucb)
             return raucb
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-            _LOGGER.warning("Can't fetch versions from %s: %s", url, err)
+            self.sys_supervisor.connectivity = False
+            raise HassOSUpdateError(
+                f"Can't fetch OTA update from {url}: {err!s}", _LOGGER.error
+            ) from err
 
         except OSError as err:
-            _LOGGER.error("Can't write OTA file: %s", err)
-
-        raise HassOSUpdateError()
+            raise HassOSUpdateError(
+                f"Can't write OTA file: {err!s}", _LOGGER.error
+            ) from err
 
     async def load(self) -> None:
         """Load HassOS data."""
@@ -103,7 +102,8 @@ class HassOS(CoreSysAttributes):
                 raise NotImplementedError()
 
             cpe = CPE(self.sys_host.info.cpe)
-            if cpe.get_product()[0] != "hassos":
+            os_name = cpe.get_product()[0]
+            if os_name not in ("hassos", "haos"):
                 raise NotImplementedError()
         except NotImplementedError:
             _LOGGER.info("No Home Assistant Operating System found")
@@ -113,37 +113,45 @@ class HassOS(CoreSysAttributes):
             self.sys_host.supported_features.cache_clear()
 
         # Store meta data
-        self._version = cpe.get_version()[0]
+        self._version = AwesomeVersion(cpe.get_version()[0])
         self._board = cpe.get_target_hardware()[0]
 
         await self.sys_dbus.rauc.update()
 
         _LOGGER.info(
-            "Detect HassOS %s / BootSlot %s", self.version, self.sys_dbus.rauc.boot_slot
+            "Detect Home Assistant Operating System %s / BootSlot %s",
+            self.version,
+            self.sys_dbus.rauc.boot_slot,
         )
 
-    def config_sync(self) -> Awaitable[None]:
+    @Job(
+        conditions=[JobCondition.HAOS],
+        on_condition=HassOSJobError,
+    )
+    async def config_sync(self) -> Awaitable[None]:
         """Trigger a host config reload from usb.
 
         Return a coroutine.
         """
-        self._check_host()
-
         _LOGGER.info(
             "Synchronizing configuration from USB with Home Assistant Operating System."
         )
-        return self.sys_host.services.restart("hassos-config.service")
+        await self.sys_host.services.restart("hassos-config.service")
 
-    @process_lock
-    async def update(self, version: Optional[str] = None) -> None:
+    @Job(
+        conditions=[JobCondition.HAOS, JobCondition.INTERNET_SYSTEM],
+        limit=JobExecutionLimit.ONCE,
+        on_condition=HassOSJobError,
+    )
+    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update HassOS system."""
         version = version or self.latest_version
 
         # Check installed version
-        self._check_host()
         if version == self.version:
-            _LOGGER.warning("Version %s is already installed", version)
-            raise HassOSUpdateError()
+            raise HassOSUpdateError(
+                f"Version {version!s} is already installed", _LOGGER.warning
+            )
 
         # Fetch files from internet
         int_ota = await self._download_raucb(version)
@@ -154,8 +162,7 @@ class HassOS(CoreSysAttributes):
             completed = await self.sys_dbus.rauc.signal_completed()
 
         except DBusError as err:
-            _LOGGER.error("Rauc communication error")
-            raise HassOSUpdateError() from err
+            raise HassOSUpdateError("Rauc communication error", _LOGGER.error) from err
 
         finally:
             int_ota.unlink()
@@ -176,6 +183,7 @@ class HassOS(CoreSysAttributes):
         )
         raise HassOSUpdateError()
 
+    @Job(conditions=[JobCondition.HAOS])
     async def mark_healthy(self) -> None:
         """Set booted partition as good for rauc."""
         try:

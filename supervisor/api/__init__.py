@@ -28,6 +28,7 @@ from .resolution import APIResoulution
 from .security import SecurityMiddleware
 from .services import APIServices
 from .snapshots import APISnapshots
+from .store import APIStore
 from .supervisor import APISupervisor
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -80,6 +81,7 @@ class RestAPI(CoreSysAttributes):
         self._register_services()
         self._register_snapshots()
         self._register_supervisor()
+        self._register_store()
 
         await self.start()
 
@@ -227,6 +229,10 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/resolution/info", api_resolution.info),
                 web.post(
+                    "/resolution/check/{check}/options", api_resolution.options_check
+                ),
+                web.post("/resolution/check/{check}/run", api_resolution.run_check),
+                web.post(
                     "/resolution/suggestion/{suggestion}",
                     api_resolution.apply_suggestion,
                 ),
@@ -238,6 +244,7 @@ class RestAPI(CoreSysAttributes):
                     "/resolution/issue/{issue}",
                     api_resolution.dismiss_issue,
                 ),
+                web.post("/resolution/healthcheck", api_resolution.healthcheck),
             ]
         )
 
@@ -248,6 +255,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                web.get("/auth", api_auth.auth),
                 web.post("/auth", api_auth.auth),
                 web.post("/auth/reset", api_auth.reset),
                 web.delete("/auth/cache", api_auth.cache),
@@ -337,16 +345,15 @@ class RestAPI(CoreSysAttributes):
                 web.get("/addons", api_addons.list),
                 web.post("/addons/reload", api_addons.reload),
                 web.get("/addons/{addon}/info", api_addons.info),
-                web.post("/addons/{addon}/install", api_addons.install),
                 web.post("/addons/{addon}/uninstall", api_addons.uninstall),
                 web.post("/addons/{addon}/start", api_addons.start),
                 web.post("/addons/{addon}/stop", api_addons.stop),
                 web.post("/addons/{addon}/restart", api_addons.restart),
-                web.post("/addons/{addon}/update", api_addons.update),
                 web.post("/addons/{addon}/options", api_addons.options),
                 web.post(
                     "/addons/{addon}/options/validate", api_addons.options_validate
                 ),
+                web.get("/addons/{addon}/options/config", api_addons.options_config),
                 web.post("/addons/{addon}/rebuild", api_addons.rebuild),
                 web.get("/addons/{addon}/logs", api_addons.logs),
                 web.get("/addons/{addon}/icon", api_addons.icon),
@@ -464,6 +471,46 @@ class RestAPI(CoreSysAttributes):
                 web.post("/audio/mute/{source}/application", api_audio.set_mute),
                 web.post("/audio/mute/{source}", api_audio.set_mute),
                 web.post("/audio/default/{source}", api_audio.set_default),
+            ]
+        )
+
+    def _register_store(self) -> None:
+        """Register store endpoints."""
+        api_store = APIStore()
+        api_store.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/store", api_store.store_info),
+                web.get("/store/addons", api_store.addons_list),
+                web.get("/store/addons/{addon}", api_store.addons_addon_info),
+                web.get("/store/addons/{addon}/{version}", api_store.addons_addon_info),
+                web.post(
+                    "/store/addons/{addon}/install", api_store.addons_addon_install
+                ),
+                web.post(
+                    "/store/addons/{addon}/install/{version}",
+                    api_store.addons_addon_install,
+                ),
+                web.post("/store/addons/{addon}/update", api_store.addons_addon_update),
+                web.post(
+                    "/store/addons/{addon}/update/{version}",
+                    api_store.addons_addon_update,
+                ),
+                web.post("/store/reload", api_store.reload),
+                web.get("/store/repositories", api_store.repositories_list),
+                web.get(
+                    "/store/repositories/{repository}",
+                    api_store.repositories_repository_info,
+                ),
+            ]
+        )
+
+        # Reroute from legacy
+        self.webapp.add_routes(
+            [
+                web.post("/addons/{addon}/install", api_store.addons_addon_install),
+                web.post("/addons/{addon}/update", api_store.addons_addon_update),
             ]
         )
 

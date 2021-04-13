@@ -1,5 +1,10 @@
 """Constants for the resoulution manager."""
 from enum import Enum
+from pathlib import Path
+
+from ..const import SUPERVISOR_DATA
+
+FILE_CONFIG_RESOLUTION = Path(SUPERVISOR_DATA, "resolution.json")
 
 SCHEDULED_HEALTHCHECK = 3600
 
@@ -24,6 +29,7 @@ class UnsupportedReason(str, Enum):
 
     CONTAINER = "container"
     DBUS = "dbus"
+    APPARMOR = "apparmor"
     DOCKER_CONFIGURATION = "docker_configuration"
     DOCKER_VERSION = "docker_version"
     LXC = "lxc"
@@ -32,6 +38,8 @@ class UnsupportedReason(str, Enum):
     PRIVILEGED = "privileged"
     SYSTEMD = "systemd"
     JOB_CONDITIONS = "job_conditions"
+    CONTENT_TRUST = "content_trust"
+    SOURCE_MODS = "source_mods"
 
 
 class UnhealthyReason(str, Enum):
@@ -41,6 +49,7 @@ class UnhealthyReason(str, Enum):
     SUPERVISOR = "supervisor"
     SETUP = "setup"
     PRIVILEGED = "privileged"
+    UNTRUSTED = "untrusted"
 
 
 class IssueType(str, Enum):
@@ -50,11 +59,13 @@ class IssueType(str, Enum):
     DOCKER_RATELIMIT = "docker_ratelimit"
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
+    SECURITY = "security"
     MISSING_IMAGE = "missing_image"
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"
     FATAL_ERROR = "fatal_error"
     DNS_LOOP = "dns_loop"
+    PWNED = "pwned"
 
 
 class SuggestionType(str, Enum):
@@ -67,4 +78,5 @@ class SuggestionType(str, Enum):
     EXECUTE_RESET = "execute_reset"
     EXECUTE_RELOAD = "execute_reload"
     EXECUTE_REMOVE = "execute_remove"
+    EXECUTE_STOP = "execute_stop"
     REGISTRY_LOGIN = "registry_login"

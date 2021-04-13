@@ -154,17 +154,16 @@ class AddonManager(CoreSysAttributes):
     async def install(self, slug: str) -> None:
         """Install an add-on."""
         if slug in self.local:
-            _LOGGER.warning("Add-on %s is already installed", slug)
-            return
+            raise AddonsError(f"Add-on {slug} is already installed", _LOGGER.warning)
         store = self.store.get(slug)
 
         if not store:
-            _LOGGER.error("Add-on %s not exists", slug)
-            raise AddonsError()
+            raise AddonsError(f"Add-on {slug} not exists", _LOGGER.error)
 
         if not store.available:
-            _LOGGER.error("Add-on %s not supported on that platform", slug)
-            raise AddonsNotSupportedError()
+            raise AddonsNotSupportedError(
+                f"Add-on {slug} not supported on that platform", _LOGGER.error
+            )
 
         self.data.install(store)
         addon = Addon(self.coresys, slug)
@@ -256,37 +255,38 @@ class AddonManager(CoreSysAttributes):
     async def update(self, slug: str) -> None:
         """Update add-on."""
         if slug not in self.local:
-            _LOGGER.error("Add-on %s is not installed", slug)
-            raise AddonsError()
+            raise AddonsError(f"Add-on {slug} is not installed", _LOGGER.error)
         addon = self.local[slug]
 
         if addon.is_detached:
-            _LOGGER.error("Add-on %s is not available inside store", slug)
-            raise AddonsError()
+            raise AddonsError(
+                f"Add-on {slug} is not available inside store", _LOGGER.error
+            )
         store = self.store[slug]
 
         if addon.version == store.version:
-            _LOGGER.warning("No update available for add-on %s", slug)
-            return
+            raise AddonsError(f"No update available for add-on {slug}", _LOGGER.warning)
 
         # Check if available, Maybe something have changed
         if not store.available:
-            _LOGGER.error("Add-on %s not supported on that platform", slug)
-            raise AddonsNotSupportedError()
+            raise AddonsNotSupportedError(
+                f"Add-on {slug} not supported on that platform", _LOGGER.error
+            )
 
         # Update instance
         last_state: AddonState = addon.state
+        old_image = addon.image
         try:
             await addon.instance.update(store.version, store.image)
-
-            # Cleanup
-            with suppress(DockerError):
-                await addon.instance.cleanup()
         except DockerError as err:
             raise AddonsError() from err
-        else:
-            self.data.update(store)
-            _LOGGER.info("Add-on '%s' successfully updated", slug)
+
+        _LOGGER.info("Add-on '%s' successfully updated", slug)
+        self.data.update(store)
+
+        # Cleanup
+        with suppress(DockerError):
+            await addon.instance.cleanup(old_image=old_image)
 
         # Setup/Fix AppArmor profile
         await addon.install_apparmor()

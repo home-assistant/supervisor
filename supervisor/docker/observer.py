@@ -38,12 +38,13 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_plugins.observer.version,
+            tag=str(self.sys_plugins.observer.version),
             init=False,
             ipv4=self.sys_docker.network.observer,
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
+            security_opt=self.security_opt,
             restart_policy={"Name": "always"},
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={

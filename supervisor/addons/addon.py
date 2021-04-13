@@ -10,7 +10,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Dict, List, Optional
+from typing import Any, Awaitable, Dict, List, Optional, Set
 
 import aiohttp
 import voluptuous as vol
@@ -22,6 +22,8 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTO_UPDATE,
     ATTR_BOOT,
+    ATTR_DATA,
+    ATTR_EVENT,
     ATTR_IMAGE,
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PANEL,
@@ -32,8 +34,10 @@ from ..const import (
     ATTR_PORTS,
     ATTR_PROTECTED,
     ATTR_SCHEMA,
+    ATTR_SLUG,
     ATTR_STATE,
     ATTR_SYSTEM,
+    ATTR_TYPE,
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
@@ -50,18 +54,21 @@ from ..exceptions import (
     AddonConfigurationError,
     AddonsError,
     AddonsNotSupportedError,
+    ConfigurationFileError,
     DockerError,
     DockerRequestError,
     HostAppArmorError,
-    JsonFileError,
 )
+from ..hardware.data import Device
+from ..homeassistant.const import WSEvent, WSType
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from ..utils.tar import atomic_contents_add, secure_path
 from .model import AddonModel, Data
+from .options import AddonOptions
 from .utils import remove_data
-from .validate import SCHEMA_ADDON_SNAPSHOT, validate_options
+from .validate import SCHEMA_ADDON_SNAPSHOT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -72,7 +79,7 @@ RE_WEBUI = re.compile(
 
 RE_WATCHDOG = re.compile(
     r"^(?:(?P<s_prefix>https?|tcp)|\[PROTO:(?P<t_proto>\w+)\])"
-    r":\/\/\[HOST\]:\[PORT:(?P<t_port>\d+)\](?P<s_suffix>.*)$"
+    r":\/\/\[HOST\]:(?:\[PORT:)?(?P<t_port>\d+)\]?(?P<s_suffix>.*)$"
 )
 
 RE_OLD_AUDIO = re.compile(r"\d+,\d+")
@@ -87,11 +94,33 @@ class Addon(AddonModel):
         """Initialize data holder."""
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
-        self.state: AddonState = AddonState.UNKNOWN
+        self._state: AddonState = AddonState.UNKNOWN
 
     def __repr__(self) -> str:
         """Return internal representation."""
         return f"<Addon: {self.slug}>"
+
+    @property
+    def state(self) -> AddonState:
+        """Return state of the add-on."""
+        return self._state
+
+    @state.setter
+    def state(self, new_state: AddonState) -> None:
+        """Set the add-on into new state."""
+        if self._state == new_state:
+            return
+        self._state = new_state
+        self.sys_homeassistant.websocket.send_command(
+            {
+                ATTR_TYPE: WSType.SUPERVISOR_EVENT,
+                ATTR_DATA: {
+                    ATTR_EVENT: WSEvent.ADDON,
+                    ATTR_SLUG: self.slug,
+                    ATTR_STATE: new_state,
+                },
+            }
+        )
 
     @property
     def in_progress(self) -> bool:
@@ -101,7 +130,7 @@ class Addon(AddonModel):
     async def load(self) -> None:
         """Async initialize of object."""
         with suppress(DockerError):
-            await self.instance.attach(tag=self.version)
+            await self.instance.attach(version=self.version)
 
             # Evaluate state
             if await self.instance.is_running():
@@ -394,6 +423,34 @@ class Addon(AddonModel):
         """Return path to asound config for Docker."""
         return Path(self.sys_config.path_extern_tmp, f"{self.slug}_pulse")
 
+    @property
+    def devices(self) -> Set[Device]:
+        """Extract devices from add-on options."""
+        raw_schema = self.data[ATTR_SCHEMA]
+        if isinstance(raw_schema, bool) or not raw_schema:
+            return set()
+
+        # Validate devices
+        options_validator = AddonOptions(self.coresys, raw_schema, self.name, self.slug)
+        with suppress(vol.Invalid):
+            options_validator(self.options)
+
+        return options_validator.devices
+
+    @property
+    def pwned(self) -> Set[str]:
+        """Extract pwned data for add-on options."""
+        raw_schema = self.data[ATTR_SCHEMA]
+        if isinstance(raw_schema, bool) or not raw_schema:
+            return set()
+
+        # Validate devices
+        options_validator = AddonOptions(self.coresys, raw_schema, self.name, self.slug)
+        with suppress(vol.Invalid):
+            options_validator(self.options)
+
+        return options_validator.pwned
+
     def save_persist(self) -> None:
         """Save data of add-on."""
         self.sys_addons.data.save_data()
@@ -442,22 +499,19 @@ class Addon(AddonModel):
 
     async def write_options(self) -> None:
         """Return True if add-on options is written to data."""
-        schema = self.schema
-        options = self.options
-
         # Update secrets for validation
         await self.sys_homeassistant.secrets.reload()
 
         try:
-            options = schema(options)
+            options = self.schema(self.options)
             write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error(
                 "Add-on %s has invalid options: %s",
                 self.slug,
-                humanize_error(options, ex),
+                humanize_error(self.options, ex),
             )
-        except JsonFileError:
+        except ConfigurationFileError:
             _LOGGER.error("Add-on %s can't write options", self.slug)
         else:
             _LOGGER.debug("Add-on %s write options: %s", self.slug, options)
@@ -538,7 +592,9 @@ class Addon(AddonModel):
 
         # create voluptuous
         new_schema = vol.Schema(
-            vol.All(dict, validate_options(self.coresys, new_raw_schema))
+            vol.All(
+                dict, AddonOptions(self.coresys, new_raw_schema, self.name, self.slug)
+            )
         )
 
         # validate
@@ -570,7 +626,7 @@ class Addon(AddonModel):
         try:
             await self.instance.run()
         except DockerRequestError as err:
-            self.state = AddonState.STOPPED
+            self.state = AddonState.ERROR
             raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
@@ -581,8 +637,9 @@ class Addon(AddonModel):
     async def stop(self) -> None:
         """Stop add-on."""
         try:
-            return await self.instance.stop()
+            await self.instance.stop()
         except DockerRequestError as err:
+            self.state = AddonState.ERROR
             raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
@@ -653,7 +710,7 @@ class Addon(AddonModel):
             # Store local configs/state
             try:
                 write_json_file(temp_path.joinpath("addon.json"), data)
-            except JsonFileError as err:
+            except ConfigurationFileError as err:
                 _LOGGER.error("Can't save meta for %s", self.slug)
                 raise AddonsError() from err
 
@@ -709,7 +766,7 @@ class Addon(AddonModel):
             # Read snapshot data
             try:
                 data = read_json_file(Path(temp, "addon.json"))
-            except JsonFileError as err:
+            except ConfigurationFileError as err:
                 raise AddonsError() from err
 
             # Validate

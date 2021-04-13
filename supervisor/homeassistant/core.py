@@ -10,7 +10,7 @@ import time
 from typing import Awaitable, Optional
 
 import attr
-from packaging import version as pkg_version
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.homeassistant import DockerHomeAssistant
@@ -25,12 +25,11 @@ from ..exceptions import (
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock
+from .const import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
-
-LANDINGPAGE: str = "landingpage"
 
 
 @attr.s(frozen=True)
@@ -65,7 +64,7 @@ class HomeAssistantCore(CoreSysAttributes):
                     await self.instance.get_latest_version()
                 )
 
-            await self.instance.attach(tag=self.sys_homeassistant.version)
+            await self.instance.attach(version=self.sys_homeassistant.version)
         except DockerError:
             _LOGGER.info(
                 "No Home Assistant Docker image %s found.", self.sys_homeassistant.image
@@ -88,6 +87,18 @@ class HomeAssistantCore(CoreSysAttributes):
     @process_lock
     async def install_landingpage(self) -> None:
         """Install a landing page."""
+        # Try to use a preinstalled landingpage
+        try:
+            await self.instance.attach(version=LANDINGPAGE)
+        except DockerError:
+            pass
+        else:
+            _LOGGER.info("Using preinstalled landingpage")
+            self.sys_homeassistant.version = LANDINGPAGE
+            self.sys_homeassistant.image = self.instance.image
+            self.sys_homeassistant.save_data()
+            return
+
         _LOGGER.info("Setting up Home Assistant landingpage")
         while True:
             if not self.sys_updater.image_homeassistant:
@@ -108,7 +119,7 @@ class HomeAssistantCore(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 self.sys_capture_exception(err)
             else:
-                self.sys_homeassistant.version = self.instance.version
+                self.sys_homeassistant.version = LANDINGPAGE
                 self.sys_homeassistant.image = self.sys_updater.image_homeassistant
                 self.sys_homeassistant.save_data()
                 break
@@ -122,11 +133,11 @@ class HomeAssistantCore(CoreSysAttributes):
             if not self.sys_homeassistant.latest_version:
                 await self.sys_updater.reload()
 
-            tag = self.sys_homeassistant.latest_version
-            if tag:
+            if self.sys_homeassistant.latest_version:
                 try:
                     await self.instance.update(
-                        tag, image=self.sys_updater.image_homeassistant
+                        self.sys_homeassistant.latest_version,
+                        image=self.sys_updater.image_homeassistant,
                     )
                     break
                 except DockerError:
@@ -162,7 +173,7 @@ class HomeAssistantCore(CoreSysAttributes):
         ],
         on_condition=HomeAssistantJobError,
     )
-    async def update(self, version: Optional[str] = None) -> None:
+    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update HomeAssistant version."""
         version = version or self.sys_homeassistant.latest_version
         old_image = self.sys_homeassistant.image
@@ -171,11 +182,12 @@ class HomeAssistantCore(CoreSysAttributes):
         exists = await self.instance.exists()
 
         if exists and version == self.instance.version:
-            _LOGGER.warning("Version %s is already installed", version)
-            return
+            raise HomeAssistantUpdateError(
+                f"Version {version!s} is already installed", _LOGGER.warning
+            )
 
         # process an update
-        async def _update(to_version: str) -> None:
+        async def _update(to_version: AwesomeVersion) -> None:
             """Run Home Assistant update."""
             _LOGGER.info("Updating Home Assistant to version %s", to_version)
             try:
@@ -183,8 +195,9 @@ class HomeAssistantCore(CoreSysAttributes):
                     to_version, image=self.sys_updater.image_homeassistant
                 )
             except DockerError as err:
-                _LOGGER.warning("Updating Home Assistant image failed")
-                raise HomeAssistantUpdateError() from err
+                raise HomeAssistantUpdateError(
+                    "Updating Home Assistant image failed", _LOGGER.warning
+                ) from err
             else:
                 self.sys_homeassistant.version = self.instance.version
                 self.sys_homeassistant.image = self.sys_updater.image_homeassistant
@@ -210,7 +223,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 IssueType.UPDATE_ROLLBACK, ContextType.CORE
             )
 
-            # Make a copy of the current log file if it exsist
+            # Make a copy of the current log file if it exists
             logfile = self.sys_config.path_homeassistant / "home-assistant.log"
             if logfile.exists():
                 backup = (
@@ -333,8 +346,7 @@ class HomeAssistantCore(CoreSysAttributes):
 
         # If not valid
         if result.exit_code is None:
-            _LOGGER.error("Fatal error on config check!")
-            raise HomeAssistantError()
+            raise HomeAssistantError("Fatal error on config check!", _LOGGER.error)
 
         # Convert output
         log = convert_to_ascii(result.output)
@@ -348,7 +360,7 @@ class HomeAssistantCore(CoreSysAttributes):
         _LOGGER.info("Home Assistant config is valid")
         return ConfigResult(True, log)
 
-    async def _block_till_run(self, version: str) -> None:
+    async def _block_till_run(self, version: AwesomeVersion) -> None:
         """Block until Home-Assistant is booting up or startup timeout."""
         # Skip landingpage
         if version == LANDINGPAGE:
@@ -358,9 +370,9 @@ class HomeAssistantCore(CoreSysAttributes):
         # Manage timeouts
         timeout: bool = True
         start_time = time.monotonic()
-        with suppress(pkg_version.InvalidVersion):
+        with suppress(AwesomeVersionException):
             # Version provide early stage UI
-            if pkg_version.parse(version) >= pkg_version.parse("0.112.0"):
+            if version >= AwesomeVersion("0.112.0"):
                 _LOGGER.debug("Disable startup timeouts - early UI")
                 timeout = False
 

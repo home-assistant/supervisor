@@ -26,7 +26,7 @@ DATETIME_RE = re.compile(
 )
 
 
-async def fetch_timezone(websession):
+async def fetch_timezone(websession: aiohttp.ClientSession):
     """Read timezone from freegeoip."""
     data = {}
     try:

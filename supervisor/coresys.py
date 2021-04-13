@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Coroutine, Optional, TypeVar
 
 import aiohttp
 import sentry_sdk
@@ -11,7 +13,9 @@ import sentry_sdk
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV
 from .docker import DockerAPI
-from .misc.hardware import Hardware
+from .exceptions import CodeNotaryError, CodeNotaryUntrusted
+from .resolution.const import UnhealthyReason
+from .utils.codenotary import vcn_validate
 
 if TYPE_CHECKING:
     from .addons import AddonManager
@@ -21,12 +25,12 @@ if TYPE_CHECKING:
     from .core import Core
     from .dbus import DBusManager
     from .discovery import Discovery
+    from .hardware.module import HardwareManager
     from .hassos import HassOS
     from .homeassistant import HomeAssistant
     from .host import HostManager
     from .ingress import Ingress
     from .jobs import JobManager
-    from .misc.hwmon import HwMonitor
     from .misc.scheduler import Scheduler
     from .misc.tasks import Tasks
     from .plugins import PluginManager
@@ -39,6 +43,8 @@ if TYPE_CHECKING:
 
 
 T = TypeVar("T")
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class CoreSys:
@@ -59,7 +65,6 @@ class CoreSys:
 
         # Global objects
         self._config: CoreConfig = CoreConfig()
-        self._hardware: Hardware = Hardware()
         self._docker: DockerAPI = DockerAPI()
 
         # Internal objects pointers
@@ -81,7 +86,7 @@ class CoreSys:
         self._scheduler: Optional[Scheduler] = None
         self._store: Optional[StoreManager] = None
         self._discovery: Optional[Discovery] = None
-        self._hwmonitor: Optional[HwMonitor] = None
+        self._hardware: Optional[HardwareManager] = None
         self._plugins: Optional[PluginManager] = None
         self._resolution: Optional[ResolutionManager] = None
         self._jobs: Optional[JobManager] = None
@@ -110,11 +115,6 @@ class CoreSys:
     def config(self) -> CoreConfig:
         """Return CoreConfig object."""
         return self._config
-
-    @property
-    def hardware(self) -> Hardware:
-        """Return Hardware object."""
-        return self._hardware
 
     @property
     def docker(self) -> DockerAPI:
@@ -360,18 +360,18 @@ class CoreSys:
         self._host = value
 
     @property
-    def hwmonitor(self) -> HwMonitor:
-        """Return HwMonitor object."""
-        if self._hwmonitor is None:
-            raise RuntimeError("HwMonitor not set!")
-        return self._hwmonitor
+    def hardware(self) -> HardwareManager:
+        """Return HardwareManager object."""
+        if self._hardware is None:
+            raise RuntimeError("HardwareManager not set!")
+        return self._hardware
 
-    @hwmonitor.setter
-    def hwmonitor(self, value: HwMonitor) -> None:
-        """Set a HwMonitor object."""
-        if self._hwmonitor:
-            raise RuntimeError("HwMonitor already set!")
-        self._hwmonitor = value
+    @hardware.setter
+    def hardware(self, value: HardwareManager) -> None:
+        """Set a HardwareManager object."""
+        if self._hardware:
+            raise RuntimeError("HardwareManager already set!")
+        self._hardware = value
 
     @property
     def ingress(self) -> Ingress:
@@ -490,11 +490,6 @@ class CoreSysAttributes:
         return self.coresys.config
 
     @property
-    def sys_hardware(self) -> Hardware:
-        """Return Hardware object."""
-        return self.coresys.hardware
-
-    @property
     def sys_docker(self) -> DockerAPI:
         """Return DockerAPI object."""
         return self.coresys.docker
@@ -585,9 +580,9 @@ class CoreSysAttributes:
         return self.coresys.host
 
     @property
-    def sys_hwmonitor(self) -> HwMonitor:
+    def sys_hardware(self) -> HardwareManager:
         """Return HwMonitor object."""
-        return self.coresys.hwmonitor
+        return self.coresys.hardware
 
     @property
     def sys_ingress(self) -> Ingress:
@@ -622,3 +617,21 @@ class CoreSysAttributes:
     def sys_capture_exception(self, err: Exception) -> None:
         """Capture a exception."""
         sentry_sdk.capture_exception(err)
+
+    async def sys_verify_content(
+        self, checksum: Optional[str] = None, path: Optional[Path] = None
+    ) -> Awaitable[None]:
+        """Verify content from HA org."""
+        if not self.sys_config.content_trust:
+            _LOGGER.warning("Disabled content-trust, skip validation")
+            return
+
+        try:
+            await vcn_validate(checksum, path, org="home-assistant.io")
+        except CodeNotaryUntrusted:
+            self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
+            raise
+        except CodeNotaryError:
+            if self.sys_config.force_security:
+                raise
+            return

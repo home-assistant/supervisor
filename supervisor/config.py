@@ -5,11 +5,16 @@ import os
 from pathlib import Path, PurePath
 from typing import List, Optional
 
+from awesomeversion import AwesomeVersion
+
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_CONTENT_TRUST,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DIAGNOSTICS,
+    ATTR_FORCE_SECURITY,
+    ATTR_IMAGE,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_TIMEZONE,
@@ -20,8 +25,8 @@ from .const import (
     SUPERVISOR_DATA,
     LogLevel,
 )
+from .utils.common import FileConfiguration
 from .utils.dt import parse_datetime
-from .utils.json import JsonConfig
 from .validate import SCHEMA_SUPERVISOR_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -46,7 +51,7 @@ MEDIA_DATA = PurePath("media")
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
 
-class CoreConfig(JsonConfig):
+class CoreConfig(FileConfiguration):
     """Hold all core config data."""
 
     def __init__(self):
@@ -64,14 +69,24 @@ class CoreConfig(JsonConfig):
         self._data[ATTR_TIMEZONE] = value
 
     @property
-    def version(self) -> str:
-        """Return config version."""
+    def version(self) -> AwesomeVersion:
+        """Return supervisor version."""
         return self._data[ATTR_VERSION]
 
     @version.setter
-    def version(self, value: str) -> None:
-        """Set config version."""
+    def version(self, value: AwesomeVersion) -> None:
+        """Set supervisor version."""
         self._data[ATTR_VERSION] = value
+
+    @property
+    def image(self) -> Optional[str]:
+        """Return supervisor image."""
+        return self._data.get(ATTR_IMAGE)
+
+    @image.setter
+    def image(self, value: str) -> None:
+        """Set supervisor image."""
+        self._data[ATTR_IMAGE] = value
 
     @property
     def wait_boot(self) -> int:
@@ -143,6 +158,26 @@ class CoreConfig(JsonConfig):
     def last_boot(self, value: datetime) -> None:
         """Set last boot datetime."""
         self._data[ATTR_LAST_BOOT] = value.isoformat()
+
+    @property
+    def content_trust(self) -> bool:
+        """Return if content trust is enabled/disabled."""
+        return self._data[ATTR_CONTENT_TRUST]
+
+    @content_trust.setter
+    def content_trust(self, value: bool) -> None:
+        """Set content trust is enabled/disabled."""
+        self._data[ATTR_CONTENT_TRUST] = value
+
+    @property
+    def force_security(self) -> bool:
+        """Return if force security is enabled/disabled."""
+        return self._data[ATTR_FORCE_SECURITY]
+
+    @force_security.setter
+    def force_security(self, value: bool) -> None:
+        """Set force security is enabled/disabled."""
+        self._data[ATTR_FORCE_SECURITY] = value
 
     @property
     def path_supervisor(self) -> Path:

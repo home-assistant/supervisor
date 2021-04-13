@@ -1,13 +1,14 @@
 """Init file for Supervisor Docker object."""
 from ipaddress import IPv4Address
 import logging
-from typing import Awaitable, Dict, Optional
+from typing import Awaitable, Dict, List, Optional
 
 import docker
 import requests
 
 from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_HASSIO, LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerError
+from ..hardware.const import PolicyGroup
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -38,7 +39,9 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def timeout(self) -> int:
         """Return timeout for Docker actions."""
-        return 60
+        # Synchronized homeassistant/core.py:async_stop
+        # to avoid killing Home Assistant Core.
+        return 120 + 60 + 30 + 10
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -46,9 +49,23 @@ class DockerHomeAssistant(DockerInterface):
         return self.sys_docker.network.gateway
 
     @property
+    def cgroups_rules(self) -> List[str]:
+        """Return a list of needed cgroups permission."""
+        return (
+            self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART)
+            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO)
+            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO)
+            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB)
+        )
+
+    @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Return Volumes for the mount."""
-        volumes = {"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}}
+        volumes = {
+            "/dev": {"bind": "/dev", "mode": "ro"},
+            "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
+            "/run/udev": {"bind": "/run/udev", "mode": "ro"},
+        }
 
         # Add folders
         volumes.update(
@@ -107,14 +124,16 @@ class DockerHomeAssistant(DockerInterface):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_homeassistant.version,
+            tag=(self.sys_homeassistant.version),
             name=self.name,
             hostname=self.name,
             detach=True,
             privileged=True,
             init=False,
+            security_opt=self.security_opt,
             network_mode="host",
             volumes=self.volumes,
+            device_cgroup_rules=self.cgroups_rules,
             extra_hosts={
                 "supervisor": self.sys_docker.network.supervisor,
                 "observer": self.sys_docker.network.observer,
@@ -126,6 +145,7 @@ class DockerHomeAssistant(DockerInterface):
                 ENV_TOKEN: self.sys_homeassistant.supervisor_token,
                 ENV_TOKEN_HASSIO: self.sys_homeassistant.supervisor_token,
             },
+            tmpfs={"/tmp": ""},
         )
 
         self._meta = docker_container.attrs
@@ -190,3 +210,6 @@ class DockerHomeAssistant(DockerInterface):
             return False
 
         return True
+
+    def _validate_trust(self, image_id: str) -> None:
+        """Validate trust of content."""

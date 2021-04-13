@@ -33,6 +33,10 @@ class GitRepo(CoreSysAttributes):
 
         self.data: Dict[str, str] = RE_REPOSITORY.match(url).groupdict()
 
+    def __repr__(self) -> str:
+        """Return internal representation."""
+        return f"<Git: {self.path!s}>"
+
     @property
     def url(self) -> str:
         """Return repository URL."""
@@ -137,12 +141,16 @@ class GitRepo(CoreSysAttributes):
         if self.lock.locked():
             _LOGGER.warning("There is already a task in progress")
             return
+        if self.repo is None:
+            _LOGGER.warning("No valid repository for %s", self.url)
+            return
 
         async with self.lock:
             _LOGGER.info("Update add-on %s repository", self.url)
-            branch = self.repo.active_branch.name
 
             try:
+                branch = self.repo.active_branch.name
+
                 # Download data
                 await self.sys_run_in_executor(
                     ft.partial(
@@ -156,6 +164,18 @@ class GitRepo(CoreSysAttributes):
                     ft.partial(self.repo.git.reset, f"origin/{branch}", hard=True)
                 )
 
+                # Update submodules
+                await self.sys_run_in_executor(
+                    ft.partial(
+                        self.repo.git.submodule,
+                        "update",
+                        "--init",
+                        "--recursive",
+                        "--depth",
+                        "1",
+                    )
+                )
+
                 # Cleanup old data
                 await self.sys_run_in_executor(ft.partial(self.repo.git.clean, "-xdf"))
 
@@ -163,6 +183,7 @@ class GitRepo(CoreSysAttributes):
                 git.InvalidGitRepositoryError,
                 git.NoSuchPathError,
                 git.GitCommandError,
+                ValueError,
             ) as err:
                 _LOGGER.error("Can't update %s repo: %s.", self.url, err)
                 self.sys_resolution.create_issue(

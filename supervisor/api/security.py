@@ -43,7 +43,7 @@ NO_SECURITY_CHECK = re.compile(
 # Observer allow API calls
 OBSERVER_CHECK = re.compile(
     r"^(?:"
-    r"|/[^/]+/info"
+    r"|/.+/info"
     r")$"
 )
 
@@ -51,6 +51,7 @@ OBSERVER_CHECK = re.compile(
 ADDONS_API_BYPASS = re.compile(
     r"^(?:"
     r"|/addons/self/(?!security|update)[^/]+"
+    r"|/addons/self/options/config"
     r"|/info"
     r"|/hardware/trigger"
     r"|/services.*"
@@ -63,7 +64,7 @@ ADDONS_API_BYPASS = re.compile(
 ADDONS_ROLE_ACCESS = {
     ROLE_DEFAULT: re.compile(
         r"^(?:"
-        r"|/[^/]+/info"
+        r"|/.+/info"
         r"|/addons"
         r")$"
     ),
@@ -98,6 +99,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/os/.+"
         r"|/resolution/.+"
         r"|/snapshots.*"
+        r"|/store.*"
         r"|/supervisor/.+"
         r")$"
     ),

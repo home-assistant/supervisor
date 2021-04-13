@@ -2,23 +2,25 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import attr
+from awesomeversion import AwesomeVersion, AwesomeVersionCompare
 import docker
-from packaging import version as pkg_version
 import requests
 
 from ..const import (
     ATTR_REGISTRIES,
     DNS_SUFFIX,
     DOCKER_NETWORK,
+    ENV_SUPERVISOR_CPU_RT,
     FILE_HASSIO_DOCKER,
     SOCKET_DOCKER,
 )
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
-from ..utils.json import JsonConfig
+from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
 from .network import DockerNetwork
 
@@ -40,30 +42,34 @@ class CommandReturn:
 class DockerInfo:
     """Return docker information."""
 
-    version: str = attr.ib()
+    version: AwesomeVersion = attr.ib()
     storage: str = attr.ib()
     logging: str = attr.ib()
 
     @staticmethod
     def new(data: Dict[str, Any]):
         """Create a object from docker info."""
-        return DockerInfo(data["ServerVersion"], data["Driver"], data["LoggingDriver"])
+        return DockerInfo(
+            AwesomeVersion(data["ServerVersion"]), data["Driver"], data["LoggingDriver"]
+        )
 
     @property
     def supported_version(self) -> bool:
         """Return true, if docker version is supported."""
-        version_local = pkg_version.parse(self.version)
-        version_min = pkg_version.parse(MIN_SUPPORTED_DOCKER)
-
-        return version_local >= version_min
+        try:
+            return self.version >= MIN_SUPPORTED_DOCKER
+        except AwesomeVersionCompare:
+            return False
 
     @property
-    def inside_lxc(self) -> bool:
-        """Return True if the docker run inside lxc."""
-        return Path("/dev/lxd/sock").exists()
+    def support_cpu_realtime(self) -> bool:
+        """Return true, if CONFIG_RT_GROUP_SCHED is loaded."""
+        if not Path("/sys/fs/cgroup/cpu/cpu.rt_runtime_us").exists():
+            return False
+        return bool(os.environ.get(ENV_SUPERVISOR_CPU_RT, 0))
 
 
-class DockerConfig(JsonConfig):
+class DockerConfig(FileConfiguration):
     """Home Assistant core object for Docker configuration."""
 
     def __init__(self):
@@ -114,7 +120,7 @@ class DockerAPI:
     def run(
         self,
         image: str,
-        version: str = "latest",
+        tag: str = "latest",
         dns: bool = True,
         ipv4: Optional[IPv4Address] = None,
         **kwargs: Any,
@@ -140,7 +146,7 @@ class DockerAPI:
         # Create container
         try:
             container = self.docker.containers.create(
-                f"{image}:{version}", use_config_proxy=False, **kwargs
+                f"{image}:{tag}", use_config_proxy=False, **kwargs
             )
         except docker.errors.NotFound as err:
             _LOGGER.error("Image %s not exists for %s", image, name)
@@ -195,7 +201,7 @@ class DockerAPI:
     def run_command(
         self,
         image: str,
-        version: str = "latest",
+        tag: str = "latest",
         command: Optional[str] = None,
         **kwargs: Any,
     ) -> CommandReturn:
@@ -210,7 +216,7 @@ class DockerAPI:
         container = None
         try:
             container = self.docker.containers.run(
-                f"{image}:{version}",
+                f"{image}:{tag}",
                 command=command,
                 network=self.network.name,
                 use_config_proxy=False,

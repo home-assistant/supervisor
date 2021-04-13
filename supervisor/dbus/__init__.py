@@ -6,6 +6,7 @@ from ..const import SOCKET_DBUS
 from ..coresys import CoreSys, CoreSysAttributes
 from .hostname import Hostname
 from .interface import DBusInterface
+from .logind import Logind
 from .network import NetworkManager
 from .rauc import Rauc
 from .systemd import Systemd
@@ -21,6 +22,7 @@ class DBusManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
 
         self._systemd: Systemd = Systemd()
+        self._logind: Logind = Logind()
         self._hostname: Hostname = Hostname()
         self._rauc: Rauc = Rauc()
         self._network: NetworkManager = NetworkManager()
@@ -29,6 +31,11 @@ class DBusManager(CoreSysAttributes):
     def systemd(self) -> Systemd:
         """Return the systemd interface."""
         return self._systemd
+
+    @property
+    def logind(self) -> Logind:
+        """Return the logind interface."""
+        return self._logind
 
     @property
     def hostname(self) -> Hostname:
@@ -55,6 +62,7 @@ class DBusManager(CoreSysAttributes):
 
         dbus_loads: List[DBusInterface] = [
             self.systemd,
+            self.logind,
             self.hostname,
             self.network,
             self.rauc,

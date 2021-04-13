@@ -1,10 +1,13 @@
 """Audio docker object."""
 import logging
-from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Optional
 
-from ..const import ENV_TIME, MACHINE_ID
+import docker
+
+from ..const import DOCKER_CPU_RUNTIME_ALLOCATION, ENV_TIME, MACHINE_ID
 from ..coresys import CoreSysAttributes
+from ..hardware.const import PolicyGroup
+from .const import Capabilities
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -29,21 +32,42 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Return Volumes for the mount."""
         volumes = {
+            "/dev": {"bind": "/dev", "mode": "ro"},
             str(self.sys_config.path_extern_audio): {"bind": "/data", "mode": "rw"},
             "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
+            "/run/udev": {"bind": "/run/udev", "mode": "ro"},
         }
 
         # Machine ID
         if MACHINE_ID.exists():
             volumes.update({str(MACHINE_ID): {"bind": str(MACHINE_ID), "mode": "ro"}})
 
-        # SND support
-        if Path("/dev/snd").exists():
-            volumes.update({"/dev/snd": {"bind": "/dev/snd", "mode": "rw"}})
-        else:
-            _LOGGER.warning("Kernel have no audio support")
-
         return volumes
+
+    @property
+    def cgroups_rules(self) -> List[str]:
+        """Return a list of needed cgroups permission."""
+        return self.sys_hardware.policy.get_cgroups_rules(
+            PolicyGroup.AUDIO
+        ) + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.BLUETOOTH)
+
+    @property
+    def capabilities(self) -> List[str]:
+        """Generate needed capabilities."""
+        return [cap.value for cap in (Capabilities.SYS_NICE, Capabilities.SYS_RESOURCE)]
+
+    @property
+    def ulimits(self) -> List[docker.types.Ulimit]:
+        """Generate ulimits for audio."""
+        # Pulseaudio by default tries to use real-time scheduling with priority of 5.
+        return [docker.types.Ulimit(name="rtprio", soft=10, hard=10)]
+
+    @property
+    def cpu_rt_runtime(self) -> Optional[int]:
+        """Limit CPU real-time runtime in microseconds."""
+        if not self.sys_docker.info.support_cpu_realtime:
+            return None
+        return DOCKER_CPU_RUNTIME_ALLOCATION
 
     def _run(self) -> None:
         """Run Docker image.
@@ -59,13 +83,17 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         # Create & Run container
         docker_container = self.sys_docker.run(
             self.image,
-            version=self.sys_plugins.audio.version,
+            tag=str(self.sys_plugins.audio.version),
             init=False,
             ipv4=self.sys_docker.network.audio,
             name=self.name,
             hostname=self.name.replace("_", "-"),
             detach=True,
-            privileged=True,
+            cap_add=self.capabilities,
+            security_opt=self.security_opt,
+            ulimits=self.ulimits,
+            cpu_rt_runtime=self.cpu_rt_runtime,
+            device_cgroup_rules=self.cgroups_rules,
             environment={ENV_TIME: self.sys_config.timezone},
             volumes=self.volumes,
         )

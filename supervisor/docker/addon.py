@@ -6,13 +6,15 @@ from ipaddress import IPv4Address, ip_address
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, Set, Union
 
+from awesomeversion import AwesomeVersion
 import docker
 import requests
 
 from ..addons.build import AddonBuild
 from ..const import (
+    DOCKER_CPU_RUNTIME_ALLOCATION,
     ENV_TIME,
     ENV_TOKEN,
     ENV_TOKEN_HASSIO,
@@ -24,10 +26,15 @@ from ..const import (
     MAP_SSL,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
+    SYSTEMD_JOURNAL_PERSISTENT,
+    SYSTEMD_JOURNAL_VOLATILE,
 )
 from ..coresys import CoreSys
-from ..exceptions import CoreDNSError, DockerError
+from ..exceptions import CoreDNSError, DockerError, DockerNotFound, HardwareNotFound
+from ..hardware.const import PolicyGroup
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
+from .const import Capabilities
 from .interface import DockerInterface
 
 if TYPE_CHECKING:
@@ -72,7 +79,7 @@ class DockerAddon(DockerInterface):
         return self.addon.timeout
 
     @property
-    def version(self) -> str:
+    def version(self) -> AwesomeVersion:
         """Return version of Docker image."""
         if self.addon.legacy:
             return self.addon.version
@@ -89,18 +96,6 @@ class DockerAddon(DockerInterface):
     def name(self) -> str:
         """Return name of Docker container."""
         return f"addon_{self.addon.slug}"
-
-    @property
-    def ipc(self) -> Optional[str]:
-        """Return the IPC namespace."""
-        if self.addon.host_ipc:
-            return "host"
-        return None
-
-    @property
-    def full_access(self) -> bool:
-        """Return True if full access is enabled."""
-        return not self.addon.protected and self.addon.with_full_access
 
     @property
     def environment(self) -> Dict[str, Optional[str]]:
@@ -123,34 +118,63 @@ class DockerAddon(DockerInterface):
         }
 
     @property
-    def devices(self) -> List[str]:
-        """Return needed devices."""
-        devices = []
+    def cgroups_rules(self) -> Optional[List[str]]:
+        """Return a list of needed cgroups permission."""
+        rules = set()
 
-        # Extend add-on config
-        for device in self.addon.devices:
-            if not Path(device.split(":")[0]).exists():
+        # Attach correct cgroups for static devices
+        for device_path in self.addon.static_devices:
+            try:
+                device = self.sys_hardware.get_by_path(device_path)
+            except HardwareNotFound:
+                _LOGGER.debug("Ignore static device path %s", device_path)
                 continue
-            devices.append(device)
 
-        # Auto mapping UART devices
-        if self.addon.with_uart:
-            for device in self.sys_hardware.serial_devices:
-                devices.append(f"{device.path.as_posix()}:{device.path.as_posix()}:rwm")
-                if self.addon.with_udev:
-                    continue
-                for device_link in device.links:
-                    devices.append(
-                        f"{device_link.as_posix()}:{device_link.as_posix()}:rwm"
-                    )
+            # Check access
+            if not self.sys_hardware.policy.allowed_for_access(device):
+                _LOGGER.error(
+                    "Add-on %s try to access to blocked device %s!",
+                    self.addon.name,
+                    device.name,
+                )
+                continue
+            rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
 
-        # Use video devices
+        # Attach correct cgroups for devices
+        for device in self.addon.devices:
+            if not self.sys_hardware.policy.allowed_for_access(device):
+                _LOGGER.error(
+                    "Add-on %s try to access to blocked device %s!",
+                    self.addon.name,
+                    device.name,
+                )
+                continue
+            rules.add(self.sys_hardware.policy.get_cgroups_rule(device))
+
+        # Video
         if self.addon.with_video:
-            for device in self.sys_hardware.video_devices:
-                devices.append(f"{device.path!s}:{device.path!s}:rwm")
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO))
 
-        # Return None if no devices is present
-        return devices or None
+        # GPIO
+        if self.addon.with_gpio:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO))
+
+        # UART
+        if self.addon.with_uart:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART))
+
+        # USB
+        if self.addon.with_usb:
+            rules.update(self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB))
+
+        # Full Access
+        if not self.addon.protected and self.addon.with_full_access:
+            return [self.sys_hardware.policy.get_full_access()]
+
+        # Return None if no rules is present
+        if rules:
+            return list(rules)
+        return None
 
     @property
     def ports(self) -> Optional[Dict[str, Union[str, int, None]]]:
@@ -167,7 +191,7 @@ class DockerAddon(DockerInterface):
     @property
     def security_opt(self) -> List[str]:
         """Control security options."""
-        security = []
+        security = super().security_opt
 
         # AppArmor
         apparmor = self.sys_host.apparmor.available
@@ -176,18 +200,22 @@ class DockerAddon(DockerInterface):
         elif self.addon.apparmor == SECURITY_PROFILE:
             security.append(f"apparmor={self.addon.slug}")
 
-        # Disable Seccomp / We don't support it official and it
-        # causes problems on some types of host systems.
-        security.append("seccomp=unconfined")
-
         return security
 
     @property
     def tmpfs(self) -> Optional[Dict[str, str]]:
         """Return tmpfs for Docker add-on."""
-        options = self.addon.tmpfs
-        if options:
-            return {"/tmpfs": f"{options}"}
+        tmpfs = {}
+
+        if self.addon.with_tmpfs:
+            tmpfs["/tmp"] = ""
+
+        if not self.addon.host_ipc:
+            tmpfs["/dev/shm"] = ""
+
+        # Return None if no tmpfs is present
+        if tmpfs:
+            return tmpfs
         return None
 
     @property
@@ -213,11 +241,61 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
+    def capabilities(self) -> Optional[List[str]]:
+        """Generate needed capabilities."""
+        capabilities: Set[Capabilities] = set(self.addon.privileged)
+
+        # Need work with kernel modules
+        if self.addon.with_kernel_modules:
+            capabilities.add(Capabilities.SYS_MODULE)
+
+        # Need schedule functions
+        if self.addon.with_realtime:
+            capabilities.add(Capabilities.SYS_NICE)
+
+        # Return None if no capabilities is present
+        if capabilities:
+            return [cap.value for cap in capabilities]
+        return None
+
+    @property
+    def ulimits(self) -> Optional[List[docker.types.Ulimit]]:
+        """Generate ulimits for add-on."""
+        limits: List[docker.types.Ulimit] = []
+
+        # Need schedule functions
+        if self.addon.with_realtime:
+            limits.append(docker.types.Ulimit(name="rtprio", soft=90, hard=99))
+
+            # Set available memory for memlock to 128MB
+            mem = 128 * 1024 * 1024
+            limits.append(docker.types.Ulimit(name="memlock", soft=mem, hard=mem))
+
+        # Return None if no capabilities is present
+        if limits:
+            return limits
+        return None
+
+    @property
+    def cpu_rt_runtime(self) -> Optional[int]:
+        """Limit CPU real-time runtime in microseconds."""
+        if not self.sys_docker.info.support_cpu_realtime:
+            return None
+
+        # If need CPU RT
+        if self.addon.with_realtime:
+            return DOCKER_CPU_RUNTIME_ALLOCATION
+        return None
+
+    @property
     def volumes(self) -> Dict[str, Dict[str, str]]:
         """Generate volumes for mappings."""
         addon_mapping = self.addon.map_volumes
 
-        volumes = {str(self.addon.path_extern_data): {"bind": "/data", "mode": "rw"}}
+        volumes = {
+            "/dev": {"bind": "/dev", "mode": "ro"},
+            str(self.addon.path_extern_data): {"bind": "/data", "mode": "rw"},
+        }
 
         # setup config mappings
         if MAP_CONFIG in addon_mapping:
@@ -283,8 +361,10 @@ class DockerAddon(DockerInterface):
         # Init other hardware mappings
 
         # GPIO support
-        if self.addon.with_gpio and self.sys_hardware.support_gpio:
+        if self.addon.with_gpio and self.sys_hardware.helper.support_gpio:
             for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
+                if not Path(gpio_path).exists():
+                    continue
                 volumes.update({gpio_path: {"bind": gpio_path, "mode": "rw"}})
 
         # DeviceTree support
@@ -298,9 +378,9 @@ class DockerAddon(DockerInterface):
                 }
             )
 
-        # USB support
-        if self.addon.with_usb and self.sys_hardware.usb_devices:
-            volumes.update({"/dev/bus/usb": {"bind": "/dev/bus/usb", "mode": "rw"}})
+        # Host udev support
+        if self.addon.with_udev:
+            volumes.update({"/run/udev": {"bind": "/run/udev", "mode": "ro"}})
 
         # Kernel Modules support
         if self.addon.with_kernel_modules:
@@ -335,6 +415,21 @@ class DockerAddon(DockerInterface):
                 }
             )
 
+        # System Journal access
+        if self.addon.with_journald:
+            volumes.update(
+                {
+                    str(SYSTEMD_JOURNAL_PERSISTENT): {
+                        "bind": str(SYSTEMD_JOURNAL_PERSISTENT),
+                        "mode": "ro",
+                    },
+                    str(SYSTEMD_JOURNAL_VOLATILE): {
+                        "bind": str(SYSTEMD_JOURNAL_VOLATILE),
+                        "mode": "ro",
+                    },
+                }
+            )
+
         return volumes
 
     def _run(self) -> None:
@@ -353,27 +448,36 @@ class DockerAddon(DockerInterface):
         self._stop()
 
         # Create & Run container
-        docker_container = self.sys_docker.run(
-            self.image,
-            version=self.addon.version,
-            name=self.name,
-            hostname=self.addon.hostname,
-            detach=True,
-            init=self.addon.default_init,
-            privileged=self.full_access,
-            ipc_mode=self.ipc,
-            stdin_open=self.addon.with_stdin,
-            network_mode=self.network_mode,
-            pid_mode=self.pid_mode,
-            ports=self.ports,
-            extra_hosts=self.network_mapping,
-            devices=self.devices,
-            cap_add=self.addon.privileged,
-            security_opt=self.security_opt,
-            environment=self.environment,
-            volumes=self.volumes,
-            tmpfs=self.tmpfs,
-        )
+        try:
+            docker_container = self.sys_docker.run(
+                self.image,
+                tag=str(self.addon.version),
+                name=self.name,
+                hostname=self.addon.hostname,
+                detach=True,
+                init=self.addon.default_init,
+                stdin_open=self.addon.with_stdin,
+                network_mode=self.network_mode,
+                pid_mode=self.pid_mode,
+                ports=self.ports,
+                extra_hosts=self.network_mapping,
+                device_cgroup_rules=self.cgroups_rules,
+                cap_add=self.capabilities,
+                ulimits=self.ulimits,
+                cpu_rt_runtime=self.cpu_rt_runtime,
+                security_opt=self.security_opt,
+                environment=self.environment,
+                volumes=self.volumes,
+                tmpfs=self.tmpfs,
+            )
+        except DockerNotFound:
+            self.sys_resolution.create_issue(
+                IssueType.MISSING_IMAGE,
+                ContextType.ADDON,
+                reference=self.addon.slug,
+                suggestions=[SuggestionType.EXECUTE_REPAIR],
+            )
+            raise
 
         self._meta = docker_container.attrs
         _LOGGER.info(
@@ -390,37 +494,40 @@ class DockerAddon(DockerInterface):
             self.sys_capture_exception(err)
 
     def _install(
-        self, tag: str, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> None:
         """Pull Docker image or build it.
 
         Need run inside executor.
         """
         if self.addon.need_build:
-            self._build(tag)
+            self._build(version)
         else:
-            super()._install(tag, image, latest)
+            super()._install(version, image, latest)
 
-    def _build(self, tag: str) -> None:
+    def _build(self, version: AwesomeVersion) -> None:
         """Build a Docker container.
 
         Need run inside executor.
         """
         build_env = AddonBuild(self.coresys, self.addon)
+        if not build_env.is_valid:
+            _LOGGER.error("Invalid build environment, can't build this add-on!")
+            raise DockerError()
 
-        _LOGGER.info("Starting build for %s:%s", self.image, tag)
+        _LOGGER.info("Starting build for %s:%s", self.image, version)
         try:
             image, log = self.sys_docker.images.build(
-                use_config_proxy=False, **build_env.get_docker_args(tag)
+                use_config_proxy=False, **build_env.get_docker_args(version)
             )
 
-            _LOGGER.debug("Build %s:%s done: %s", self.image, tag, log)
+            _LOGGER.debug("Build %s:%s done: %s", self.image, version, log)
 
             # Update meta data
             self._meta = image.attrs
 
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Can't build %s:%s: %s", self.image, tag, err)
+            _LOGGER.error("Can't build %s:%s: %s", self.image, version, err)
             if hasattr(err, "build_log"):
                 log = "\n".join(
                     [
@@ -432,7 +539,7 @@ class DockerAddon(DockerInterface):
                 _LOGGER.error("Build log: \n%s", log)
             raise DockerError() from err
 
-        _LOGGER.info("Build %s:%s done", self.image, tag)
+        _LOGGER.info("Build %s:%s done", self.image, version)
 
     @process_lock
     def export_image(self, tar_file: Path) -> Awaitable[None]:
@@ -528,3 +635,6 @@ class DockerAddon(DockerInterface):
                 _LOGGER.warning("Can't update DNS for %s", self.name)
                 self.sys_capture_exception(err)
         super()._stop(remove_container)
+
+    def _validate_trust(self, image_id: str) -> None:
+        """Validate trust of content."""

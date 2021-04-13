@@ -1,9 +1,17 @@
 """Evaluation class for lxc."""
+from contextlib import suppress
+from pathlib import Path
 from typing import List
 
 from ...const import CoreState
+from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
+
+
+def setup(coresys: CoreSys) -> EvaluateBase:
+    """Initialize evaluation-setup function."""
+    return EvaluateLxc(coresys)
 
 
 class EvaluateLxc(EvaluateBase):
@@ -26,4 +34,7 @@ class EvaluateLxc(EvaluateBase):
 
     async def evaluate(self):
         """Run evaluation."""
-        return self.sys_docker.info.inside_lxc
+        with suppress(OSError):
+            if "container=lxc" in Path("/proc/1/environ").read_text():
+                return True
+        return Path("/dev/lxd/sock").exists()

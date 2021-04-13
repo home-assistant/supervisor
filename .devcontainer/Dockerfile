@@ -1,14 +1,24 @@
 FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.8
 
+ENV DEBIAN_FRONTEND=noninteractive
+
+SHELL ["/bin/bash", "-c"]
+
 WORKDIR /workspaces
 
+# Set Docker daemon config
+RUN \
+    mkdir -p /etc/docker \
+    && echo '{"storage-driver": "vfs"}' > /etc/docker/daemon.json
+
 # Install Node/Yarn for Frontent
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
+    && apt-get update \
+    && apt-get update && apt-get install -y --no-install-recommends \
         curl \
         git \
         apt-utils \
         apt-transport-https \
-    && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
     && echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list \
     && apt-get update && apt-get install -y --no-install-recommends \
         nodejs \
@@ -39,6 +49,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         dbus \
         network-manager \
         libpulse0 \
+    && bash <(curl https://getvcn.codenotary.com -L) \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies from requirements.txt if it exists

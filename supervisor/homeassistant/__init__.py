@@ -7,6 +7,8 @@ import shutil
 from typing import Optional
 from uuid import UUID
 
+from awesomeversion import AwesomeVersion, AwesomeVersionException
+
 from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
@@ -23,16 +25,17 @@ from ..const import (
     FILE_HASSIO_HOMEASSISTANT,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..utils.json import JsonConfig
-from ..validate import SCHEMA_HASS_CONFIG
+from ..utils.common import FileConfiguration
 from .api import HomeAssistantAPI
 from .core import HomeAssistantCore
 from .secrets import HomeAssistantSecrets
+from .validate import SCHEMA_HASS_CONFIG
+from .websocket import HomeAssistantWebSocket
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class HomeAssistant(JsonConfig, CoreSysAttributes):
+class HomeAssistant(FileConfiguration, CoreSysAttributes):
     """Home Assistant core object for handle it."""
 
     def __init__(self, coresys: CoreSys):
@@ -40,6 +43,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         super().__init__(FILE_HASSIO_HOMEASSISTANT, SCHEMA_HASS_CONFIG)
         self.coresys: CoreSys = coresys
         self._api: HomeAssistantAPI = HomeAssistantAPI(coresys)
+        self._websocket: HomeAssistantWebSocket = HomeAssistantWebSocket(coresys)
         self._core: HomeAssistantCore = HomeAssistantCore(coresys)
         self._secrets: HomeAssistantSecrets = HomeAssistantSecrets(coresys)
 
@@ -47,6 +51,11 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     def api(self) -> HomeAssistantAPI:
         """Return API handler for core."""
         return self._api
+
+    @property
+    def websocket(self) -> HomeAssistantWebSocket:
+        """Return Websocket handler for core."""
+        return self._websocket
 
     @property
     def core(self) -> HomeAssistantCore:
@@ -126,7 +135,7 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._data[ATTR_WAIT_BOOT] = value
 
     @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> Optional[AwesomeVersion]:
         """Return last available version of Home Assistant."""
         return self.sys_updater.version_homeassistant
 
@@ -143,12 +152,12 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
         self._data[ATTR_IMAGE] = value
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> Optional[AwesomeVersion]:
         """Return version of local version."""
         return self._data.get(ATTR_VERSION)
 
     @version.setter
-    def version(self, value: str) -> None:
+    def version(self, value: AwesomeVersion) -> None:
         """Set installed version."""
         self._data[ATTR_VERSION] = value
 
@@ -220,9 +229,10 @@ class HomeAssistant(JsonConfig, CoreSysAttributes):
     @property
     def need_update(self) -> bool:
         """Return true if a Home Assistant update is available."""
-        if not self.latest_version:
+        try:
+            return self.version < self.latest_version
+        except (AwesomeVersionException, TypeError):
             return False
-        return self.version != self.latest_version
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""

@@ -10,26 +10,23 @@ network settings or installing and updating software.
 
 ## Installation
 
-Installation instructions can be found at https://home-assistant.io/hassio.
+Installation instructions can be found at https://home-assistant.io/getting-started.
 
 ## Development
 
-The development of the Supervisor is not difficult but tricky.
-
-- You can use the builder to create your Supervisor: https://github.com/home-assistant/hassio-builder
-- Access a HassOS device or VM and pull your Supervisor.
-- Set the developer modus with the CLI tool: `ha supervisor options --channel=dev`
-- Tag it as `homeassistant/xy-hassio-supervisor:latest`
-- Restart the service with `systemctl restart hassos-supervisor | journalctl -fu hassos-supervisor`
-- Test your changes
-
-For small bugfixes or improvements, make a PR. For significant changes open a RFC first, please. Thanks.
+For small changes and bugfixes you can just follow this, but for significant changes open a RFC first.
+Development instructions can be found [here][development].
 
 ## Release
 
-Follow is the relase circle process:
+Releases are done in 3 stages (channels) with this structure:
 
-1. Merge master into dev / make sure version stay on dev
-2. Merge dev into master
-3. Bump the release on master
-4. Create a GitHub Release from master with the right version tag
+1. Pull requests are merged to the `main` branch.
+2. A new build is pushed to the `dev` stage.
+3. Releases are published.
+4. A new build is pushed to the `beta` stage.
+5. The [`stable.json`][stable] file is updated.
+6. The build that was pushed to `beta` will now be pushed to `stable`.
+
+[development]: https://developers.home-assistant.io/docs/supervisor/development
+[stable]: https://github.com/home-assistant/version/blob/master/stable.json

@@ -4,16 +4,25 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict
 
-from ..const import ATTR_ARGS, ATTR_BUILD_FROM, ATTR_SQUASH, META_ADDON
+from awesomeversion import AwesomeVersion
+
+from ..const import (
+    ATTR_ARGS,
+    ATTR_BUILD_FROM,
+    ATTR_SQUASH,
+    FILE_SUFFIX_CONFIGURATION,
+    META_ADDON,
+)
 from ..coresys import CoreSys, CoreSysAttributes
-from ..utils.json import JsonConfig
+from ..exceptions import ConfigurationFileError
+from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
     from . import AnyAddon
 
 
-class AddonBuild(JsonConfig, CoreSysAttributes):
+class AddonBuild(FileConfiguration, CoreSysAttributes):
     """Handle build options for add-ons."""
 
     def __init__(self, coresys: CoreSys, addon: AnyAddon) -> None:
@@ -21,9 +30,14 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.addon = addon
 
-        super().__init__(
-            Path(self.addon.path_location, "build.json"), SCHEMA_BUILD_CONFIG
-        )
+        try:
+            build_file = find_one_filetype(
+                self.addon.path_location, "build", FILE_SUFFIX_CONFIGURATION
+            )
+        except ConfigurationFileError:
+            build_file = self.addon.path_location / "build.json"
+
+        super().__init__(build_file, SCHEMA_BUILD_CONFIG)
 
     def save_data(self):
         """Ignore save function."""
@@ -46,11 +60,21 @@ class AddonBuild(JsonConfig, CoreSysAttributes):
         """Return additional Docker build arguments."""
         return self._data[ATTR_ARGS]
 
-    def get_docker_args(self, version):
+    @property
+    def is_valid(self) -> bool:
+        """Return true if the build env is valid."""
+        return all(
+            [
+                self.addon.path_location.is_dir(),
+                Path(self.addon.path_location, "Dockerfile").is_file(),
+            ]
+        )
+
+    def get_docker_args(self, version: AwesomeVersion):
         """Create a dict with Docker build arguments."""
         args = {
             "path": str(self.addon.path_location),
-            "tag": f"{self.addon.image}:{version}",
+            "tag": f"{self.addon.image}:{version!s}",
             "pull": True,
             "forcerm": True,
             "squash": self.squash,

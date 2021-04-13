@@ -5,8 +5,9 @@ import logging
 import re
 from typing import Any, Awaitable, Dict, List, Optional
 
+from awesomeversion import AwesomeVersion
+from awesomeversion.strategy import AwesomeVersionStrategy
 import docker
-from packaging import version as pkg_version
 import requests
 
 from . import CommandReturn
@@ -18,7 +19,15 @@ from ..const import (
     LABEL_VERSION,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
+from ..exceptions import (
+    CodeNotaryError,
+    CodeNotaryUntrusted,
+    DockerAPIError,
+    DockerError,
+    DockerNotFound,
+    DockerRequestError,
+    DockerTrustError,
+)
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from .stats import DockerStats
@@ -76,9 +85,11 @@ class DockerInterface(CoreSysAttributes):
             return None
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> Optional[AwesomeVersion]:
         """Return version of Docker image."""
-        return self.meta_labels.get(LABEL_VERSION)
+        if LABEL_VERSION not in self.meta_labels:
+            return None
+        return AwesomeVersion(self.meta_labels[LABEL_VERSION])
 
     @property
     def arch(self) -> Optional[str]:
@@ -90,10 +101,12 @@ class DockerInterface(CoreSysAttributes):
         """Return True if a task is in progress."""
         return self.lock.locked()
 
-    @process_lock
-    def install(self, tag: str, image: Optional[str] = None, latest: bool = False):
-        """Pull docker image."""
-        return self.sys_run_in_executor(self._install, tag, image, latest)
+    @property
+    def security_opt(self) -> List[str]:
+        """Control security options."""
+        # Disable Seccomp / We don't support it official and it
+        # causes problems on some types of host systems.
+        return ["seccomp=unconfined"]
 
     def _get_credentials(self, image: str) -> dict:
         """Return a dictionay with credentials for docker login."""
@@ -135,8 +148,15 @@ class DockerInterface(CoreSysAttributes):
 
         self.sys_docker.docker.login(**credentials)
 
+    @process_lock
+    def install(
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
+    ):
+        """Pull docker image."""
+        return self.sys_run_in_executor(self._install, version, image, latest)
+
     def _install(
-        self, tag: str, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> None:
         """Pull Docker image.
 
@@ -144,18 +164,33 @@ class DockerInterface(CoreSysAttributes):
         """
         image = image or self.image
 
-        _LOGGER.info("Downloading docker image %s with tag %s.", image, tag)
+        _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
         try:
             if self.sys_docker.config.registries:
                 # Try login if we have defined credentials
                 self._docker_login(image)
 
-            docker_image = self.sys_docker.images.pull(f"{image}:{tag}")
+            # Pull new image
+            docker_image = self.sys_docker.images.pull(f"{image}:{version!s}")
+
+            # Validate content
+            try:
+                self._validate_trust(docker_image.id)
+            except CodeNotaryError:
+                with suppress(docker.errors.DockerException):
+                    self.sys_docker.images.remove(
+                        image=f"{image}:{version!s}", force=True
+                    )
+                raise
+
+            # Tag latest
             if latest:
-                _LOGGER.info("Tagging image %s with version %s as latest", image, tag)
+                _LOGGER.info(
+                    "Tagging image %s with version %s as latest", image, version
+                )
                 docker_image.tag(image, tag="latest")
         except docker.errors.APIError as err:
-            _LOGGER.error("Can't install %s:%s -> %s.", image, tag, err)
+            _LOGGER.error("Can't install %s:%s -> %s.", image, version, err)
             if err.status_code == 429:
                 self.sys_resolution.create_issue(
                     IssueType.DOCKER_RATELIMIT,
@@ -168,9 +203,20 @@ class DockerInterface(CoreSysAttributes):
                 )
             raise DockerError() from err
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Unknown error with %s:%s -> %s", image, tag, err)
             self.sys_capture_exception(err)
-            raise DockerError() from err
+            raise DockerError(
+                f"Unknown error with {image}:{version} -> {err!s}", _LOGGER.error
+            ) from err
+        except CodeNotaryUntrusted as err:
+            raise DockerTrustError(
+                f"Pulled image {image}:{version} failed on content-trust verification!",
+                _LOGGER.critical,
+            ) from err
+        except CodeNotaryError as err:
+            raise DockerTrustError(
+                f"Error happened on Content-Trust check for {image}:{version}: {err!s}",
+                _LOGGER.error,
+            ) from err
         else:
             self._meta = docker_image.attrs
 
@@ -184,7 +230,7 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         with suppress(docker.errors.DockerException, requests.RequestException):
-            self.sys_docker.images.get(f"{self.image}:{self.version}")
+            self.sys_docker.images.get(f"{self.image}:{self.version!s}")
             return True
         return False
 
@@ -212,11 +258,11 @@ class DockerInterface(CoreSysAttributes):
         return docker_container.status == "running"
 
     @process_lock
-    def attach(self, tag: str):
+    def attach(self, version: AwesomeVersion):
         """Attach to running Docker container."""
-        return self.sys_run_in_executor(self._attach, tag)
+        return self.sys_run_in_executor(self._attach, version)
 
-    def _attach(self, tag: str) -> None:
+    def _attach(self, version: AwesomeVersion) -> None:
         """Attach to running docker container.
 
         Need run inside executor.
@@ -226,7 +272,9 @@ class DockerInterface(CoreSysAttributes):
 
         with suppress(docker.errors.DockerException, requests.RequestException):
             if not self._meta and self.image:
-                self._meta = self.sys_docker.images.get(f"{self.image}:{tag}").attrs
+                self._meta = self.sys_docker.images.get(
+                    f"{self.image}:{version!s}"
+                ).attrs
 
         # Successfull?
         if not self._meta:
@@ -317,7 +365,7 @@ class DockerInterface(CoreSysAttributes):
 
             with suppress(docker.errors.ImageNotFound):
                 self.sys_docker.images.remove(
-                    image=f"{self.image}:{self.version}", force=True
+                    image=f"{self.image}:{self.version!s}", force=True
                 )
 
         except (docker.errors.DockerException, requests.RequestException) as err:
@@ -328,13 +376,13 @@ class DockerInterface(CoreSysAttributes):
 
     @process_lock
     def update(
-        self, tag: str, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> Awaitable[None]:
         """Update a Docker image."""
-        return self.sys_run_in_executor(self._update, tag, image, latest)
+        return self.sys_run_in_executor(self._update, version, image, latest)
 
     def _update(
-        self, tag: str, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> None:
         """Update a docker image.
 
@@ -343,11 +391,11 @@ class DockerInterface(CoreSysAttributes):
         image = image or self.image
 
         _LOGGER.info(
-            "Updating image %s:%s to %s:%s", self.image, self.version, image, tag
+            "Updating image %s:%s to %s:%s", self.image, self.version, image, version
         )
 
         # Update docker image
-        self._install(tag, image=image, latest=latest)
+        self._install(version, image=image, latest=latest)
 
         # Stop container & cleanup
         with suppress(DockerError):
@@ -388,7 +436,7 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         try:
-            origin = self.sys_docker.images.get(f"{self.image}:{self.version}")
+            origin = self.sys_docker.images.get(f"{self.image}:{self.version!s}")
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.warning("Can't find %s for cleanup", self.image)
             raise DockerError() from err
@@ -419,6 +467,9 @@ class DockerInterface(CoreSysAttributes):
             raise DockerError() from err
 
         for image in images_list:
+            if origin.id == image.id:
+                continue
+
             with suppress(docker.errors.DockerException, requests.RequestException):
                 _LOGGER.info("Cleanup images: %s", image.tags)
                 self.sys_docker.images.remove(image.id, force=True)
@@ -504,23 +555,21 @@ class DockerInterface(CoreSysAttributes):
         # Check return value
         return int(docker_container.attrs["State"]["ExitCode"]) != 0
 
-    def get_latest_version(self) -> Awaitable[str]:
+    def get_latest_version(self) -> Awaitable[AwesomeVersion]:
         """Return latest version of local image."""
         return self.sys_run_in_executor(self._get_latest_version)
 
-    def _get_latest_version(self) -> str:
+    def _get_latest_version(self) -> AwesomeVersion:
         """Return latest version of local image.
 
         Need run inside executor.
         """
-        available_version: List[str] = []
+        available_version: List[AwesomeVersion] = []
         try:
             for image in self.sys_docker.images.list(self.image):
                 for tag in image.tags:
-                    version = tag.partition(":")[2]
-                    try:
-                        pkg_version.parse(version)
-                    except (TypeError, pkg_version.InvalidVersion):
+                    version = AwesomeVersion(tag.partition(":")[2])
+                    if version.strategy == AwesomeVersionStrategy.UNKNOWN:
                         continue
                     available_version.append(version)
 
@@ -537,5 +586,38 @@ class DockerInterface(CoreSysAttributes):
             _LOGGER.info("Found %s versions: %s", self.image, available_version)
 
         # Sort version and return latest version
-        available_version.sort(key=pkg_version.parse, reverse=True)
+        available_version.sort(reverse=True)
         return available_version[0]
+
+    @process_lock
+    def run_inside(self, command: str) -> Awaitable[CommandReturn]:
+        """Execute a command inside Docker container."""
+        return self.sys_run_in_executor(self._run_inside, command)
+
+    def _run_inside(self, command: str) -> CommandReturn:
+        """Execute a command inside Docker container.
+
+        Need run inside executor.
+        """
+        try:
+            docker_container = self.sys_docker.containers.get(self.name)
+        except docker.errors.NotFound:
+            raise DockerNotFound() from None
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        # Execute
+        try:
+            code, output = docker_container.exec_run(command)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        return CommandReturn(code, output)
+
+    def _validate_trust(self, image_id: str) -> None:
+        """Validate trust of content."""
+        checksum = image_id.partition(":")[2]
+        job = asyncio.run_coroutine_threadsafe(
+            self.sys_verify_content(checksum=checksum), self.sys_loop
+        )
+        job.result(timeout=20)

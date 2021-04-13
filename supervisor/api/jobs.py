@@ -36,6 +36,8 @@ class APIJobs(CoreSysAttributes):
 
         self.sys_jobs.save_data()
 
+        await self.sys_resolution.evaluate.evaluate_system()
+
     @api_process
     async def reset(self, request: web.Request) -> None:
         """Reset options for JobManager."""

@@ -1,0 +1,13 @@
+{
+  "name": "Journald Add-on",
+  "version": "1.0.1",
+  "slug": "journald_addon",
+  "description": "This is a Test Add-on that uses journald",
+  "arch": ["amd64"],
+  "url": "https://www.home-assistant.io/",
+  "startup": "application",
+  "boot": "auto",
+  "journald": true,
+  "options": {},
+  "schema": {}
+}

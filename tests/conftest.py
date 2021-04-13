@@ -1,23 +1,33 @@
 """Common test functions."""
+import asyncio
 from pathlib import Path
 import re
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp import web
-from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
+from supervisor.const import REQUEST_FROM
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
+from supervisor.store.addon import AddonStore
+from supervisor.store.repository import Repository
 from supervisor.utils.gdbus import DBus
 
 from tests.common import exists_fixture, load_fixture, load_json_fixture
 
 # pylint: disable=redefined-outer-name, protected-access
+
+
+async def mock_async_return_true() -> bool:
+    """Mock methods to return True."""
+
+    return True
 
 
 @pytest.fixture
@@ -120,9 +130,6 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     ), patch(
         "supervisor.bootstrap.fetch_timezone",
         return_value="Europe/Zurich",
-    ), patch(
-        "aiohttp.ClientSession",
-        return_value=TestClient.session,
     ):
         coresys_obj = await initialize_coresys()
 
@@ -132,6 +139,7 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     coresys_obj._updater.save_data = MagicMock()
     coresys_obj._config.save_data = MagicMock()
     coresys_obj._jobs.save_data = MagicMock()
+    coresys_obj._resolution.save_data = MagicMock()
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
@@ -148,7 +156,17 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     coresys_obj.supervisor._connectivity = True
     coresys_obj.host.network._connectivity = True
 
+    # WebSocket
+    coresys_obj.homeassistant.api.check_api_state = mock_async_return_true
+    coresys_obj.homeassistant._websocket._client = AsyncMock(
+        ha_version=AwesomeVersion("2021.2.4")
+    )
+
     yield coresys_obj
+
+    await asyncio.gather(
+        coresys_obj.websession.close(), coresys_obj.websession_ssl.close()
+    )
 
 
 @pytest.fixture
@@ -171,8 +189,15 @@ def sys_supervisor():
 @pytest.fixture
 async def api_client(aiohttp_client, coresys: CoreSys):
     """Fixture for RestAPI client."""
+
+    @web.middleware
+    async def _security_middleware(request: web.Request, handler: web.RequestHandler):
+        """Make request are from Core."""
+        request[REQUEST_FROM] = coresys.homeassistant
+        return await handler(request)
+
     api = RestAPI(coresys)
-    api.webapp = web.Application()
+    api.webapp = web.Application(middlewares=[_security_middleware])
     api.start = AsyncMock()
     await api.load()
     yield await aiohttp_client(api.webapp)
@@ -193,3 +218,25 @@ def run_dir(tmp_path):
         tmp_state = Path(tmp_path, "supervisor")
         mock_run.write_text = tmp_state.write_text
         yield tmp_state
+
+
+@pytest.fixture
+def store_addon(coresys: CoreSys, tmp_path):
+    """Store add-on fixture."""
+    addon_obj = AddonStore(coresys, "test_store_addon")
+
+    coresys.addons.store[addon_obj.slug] = addon_obj
+    coresys.store.data.addons[addon_obj.slug] = load_json_fixture("add-on.json")
+    yield addon_obj
+
+
+@pytest.fixture
+def repository(coresys: CoreSys):
+    """Repository fixture."""
+    repository_obj = Repository(
+        coresys, "https://github.com/awesome-developer/awesome-repo"
+    )
+
+    coresys.store.repositories[repository_obj.slug] = repository_obj
+
+    yield repository_obj

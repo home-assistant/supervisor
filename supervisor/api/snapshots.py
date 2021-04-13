@@ -59,6 +59,7 @@ SCHEMA_SNAPSHOT_PARTIAL = SCHEMA_SNAPSHOT_FULL.extend(
     {
         vol.Optional(ATTR_ADDONS): vol.All([vol.Coerce(str)], vol.Unique()),
         vol.Optional(ATTR_FOLDERS): vol.All([vol.In(ALL_FOLDERS)], vol.Unique()),
+        vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     }
 )
 

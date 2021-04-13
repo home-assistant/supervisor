@@ -2,7 +2,10 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Set
+from typing import Awaitable, Set
+
+from awesomeversion.awesomeversion import AwesomeVersion
+from awesomeversion.exceptions import AwesomeVersionCompare
 
 from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
 from ..coresys import CoreSysAttributes
@@ -33,7 +36,7 @@ class SnapshotManager(CoreSysAttributes):
         """Return snapshot object."""
         return self.snapshots_obj.get(slug)
 
-    def _create_snapshot(self, name, sys_type, password):
+    def _create_snapshot(self, name, sys_type, password, homeassistant=True):
         """Initialize a new snapshot object from name."""
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
@@ -44,7 +47,9 @@ class SnapshotManager(CoreSysAttributes):
         snapshot.new(slug, name, date_str, sys_type, password)
 
         # set general data
-        snapshot.store_homeassistant()
+        if homeassistant:
+            snapshot.store_homeassistant()
+
         snapshot.store_repositories()
         snapshot.store_dockerconfig()
 
@@ -150,7 +155,7 @@ class SnapshotManager(CoreSysAttributes):
             return None
 
         else:
-            _LOGGER.info("Crating full-snapshot with slug %s completed", snapshot.slug)
+            _LOGGER.info("Creating full-snapshot with slug %s completed", snapshot.slug)
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
 
@@ -160,7 +165,7 @@ class SnapshotManager(CoreSysAttributes):
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_snapshot_partial(
-        self, name="", addons=None, folders=None, password=None
+        self, name="", addons=None, folders=None, password=None, homeassistant=True
     ):
         """Create a partial snapshot."""
         if self.lock.locked():
@@ -169,7 +174,14 @@ class SnapshotManager(CoreSysAttributes):
 
         addons = addons or []
         folders = folders or []
-        snapshot = self._create_snapshot(name, SNAPSHOT_PARTIAL, password)
+
+        if len(addons) == 0 and len(folders) == 0 and not homeassistant:
+            _LOGGER.error("Nothing to create snapshot for")
+            return
+
+        snapshot = self._create_snapshot(
+            name, SNAPSHOT_PARTIAL, password, homeassistant
+        )
 
         _LOGGER.info("Creating new partial-snapshot with slug %s", snapshot.slug)
         try:
@@ -202,7 +214,7 @@ class SnapshotManager(CoreSysAttributes):
 
         else:
             _LOGGER.info(
-                "Crating partial-snapshot with slug %s completed", snapshot.slug
+                "Creating partial-snapshot with slug %s completed", snapshot.slug
             )
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
@@ -254,9 +266,7 @@ class SnapshotManager(CoreSysAttributes):
                 # Start homeassistant restore
                 _LOGGER.info("Restoring %s Home-Assistant", snapshot.slug)
                 snapshot.restore_homeassistant()
-                task_hass = self.sys_create_task(
-                    self.sys_homeassistant.core.update(snapshot.homeassistant_version)
-                )
+                task_hass = self._update_core_task(snapshot.homeassistant_version)
 
                 # Restore repositories
                 _LOGGER.info("Restoring %s Repositories", snapshot.slug)
@@ -345,11 +355,7 @@ class SnapshotManager(CoreSysAttributes):
                 task_hass = None
                 if homeassistant:
                     _LOGGER.info("Restoring %s Home-Assistant", snapshot.slug)
-                    task_hass = self.sys_create_task(
-                        self.sys_homeassistant.core.update(
-                            snapshot.homeassistant_version
-                        )
-                    )
+                    task_hass = self._update_core_task(snapshot.homeassistant_version)
 
                 if addons:
                     _LOGGER.info("Restoring %s Repositories", snapshot.slug)
@@ -384,3 +390,16 @@ class SnapshotManager(CoreSysAttributes):
         finally:
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
+
+    def _update_core_task(self, version: AwesomeVersion) -> Awaitable[None]:
+        """Process core update if needed and make awaitable object."""
+
+        async def _core_update():
+            try:
+                if version == self.sys_homeassistant.version:
+                    return
+            except (AwesomeVersionCompare, TypeError):
+                pass
+            await self.sys_homeassistant.core.update(version)
+
+        return self.sys_create_task(_core_update())

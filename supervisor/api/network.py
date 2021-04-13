@@ -155,7 +155,7 @@ class APINetwork(CoreSysAttributes):
             except HostNetworkNotFound:
                 pass
 
-        raise APIError(f"Interface {name} does not exsist") from None
+        raise APIError(f"Interface {name} does not exist") from None
 
     @api_process
     async def info(self, request: web.Request) -> Dict[str, Any]:

@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Optional
 
 from aiohttp import web
 from aiohttp.hdrs import AUTHORIZATION
+from aiohttp.web_exceptions import HTTPUnauthorized
+from aiohttp.web_request import Request
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -14,11 +16,14 @@ from ..const import (
     JSON_DATA,
     JSON_MESSAGE,
     JSON_RESULT,
+    REQUEST_FROM,
     RESULT_ERROR,
     RESULT_OK,
 )
+from ..coresys import CoreSys
 from ..exceptions import APIError, APIForbidden, DockerAPIError, HassioError
 from ..utils import check_exception_chain, get_message_from_exception_chain
+from ..utils.json import JSONEncoder
 from ..utils.log_format import format_message
 
 
@@ -61,13 +66,27 @@ def api_process(method):
         except (APIError, APIForbidden, HassioError) as err:
             return api_return_error(error=err)
 
-        if isinstance(answer, dict):
+        if isinstance(answer, (dict, list)):
             return api_return_ok(data=answer)
         if isinstance(answer, web.Response):
             return answer
         elif isinstance(answer, bool) and not answer:
             return api_return_error()
         return api_return_ok()
+
+    return wrap_api
+
+
+def require_home_assistant(method):
+    """Ensure that the request comes from Home Assistant."""
+
+    async def wrap_api(api, *args, **kwargs):
+        """Return API information."""
+        coresys: CoreSys = api.coresys
+        request: Request = args[0]
+        if request[REQUEST_FROM] != coresys.homeassistant:
+            raise HTTPUnauthorized()
+        return await method(api, *args, **kwargs)
 
     return wrap_api
 
@@ -112,12 +131,16 @@ def api_return_error(
             JSON_MESSAGE: message or "Unknown error, see supervisor",
         },
         status=400,
+        dumps=lambda x: json.dumps(x, cls=JSONEncoder),
     )
 
 
 def api_return_ok(data: Optional[Dict[str, Any]] = None) -> web.Response:
     """Return an API ok answer."""
-    return web.json_response({JSON_RESULT: RESULT_OK, JSON_DATA: data or {}})
+    return web.json_response(
+        {JSON_RESULT: RESULT_OK, JSON_DATA: data or {}},
+        dumps=lambda x: json.dumps(x, cls=JSONEncoder),
+    )
 
 
 async def api_validate(
