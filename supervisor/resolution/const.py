@@ -39,6 +39,7 @@ class UnsupportedReason(str, Enum):
     SYSTEMD = "systemd"
     JOB_CONDITIONS = "job_conditions"
     CONTENT_TRUST = "content_trust"
+    SOURCE_MODS = "source_mods"
 
 
 class UnhealthyReason(str, Enum):

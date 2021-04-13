@@ -50,7 +50,7 @@ async def vcn_validate(
         command.extend(["--hash", checksum])
     elif path:
         if path.is_dir:
-            command.append(f"dir:/{path!s}")
+            command.append(f"dir://{path.as_posix()}")
         else:
             command.append(path.as_posix())
     else:

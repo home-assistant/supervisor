@@ -190,6 +190,7 @@ def initialize_system_data(coresys: CoreSys) -> None:
         _LOGGER.warning("Environment variables 'SUPERVISOR_DEV' is set")
         coresys.updater.channel = UpdateChannel.DEV
         coresys.config.logging = LogLevel.DEBUG
+        coresys.config.content_trust = False
         coresys.config.debug = True
 
 
