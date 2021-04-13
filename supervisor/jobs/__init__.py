@@ -16,18 +16,32 @@ CONTEXT = ContextVar("id")
 class SupervisorJob(CoreSysAttributes):
     """Supervisor running job class."""
 
-    def __init__(self, coresys: CoreSys, name: Optional[str] = None):
+    def __init__(
+        self,
+        coresys: CoreSys,
+        name: Optional[str] = None,
+        parrent_id: Optional[str] = None,
+    ):
         """Initialize the JobManager class."""
         self.coresys: CoreSys = coresys
         self._name: Optional[str] = name
+        self._parrent_id: Optional[str] = parrent_id
         self._progress: int = 0
         self._stage: Optional[str] = None
         self._data: Optional[dict] = None
+        self._id = (
+            self.sys_jobs.context.get() if self.parrent_id is None else uuid4().hex
+        )
 
     @property
     def id(self) -> str:
         """Return the ID for the job."""
-        return self.sys_jobs.context.get()
+        return self._id
+
+    @property
+    def parrent_id(self) -> Optional[str]:
+        """Return the ID for the parrent job."""
+        return self._parrent_id
 
     @property
     def name(self) -> str:
@@ -62,7 +76,7 @@ class SupervisorJob(CoreSysAttributes):
     ) -> None:
         """Update the job object."""
         if progress is not None:
-            if progress >= round(100):
+            if progress >= round(100) and self.parrent is None:
                 self.sys_jobs.remove_job(self)
                 return
             self._progress = round(progress)
