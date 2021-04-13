@@ -27,7 +27,7 @@ class EvaluateSourceMods(EvaluateBase):
     @property
     def on_failure(self) -> str:
         """Return a string that is printed when self.evaluate is False."""
-        return "System detect unauthorized source code modifcations."
+        return "System detect unauthorized source code modifications."
 
     @property
     def states(self) -> List[CoreState]:
@@ -36,6 +36,10 @@ class EvaluateSourceMods(EvaluateBase):
 
     async def evaluate(self) -> None:
         """Run evaluation."""
+        if not self.sys_config.content_trust:
+            _LOGGER.warning("Disabled content-trust, skipping evaluation")
+            return
+
         try:
             await self.sys_verify_content(path=_SUPERVISOR_SOURCE)
         except CodeNotaryUntrusted:
