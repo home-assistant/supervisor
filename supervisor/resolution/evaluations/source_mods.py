@@ -1,4 +1,5 @@
 """Evaluation class for Content Trust."""
+import logging
 from pathlib import Path
 from typing import List
 
@@ -9,6 +10,7 @@ from ..const import UnsupportedReason
 from .base import EvaluateBase
 
 _SUPERVISOR_SOURCE = Path("/usr/src/supervisor")
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def setup(coresys: CoreSys) -> EvaluateBase:
