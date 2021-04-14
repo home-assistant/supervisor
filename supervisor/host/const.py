@@ -33,3 +33,15 @@ class WifiMode(str, Enum):
     MESH = "mesh"
     ADHOC = "adhoc"
     AP = "ap"
+
+
+class HostFeature(str, Enum):
+    """Host feature."""
+
+    HAOS = "haos"
+    HOSTNAME = "hostname"
+    NETWORK = "network"
+    REBOOT = "reboot"
+    SERVICES = "services"
+    SHUTDOWN = "shutdown"
+    AGENT = "agent"
