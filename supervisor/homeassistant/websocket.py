@@ -86,17 +86,22 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         """Initialize Home Assistant object."""
         self.coresys: CoreSys = coresys
         self._client: Optional[WSClient] = None
+        self._lock: asyncio.Lock = asyncio.Lock()
 
     async def _get_ws_client(self) -> WSClient:
         """Return a websocket client."""
-        await self.sys_homeassistant.api.ensure_access_token()
-        client = await WSClient.connect_with_auth(
-            self.sys_websession_ssl,
-            f"{self.sys_homeassistant.api_url}/api/websocket",
-            self.sys_homeassistant.api.access_token,
-        )
+        async with self._lock:
+            if self._client is not None:
+                return self._client
 
-        return client
+            await self.sys_homeassistant.api.ensure_access_token()
+            client = await WSClient.connect_with_auth(
+                self.sys_websession_ssl,
+                f"{self.sys_homeassistant.api_url}/api/websocket",
+                self.sys_homeassistant.api.access_token,
+            )
+
+            return client
 
     async def async_send_command(self, message: Dict[str, Any]):
         """Send a command with the WS client."""
