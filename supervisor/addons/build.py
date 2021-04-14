@@ -9,6 +9,7 @@ from awesomeversion import AwesomeVersion
 from ..const import (
     ATTR_ARGS,
     ATTR_BUILD_FROM,
+    ATTR_LABELS,
     ATTR_SQUASH,
     FILE_SUFFIX_CONFIGURATION,
     META_ADDON,
@@ -46,9 +47,12 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
     @property
     def base_image(self) -> str:
         """Return base image for this add-on."""
-        return self._data[ATTR_BUILD_FROM].get(
-            self.sys_arch.default, f"homeassistant/{self.sys_arch.default}-base:latest"
-        )
+        if not self._data[ATTR_BUILD_FROM]:
+            return f"homeassistant/{self.sys_arch.default}-base:latest"
+
+        # Evaluate correct base image
+        arch = self.sys_arch.match(list(self._data[ATTR_BUILD_FROM].keys()))
+        return self._data[ATTR_BUILD_FROM][arch]
 
     @property
     def squash(self) -> bool:
@@ -59,6 +63,11 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
     def additional_args(self) -> Dict[str, str]:
         """Return additional Docker build arguments."""
         return self._data[ATTR_ARGS]
+
+    @property
+    def additional_labels(self) -> Dict[str, str]:
+        """Return additional Docker labels."""
+        return self._data[ATTR_LABELS]
 
     @property
     def is_valid(self) -> bool:
@@ -76,7 +85,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             "path": str(self.addon.path_location),
             "tag": f"{self.addon.image}:{version!s}",
             "pull": True,
-            "forcerm": True,
+            "forcerm": not self.sys_dev,
             "squash": self.squash,
             "labels": {
                 "io.hass.version": version,
@@ -84,6 +93,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
                 "io.hass.type": META_ADDON,
                 "io.hass.name": self._fix_label("name"),
                 "io.hass.description": self._fix_label("description"),
+                **self.additional_labels,
             },
             "buildargs": {
                 "BUILD_FROM": self.base_image,

@@ -47,6 +47,7 @@ from ..const import (
     ATTR_INIT,
     ATTR_JOURNALD,
     ATTR_KERNEL_MODULES,
+    ATTR_LABELS,
     ATTR_LEGACY,
     ATTR_LOCATON,
     ATTR_MACHINE,
@@ -317,9 +318,8 @@ SCHEMA_BUILD_CONFIG = vol.Schema(
             {vol.In(ARCH_ALL): vol.Match(RE_DOCKER_IMAGE_BUILD)}
         ),
         vol.Optional(ATTR_SQUASH, default=False): vol.Boolean(),
-        vol.Optional(ATTR_ARGS, default=dict): vol.Schema(
-            {vol.Coerce(str): vol.Coerce(str)}
-        ),
+        vol.Optional(ATTR_ARGS, default=dict): vol.Schema({str: str}),
+        vol.Optional(ATTR_LABELS, default=dict): vol.Schema({str: str}),
     },
     extra=vol.REMOVE_EXTRA,
 )
