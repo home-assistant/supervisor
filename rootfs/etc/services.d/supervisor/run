@@ -2,6 +2,6 @@
 # ==============================================================================
 # Start Supervisor service
 # ==============================================================================
-export LD_PRELOAD="/usr/local/lib/libjemalloc.so.2"
+export LD_PRELOAD="/usr/local/lib/libmimalloc.so"
 
 exec python3 -m supervisor
