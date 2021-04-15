@@ -251,6 +251,7 @@ jobs:
             docker logs hassio_supervisor
             exit 1
           fi
+
       - name: Check the Store / Addon
         run: |
           echo "Install Core SSH Add-on"
