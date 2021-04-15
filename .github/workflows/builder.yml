@@ -192,7 +192,7 @@ jobs:
   run_supervisor:
     runs-on: ubuntu-latest
     name: Run the Supervisor
-    needs: ["build", "codenotary"]
+    needs: ["build", "codenotary", "init"]
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
@@ -231,22 +231,63 @@ jobs:
           SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
           ping="error"
           while [ "$ping" != "ok" ]; do
-            ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r .result)
+            ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r '.result')
             sleep 5
           done
+          docker logs hassio_supervisor
 
       - name: Check the Supervisor
         run: |
           echo "Checking supervisor info"
-          test=$(docker exec hassio_cli ha supervisor info --no-progress --raw-json | jq -r .result)
+          test=$(docker exec hassio_cli ha supervisor info --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ];then
             docker logs hassio_supervisor
             exit 1
           fi
 
           echo "Checking supervisor network info"
-          test=$(docker exec hassio_cli ha network info --no-progress --raw-json | jq -r .result)
+          test=$(docker exec hassio_cli ha network info --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ];then
+            docker logs hassio_supervisor
+            exit 1
+          fi
+
+      - name: Check the Store / Addon
+        run: |
+          echo "Install Core SSH Add-on"
+          test=$(docker exec hassio_cli ha addons install core_ssh --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ];then
+            docker logs hassio_supervisor
+            exit 1
+          fi
+
+          echo "Start Core SSH Add-on"
+          test=$(docker exec hassio_cli ha addons start core_ssh --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ];then
+            docker logs hassio_supervisor
+            exit 1
+          fi
+
+      - name: Check the Supervisor code sign
+        if: needs.init.outputs.publish == 'true'
+        run: |
+          echo "Enable Content-Trust"
+          test=$(docker exec hassio_cli ha supervisor options --content-trust=true --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ];then
+            docker logs hassio_supervisor
+            exit 1
+          fi
+
+          echo "Run supervisor health check"
+          test=$(docker exec hassio_cli ha resolution healthcheck --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ];then
+            docker logs hassio_supervisor
+            exit 1
+          fi
+
+          echo "Check supervisor unhealthy"
+          test=$(docker exec hassio_cli ha resolution info --no-progress --raw-json | jq -r '.data.unhealthy[]')
+          if [ "$test" != "" ];then
             docker logs hassio_supervisor
             exit 1
           fi
