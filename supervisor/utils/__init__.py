@@ -102,8 +102,7 @@ async def remove_folder(folder: Path, content_only: bool = False) -> None:
 def clean_env() -> Dict[str, str]:
     """Return a clean env from system."""
     new_env = {}
-    for key, value in os.environ.items():
-        if key not in ("HOME", "PATH", "PWD", "CWD", "SHLVL"):
-            continue
-        new_env[key] = value
+    for key in ("HOME", "PATH", "PWD", "CWD", "SHLVL"):
+        if value := os.environ.get(key):
+            new_env[key] = value
     return new_env
