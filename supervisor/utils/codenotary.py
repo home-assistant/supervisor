@@ -9,6 +9,7 @@ from typing import Optional, Set, Tuple, Union
 
 import async_timeout
 
+from . import clean_env
 from ..exceptions import CodeNotaryBackendError, CodeNotaryError, CodeNotaryUntrusted
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ async def vcn_validate(
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
+            env=clean_env(),
         )
 
         async with async_timeout.timeout(10):

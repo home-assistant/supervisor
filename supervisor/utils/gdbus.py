@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 
 import sentry_sdk
 
+from . import clean_env
 from ..exceptions import (
     DBusFatalError,
     DBusInterfaceError,
@@ -234,6 +235,7 @@ class DBus:
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=clean_env(),
             )
 
             data, error = await proc.communicate()
@@ -320,6 +322,7 @@ class DBusSignalWrapper:
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env=clean_env(),
         )
 
         return self
