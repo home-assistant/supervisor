@@ -2,10 +2,11 @@
 import asyncio
 from ipaddress import IPv4Address
 import logging
+import os
 from pathlib import Path
 import re
 import socket
-from typing import Any
+from typing import Any, Dict
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -96,3 +97,12 @@ async def remove_folder(folder: Path, content_only: bool = False) -> None:
             return
 
     _LOGGER.error("Can't remove folder %s: %s", folder, error_msg)
+
+
+def clean_env() -> Dict[str, str]:
+    """Return a clean env from system."""
+    new_env = {}
+    for key in ("HOME", "PATH", "PWD", "CWD", "SHLVL"):
+        if value := os.environ.get(key):
+            new_env[key] = value
+    return new_env
