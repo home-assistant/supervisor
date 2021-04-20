@@ -1,8 +1,6 @@
 name: Bug Report Form
-about: Report an issue related to the Home Assistant Supervisor.
+description: Report an issue related to the Home Assistant Supervisor.
 labels: bug
-title: ""
-issue_body: true
 body:
   - type: markdown
     attributes:
@@ -95,12 +93,10 @@ body:
         # Put your logs below this line
 
         ```
-  - type: markdown
+  - type: textarea
     attributes:
-      value: |
-        ## Additional information
-  - type: markdown
-    attributes:
-      value: |
+      label: Additional information
+      description: >
         If you have any additional information for us, use the field below.
-        Please note, you can attach screenshots or screen recordings here.
+        Please note, you can attach screenshots or screen recordings here, by
+        dragging and dropping files in the field below.
