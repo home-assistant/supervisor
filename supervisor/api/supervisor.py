@@ -197,10 +197,18 @@ class APISupervisor(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update Supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_updater.version_supervisor)
 
-        if version == self.sys_supervisor.version:
-            raise APIError(f"Version {version} is already in use")
+        # This option is useless outside of DEV
+        if not self.sys_dev and not self.sys_supervisor.need_update():
+            raise APIError(
+                f"No supervisor update available - {self.sys_supervisor.version!s}"
+            )
+
+        if self.sys_dev:
+            version = body.get(ATTR_VERSION, self.sys_updater.version_supervisor)
+        else:
+            version = self.sys_updater.version_supervisor
+
         await asyncio.shield(self.sys_supervisor.update(version))
 
     @api_process
