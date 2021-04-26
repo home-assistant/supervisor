@@ -345,20 +345,17 @@ class Interface:
         if inet.type != DeviceType.WIRELESS or not inet.settings:
             return None
 
-        # Authentication
+        # Authentication and PSK
         auth = None
         if not inet.settings.wireless_security:
             auth = AuthMethod.OPEN
+            psk = None
+        else:
+            psk = inet.settings.wireless_security.psk
         elif inet.settings.wireless_security.key_mgmt == "none":
             auth = AuthMethod.WEP
         elif inet.settings.wireless_security.key_mgmt == "wpa-psk":
             auth = AuthMethod.WPA_PSK
-
-        # PSK
-        if not inet.settings.wireless_security:
-            psk = None
-        else:
-            psk = inet.settings.wireless_security.psk
 
         # WifiMode
         mode = WifiMode.INFRASTRUCTURE
