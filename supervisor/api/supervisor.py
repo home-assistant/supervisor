@@ -199,7 +199,7 @@ class APISupervisor(CoreSysAttributes):
         body = await api_validate(SCHEMA_VERSION, request)
 
         # This option is useless outside of DEV
-        if not self.sys_dev and not self.sys_supervisor.need_update():
+        if not self.sys_dev and not self.sys_supervisor.need_update:
             raise APIError(
                 f"No supervisor update available - {self.sys_supervisor.version!s}"
             )
