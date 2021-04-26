@@ -352,6 +352,7 @@ class Interface:
             psk = None
         elif inet.settings.wireless_security.key_mgmt == "none":
             auth = AuthMethod.WEP
+            psk = None
         elif inet.settings.wireless_security.key_mgmt == "wpa-psk":
             auth = AuthMethod.WPA_PSK
             psk = inet.settings.wireless_security.psk
