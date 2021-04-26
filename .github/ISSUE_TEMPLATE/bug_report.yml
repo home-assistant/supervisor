@@ -88,11 +88,7 @@ body:
       label: Anything in the Supervisor logs that might be useful for us?
       description: >
         The Supervisor logs can be found in the Supervisor panel -> System tab.
-      value: |
-        ```txt
-        # Put your logs below this line
-
-        ```
+      render: txt
   - type: textarea
     attributes:
       label: Additional information
