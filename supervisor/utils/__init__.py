@@ -86,7 +86,11 @@ async def remove_folder(folder: Path, content_only: bool = False) -> None:
     del_folder = f"{folder}" + "/{,.[!.],..?}*" if content_only else f"{folder}"
     try:
         proc = await asyncio.create_subprocess_exec(
-            "bash", "-c", f"rm -rf {del_folder}", stdout=asyncio.subprocess.DEVNULL
+            "bash",
+            "-c",
+            f"rm -rf {del_folder}",
+            stdout=asyncio.subprocess.DEVNULL,
+            env=clean_env(),
         )
 
         _, error_msg = await proc.communicate()
