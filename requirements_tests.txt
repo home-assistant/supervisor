@@ -1,4 +1,4 @@
-black==21.4b0
+black==21.4b1
 codecov==2.1.11
 coverage==5.5
 flake8-docstrings==1.6.0
