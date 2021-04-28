@@ -4,23 +4,9 @@
     {
       "label": "Run Supervisor",
       "type": "shell",
-      "command": "./scripts/run-supervisor.sh",
+      "command": "./scripts/supervisor.sh",
       "group": {
         "kind": "test",
-        "isDefault": true
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Build Supervisor",
-      "type": "shell",
-      "command": "./scripts/build-supervisor.sh",
-      "group": {
-        "kind": "build",
         "isDefault": true
       },
       "presentation": {
