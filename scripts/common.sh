@@ -4,6 +4,9 @@ function start_docker() {
     local starttime
     local endtime
 
+    update-alternatives --set iptables /usr/sbin/iptables-legacy || echo "Fails adjust iptables"
+    update-alternatives --set ip6tables /usr/sbin/iptables-legacy || echo "Fails adjust ip6tables"
+
     echo "Starting docker."
     dockerd 2> /dev/null &
     DOCKER_PID=$!

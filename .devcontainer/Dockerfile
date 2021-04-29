@@ -41,8 +41,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         docker-ce \
         docker-ce-cli \
         containerd.io \
-    && update-alternatives --set iptables /usr/sbin/iptables-legacy \
-    && update-alternatives --set ip6tables /usr/sbin/iptables-legacy \
     && rm -rf /var/lib/apt/lists/*
 
 # Install tools
