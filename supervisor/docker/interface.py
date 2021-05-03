@@ -175,7 +175,7 @@ class DockerInterface(CoreSysAttributes):
 
             # Validate content
             try:
-                self._validate_trust(docker_image.id)
+                self._validate_trust(docker_image.id, image, version)
             except CodeNotaryError:
                 with suppress(docker.errors.DockerException):
                     self.sys_docker.images.remove(
@@ -190,7 +190,6 @@ class DockerInterface(CoreSysAttributes):
                 )
                 docker_image.tag(image, tag="latest")
         except docker.errors.APIError as err:
-            _LOGGER.error("Can't install %s:%s -> %s.", image, version, err)
             if err.status_code == 429:
                 self.sys_resolution.create_issue(
                     IssueType.DOCKER_RATELIMIT,
@@ -201,20 +200,22 @@ class DockerInterface(CoreSysAttributes):
                     "Your IP address has made too many requests to Docker Hub which activated a rate limit. "
                     "For more details see https://www.home-assistant.io/more-info/dockerhub-rate-limit"
                 )
-            raise DockerError() from err
+            raise DockerError(
+                f"Can't install {image}:{version!s}: {err}", _LOGGER.error
+            ) from err
         except (docker.errors.DockerException, requests.RequestException) as err:
             self.sys_capture_exception(err)
             raise DockerError(
-                f"Unknown error with {image}:{version} -> {err!s}", _LOGGER.error
+                f"Unknown error with {image}:{version!s} -> {err!s}", _LOGGER.error
             ) from err
         except CodeNotaryUntrusted as err:
             raise DockerTrustError(
-                f"Pulled image {image}:{version} failed on content-trust verification!",
+                f"Pulled image {image}:{version!s} failed on content-trust verification!",
                 _LOGGER.critical,
             ) from err
         except CodeNotaryError as err:
             raise DockerTrustError(
-                f"Error happened on Content-Trust check for {image}:{version}: {err!s}",
+                f"Error happened on Content-Trust check for {image}:{version!s}: {err!s}",
                 _LOGGER.error,
             ) from err
         else:
@@ -614,7 +615,9 @@ class DockerInterface(CoreSysAttributes):
 
         return CommandReturn(code, output)
 
-    def _validate_trust(self, image_id: str) -> None:
+    def _validate_trust(
+        self, image_id: str, image: str, version: AwesomeVersion
+    ) -> None:
         """Validate trust of content."""
         checksum = image_id.partition(":")[2]
         job = asyncio.run_coroutine_threadsafe(

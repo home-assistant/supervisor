@@ -636,5 +636,7 @@ class DockerAddon(DockerInterface):
                 self.sys_capture_exception(err)
         super()._stop(remove_container)
 
-    def _validate_trust(self, image_id: str) -> None:
+    def _validate_trust(
+        self, image_id: str, image: str, version: AwesomeVersion
+    ) -> None:
         """Validate trust of content."""

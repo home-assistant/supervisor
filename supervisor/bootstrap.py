@@ -37,7 +37,7 @@ from .dbus import DBusManager
 from .discovery import Discovery
 from .hardware.module import HardwareManager
 from .hassos import HassOS
-from .homeassistant import HomeAssistant
+from .homeassistant.module import HomeAssistant
 from .host import HostManager
 from .ingress import Ingress
 from .misc.filter import filter_data
