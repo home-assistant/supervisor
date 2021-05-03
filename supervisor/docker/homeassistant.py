@@ -3,17 +3,19 @@ from ipaddress import IPv4Address
 import logging
 from typing import Awaitable, Dict, List, Optional
 
+from awesomeversion import AwesomeVersion, AwesomeVersionCompare
 import docker
 import requests
 
 from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_HASSIO, LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerError
 from ..hardware.const import PolicyGroup
+from ..homeassistant.const import LANDINGPAGE
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-HASS_DOCKER_NAME = "homeassistant"
+_VERIFY_TRUST: AwesomeVersion = AwesomeVersion("2021.1.0")
+_HASS_DOCKER_NAME: str = "homeassistant"
 
 
 class DockerHomeAssistant(DockerInterface):
@@ -34,7 +36,7 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def name(self) -> str:
         """Return name of Docker container."""
-        return HASS_DOCKER_NAME
+        return _HASS_DOCKER_NAME
 
     @property
     def timeout(self) -> int:
@@ -210,3 +212,15 @@ class DockerHomeAssistant(DockerInterface):
             return False
 
         return True
+
+    def _validate_trust(
+        self, image_id: str, image: str, version: AwesomeVersion
+    ) -> None:
+        """Validate trust of content."""
+        try:
+            if version != LANDINGPAGE and version < _VERIFY_TRUST:
+                return
+        except AwesomeVersionCompare:
+            return
+
+        super()._validate_trust(image_id, image, version)
