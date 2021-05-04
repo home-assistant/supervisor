@@ -71,6 +71,7 @@ from ..const import (
     ATTR_OPTIONS,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
+    ATTR_PWNED,
     ATTR_RATING,
     ATTR_REPOSITORIES,
     ATTR_REPOSITORY,
@@ -338,7 +339,7 @@ class APIAddons(CoreSysAttributes):
     async def options_validate(self, request: web.Request) -> None:
         """Validate user options for add-on."""
         addon = self._extract_addon_installed(request)
-        data = {ATTR_MESSAGE: "", ATTR_VALID: True}
+        data = {ATTR_MESSAGE: "", ATTR_VALID: True, ATTR_PWNED: False}
 
         # Validate config
         try:
@@ -347,21 +348,23 @@ class APIAddons(CoreSysAttributes):
             data[ATTR_MESSAGE] = humanize_error(addon.options, ex)
             data[ATTR_VALID] = False
 
-        # Validate security
-        if self.sys_config.force_security:
-            for secret in addon.pwned:
-                try:
-                    await check_pwned_password(self.sys_websession, secret)
-                    continue
-                except PwnedSecret:
-                    data[ATTR_MESSAGE] = "Add-on use pwned secrets!"
-                except PwnedError as err:
-                    data[
-                        ATTR_MESSAGE
-                    ] = f"Error happening on pwned secrets check: {err!s}!"
+        # Pwned check
+        for secret in addon.pwned:
+            try:
+                await check_pwned_password(self.sys_websession, secret)
+                continue
+            except PwnedSecret:
+                data[ATTR_PWNED] = True
+            except PwnedError:
+                data[ATTR_PWNED] = None
+            break
 
-                data[ATTR_VALID] = False
-                break
+        if self.sys_config.force_security and data[ATTR_PWNED] in (None, True):
+            data[ATTR_VALID] = False
+            if data[ATTR_PWNED] is None:
+                data[ATTR_MESSAGE] = "Error happening on pwned secrets check!"
+            else:
+                data[ATTR_MESSAGE] = "Add-on use pwned secrets!"
 
         return data
 

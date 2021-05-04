@@ -316,6 +316,7 @@ ATTR_WEBUI = "webui"
 ATTR_WIFI = "wifi"
 ATTR_CONTENT_TRUST = "content_trust"
 ATTR_FORCE_SECURITY = "force_security"
+ATTR_PWNED = "pwned"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
