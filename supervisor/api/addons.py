@@ -367,7 +367,7 @@ class APIAddons(CoreSysAttributes):
             if data[ATTR_PWNED] is None:
                 data[ATTR_MESSAGE] = "Error happening on pwned secrets check!"
             else:
-                data[ATTR_MESSAGE] = "Add-on use pwned secrets!"
+                data[ATTR_MESSAGE] = "Add-on uses pwned secrets!"
 
         return data
 
