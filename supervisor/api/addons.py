@@ -107,7 +107,7 @@ from ..docker.stats import DockerStats
 from ..exceptions import APIError, APIForbidden, PwnedError, PwnedSecret
 from ..utils.pwned import check_pwned_password
 from ..validate import docker_ports
-from .utils import api_process, api_process_raw, api_validate
+from .utils import api_process, api_process_raw, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -341,15 +341,18 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon_installed(request)
         data = {ATTR_MESSAGE: "", ATTR_VALID: True, ATTR_PWNED: False}
 
+        options = await request.json(loads=json_loads) or self.options
+
         # Validate config
+        options_schema = addon.schema_options
         try:
-            addon.schema(addon.options)
+            options_schema.validate(options)
         except vol.Invalid as ex:
             data[ATTR_MESSAGE] = humanize_error(addon.options, ex)
             data[ATTR_VALID] = False
 
         # Pwned check
-        for secret in addon.pwned:
+        for secret in options_schema.pwned:
             try:
                 await check_pwned_password(self.sys_websession, secret)
                 continue
@@ -377,7 +380,7 @@ class APIAddons(CoreSysAttributes):
 
         addon = self._extract_addon_installed(request)
         try:
-            return addon.schema(addon.options)
+            return addon.schema.validate(addon.options)
         except vol.Invalid:
             raise APIError("Invalid configuration data for the add-on") from None
 

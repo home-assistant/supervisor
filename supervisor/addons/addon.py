@@ -426,30 +426,20 @@ class Addon(AddonModel):
     @property
     def devices(self) -> Set[Device]:
         """Extract devices from add-on options."""
-        raw_schema = self.data[ATTR_SCHEMA]
-        if isinstance(raw_schema, bool) or not raw_schema:
-            return set()
-
-        # Validate devices
-        options_validator = AddonOptions(self.coresys, raw_schema, self.name, self.slug)
+        options_schema = self.schema
         with suppress(vol.Invalid):
-            options_validator(self.options)
+            options_schema.validate(self.options)
 
-        return options_validator.devices
+        return options_schema.devices
 
     @property
     def pwned(self) -> Set[str]:
         """Extract pwned data for add-on options."""
-        raw_schema = self.data[ATTR_SCHEMA]
-        if isinstance(raw_schema, bool) or not raw_schema:
-            return set()
-
-        # Validate devices
-        options_validator = AddonOptions(self.coresys, raw_schema, self.name, self.slug)
+        options_schema = self.schema
         with suppress(vol.Invalid):
-            options_validator(self.options)
+            options_schema.validate(self.options)
 
-        return options_validator.pwned
+        return options_schema.pwned
 
     def save_persist(self) -> None:
         """Save data of add-on."""
@@ -503,7 +493,7 @@ class Addon(AddonModel):
         await self.sys_homeassistant.secrets.reload()
 
         try:
-            options = self.schema(self.options)
+            options = self.schema.validate(self.options)
             write_json_file(self.path_options, options)
         except vol.Invalid as ex:
             _LOGGER.error(
