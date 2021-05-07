@@ -112,9 +112,7 @@ class APIProxy(CoreSysAttributes):
         url = f"{self.sys_homeassistant.api_url}/api/websocket"
 
         try:
-            client = await self.sys_websession_ssl.ws_connect(
-                url, heartbeat=30, verify_ssl=False
-            )
+            client = await self.sys_websession.ws_connect(url, heartbeat=30, ssl=False)
 
             # Handle authentication
             data = await client.receive_json()

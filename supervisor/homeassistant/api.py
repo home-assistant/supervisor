@@ -36,13 +36,14 @@ class HomeAssistantAPI(CoreSysAttributes):
             return
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
-            async with self.sys_websession_ssl.post(
+            async with self.sys_websession.post(
                 f"{self.sys_homeassistant.api_url}/auth/token",
                 timeout=30,
                 data={
                     "grant_type": "refresh_token",
                     "refresh_token": self.sys_homeassistant.refresh_token,
                 },
+                ssl=False,
             ) as resp:
                 if resp.status != 200:
                     _LOGGER.error("Can't update Home Assistant access token!")
@@ -80,13 +81,14 @@ class HomeAssistantAPI(CoreSysAttributes):
             headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
 
             try:
-                async with getattr(self.sys_websession_ssl, method)(
+                async with getattr(self.sys_websession, method)(
                     url,
                     data=data,
                     timeout=timeout,
                     json=json,
                     headers=headers,
                     params=params,
+                    ssl=False,
                 ) as resp:
                     # Access token expired
                     if resp.status == 401:

@@ -1,5 +1,4 @@
 """Common test functions."""
-import asyncio
 from pathlib import Path
 import re
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
@@ -164,9 +163,7 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
 
     yield coresys_obj
 
-    await asyncio.gather(
-        coresys_obj.websession.close(), coresys_obj.websession_ssl.close()
-    )
+    await coresys_obj.websession.close()
 
 
 @pytest.fixture
