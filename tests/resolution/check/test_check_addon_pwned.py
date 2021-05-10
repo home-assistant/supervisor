@@ -35,29 +35,20 @@ async def test_check(coresys: CoreSys):
 
     assert len(coresys.resolution.issues) == 0
 
-    with patch(
-        "supervisor.resolution.checks.addon_pwned.check_pwned_password",
-        AsyncMock(side_effect=PwnedSecret()),
-    ) as mock:
-        await addon_pwned.run_check.__wrapped__(addon_pwned)
-        assert not mock.called
+    coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
+    await addon_pwned.run_check.__wrapped__(addon_pwned)
+    assert not coresys.security.verify_secret.called
 
     addon.pwned.add("123456")
-    with patch(
-        "supervisor.resolution.checks.addon_pwned.check_pwned_password",
-        AsyncMock(return_value=None),
-    ) as mock:
-        await addon_pwned.run_check.__wrapped__(addon_pwned)
-        assert mock.called
+    coresys.security.verify_secret = AsyncMock(return_value=None)
+    await addon_pwned.run_check.__wrapped__(addon_pwned)
+    assert coresys.security.verify_secret.called
 
     assert len(coresys.resolution.issues) == 0
 
-    with patch(
-        "supervisor.resolution.checks.addon_pwned.check_pwned_password",
-        AsyncMock(side_effect=PwnedSecret()),
-    ) as mock:
-        await addon_pwned.run_check.__wrapped__(addon_pwned)
-        assert mock.called
+    coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
+    await addon_pwned.run_check.__wrapped__(addon_pwned)
+    assert coresys.security.verify_secret.called
 
     assert len(coresys.resolution.issues) == 1
     assert coresys.resolution.issues[-1].type == IssueType.PWNED
@@ -75,24 +66,15 @@ async def test_approve(coresys: CoreSys):
     coresys.addons.local[addon.slug] = addon
     addon.pwned.add("123456")
 
-    with patch(
-        "supervisor.resolution.checks.addon_pwned.check_pwned_password",
-        AsyncMock(side_effect=PwnedSecret()),
-    ):
-        assert await addon_pwned.approve_check(reference=addon.slug)
+    coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
+    assert await addon_pwned.approve_check(reference=addon.slug)
 
-    with patch(
-        "supervisor.resolution.checks.addon_pwned.check_pwned_password",
-        AsyncMock(return_value=None),
-    ):
-        assert not await addon_pwned.approve_check(reference=addon.slug)
+    coresys.security.verify_secret = AsyncMock(return_value=None)
+    assert not await addon_pwned.approve_check(reference=addon.slug)
 
     addon.is_installed = False
-    with patch(
-        "supervisor.resolution.checks.addon_pwned.check_pwned_password",
-        AsyncMock(side_effect=PwnedSecret()),
-    ):
-        assert not await addon_pwned.approve_check(reference=addon.slug)
+    coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
+    assert not await addon_pwned.approve_check(reference=addon.slug)
 
 
 async def test_did_run(coresys: CoreSys):
