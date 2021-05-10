@@ -7,7 +7,6 @@ from ...coresys import CoreSys
 from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
 from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
-from ...utils.pwned import check_pwned_password
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
 
@@ -19,6 +18,13 @@ def setup(coresys: CoreSys) -> CheckBase:
 
 class CheckAddonPwned(CheckBase):
     """CheckAddonPwned class for check."""
+
+    @property
+    def enabled(self) -> bool:
+        """Return True if the check is enabled."""
+        if not self.sys_security.pwned:
+            return False
+        return super().enabled
 
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
@@ -37,7 +43,7 @@ class CheckAddonPwned(CheckBase):
             # check passwords
             for secret in secrets:
                 try:
-                    await check_pwned_password(self.sys_websession, secret)
+                    await self.sys_security.verify_secret(secret)
                 except PwnedConnectivityError:
                     self.sys_supervisor.connectivity = False
                     return
@@ -75,7 +81,7 @@ class CheckAddonPwned(CheckBase):
         # Check if still pwned
         for secret in secrets:
             try:
-                await check_pwned_password(self.sys_websession, secret)
+                await self.sys_security.verify_secret(secret)
             except PwnedSecret:
                 return True
             except PwnedError:

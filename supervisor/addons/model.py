@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Awaitable, Dict, List, Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-import voluptuous as vol
 
 from ..const import (
     ATTR_ADVANCED,
@@ -532,18 +531,16 @@ class AddonModel(CoreSysAttributes, ABC):
         return Path(self.path_location, "apparmor.txt")
 
     @property
-    def schema(self) -> vol.Schema:
-        """Create a schema for add-on options."""
+    def schema(self) -> AddonOptions:
+        """Return Addon options validation object."""
         raw_schema = self.data[ATTR_SCHEMA]
-
         if isinstance(raw_schema, bool):
             raw_schema = {}
-        return vol.Schema(
-            vol.All(dict, AddonOptions(self.coresys, raw_schema, self.name, self.slug))
-        )
+
+        return AddonOptions(self.coresys, raw_schema, self.name, self.slug)
 
     @property
-    def schema_ui(self) -> Optional[List[Dict[str, Any]]]:
+    def schema_ui(self) -> Optional[List[Dict[any, any]]]:
         """Create a UI schema for add-on options."""
         raw_schema = self.data[ATTR_SCHEMA]
 

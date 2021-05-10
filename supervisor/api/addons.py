@@ -71,6 +71,7 @@ from ..const import (
     ATTR_OPTIONS,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
+    ATTR_PWNED,
     ATTR_RATING,
     ATTR_REPOSITORIES,
     ATTR_REPOSITORY,
@@ -104,9 +105,8 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
 from ..exceptions import APIError, APIForbidden, PwnedError, PwnedSecret
-from ..utils.pwned import check_pwned_password
 from ..validate import docker_ports
-from .utils import api_process, api_process_raw, api_validate
+from .utils import api_process, api_process_raw, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -338,30 +338,38 @@ class APIAddons(CoreSysAttributes):
     async def options_validate(self, request: web.Request) -> None:
         """Validate user options for add-on."""
         addon = self._extract_addon_installed(request)
-        data = {ATTR_MESSAGE: "", ATTR_VALID: True}
+        data = {ATTR_MESSAGE: "", ATTR_VALID: True, ATTR_PWNED: False}
+
+        options = await request.json(loads=json_loads) or addon.options
 
         # Validate config
+        options_schema = addon.schema
         try:
-            addon.schema(addon.options)
+            options_schema.validate(options)
         except vol.Invalid as ex:
-            data[ATTR_MESSAGE] = humanize_error(addon.options, ex)
+            data[ATTR_MESSAGE] = humanize_error(options, ex)
             data[ATTR_VALID] = False
 
-        # Validate security
-        if self.sys_config.force_security:
-            for secret in addon.pwned:
-                try:
-                    await check_pwned_password(self.sys_websession, secret)
-                    continue
-                except PwnedSecret:
-                    data[ATTR_MESSAGE] = "Add-on use pwned secrets!"
-                except PwnedError as err:
-                    data[
-                        ATTR_MESSAGE
-                    ] = f"Error happening on pwned secrets check: {err!s}!"
+        if not self.sys_security.pwned:
+            return data
 
-                data[ATTR_VALID] = False
-                break
+        # Pwned check
+        for secret in options_schema.pwned:
+            try:
+                await self.sys_security.verify_secret(secret)
+                continue
+            except PwnedSecret:
+                data[ATTR_PWNED] = True
+            except PwnedError:
+                data[ATTR_PWNED] = None
+            break
+
+        if self.sys_security.force and data[ATTR_PWNED] in (None, True):
+            data[ATTR_VALID] = False
+            if data[ATTR_PWNED] is None:
+                data[ATTR_MESSAGE] = "Error happening on pwned secrets check!"
+            else:
+                data[ATTR_MESSAGE] = "Add-on uses pwned secrets!"
 
         return data
 
@@ -374,7 +382,7 @@ class APIAddons(CoreSysAttributes):
 
         addon = self._extract_addon_installed(request)
         try:
-            return addon.schema(addon.options)
+            return addon.schema.validate(addon.options)
         except vol.Invalid:
             raise APIError("Invalid configuration data for the add-on") from None
 

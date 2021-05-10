@@ -69,6 +69,11 @@ class AddonOptions(CoreSysAttributes):
         self._name = name
         self._slug = slug
 
+    @property
+    def validate(self) -> vol.Schema:
+        """Create a schema for add-on options."""
+        return vol.Schema(vol.All(dict, self))
+
     def __call__(self, struct):
         """Create schema validator for add-ons options."""
         options = {}

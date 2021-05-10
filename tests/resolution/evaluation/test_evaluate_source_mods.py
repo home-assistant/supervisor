@@ -14,26 +14,17 @@ async def test_evaluation(coresys: CoreSys):
     coresys.core.state = CoreState.RUNNING
 
     assert sourcemods.reason not in coresys.resolution.unsupported
-    with patch(
-        "supervisor.resolution.evaluations.source_mods.EvaluateSourceMods.sys_verify_content",
-        AsyncMock(side_effect=CodeNotaryUntrusted),
-    ):
-        await sourcemods()
-        assert sourcemods.reason in coresys.resolution.unsupported
+    coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryUntrusted)
+    await sourcemods()
+    assert sourcemods.reason in coresys.resolution.unsupported
 
-    with patch(
-        "supervisor.resolution.evaluations.source_mods.EvaluateSourceMods.sys_verify_content",
-        AsyncMock(side_effect=CodeNotaryError),
-    ):
-        await sourcemods()
-        assert sourcemods.reason not in coresys.resolution.unsupported
+    coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryError)
+    await sourcemods()
+    assert sourcemods.reason not in coresys.resolution.unsupported
 
-    with patch(
-        "supervisor.resolution.evaluations.source_mods.EvaluateSourceMods.sys_verify_content",
-        AsyncMock(),
-    ):
-        await sourcemods()
-        assert sourcemods.reason not in coresys.resolution.unsupported
+    coresys.security.verify_own_content = AsyncMock()
+    await sourcemods()
+    assert sourcemods.reason not in coresys.resolution.unsupported
 
 
 async def test_did_run(coresys: CoreSys):

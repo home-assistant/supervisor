@@ -20,6 +20,7 @@ FILE_HASSIO_HOMEASSISTANT = Path(SUPERVISOR_DATA, "homeassistant.json")
 FILE_HASSIO_INGRESS = Path(SUPERVISOR_DATA, "ingress.json")
 FILE_HASSIO_SERVICES = Path(SUPERVISOR_DATA, "services.json")
 FILE_HASSIO_UPDATER = Path(SUPERVISOR_DATA, "updater.json")
+FILE_HASSIO_SECURITY = Path(SUPERVISOR_DATA, "security.json")
 
 FILE_SUFFIX_CONFIGURATION = [".yaml", ".yml", ".json"]
 
@@ -316,6 +317,7 @@ ATTR_WEBUI = "webui"
 ATTR_WIFI = "wifi"
 ATTR_CONTENT_TRUST = "content_trust"
 ATTR_FORCE_SECURITY = "force_security"
+ATTR_PWNED = "pwned"
 
 PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"

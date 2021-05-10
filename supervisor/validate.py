@@ -27,6 +27,7 @@ from .const import (
     ATTR_OTA,
     ATTR_PASSWORD,
     ATTR_PORTS,
+    ATTR_PWNED,
     ATTR_REGISTRIES,
     ATTR_SESSION,
     ATTR_SUPERVISOR,
@@ -150,8 +151,6 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
         vol.Optional(ATTR_DEBUG, default=False): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK, default=False): vol.Boolean(),
         vol.Optional(ATTR_DIAGNOSTICS, default=None): vol.Maybe(vol.Boolean()),
-        vol.Optional(ATTR_CONTENT_TRUST, default=True): vol.Boolean(),
-        vol.Optional(ATTR_FORCE_SECURITY, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )
@@ -182,6 +181,17 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
         vol.Required(ATTR_PORTS, default=dict): vol.Schema(
             {vol.Coerce(str): network_port}
         ),
+    },
+    extra=vol.REMOVE_EXTRA,
+)
+
+
+# pylint: disable=no-value-for-parameter
+SCHEMA_SECURITY_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_CONTENT_TRUST, default=True): vol.Boolean(),
+        vol.Optional(ATTR_PWNED, default=True): vol.Boolean(),
+        vol.Optional(ATTR_FORCE_SECURITY, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )

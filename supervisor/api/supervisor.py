@@ -116,8 +116,6 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG: self.sys_config.debug,
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
-            ATTR_CONTENT_TRUST: self.sys_config.content_trust,
-            ATTR_FORCE_SECURITY: self.sys_config.force_security,
             ATTR_ADDONS: list_addons,
             ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
         }
@@ -148,11 +146,13 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]
 
+        # REMOVE: 2021.7
         if ATTR_CONTENT_TRUST in body:
-            self.sys_config.content_trust = body[ATTR_CONTENT_TRUST]
+            self.sys_security.content_trust = body[ATTR_CONTENT_TRUST]
 
+        # REMOVE: 2021.7
         if ATTR_FORCE_SECURITY in body:
-            self.sys_config.force_security = body[ATTR_FORCE_SECURITY]
+            self.sys_security.force = body[ATTR_FORCE_SECURITY]
 
         if ATTR_ADDONS_REPOSITORIES in body:
             new = set(body[ATTR_ADDONS_REPOSITORIES])

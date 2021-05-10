@@ -4,8 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Coroutine, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
 
 import aiohttp
 import sentry_sdk
@@ -13,9 +12,6 @@ import sentry_sdk
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV
 from .docker import DockerAPI
-from .exceptions import CodeNotaryError, CodeNotaryUntrusted
-from .resolution.const import UnhealthyReason
-from .utils.codenotary import vcn_validate
 
 if TYPE_CHECKING:
     from .addons import AddonManager
@@ -40,6 +36,7 @@ if TYPE_CHECKING:
     from .store import StoreManager
     from .supervisor import Supervisor
     from .updater import Updater
+    from .security import Security
 
 
 T = TypeVar("T")
@@ -90,6 +87,7 @@ class CoreSys:
         self._plugins: Optional[PluginManager] = None
         self._resolution: Optional[ResolutionManager] = None
         self._jobs: Optional[JobManager] = None
+        self._security: Optional[Security] = None
 
     @property
     def dev(self) -> bool:
@@ -416,6 +414,20 @@ class CoreSys:
         self._resolution = value
 
     @property
+    def security(self) -> Security:
+        """Return security object."""
+        if self._security is None:
+            raise RuntimeError("security not set!")
+        return self._security
+
+    @security.setter
+    def security(self, value: Security) -> None:
+        """Set a security object."""
+        if self._security:
+            raise RuntimeError("security already set!")
+        self._security = value
+
+    @property
     def jobs(self) -> JobManager:
         """Return resolution manager object."""
         if self._jobs is None:
@@ -600,6 +612,11 @@ class CoreSysAttributes:
         return self.coresys.resolution
 
     @property
+    def sys_security(self) -> Security:
+        """Return Security object."""
+        return self.coresys.security
+
+    @property
     def sys_jobs(self) -> JobManager:
         """Return Job manager object."""
         return self.coresys.jobs
@@ -617,21 +634,3 @@ class CoreSysAttributes:
     def sys_capture_exception(self, err: Exception) -> None:
         """Capture a exception."""
         sentry_sdk.capture_exception(err)
-
-    async def sys_verify_content(
-        self, checksum: Optional[str] = None, path: Optional[Path] = None
-    ) -> Awaitable[None]:
-        """Verify content from HA org."""
-        if not self.sys_config.content_trust:
-            _LOGGER.warning("Disabled content-trust, skip validation")
-            return
-
-        try:
-            await vcn_validate(checksum, path, org="home-assistant.io")
-        except CodeNotaryUntrusted:
-            self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
-            raise
-        except CodeNotaryError:
-            if self.sys_config.force_security:
-                raise
-            return
