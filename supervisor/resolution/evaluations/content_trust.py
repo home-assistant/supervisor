@@ -32,4 +32,4 @@ class EvaluateContentTrust(EvaluateBase):
 
     async def evaluate(self) -> None:
         """Run evaluation."""
-        return not self.sys_config.content_trust
+        return not self.sys_security.content_trust

@@ -38,12 +38,12 @@ class EvaluateSourceMods(EvaluateBase):
 
     async def evaluate(self) -> None:
         """Run evaluation."""
-        if not self.sys_config.content_trust:
+        if not self.sys_security.content_trust:
             _LOGGER.warning("Disabled content-trust, skipping evaluation")
             return
 
         try:
-            await self.sys_verify_content(path=_SUPERVISOR_SOURCE)
+            await self.sys_security.verify_own_content(path=_SUPERVISOR_SOURCE)
         except CodeNotaryUntrusted:
             return True
         except CodeNotaryError:

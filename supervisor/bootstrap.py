@@ -45,6 +45,7 @@ from .misc.scheduler import Scheduler
 from .misc.tasks import Tasks
 from .plugins import PluginManager
 from .resolution.module import ResolutionManager
+from .security import Security
 from .services import ServiceManager
 from .snapshots import SnapshotManager
 from .store import StoreManager
@@ -82,6 +83,7 @@ async def initialize_coresys() -> CoreSys:
     coresys.dbus = DBusManager(coresys)
     coresys.hassos = HassOS(coresys)
     coresys.scheduler = Scheduler(coresys)
+    coresys.security = Security(coresys)
 
     # diagnostics
     setup_diagnostics(coresys)
@@ -188,10 +190,10 @@ def initialize_system_data(coresys: CoreSys) -> None:
     # Check if ENV is in development mode
     if coresys.dev:
         _LOGGER.warning("Environment variables 'SUPERVISOR_DEV' is set")
-        coresys.updater.channel = UpdateChannel.DEV
         coresys.config.logging = LogLevel.DEBUG
-        coresys.config.content_trust = False
         coresys.config.debug = True
+        coresys.updater.channel = UpdateChannel.DEV
+        coresys.security.content_trust = False
 
 
 def migrate_system_env(coresys: CoreSys) -> None:

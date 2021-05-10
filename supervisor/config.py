@@ -9,11 +9,9 @@ from awesomeversion import AwesomeVersion
 
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
-    ATTR_CONTENT_TRUST,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DIAGNOSTICS,
-    ATTR_FORCE_SECURITY,
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
@@ -158,26 +156,6 @@ class CoreConfig(FileConfiguration):
     def last_boot(self, value: datetime) -> None:
         """Set last boot datetime."""
         self._data[ATTR_LAST_BOOT] = value.isoformat()
-
-    @property
-    def content_trust(self) -> bool:
-        """Return if content trust is enabled/disabled."""
-        return self._data[ATTR_CONTENT_TRUST]
-
-    @content_trust.setter
-    def content_trust(self, value: bool) -> None:
-        """Set content trust is enabled/disabled."""
-        self._data[ATTR_CONTENT_TRUST] = value
-
-    @property
-    def force_security(self) -> bool:
-        """Return if force security is enabled/disabled."""
-        return self._data[ATTR_FORCE_SECURITY]
-
-    @force_security.setter
-    def force_security(self, value: bool) -> None:
-        """Set force security is enabled/disabled."""
-        self._data[ATTR_FORCE_SECURITY] = value
 
     @property
     def path_supervisor(self) -> Path:

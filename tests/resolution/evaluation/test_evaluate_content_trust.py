@@ -15,7 +15,7 @@ async def test_evaluation(coresys: CoreSys):
     await job_conditions()
     assert job_conditions.reason not in coresys.resolution.unsupported
 
-    coresys.config.content_trust = False
+    coresys.security.content_trust = False
     await job_conditions()
     assert job_conditions.reason in coresys.resolution.unsupported
 

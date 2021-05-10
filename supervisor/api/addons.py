@@ -105,7 +105,6 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
 from ..exceptions import APIError, APIForbidden, PwnedError, PwnedSecret
-from ..utils.pwned import check_pwned_password
 from ..validate import docker_ports
 from .utils import api_process, api_process_raw, api_validate, json_loads
 
@@ -354,7 +353,7 @@ class APIAddons(CoreSysAttributes):
         # Pwned check
         for secret in options_schema.pwned:
             try:
-                await check_pwned_password(self.sys_websession, secret)
+                await self.sys_security.verify_secret(secret)
                 continue
             except PwnedSecret:
                 data[ATTR_PWNED] = True
@@ -362,7 +361,7 @@ class APIAddons(CoreSysAttributes):
                 data[ATTR_PWNED] = None
             break
 
-        if self.sys_config.force_security and data[ATTR_PWNED] in (None, True):
+        if self.sys_security.force and data[ATTR_PWNED] in (None, True):
             data[ATTR_VALID] = False
             if data[ATTR_PWNED] is None:
                 data[ATTR_MESSAGE] = "Error happening on pwned secrets check!"

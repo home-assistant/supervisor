@@ -19,13 +19,14 @@ from .host import APIHost
 from .info import APIInfo
 from .ingress import APIIngress
 from .jobs import APIJobs
+from .middleware_security import SecurityMiddleware
 from .multicast import APIMulticast
 from .network import APINetwork
 from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
 from .resolution import APIResoulution
-from .security import SecurityMiddleware
+from .security import APISecurity
 from .services import APIServices
 from .snapshots import APISnapshots
 from .store import APIStore
@@ -82,6 +83,7 @@ class RestAPI(CoreSysAttributes):
         self._register_snapshots()
         self._register_supervisor()
         self._register_store()
+        self._register_security()
 
         await self.start()
 
@@ -143,6 +145,18 @@ class RestAPI(CoreSysAttributes):
                 web.get("/os/info", api_os.info),
                 web.post("/os/update", api_os.update),
                 web.post("/os/config/sync", api_os.config_sync),
+            ]
+        )
+
+    def _register_security(self) -> None:
+        """Register Security functions."""
+        api_security = APISecurity()
+        api_security.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/security/info", api_security.info),
+                web.post("/security/options", api_security.options),
             ]
         )
 

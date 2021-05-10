@@ -20,6 +20,13 @@ def setup(coresys: CoreSys) -> CheckBase:
 class CheckAddonPwned(CheckBase):
     """CheckAddonPwned class for check."""
 
+    @property
+    def enabled(self) -> bool:
+        """Return True if the check is enabled."""
+        if not self.sys_security.pwned:
+            return False
+        return super().enabled
+
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
         limit=JobExecutionLimit.THROTTLE,

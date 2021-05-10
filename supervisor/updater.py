@@ -207,7 +207,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
         # Validate
         try:
-            await self.sys_verify_content(checksum=calc_checksum(data))
+            await self.sys_security.verify_own_content(checksum=calc_checksum(data))
         except CodeNotaryUntrusted as err:
             raise UpdaterError(
                 "Content-Trust is broken for the version file fetch!", _LOGGER.critical
