@@ -340,7 +340,7 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon_installed(request)
         data = {ATTR_MESSAGE: "", ATTR_VALID: True, ATTR_PWNED: False}
 
-        options = await request.json(loads=json_loads) or self.options
+        options = await request.json(loads=json_loads) or addon.options
 
         # Validate config
         options_schema = addon.schema
