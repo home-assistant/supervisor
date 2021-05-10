@@ -347,7 +347,7 @@ class APIAddons(CoreSysAttributes):
         try:
             options_schema.validate(options)
         except vol.Invalid as ex:
-            data[ATTR_MESSAGE] = humanize_error(addon.options, ex)
+            data[ATTR_MESSAGE] = humanize_error(options, ex)
             data[ATTR_VALID] = False
 
         if not self.sys_security.pwned:
