@@ -23,6 +23,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
     if sha1_short in _CACHE:
         raise PwnedSecret()
 
+    _LOGGER.debug("Check pwned state of %s", sha1_short)
     try:
         async with websession.get(
             _API_CALL.format(hash=sha1_short), timeout=aiohttp.ClientTimeout(total=10)
