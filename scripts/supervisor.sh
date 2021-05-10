@@ -88,6 +88,21 @@ function init_udev() {
     udevadm trigger && udevadm settle
 }
 
+function init_os-agent() {
+    if pgrep os-agent; then
+        echo "os-agent is running"
+        return 0
+    fi
+
+    if [ ! -f /usr/sbin/os-agent ]; then
+        curl -Lo /usr/sbin/os-agent https://github.com/home-assistant/os-agent/releases/download/1.1.0/os-agent-debian-amd64.bin
+        curl -Lo /etc/dbus-1/system.d/io.hass.conf https://raw.githubusercontent.com/home-assistant/os-agent/main/contrib/io.hass.conf
+        chmod a+x /usr/sbin/os-agent
+    fi
+
+    /usr/sbin/os-agent &
+}
+
 echo "Run Supervisor"
 
 start_docker
@@ -99,6 +114,7 @@ if [ "$( docker container inspect -f '{{.State.Status}}' hassio_supervisor )" ==
     docker rm -f hassio_supervisor
     init_dbus
     init_udev
+    init_os-agent
     cleanup_lastboot
     run_supervisor
     stop_docker
@@ -111,6 +127,7 @@ else
     cleanup_docker
     init_dbus
     init_udev
+    init_os-agent
     run_supervisor
     stop_docker
 fi

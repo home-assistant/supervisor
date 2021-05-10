@@ -48,6 +48,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         jq \
         dbus \
         network-manager \
+        apparmor-utils \
         libpulse0 \
     && bash <(curl https://getvcn.codenotary.com -L) \
     && rm -rf /var/lib/apt/lists/*
