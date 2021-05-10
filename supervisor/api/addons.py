@@ -343,12 +343,15 @@ class APIAddons(CoreSysAttributes):
         options = await request.json(loads=json_loads) or self.options
 
         # Validate config
-        options_schema = addon.schema_options
+        options_schema = addon.schema
         try:
             options_schema.validate(options)
         except vol.Invalid as ex:
             data[ATTR_MESSAGE] = humanize_error(addon.options, ex)
             data[ATTR_VALID] = False
+
+        if not self.sys_security.pwned:
+            return data
 
         # Pwned check
         for secret in options_schema.pwned:
