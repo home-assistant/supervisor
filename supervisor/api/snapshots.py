@@ -11,6 +11,7 @@ import voluptuous as vol
 
 from ..const import (
     ATTR_ADDONS,
+    ATTR_CONTENT,
     ATTR_DATE,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
@@ -86,6 +87,11 @@ class APISnapshots(CoreSysAttributes):
                     ATTR_DATE: snapshot.date,
                     ATTR_TYPE: snapshot.sys_type,
                     ATTR_PROTECTED: snapshot.protected,
+                    ATTR_CONTENT: {
+                        ATTR_HOMEASSISTANT: snapshot.homeassistant_version is not None,
+                        ATTR_ADDONS: snapshot.addon_list,
+                        ATTR_FOLDERS: snapshot.folders,
+                    },
                 }
             )
 
