@@ -110,9 +110,6 @@ class PluginManager(CoreSysAttributes):
                 _LOGGER.warning("Can't update plugin %s: %s", plugin.slug, err)
                 self.sys_capture_exception(err)
 
-        # Evaluate system state
-        await self.sys_supervisor.check_connectivity()
-
     async def repair(self) -> None:
         """Repair Supervisor plugins."""
         await asyncio.wait(
