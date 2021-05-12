@@ -153,7 +153,6 @@ class Job(CoreSysAttributes):
         if (
             JobCondition.INTERNET_SYSTEM in self.conditions
             and not self.sys_supervisor.connectivity
-            and self.sys_core.state in (CoreState.SETUP, CoreState.RUNNING)
         ):
             raise JobConditionException(
                 f"'{self._method.__qualname__}' blocked from execution, no supervisor internet connection"
@@ -163,7 +162,6 @@ class Job(CoreSysAttributes):
             JobCondition.INTERNET_HOST in self.conditions
             and self.sys_host.network.connectivity is not None
             and not self.sys_host.network.connectivity
-            and self.sys_core.state in (CoreState.SETUP, CoreState.RUNNING)
         ):
             raise JobConditionException(
                 f"'{self._method.__qualname__}' blocked from execution, no host internet connection"
