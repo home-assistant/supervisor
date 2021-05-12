@@ -203,6 +203,9 @@ class AddonOptions(CoreSysAttributes):
             if isinstance(typ, dict):
                 c_options = self._nested_validate_dict(typ, element, key)
                 options.append(c_options)
+            elif isinstance(typ, list):
+                c_options = self._nested_validate_list(typ, element, key)
+                options.append(c_options)
             else:
                 options.append(self._single_validate(typ, element, key))
 
@@ -234,6 +237,8 @@ class AddonOptions(CoreSysAttributes):
                 options[c_key] = self._nested_validate_list(
                     typ[c_key][0], c_value, c_key
                 )
+            elif isinstance(typ[c_key], dict):
+                options[c_key] = self._nested_validate_dict(typ[c_key], c_value, c_key)
             else:
                 options[c_key] = self._single_validate(typ[c_key], c_value, c_key)
 
@@ -378,6 +383,8 @@ class UiOptions(CoreSysAttributes):
 
         if isinstance(element, dict):
             self._nested_ui_dict(ui_schema, element, key, multiple=True)
+        elif isinstance(element, list):
+            self._nested_ui_list(ui_schema, element, key)
         else:
             self._single_ui_option(ui_schema, element, key, multiple=True)
 
@@ -401,6 +408,8 @@ class UiOptions(CoreSysAttributes):
             # Nested?
             if isinstance(c_value, list):
                 self._nested_ui_list(nested_schema, c_value, c_key)
+            elif isinstance(c_value, dict):
+                self._nested_ui_dict(nested_schema, c_value, c_key)
             else:
                 self._single_ui_option(nested_schema, c_value, c_key)
 

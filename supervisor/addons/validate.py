@@ -285,13 +285,10 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
                 {
                     str: vol.Any(
                         SCHEMA_ELEMENT,
-                        [
-                            vol.Any(
-                                SCHEMA_ELEMENT,
-                                {str: vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])},
-                            )
-                        ],
-                        vol.Schema({str: vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}),
+                        [vol.Any(SCHEMA_ELEMENT, vol.Self)],
+                        vol.Schema(
+                            {str: vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT], vol.Self)}
+                        ),
                     )
                 }
             ),
