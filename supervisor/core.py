@@ -96,6 +96,9 @@ class Core(CoreSysAttributes):
         """Start setting up supervisor orchestration."""
         self.state = CoreState.SETUP
 
+        # Check internet on startup
+        await self.sys_supervisor.check_connectivity()
+
         # Order can be important!
         setup_loads: List[Awaitable[None]] = [
             # rest api views
@@ -157,9 +160,6 @@ class Core(CoreSysAttributes):
             _LOGGER.critical(
                 "System is running in an unhealthy state and needs manual intervention!"
             )
-
-        # Check internet on startup
-        await self.sys_supervisor.check_connectivity()
 
         # Mark booted partition as healthy
         await self.sys_hassos.mark_healthy()
