@@ -8,7 +8,7 @@ on:
   pull_request: ~
 
 env:
-  DEFAULT_PYTHON: 3.8
+  DEFAULT_PYTHON: 3.9
   PRE_COMMIT_HOME: ~/.cache/pre-commit
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.9]
     name: Prepare Python ${{ matrix.python-version }} dependencies
     steps:
       - name: Check out code from GitHub
@@ -343,7 +343,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.9]
     name: Run tests Python ${{ matrix.python-version }}
     steps:
       - name: Check out code from GitHub
