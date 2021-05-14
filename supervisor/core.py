@@ -272,7 +272,6 @@ class Core(CoreSysAttributes):
                 await asyncio.wait(
                     [
                         self.sys_websession.close(),
-                        self.sys_websession_ssl.close(),
                         self.sys_ingress.unload(),
                         self.sys_hardware.unload(),
                     ]

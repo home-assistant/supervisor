@@ -56,9 +56,6 @@ class CoreSys:
         # External objects
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
         self._websession: aiohttp.ClientSession = aiohttp.ClientSession()
-        self._websession_ssl: aiohttp.ClientSession = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(ssl=False)
-        )
 
         # Global objects
         self._config: CoreConfig = CoreConfig()
@@ -103,11 +100,6 @@ class CoreSys:
     def websession(self) -> aiohttp.ClientSession:
         """Return websession object."""
         return self._websession
-
-    @property
-    def websession_ssl(self) -> aiohttp.ClientSession:
-        """Return websession object with disabled SSL."""
-        return self._websession_ssl
 
     @property
     def config(self) -> CoreConfig:
@@ -490,11 +482,6 @@ class CoreSysAttributes:
     def sys_websession(self) -> aiohttp.ClientSession:
         """Return websession object."""
         return self.coresys.websession
-
-    @property
-    def sys_websession_ssl(self) -> aiohttp.ClientSession:
-        """Return websession object with disabled SSL."""
-        return self.coresys.websession_ssl
 
     @property
     def sys_config(self) -> CoreConfig:

@@ -60,7 +60,7 @@ class WSClient:
     ) -> "WSClient":
         """Create an authenticated websocket client."""
         try:
-            client = await session.ws_connect(url)
+            client = await session.ws_connect(url, ssl=False)
         except aiohttp.client_exceptions.ClientConnectorError:
             raise HomeAssistantWSError("Can't connect") from None
 
@@ -96,7 +96,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
 
             await self.sys_homeassistant.api.ensure_access_token()
             client = await WSClient.connect_with_auth(
-                self.sys_websession_ssl,
+                self.sys_websession,
                 f"{self.sys_homeassistant.api_url}/api/websocket",
                 self.sys_homeassistant.api.access_token,
             )

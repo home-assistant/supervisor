@@ -477,8 +477,8 @@ class Addon(AddonModel):
         # Make HTTP request
         try:
             url = f"{proto}://{self.ip_address}:{port}{s_suffix}"
-            async with self.sys_websession_ssl.get(
-                url, timeout=WATCHDOG_TIMEOUT
+            async with self.sys_websession.get(
+                url, timeout=WATCHDOG_TIMEOUT, ssl=False
             ) as req:
                 if req.status < 300:
                     return True
