@@ -37,6 +37,7 @@ disable=
   too-many-return-statements,
   too-many-statements,
   unused-argument,
+  consider-using-with
 
 [EXCEPTIONS]
 overgeneral-exceptions=Exception

@@ -303,6 +303,7 @@ def supervisor_debugger(coresys: CoreSys) -> None:
 def setup_diagnostics(coresys: CoreSys) -> None:
     """Sentry diagnostic backend."""
     _LOGGER.info("Initializing Supervisor Sentry")
+    # pylint: disable=abstract-class-instantiated
     sentry_sdk.init(
         dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
         before_send=lambda event, hint: filter_data(coresys, event, hint),

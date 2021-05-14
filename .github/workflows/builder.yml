@@ -35,7 +35,7 @@ on:
 env:
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
-  WHEELS_TAG: 3.8-alpine3.13
+  WHEELS_TAG: 3.9-alpine3.13
 
 jobs:
   init:
@@ -71,7 +71,7 @@ jobs:
       - name: Check if requirements files changed
         id: requirements
         run: |
-          if [[ "${{ steps.changed_files.outputs.all }}" =~ requirements.txt ]]; then
+          if [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements.txt|build.json) ]]; then
             echo "::set-output name=changed::true"
           fi
 
