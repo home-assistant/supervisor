@@ -318,4 +318,4 @@ def setup_diagnostics(coresys: CoreSys) -> None:
         ],
         release=SUPERVISOR_VERSION,
         max_breadcrumbs=30,
-    )
+    )  # pylint: disable=abstract-class-instantiated
