@@ -126,47 +126,6 @@ async def test_haos(coresys: CoreSys):
     assert not await test.execute()
 
 
-async def test_internet_connectivity_with_core_state(coresys: CoreSys):
-    """Test the different core states and the impact for internet condition."""
-
-    class TestClass:
-        """Test class."""
-
-        def __init__(self, coresys: CoreSys):
-            """Initialize the test class."""
-            self.coresys = coresys
-
-        @Job(conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.INTERNET_HOST])
-        async def execute(self):
-            """Execute the class method."""
-            return True
-
-    test = TestClass(coresys)
-    coresys.host.network._connectivity = False
-    coresys.supervisor._connectivity = False
-
-    coresys.core.state = CoreState.INITIALIZE
-    assert await test.execute()
-
-    coresys.core.state = CoreState.SETUP
-    assert not await test.execute()
-
-    coresys.core.state = CoreState.STARTUP
-    assert await test.execute()
-
-    coresys.core.state = CoreState.RUNNING
-    assert not await test.execute()
-
-    coresys.core.state = CoreState.CLOSE
-    assert await test.execute()
-
-    coresys.core.state = CoreState.SHUTDOWN
-    assert await test.execute()
-
-    coresys.core.state = CoreState.STOPPING
-    assert await test.execute()
-
-
 async def test_exception(coresys: CoreSys):
     """Test the healty decorator."""
 
