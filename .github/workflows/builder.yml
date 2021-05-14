@@ -127,7 +127,7 @@ jobs:
         run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
 
       - name: Build supervisor
-        uses: home-assistant/builder@2021.04.2
+        uses: home-assistant/builder@2021.05.0
         with:
           args: |
             $BUILD_ARGS \
@@ -135,7 +135,6 @@ jobs:
             --target /data \
             --with-codenotary "${{ secrets.VCN_USER }}" "${{ secrets.VCN_PASSWORD }}" "${{ secrets.VCN_ORG }}" \
             --validate-from "${{ secrets.VCN_ORG }}" \
-            --validate-cache "${{ secrets.VCN_ORG }}" \
             --generic ${{ needs.init.outputs.version }}
 
   codenotary:
@@ -199,7 +198,7 @@ jobs:
 
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2021.04.2
+        uses: home-assistant/builder@2021.05.0
         with:
           args: |
             --test \
