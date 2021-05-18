@@ -1,14 +1,16 @@
 """Tools file for Supervisor."""
 import asyncio
+from contextlib import suppress
 from datetime import datetime, timedelta, timezone, tzinfo
 import logging
 import re
 from typing import Any, Dict, Optional
+import zoneinfo
 
 import aiohttp
-import pytz
+import ciso8601
 
-UTC = pytz.utc
+UTC = timezone.utc
 
 GEOIP_URL = "http://ip-api.com/json/"
 
@@ -52,6 +54,9 @@ def parse_datetime(dt_str):
     Raises ValueError if the input is well formatted but not a valid datetime.
     Returns None if the input isn't well formatted.
     """
+    with suppress(ValueError, IndexError):
+        return ciso8601.parse_datetime(dt_str)
+
     match = DATETIME_RE.match(dt_str)
     if not match:
         return None
@@ -84,4 +89,12 @@ def utcnow() -> datetime:
 
 def utc_from_timestamp(timestamp: float) -> datetime:
     """Return a UTC time from a timestamp."""
-    return UTC.localize(datetime.utcfromtimestamp(timestamp))
+    return datetime.utcfromtimestamp(timestamp).replace(tzinfo=UTC)
+
+
+def get_time_zone(time_zone_str: str) -> Optional[tzinfo]:
+    """Get time zone from string. Return None if unable to determine."""
+    try:
+        return zoneinfo.ZoneInfo(time_zone_str)
+    except zoneinfo.ZoneInfoNotFoundError:
+        return None
