@@ -19,6 +19,7 @@ DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED = (
 )
 DBUS_NAME_SYSTEMD = "org.freedesktop.systemd1"
 DBUS_NAME_LOGIND = "org.freedesktop.login1"
+DBUS_NAME_TIMEDATE = "org.freedesktop.timedate1"
 
 DBUS_OBJECT_BASE = "/"
 DBUS_OBJECT_DNS = "/org/freedesktop/NetworkManager/DnsManager"
@@ -27,6 +28,7 @@ DBUS_OBJECT_HOSTNAME = "/org/freedesktop/hostname1"
 DBUS_OBJECT_NM = "/org/freedesktop/NetworkManager"
 DBUS_OBJECT_SYSTEMD = "/org/freedesktop/systemd1"
 DBUS_OBJECT_LOGIND = "/org/freedesktop/login1"
+DBUS_OBJECT_TIMEDATE = "/org/freedesktop/timedate1"
 
 DBUS_ATTR_ACTIVE_CONNECTIONS = "ActiveConnections"
 DBUS_ATTR_ACTIVE_CONNECTION = "ActiveConnection"
@@ -70,6 +72,9 @@ DBUS_ATTR_VARIANT = "Variant"
 DBUS_ATTR_VERSION = "Version"
 DBUS_ATTR_MANAGED = "Managed"
 DBUS_ATTR_CONNECTION_ENABLED = "ConnectivityCheckEnabled"
+DBUS_ATTR_TIMEZONE = "Timezone"
+DBUS_ATTR_LOCALRTC = "LocalRTC"
+DBUS_ATTR_NTP = "NTP"
 
 
 class RaucState(str, Enum):
