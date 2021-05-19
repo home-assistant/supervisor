@@ -1,5 +1,6 @@
 """Info control for host."""
 import asyncio
+from datetime import datetime
 import logging
 from typing import Optional
 
@@ -50,6 +51,31 @@ class InfoCenter(CoreSysAttributes):
     def cpe(self) -> Optional[str]:
         """Return local CPE."""
         return self.sys_dbus.hostname.cpe
+
+    @property
+    def timezone(self) -> Optional[str]:
+        """Return host timezone."""
+        return self.sys_dbus.timedate.timezone
+
+    @property
+    def dt_utc(self) -> Optional[datetime]:
+        """Return host UTC time."""
+        return self.sys_dbus.timedate.dt_utc
+
+    @property
+    def use_rtc(self) -> Optional[bool]:
+        """Return true if host have an RTC."""
+        return self.sys_dbus.timedate.local_rtc
+
+    @property
+    def use_ntp(self) -> Optional[bool]:
+        """Return true if host using NTP."""
+        return self.sys_dbus.timedate.ntp
+
+    @property
+    def dt_synchronized(self) -> Optional[bool]:
+        """Return true if host time is syncronized."""
+        return self.sys_dbus.timedate.ntp_synchronized
 
     @property
     def total_space(self) -> float:
