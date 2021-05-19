@@ -5,12 +5,7 @@ import logging
 from typing import Optional
 
 from ..coresys import CoreSysAttributes
-from ..exceptions import (
-    DBusError,
-    DBusNotConnectedError,
-    HostError,
-    HostNotSupportedError,
-)
+from ..exceptions import DBusError, HostError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -124,9 +119,9 @@ class InfoCenter(CoreSysAttributes):
         """Update properties over dbus."""
         _LOGGER.info("Updating local host information")
         try:
-            await self.sys_dbus.hostname.update()
+            if self.sys_dbus.hostname.is_connected:
+                await self.sys_dbus.hostname.update()
+            if self.sys_dbus.timedate.is_connected:
+                await self.sys_dbus.timedate.update()
         except DBusError:
             _LOGGER.warning("Can't update host system information!")
-        except DBusNotConnectedError:
-            _LOGGER.error("No hostname D-Bus connection available")
-            raise HostNotSupportedError() from None
