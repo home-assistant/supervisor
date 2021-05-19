@@ -9,6 +9,8 @@ from supervisor.exceptions import DBusNotConnectedError
 
 async def test_dbus_timezone(coresys: CoreSys):
     """Test coresys dbus connection."""
+    assert coresys.dbus.timedate.dt_utc is None
+
     await coresys.dbus.timedate.connect()
     await coresys.dbus.timedate.update()
 

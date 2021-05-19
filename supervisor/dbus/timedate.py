@@ -15,7 +15,7 @@ from .const import (
     DBUS_NAME_TIMEDATE,
     DBUS_OBJECT_TIMEDATE,
 )
-from .interface import DBusInterface
+from .interface import DBusInterface, dbus_property
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -31,26 +31,31 @@ class TimeDate(DBusInterface):
         self.properties: Dict[str, Any] = {}
 
     @property
+    @dbus_property
     def timezone(self) -> str:
         """Return host timezone."""
         return self.properties[DBUS_ATTR_TIMEZONE]
 
     @property
+    @dbus_property
     def local_rtc(self) -> bool:
         """Return if a local RTC exists."""
         return self.properties[DBUS_ATTR_LOCALRTC]
 
     @property
+    @dbus_property
     def ntp(self) -> bool:
         """Return if NTP is enabled."""
         return self.properties[DBUS_ATTR_NTP]
 
     @property
+    @dbus_property
     def ntp_synchronized(self) -> bool:
         """Return if NTP is synchronized."""
         return self.properties[DBUS_ATTR_NTPSYNCHRONIZED]
 
     @property
+    @dbus_property
     def dt_utc(self) -> datetime:
         """Return the system UTC time."""
         return utc_from_timestamp(self.properties[DBUS_ATTR_TIMEUSEC] / 1000000)
