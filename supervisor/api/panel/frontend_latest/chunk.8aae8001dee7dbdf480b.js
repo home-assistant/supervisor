@@ -852,14 +852,14 @@
                       `:""}
               </div>
               <div class="card-actions">
-                <mwc-button @click=${this._updateClicked}>
-                  ${this.supervisor.localize("common.update")}
-                </mwc-button>
                 ${this.addon.changelog?n.dy`
                       <mwc-button @click=${this._openChangelog}>
                         ${this.supervisor.localize("addon.dashboard.changelog")}
                       </mwc-button>
-                    `:""}
+                    `:n.dy`<span></span>`}
+                <mwc-button @click=${this._updateClicked}>
+                  ${this.supervisor.localize("common.update")}
+                </mwc-button>
               </div>
             </ha-card>
           `:""}
@@ -1476,4 +1476,4 @@
           }
         }
       `]}},{kind:"method",key:"firstUpdated",value:async function(){if(""===this.route.path){const e=(0,l.io)("addon");if(e){(await(0,d.yt)(this.hass)).addons.some((t=>t.slug===e))?(0,a.c)(this,`/hassio/addon/${e}`,!0):this._error=this.supervisor.localize("my.error_addon_not_found")}}this.addEventListener("hass-api-called",(e=>this._apiCalled(e)))}},{kind:"method",key:"_apiCalled",value:async function(e){var t;if(!e.detail.success)return;const r=null===(t=e.detail.path)||void 0===t?void 0:t.split("/");if(!r||0===r.length)return;const i=r[r.length-1];["uninstall","install","update","start","stop"].includes(i)&&(0,s.B)(this,"supervisor-collection-refresh",{collection:"supervisor"}),"uninstall"===i?window.history.back():await this._routeDataChanged()}},{kind:"method",key:"updated",value:function(e){e.has("route")&&!this.addon&&this._routeDataChanged()}},{kind:"method",key:"_routeDataChanged",value:async function(){const e=this.route.path.split("/")[1];if(e)try{const t=await(0,d.AD)(this.hass,e);this.addon=t}catch(e){this._error=`Error fetching addon info: ${(0,c.js)(e)}`,this.addon=void 0}}}]}}),n.oi)}}]);
-//# sourceMappingURL=chunk.4af95a21c56d7a2deb54.js.map
+//# sourceMappingURL=chunk.8aae8001dee7dbdf480b.js.map
