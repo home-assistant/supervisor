@@ -453,7 +453,7 @@ class Addon(AddonModel):
         application = RE_WATCHDOG.match(url)
 
         # extract arguments
-        t_port = application.group("t_port")
+        t_port = int(application.group("t_port"))
         t_proto = application.group("t_proto")
         s_prefix = application.group("s_prefix") or ""
         s_suffix = application.group("s_suffix") or ""
