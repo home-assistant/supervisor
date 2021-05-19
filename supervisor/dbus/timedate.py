@@ -1,12 +1,16 @@
 """Interface to Logind over D-Bus."""
+from datetime import datetime
 import logging
 from typing import Any, Dict
 
 from ..exceptions import DBusError, DBusInterfaceError
+from ..utils.dt import utc_from_timestamp
 from ..utils.gdbus import DBus
 from .const import (
     DBUS_ATTR_LOCALRTC,
     DBUS_ATTR_NTP,
+    DBUS_ATTR_NTPSYNCHRONIZED,
+    DBUS_ATTR_TIMEUSEC,
     DBUS_ATTR_TIMEZONE,
     DBUS_NAME_TIMEDATE,
     DBUS_OBJECT_TIMEDATE,
@@ -41,6 +45,16 @@ class TimeDate(DBusInterface):
         """Return if NTP is enabled."""
         return self.properties[DBUS_ATTR_NTP]
 
+    @property
+    def ntp_synchronized(self) -> bool:
+        """Return if NTP is synchronized."""
+        return self.properties[DBUS_ATTR_NTPSYNCHRONIZED]
+
+    @property
+    def dt_utc(self) -> datetime:
+        """Return the system UTC time."""
+        return utc_from_timestamp(self.properties[DBUS_ATTR_TIMEUSEC] / 1000000)
+
     async def connect(self):
         """Connect to D-Bus."""
         try:
@@ -51,12 +65,12 @@ class TimeDate(DBusInterface):
             _LOGGER.info("No systemd-timedate support on the host.")
 
     @dbus_connected
-    def set_time(self, usec_utc: int, relative: bool):
+    def set_time(self, utc: datetime):
         """Set time & date on host as UTC.
 
         Return a coroutine.
         """
-        return self.dbus.SetTime(usec_utc, relative, False)
+        return self.dbus.SetTime(int(utc.timestamp() * 1000000), False, False)
 
     @dbus_connected
     def set_ntp(self, use_ntp: bool):

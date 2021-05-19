@@ -75,6 +75,8 @@ DBUS_ATTR_CONNECTION_ENABLED = "ConnectivityCheckEnabled"
 DBUS_ATTR_TIMEZONE = "Timezone"
 DBUS_ATTR_LOCALRTC = "LocalRTC"
 DBUS_ATTR_NTP = "NTP"
+DBUS_ATTR_NTPSYNCHRONIZED = "NTPSynchronized"
+DBUS_ATTR_TIMEUSEC = "TimeUSec"
 
 
 class RaucState(str, Enum):
