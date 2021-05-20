@@ -14,5 +14,6 @@
   "qemux86-64": ["amd64", "i386"],
   "qemuarm": ["armhf"],
   "qemuarm-64": ["aarch64"],
-  "intel-nuc": ["amd64", "i386"]
+  "intel-nuc": ["amd64", "i386"],
+  "generic-x86-64": ["amd64", "i386"]
 }
