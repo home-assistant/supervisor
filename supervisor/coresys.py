@@ -12,7 +12,6 @@ import sentry_sdk
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV
 from .docker import DockerAPI
-from .utils.dt import UTC
 
 if TYPE_CHECKING:
     from .addons import AddonManager
@@ -99,7 +98,7 @@ class CoreSys:
             return self.config.timezone
         if self.host.info.timezone:
             return self.host.info.timezone
-        return UTC
+        return "UTC"
 
     @property
     def loop(self) -> asyncio.BaseEventLoop:
