@@ -34,7 +34,7 @@ class Hostname(DBusInterface):
         try:
             self.dbus = await DBus.connect(DBUS_NAME_HOSTNAME, DBUS_OBJECT_HOSTNAME)
         except DBusError:
-            _LOGGER.warning("Can't connect to hostname")
+            _LOGGER.warning("Can't connect to systemd-hostname")
         except DBusInterfaceError:
             _LOGGER.warning(
                 "No hostname support on the host. Hostname functions have been disabled."

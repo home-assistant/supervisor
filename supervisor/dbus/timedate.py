@@ -67,7 +67,9 @@ class TimeDate(DBusInterface):
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-timedate")
         except DBusInterfaceError:
-            _LOGGER.info("No systemd-timedate support on the host.")
+            _LOGGER.warning(
+                "No timedate support on the host. Time/Date functions have been disabled."
+            )
 
     @dbus_connected
     def set_time(self, utc: datetime):
