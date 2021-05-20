@@ -1,6 +1,7 @@
 """Small wrapper for whoami API."""
 import asyncio
 import logging
+import ssl
 from typing import Dict, Union
 
 import aiohttp
@@ -14,10 +15,10 @@ _CACHE: Dict[str, Union[str, int]] = {}
 
 
 async def check_connectivity_backend(
-    websession: aiohttp.ClientSession, ssl: bool = True
+    websession: aiohttp.ClientSession, with_ssl: bool = True
 ) -> None:
     """Check if password is pwned."""
-    url: str = f"http{'s' if ssl else ''}://{_API_CALL}"
+    url: str = f"http{'s' if with_ssl else ''}://{_API_CALL}"
 
     _LOGGER.debug("Check whoami to verify connectivity/system with: %s", url)
     try:
@@ -31,7 +32,7 @@ async def check_connectivity_backend(
             _CACHE.update(await request.json())
 
     except aiohttp.ClientSSLError as err:
-        if not isinstance(err, ssl.SSLError):
+        if isinstance(err, ssl.CertificateError):
             raise WhoamiError(
                 f"Whoami possible MITMA detected: {err!s}", _LOGGER.critical
             ) from err
