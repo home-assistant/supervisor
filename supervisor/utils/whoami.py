@@ -30,7 +30,13 @@ async def check_connectivity_backend(
                 )
             _CACHE.update(await request.json())
 
-    except aiohttp.ClientConnectorCertificateError as err:
+    except aiohttp.ClientSSLError as err:
+        if not isinstance(err, ssl.SSLError):
+            raise WhoamiError(
+                f"Whoami possible MITMA detected: {err!s}", _LOGGER.critical
+            ) from err
+
+        # Expired certificate / Date ISSUE
         raise WhoamiSSLError(
             f"Whoami service failed with SSL verification: {err!s}", _LOGGER.warning
         ) from err
