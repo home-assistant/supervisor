@@ -351,7 +351,7 @@ class Core(CoreSysAttributes):
                 self.sys_config.timezone = data.timezone
 
         delta = data.dt_utc - utcnow()
-        if delta < timedelta(days=7):
+        if delta < timedelta(days=7) or self.sys_host.info.dt_synchronized:
             return
 
         _LOGGER.warning("System time/date shift over more as 7days found!")
