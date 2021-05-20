@@ -2,7 +2,6 @@
 import asyncio
 from datetime import datetime
 import logging
-import ssl
 
 import aiohttp
 import attr
@@ -43,13 +42,9 @@ async def retrieve_whoami(
             data["timezone"], utc_from_timestamp(float(data["timestamp"]))
         )
 
-    except aiohttp.ClientSSLError as err:
-        if isinstance(err, ssl.CertificateError):
-            raise WhoamiError(
-                f"Whoami possible MITMA detected: {err!s}", _LOGGER.critical
-            ) from err
-
+    except aiohttp.ClientConnectorSSLError as err:
         # Expired certificate / Date ISSUE
+        # pylint: disable=bad-exception-context
         raise WhoamiSSLError(
             f"Whoami service failed with SSL verification: {err!s}", _LOGGER.warning
         ) from err
