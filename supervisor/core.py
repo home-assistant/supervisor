@@ -1,6 +1,7 @@
 """Main file for Supervisor."""
 import asyncio
 from contextlib import suppress
+from datetime import timedelta
 import logging
 from typing import Awaitable, List, Optional
 
@@ -13,9 +14,13 @@ from .exceptions import (
     HomeAssistantCrashError,
     HomeAssistantError,
     SupervisorUpdateError,
+    WhoamiError,
+    WhoamiSSLError,
 )
 from .homeassistant.core import LANDINGPAGE
 from .resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
+from .utils.dt import utcnow
+from .utils.whoami import retrieve_whoami
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -109,6 +114,8 @@ class Core(CoreSysAttributes):
             self.sys_dbus.load(),
             # Load Host
             self.sys_host.load(),
+            # Adjust timezone / time settings
+            self._adjust_system_datetime(),
             # Load Plugins container
             self.sys_plugins.load(),
             # load last available data
@@ -309,6 +316,44 @@ class Core(CoreSysAttributes):
         """Update last boot time."""
         self.sys_config.last_boot = self.sys_hardware.helper.last_boot
         self.sys_config.save_data()
+
+    async def _adjust_system_datetime(self):
+        """Adjust system time/date on startup."""
+        if (self.sys_config.timezone or self.sys_host.info.timezone != "Etc/UTC") and (
+            self.sys_host.info.dt_synchronized or self.sys_supervisor.connectivity
+        ):
+            return
+
+        # Get Timezone data
+        try:
+            data = await retrieve_whoami(self.sys_websession)
+        except WhoamiSSLError:
+            pass
+        except WhoamiError as err:
+            _LOGGER.info("Can't adjust Time/Date settings: %s", err)
+            return
+        else:
+            if not self.sys_config.timezone:
+                self.sys_config.timezone = data.timezone
+            return
+
+        # Adjust timesettings in case SSL fails
+        try:
+            data = await retrieve_whoami(self.sys_websession, with_ssl=False)
+        except WhoamiError as err:
+            _LOGGER.error("Can't adjust Time/Date settings: %s", err)
+            return
+        else:
+            if not self.sys_config.timezone:
+                self.sys_config.timezone = data.timezone
+
+        delta = data.dt_utc - utcnow()
+        if delta < timedelta(days=7):
+            return
+
+        _LOGGER.warning("System time/date shift over more as 7days found!")
+        await self.sys_host.control.set_datetime(data.dt_utc)
+        await self.sys_supervisor.check_connectivity()
 
     async def repair(self):
         """Repair system integrity."""

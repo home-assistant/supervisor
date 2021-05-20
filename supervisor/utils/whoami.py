@@ -1,22 +1,30 @@
 """Small wrapper for whoami API."""
 import asyncio
+from datetime import datetime
 import logging
 import ssl
-from typing import Dict, Union
 
 import aiohttp
+import attr
 
 from ..exceptions import WhoamiConnectivityError, WhoamiError, WhoamiSSLError
+from .dt import utc_from_timestamp
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _API_CALL: str = "whoami.home-assistant.io/v1"
 
-_CACHE: Dict[str, Union[str, int]] = {}
+
+@attr.s(slots=True, frozen=True)
+class WhoamiData:
+    """Client Whoami data."""
+
+    timezone: str = attr.ib()
+    dt_utc: datetime = attr.ib()
 
 
-async def check_connectivity_backend(
+async def retrieve_whoami(
     websession: aiohttp.ClientSession, with_ssl: bool = True
-) -> None:
+) -> WhoamiData:
     """Check if password is pwned."""
     url: str = f"http{'s' if with_ssl else ''}://{_API_CALL}"
 
@@ -29,7 +37,11 @@ async def check_connectivity_backend(
                 raise WhoamiError(
                     f"Whoami service response with {request.status}", _LOGGER.warning
                 )
-            _CACHE.update(await request.json())
+            data = await request.json()
+
+        return WhoamiData(
+            data["timezone"], utc_from_timestamp(float(data["timestamp"]))
+        )
 
     except aiohttp.ClientSSLError as err:
         if isinstance(err, ssl.CertificateError):
