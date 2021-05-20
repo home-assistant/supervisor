@@ -350,6 +350,7 @@ class Core(CoreSysAttributes):
             if not self.sys_config.timezone:
                 self.sys_config.timezone = data.timezone
 
+        # Calculate if system time is out of sync
         delta = data.dt_utc - utcnow()
         if delta < timedelta(days=7) or self.sys_host.info.dt_synchronized:
             return
