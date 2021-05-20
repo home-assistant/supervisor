@@ -319,9 +319,12 @@ class Core(CoreSysAttributes):
 
     async def _adjust_system_datetime(self):
         """Adjust system time/date on startup."""
-        if (self.sys_config.timezone or self.sys_host.info.timezone != "Etc/UTC") and (
-            self.sys_host.info.dt_synchronized or self.sys_supervisor.connectivity
-        ):
+        # If no timezone is detect or set
+        # If we are not connected or time sync
+        if (
+            self.sys_config.timezone
+            or self.sys_host.info.timezone not in ("Etc/UTC", None)
+        ) and (self.sys_host.info.dt_synchronized or self.sys_supervisor.connectivity):
             return
 
         # Get Timezone data
@@ -330,7 +333,7 @@ class Core(CoreSysAttributes):
         except WhoamiSSLError:
             pass
         except WhoamiError as err:
-            _LOGGER.info("Can't adjust Time/Date settings: %s", err)
+            _LOGGER.warning("Can't adjust Time/Date settings: %s", err)
             return
         else:
             if not self.sys_config.timezone:
