@@ -48,6 +48,8 @@ MEDIA_DATA = PurePath("media")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
+_UTC = "UTC"
+
 
 class CoreConfig(FileConfiguration):
     """Hold all core config data."""
@@ -59,11 +61,17 @@ class CoreConfig(FileConfiguration):
     @property
     def timezone(self) -> Optional[str]:
         """Return system timezone."""
-        return self._data.get(ATTR_TIMEZONE)
+        timezone = self._data.get(ATTR_TIMEZONE)
+        # Remove: 2021.10 / cleanup old setups
+        if timezone == _UTC:
+            return None
+        return timezone
 
     @timezone.setter
     def timezone(self, value: str) -> None:
         """Set system timezone."""
+        if value == _UTC:
+            return
         self._data[ATTR_TIMEZONE] = value
 
     @property
