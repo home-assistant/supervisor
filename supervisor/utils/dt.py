@@ -1,20 +1,13 @@
 """Tools file for Supervisor."""
-import asyncio
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone, tzinfo
-import logging
 import re
 from typing import Any, Dict, Optional
 import zoneinfo
 
-import aiohttp
 import ciso8601
 
 UTC = timezone.utc
-
-GEOIP_URL = "http://ip-api.com/json/"
-
-_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 # Copyright (c) Django Software Foundation and individual contributors.
@@ -26,21 +19,6 @@ DATETIME_RE = re.compile(
     r"(?::(?P<second>\d{1,2})(?:\.(?P<microsecond>\d{1,6})\d{0,6})?)?"
     r"(?P<tzinfo>Z|[+-]\d{2}(?::?\d{2})?)?$"
 )
-
-
-async def fetch_timezone(websession: aiohttp.ClientSession):
-    """Read timezone from freegeoip."""
-    data = {}
-    try:
-        async with websession.get(GEOIP_URL, timeout=10) as request:
-            data = await request.json()
-
-    except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-        _LOGGER.warning("Can't fetch freegeoip data: %s", err)
-    except ValueError as err:
-        _LOGGER.warning("Error on parse freegeoip data: %s", err)
-
-    return data.get("timezone", "UTC")
 
 
 # Copyright (c) Django Software Foundation and individual contributors.

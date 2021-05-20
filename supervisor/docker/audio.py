@@ -94,7 +94,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             ulimits=self.ulimits,
             cpu_rt_runtime=self.cpu_rt_runtime,
             device_cgroup_rules=self.cgroups_rules,
-            environment={ENV_TIME: self.sys_config.timezone},
+            environment={ENV_TIME: self.sys_timezone},
             volumes=self.volumes,
         )
 

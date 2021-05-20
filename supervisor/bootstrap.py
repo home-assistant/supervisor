@@ -51,7 +51,6 @@ from .snapshots import SnapshotManager
 from .store import StoreManager
 from .supervisor import Supervisor
 from .updater import Updater
-from .utils.dt import fetch_timezone
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -94,10 +93,6 @@ async def initialize_coresys() -> CoreSys:
     # Set Machine/Host ID
     if MACHINE_ID.exists():
         coresys.machine_id = MACHINE_ID.read_text().strip()
-
-    # Init TimeZone
-    if coresys.config.timezone == "UTC":
-        coresys.config.timezone = await fetch_timezone(coresys.websession)
 
     # Set machine type
     if os.environ.get(ENV_SUPERVISOR_MACHINE):

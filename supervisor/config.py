@@ -57,9 +57,9 @@ class CoreConfig(FileConfiguration):
         super().__init__(FILE_HASSIO_CONFIG, SCHEMA_SUPERVISOR_CONFIG)
 
     @property
-    def timezone(self) -> str:
+    def timezone(self) -> Optional[str]:
         """Return system timezone."""
-        return self._data[ATTR_TIMEZONE]
+        return self._data.get(ATTR_TIMEZONE)
 
     @timezone.setter
     def timezone(self, value: str) -> None:

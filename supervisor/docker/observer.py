@@ -48,7 +48,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
             restart_policy={"Name": "always"},
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={
-                ENV_TIME: self.sys_config.timezone,
+                ENV_TIME: self.sys_timezone,
                 ENV_TOKEN: self.sys_plugins.observer.supervisor_token,
                 ENV_NETWORK_MASK: DOCKER_NETWORK_MASK,
             },

@@ -12,6 +12,7 @@ import sentry_sdk
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV
 from .docker import DockerAPI
+from .utils.dt import UTC
 
 if TYPE_CHECKING:
     from .addons import AddonManager
@@ -90,6 +91,15 @@ class CoreSys:
     def dev(self) -> bool:
         """Return True if we run dev mode."""
         return bool(os.environ.get(ENV_SUPERVISOR_DEV, 0))
+
+    @property
+    def timezone(self) -> str:
+        """Return system timezone."""
+        if self.config.timezone:
+            return self.config.timezone
+        if self.host.info.timezone:
+            return self.host.info.timezone
+        return UTC
 
     @property
     def loop(self) -> asyncio.BaseEventLoop:
@@ -462,6 +472,11 @@ class CoreSysAttributes:
     """Inherit basic CoreSysAttributes."""
 
     coresys: CoreSys
+
+    @property
+    def sys_timezone(self) -> str:
+        """Return system internal used timezone."""
+        return self.coresys.timezone
 
     @property
     def sys_machine(self) -> Optional[str]:
