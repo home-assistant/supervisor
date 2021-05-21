@@ -5,8 +5,6 @@ import pytest
 
 from supervisor.coresys import CoreSys
 
-URL_TEST = "https://version.home-assistant.io/stable.json"
-
 # pylint: disable=protected-access
 
 
