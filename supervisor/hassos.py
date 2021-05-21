@@ -63,7 +63,7 @@ class HassOS(CoreSysAttributes):
         update_board = self.board
 
         # OS version 6 and later renamed intel-nuc to generic-x86-64...
-        if update_board == "intel-nuc" and version >= 6:
+        if update_board == "intel-nuc" and version >= 6.0:
             update_board = "generic-x86-64"
 
         url = raw_url.format(version=str(version), board=update_board)
