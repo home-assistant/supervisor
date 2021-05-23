@@ -62,10 +62,10 @@ class CoreConfig(FileConfiguration):
     def timezone(self) -> Optional[str]:
         """Return system timezone."""
         timezone = self._data.get(ATTR_TIMEZONE)
-        # Remove: 2021.10 / cleanup old setups
-        if timezone == _UTC:
-            return None
-        return timezone
+        if timezone != _UTC:
+            return timezone
+        self._data.pop(ATTR_TIMEZONE, None)
+        return None
 
     @timezone.setter
     def timezone(self, value: str) -> None:
