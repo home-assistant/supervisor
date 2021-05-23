@@ -1,4 +1,7 @@
-"""Small wrapper for whoami API."""
+"""Small wrapper for whoami API.
+
+https://github.com/home-assistant/whoami.home-assistant.io
+"""
 import asyncio
 from datetime import datetime
 import logging
