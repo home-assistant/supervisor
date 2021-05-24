@@ -48,6 +48,9 @@ MEDIA_DATA = PurePath("media")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
+# We filter out UTC because it's the system default fallback
+# Core also not respect the cotnainer timezone and reset timezones
+# to UTC if the user overflight the onboarding.
 _UTC = "UTC"
 
 
