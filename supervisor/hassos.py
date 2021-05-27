@@ -55,15 +55,23 @@ class HassOS(CoreSysAttributes):
         """Return board name."""
         return self._board
 
-    async def _download_raucb(self, version: AwesomeVersion) -> Path:
-        """Download rauc bundle (OTA) from github."""
+    def _get_download_url(self, version: AwesomeVersion) -> str:
         raw_url = self.sys_updater.ota_url
         if raw_url is None:
             raise HassOSUpdateError("Don't have an URL for OTA updates!", _LOGGER.error)
-        url = raw_url.format(version=str(version), board=self.board)
 
+        update_board = self.board
+
+        # OS version 6 and later renamed intel-nuc to generic-x86-64...
+        if update_board == "intel-nuc" and version >= 6.0:
+            update_board = "generic-x86-64"
+
+        url = raw_url.format(version=str(version), board=update_board)
+        return url
+
+    async def _download_raucb(self, url: str, raucb: Path) -> None:
+        """Download rauc bundle (OTA) from URL."""
         _LOGGER.info("Fetch OTA update from %s", url)
-        raucb = Path(self.sys_config.path_tmp, f"hassos-{version!s}.raucb")
         try:
             timeout = aiohttp.ClientTimeout(total=60 * 60, connect=180)
             async with self.sys_websession.get(url, timeout=timeout) as request:
@@ -82,7 +90,6 @@ class HassOS(CoreSysAttributes):
                         ota_file.write(chunk)
 
             _LOGGER.info("Completed download of OTA update file %s", raucb)
-            return raucb
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             self.sys_supervisor.connectivity = False
@@ -154,7 +161,9 @@ class HassOS(CoreSysAttributes):
             )
 
         # Fetch files from internet
-        int_ota = await self._download_raucb(version)
+        ota_url = self._get_download_url(version)
+        int_ota = Path(self.sys_config.path_tmp, f"hassos-{version!s}.raucb")
+        await self._download_raucb(ota_url, int_ota)
         ext_ota = Path(self.sys_config.path_extern_tmp, int_ota.name)
 
         try:

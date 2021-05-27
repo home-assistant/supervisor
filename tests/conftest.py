@@ -1,4 +1,6 @@
 """Common test functions."""
+from functools import partial
+from inspect import unwrap
 from pathlib import Path
 import re
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
@@ -159,6 +161,11 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     coresys_obj.homeassistant.api.check_api_state = mock_async_return_true
     coresys_obj.homeassistant._websocket._client = AsyncMock(
         ha_version=AwesomeVersion("2021.2.4")
+    )
+
+    # Remove rate limiting decorator from fetch_data
+    coresys_obj.updater.fetch_data = partial(
+        unwrap(coresys_obj.updater.fetch_data), coresys_obj.updater
     )
 
     yield coresys_obj

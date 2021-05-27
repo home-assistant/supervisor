@@ -122,6 +122,7 @@ SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
 RE_MACHINE = re.compile(
     r"^!?(?:"
     r"|intel-nuc"
+    r"|generic-x86-64"
     r"|odroid-c2"
     r"|odroid-c4"
     r"|odroid-n2"
