@@ -14,7 +14,7 @@ from ..homeassistant.const import LANDINGPAGE
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-_VERIFY_TRUST: AwesomeVersion = AwesomeVersion("2021.1.0")
+_VERIFY_TRUST: AwesomeVersion = AwesomeVersion("2021.5.0")
 _HASS_DOCKER_NAME: str = "homeassistant"
 
 
