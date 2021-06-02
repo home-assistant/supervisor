@@ -77,7 +77,7 @@ class HassOS(CoreSysAttributes):
             async with self.sys_websession.get(url, timeout=timeout) as request:
                 if request.status != 200:
                     raise HassOSUpdateError(
-                        f"Error raise form OTA Webserver: {request.status}",
+                        f"Error raised from OTA Webserver: {request.status}",
                         _LOGGER.error,
                     )
 
@@ -198,6 +198,6 @@ class HassOS(CoreSysAttributes):
         try:
             response = await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")
         except DBusError:
-            _LOGGER.error("Can't mark booted partition as healty!")
+            _LOGGER.error("Can't mark booted partition as healthy!")
         else:
             _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
