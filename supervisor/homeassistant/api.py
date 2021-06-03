@@ -10,6 +10,8 @@ from aiohttp import hdrs
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from ..utils import check_port
 from .const import LANDINGPAGE
 
@@ -27,6 +29,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         self.access_token: Optional[str] = None
         self._access_token_expires: Optional[datetime] = None
 
+    @Job(limit=JobExecutionLimit.SINGLE_WAIT)
     async def ensure_access_token(self) -> None:
         """Ensure there is an access token."""
         if (
