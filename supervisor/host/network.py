@@ -7,6 +7,7 @@ import logging
 from typing import List, Optional, Union
 
 import attr
+from awesomeversion import AwesomeVersion
 
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
@@ -32,6 +33,8 @@ from ..exceptions import (
 from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+MIN_DISABLE_IPV6_NM_VERSION: AwesomeVersion = AwesomeVersion("1.22")
 
 
 class NetworkManager(CoreSysAttributes):
@@ -120,6 +123,16 @@ class NetworkManager(CoreSysAttributes):
     async def apply_changes(self, interface: Interface) -> None:
         """Apply Interface changes to host."""
         inet = self.sys_dbus.network.interfaces.get(interface.name)
+
+        # Handle issue with disabling IPv6 with old network manager
+        if (
+            interface.ipv6.method == "disabled"
+            and self.sys_dbus.network.version < MIN_DISABLE_IPV6_NM_VERSION
+        ):
+            raise HostNetworkError(
+                f"Disabling IPv6 is not supported with NetworkManager < {MIN_DISABLE_IPV6_NM_VERSION}, if you want to do this you need to do that in the kernel of the OS",
+                _LOGGER.warning,
+            )
 
         # Update exist configuration
         if (
