@@ -130,9 +130,10 @@ class NetworkManager(CoreSysAttributes):
             and self.sys_dbus.network.version < MIN_DISABLE_IPV6_NM_VERSION
         ):
             interface.ipv6.method = InterfaceMethod.LINK_LOCAL
-            _LOGGER.warning(
-                "Method 'disable' could not be used, using 'link-local' instead"
-            )
+            if inet is None or inet.settings.ipv6.method != InterfaceMethod.LINK_LOCAL:
+                _LOGGER.warning(
+                    "Method 'disable' could not be used, using 'link-local' instead"
+                )
 
         # Update exist configuration
         if (
