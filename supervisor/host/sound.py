@@ -202,7 +202,7 @@ class SoundControl(CoreSysAttributes):
         def _activate_profile():
             try:
                 with Pulse(PULSE_NAME) as pulse:
-                    card = pulse.get_sink_by_name(card_name)
+                    card = pulse.get_card_by_name(card_name)
                     pulse.card_profile_set(card, profile_name)
 
             except PulseIndexError as err:
