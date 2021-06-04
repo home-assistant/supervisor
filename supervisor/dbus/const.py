@@ -86,6 +86,7 @@ class InterfaceMethod(str, Enum):
     AUTO = "auto"
     MANUAL = "manual"
     DISABLED = "disabled"
+    LINK_LOCAL = "link-local"
 
 
 class ConnectionType(str, Enum):

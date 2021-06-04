@@ -6,6 +6,7 @@ class InterfaceMethod(str, Enum):
     """Configuration of an interface."""
 
     DISABLED = "disabled"
+    LINK_LOCAL = "link-local"
     STATIC = "static"
     AUTO = "auto"
 

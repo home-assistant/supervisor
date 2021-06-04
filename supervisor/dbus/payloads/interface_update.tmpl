@@ -42,6 +42,8 @@
             'method': <'auto'>
 {% elif interface.ipv6.method == "disabled" %}
             'method': <'disabled'>
+{% elif interface.ipv6.method == "link-local" %}
+            'method': <'link-local'>
 {% else %}
             'method': <'manual'>,
             'dns': <[{{ interface.ipv6.nameservers | map("ipv6_to_byte") | join(",") }}]>,

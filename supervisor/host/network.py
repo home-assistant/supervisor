@@ -34,7 +34,7 @@ from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-MIN_DISABLE_IPV6_NM_VERSION: AwesomeVersion = AwesomeVersion("1.22")
+MIN_DISABLE_IPV6_NM_VERSION: AwesomeVersion = AwesomeVersion("1.20")
 
 
 class NetworkManager(CoreSysAttributes):
@@ -126,12 +126,12 @@ class NetworkManager(CoreSysAttributes):
 
         # Handle issue with disabling IPv6 with old network manager
         if (
-            interface.ipv6.method == "disabled"
+            interface.ipv6.method == InterfaceMethod.DISABLED
             and self.sys_dbus.network.version < MIN_DISABLE_IPV6_NM_VERSION
         ):
-            raise HostNetworkError(
-                f"Disabling IPv6 is not supported with NetworkManager < {MIN_DISABLE_IPV6_NM_VERSION}, if you want to do this you need to do that in the kernel of the OS",
-                _LOGGER.warning,
+            interface.ipv6.method = InterfaceMethod.LINK_LOCAL
+            _LOGGER.warning(
+                "Method 'disable' could not be used, using 'link-local' instead"
             )
 
         # Update exist configuration
