@@ -9,6 +9,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from .addons import APIAddons
 from .audio import APIAudio
 from .auth import APIAuth
+from .backups import APIBackups
 from .cli import APICli
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
@@ -62,6 +63,7 @@ class RestAPI(CoreSysAttributes):
         self._register_addons()
         self._register_audio()
         self._register_auth()
+        self._register_backups()
         self._register_cli()
         self._register_discovery()
         self._register_dns()
@@ -394,6 +396,29 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
+    def _register_backups(self) -> None:
+        """Register backups functions."""
+        api_backups = APIBackups()
+        api_backups.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/backups", api_backups.list),
+                web.post("/backups/reload", api_backups.reload),
+                web.post("/backups/new/full", api_backups.backup_full),
+                web.post("/backups/new/partial", api_backups.backup_partial),
+                web.post("/backups/new/upload", api_backups.upload),
+                web.get("/backups/{backup}/info", api_backups.info),
+                web.delete("/backups/{backup}", api_backups.remove),
+                web.post("/backups/{backup}/restore/full", api_backups.restore_full),
+                web.post(
+                    "/backups/{backup}/restore/partial",
+                    api_backups.restore_partial,
+                ),
+                web.get("/backups/{backup}/download", api_backups.download),
+            ]
+        )
+
     def _register_snapshots(self) -> None:
         """Register snapshots functions."""
         api_snapshots = APISnapshots()
@@ -401,39 +426,22 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                # June 2021: /snapshots was renamed to /backups
-                web.get("/backups", api_snapshots.list),
-                web.post("/backups/reload", api_snapshots.reload),
-                web.post("/backups/new/full", api_snapshots.snapshot_full),
-                web.post("/backups/new/partial", api_snapshots.snapshot_partial),
-                web.post("/backups/new/upload", api_snapshots.upload),
-                web.get("/backups/{snapshot}/info", api_snapshots.info),
-                web.delete("/backups/{snapshot}", api_snapshots.remove),
-                web.post(
-                    "/backups/{snapshot}/restore/full", api_snapshots.restore_full
-                ),
-                web.post(
-                    "/backups/{snapshot}/restore/partial",
-                    api_snapshots.restore_partial,
-                ),
-                web.get("/backups/{snapshot}/download", api_snapshots.download),
-                web.post("/backups/{snapshot}/remove", api_snapshots.remove),
                 web.get("/snapshots", api_snapshots.list),
                 web.post("/snapshots/reload", api_snapshots.reload),
-                web.post("/snapshots/new/full", api_snapshots.snapshot_full),
-                web.post("/snapshots/new/partial", api_snapshots.snapshot_partial),
+                web.post("/snapshots/new/full", api_snapshots.backup_full),
+                web.post("/snapshots/new/partial", api_snapshots.backup_partial),
                 web.post("/snapshots/new/upload", api_snapshots.upload),
-                web.get("/snapshots/{snapshot}/info", api_snapshots.info),
-                web.delete("/snapshots/{snapshot}", api_snapshots.remove),
+                web.get("/snapshots/{backup}/info", api_snapshots.info),
+                web.delete("/snapshots/{backup}", api_snapshots.remove),
                 web.post(
-                    "/snapshots/{snapshot}/restore/full", api_snapshots.restore_full
+                    "/snapshots/{backup}/restore/full", api_snapshots.restore_full
                 ),
                 web.post(
-                    "/snapshots/{snapshot}/restore/partial",
+                    "/snapshots/{backup}/restore/partial",
                     api_snapshots.restore_partial,
                 ),
-                web.get("/snapshots/{snapshot}/download", api_snapshots.download),
-                web.post("/snapshots/{snapshot}/remove", api_snapshots.remove),
+                web.get("/snapshots/{backup}/download", api_snapshots.download),
+                web.post("/snapshots/{backup}/remove", api_snapshots.remove),
             ]
         )
 
