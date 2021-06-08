@@ -401,6 +401,23 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                # June 2021: /snapshots was renamed to /backups
+                web.get("/backups", api_snapshots.list),
+                web.post("/backups/reload", api_snapshots.reload),
+                web.post("/backups/new/full", api_snapshots.snapshot_full),
+                web.post("/backups/new/partial", api_snapshots.snapshot_partial),
+                web.post("/backups/new/upload", api_snapshots.upload),
+                web.get("/backups/{snapshot}/info", api_snapshots.info),
+                web.delete("/backups/{snapshot}", api_snapshots.remove),
+                web.post(
+                    "/backups/{snapshot}/restore/full", api_snapshots.restore_full
+                ),
+                web.post(
+                    "/backups/{snapshot}/restore/partial",
+                    api_snapshots.restore_partial,
+                ),
+                web.get("/backups/{snapshot}/download", api_snapshots.download),
+                web.post("/backups/{snapshot}/remove", api_snapshots.remove),
                 web.get("/snapshots", api_snapshots.list),
                 web.post("/snapshots/reload", api_snapshots.reload),
                 web.post("/snapshots/new/full", api_snapshots.snapshot_full),
@@ -416,7 +433,6 @@ class RestAPI(CoreSysAttributes):
                     api_snapshots.restore_partial,
                 ),
                 web.get("/snapshots/{snapshot}/download", api_snapshots.download),
-                # Old, remove at end of 2020
                 web.post("/snapshots/{snapshot}/remove", api_snapshots.remove),
             ]
         )

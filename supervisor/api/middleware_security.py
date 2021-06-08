@@ -76,6 +76,7 @@ ADDONS_ROLE_ACCESS = {
     ),
     ROLE_BACKUP: re.compile(
         r"^(?:"
+        r"|/backups.*"
         r"|/snapshots.*"
         r")$"
     ),
@@ -98,6 +99,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/observer/.+"
         r"|/os/.+"
         r"|/resolution/.+"
+        r"|/backups.*"
         r"|/snapshots.*"
         r"|/store.*"
         r"|/supervisor/.+"

@@ -21,7 +21,7 @@ class FixupClearFullSnapshot(FixupBase):
         if len(full_snapshots) < MINIMUM_FULL_SNAPSHOTS:
             return
 
-        _LOGGER.info("Starting removal of old full snapshots")
+        _LOGGER.info("Starting removal of old full backups")
         for snapshot in sorted(full_snapshots, key=lambda x: x.date)[:-1]:
             self.sys_snapshots.remove(snapshot)
 

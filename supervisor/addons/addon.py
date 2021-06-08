@@ -730,13 +730,13 @@ class Addon(AddonModel):
                     )
 
             try:
-                _LOGGER.info("Building snapshot for add-on %s", self.slug)
+                _LOGGER.info("Building backup for add-on %s", self.slug)
                 await self.sys_run_in_executor(_write_tarfile)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
                 raise AddonsError() from err
 
-        _LOGGER.info("Finish snapshot for addon %s", self.slug)
+        _LOGGER.info("Finish backup for addon %s", self.slug)
 
     async def restore(self, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
@@ -764,7 +764,7 @@ class Addon(AddonModel):
                 data = SCHEMA_ADDON_SNAPSHOT(data)
             except vol.Invalid as err:
                 _LOGGER.error(
-                    "Can't validate %s, snapshot data: %s",
+                    "Can't validate %s, backup data: %s",
                     self.slug,
                     humanize_error(data, err),
                 )

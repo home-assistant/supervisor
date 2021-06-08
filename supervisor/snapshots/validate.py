@@ -55,7 +55,7 @@ def unique_addons(addons_list):
     single = {addon[ATTR_SLUG] for addon in addons_list}
 
     if len(single) != len(addons_list):
-        raise vol.Invalid("Invalid addon list on snapshot!") from None
+        raise vol.Invalid("Invalid addon list in backup!") from None
     return addons_list
 
 

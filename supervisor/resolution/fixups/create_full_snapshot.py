@@ -13,7 +13,7 @@ class FixupCreateFullSnapshot(FixupBase):
 
     async def process_fixup(self, reference: Optional[str] = None) -> None:
         """Initialize the fixup class."""
-        _LOGGER.info("Create a full snapshot as backup")
+        _LOGGER.info("Creating a full backup")
         await self.sys_snapshots.do_snapshot_full()
 
     @property

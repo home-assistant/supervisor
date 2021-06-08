@@ -72,7 +72,7 @@ class APISnapshots(CoreSysAttributes):
         """Return snapshot, throw an exception if it doesn't exist."""
         snapshot = self.sys_snapshots.get(request.match_info.get("snapshot"))
         if not snapshot:
-            raise APIError("Snapshot does not exist")
+            raise APIError("Backup does not exist")
         return snapshot
 
     @api_process
@@ -182,7 +182,7 @@ class APISnapshots(CoreSysAttributes):
         """Download a snapshot file."""
         snapshot = self._extract_snapshot(request)
 
-        _LOGGER.info("Downloading snapshot %s", snapshot.slug)
+        _LOGGER.info("Downloading backup %s", snapshot.slug)
         response = web.FileResponse(snapshot.tarfile)
         response.content_type = CONTENT_TYPE_TAR
         response.headers[
@@ -206,7 +206,7 @@ class APISnapshots(CoreSysAttributes):
                         snapshot.write(chunk)
 
             except OSError as err:
-                _LOGGER.error("Can't write new snapshot file: %s", err)
+                _LOGGER.error("Can't write new backup file: %s", err)
                 return False
 
             except asyncio.CancelledError:

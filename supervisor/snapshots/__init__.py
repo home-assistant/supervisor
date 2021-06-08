@@ -77,7 +77,7 @@ class SnapshotManager(CoreSysAttributes):
             for tar_file in self.sys_config.path_backup.glob("*.tar")
         ]
 
-        _LOGGER.info("Found %d snapshot files", len(tasks))
+        _LOGGER.info("Found %d backup files", len(tasks))
         if tasks:
             await asyncio.wait(tasks)
 
@@ -86,10 +86,10 @@ class SnapshotManager(CoreSysAttributes):
         try:
             snapshot.tarfile.unlink()
             self.snapshots_obj.pop(snapshot.slug, None)
-            _LOGGER.info("Removed snapshot file %s", snapshot.slug)
+            _LOGGER.info("Removed backup file %s", snapshot.slug)
 
         except OSError as err:
-            _LOGGER.error("Can't remove snapshot %s: %s", snapshot.slug, err)
+            _LOGGER.error("Can't remove backup %s: %s", snapshot.slug, err)
             return False
 
         return True
@@ -105,7 +105,7 @@ class SnapshotManager(CoreSysAttributes):
         # Already exists?
         if snapshot.slug in self.snapshots_obj:
             _LOGGER.warning(
-                "Snapshot %s already exists! overwriting snapshot", snapshot.slug
+                "Snapshot %s already exists! overwriting backup", snapshot.slug
             )
             self.remove(self.get(snapshot.slug))
 
@@ -115,7 +115,7 @@ class SnapshotManager(CoreSysAttributes):
             snapshot.tarfile.rename(tar_origin)
 
         except OSError as err:
-            _LOGGER.error("Can't move snapshot file to storage: %s", err)
+            _LOGGER.error("Can't move backup file to storage: %s", err)
             return None
 
         # Load new snapshot
@@ -131,31 +131,31 @@ class SnapshotManager(CoreSysAttributes):
     async def do_snapshot_full(self, name="", password=None):
         """Create a full snapshot."""
         if self.lock.locked():
-            _LOGGER.error("A snapshot/restore process is already running")
+            _LOGGER.error("A backup/restore process is already running")
             return None
 
         snapshot = self._create_snapshot(name, SNAPSHOT_FULL, password)
-        _LOGGER.info("Creating new full-snapshot with slug %s", snapshot.slug)
+        _LOGGER.info("Creating new full backup with slug %s", snapshot.slug)
         try:
             self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
             async with snapshot:
                 # Snapshot add-ons
-                _LOGGER.info("Snapshotting %s store Add-ons", snapshot.slug)
+                _LOGGER.info("Backing up %s store Add-ons", snapshot.slug)
                 await snapshot.store_addons()
 
                 # Snapshot folders
-                _LOGGER.info("Snapshotting %s store folders", snapshot.slug)
+                _LOGGER.info("Backing up %s store folders", snapshot.slug)
                 await snapshot.store_folders()
 
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Snapshot %s error", snapshot.slug)
+            _LOGGER.exception("Backup %s error", snapshot.slug)
             self.sys_capture_exception(err)
             return None
 
         else:
-            _LOGGER.info("Creating full-snapshot with slug %s completed", snapshot.slug)
+            _LOGGER.info("Creating full backup with slug %s completed", snapshot.slug)
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
 
@@ -169,21 +169,21 @@ class SnapshotManager(CoreSysAttributes):
     ):
         """Create a partial snapshot."""
         if self.lock.locked():
-            _LOGGER.error("A snapshot/restore process is already running")
+            _LOGGER.error("A backup/restore process is already running")
             return None
 
         addons = addons or []
         folders = folders or []
 
         if len(addons) == 0 and len(folders) == 0 and not homeassistant:
-            _LOGGER.error("Nothing to create snapshot for")
+            _LOGGER.error("Nothing to create backup for")
             return
 
         snapshot = self._create_snapshot(
             name, SNAPSHOT_PARTIAL, password, homeassistant
         )
 
-        _LOGGER.info("Creating new partial-snapshot with slug %s", snapshot.slug)
+        _LOGGER.info("Creating new partial backup with slug %s", snapshot.slug)
         try:
             self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
@@ -199,22 +199,22 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
                 if addon_list:
-                    _LOGGER.info("Snapshotting %s store Add-ons", snapshot.slug)
+                    _LOGGER.info("Backing up %s store Add-ons", snapshot.slug)
                     await snapshot.store_addons(addon_list)
 
                 # Snapshot folders
                 if folders:
-                    _LOGGER.info("Snapshotting %s store folders", snapshot.slug)
+                    _LOGGER.info("Backing up %s store folders", snapshot.slug)
                     await snapshot.store_folders(folders)
 
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Snapshot %s error", snapshot.slug)
+            _LOGGER.exception("Backup %s error", snapshot.slug)
             self.sys_capture_exception(err)
             return None
 
         else:
             _LOGGER.info(
-                "Creating partial-snapshot with slug %s completed", snapshot.slug
+                "Creating partial backup with slug %s completed", snapshot.slug
             )
             self.snapshots_obj[snapshot.slug] = snapshot
             return snapshot
@@ -239,11 +239,11 @@ class SnapshotManager(CoreSysAttributes):
             return False
 
         if snapshot.sys_type != SNAPSHOT_FULL:
-            _LOGGER.error("%s is only a partial snapshot!", snapshot.slug)
+            _LOGGER.error("%s is only a partial backup!", snapshot.slug)
             return False
 
         if snapshot.protected and not snapshot.set_password(password):
-            _LOGGER.error("Invalid password for snapshot %s", snapshot.slug)
+            _LOGGER.error("Invalid password for backup %s", snapshot.slug)
             return False
 
         _LOGGER.info("Full-Restore %s start", snapshot.slug)
@@ -321,11 +321,11 @@ class SnapshotManager(CoreSysAttributes):
     ):
         """Restore a snapshot."""
         if self.lock.locked():
-            _LOGGER.error("A snapshot/restore process is already running")
+            _LOGGER.error("A backup/restore process is already running")
             return False
 
         if snapshot.protected and not snapshot.set_password(password):
-            _LOGGER.error("Invalid password for snapshot %s", snapshot.slug)
+            _LOGGER.error("Invalid password for backup %s", snapshot.slug)
             return False
 
         addons = addons or []

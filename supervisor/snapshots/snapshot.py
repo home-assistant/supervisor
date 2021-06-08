@@ -238,7 +238,7 @@ class Snapshot(CoreSysAttributes):
         try:
             raw = await self.sys_run_in_executor(_load_file)
         except (tarfile.TarError, KeyError) as err:
-            _LOGGER.error("Can't read snapshot tarfile %s: %s", self.tarfile, err)
+            _LOGGER.error("Can't read backup tarfile %s: %s", self.tarfile, err)
             return False
 
         # parse data
@@ -303,7 +303,7 @@ class Snapshot(CoreSysAttributes):
             write_json_file(Path(self._tmp.name, "snapshot.json"), self._data)
             await self.sys_run_in_executor(_create_snapshot)
         except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.error("Can't write snapshot: %s", err)
+            _LOGGER.error("Can't write backup: %s", err)
         finally:
             self._tmp.cleanup()
 
@@ -321,7 +321,7 @@ class Snapshot(CoreSysAttributes):
             try:
                 await addon.snapshot(addon_file)
             except AddonsError:
-                _LOGGER.error("Can't create snapshot for %s", addon.slug)
+                _LOGGER.error("Can't create backup for %s", addon.slug)
                 return
 
             # Store to config
@@ -354,14 +354,14 @@ class Snapshot(CoreSysAttributes):
 
             # If exists inside snapshot
             if not addon_file.path.exists():
-                _LOGGER.error("Can't find snapshot %s", addon_slug)
+                _LOGGER.error("Can't find backup %s", addon_slug)
                 return
 
             # Perform a restore
             try:
                 await self.sys_addons.restore(addon_slug, addon_file)
             except AddonsError:
-                _LOGGER.error("Can't restore snapshot %s", addon_slug)
+                _LOGGER.error("Can't restore backup %s", addon_slug)
 
         # Save Add-ons sequential
         # avoid issue on slow IO
@@ -383,7 +383,7 @@ class Snapshot(CoreSysAttributes):
 
             # Check if exists
             if not origin_dir.is_dir():
-                _LOGGER.warning("Can't find snapshot folder %s", name)
+                _LOGGER.warning("Can't find backup folder %s", name)
                 return
 
             # Take snapshot
@@ -397,10 +397,10 @@ class Snapshot(CoreSysAttributes):
                         arcname=".",
                     )
 
-                _LOGGER.info("Snapshot folder %s done", name)
+                _LOGGER.info("Backup folder %s done", name)
                 self._data[ATTR_FOLDERS].append(name)
             except (tarfile.TarError, OSError) as err:
-                _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
+                _LOGGER.warning("Can't backup folder %s: %s", name, err)
 
         # Save folder sequential
         # avoid issue on slow IO
