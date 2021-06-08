@@ -51,6 +51,8 @@ from ..const import (
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_SNAPSHOT_EXCLUDE,
+    ATTR_SNAPSHOT_POST,
+    ATTR_SNAPSHOT_PRE,
     ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STDIN,
@@ -357,6 +359,16 @@ class AddonModel(CoreSysAttributes, ABC):
     def snapshot_exclude(self) -> List[str]:
         """Return Exclude list for snapshot."""
         return self.data.get(ATTR_SNAPSHOT_EXCLUDE, [])
+
+    @property
+    def snapshot_pre(self) -> Optional[str]:
+        """Return pre-snapshot command."""
+        return self.data.get(ATTR_SNAPSHOT_PRE)
+
+    @property
+    def snapshot_post(self) -> Optional[str]:
+        """Return post-snapshot command."""
+        return self.data.get(ATTR_SNAPSHOT_POST)
 
     @property
     def default_init(self) -> bool:
