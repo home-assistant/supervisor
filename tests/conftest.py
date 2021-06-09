@@ -89,8 +89,8 @@ def dbus() -> DBus:
                 fixture = re.sub(r"_[0-9]+$", "", fixture)
 
                 # special case
-                if exists_fixture(f"{fixture}_*.{filetype}"):
-                    fixture = f"{fixture}_*"
+                if exists_fixture(f"{fixture}_special.{filetype}"):
+                    fixture = f"{fixture}_special"
         else:
             fixture = f"{fixture}-{command[10].split('.')[-1]}"
             filetype = "fixture"
