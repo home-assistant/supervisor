@@ -7,6 +7,8 @@ import uuid
 
 import voluptuous as vol
 
+from supervisor.addons.const import SnapshotAddonMode
+
 from ..const import (
     ARCH_ALL,
     ATTR_ACCESS_TOKEN,
@@ -107,6 +109,7 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
+from .const import ATTR_SNAPSHOT
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -284,6 +287,9 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [str],
         vol.Optional(ATTR_SNAPSHOT_PRE): str,
         vol.Optional(ATTR_SNAPSHOT_POST): str,
+        vol.Optional(ATTR_SNAPSHOT, default=SnapshotAddonMode.HOT): vol.Coerce(
+            SnapshotAddonMode
+        ),
         vol.Optional(ATTR_OPTIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
             vol.Schema(

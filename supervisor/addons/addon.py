@@ -65,6 +65,7 @@ from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from ..utils.tar import atomic_contents_add, secure_path
+from .const import SnapshotAddonMode
 from .model import AddonModel, Data
 from .options import AddonOptions
 from .utils import remove_data
@@ -695,6 +696,8 @@ class Addon(AddonModel):
 
     async def snapshot(self, tar_file: tarfile.TarFile) -> None:
         """Snapshot state of an add-on."""
+        is_running = await self.is_running()
+
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
             temp_path = Path(temp)
 
@@ -744,8 +747,15 @@ class Addon(AddonModel):
                         arcname="data",
                     )
 
-            if self.snapshot_pre is not None:
+            if (
+                is_running
+                and self.snapshot_mode == SnapshotAddonMode.HOT
+                and self.snapshot_pre is not None
+            ):
                 await self._snapshot_command(self.snapshot_pre)
+            elif is_running and self.snapshot_mode == SnapshotAddonMode.COLD:
+                _LOGGER.info("Shutdown add-on %s for cold backup", self.slug)
+                await self.instance.stop()
 
             try:
                 _LOGGER.info("Building snapshot for add-on %s", self.slug)
@@ -754,8 +764,14 @@ class Addon(AddonModel):
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
                 raise AddonsError() from err
             finally:
-                if self.snapshot_post is not None:
+                if (
+                    is_running
+                    and self.snapshot_mode == SnapshotAddonMode.HOT
+                    and self.snapshot_post is not None
+                ):
                     await self._snapshot_command(self.snapshot_post)
+                elif is_running and self.snapshot_mode is SnapshotAddonMode.COLD:
+                    await self.start()
 
         _LOGGER.info("Finish snapshot for addon %s", self.slug)
 
