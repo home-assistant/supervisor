@@ -359,11 +359,11 @@ class WhoamiError(HassioError):
     """Error while using whoami."""
 
 
-class WhoamiSSLError(PwnedError):
+class WhoamiSSLError(WhoamiError):
     """Error with the SSL certificate."""
 
 
-class WhoamiConnectivityError(PwnedError):
+class WhoamiConnectivityError(WhoamiError):
     """Connectivity errors while using whoami."""
 
 

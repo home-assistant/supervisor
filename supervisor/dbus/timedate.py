@@ -1,4 +1,4 @@
-"""Interface to Logind over D-Bus."""
+"""Interface to systemd-timedate over D-Bus."""
 from datetime import datetime
 import logging
 from typing import Any, Dict

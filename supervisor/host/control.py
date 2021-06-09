@@ -77,6 +77,6 @@ class SystemControl(CoreSysAttributes):
         """Update host clock with new (utc) datetime."""
         self._check_dbus(HostFeature.TIMEDATE)
 
-        _LOGGER.info("Set new host datetime: %s", new_time.isoformat())
+        _LOGGER.info("Setting new host datetime: %s", new_time.isoformat())
         await self.sys_dbus.timedate.set_time(new_time)
         await self.sys_dbus.timedate.update()
