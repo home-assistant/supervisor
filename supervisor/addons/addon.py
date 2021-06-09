@@ -678,6 +678,21 @@ class Addon(AddonModel):
         except DockerError as err:
             raise AddonsError() from err
 
+    async def _snapshot_command(self, command: str) -> None:
+        try:
+            command_return = await self.instance.run_inside(command)
+            if command_return.exit_code != 0:
+                _LOGGER.error(
+                    "Pre-/Post-Snapshot command returned error code: %s",
+                    command_return.exit_code,
+                )
+                raise AddonsError()
+        except DockerError as err:
+            _LOGGER.error(
+                "Failed running pre-/post-snapshot command %s: %s", command, err
+            )
+            raise AddonsError() from err
+
     async def snapshot(self, tar_file: tarfile.TarFile) -> None:
         """Snapshot state of an add-on."""
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
@@ -729,12 +744,18 @@ class Addon(AddonModel):
                         arcname="data",
                     )
 
+            if self.snapshot_pre is not None:
+                await self._snapshot_command(self.snapshot_pre)
+
             try:
                 _LOGGER.info("Building backup for add-on %s", self.slug)
                 await self.sys_run_in_executor(_write_tarfile)
             except (tarfile.TarError, OSError) as err:
                 _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
                 raise AddonsError() from err
+            finally:
+                if self.snapshot_post is not None:
+                    await self._snapshot_command(self.snapshot_post)
 
         _LOGGER.info("Finish backup for addon %s", self.slug)
 
