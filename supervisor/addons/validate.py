@@ -19,6 +19,8 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTH_API,
     ATTR_AUTO_UPDATE,
+    ATTR_BACKUP_POST,
+    ATTR_BACKUP_PRE,
     ATTR_BOOT,
     ATTR_BUILD_FROM,
     ATTR_CONFIGURATION,
@@ -68,8 +70,6 @@ from ..const import (
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_SNAPSHOT_EXCLUDE,
-    ATTR_SNAPSHOT_POST,
-    ATTR_SNAPSHOT_PRE,
     ATTR_SQUASH,
     ATTR_STAGE,
     ATTR_STARTUP,
@@ -282,8 +282,8 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
         vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
         vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [str],
-        vol.Optional(ATTR_SNAPSHOT_PRE): str,
-        vol.Optional(ATTR_SNAPSHOT_POST): str,
+        vol.Optional(ATTR_BACKUP_PRE): str,
+        vol.Optional(ATTR_BACKUP_POST): str,
         vol.Optional(ATTR_OPTIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
             vol.Schema(

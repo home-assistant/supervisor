@@ -683,13 +683,13 @@ class Addon(AddonModel):
             command_return = await self.instance.run_inside(command)
             if command_return.exit_code != 0:
                 _LOGGER.error(
-                    "Pre-/Post-Snapshot command returned error code: %s",
+                    "Pre-/Post backup command returned error code: %s",
                     command_return.exit_code,
                 )
                 raise AddonsError()
         except DockerError as err:
             _LOGGER.error(
-                "Failed running pre-/post-snapshot command %s: %s", command, err
+                "Failed running pre-/post backup command %s: %s", command, err
             )
             raise AddonsError() from err
 

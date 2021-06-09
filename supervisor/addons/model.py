@@ -11,6 +11,9 @@ from ..const import (
     ATTR_ARCH,
     ATTR_AUDIO,
     ATTR_AUTH_API,
+    ATTR_BACKUP_EXCLUDE,
+    ATTR_BACKUP_POST,
+    ATTR_BACKUP_PRE,
     ATTR_BOOT,
     ATTR_DESCRIPTON,
     ATTR_DEVICES,
@@ -51,8 +54,6 @@ from ..const import (
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_SNAPSHOT_EXCLUDE,
-    ATTR_SNAPSHOT_POST,
-    ATTR_SNAPSHOT_PRE,
     ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STDIN,
@@ -358,17 +359,19 @@ class AddonModel(CoreSysAttributes, ABC):
     @property
     def snapshot_exclude(self) -> List[str]:
         """Return Exclude list for snapshot."""
-        return self.data.get(ATTR_SNAPSHOT_EXCLUDE, [])
+        return self.data.get(ATTR_BACKUP_EXCLUDE, []) or self.data.get(
+            ATTR_SNAPSHOT_EXCLUDE, []
+        )
 
     @property
     def snapshot_pre(self) -> Optional[str]:
         """Return pre-snapshot command."""
-        return self.data.get(ATTR_SNAPSHOT_PRE)
+        return self.data.get(ATTR_BACKUP_PRE)
 
     @property
     def snapshot_post(self) -> Optional[str]:
         """Return post-snapshot command."""
-        return self.data.get(ATTR_SNAPSHOT_POST)
+        return self.data.get(ATTR_BACKUP_POST)
 
     @property
     def default_init(self) -> bool:
