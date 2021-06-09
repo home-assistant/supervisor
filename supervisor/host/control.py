@@ -1,13 +1,12 @@
 """Power control for host."""
+from datetime import datetime
 import logging
 
+from ..const import HostFeature
 from ..coresys import CoreSysAttributes
 from ..exceptions import HostNotSupportedError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-MANAGER = "manager"
-HOSTNAME = "hostname"
 
 
 class SystemControl(CoreSysAttributes):
@@ -17,21 +16,24 @@ class SystemControl(CoreSysAttributes):
         """Initialize host power handling."""
         self.coresys = coresys
 
-    def _check_dbus(self, flag):
+    def _check_dbus(self, flag: HostFeature) -> None:
         """Check if systemd is connect or raise error."""
-        if flag == MANAGER and (
+        if flag in (HostFeature.SHUTDOWN, HostFeature.REBOOT) and (
             self.sys_dbus.systemd.is_connected or self.sys_dbus.logind.is_connected
         ):
             return
-        if flag == HOSTNAME and self.sys_dbus.hostname.is_connected:
+        if flag == HostFeature.HOSTNAME and self.sys_dbus.hostname.is_connected:
+            return
+        if flag == HostFeature.TIMEDATE and self.sys_dbus.timedate.is_connected:
             return
 
-        _LOGGER.error("No %s D-Bus connection available", flag)
-        raise HostNotSupportedError()
+        raise HostNotSupportedError(
+            f"No {flag!s} D-Bus connection available", _LOGGER.error
+        )
 
-    async def reboot(self):
+    async def reboot(self) -> None:
         """Reboot host system."""
-        self._check_dbus(MANAGER)
+        self._check_dbus(HostFeature.REBOOT)
 
         use_logind = self.sys_dbus.logind.is_connected
         _LOGGER.info(
@@ -46,9 +48,9 @@ class SystemControl(CoreSysAttributes):
             else:
                 await self.sys_dbus.systemd.reboot()
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Shutdown host system."""
-        self._check_dbus(MANAGER)
+        self._check_dbus(HostFeature.SHUTDOWN)
 
         use_logind = self.sys_dbus.logind.is_connected
         _LOGGER.info(
@@ -63,10 +65,18 @@ class SystemControl(CoreSysAttributes):
             else:
                 await self.sys_dbus.systemd.power_off()
 
-    async def set_hostname(self, hostname):
+    async def set_hostname(self, hostname: str) -> None:
         """Set local a new Hostname."""
-        self._check_dbus(HOSTNAME)
+        self._check_dbus(HostFeature.HOSTNAME)
 
         _LOGGER.info("Set hostname %s", hostname)
         await self.sys_dbus.hostname.set_static_hostname(hostname)
-        await self.sys_host.info.update()
+        await self.sys_dbus.hostname.update()
+
+    async def set_datetime(self, new_time: datetime) -> None:
+        """Update host clock with new (utc) datetime."""
+        self._check_dbus(HostFeature.TIMEDATE)
+
+        _LOGGER.info("Setting new host datetime: %s", new_time.isoformat())
+        await self.sys_dbus.timedate.set_time(new_time)
+        await self.sys_dbus.timedate.update()

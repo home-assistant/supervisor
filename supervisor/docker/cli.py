@@ -51,7 +51,7 @@ class DockerCli(DockerInterface, CoreSysAttributes):
                 "observer": self.sys_docker.network.observer,
             },
             environment={
-                ENV_TIME: self.sys_config.timezone,
+                ENV_TIME: self.sys_timezone,
                 ENV_TOKEN: self.sys_plugins.cli.supervisor_token,
             },
         )

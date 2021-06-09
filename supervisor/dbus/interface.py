@@ -1,8 +1,22 @@
 """Interface class for D-Bus wrappers."""
 from abc import ABC, abstractmethod
+from functools import wraps
 from typing import Any, Dict, Optional
 
 from ..utils.gdbus import DBus
+
+
+def dbus_property(func):
+    """Wrap not loaded properties."""
+
+    @wraps(func)
+    def wrapper(*args, **kwds):
+        try:
+            return func(*args, **kwds)
+        except KeyError:
+            return None
+
+    return wrapper
 
 
 class DBusInterface(ABC):

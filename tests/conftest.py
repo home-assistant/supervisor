@@ -128,9 +128,6 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system_data"), patch(
         "supervisor.bootstrap.setup_diagnostics"
-    ), patch(
-        "supervisor.bootstrap.fetch_timezone",
-        return_value="Europe/Zurich",
     ):
         coresys_obj = await initialize_coresys()
 

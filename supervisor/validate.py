@@ -136,7 +136,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
 # pylint: disable=no-value-for-parameter
 SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_TIMEZONE, default="UTC"): validate_timezone,
+        vol.Optional(ATTR_TIMEZONE): validate_timezone,
         vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
         vol.Optional(
             ATTR_VERSION, default=AwesomeVersion(SUPERVISOR_VERSION)
