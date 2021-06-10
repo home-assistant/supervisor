@@ -25,6 +25,14 @@ async def test_base(coresys: CoreSys):
     assert addon_pwned.enabled
 
 
+async def test_disable(coresys: CoreSys):
+    """Test disable check."""
+    addon_pwned = CheckAddonPwned(coresys)
+    assert addon_pwned.enabled
+    addon_pwned.enabled = False
+    assert not addon_pwned.enabled
+
+
 async def test_check(coresys: CoreSys):
     """Test check."""
     addon_pwned = CheckAddonPwned(coresys)

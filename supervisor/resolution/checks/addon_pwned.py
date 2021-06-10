@@ -26,6 +26,11 @@ class CheckAddonPwned(CheckBase):
             return False
         return super().enabled
 
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        """Enable or disbable check."""
+        self.sys_security.pwned = value
+
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
         limit=JobExecutionLimit.THROTTLE,
