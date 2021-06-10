@@ -1,10 +1,12 @@
 """Test Check Addon Pwned."""
-# pylint: disable=import-error,protected-access
 from unittest.mock import AsyncMock, patch
+
+# pylint: disable=import-error,protected-access
+import pytest
 
 from supervisor.const import AddonState, CoreState
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import PwnedSecret
+from supervisor.exceptions import PwnedSecret, ResolutionCheckError
 from supervisor.resolution.checks.addon_pwned import CheckAddonPwned
 from supervisor.resolution.const import IssueType, SuggestionType
 
@@ -25,11 +27,21 @@ async def test_base(coresys: CoreSys):
     assert addon_pwned.enabled
 
 
-async def test_disable(coresys: CoreSys):
-    """Test disable check."""
+async def test_enabled_toggle(coresys: CoreSys):
+    """Test toggle check."""
     addon_pwned = CheckAddonPwned(coresys)
     assert addon_pwned.enabled
     addon_pwned.enabled = False
+    assert not addon_pwned.enabled
+
+    coresys.security.pwned = False
+    assert not addon_pwned.enabled
+
+    with pytest.raises(
+        ResolutionCheckError,
+        match="Can't enable 'addon_pwned',' 'security.pwned' is disabled",
+    ):
+        addon_pwned.enabled = True
     assert not addon_pwned.enabled
 
 

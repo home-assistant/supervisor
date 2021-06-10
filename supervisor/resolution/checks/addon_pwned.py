@@ -1,14 +1,22 @@
 """Helpers to check core security."""
 from datetime import timedelta
+import logging
 from typing import List, Optional
 
-from ...const import AddonState, CoreState
+from ...const import ATTR_ENABLED, AddonState, CoreState
 from ...coresys import CoreSys
-from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
+from ...exceptions import (
+    PwnedConnectivityError,
+    PwnedError,
+    PwnedSecret,
+    ResolutionCheckError,
+)
 from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def setup(coresys: CoreSys) -> CheckBase:
@@ -29,7 +37,12 @@ class CheckAddonPwned(CheckBase):
     @enabled.setter
     def enabled(self, value: bool) -> None:
         """Enable or disbable check."""
-        self.sys_security.pwned = value
+        if not self.sys_security.pwned and value is True:
+            raise ResolutionCheckError(
+                f"Can't enable '{self.slug}',' 'security.pwned' is disabled",
+                _LOGGER.warning,
+            )
+        self.sys_resolution.check.data[self.slug][ATTR_ENABLED] = value
 
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
