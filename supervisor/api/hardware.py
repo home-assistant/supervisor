@@ -1,6 +1,6 @@
 """Init file for Supervisor hardware RESTful API."""
 import logging
-from typing import Any, Awaitable, Dict
+from typing import Any, Dict
 
 from aiohttp import web
 
@@ -58,8 +58,3 @@ class APIHardware(CoreSysAttributes):
                 },
             }
         }
-
-    @api_process
-    async def trigger(self, request: web.Request) -> Awaitable[None]:
-        """Trigger a udev device reload."""
-        _LOGGER.debug("Ignoring DEPRECATED hardware trigger function call.")
