@@ -53,7 +53,6 @@ ADDONS_API_BYPASS = re.compile(
     r"|/addons/self/(?!security|update)[^/]+"
     r"|/addons/self/options/config"
     r"|/info"
-    r"|/network/interface/[^/]+/info"
     r"|/services.*"
     r"|/discovery.*"
     r"|/auth"
@@ -65,6 +64,7 @@ ADDONS_ROLE_ACCESS = {
     ROLE_DEFAULT: re.compile(
         r"^(?:"
         r"|/.+/info"
+        r"|/network/interface/[^/]+/info"
         r"|/addons"
         r")$"
     ),
