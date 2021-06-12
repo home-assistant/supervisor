@@ -193,6 +193,10 @@ class SecurityMiddleware(CoreSysAttributes):
                 request_from = addon
             else:
                 _LOGGER.warning("%s no role for %s", request.path, addon.slug)
+        elif addon:
+            _LOGGER.warning(
+                "%s missing API permission for %s", addon.slug, request.path
+            )
 
         if request_from:
             request[REQUEST_FROM] = request_from
