@@ -5,7 +5,7 @@ import re
 from aiohttp.web import Request, RequestHandler, Response, middleware
 from aiohttp.web_exceptions import HTTPForbidden, HTTPUnauthorized
 
-from ..const import (
+from ...const import (
     REQUEST_FROM,
     ROLE_ADMIN,
     ROLE_BACKUP,
@@ -14,8 +14,8 @@ from ..const import (
     ROLE_MANAGER,
     CoreState,
 )
-from ..coresys import CoreSys, CoreSysAttributes
-from .utils import api_return_error, excract_supervisor_token
+from ...coresys import CoreSys, CoreSysAttributes
+from ..utils import api_return_error, excract_supervisor_token
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -64,23 +64,24 @@ ADDONS_ROLE_ACCESS = {
     ROLE_DEFAULT: re.compile(
         r"^(?:"
         r"|/.+/info"
-        r"|/network/interface/[^/]+/info"
-        r"|/addons"
         r")$"
     ),
     ROLE_HOMEASSISTANT: re.compile(
         r"^(?:"
+        r"|/.+/info"
         r"|/core/.+"
         r"|/homeassistant/.+"
         r")$"
     ),
     ROLE_BACKUP: re.compile(
         r"^(?:"
+        r"|/.+/info"
         r"|/snapshots.*"
         r")$"
     ),
     ROLE_MANAGER: re.compile(
         r"^(?:"
+        r"|/.+/info"
         r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
         r"|/audio/.+"
         r"|/auth/cache"
@@ -101,6 +102,7 @@ ADDONS_ROLE_ACCESS = {
         r"|/snapshots.*"
         r"|/store.*"
         r"|/supervisor/.+"
+        r"|/security/.+"
         r")$"
     ),
     ROLE_ADMIN: re.compile(
