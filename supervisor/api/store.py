@@ -138,7 +138,7 @@ class APIStore(CoreSysAttributes):
         """Update add-on."""
         addon = self._extract_addon(request, installed=True)
         if addon == request.get(REQUEST_FROM):
-            raise APIForbidden("Add-on %s can't update itself!", addon.slug)
+            raise APIForbidden(f"Add-on {addon.slug} can't update itself!")
         return asyncio.shield(addon.update())
 
     @api_process
