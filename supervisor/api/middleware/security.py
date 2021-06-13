@@ -64,10 +64,6 @@ ADDONS_ROLE_ACCESS = {
     ROLE_DEFAULT: re.compile(
         r"^(?:"
         r"|/.+/info"
-        r"|/addons"
-        r"|/store"
-        r"|/store/addons"
-        r"|/snapshots"
         r")$"
     ),
     ROLE_HOMEASSISTANT: re.compile(
