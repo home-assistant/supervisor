@@ -27,9 +27,10 @@ from ..const import (
     ATTR_URL,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
+    REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
+from ..exceptions import APIError, APIForbidden
 from ..store.addon import AddonStore
 from ..store.repository import Repository
 
@@ -136,6 +137,8 @@ class APIStore(CoreSysAttributes):
     def addons_addon_update(self, request: web.Request) -> Awaitable[None]:
         """Update add-on."""
         addon = self._extract_addon(request, installed=True)
+        if addon == request.get(REQUEST_FROM):
+            raise APIForbidden("Add-on can't update itself!")
         return asyncio.shield(addon.update())
 
     @api_process
