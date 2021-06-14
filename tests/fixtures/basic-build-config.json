@@ -2,7 +2,7 @@
   "build_from": {
     "armhf": "mycustom/base-image:latest",
     "aarch64": "mycustom/base-image",
-    "amd64": "homeassistant/amd64-base-ubuntu:18.04"
+    "amd64": "ghcr.io/home-assistant/amd64-base-ubuntu:18.04"
   },
   "squash": false,
   "args": {

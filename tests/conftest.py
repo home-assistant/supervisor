@@ -34,7 +34,7 @@ async def mock_async_return_true() -> bool:
 @pytest.fixture
 def docker() -> DockerAPI:
     """Mock DockerAPI."""
-    images = [MagicMock(tags=["homeassistant/amd64-hassio-supervisor:latest"])]
+    images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
 
     with patch("docker.DockerClient", return_value=MagicMock()), patch(
         "supervisor.docker.DockerAPI.images", return_value=MagicMock()
