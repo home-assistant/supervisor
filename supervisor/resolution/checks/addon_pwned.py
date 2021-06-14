@@ -1,5 +1,6 @@
 """Helpers to check core security."""
 from datetime import timedelta
+import logging
 from typing import List, Optional
 
 from ...const import AddonState, CoreState
@@ -10,6 +11,8 @@ from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
 
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+
 
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
@@ -19,13 +22,6 @@ def setup(coresys: CoreSys) -> CheckBase:
 class CheckAddonPwned(CheckBase):
     """CheckAddonPwned class for check."""
 
-    @property
-    def enabled(self) -> bool:
-        """Return True if the check is enabled."""
-        if not self.sys_security.pwned:
-            return False
-        return super().enabled
-
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
         limit=JobExecutionLimit.THROTTLE,
@@ -33,6 +29,9 @@ class CheckAddonPwned(CheckBase):
     )
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
+        if not self.sys_security.pwned:
+            _LOGGER.warning("Skipping %s, pwned is globally disabled", self.slug)
+            return
         await self.sys_homeassistant.secrets.reload()
 
         for addon in self.sys_addons.installed:
