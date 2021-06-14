@@ -3,14 +3,9 @@ from datetime import timedelta
 import logging
 from typing import List, Optional
 
-from ...const import ATTR_ENABLED, AddonState, CoreState
+from ...const import AddonState, CoreState
 from ...coresys import CoreSys
-from ...exceptions import (
-    PwnedConnectivityError,
-    PwnedError,
-    PwnedSecret,
-    ResolutionCheckError,
-)
+from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
 from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
@@ -27,23 +22,6 @@ def setup(coresys: CoreSys) -> CheckBase:
 class CheckAddonPwned(CheckBase):
     """CheckAddonPwned class for check."""
 
-    @property
-    def enabled(self) -> bool:
-        """Return True if the check is enabled."""
-        if not self.sys_security.pwned:
-            return False
-        return super().enabled
-
-    @enabled.setter
-    def enabled(self, value: bool) -> None:
-        """Enable or disbable check."""
-        if not self.sys_security.pwned and value is True:
-            raise ResolutionCheckError(
-                f"Can't enable '{self.slug}',' 'security.pwned' is disabled",
-                _LOGGER.warning,
-            )
-        self.sys_resolution.check.data[self.slug][ATTR_ENABLED] = value
-
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
         limit=JobExecutionLimit.THROTTLE,
@@ -51,6 +29,9 @@ class CheckAddonPwned(CheckBase):
     )
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
+        if not self.sys_security.pwned:
+            _LOGGER.warning("Skipping %s, pwned is globally disabled", self.slug)
+            return
         await self.sys_homeassistant.secrets.reload()
 
         for addon in self.sys_addons.installed:
