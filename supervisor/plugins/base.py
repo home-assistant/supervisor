@@ -29,7 +29,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         """Return current image of plugin."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
-        return f"homeassistant/{self.sys_arch.supervisor}-hassio-{self.slug}"
+        return f"ghcr.io/home-assistant/{self.sys_arch.supervisor}-hassio-{self.slug}"
 
     @image.setter
     def image(self, value: str) -> None:

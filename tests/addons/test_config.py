@@ -87,7 +87,7 @@ def test_invalid_repository():
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
 
-    config["image"] = "homeassistant/no-valid-repo:no-tag-allow"
+    config["image"] = "ghcr.io/home-assistant/no-valid-repo:no-tag-allow"
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
 
