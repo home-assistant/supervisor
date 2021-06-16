@@ -206,7 +206,7 @@ class Tasks(CoreSysAttributes):
         """
         # If Home-Assistant is active
         if (
-            await self.sys_homeassistant.core.is_failed()
+            await self.sys_homeassistant.core.is_running()
             or not self.sys_homeassistant.watchdog
             or self.sys_homeassistant.error_state
         ):
