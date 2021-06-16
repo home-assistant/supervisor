@@ -8,6 +8,7 @@ import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 from cpe import CPE
 
+from .const import URL_OTA_LEGACY
 from .coresys import CoreSys, CoreSysAttributes
 from .dbus.rauc import RaucState
 from .exceptions import DBusError, HassOSJobError, HassOSUpdateError
@@ -59,6 +60,9 @@ class HassOS(CoreSysAttributes):
         raw_url = self.sys_updater.ota_url
         if raw_url is None:
             raise HassOSUpdateError("Don't have an URL for OTA updates!", _LOGGER.error)
+
+        if version < 6:
+            raw_url = URL_OTA_LEGACY
 
         update_board = self.board
 
