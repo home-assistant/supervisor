@@ -10,6 +10,7 @@ URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor.txt"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
 
 # Old OTA URL, changed for rel-6
+# Can be removed when 6.3 are released
 URL_OTA_LEGACY = "https://github.com/home-assistant/operating-system/releases/download/{version}/hassos_{board}-{version}.raucb"
 
 SUPERVISOR_DATA = Path("/data")

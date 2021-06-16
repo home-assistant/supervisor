@@ -23,7 +23,11 @@ async def test_ota_url_generic_x86_64_rename(coresys: CoreSys) -> None:
 
 
 def test_ota_url_generation(coresys: CoreSys) -> None:
-    """Test OTA URL generation."""
+    """
+    Test OTA URL generation.
+
+    Can be removed when 6.3 are released
+    """
     coresys.updater._data = {
         "ota": "https://github.com/home-assistant/operating-system/releases/download/{version}/haos_{board}-{version}.raucb"
     }

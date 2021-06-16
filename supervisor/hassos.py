@@ -62,6 +62,8 @@ class HassOS(CoreSysAttributes):
             raise HassOSUpdateError("Don't have an URL for OTA updates!", _LOGGER.error)
 
         if version < 6:
+            # Old OTA URL, changed for rel-6
+            # Can be removed when 6.3 are released
             raw_url = URL_OTA_LEGACY
 
         update_board = self.board
