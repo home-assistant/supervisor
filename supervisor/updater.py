@@ -256,13 +256,13 @@ class Updater(FileConfiguration, CoreSysAttributes):
             self._data[ATTR_MULTICAST] = AwesomeVersion(data["multicast"])
 
             # Update images for that versions
-            self._data[ATTR_IMAGE][ATTR_HOMEASSISTANT] = data["image"]["core"]
-            self._data[ATTR_IMAGE][ATTR_SUPERVISOR] = data["image"]["supervisor"]
-            self._data[ATTR_IMAGE][ATTR_AUDIO] = data["image"]["audio"]
-            self._data[ATTR_IMAGE][ATTR_CLI] = data["image"]["cli"]
-            self._data[ATTR_IMAGE][ATTR_DNS] = data["image"]["dns"]
-            self._data[ATTR_IMAGE][ATTR_OBSERVER] = data["image"]["observer"]
-            self._data[ATTR_IMAGE][ATTR_MULTICAST] = data["image"]["multicast"]
+            self._data[ATTR_IMAGE][ATTR_HOMEASSISTANT] = data["images"]["core"]
+            self._data[ATTR_IMAGE][ATTR_SUPERVISOR] = data["images"]["supervisor"]
+            self._data[ATTR_IMAGE][ATTR_AUDIO] = data["images"]["audio"]
+            self._data[ATTR_IMAGE][ATTR_CLI] = data["images"]["cli"]
+            self._data[ATTR_IMAGE][ATTR_DNS] = data["images"]["dns"]
+            self._data[ATTR_IMAGE][ATTR_OBSERVER] = data["images"]["observer"]
+            self._data[ATTR_IMAGE][ATTR_MULTICAST] = data["images"]["multicast"]
 
         except KeyError as err:
             raise UpdaterError(
