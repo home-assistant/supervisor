@@ -26,25 +26,25 @@ async def test_fetch_versions(coresys: CoreSys) -> None:
     assert coresys.updater.version_multicast == data["multicast"]
     assert coresys.updater.version_observer == data["observer"]
 
-    assert coresys.updater.image_homeassistant == data["image"]["core"].format(
+    assert coresys.updater.image_homeassistant == data["images"]["core"].format(
         machine=coresys.machine
     )
 
-    assert coresys.updater.image_supervisor == data["image"]["supervisor"].format(
+    assert coresys.updater.image_supervisor == data["images"]["supervisor"].format(
         arch=coresys.arch.supervisor
     )
-    assert coresys.updater.image_cli == data["image"]["cli"].format(
+    assert coresys.updater.image_cli == data["images"]["cli"].format(
         arch=coresys.arch.supervisor
     )
-    assert coresys.updater.image_audio == data["image"]["audio"].format(
+    assert coresys.updater.image_audio == data["images"]["audio"].format(
         arch=coresys.arch.supervisor
     )
-    assert coresys.updater.image_dns == data["image"]["dns"].format(
+    assert coresys.updater.image_dns == data["images"]["dns"].format(
         arch=coresys.arch.supervisor
     )
-    assert coresys.updater.image_observer == data["image"]["observer"].format(
+    assert coresys.updater.image_observer == data["images"]["observer"].format(
         arch=coresys.arch.supervisor
     )
-    assert coresys.updater.image_multicast == data["image"]["multicast"].format(
+    assert coresys.updater.image_multicast == data["images"]["multicast"].format(
         arch=coresys.arch.supervisor
     )
