@@ -164,6 +164,14 @@ def _warn_addon_config(config: Dict[str, Any]):
             name,
         )
 
+    if config.get(ATTR_SNAPSHOT, SnapshotAddonMode.HOT) == SnapshotAddonMode.COLD and (
+        config.get(ATTR_SNAPSHOT_POST) or config.get(ATTR_SNAPSHOT_PRE)
+    ):
+        _LOGGER.warning(
+            "Add-on which only support COLD backups trying to use post/pre commands. Please report this to the maintainer of %s",
+            name,
+        )
+
     return config
 
 
