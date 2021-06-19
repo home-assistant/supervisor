@@ -67,13 +67,18 @@ class HassOS(CoreSysAttributes):
             raise HassOSUpdateError("Don't have an URL for OTA updates!", _LOGGER.error)
 
         update_board = self.board
+        update_os_name = self.os_name
 
         # OS version 6 and later renamed intel-nuc to generic-x86-64...
         if update_board == "intel-nuc" and version >= 6.0:
             update_board = "generic-x86-64"
 
+        # The OS name used to be hassos before renaming to haos...
+        if version < 6.0:
+            update_os_name = "hassos"
+
         url = raw_url.format(
-            version=str(version), board=update_board, os_name=self.os_name
+            version=str(version), board=update_board, os_name=update_os_name
         )
         return url
 
