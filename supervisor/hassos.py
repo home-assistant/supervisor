@@ -26,6 +26,7 @@ class HassOS(CoreSysAttributes):
         self._available: bool = False
         self._version: Optional[AwesomeVersion] = None
         self._board: Optional[str] = None
+        self._os_name: Optional[str] = None
 
     @property
     def available(self) -> bool:
@@ -55,18 +56,30 @@ class HassOS(CoreSysAttributes):
         """Return board name."""
         return self._board
 
+    @property
+    def os_name(self) -> Optional[str]:
+        """Return OS name."""
+        return self._os_name
+
     def _get_download_url(self, version: AwesomeVersion) -> str:
         raw_url = self.sys_updater.ota_url
         if raw_url is None:
             raise HassOSUpdateError("Don't have an URL for OTA updates!", _LOGGER.error)
 
         update_board = self.board
+        update_os_name = self.os_name
 
         # OS version 6 and later renamed intel-nuc to generic-x86-64...
         if update_board == "intel-nuc" and version >= 6.0:
             update_board = "generic-x86-64"
 
-        url = raw_url.format(version=str(version), board=update_board)
+        # The OS name used to be hassos before renaming to haos...
+        if version < 6.0:
+            update_os_name = "hassos"
+
+        url = raw_url.format(
+            version=str(version), board=update_board, os_name=update_os_name
+        )
         return url
 
     async def _download_raucb(self, url: str, raucb: Path) -> None:
@@ -115,13 +128,13 @@ class HassOS(CoreSysAttributes):
         except NotImplementedError:
             _LOGGER.info("No Home Assistant Operating System found")
             return
-        else:
-            self._available = True
-            self.sys_host.supported_features.cache_clear()
 
         # Store meta data
+        self._available = True
+        self.sys_host.supported_features.cache_clear()
         self._version = AwesomeVersion(cpe.get_version()[0])
         self._board = cpe.get_target_hardware()[0]
+        self._os_name = cpe.get_product()[0]
 
         await self.sys_dbus.rauc.update()
 
