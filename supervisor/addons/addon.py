@@ -754,7 +754,7 @@ class Addon(AddonModel):
             ):
                 await self._snapshot_command(self.snapshot_pre)
             elif is_running and self.snapshot_mode == SnapshotAddonMode.COLD:
-                _LOGGER.info("Shutdown add-on %s for cold backup", self.slug)
+                _LOGGER.info("Shutdown add-on %s for cold snapshot", self.slug)
                 await self.instance.stop()
 
             try:
@@ -771,6 +771,7 @@ class Addon(AddonModel):
                 ):
                     await self._snapshot_command(self.snapshot_post)
                 elif is_running and self.snapshot_mode is SnapshotAddonMode.COLD:
+                    _LOGGER.info("Starting add-on %s again", self.slug)
                     await self.start()
 
         _LOGGER.info("Finish snapshot for addon %s", self.slug)
