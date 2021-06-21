@@ -1,0 +1,9 @@
+{
+  "Timezone": "Etc/UTC",
+  "LocalRTC": false,
+  "CanNTP": true,
+  "NTP": true,
+  "NTPSynchronized": true,
+  "TimeUSec": 1621413414405718,
+  "RTCTimeUSec": 1621413415000000
+}

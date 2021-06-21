@@ -1,15 +1,11 @@
 """Info control for host."""
 import asyncio
+from datetime import datetime
 import logging
 from typing import Optional
 
 from ..coresys import CoreSysAttributes
-from ..exceptions import (
-    DBusError,
-    DBusNotConnectedError,
-    HostError,
-    HostNotSupportedError,
-)
+from ..exceptions import DBusError, HostError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -50,6 +46,31 @@ class InfoCenter(CoreSysAttributes):
     def cpe(self) -> Optional[str]:
         """Return local CPE."""
         return self.sys_dbus.hostname.cpe
+
+    @property
+    def timezone(self) -> Optional[str]:
+        """Return host timezone."""
+        return self.sys_dbus.timedate.timezone
+
+    @property
+    def dt_utc(self) -> Optional[datetime]:
+        """Return host UTC time."""
+        return self.sys_dbus.timedate.dt_utc
+
+    @property
+    def use_rtc(self) -> Optional[bool]:
+        """Return true if host have an RTC."""
+        return self.sys_dbus.timedate.local_rtc
+
+    @property
+    def use_ntp(self) -> Optional[bool]:
+        """Return true if host using NTP."""
+        return self.sys_dbus.timedate.ntp
+
+    @property
+    def dt_synchronized(self) -> Optional[bool]:
+        """Return true if host time is syncronized."""
+        return self.sys_dbus.timedate.ntp_synchronized
 
     @property
     def total_space(self) -> float:
@@ -98,9 +119,9 @@ class InfoCenter(CoreSysAttributes):
         """Update properties over dbus."""
         _LOGGER.info("Updating local host information")
         try:
-            await self.sys_dbus.hostname.update()
+            if self.sys_dbus.hostname.is_connected:
+                await self.sys_dbus.hostname.update()
+            if self.sys_dbus.timedate.is_connected:
+                await self.sys_dbus.timedate.update()
         except DBusError:
             _LOGGER.warning("Can't update host system information!")
-        except DBusNotConnectedError:
-            _LOGGER.error("No hostname D-Bus connection available")
-            raise HostNotSupportedError() from None

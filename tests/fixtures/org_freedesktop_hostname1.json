@@ -1,0 +1,15 @@
+{
+  "Hostname": "homeassistant-n2",
+  "StaticHostname": "homeassistant-n2",
+  "PrettyHostname": "",
+  "IconName": "computer-embedded",
+  "Chassis": "embedded",
+  "Deployment": "development",
+  "Location": "",
+  "KernelName": "Linux",
+  "KernelRelease": "5.10.33",
+  "KernelVersion": "#1 SMP PREEMPT Wed May 5 00:55:38 UTC 2021",
+  "OperatingSystemPrettyName": "Home Assistant OS 6.0.dev20210504",
+  "OperatingSystemCPEName": "cpe:2.3:o:home-assistant:haos:6.0.dev20210504:*:development:*:*:*:odroid-n2:*",
+  "HomeURL": "https://hass.io/"
+}

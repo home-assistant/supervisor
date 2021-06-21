@@ -112,7 +112,7 @@ class DockerAddon(DockerInterface):
 
         return {
             **addon_env,
-            ENV_TIME: self.sys_config.timezone,
+            ENV_TIME: self.sys_timezone,
             ENV_TOKEN: self.addon.supervisor_token,
             ENV_TOKEN_HASSIO: self.addon.supervisor_token,
         }

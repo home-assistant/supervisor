@@ -21,9 +21,11 @@ from ..const import (
     ATTR_OPERATING_SYSTEM,
     ATTR_SERVICES,
     ATTR_STATE,
+    ATTR_TIMEZONE,
     CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
+from .const import ATTR_DT_SYNCHRONIZED, ATTR_DT_UTC, ATTR_USE_NTP, ATTR_USE_RTC
 from .utils import api_process, api_process_raw, api_validate
 
 SERVICE = "service"
@@ -49,6 +51,11 @@ class APIHost(CoreSysAttributes):
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_KERNEL: self.sys_host.info.kernel,
             ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
+            ATTR_TIMEZONE: self.sys_host.info.timezone,
+            ATTR_DT_UTC: self.sys_host.info.dt_utc,
+            ATTR_DT_SYNCHRONIZED: self.sys_host.info.dt_synchronized,
+            ATTR_USE_NTP: self.sys_host.info.use_ntp,
+            ATTR_USE_RTC: self.sys_host.info.use_rtc,
         }
 
     @api_process

@@ -77,6 +77,22 @@ async def test_approve(coresys: CoreSys):
     assert not await addon_pwned.approve_check(reference=addon.slug)
 
 
+async def test_with_global_disable(coresys: CoreSys, caplog):
+    """Test when pwned is globally disabled."""
+    coresys.security.pwned = False
+    addon_pwned = CheckAddonPwned(coresys)
+    coresys.core.state = CoreState.RUNNING
+
+    addon = TestAddon()
+    coresys.addons.local[addon.slug] = addon
+
+    assert len(coresys.resolution.issues) == 0
+    coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
+    await addon_pwned.run_check.__wrapped__(addon_pwned)
+    assert not coresys.security.verify_secret.called
+    assert "Skipping addon_pwned, pwned is globally disabled" in caplog.text
+
+
 async def test_did_run(coresys: CoreSys):
     """Test that the check ran as expected."""
     addon_pwned = CheckAddonPwned(coresys)

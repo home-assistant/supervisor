@@ -5,6 +5,8 @@ from typing import Any, Awaitable, Dict, List, Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
+from supervisor.addons.const import SnapshotAddonMode
+
 from ..const import (
     ATTR_ADVANCED,
     ATTR_APPARMOR,
@@ -77,6 +79,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import Capabilities
+from .const import ATTR_SNAPSHOT
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE, RE_VOLUME
 
@@ -372,6 +375,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def snapshot_post(self) -> Optional[str]:
         """Return post-snapshot command."""
         return self.data.get(ATTR_BACKUP_POST)
+
+    @property
+    def snapshot_mode(self) -> SnapshotAddonMode:
+        """Return if snapshot is hot/cold."""
+        return self.data[ATTR_SNAPSHOT]
 
     @property
     def default_init(self) -> bool:

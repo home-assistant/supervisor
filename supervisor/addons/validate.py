@@ -7,6 +7,8 @@ import uuid
 
 import voluptuous as vol
 
+from supervisor.addons.const import SnapshotAddonMode
+
 from ..const import (
     ARCH_ALL,
     ATTR_ACCESS_TOKEN,
@@ -19,9 +21,6 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTH_API,
     ATTR_AUTO_UPDATE,
-    ATTR_BACKUP_EXCLUDE,
-    ATTR_BACKUP_POST,
-    ATTR_BACKUP_PRE,
     ATTR_BOOT,
     ATTR_BUILD_FROM,
     ATTR_CONFIGURATION,
@@ -71,6 +70,8 @@ from ..const import (
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_SNAPSHOT_EXCLUDE,
+    ATTR_SNAPSHOT_POST,
+    ATTR_SNAPSHOT_PRE,
     ATTR_SQUASH,
     ATTR_STAGE,
     ATTR_STARTUP,
@@ -108,6 +109,7 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
+from .const import ATTR_SNAPSHOT
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -159,6 +161,14 @@ def _warn_addon_config(config: Dict[str, Any]):
     ):
         _LOGGER.warning(
             "Add-on have full device access, and selective device access in the configuration. Please report this to the maintainer of %s",
+            name,
+        )
+
+    if config.get(ATTR_SNAPSHOT, SnapshotAddonMode.HOT) == SnapshotAddonMode.COLD and (
+        config.get(ATTR_SNAPSHOT_POST) or config.get(ATTR_SNAPSHOT_PRE)
+    ):
+        _LOGGER.warning(
+            "Add-on which only support COLD backups trying to use post/pre commands. Please report this to the maintainer of %s",
             name,
         )
 
@@ -283,9 +293,11 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
         vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
         vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [str],
-        vol.Optional(ATTR_BACKUP_EXCLUDE): [str],
-        vol.Optional(ATTR_BACKUP_PRE): str,
-        vol.Optional(ATTR_BACKUP_POST): str,
+        vol.Optional(ATTR_SNAPSHOT_PRE): str,
+        vol.Optional(ATTR_SNAPSHOT_POST): str,
+        vol.Optional(ATTR_SNAPSHOT, default=SnapshotAddonMode.HOT): vol.Coerce(
+            SnapshotAddonMode
+        ),
         vol.Optional(ATTR_OPTIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
             vol.Schema(

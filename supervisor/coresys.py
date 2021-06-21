@@ -92,6 +92,15 @@ class CoreSys:
         return bool(os.environ.get(ENV_SUPERVISOR_DEV, 0))
 
     @property
+    def timezone(self) -> str:
+        """Return system timezone."""
+        if self.config.timezone:
+            return self.config.timezone
+        if self.host.info.timezone:
+            return self.host.info.timezone
+        return "UTC"
+
+    @property
     def loop(self) -> asyncio.BaseEventLoop:
         """Return loop object."""
         return self._loop
@@ -462,6 +471,11 @@ class CoreSysAttributes:
     """Inherit basic CoreSysAttributes."""
 
     coresys: CoreSys
+
+    @property
+    def sys_timezone(self) -> str:
+        """Return system internal used timezone."""
+        return self.coresys.timezone
 
     @property
     def sys_machine(self) -> Optional[str]:

@@ -1,7 +1,8 @@
 """Validate utils."""
 
-import pytz
 import voluptuous as vol
+
+from .dt import get_time_zone
 
 
 def schema_or(schema):
@@ -18,12 +19,9 @@ def schema_or(schema):
 
 def validate_timezone(timezone):
     """Validate voluptuous timezone."""
-    try:
-        pytz.timezone(timezone)
-    except pytz.exceptions.UnknownTimeZoneError:
-        raise vol.Invalid(
-            "Invalid time zone passed in. Valid options can be found here: "
-            "http://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
-        ) from None
-
-    return timezone
+    if get_time_zone(timezone) is not None:
+        return timezone
+    raise vol.Invalid(
+        "Invalid time zone passed in. Valid options can be found here: "
+        "http://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+    ) from None

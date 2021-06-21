@@ -352,6 +352,21 @@ class CodeNotaryBackendError(CodeNotaryError):
     """CodeNotary backend error happening."""
 
 
+# util/whoami
+
+
+class WhoamiError(HassioError):
+    """Error while using whoami."""
+
+
+class WhoamiSSLError(WhoamiError):
+    """Error with the SSL certificate."""
+
+
+class WhoamiConnectivityError(WhoamiError):
+    """Connectivity errors while using whoami."""
+
+
 # docker/api
 
 

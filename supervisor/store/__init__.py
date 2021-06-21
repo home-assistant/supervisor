@@ -3,6 +3,7 @@ import asyncio
 import logging
 from typing import Dict, List
 
+from ..const import URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import StoreGitError, StoreJobError, StoreNotFound
 from ..jobs.decorator import Job, JobCondition
@@ -76,6 +77,9 @@ class StoreManager(CoreSysAttributes):
         async def _add_repository(url: str, step: int):
             """Add a repository."""
             job.update(progress=job.progress + step, stage=f"Checking {url} started")
+            if url == URL_HASSIO_ADDONS:
+                url = StoreType.CORE
+
             repository = Repository(self.coresys, url)
 
             # Load the repository

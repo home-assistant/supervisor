@@ -34,7 +34,7 @@ async def mock_async_return_true() -> bool:
 @pytest.fixture
 def docker() -> DockerAPI:
     """Mock DockerAPI."""
-    images = [MagicMock(tags=["homeassistant/amd64-hassio-supervisor:latest"])]
+    images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
 
     with patch("docker.DockerClient", return_value=MagicMock()), patch(
         "supervisor.docker.DockerAPI.images", return_value=MagicMock()
@@ -89,8 +89,8 @@ def dbus() -> DBus:
                 fixture = re.sub(r"_[0-9]+$", "", fixture)
 
                 # special case
-                if exists_fixture(f"{fixture}_*.{filetype}"):
-                    fixture = f"{fixture}_*"
+                if exists_fixture(f"{fixture}_~.{filetype}"):
+                    fixture = f"{fixture}_~"
         else:
             fixture = f"{fixture}-{command[10].split('.')[-1]}"
             filetype = "fixture"
@@ -128,9 +128,6 @@ async def coresys(loop, docker, network_manager, aiohttp_client) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system_data"), patch(
         "supervisor.bootstrap.setup_diagnostics"
-    ), patch(
-        "supervisor.bootstrap.fetch_timezone",
-        return_value="Europe/Zurich",
     ):
         coresys_obj = await initialize_coresys()
 

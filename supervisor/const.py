@@ -445,3 +445,4 @@ class HostFeature(str, Enum):
     REBOOT = "reboot"
     SERVICES = "services"
     SHUTDOWN = "shutdown"
+    TIMEDATE = "timedate"

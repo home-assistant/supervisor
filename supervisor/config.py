@@ -48,6 +48,11 @@ MEDIA_DATA = PurePath("media")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
+# We filter out UTC because it's the system default fallback
+# Core also not respect the cotnainer timezone and reset timezones
+# to UTC if the user overflight the onboarding.
+_UTC = "UTC"
+
 
 class CoreConfig(FileConfiguration):
     """Hold all core config data."""
@@ -57,13 +62,19 @@ class CoreConfig(FileConfiguration):
         super().__init__(FILE_HASSIO_CONFIG, SCHEMA_SUPERVISOR_CONFIG)
 
     @property
-    def timezone(self) -> str:
+    def timezone(self) -> Optional[str]:
         """Return system timezone."""
-        return self._data[ATTR_TIMEZONE]
+        timezone = self._data.get(ATTR_TIMEZONE)
+        if timezone != _UTC:
+            return timezone
+        self._data.pop(ATTR_TIMEZONE, None)
+        return None
 
     @timezone.setter
     def timezone(self, value: str) -> None:
         """Set system timezone."""
+        if value == _UTC:
+            return
         self._data[ATTR_TIMEZONE] = value
 
     @property
