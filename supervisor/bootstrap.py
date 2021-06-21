@@ -20,6 +20,7 @@ from .addons import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
+from .backups.manager import BackupManager
 from .const import (
     ENV_HOMEASSISTANT_REPOSITORY,
     ENV_SUPERVISOR_MACHINE,
@@ -47,7 +48,6 @@ from .plugins import PluginManager
 from .resolution.module import ResolutionManager
 from .security import Security
 from .services import ServiceManager
-from .snapshots import SnapshotManager
 from .store import StoreManager
 from .supervisor import Supervisor
 from .updater import Updater
@@ -71,7 +71,7 @@ async def initialize_coresys() -> CoreSys:
     coresys.supervisor = Supervisor(coresys)
     coresys.homeassistant = HomeAssistant(coresys)
     coresys.addons = AddonManager(coresys)
-    coresys.snapshots = SnapshotManager(coresys)
+    coresys.backups = BackupManager(coresys)
     coresys.host = HostManager(coresys)
     coresys.hardware = HardwareManager(coresys)
     coresys.ingress = Ingress(coresys)

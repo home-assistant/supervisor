@@ -131,7 +131,7 @@ class Core(CoreSysAttributes):
             # Load Add-ons
             self.sys_addons.load(),
             # load last available data
-            self.sys_snapshots.load(),
+            self.sys_backups.load(),
             # load services
             self.sys_services.load(),
             # Load discovery

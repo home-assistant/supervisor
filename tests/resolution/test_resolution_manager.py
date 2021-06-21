@@ -36,44 +36,44 @@ def test_properies_unhealthy(coresys: CoreSys):
 @pytest.mark.asyncio
 async def test_resolution_dismiss_suggestion(coresys: CoreSys):
     """Test resolution manager suggestion apply api."""
-    coresys.resolution.suggestions = clear_snapshot = Suggestion(
-        SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
+    coresys.resolution.suggestions = clear_backup = Suggestion(
+        SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
     )
 
-    assert SuggestionType.CLEAR_FULL_SNAPSHOT == coresys.resolution.suggestions[-1].type
-    coresys.resolution.dismiss_suggestion(clear_snapshot)
-    assert clear_snapshot not in coresys.resolution.suggestions
+    assert SuggestionType.CLEAR_FULL_BACKUP == coresys.resolution.suggestions[-1].type
+    coresys.resolution.dismiss_suggestion(clear_backup)
+    assert clear_backup not in coresys.resolution.suggestions
 
     with pytest.raises(ResolutionError):
-        coresys.resolution.dismiss_suggestion(clear_snapshot)
+        coresys.resolution.dismiss_suggestion(clear_backup)
 
 
 @pytest.mark.asyncio
 async def test_resolution_apply_suggestion(coresys: CoreSys):
     """Test resolution manager suggestion apply api."""
-    coresys.resolution.suggestions = clear_snapshot = Suggestion(
-        SuggestionType.CLEAR_FULL_SNAPSHOT, ContextType.SYSTEM
+    coresys.resolution.suggestions = clear_backup = Suggestion(
+        SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
     )
-    coresys.resolution.suggestions = create_snapshot = Suggestion(
-        SuggestionType.CREATE_FULL_SNAPSHOT, ContextType.SYSTEM
+    coresys.resolution.suggestions = create_backup = Suggestion(
+        SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM
     )
 
-    mock_snapshots = AsyncMock()
+    mock_backups = AsyncMock()
     mock_health = AsyncMock()
-    coresys.snapshots.do_snapshot_full = mock_snapshots
+    coresys.backups.do_backup_full = mock_backups
     coresys.resolution.healthcheck = mock_health
 
-    await coresys.resolution.apply_suggestion(clear_snapshot)
-    await coresys.resolution.apply_suggestion(create_snapshot)
+    await coresys.resolution.apply_suggestion(clear_backup)
+    await coresys.resolution.apply_suggestion(create_backup)
 
-    assert mock_snapshots.called
+    assert mock_backups.called
     assert mock_health.called
 
-    assert clear_snapshot not in coresys.resolution.suggestions
-    assert create_snapshot not in coresys.resolution.suggestions
+    assert clear_backup not in coresys.resolution.suggestions
+    assert create_backup not in coresys.resolution.suggestions
 
     with pytest.raises(ResolutionError):
-        await coresys.resolution.apply_suggestion(clear_snapshot)
+        await coresys.resolution.apply_suggestion(clear_backup)
 
 
 @pytest.mark.asyncio

@@ -7,8 +7,8 @@ from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from .data import Suggestion
 from .fixups.base import FixupBase
-from .fixups.clear_full_snapshot import FixupClearFullSnapshot
-from .fixups.create_full_snapshot import FixupCreateFullSnapshot
+from .fixups.clear_full_backup import FixupClearFullBackup
+from .fixups.create_full_backup import FixupCreateFullBackup
 from .fixups.store_execute_reload import FixupStoreExecuteReload
 from .fixups.store_execute_remove import FixupStoreExecuteRemove
 from .fixups.store_execute_reset import FixupStoreExecuteReset
@@ -23,8 +23,8 @@ class ResolutionFixup(CoreSysAttributes):
         """Initialize the suggestion class."""
         self.coresys = coresys
 
-        self._create_full_snapshot = FixupCreateFullSnapshot(coresys)
-        self._clear_full_snapshot = FixupClearFullSnapshot(coresys)
+        self._create_full_backup = FixupCreateFullBackup(coresys)
+        self._clear_full_backup = FixupClearFullBackup(coresys)
         self._store_execute_reset = FixupStoreExecuteReset(coresys)
         self._store_execute_reload = FixupStoreExecuteReload(coresys)
         self._store_execute_remove = FixupStoreExecuteRemove(coresys)
@@ -36,8 +36,8 @@ class ResolutionFixup(CoreSysAttributes):
         Order can be important!
         """
         return [
-            self._create_full_snapshot,
-            self._clear_full_snapshot,
+            self._create_full_backup,
+            self._clear_full_backup,
             self._store_execute_reload,
             self._store_execute_reset,
             self._store_execute_remove,

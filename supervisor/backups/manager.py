@@ -1,4 +1,4 @@
-"""Snapshot system control."""
+"""Backup manager."""
 import asyncio
 import logging
 from pathlib import Path
@@ -7,56 +7,56 @@ from typing import Awaitable, Set
 from awesomeversion.awesomeversion import AwesomeVersion
 from awesomeversion.exceptions import AwesomeVersionCompare
 
-from ..const import FOLDER_HOMEASSISTANT, SNAPSHOT_FULL, SNAPSHOT_PARTIAL, CoreState
+from ..const import BACKUP_FULL, BACKUP_PARTIAL, FOLDER_HOMEASSISTANT, CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
 from ..jobs.decorator import Job, JobCondition
 from ..utils.dt import utcnow
-from .snapshot import Snapshot
+from .backup import Backup
 from .utils import create_slug
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class SnapshotManager(CoreSysAttributes):
-    """Manage snapshots."""
+class BackupManager(CoreSysAttributes):
+    """Manage backups."""
 
     def __init__(self, coresys):
-        """Initialize a snapshot manager."""
+        """Initialize a backup manager."""
         self.coresys = coresys
-        self.snapshots_obj = {}
+        self._backups = {}
         self.lock = asyncio.Lock()
 
     @property
-    def list_snapshots(self) -> Set[Snapshot]:
-        """Return a list of all snapshot object."""
-        return set(self.snapshots_obj.values())
+    def list_backups(self) -> Set[Backup]:
+        """Return a list of all backup objects."""
+        return set(self._backups.values())
 
     def get(self, slug):
-        """Return snapshot object."""
-        return self.snapshots_obj.get(slug)
+        """Return backup object."""
+        return self._backups.get(slug)
 
-    def _create_snapshot(self, name, sys_type, password, homeassistant=True):
-        """Initialize a new snapshot object from name."""
+    def _create_backup(self, name, sys_type, password, homeassistant=True):
+        """Initialize a new backup object from name."""
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
         tar_file = Path(self.sys_config.path_backup, f"{slug}.tar")
 
         # init object
-        snapshot = Snapshot(self.coresys, tar_file)
-        snapshot.new(slug, name, date_str, sys_type, password)
+        backup = Backup(self.coresys, tar_file)
+        backup.new(slug, name, date_str, sys_type, password)
 
         # set general data
         if homeassistant:
-            snapshot.store_homeassistant()
+            backup.store_homeassistant()
 
-        snapshot.store_repositories()
-        snapshot.store_dockerconfig()
+        backup.store_repositories()
+        backup.store_dockerconfig()
 
-        return snapshot
+        return backup
 
     def load(self):
-        """Load exists snapshots data.
+        """Load exists backups data.
 
         Return a coroutine.
         """
@@ -64,16 +64,16 @@ class SnapshotManager(CoreSysAttributes):
 
     async def reload(self):
         """Load exists backups."""
-        self.snapshots_obj = {}
+        self._backups = {}
 
-        async def _load_snapshot(tar_file):
-            """Load the snapshot."""
-            snapshot = Snapshot(self.coresys, tar_file)
-            if await snapshot.load():
-                self.snapshots_obj[snapshot.slug] = snapshot
+        async def _load_backup(tar_file):
+            """Load the backup."""
+            backup = Backup(self.coresys, tar_file)
+            if await backup.load():
+                self._backups[backup.slug] = backup
 
         tasks = [
-            _load_snapshot(tar_file)
+            _load_backup(tar_file)
             for tar_file in self.sys_config.path_backup.glob("*.tar")
         ]
 
@@ -81,93 +81,91 @@ class SnapshotManager(CoreSysAttributes):
         if tasks:
             await asyncio.wait(tasks)
 
-    def remove(self, snapshot):
-        """Remove a snapshot."""
+    def remove(self, backup):
+        """Remove a backup."""
         try:
-            snapshot.tarfile.unlink()
-            self.snapshots_obj.pop(snapshot.slug, None)
-            _LOGGER.info("Removed backup file %s", snapshot.slug)
+            backup.tarfile.unlink()
+            self._backups.pop(backup.slug, None)
+            _LOGGER.info("Removed backup file %s", backup.slug)
 
         except OSError as err:
-            _LOGGER.error("Can't remove backup %s: %s", snapshot.slug, err)
+            _LOGGER.error("Can't remove backup %s: %s", backup.slug, err)
             return False
 
         return True
 
-    async def import_snapshot(self, tar_file):
-        """Check snapshot tarfile and import it."""
-        snapshot = Snapshot(self.coresys, tar_file)
+    async def import_backup(self, tar_file):
+        """Check backup tarfile and import it."""
+        backup = Backup(self.coresys, tar_file)
 
         # Read meta data
-        if not await snapshot.load():
+        if not await backup.load():
             return None
 
         # Already exists?
-        if snapshot.slug in self.snapshots_obj:
-            _LOGGER.warning(
-                "Snapshot %s already exists! overwriting backup", snapshot.slug
-            )
-            self.remove(self.get(snapshot.slug))
+        if backup.slug in self._backups:
+            _LOGGER.warning("Backup %s already exists! overwriting", backup.slug)
+            self.remove(self.get(backup.slug))
 
-        # Move snapshot to backup
-        tar_origin = Path(self.sys_config.path_backup, f"{snapshot.slug}.tar")
+        # Move backup to backup
+        tar_origin = Path(self.sys_config.path_backup, f"{backup.slug}.tar")
         try:
-            snapshot.tarfile.rename(tar_origin)
+            backup.tarfile.rename(tar_origin)
 
         except OSError as err:
             _LOGGER.error("Can't move backup file to storage: %s", err)
             return None
 
-        # Load new snapshot
-        snapshot = Snapshot(self.coresys, tar_origin)
-        if not await snapshot.load():
+        # Load new backup
+        backup = Backup(self.coresys, tar_origin)
+        if not await backup.load():
             return None
-        _LOGGER.info("Successfully imported %s", snapshot.slug)
+        _LOGGER.info("Successfully imported %s", backup.slug)
 
-        self.snapshots_obj[snapshot.slug] = snapshot
-        return snapshot
+        self._backups[backup.slug] = backup
+        return backup
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
-    async def do_snapshot_full(self, name="", password=None):
-        """Create a full snapshot."""
+    async def do_backup_full(self, name="", password=None):
+        """Create a full backup."""
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
             return None
 
-        snapshot = self._create_snapshot(name, SNAPSHOT_FULL, password)
-        _LOGGER.info("Creating new full backup with slug %s", snapshot.slug)
+        backup = self._create_backup(name, BACKUP_FULL, password)
+        _LOGGER.info("Creating new full backup with slug %s", backup.slug)
         try:
             self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
-            async with snapshot:
-                # Snapshot add-ons
-                _LOGGER.info("Backing up %s store Add-ons", snapshot.slug)
-                await snapshot.store_addons()
+            async with backup:
+                # Backup add-ons
+                _LOGGER.info("Backing up %s store Add-ons", backup.slug)
+                await backup.store_addons()
 
-                # Snapshot folders
-                _LOGGER.info("Backing up %s store folders", snapshot.slug)
-                await snapshot.store_folders()
+                # Backup folders
+                _LOGGER.info("Backing up %s store folders", backup.slug)
+                await backup.store_folders()
 
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Backup %s error", snapshot.slug)
+            _LOGGER.exception("Backup %s error", backup.slug)
             self.sys_capture_exception(err)
             return None
 
         else:
-            _LOGGER.info("Creating full backup with slug %s completed", snapshot.slug)
-            self.snapshots_obj[snapshot.slug] = snapshot
-            return snapshot
+            _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
+            self._backups[backup.slug] = backup
+            return backup
 
         finally:
             self.sys_core.state = CoreState.RUNNING
             self.lock.release()
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
-    async def do_snapshot_partial(
+    async def do_backup_partial(
         self, name="", addons=None, folders=None, password=None, homeassistant=True
     ):
-        """Create a partial snapshot."""
+        """Create a partial backup."""
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
             return None
@@ -179,17 +177,15 @@ class SnapshotManager(CoreSysAttributes):
             _LOGGER.error("Nothing to create backup for")
             return
 
-        snapshot = self._create_snapshot(
-            name, SNAPSHOT_PARTIAL, password, homeassistant
-        )
+        backup = self._create_backup(name, BACKUP_PARTIAL, password, homeassistant)
 
-        _LOGGER.info("Creating new partial backup with slug %s", snapshot.slug)
+        _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
         try:
             self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
-            async with snapshot:
-                # Snapshot add-ons
+            async with backup:
+                # Backup add-ons
                 addon_list = []
                 for addon_slug in addons:
                     addon = self.sys_addons.get(addon_slug)
@@ -199,25 +195,23 @@ class SnapshotManager(CoreSysAttributes):
                     _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
                 if addon_list:
-                    _LOGGER.info("Backing up %s store Add-ons", snapshot.slug)
-                    await snapshot.store_addons(addon_list)
+                    _LOGGER.info("Backing up %s store Add-ons", backup.slug)
+                    await backup.store_addons(addon_list)
 
-                # Snapshot folders
+                # Backup folders
                 if folders:
-                    _LOGGER.info("Backing up %s store folders", snapshot.slug)
-                    await snapshot.store_folders(folders)
+                    _LOGGER.info("Backing up %s store folders", backup.slug)
+                    await backup.store_folders(folders)
 
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Backup %s error", snapshot.slug)
+            _LOGGER.exception("Backup %s error", backup.slug)
             self.sys_capture_exception(err)
             return None
 
         else:
-            _LOGGER.info(
-                "Creating partial backup with slug %s completed", snapshot.slug
-            )
-            self.snapshots_obj[snapshot.slug] = snapshot
-            return snapshot
+            _LOGGER.info("Creating partial backup with slug %s completed", backup.slug)
+            self._backups[backup.slug] = backup
+            return backup
 
         finally:
             self.sys_core.state = CoreState.RUNNING
@@ -232,50 +226,50 @@ class SnapshotManager(CoreSysAttributes):
             JobCondition.RUNNING,
         ]
     )
-    async def do_restore_full(self, snapshot, password=None):
-        """Restore a snapshot."""
+    async def do_restore_full(self, backup, password=None):
+        """Restore a backup."""
         if self.lock.locked():
-            _LOGGER.error("A snapshot/restore process is already running")
+            _LOGGER.error("A backup/restore process is already running")
             return False
 
-        if snapshot.sys_type != SNAPSHOT_FULL:
-            _LOGGER.error("%s is only a partial backup!", snapshot.slug)
+        if backup.sys_type != BACKUP_FULL:
+            _LOGGER.error("%s is only a partial backup!", backup.slug)
             return False
 
-        if snapshot.protected and not snapshot.set_password(password):
-            _LOGGER.error("Invalid password for backup %s", snapshot.slug)
+        if backup.protected and not backup.set_password(password):
+            _LOGGER.error("Invalid password for backup %s", backup.slug)
             return False
 
-        _LOGGER.info("Full-Restore %s start", snapshot.slug)
+        _LOGGER.info("Full-Restore %s start", backup.slug)
         try:
             self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
-            async with snapshot:
+            async with backup:
                 # Stop Home-Assistant / Add-ons
                 await self.sys_core.shutdown()
 
                 # Restore folders
-                _LOGGER.info("Restoring %s folders", snapshot.slug)
-                await snapshot.restore_folders()
+                _LOGGER.info("Restoring %s folders", backup.slug)
+                await backup.restore_folders()
 
                 # Restore docker config
-                _LOGGER.info("Restoring %s Docker Config", snapshot.slug)
-                snapshot.restore_dockerconfig()
+                _LOGGER.info("Restoring %s Docker Config", backup.slug)
+                backup.restore_dockerconfig()
 
                 # Start homeassistant restore
-                _LOGGER.info("Restoring %s Home-Assistant", snapshot.slug)
-                snapshot.restore_homeassistant()
-                task_hass = self._update_core_task(snapshot.homeassistant_version)
+                _LOGGER.info("Restoring %s Home-Assistant", backup.slug)
+                backup.restore_homeassistant()
+                task_hass = self._update_core_task(backup.homeassistant_version)
 
                 # Restore repositories
-                _LOGGER.info("Restoring %s Repositories", snapshot.slug)
-                await snapshot.restore_repositories()
+                _LOGGER.info("Restoring %s Repositories", backup.slug)
+                await backup.restore_repositories()
 
                 # Delete delta add-ons
-                _LOGGER.info("Removing add-ons not in the snapshot %s", snapshot.slug)
+                _LOGGER.info("Removing add-ons not in the backup %s", backup.slug)
                 for addon in self.sys_addons.installed:
-                    if addon.slug in snapshot.addon_list:
+                    if addon.slug in backup.addon_list:
                         continue
 
                     # Remove Add-on because it's not a part of the new env
@@ -286,21 +280,21 @@ class SnapshotManager(CoreSysAttributes):
                         _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
 
                 # Restore add-ons
-                _LOGGER.info("Restore %s old add-ons", snapshot.slug)
-                await snapshot.restore_addons()
+                _LOGGER.info("Restore %s old add-ons", backup.slug)
+                await backup.restore_addons()
 
                 # finish homeassistant task
-                _LOGGER.info("Restore %s wait until homeassistant ready", snapshot.slug)
+                _LOGGER.info("Restore %s wait until homeassistant ready", backup.slug)
                 await task_hass
                 await self.sys_homeassistant.core.start()
 
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Restore %s error", snapshot.slug)
+            _LOGGER.exception("Restore %s error", backup.slug)
             self.sys_capture_exception(err)
             return False
 
         else:
-            _LOGGER.info("Full-Restore %s done", snapshot.slug)
+            _LOGGER.info("Full-Restore %s done", backup.slug)
             return True
 
         finally:
@@ -317,56 +311,56 @@ class SnapshotManager(CoreSysAttributes):
         ]
     )
     async def do_restore_partial(
-        self, snapshot, homeassistant=False, addons=None, folders=None, password=None
+        self, backup, homeassistant=False, addons=None, folders=None, password=None
     ):
-        """Restore a snapshot."""
+        """Restore a backup."""
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
             return False
 
-        if snapshot.protected and not snapshot.set_password(password):
-            _LOGGER.error("Invalid password for backup %s", snapshot.slug)
+        if backup.protected and not backup.set_password(password):
+            _LOGGER.error("Invalid password for backup %s", backup.slug)
             return False
 
         addons = addons or []
         folders = folders or []
 
-        _LOGGER.info("Partial-Restore %s start", snapshot.slug)
+        _LOGGER.info("Partial-Restore %s start", backup.slug)
         try:
             self.sys_core.state = CoreState.FREEZE
             await self.lock.acquire()
 
-            async with snapshot:
+            async with backup:
                 # Restore docker config
-                _LOGGER.info("Restoring %s Docker Config", snapshot.slug)
-                snapshot.restore_dockerconfig()
+                _LOGGER.info("Restoring %s Docker Config", backup.slug)
+                backup.restore_dockerconfig()
 
                 # Stop Home-Assistant for config restore
                 if FOLDER_HOMEASSISTANT in folders:
                     await self.sys_homeassistant.core.stop()
-                    snapshot.restore_homeassistant()
+                    backup.restore_homeassistant()
 
                 # Process folders
                 if folders:
-                    _LOGGER.info("Restoring %s folders", snapshot.slug)
-                    await snapshot.restore_folders(folders)
+                    _LOGGER.info("Restoring %s folders", backup.slug)
+                    await backup.restore_folders(folders)
 
                 # Process Home-Assistant
                 task_hass = None
                 if homeassistant:
-                    _LOGGER.info("Restoring %s Home-Assistant", snapshot.slug)
-                    task_hass = self._update_core_task(snapshot.homeassistant_version)
+                    _LOGGER.info("Restoring %s Home-Assistant", backup.slug)
+                    task_hass = self._update_core_task(backup.homeassistant_version)
 
                 if addons:
-                    _LOGGER.info("Restoring %s Repositories", snapshot.slug)
-                    await snapshot.restore_repositories()
+                    _LOGGER.info("Restoring %s Repositories", backup.slug)
+                    await backup.restore_repositories()
 
-                    _LOGGER.info("Restoring %s old add-ons", snapshot.slug)
-                    await snapshot.restore_addons(addons)
+                    _LOGGER.info("Restoring %s old add-ons", backup.slug)
+                    await backup.restore_addons(addons)
 
                 # Make sure homeassistant run agen
                 if task_hass:
-                    _LOGGER.info("Restore %s wait for Home-Assistant", snapshot.slug)
+                    _LOGGER.info("Restore %s wait for Home-Assistant", backup.slug)
                     await task_hass
 
                 # Do we need start HomeAssistant?
@@ -379,12 +373,12 @@ class SnapshotManager(CoreSysAttributes):
                     await self.sys_homeassistant.core.restart()
 
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Restore %s error", snapshot.slug)
+            _LOGGER.exception("Restore %s error", backup.slug)
             self.sys_capture_exception(err)
             return False
 
         else:
-            _LOGGER.info("Partial-Restore %s done", snapshot.slug)
+            _LOGGER.info("Partial-Restore %s done", backup.slug)
             return True
 
         finally:

@@ -110,7 +110,7 @@ class SecureTarFile:
 
     @property
     def size(self) -> float:
-        """Return snapshot size."""
+        """Return backup size."""
         if not self._name.is_file():
             return 0
         return round(self._name.stat().st_size / 1_048_576, 2)  # calc mbyte

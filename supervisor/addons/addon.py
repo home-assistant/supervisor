@@ -65,11 +65,11 @@ from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from ..utils.tar import atomic_contents_add, secure_path
-from .const import SnapshotAddonMode
+from .const import AddonBackupMode
 from .model import AddonModel, Data
 from .options import AddonOptions
 from .utils import remove_data
-from .validate import SCHEMA_ADDON_SNAPSHOT
+from .validate import SCHEMA_ADDON_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -679,7 +679,7 @@ class Addon(AddonModel):
         except DockerError as err:
             raise AddonsError() from err
 
-    async def _snapshot_command(self, command: str) -> None:
+    async def _backup_command(self, command: str) -> None:
         try:
             command_return = await self.instance.run_inside(command)
             if command_return.exit_code != 0:
@@ -694,8 +694,8 @@ class Addon(AddonModel):
             )
             raise AddonsError() from err
 
-    async def snapshot(self, tar_file: tarfile.TarFile) -> None:
-        """Snapshot state of an add-on."""
+    async def backup(self, tar_file: tarfile.TarFile) -> None:
+        """Backup state of an add-on."""
         is_running = await self.is_running()
 
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
@@ -734,27 +734,27 @@ class Addon(AddonModel):
             # write into tarfile
             def _write_tarfile():
                 """Write tar inside loop."""
-                with tar_file as snapshot:
-                    # Snapshot system
+                with tar_file as backup:
+                    # Backup system
 
-                    snapshot.add(temp, arcname=".")
+                    backup.add(temp, arcname=".")
 
-                    # Snapshot data
+                    # Backup data
                     atomic_contents_add(
-                        snapshot,
+                        backup,
                         self.path_data,
-                        excludes=self.snapshot_exclude,
+                        excludes=self.backup_exclude,
                         arcname="data",
                     )
 
             if (
                 is_running
-                and self.snapshot_mode == SnapshotAddonMode.HOT
-                and self.snapshot_pre is not None
+                and self.backup_mode == AddonBackupMode.HOT
+                and self.backup_pre is not None
             ):
-                await self._snapshot_command(self.snapshot_pre)
-            elif is_running and self.snapshot_mode == SnapshotAddonMode.COLD:
-                _LOGGER.info("Shutdown add-on %s for cold snapshot", self.slug)
+                await self._backup_command(self.backup_pre)
+            elif is_running and self.backup_mode == AddonBackupMode.COLD:
+                _LOGGER.info("Shutdown add-on %s for cold backup", self.slug)
                 await self.instance.stop()
 
             try:
@@ -766,11 +766,11 @@ class Addon(AddonModel):
             finally:
                 if (
                     is_running
-                    and self.snapshot_mode == SnapshotAddonMode.HOT
-                    and self.snapshot_post is not None
+                    and self.backup_mode == AddonBackupMode.HOT
+                    and self.backup_post is not None
                 ):
-                    await self._snapshot_command(self.snapshot_post)
-                elif is_running and self.snapshot_mode is SnapshotAddonMode.COLD:
+                    await self._backup_command(self.backup_post)
+                elif is_running and self.backup_mode is AddonBackupMode.COLD:
                     _LOGGER.info("Starting add-on %s again", self.slug)
                     await self.start()
 
@@ -779,11 +779,11 @@ class Addon(AddonModel):
     async def restore(self, tar_file: tarfile.TarFile) -> None:
         """Restore state of an add-on."""
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
-            # extract snapshot
+            # extract backup
             def _extract_tarfile():
-                """Extract tar snapshot."""
-                with tar_file as snapshot:
-                    snapshot.extractall(path=Path(temp), members=secure_path(snapshot))
+                """Extract tar backup."""
+                with tar_file as backup:
+                    backup.extractall(path=Path(temp), members=secure_path(backup))
 
             try:
                 await self.sys_run_in_executor(_extract_tarfile)
@@ -791,7 +791,7 @@ class Addon(AddonModel):
                 _LOGGER.error("Can't read tarfile %s: %s", tar_file, err)
                 raise AddonsError() from err
 
-            # Read snapshot data
+            # Read backup data
             try:
                 data = read_json_file(Path(temp, "addon.json"))
             except ConfigurationFileError as err:
@@ -799,7 +799,7 @@ class Addon(AddonModel):
 
             # Validate
             try:
-                data = SCHEMA_ADDON_SNAPSHOT(data)
+                data = SCHEMA_ADDON_BACKUP(data)
             except vol.Invalid as err:
                 _LOGGER.error(
                     "Can't validate %s, backup data: %s",

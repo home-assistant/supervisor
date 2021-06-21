@@ -9,6 +9,7 @@ from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
+from ..backups.validate import ALL_FOLDERS
 from ..const import (
     ATTR_ADDONS,
     ATTR_BACKUPS,
@@ -29,7 +30,6 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
-from ..snapshots.validate import ALL_FOLDERS
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -50,14 +50,14 @@ SCHEMA_RESTORE_FULL = vol.Schema(
     {vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str))}
 )
 
-SCHEMA_SNAPSHOT_FULL = vol.Schema(
+SCHEMA_BACKUP_FULL = vol.Schema(
     {
         vol.Optional(ATTR_NAME): vol.Coerce(str),
         vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
     }
 )
 
-SCHEMA_SNAPSHOT_PARTIAL = SCHEMA_SNAPSHOT_FULL.extend(
+SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
     {
         vol.Optional(ATTR_ADDONS): vol.All([vol.Coerce(str)], vol.Unique()),
         vol.Optional(ATTR_FOLDERS): vol.All([vol.In(ALL_FOLDERS)], vol.Unique()),
@@ -66,12 +66,12 @@ SCHEMA_SNAPSHOT_PARTIAL = SCHEMA_SNAPSHOT_FULL.extend(
 )
 
 
-class APISnapshots(CoreSysAttributes):
-    """Handle RESTful API for snapshots functions."""
+class APIBackups(CoreSysAttributes):
+    """Handle RESTful API for backups functions."""
 
     def _extract_slug(self, request):
         """Return backup, throw an exception if it doesn't exist."""
-        backup = self.sys_snapshots.get(request.match_info.get("slug"))
+        backup = self.sys_backups.get(request.match_info.get("slug"))
         if not backup:
             raise APIError("Backup does not exist")
         return backup
@@ -80,7 +80,7 @@ class APISnapshots(CoreSysAttributes):
     async def list(self, request):
         """Return backup list."""
         data_backups = []
-        for backup in self.sys_snapshots.list_snapshots:
+        for backup in self.sys_backups.list_backups:
             data_backups.append(
                 {
                     ATTR_SLUG: backup.slug,
@@ -96,34 +96,16 @@ class APISnapshots(CoreSysAttributes):
                 }
             )
 
+        if request.path == "/snapshots":
+            # Kept for backwards compability
+            return {ATTR_SNAPSHOTS: data_backups}
+
         return {ATTR_BACKUPS: data_backups}
-
-    @api_process
-    async def legacy_list(self, request):
-        """Return snapshot list."""
-        data_snapshots = []
-        for snapshot in self.sys_snapshots.list_snapshots:
-            data_snapshots.append(
-                {
-                    ATTR_SLUG: snapshot.slug,
-                    ATTR_NAME: snapshot.name,
-                    ATTR_DATE: snapshot.date,
-                    ATTR_TYPE: snapshot.sys_type,
-                    ATTR_PROTECTED: snapshot.protected,
-                    ATTR_CONTENT: {
-                        ATTR_HOMEASSISTANT: snapshot.homeassistant_version is not None,
-                        ATTR_ADDONS: snapshot.addon_list,
-                        ATTR_FOLDERS: snapshot.folders,
-                    },
-                }
-            )
-
-        return {ATTR_SNAPSHOTS: data_snapshots}
 
     @api_process
     async def reload(self, request):
         """Reload backup list."""
-        await asyncio.shield(self.sys_snapshots.reload())
+        await asyncio.shield(self.sys_backups.reload())
         return True
 
     @api_process
@@ -158,8 +140,8 @@ class APISnapshots(CoreSysAttributes):
     @api_process
     async def backup_full(self, request):
         """Create full backup."""
-        body = await api_validate(SCHEMA_SNAPSHOT_FULL, request)
-        backup = await asyncio.shield(self.sys_snapshots.do_snapshot_full(**body))
+        body = await api_validate(SCHEMA_BACKUP_FULL, request)
+        backup = await asyncio.shield(self.sys_backups.do_backup_full(**body))
 
         if backup:
             return {ATTR_SLUG: backup.slug}
@@ -168,11 +150,11 @@ class APISnapshots(CoreSysAttributes):
     @api_process
     async def backup_partial(self, request):
         """Create a partial backup."""
-        body = await api_validate(SCHEMA_SNAPSHOT_PARTIAL, request)
-        snapshot = await asyncio.shield(self.sys_snapshots.do_snapshot_partial(**body))
+        body = await api_validate(SCHEMA_BACKUP_PARTIAL, request)
+        backup = await asyncio.shield(self.sys_backups.do_backup_partial(**body))
 
-        if snapshot:
-            return {ATTR_SLUG: snapshot.slug}
+        if backup:
+            return {ATTR_SLUG: backup.slug}
         return False
 
     @api_process
@@ -181,7 +163,7 @@ class APISnapshots(CoreSysAttributes):
         backup = self._extract_slug(request)
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
 
-        return await asyncio.shield(self.sys_snapshots.do_restore_full(backup, **body))
+        return await asyncio.shield(self.sys_backups.do_restore_full(backup, **body))
 
     @api_process
     async def restore_partial(self, request):
@@ -189,15 +171,13 @@ class APISnapshots(CoreSysAttributes):
         backup = self._extract_slug(request)
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
 
-        return await asyncio.shield(
-            self.sys_snapshots.do_restore_partial(backup, **body)
-        )
+        return await asyncio.shield(self.sys_backups.do_restore_partial(backup, **body))
 
     @api_process
     async def remove(self, request):
         """Remove a backup."""
         backup = self._extract_slug(request)
-        return self.sys_snapshots.remove(backup)
+        return self.sys_backups.remove(backup)
 
     async def download(self, request):
         """Download a backup file."""
@@ -233,7 +213,7 @@ class APISnapshots(CoreSysAttributes):
             except asyncio.CancelledError:
                 return False
 
-            backup = await asyncio.shield(self.sys_snapshots.import_snapshot(tar_file))
+            backup = await asyncio.shield(self.sys_backups.import_backup(tar_file))
 
         if backup:
             return {ATTR_SLUG: backup.slug}

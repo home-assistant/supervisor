@@ -7,7 +7,7 @@ import uuid
 
 import voluptuous as vol
 
-from supervisor.addons.const import SnapshotAddonMode
+from supervisor.addons.const import AddonBackupMode
 
 from ..const import (
     ARCH_ALL,
@@ -21,6 +21,9 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTH_API,
     ATTR_AUTO_UPDATE,
+    ATTR_BACKUP_EXCLUDE,
+    ATTR_BACKUP_POST,
+    ATTR_BACKUP_PRE,
     ATTR_BOOT,
     ATTR_BUILD_FROM,
     ATTR_CONFIGURATION,
@@ -109,7 +112,7 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
-from .const import ATTR_SNAPSHOT
+from .const import ATTR_BACKUP, ATTR_SNAPSHOT
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -164,8 +167,8 @@ def _warn_addon_config(config: Dict[str, Any]):
             name,
         )
 
-    if config.get(ATTR_SNAPSHOT, SnapshotAddonMode.HOT) == SnapshotAddonMode.COLD and (
-        config.get(ATTR_SNAPSHOT_POST) or config.get(ATTR_SNAPSHOT_PRE)
+    if config.get(ATTR_BACKUP, AddonBackupMode.HOT) == AddonBackupMode.COLD and (
+        config.get(ATTR_BACKUP_POST) or config.get(ATTR_BACKUP_PRE)
     ):
         _LOGGER.warning(
             "Add-on which only support COLD backups trying to use post/pre commands. Please report this to the maintainer of %s",
@@ -223,6 +226,23 @@ def _migrate_addon_config(protocol=False):
                     name,
                 )
             config[ATTR_TMPFS] = True
+
+        # 2021-06 "snapshot" renamed to "backup"
+        for entry in (
+            ATTR_SNAPSHOT_EXCLUDE,
+            ATTR_SNAPSHOT_POST,
+            ATTR_SNAPSHOT_PRE,
+            ATTR_SNAPSHOT,
+        ):
+            if entry in config:
+                new_entry = entry.replace("snapshot", "backup")
+                config[new_entry] = config.pop(entry)
+                _LOGGER.warning(
+                    "Add-on config '%s' is deprecated, '%s' should be used instead. Please report this to the maintainer of %s",
+                    entry,
+                    new_entry,
+                    name,
+                )
 
         return config
 
@@ -292,11 +312,11 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_AUTH_API, default=False): vol.Boolean(),
         vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
         vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
-        vol.Optional(ATTR_SNAPSHOT_EXCLUDE): [str],
-        vol.Optional(ATTR_SNAPSHOT_PRE): str,
-        vol.Optional(ATTR_SNAPSHOT_POST): str,
-        vol.Optional(ATTR_SNAPSHOT, default=SnapshotAddonMode.HOT): vol.Coerce(
-            SnapshotAddonMode
+        vol.Optional(ATTR_BACKUP_EXCLUDE): [str],
+        vol.Optional(ATTR_BACKUP_PRE): str,
+        vol.Optional(ATTR_BACKUP_POST): str,
+        vol.Optional(ATTR_BACKUP, default=AddonBackupMode.HOT): vol.Coerce(
+            AddonBackupMode
         ),
         vol.Optional(ATTR_OPTIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
@@ -405,7 +425,7 @@ SCHEMA_ADDONS_FILE = vol.Schema(
 )
 
 
-SCHEMA_ADDON_SNAPSHOT = vol.Schema(
+SCHEMA_ADDON_BACKUP = vol.Schema(
     {
         vol.Required(ATTR_USER): SCHEMA_ADDON_USER,
         vol.Required(ATTR_SYSTEM): SCHEMA_ADDON_SYSTEM,

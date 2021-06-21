@@ -27,7 +27,7 @@ RUN_UPDATE_MULTICAST = 30300
 RUN_UPDATE_OBSERVER = 30400
 
 RUN_RELOAD_ADDONS = 10800
-RUN_RELOAD_SNAPSHOTS = 72000
+RUN_RELOAD_BACKUPS = 72000
 RUN_RELOAD_HOST = 7600
 RUN_RELOAD_UPDATER = 7200
 RUN_RELOAD_INGRESS = 930
@@ -72,9 +72,7 @@ class Tasks(CoreSysAttributes):
         # Reload
         self.sys_scheduler.register_task(self.sys_store.reload, RUN_RELOAD_ADDONS)
         self.sys_scheduler.register_task(self.sys_updater.reload, RUN_RELOAD_UPDATER)
-        self.sys_scheduler.register_task(
-            self.sys_snapshots.reload, RUN_RELOAD_SNAPSHOTS
-        )
+        self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
         self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
 
