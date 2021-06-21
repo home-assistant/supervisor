@@ -88,23 +88,39 @@ async def initialize_coresys() -> CoreSys:
     setup_diagnostics(coresys)
 
     # bootstrap config
-    initialize_system_data(coresys)
+    initialize_system(coresys)
 
     # Set Machine/Host ID
     if MACHINE_ID.exists():
         coresys.machine_id = MACHINE_ID.read_text().strip()
+
+    # Check if ENV is in development mode
+    if coresys.dev:
+        _LOGGER.warning("Environment variable 'SUPERVISOR_DEV' is set")
+        coresys.config.logging = LogLevel.DEBUG
+        coresys.config.debug = True
+        coresys.updater.channel = UpdateChannel.DEV
+        coresys.security.content_trust = False
+    else:
+        coresys.config.modify_log_level()
+
+    # Convert datetime
+    logging.Formatter.converter = lambda *args: coresys.now().timetuple()
 
     # Set machine type
     if os.environ.get(ENV_SUPERVISOR_MACHINE):
         coresys.machine = os.environ[ENV_SUPERVISOR_MACHINE]
     elif os.environ.get(ENV_HOMEASSISTANT_REPOSITORY):
         coresys.machine = os.environ[ENV_HOMEASSISTANT_REPOSITORY][14:-14]
+        _LOGGER.warning(
+            "Missing SUPERVISOR_MACHINE environment variable. Fallback to deprecated extraction!"
+        )
     _LOGGER.info("Seting up coresys for machine: %s", coresys.machine)
 
     return coresys
 
 
-def initialize_system_data(coresys: CoreSys) -> None:
+def initialize_system(coresys: CoreSys) -> None:
     """Set up the default configuration and create folders."""
     config = coresys.config
 
@@ -178,17 +194,6 @@ def initialize_system_data(coresys: CoreSys) -> None:
     if not config.path_media.is_dir():
         _LOGGER.debug("Creating Supervisor media folder at '%s'", config.path_media)
         config.path_media.mkdir()
-
-    # Update log level
-    coresys.config.modify_log_level()
-
-    # Check if ENV is in development mode
-    if coresys.dev:
-        _LOGGER.warning("Environment variables 'SUPERVISOR_DEV' is set")
-        coresys.config.logging = LogLevel.DEBUG
-        coresys.config.debug = True
-        coresys.updater.channel = UpdateChannel.DEV
-        coresys.security.content_trust = False
 
 
 def migrate_system_env(coresys: CoreSys) -> None:
