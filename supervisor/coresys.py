@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 import logging
 import os
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
@@ -12,6 +13,7 @@ import sentry_sdk
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV
 from .docker import DockerAPI
+from .utils.dt import UTC, get_time_zone
 
 if TYPE_CHECKING:
     from .addons import AddonManager
@@ -466,6 +468,24 @@ class CoreSys:
             raise RuntimeError("Machine-ID type already set!")
         self._machine_id = value
 
+    def now(self) -> datetime:
+        """Return now in local timezone."""
+        return datetime.now(get_time_zone(self.timezone) or UTC)
+
+    def run_in_executor(
+        self, funct: Callable[..., T], *args: Any
+    ) -> Coroutine[Any, Any, T]:
+        """Add an job to the executor pool."""
+        return self.loop.run_in_executor(None, funct, *args)
+
+    def create_task(self, coroutine: Coroutine) -> asyncio.Task:
+        """Create an async task."""
+        return self.loop.create_task(coroutine)
+
+    def capture_exception(self, err: Exception) -> None:
+        """Capture a exception."""
+        sentry_sdk.capture_exception(err)
+
 
 class CoreSysAttributes:
     """Inherit basic CoreSysAttributes."""
@@ -622,16 +642,20 @@ class CoreSysAttributes:
         """Return Job manager object."""
         return self.coresys.jobs
 
+    def now(self) -> datetime:
+        """Return now in local timezone."""
+        return self.coresys.now()
+
     def sys_run_in_executor(
         self, funct: Callable[..., T], *args: Any
     ) -> Coroutine[Any, Any, T]:
         """Add an job to the executor pool."""
-        return self.sys_loop.run_in_executor(None, funct, *args)
+        return self.coresys.run_in_executor(funct, *args)
 
     def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
         """Create an async task."""
-        return self.sys_loop.create_task(coroutine)
+        return self.coresys.create_task(coroutine)
 
     def sys_capture_exception(self, err: Exception) -> None:
         """Capture a exception."""
-        sentry_sdk.capture_exception(err)
+        self.coresys.capture_exception(err)
