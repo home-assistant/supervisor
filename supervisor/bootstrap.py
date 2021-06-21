@@ -105,7 +105,7 @@ async def initialize_coresys() -> CoreSys:
         coresys.config.modify_log_level()
 
     # Convert datetime
-    logging.Formatter.converter = lambda: coresys.now().timestamp()
+    logging.Formatter.converter = lambda *args: coresys.now().timetuple()
 
     # Set machine type
     if os.environ.get(ENV_SUPERVISOR_MACHINE):
