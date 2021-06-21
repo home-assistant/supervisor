@@ -96,7 +96,7 @@ async def initialize_coresys() -> CoreSys:
 
     # Check if ENV is in development mode
     if coresys.dev:
-        _LOGGER.warning("Environment variables 'SUPERVISOR_DEV' is set")
+        _LOGGER.warning("Environment variable 'SUPERVISOR_DEV' is set")
         coresys.config.logging = LogLevel.DEBUG
         coresys.config.debug = True
         coresys.updater.channel = UpdateChannel.DEV
@@ -113,7 +113,7 @@ async def initialize_coresys() -> CoreSys:
     elif os.environ.get(ENV_HOMEASSISTANT_REPOSITORY):
         coresys.machine = os.environ[ENV_HOMEASSISTANT_REPOSITORY][14:-14]
         _LOGGER.warning(
-            "Missing SUPERVISOR_MACHINE configuration. Fallback to depricated extraction!"
+            "Missing SUPERVISOR_MACHINE environment variable. Fallback to deprecated extraction!"
         )
     _LOGGER.info("Seting up coresys for machine: %s", coresys.machine)
 
