@@ -72,9 +72,6 @@ from ..const import (
     ATTR_SCHEMA,
     ATTR_SERVICES,
     ATTR_SLUG,
-    ATTR_SNAPSHOT_EXCLUDE,
-    ATTR_SNAPSHOT_POST,
-    ATTR_SNAPSHOT_PRE,
     ATTR_SQUASH,
     ATTR_STAGE,
     ATTR_STARTUP,
@@ -112,7 +109,7 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
-from .const import ATTR_BACKUP, ATTR_SNAPSHOT
+from .const import ATTR_BACKUP
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -229,10 +226,10 @@ def _migrate_addon_config(protocol=False):
 
         # 2021-06 "snapshot" renamed to "backup"
         for entry in (
-            ATTR_SNAPSHOT_EXCLUDE,
-            ATTR_SNAPSHOT_POST,
-            ATTR_SNAPSHOT_PRE,
-            ATTR_SNAPSHOT,
+            "snapshot_exclude",
+            "snapshot_post",
+            "snapshot_pre",
+            "snapshot",
         ):
             if entry in config:
                 new_entry = entry.replace("snapshot", "backup")

@@ -23,7 +23,6 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
-    ATTR_SNAPSHOTS,
     ATTR_TYPE,
     ATTR_VERSION,
     CONTENT_TYPE_TAR,
@@ -98,7 +97,7 @@ class APIBackups(CoreSysAttributes):
 
         if request.path == "/snapshots":
             # Kept for backwards compability
-            return {ATTR_SNAPSHOTS: data_backups}
+            return {"snapshots": data_backups}
 
         return {ATTR_BACKUPS: data_backups}
 
