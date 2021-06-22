@@ -1,6 +1,7 @@
 """Validate some things around restore."""
 import voluptuous as vol
 
+from ..backups.const import BackupType
 from ..const import (
     ATTR_ADDONS,
     ATTR_AUDIO_INPUT,
@@ -24,8 +25,6 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
-    BACKUP_FULL,
-    BACKUP_PARTIAL,
     CRYPTO_AES128,
     FOLDER_ADDONS,
     FOLDER_HOMEASSISTANT,
@@ -63,7 +62,7 @@ def unique_addons(addons_list):
 SCHEMA_BACKUP = vol.Schema(
     {
         vol.Required(ATTR_SLUG): vol.Coerce(str),
-        vol.Required(ATTR_TYPE): vol.In([BACKUP_FULL, BACKUP_PARTIAL]),
+        vol.Required(ATTR_TYPE): vol.Coerce(BackupType),
         vol.Required(ATTR_NAME): vol.Coerce(str),
         vol.Required(ATTR_DATE): vol.Coerce(str),
         vol.Inclusive(ATTR_PROTECTED, "encrypted"): vol.All(

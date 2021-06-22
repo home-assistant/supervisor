@@ -2,7 +2,7 @@
 import logging
 from typing import List, Optional
 
-from ...const import BACKUP_FULL
+from ...backups.const import BackupType
 from ..const import MINIMUM_FULL_BACKUPS, ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
@@ -15,7 +15,7 @@ class FixupClearFullBackup(FixupBase):
     async def process_fixup(self, reference: Optional[str] = None) -> None:
         """Initialize the fixup class."""
         full_backups = [
-            x for x in self.sys_backups.list_backups if x.sys_type == BACKUP_FULL
+            x for x in self.sys_backups.list_backups if x.sys_type == BackupType.FULL
         ]
 
         if len(full_backups) < MINIMUM_FULL_BACKUPS:

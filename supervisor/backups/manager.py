@@ -7,12 +7,13 @@ from typing import Awaitable, Set
 from awesomeversion.awesomeversion import AwesomeVersion
 from awesomeversion.exceptions import AwesomeVersionCompare
 
-from ..const import BACKUP_FULL, BACKUP_PARTIAL, FOLDER_HOMEASSISTANT, CoreState
+from ..const import FOLDER_HOMEASSISTANT, CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
 from ..jobs.decorator import Job, JobCondition
 from ..utils.dt import utcnow
 from .backup import Backup
+from .const import BackupType
 from .utils import create_slug
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -132,7 +133,7 @@ class BackupManager(CoreSysAttributes):
             _LOGGER.error("A backup/restore process is already running")
             return None
 
-        backup = self._create_backup(name, BACKUP_FULL, password)
+        backup = self._create_backup(name, BackupType.FULL, password)
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
         try:
             self.sys_core.state = CoreState.FREEZE
@@ -177,7 +178,7 @@ class BackupManager(CoreSysAttributes):
             _LOGGER.error("Nothing to create backup for")
             return
 
-        backup = self._create_backup(name, BACKUP_PARTIAL, password, homeassistant)
+        backup = self._create_backup(name, BackupType.PARTIAL, password, homeassistant)
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
         try:
@@ -232,7 +233,7 @@ class BackupManager(CoreSysAttributes):
             _LOGGER.error("A backup/restore process is already running")
             return False
 
-        if backup.sys_type != BACKUP_FULL:
+        if backup.sys_type != BackupType.FULL:
             _LOGGER.error("%s is only a partial backup!", backup.slug)
             return False
 

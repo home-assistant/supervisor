@@ -3,13 +3,8 @@
 from pathlib import Path
 
 from supervisor.backups.backup import Backup
-from supervisor.const import (
-    ATTR_DATE,
-    ATTR_SLUG,
-    ATTR_TYPE,
-    BACKUP_FULL,
-    BACKUP_PARTIAL,
-)
+from supervisor.backups.const import BackupType
+from supervisor.const import ATTR_DATE, ATTR_SLUG, ATTR_TYPE
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, SuggestionType
 from supervisor.resolution.data import Suggestion
@@ -36,7 +31,9 @@ async def test_fixup(coresys: CoreSys, tmp_path):
         backup._data = {  # pylint: disable=protected-access
             ATTR_SLUG: slug,
             ATTR_DATE: utcnow().isoformat(),
-            ATTR_TYPE: BACKUP_PARTIAL if "1" in slug or "5" in slug else BACKUP_FULL,
+            ATTR_TYPE: BackupType.PARTIAL
+            if "1" in slug or "5" in slug
+            else BackupType.FULL,
         }
         coresys.backups._backups[backup.slug] = backup
 
@@ -44,13 +41,15 @@ async def test_fixup(coresys: CoreSys, tmp_path):
 
     assert newest_full_backup in coresys.backups.list_backups
     assert (
-        len([x for x in coresys.backups.list_backups if x.sys_type == BACKUP_FULL]) == 3
+        len([x for x in coresys.backups.list_backups if x.sys_type == BackupType.FULL])
+        == 3
     )
 
     await clear_full_backup()
     assert newest_full_backup in coresys.backups.list_backups
     assert (
-        len([x for x in coresys.backups.list_backups if x.sys_type == BACKUP_FULL]) == 1
+        len([x for x in coresys.backups.list_backups if x.sys_type == BackupType.FULL])
+        == 1
     )
 
     assert len(coresys.resolution.suggestions) == 0

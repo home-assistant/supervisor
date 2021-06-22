@@ -1,7 +1,8 @@
 """Helpers to check and fix issues with free space."""
 from typing import List, Optional
 
-from ...const import BACKUP_FULL, CoreState
+from ...backups.const import BackupType
+from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import (
     MINIMUM_FREE_SPACE_THRESHOLD,
@@ -34,7 +35,13 @@ class CheckFreeSpace(CheckBase):
 
         suggestions: List[SuggestionType] = []
         if (
-            len([x for x in self.sys_backups.list_backups if x.sys_type == BACKUP_FULL])
+            len(
+                [
+                    x
+                    for x in self.sys_backups.list_backups
+                    if x.sys_type == BackupType.FULL
+                ]
+            )
             >= MINIMUM_FULL_BACKUPS
         ):
             suggestions.append(SuggestionType.CLEAR_FULL_BACKUP)

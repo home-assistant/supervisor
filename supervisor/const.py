@@ -355,9 +355,6 @@ FOLDER_ADDONS = "addons/local"
 FOLDER_SSL = "ssl"
 FOLDER_MEDIA = "media"
 
-BACKUP_FULL = "full"
-BACKUP_PARTIAL = "partial"
-
 CRYPTO_AES128 = "aes128"
 
 SECURITY_PROFILE = "profile"
