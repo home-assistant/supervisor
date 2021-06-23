@@ -32,6 +32,7 @@ from .utils import api_process, api_validate, require_home_assistant
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 VALIDATE_SESSION_DATA = vol.Schema({ATTR_SESSION: str})
+MAX_UPLOAD_SIZE = 1024 * 1024 * 1024
 
 
 class APIIngress(CoreSysAttributes):
@@ -161,6 +162,11 @@ class APIIngress(CoreSysAttributes):
         self, request: web.Request, addon: Addon, path: str
     ) -> Union[web.Response, web.StreamResponse]:
         """Ingress route for request."""
+        if request.method == "POST":
+            # Allow larger POST requests to add-ons behind ingress
+            request._client_max_size = (  # pylint: disable=protected-access
+                MAX_UPLOAD_SIZE
+            )
         url = self._create_url(addon, path)
         data = await request.read()
         source_header = _init_header(request, addon)
