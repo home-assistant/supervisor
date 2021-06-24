@@ -76,6 +76,8 @@ class HassOS(CoreSysAttributes):
         # The OS name used to be hassos before renaming to haos...
         if version < 6.0:
             update_os_name = "hassos"
+        else:
+            update_os_name = "haos"
 
         url = raw_url.format(
             version=str(version), board=update_board, os_name=update_os_name
