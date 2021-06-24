@@ -161,7 +161,11 @@ class HassOS(CoreSysAttributes):
         await self.sys_host.services.restart("hassos-config.service")
 
     @Job(
-        conditions=[JobCondition.HAOS, JobCondition.INTERNET_SYSTEM],
+        conditions=[
+            JobCondition.HAOS,
+            JobCondition.INTERNET_SYSTEM,
+            JobCondition.RUNNING,
+        ],
         limit=JobExecutionLimit.ONCE,
         on_condition=HassOSJobError,
     )
