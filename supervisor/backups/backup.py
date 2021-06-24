@@ -231,7 +231,11 @@ class Backup(CoreSysAttributes):
         def _load_file():
             """Read backup.json."""
             with tarfile.open(self.tarfile, "r:") as backup:
-                json_file = backup.extractfile("./backup.json")
+                if "./snapshot.json" in [entry.name for entry in backup.getmembers()]:
+                    # Old backups stil uses "snapshot.json", we need to support that forever
+                    json_file = backup.extractfile("./snapshot.json")
+                else:
+                    json_file = backup.extractfile("./backup.json")
                 return json_file.read()
 
         # read backup.json
