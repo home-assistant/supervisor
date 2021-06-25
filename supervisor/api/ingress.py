@@ -164,26 +164,22 @@ class APIIngress(CoreSysAttributes):
         url = self._create_url(addon, path)
         source_header = _init_header(request, addon)
 
-        def _with_chunks(origin: Union[web.Response, web.Request]) -> bool:
-            return (
-                hdrs.CONTENT_LENGTH not in origin.headers
-                or int(origin.headers[hdrs.CONTENT_LENGTH]) > 4_194_000
-            )
-
         async with self.sys_websession.request(
             request.method,
             url,
             headers=source_header,
             params=request.query,
             allow_redirects=False,
-            chunked=_with_chunks(request),
             data=request.content,
             timeout=ClientTimeout(total=None),
         ) as result:
             headers = _response_header(result)
 
             # Simple request
-            if not _with_chunks(result):
+            if (
+                hdrs.CONTENT_LENGTH in result.headers
+                and int(result.headers.get(hdrs.CONTENT_LENGTH, 0)) < 4_194_000
+            ):
                 # Return Response
                 body = await result.read()
                 return web.Response(
