@@ -180,10 +180,6 @@ class APIIngress(CoreSysAttributes):
                 async for data in request.content.iter_any():
                     yield data
 
-        timeout = ClientTimeout(total=5 * 60)
-        if request.method == "POST":
-            timeout = ClientTimeout(total=None)
-
         async with self.sys_websession.request(
             request.method,
             url,
@@ -192,7 +188,7 @@ class APIIngress(CoreSysAttributes):
             allow_redirects=False,
             chunked=_with_chunks(request),
             data=_prepare_content(),
-            timeout=timeout,
+            timeout=ClientTimeout(total=None),
         ) as result:
             headers = _response_header(result)
 
