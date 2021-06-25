@@ -189,7 +189,8 @@ class AddonManager(CoreSysAttributes):
         if addon.with_ingress:
             await self.sys_ingress.reload()
 
-        self.sys_homeassistant.websocket.supervisor_update_event("addons", {})
+        self.sys_homeassistant.websocket.supervisor_update_event("store", {})
+        self.sys_homeassistant.websocket.supervisor_update_event("supervisor", {})
         _LOGGER.info("Add-on '%s' successfully installed", slug)
 
     async def uninstall(self, slug: str) -> None:
@@ -243,7 +244,8 @@ class AddonManager(CoreSysAttributes):
         self.data.uninstall(addon)
         self.local.pop(slug)
 
-        self.sys_homeassistant.websocket.supervisor_update_event("addons", {})
+        self.sys_homeassistant.websocket.supervisor_update_event("store", {})
+        self.sys_homeassistant.websocket.supervisor_update_event("supervisor", {})
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
     @Job(
@@ -297,7 +299,8 @@ class AddonManager(CoreSysAttributes):
         if last_state == AddonState.STARTED:
             await addon.start()
 
-        self.sys_homeassistant.websocket.supervisor_update_event("addons", {})
+        self.sys_homeassistant.websocket.supervisor_update_event("store", {})
+        self.sys_homeassistant.websocket.supervisor_update_event("supervisor", {})
 
     @Job(
         conditions=[
