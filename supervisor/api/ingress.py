@@ -162,8 +162,23 @@ class APIIngress(CoreSysAttributes):
     ) -> Union[web.Response, web.StreamResponse]:
         """Ingress route for request."""
         url = self._create_url(addon, path)
-        data = await request.read()
         source_header = _init_header(request, addon)
+
+        def with_chunks(origin: Union[web.Response, web.Request]) -> bool:
+            return (
+                hdrs.CONTENT_LENGTH not in origin.headers
+                or int(origin.headers[hdrs.CONTENT_LENGTH]) > 4_194_000
+            )
+
+        async def prepare_content():
+            if not with_chunks(request):
+                data = await request.read()
+                yield data
+            else:
+                # Disable max size, we are chunking large requests anyway
+                request._client_max_size = None  # pylint: disable=protected-access
+                async for data in request.content.iter_any():
+                    yield data
 
         async with self.sys_websession.request(
             request.method,
@@ -171,15 +186,13 @@ class APIIngress(CoreSysAttributes):
             headers=source_header,
             params=request.query,
             allow_redirects=False,
-            data=data,
+            chunked=with_chunks(request),
+            data=prepare_content(),
         ) as result:
             headers = _response_header(result)
 
             # Simple request
-            if (
-                hdrs.CONTENT_LENGTH in result.headers
-                and int(result.headers.get(hdrs.CONTENT_LENGTH, 0)) < 4_194_000
-            ):
+            if not with_chunks(result):
                 # Return Response
                 body = await result.read()
                 return web.Response(
@@ -219,6 +232,7 @@ def _init_header(
         if name in (
             hdrs.CONTENT_LENGTH,
             hdrs.CONTENT_ENCODING,
+            hdrs.TRANSFER_ENCODING,
             hdrs.SEC_WEBSOCKET_EXTENSIONS,
             hdrs.SEC_WEBSOCKET_PROTOCOL,
             hdrs.SEC_WEBSOCKET_VERSION,
