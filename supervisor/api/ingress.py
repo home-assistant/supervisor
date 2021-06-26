@@ -5,7 +5,7 @@ import logging
 from typing import Any, Dict, Union
 
 import aiohttp
-from aiohttp import hdrs, web
+from aiohttp import ClientTimeout, hdrs, web
 from aiohttp.web_exceptions import (
     HTTPBadGateway,
     HTTPServiceUnavailable,
@@ -162,7 +162,6 @@ class APIIngress(CoreSysAttributes):
     ) -> Union[web.Response, web.StreamResponse]:
         """Ingress route for request."""
         url = self._create_url(addon, path)
-        data = await request.read()
         source_header = _init_header(request, addon)
 
         async with self.sys_websession.request(
@@ -171,7 +170,8 @@ class APIIngress(CoreSysAttributes):
             headers=source_header,
             params=request.query,
             allow_redirects=False,
-            data=data,
+            data=request.content,
+            timeout=ClientTimeout(total=None),
         ) as result:
             headers = _response_header(result)
 
@@ -219,6 +219,7 @@ def _init_header(
         if name in (
             hdrs.CONTENT_LENGTH,
             hdrs.CONTENT_ENCODING,
+            hdrs.TRANSFER_ENCODING,
             hdrs.SEC_WEBSOCKET_EXTENSIONS,
             hdrs.SEC_WEBSOCKET_PROTOCOL,
             hdrs.SEC_WEBSOCKET_VERSION,
