@@ -15,6 +15,8 @@ from ..const import (
 )
 from ..interface import DBusInterface, dbus_property
 from ..utils import dbus_connected
+from .apparmor import AppArmor
+from .cgroup import CGroup
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -27,6 +29,19 @@ class OSAgent(DBusInterface):
     def __init__(self) -> None:
         """Initialize Properties."""
         self.properties: Dict[str, Any] = {}
+
+        self._cgroup: CGroup = CGroup()
+        self._apparmor: AppArmor = AppArmor()
+
+    @property
+    def cgroup(self) -> CGroup:
+        """Return CGroup DBUS object."""
+        return self._cgroup
+
+    @property
+    def apparmor(self) -> AppArmor:
+        """Return AppArmor DBUS object."""
+        return self._apparmor
 
     @property
     @dbus_property
@@ -51,6 +66,8 @@ class OSAgent(DBusInterface):
         """Connect to system's D-Bus."""
         try:
             self.dbus = await DBus.connect(DBUS_NAME_HAOS, DBUS_OBJECT_HAOS)
+            await self.cgroup.connect()
+            await self.apparmor.connect()
         except DBusError:
             _LOGGER.warning("Can't connect to OS-Agent")
         except DBusInterfaceError:
@@ -62,3 +79,4 @@ class OSAgent(DBusInterface):
     async def update(self):
         """Update Properties."""
         self.properties = await self.dbus.get_properties(DBUS_NAME_HAOS)
+        await self.apparmor.update()
