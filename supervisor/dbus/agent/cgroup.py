@@ -16,4 +16,4 @@ class CGroup(DBusInterface):
     @dbus_connected
     async def add_devices_allowed(self, container_id: str, permission: str) -> bool:
         """Update cgroup devices and add new devices."""
-        return (await self.dbus.AddDevicesAllowed(container_id, permission))[0]
+        return (await self.dbus.CGroup.AddDevicesAllowed(container_id, permission))[0]

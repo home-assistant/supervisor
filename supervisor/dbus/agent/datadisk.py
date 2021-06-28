@@ -24,7 +24,7 @@ class DataDisk(DBusInterface):
     @dbus_property
     def current_device(self) -> Path:
         """Return current device used for data."""
-        return self.properties[DBUS_ATTR_CURRENT_DEVICE]
+        return Path(self.properties[DBUS_ATTR_CURRENT_DEVICE])
 
     async def connect(self) -> None:
         """Get connection information."""
@@ -38,4 +38,4 @@ class DataDisk(DBusInterface):
     @dbus_connected
     async def change_device(self, device: Path) -> bool:
         """Load/Update AppArmor profile."""
-        return (await self.dbus.ChangeDevice(device.as_posix()))[0]
+        return (await self.dbus.DataDisk.ChangeDevice(device.as_posix()))[0]
