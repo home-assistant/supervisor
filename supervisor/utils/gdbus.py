@@ -67,6 +67,7 @@ MONITOR: str = "gdbus monitor --system --dest {bus}"
 WAIT: str = "gdbus wait --system --activate {bus} --timeout 5 {bus}"
 
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
+DBUS_METHOD_SET: str = "org.freedesktop.DBus.Properties.Set"
 
 
 def _convert_bytes(value: str) -> str:
@@ -223,6 +224,16 @@ class DBus:
             return (await self.call_dbus(DBUS_METHOD_GETALL, interface))[0]
         except IndexError as err:
             _LOGGER.error("No attributes returned for %s", interface)
+            raise DBusFatalError() from err
+
+    async def set_property(
+        self, interface: str, name: str, value: Any
+    ) -> Dict[str, Any]:
+        """Set a property from interface."""
+        try:
+            return (await self.call_dbus(DBUS_METHOD_SET, interface, name, value))[0]
+        except IndexError as err:
+            _LOGGER.error("No Set attribute %s for %s", name, interface)
             raise DBusFatalError() from err
 
     async def _send(self, command: List[str], silent=False) -> str:
