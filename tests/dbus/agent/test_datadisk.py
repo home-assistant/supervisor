@@ -1,4 +1,4 @@
-"""Test AppArmor/Datadisk dbus interface."""
+"""Test Datadisk/Agent dbus interface."""
 from pathlib import Path
 
 import pytest
