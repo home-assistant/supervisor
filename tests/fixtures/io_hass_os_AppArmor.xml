@@ -1,2 +1,63 @@
-<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
-	 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd"><node name="/io/hass/os/AppArmor"><interface name="org.freedesktop.DBus.Introspectable"><method name="Introspect"><arg name="out" type="s" direction="out"></arg></method></interface><interface name="org.freedesktop.DBus.Properties"><method name="Get"><arg name="interface" type="s" direction="in"></arg><arg name="property" type="s" direction="in"></arg><arg name="value" type="v" direction="out"></arg></method><method name="GetAll"><arg name="interface" type="s" direction="in"></arg><arg name="props" type="a{sv}" direction="out"></arg></method><method name="Set"><arg name="interface" type="s" direction="in"></arg><arg name="property" type="s" direction="in"></arg><arg name="value" type="v" direction="in"></arg></method><signal name="PropertiesChanged"><arg name="interface" type="s" direction="out"></arg><arg name="changed_properties" type="a{sv}" direction="out"></arg><arg name="invalidates_properties" type="as" direction="out"></arg></signal></interface><interface name="io.hass.os.AppArmor"><method name="LoadProfile"><arg type="s" direction="in"></arg><arg type="s" direction="in"></arg><arg type="b" direction="out"></arg></method><method name="UnloadProfile"><arg type="s" direction="in"></arg><arg type="s" direction="in"></arg><arg type="b" direction="out"></arg></method><property name="ParserVersion" type="s" access="read"><annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="invalidates"></annotation></property></interface></node>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/io/hass/os/AppArmor">
+	<interface name="org.freedesktop.DBus.Introspectable">
+		<method name="Introspect">
+			<arg name="out" type="s" direction="out">
+			</arg>
+		</method>
+	</interface>
+	<interface name="org.freedesktop.DBus.Properties">
+		<method name="Get">
+			<arg name="interface" type="s" direction="in">
+			</arg>
+			<arg name="property" type="s" direction="in">
+			</arg>
+			<arg name="value" type="v" direction="out">
+			</arg>
+		</method>
+		<method name="GetAll">
+			<arg name="interface" type="s" direction="in">
+			</arg>
+			<arg name="props" type="a{sv}" direction="out">
+			</arg>
+		</method>
+		<method name="Set">
+			<arg name="interface" type="s" direction="in">
+			</arg>
+			<arg name="property" type="s" direction="in">
+			</arg>
+			<arg name="value" type="v" direction="in">
+			</arg>
+		</method>
+		<signal name="PropertiesChanged">
+			<arg name="interface" type="s" direction="out">
+			</arg>
+			<arg name="changed_properties" type="a{sv}" direction="out">
+			</arg>
+			<arg name="invalidates_properties" type="as" direction="out">
+			</arg>
+		</signal>
+	</interface>
+	<interface name="io.hass.os.AppArmor">
+		<method name="LoadProfile">
+			<arg type="s" direction="in">
+			</arg>
+			<arg type="s" direction="in">
+			</arg>
+			<arg type="b" direction="out">
+			</arg>
+		</method>
+		<method name="UnloadProfile">
+			<arg type="s" direction="in">
+			</arg>
+			<arg type="s" direction="in">
+			</arg>
+			<arg type="b" direction="out">
+			</arg>
+		</method>
+		<property name="ParserVersion" type="s" access="read">
+			<annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="invalidates">
+			</annotation>
+		</property>
+	</interface>
+</node>
