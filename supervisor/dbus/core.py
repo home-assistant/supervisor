@@ -11,6 +11,7 @@ from .logind import Logind
 from .network import NetworkManager
 from .rauc import Rauc
 from .systemd import Systemd
+from .timedate import TimeDate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class DBusManager(CoreSysAttributes):
         self._rauc: Rauc = Rauc()
         self._network: NetworkManager = NetworkManager()
         self._agent: OSAgent = OSAgent()
+        self._timedate: TimeDate = TimeDate()
 
     @property
     def systemd(self) -> Systemd:
@@ -59,6 +61,11 @@ class DBusManager(CoreSysAttributes):
         """Return OS-Agent interface."""
         return self._agent
 
+    @property
+    def timedate(self) -> TimeDate:
+        """Return the timedate interface."""
+        return self._timedate
+
     async def load(self) -> None:
         """Connect interfaces to D-Bus."""
         if not SOCKET_DBUS.exists():
@@ -72,6 +79,7 @@ class DBusManager(CoreSysAttributes):
             self.systemd,
             self.logind,
             self.hostname,
+            self.timedate,
             self.network,
             self.rauc,
         ]

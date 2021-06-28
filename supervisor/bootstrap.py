@@ -33,7 +33,7 @@ from .const import (
 )
 from .core import Core
 from .coresys import CoreSys
-from .dbus.module import DBusManager
+from .dbus.core import DBusManager
 from .discovery import Discovery
 from .hardware.module import HardwareManager
 from .hassos import HassOS
