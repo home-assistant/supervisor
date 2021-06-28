@@ -5,6 +5,7 @@ from typing import Any, Dict
 from ...utils.gdbus import DBus
 from ..const import (
     DBUS_ATTR_CURRENT_DEVICE,
+    DBUS_NAME_HAOS,
     DBUS_NAME_HAOS_DATADISK,
     DBUS_OBJECT_HAOS_DATADISK,
 )
@@ -27,9 +28,7 @@ class DataDisk(DBusInterface):
 
     async def connect(self) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(
-            DBUS_NAME_HAOS_DATADISK, DBUS_OBJECT_HAOS_DATADISK
-        )
+        self.dbus = await DBus.connect(DBUS_NAME_HAOS, DBUS_OBJECT_HAOS_DATADISK)
 
     @dbus_connected
     async def update(self):
@@ -39,4 +38,4 @@ class DataDisk(DBusInterface):
     @dbus_connected
     async def change_device(self, device: Path) -> bool:
         """Load/Update AppArmor profile."""
-        return await self.dbus.ChangeDevice(device.as_posix())
+        return (await self.dbus.ChangeDevice(device.as_posix()))[0]

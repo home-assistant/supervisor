@@ -90,6 +90,7 @@ DBUS_ATTR_NTPSYNCHRONIZED = "NTPSynchronized"
 DBUS_ATTR_TIMEUSEC = "TimeUSec"
 DBUS_ATTR_DIAGNOSTICS = "Diagnostics"
 DBUS_ATTR_CURRENT_DEVICE = "CurrentDevice"
+DBUS_ATTR_PARSER_VERSION = "ParserVersion"
 
 
 class RaucState(str, Enum):

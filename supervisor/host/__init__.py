@@ -103,6 +103,9 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.network.is_connected:
             await self.network.update()
 
+        if self.sys_dbus.agent.is_connected:
+            await self.sys_dbus.agent.update()
+
         with suppress(PulseAudioError):
             await self.sound.update()
 

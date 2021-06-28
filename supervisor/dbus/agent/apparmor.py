@@ -6,7 +6,8 @@ from awesomeversion import AwesomeVersion
 
 from ...utils.gdbus import DBus
 from ..const import (
-    DBUS_ATTR_VERSION,
+    DBUS_ATTR_PARSER_VERSION,
+    DBUS_NAME_HAOS,
     DBUS_NAME_HAOS_APPARMOR,
     DBUS_OBJECT_HAOS_APPARMOR,
 )
@@ -24,14 +25,12 @@ class AppArmor(DBusInterface):
     @property
     @dbus_property
     def version(self) -> AwesomeVersion:
-        """Return version of host AppArmor."""
-        return AwesomeVersion(self.properties[DBUS_ATTR_VERSION])
+        """Return version of host AppArmor parser."""
+        return AwesomeVersion(self.properties[DBUS_ATTR_PARSER_VERSION])
 
     async def connect(self) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(
-            DBUS_NAME_HAOS_APPARMOR, DBUS_OBJECT_HAOS_APPARMOR
-        )
+        self.dbus = await DBus.connect(DBUS_NAME_HAOS, DBUS_OBJECT_HAOS_APPARMOR)
 
     @dbus_connected
     async def update(self):
@@ -41,9 +40,13 @@ class AppArmor(DBusInterface):
     @dbus_connected
     async def load_profile(self, profile: Path, cache: Path) -> bool:
         """Load/Update AppArmor profile."""
-        return await self.dbus.LoadProfile(profile.as_posix(), cache.as_posix())
+        return (
+            await self.dbus.AppArmor.LoadProfile(profile.as_posix(), cache.as_posix())
+        )[0]
 
     @dbus_connected
     async def unload_profile(self, profile: Path, cache: Path) -> bool:
         """Remove AppArmor profile."""
-        return await self.dbus.UnloadProfile(profile.as_posix(), cache.as_posix())
+        return (
+            await self.dbus.AppArmor.UnloadProfile(profile.as_posix(), cache.as_posix())
+        )[0]
