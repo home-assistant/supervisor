@@ -45,3 +45,4 @@ class HostFeature(str, Enum):
     SERVICES = "services"
     SHUTDOWN = "shutdown"
     AGENT = "agent"
+    TIMEDATE = "timedate"
