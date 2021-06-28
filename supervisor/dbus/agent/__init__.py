@@ -17,6 +17,8 @@ from ..interface import DBusInterface, dbus_property
 from ..utils import dbus_connected
 from .apparmor import AppArmor
 from .cgroup import CGroup
+from .datadisk import DataDisk
+from .system import System
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -32,6 +34,8 @@ class OSAgent(DBusInterface):
 
         self._cgroup: CGroup = CGroup()
         self._apparmor: AppArmor = AppArmor()
+        self._system: System = System()
+        self._datadisk: DataDisk = DataDisk()
 
     @property
     def cgroup(self) -> CGroup:
@@ -42,6 +46,16 @@ class OSAgent(DBusInterface):
     def apparmor(self) -> AppArmor:
         """Return AppArmor DBUS object."""
         return self._apparmor
+
+    @property
+    def system(self) -> System:
+        """Return System DBUS object."""
+        return self._system
+
+    @property
+    def datadisk(self) -> DataDisk:
+        """Return DataDisk DBUS object."""
+        return self._datadisk
 
     @property
     @dbus_property
@@ -68,6 +82,8 @@ class OSAgent(DBusInterface):
             self.dbus = await DBus.connect(DBUS_NAME_HAOS, DBUS_OBJECT_HAOS)
             await self.cgroup.connect()
             await self.apparmor.connect()
+            await self.system.connect()
+            await self.datadisk.connect()
         except DBusError:
             _LOGGER.warning("Can't connect to OS-Agent")
         except DBusInterfaceError:
@@ -80,3 +96,4 @@ class OSAgent(DBusInterface):
         """Update Properties."""
         self.properties = await self.dbus.get_properties(DBUS_NAME_HAOS)
         await self.apparmor.update()
+        await self.datadisk.update()
