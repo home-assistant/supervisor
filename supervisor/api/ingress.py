@@ -164,13 +164,15 @@ class APIIngress(CoreSysAttributes):
         url = self._create_url(addon, path)
         source_header = _init_header(request, addon)
 
+        data = request.content if request.method == "POST" else await request.read()
+
         async with self.sys_websession.request(
             request.method,
             url,
             headers=source_header,
             params=request.query,
             allow_redirects=False,
-            data=request.content,
+            data=data,
             timeout=ClientTimeout(total=None),
         ) as result:
             headers = _response_header(result)
