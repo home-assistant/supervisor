@@ -164,8 +164,8 @@ class APIIngress(CoreSysAttributes):
         url = self._create_url(addon, path)
         source_header = _init_header(request, addon)
 
-        # Passing the raw stream breaks requests for some webservers 
-        # since we just need it for POST requests really, for all other methods 
+        # Passing the raw stream breaks requests for some webservers
+        # since we just need it for POST requests really, for all other methods
         # we read the bytes and pass that to the request to the add-on
         data = request.content if request.method == "POST" else await request.read()
 
