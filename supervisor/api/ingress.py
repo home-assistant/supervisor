@@ -167,7 +167,12 @@ class APIIngress(CoreSysAttributes):
         # Passing the raw stream breaks requests for some webservers
         # since we just need it for POST requests really, for all other methods
         # we read the bytes and pass that to the request to the add-on
-        data = request.content if request.method == "POST" else await request.read()
+        # add-ons needs to add support with that in the configuration
+        data = (
+            request.content
+            if request.method == "POST" and addon.ingress_stream
+            else await request.read()
+        )
 
         async with self.sys_websession.request(
             request.method,
