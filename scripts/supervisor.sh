@@ -95,7 +95,7 @@ function init_os-agent() {
     fi
 
     if [ ! -f /usr/sbin/os-agent ]; then
-        curl -Lo /usr/sbin/os-agent https://github.com/home-assistant/os-agent/releases/download/1.1.0/os-agent-debian-amd64.bin
+        curl -Lo /usr/sbin/os-agent https://github.com/home-assistant/os-agent/releases/latest/download/os-agent-debian-amd64.bin
         curl -Lo /etc/dbus-1/system.d/io.hass.conf https://raw.githubusercontent.com/home-assistant/os-agent/main/contrib/io.hass.conf
         chmod a+x /usr/sbin/os-agent
     fi
