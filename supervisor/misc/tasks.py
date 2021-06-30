@@ -1,7 +1,7 @@
 """A collection of tasks."""
 import logging
 
-from ..const import AddonState, HostFeature
+from ..const import AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
     AddonsError,
@@ -12,6 +12,7 @@ from ..exceptions import (
     MulticastError,
     ObserverError,
 )
+from ..host.const import HostFeature
 from ..jobs.decorator import Job, JobCondition
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

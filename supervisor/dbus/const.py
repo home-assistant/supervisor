@@ -20,6 +20,12 @@ DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED = (
 DBUS_NAME_SYSTEMD = "org.freedesktop.systemd1"
 DBUS_NAME_LOGIND = "org.freedesktop.login1"
 DBUS_NAME_TIMEDATE = "org.freedesktop.timedate1"
+DBUS_NAME_HAOS = "io.hass.os"
+DBUS_NAME_HAOS_CGROUP = "io.hass.os.CGroup"
+DBUS_NAME_HAOS_APPARMOR = "io.hass.os.AppArmor"
+DBUS_NAME_HAOS_SYSTEM = "io.hass.os.System"
+DBUS_NAME_HAOS_DATADISK = "io.hass.os.DataDisk"
+
 
 DBUS_OBJECT_BASE = "/"
 DBUS_OBJECT_DNS = "/org/freedesktop/NetworkManager/DnsManager"
@@ -29,6 +35,11 @@ DBUS_OBJECT_NM = "/org/freedesktop/NetworkManager"
 DBUS_OBJECT_SYSTEMD = "/org/freedesktop/systemd1"
 DBUS_OBJECT_LOGIND = "/org/freedesktop/login1"
 DBUS_OBJECT_TIMEDATE = "/org/freedesktop/timedate1"
+DBUS_OBJECT_HAOS = "/io/hass/os"
+DBUS_OBJECT_HAOS_CGROUP = "/io/hass/os/CGroup"
+DBUS_OBJECT_HAOS_APPARMOR = "/io/hass/os/AppArmor"
+DBUS_OBJECT_HAOS_SYSTEM = "/io/hass/os/System"
+DBUS_OBJECT_HAOS_DATADISK = "/io/hass/os/DataDisk"
 
 DBUS_ATTR_ACTIVE_CONNECTIONS = "ActiveConnections"
 DBUS_ATTR_ACTIVE_CONNECTION = "ActiveConnection"
@@ -77,6 +88,9 @@ DBUS_ATTR_LOCALRTC = "LocalRTC"
 DBUS_ATTR_NTP = "NTP"
 DBUS_ATTR_NTPSYNCHRONIZED = "NTPSynchronized"
 DBUS_ATTR_TIMEUSEC = "TimeUSec"
+DBUS_ATTR_DIAGNOSTICS = "Diagnostics"
+DBUS_ATTR_CURRENT_DEVICE = "CurrentDevice"
+DBUS_ATTR_PARSER_VERSION = "ParserVersion"
 
 
 class RaucState(str, Enum):

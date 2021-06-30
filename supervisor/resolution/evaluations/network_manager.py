@@ -1,8 +1,9 @@
 """Evaluation class for network manager."""
 from typing import List
 
-from ...const import CoreState, HostFeature
+from ...const import CoreState
 from ...coresys import CoreSys
+from ...host.const import HostFeature
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 

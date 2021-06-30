@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from .arch import CpuArch
     from .auth import Auth
     from .core import Core
-    from .dbus import DBusManager
+    from .dbus.manager import DBusManager
     from .discovery import Discovery
     from .hardware.module import HardwareManager
     from .hassos import HassOS
