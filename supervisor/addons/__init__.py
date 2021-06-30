@@ -262,7 +262,10 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError(
                 f"Add-on {slug} is not available inside store", _LOGGER.error
             )
-        store = self.store[slug]
+
+        store = self.store.get(slug)
+        if not store:
+            raise AddonsError(f"Add-on {slug} not in the store", _LOGGER.error)
 
         if addon.version == store.version:
             raise AddonsError(f"No update available for add-on {slug}", _LOGGER.warning)
@@ -313,7 +316,10 @@ class AddonManager(CoreSysAttributes):
         if addon.is_detached:
             _LOGGER.error("Add-on %s is not available inside store", slug)
             raise AddonsError()
-        store = self.store[slug]
+
+        store = self.store.get(slug)
+        if not store:
+            raise AddonsError(f"Add-on {slug} not in the store", _LOGGER.error)
 
         # Check if a rebuild is possible now
         if addon.version != store.version:
