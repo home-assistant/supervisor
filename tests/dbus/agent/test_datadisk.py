@@ -25,4 +25,4 @@ async def test_dbus_osagent_datadisk_change_device(coresys: CoreSys):
 
     await coresys.dbus.agent.connect()
 
-    assert await coresys.dbus.agent.datadisk.change_device(Path("/dev/sdb"))
+    assert await coresys.dbus.agent.datadisk.change_device(Path("/dev/sdb")) is None

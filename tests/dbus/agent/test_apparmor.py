@@ -27,8 +27,11 @@ async def test_dbus_osagent_apparmor_load(coresys: CoreSys):
 
     await coresys.dbus.agent.connect()
 
-    assert await coresys.dbus.agent.apparmor.load_profile(
-        Path("/data/apparmor/profile"), Path("/data/apparmor/cache")
+    assert (
+        await coresys.dbus.agent.apparmor.load_profile(
+            Path("/data/apparmor/profile"), Path("/data/apparmor/cache")
+        )
+        is None
     )
 
 
@@ -42,6 +45,9 @@ async def test_dbus_osagent_apparmor_unload(coresys: CoreSys):
 
     await coresys.dbus.agent.connect()
 
-    assert await coresys.dbus.agent.apparmor.unload_profile(
-        Path("/data/apparmor/profile"), Path("/data/apparmor/cache")
+    assert (
+        await coresys.dbus.agent.apparmor.unload_profile(
+            Path("/data/apparmor/profile"), Path("/data/apparmor/cache")
+        )
+        is None
     )

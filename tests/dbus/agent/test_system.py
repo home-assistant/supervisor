@@ -14,4 +14,4 @@ async def test_dbus_osagent_system_wipe(coresys: CoreSys):
 
     await coresys.dbus.agent.connect()
 
-    assert await coresys.dbus.agent.system.schedule_wipe_device()
+    assert await coresys.dbus.agent.system.schedule_wipe_device() is None
