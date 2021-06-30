@@ -36,6 +36,6 @@ class DataDisk(DBusInterface):
         self.properties = await self.dbus.get_properties(DBUS_NAME_HAOS_DATADISK)
 
     @dbus_connected
-    async def change_device(self, device: Path) -> bool:
+    async def change_device(self, device: Path) -> None:
         """Load/Update AppArmor profile."""
-        return (await self.dbus.DataDisk.ChangeDevice(device.as_posix()))[0]
+        await self.dbus.DataDisk.ChangeDevice(device.as_posix())

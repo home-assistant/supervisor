@@ -38,15 +38,11 @@ class AppArmor(DBusInterface):
         self.properties = await self.dbus.get_properties(DBUS_NAME_HAOS_APPARMOR)
 
     @dbus_connected
-    async def load_profile(self, profile: Path, cache: Path) -> bool:
+    async def load_profile(self, profile: Path, cache: Path) -> None:
         """Load/Update AppArmor profile."""
-        return (
-            await self.dbus.AppArmor.LoadProfile(profile.as_posix(), cache.as_posix())
-        )[0]
+        await self.dbus.AppArmor.LoadProfile(profile.as_posix(), cache.as_posix())
 
     @dbus_connected
-    async def unload_profile(self, profile: Path, cache: Path) -> bool:
+    async def unload_profile(self, profile: Path, cache: Path) -> None:
         """Remove AppArmor profile."""
-        return (
-            await self.dbus.AppArmor.UnloadProfile(profile.as_posix(), cache.as_posix())
-        )[0]
+        await self.dbus.AppArmor.UnloadProfile(profile.as_posix(), cache.as_posix())
