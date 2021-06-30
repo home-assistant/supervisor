@@ -225,6 +225,14 @@ def _migrate_addon_config(protocol=False):
                 )
             config[ATTR_TMPFS] = True
 
+        # If any ingress options are set, enable ingress
+        if (
+            config.get(ATTR_INGRESS_ENTRY) is not None
+            or config.get(ATTR_INGRESS_PORT) is not None
+            or config.get(ATTR_INGRESS_STREAM)
+        ):
+            config[ATTR_INGRESS] = True
+
         return config
 
     return _migrate

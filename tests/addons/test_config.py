@@ -4,6 +4,12 @@ import pytest
 import voluptuous as vol
 
 from supervisor.addons import validate as vd
+from supervisor.const import (
+    ATTR_INGRESS,
+    ATTR_INGRESS_ENTRY,
+    ATTR_INGRESS_PORT,
+    ATTR_INGRESS_STREAM,
+)
 
 from ..common import load_json_fixture
 
@@ -218,3 +224,24 @@ def test_watchdog_url():
     ):
         config["watchdog"] = test_options
         assert vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_enable_ingress():
+    """Validate basic config and check the default values."""
+    baseconfig = load_json_fixture("basic-addon-config.json")
+    assert vd.SCHEMA_ADDON_CONFIG(baseconfig)[ATTR_INGRESS] is False
+
+    assert (
+        vd.SCHEMA_ADDON_CONFIG({**baseconfig, ATTR_INGRESS_PORT: 1234})[ATTR_INGRESS]
+        is True
+    )
+    assert (
+        vd.SCHEMA_ADDON_CONFIG({**baseconfig, ATTR_INGRESS_ENTRY: "/lorem/ipsum"})[
+            ATTR_INGRESS
+        ]
+        is True
+    )
+    assert (
+        vd.SCHEMA_ADDON_CONFIG({**baseconfig, ATTR_INGRESS_STREAM: True})[ATTR_INGRESS]
+        is True
+    )
