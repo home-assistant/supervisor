@@ -5,7 +5,7 @@
   "appPort": "9123:8123",
   "postCreateCommand": "pre-commit install",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
-  "containerEnv": {"NVM_DIR":"/usr/local/share/nvm"},
+  "containerEnv": { "NVM_DIR": "/usr/local/share/nvm" },
   "extensions": [
     "ms-python.python",
     "ms-python.vscode-pylance",
@@ -22,7 +22,7 @@
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": true,
     "python.formatting.provider": "black",
-    "python.formatting.blackArgs": ["--target-version", "py38"],
+    "python.formatting.blackArgs": ["--target-version", "py39"],
     "python.formatting.blackPath": "/usr/local/bin/black",
     "python.linting.banditPath": "/usr/local/bin/bandit",
     "python.linting.flake8Path": "/usr/local/bin/flake8",
