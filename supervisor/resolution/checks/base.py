@@ -49,7 +49,7 @@ class CheckBase(ABC, CoreSysAttributes):
     @property
     def slug(self) -> str:
         """Return the check slug."""
-        return self.__class__.__module__.rsplit('.', maxsplit=1)[-1]
+        return self.__class__.__module__.rsplit(".", maxsplit=1)[-1]
 
     @abstractmethod
     async def run_check(self) -> None:
