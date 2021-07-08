@@ -243,22 +243,21 @@ def check_environment() -> None:
             os.environ[key]
         except KeyError:
             _LOGGER.critical("Can't find '%s' environment variable!", key)
+            os.exit(1)
 
     # Check Machine info
     if not os.environ.get(ENV_HOMEASSISTANT_REPOSITORY) and not os.environ.get(
         ENV_SUPERVISOR_MACHINE
     ):
         _LOGGER.critical("Can't find any kind of machine/homeassistant details!")
+        os.exit(1)
     elif not os.environ.get(ENV_SUPERVISOR_MACHINE):
         _LOGGER.info("Use the old homeassistant repository for machine extraction")
 
     # check docker socket
     if not SOCKET_DOCKER.is_socket():
         _LOGGER.critical("Can't find Docker socket!")
-
-    # check socat exec
-    if not shutil.which("gdbus"):
-        _LOGGER.critical("Can't find gdbus!")
+        os.exit(1)
 
 
 def reg_signal(loop, coresys: CoreSys) -> None:
