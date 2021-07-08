@@ -44,7 +44,7 @@ class WSClient:
 
             try:
                 response = await self.client.receive_json()
-            except ConnectionError:
+            except (ConnectionError, TypeError):
                 return
 
             _LOGGER.debug("Received: %s", response)
