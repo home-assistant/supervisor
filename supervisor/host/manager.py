@@ -4,6 +4,7 @@ from functools import lru_cache
 import logging
 from typing import List
 
+from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, PulseAudioError
 from ..hardware.const import PolicyGroup
@@ -118,6 +119,12 @@ class HostManager(CoreSysAttributes):
         """Load host information."""
         with suppress(HassioError):
             await self.reload()
+
+        # Register for events
+        self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
+        self.sys_bus.register_event(
+            BusEvent.HARDWARE_REMOVE_DEVICE, self._hardware_events
+        )
 
         # Load profile data
         try:
