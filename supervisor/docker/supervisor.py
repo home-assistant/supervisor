@@ -8,8 +8,9 @@ from awesomeversion.awesomeversion import AwesomeVersion
 import docker
 import requests
 
+from ..const import ENV_SUPERVISOR_NAME
 from ..coresys import CoreSysAttributes
-from ..exceptions import DockerError
+from ..exceptions import DockerError, HostEnvironmentError
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -21,7 +22,11 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
     @property
     def name(self) -> str:
         """Return name of Docker container."""
-        return os.environ["SUPERVISOR_NAME"]
+        if name := os.environ.get(ENV_SUPERVISOR_NAME) is None:
+            raise HostEnvironmentError(
+                "Missing 'SUPERVISOR_NAME' environment variable", _LOGGER
+            )
+        return name
 
     @property
     def ip_address(self) -> IPv4Address:

@@ -237,6 +237,10 @@ class HostNetworkNotFound(HostError):
     """Return if host interface is not found."""
 
 
+class HostEnvironmentError(HassioNotSupportedError):
+    """Host environment is not correct."""
+
+
 # API
 
 
