@@ -62,7 +62,8 @@ class NetworkManager(CoreSysAttributes):
         """Return a dictionary of active interfaces."""
         interfaces: List[Interface] = []
         for inet in self.sys_dbus.network.interfaces.values():
-            interfaces.append(Interface.from_dbus_interface(inet))
+            if interface := Interface.from_dbus_interface(inet) is not None:
+                interfaces.append(interface)
 
         return interfaces
 
@@ -280,33 +281,40 @@ class Interface:
     vlan: Optional[VlanConfig] = attr.ib()
 
     @staticmethod
-    def from_dbus_interface(inet: NetworkInterface) -> Interface:
+    def from_dbus_interface(inet: NetworkInterface) -> Interface | None:
         """Concert a dbus interface into normal Interface."""
-        return Interface(
-            inet.name,
-            inet.settings is not None,
-            Interface._map_nm_connected(inet.connection),
-            inet.primary,
-            Interface._map_nm_type(inet.type),
-            IpConfig(
-                Interface._map_nm_method(inet.settings.ipv4.method),
-                inet.connection.ipv4.address,
-                inet.connection.ipv4.gateway,
-                inet.connection.ipv4.nameservers,
+        try:
+            return Interface(
+                inet.name,
+                inet.settings is not None,
+                Interface._map_nm_connected(inet.connection),
+                inet.primary,
+                Interface._map_nm_type(inet.type),
+                IpConfig(
+                    Interface._map_nm_method(inet.settings.ipv4.method),
+                    inet.connection.ipv4.address,
+                    inet.connection.ipv4.gateway,
+                    inet.connection.ipv4.nameservers,
+                )
+                if inet.connection and inet.connection.ipv4
+                else IpConfig(InterfaceMethod.DISABLED, [], None, []),
+                IpConfig(
+                    Interface._map_nm_method(inet.settings.ipv6.method),
+                    inet.connection.ipv6.address,
+                    inet.connection.ipv6.gateway,
+                    inet.connection.ipv6.nameservers,
+                )
+                if inet.connection and inet.connection.ipv6
+                else IpConfig(InterfaceMethod.DISABLED, [], None, []),
+                Interface._map_nm_wifi(inet),
+                Interface._map_nm_vlan(inet),
             )
-            if inet.connection and inet.connection.ipv4
-            else IpConfig(InterfaceMethod.DISABLED, [], None, []),
-            IpConfig(
-                Interface._map_nm_method(inet.settings.ipv6.method),
-                inet.connection.ipv6.address,
-                inet.connection.ipv6.gateway,
-                inet.connection.ipv6.nameservers,
+        except AttributeError as err:
+            _LOGGER.warning(
+                "Could not create interface configuration for %s - %s", inet.name, err
             )
-            if inet.connection and inet.connection.ipv6
-            else IpConfig(InterfaceMethod.DISABLED, [], None, []),
-            Interface._map_nm_wifi(inet),
-            Interface._map_nm_vlan(inet),
-        )
+
+        return None
 
     @staticmethod
     def _map_nm_method(method: str) -> InterfaceMethod:
