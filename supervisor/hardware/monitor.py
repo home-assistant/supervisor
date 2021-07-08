@@ -7,11 +7,11 @@ from typing import Optional
 
 import pyudev
 
-from ..const import CoreState
+from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotFound
 from ..resolution.const import UnhealthyReason
-from .const import HardwareAction, PolicyGroup, UdevKernelAction, UdevSubsystem
+from .const import HardwareAction, UdevKernelAction
 from .data import Device
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -70,8 +70,8 @@ class HwMonitor(CoreSysAttributes):
         ):
             return
 
-        hw_action = None
-        device = None
+        hw_action: Optional[HardwareAction] = None
+        device: Optional[Device] = None
 
         ##
         # Remove
@@ -121,65 +121,15 @@ class HwMonitor(CoreSysAttributes):
             if kernel.action == UdevKernelAction.ADD:
                 hw_action = HardwareAction.ADD
 
-        # Process Action
-        if (
-            device
-            and hw_action
-            and self.sys_core.state in (CoreState.RUNNING, CoreState.FREEZE)
-        ):
-            # New Sound device
-            if device.subsystem == UdevSubsystem.AUDIO:
-                await self._action_sound(device, hw_action)
-
-            # serial device
-            elif device.subsystem == UdevSubsystem.SERIAL:
-                await self._action_tty(device, hw_action)
-
-            # input device
-            elif device.subsystem == UdevSubsystem.INPUT:
-                await self._action_input(device, hw_action)
-
-            # USB device
-            elif device.subsystem == UdevSubsystem.USB:
-                await self._action_usb(device, hw_action)
-
-            # GPIO device
-            elif device.subsystem == UdevSubsystem.GPIO:
-                await self._action_gpio(device, hw_action)
-
-    async def _action_sound(self, device: Device, action: HardwareAction):
-        """Process sound actions."""
-        if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.AUDIO, device):
-            return
-        _LOGGER.info("Detecting %s audio hardware - %s", action, device.path)
-        await self.sys_create_task(self.sys_host.sound.update())
-
-    async def _action_tty(self, device: Device, action: HardwareAction):
-        """Process tty actions."""
-        if not device.by_id or not self.sys_hardware.policy.is_match_cgroup(
-            PolicyGroup.UART, device
-        ):
+        # Ignore event for future processing
+        if device is None or hw_action is None:
             return
         _LOGGER.info(
-            "Detecting %s serial hardware %s - %s", action, device.path, device.by_id
+            "Detecting %s hardware %s - %s", hw_action, device.path, device.by_id
         )
 
-    async def _action_input(self, device: Device, action: HardwareAction):
-        """Process input actions."""
-        if not device.by_id:
-            return
-        _LOGGER.info(
-            "Detecting %s serial hardware %s - %s", action, device.path, device.by_id
-        )
-
-    async def _action_usb(self, device: Device, action: HardwareAction):
-        """Process usb actions."""
-        if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.USB, device):
-            return
-        _LOGGER.info("Detecting %s usb hardware %s", action, device.path)
-
-    async def _action_gpio(self, device: Device, action: HardwareAction):
-        """Process gpio actions."""
-        if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.GPIO, device):
-            return
-        _LOGGER.info("Detecting %s GPIO hardware %s", action, device.path)
+        # Fire Hardware event to bus
+        if hw_action == HardwareAction.ADD:
+            self.sys_bus.fire_event(BusEvent.HARDWARE_NEW_DEVICE, device)
+        elif hw_action == HardwareAction.REMOVE:
+            self.sys_bus.fire_event(BusEvent.HARDWARE_REMOVE_DEVICE, device)
