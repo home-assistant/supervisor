@@ -35,7 +35,7 @@ on:
 env:
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
-  WHEELS_TAG: 3.9-alpine3.13
+  WHEELS_TAG: 3.9-alpine3.14
 
 jobs:
   init:
