@@ -35,7 +35,7 @@ on:
 env:
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
-  WHEELS_TAG: 3.9-alpine3.13
+  WHEELS_TAG: 3.9-alpine3.14
 
 jobs:
   init:
@@ -89,7 +89,7 @@ jobs:
           fetch-depth: 0
 
       - name: Build wheels
-        if: needs.init.outputs.requirements == 'true'
+        #if: needs.init.outputs.requirements == 'true'
         uses: home-assistant/wheels@master
         with:
           tag: ${{ env.WHEELS_TAG }}
