@@ -89,7 +89,7 @@ jobs:
           fetch-depth: 0
 
       - name: Build wheels
-        #if: needs.init.outputs.requirements == 'true'
+        if: needs.init.outputs.requirements == 'true'
         uses: home-assistant/wheels@master
         with:
           tag: ${{ env.WHEELS_TAG }}
