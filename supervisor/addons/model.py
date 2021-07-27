@@ -5,7 +5,7 @@ from typing import Any, Awaitable, Dict, List, Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from supervisor.addons.const import SnapshotAddonMode
+from supervisor.addons.const import AddonBackupMode
 
 from ..const import (
     ATTR_ADVANCED,
@@ -13,6 +13,9 @@ from ..const import (
     ATTR_ARCH,
     ATTR_AUDIO,
     ATTR_AUTH_API,
+    ATTR_BACKUP_EXCLUDE,
+    ATTR_BACKUP_POST,
+    ATTR_BACKUP_PRE,
     ATTR_BOOT,
     ATTR_DESCRIPTON,
     ATTR_DEVICES,
@@ -53,9 +56,6 @@ from ..const import (
     ATTR_SCHEMA,
     ATTR_SERVICES,
     ATTR_SLUG,
-    ATTR_SNAPSHOT_EXCLUDE,
-    ATTR_SNAPSHOT_POST,
-    ATTR_SNAPSHOT_PRE,
     ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STDIN,
@@ -79,7 +79,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import Capabilities
-from .const import ATTR_SNAPSHOT
+from .const import ATTR_BACKUP
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE, RE_VOLUME
 
@@ -360,24 +360,24 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_HASSIO_ROLE]
 
     @property
-    def snapshot_exclude(self) -> List[str]:
-        """Return Exclude list for snapshot."""
-        return self.data.get(ATTR_SNAPSHOT_EXCLUDE, [])
+    def backup_exclude(self) -> List[str]:
+        """Return Exclude list for backup."""
+        return self.data.get(ATTR_BACKUP_EXCLUDE, [])
 
     @property
-    def snapshot_pre(self) -> Optional[str]:
-        """Return pre-snapshot command."""
-        return self.data.get(ATTR_SNAPSHOT_PRE)
+    def backup_pre(self) -> Optional[str]:
+        """Return pre-backup command."""
+        return self.data.get(ATTR_BACKUP_PRE)
 
     @property
-    def snapshot_post(self) -> Optional[str]:
-        """Return post-snapshot command."""
-        return self.data.get(ATTR_SNAPSHOT_POST)
+    def backup_post(self) -> Optional[str]:
+        """Return post-backup command."""
+        return self.data.get(ATTR_BACKUP_POST)
 
     @property
-    def snapshot_mode(self) -> SnapshotAddonMode:
-        """Return if snapshot is hot/cold."""
-        return self.data[ATTR_SNAPSHOT]
+    def backup_mode(self) -> AddonBackupMode:
+        """Return if backup is hot/cold."""
+        return self.data[ATTR_BACKUP]
 
     @property
     def default_init(self) -> bool:

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .api import RestAPI
     from .arch import CpuArch
     from .auth import Auth
+    from .backups.manager import BackupManager
     from .core import Core
     from .dbus.manager import DBusManager
     from .discovery import Discovery
@@ -33,12 +34,11 @@ if TYPE_CHECKING:
     from .misc.tasks import Tasks
     from .plugins import PluginManager
     from .resolution.module import ResolutionManager
+    from .security import Security
     from .services import ServiceManager
-    from .snapshots import SnapshotManager
     from .store import StoreManager
     from .supervisor import Supervisor
     from .updater import Updater
-    from .security import Security
 
 
 T = TypeVar("T")
@@ -72,7 +72,7 @@ class CoreSys:
         self._addons: Optional[AddonManager] = None
         self._api: Optional[RestAPI] = None
         self._updater: Optional[Updater] = None
-        self._snapshots: Optional[SnapshotManager] = None
+        self._backups: Optional[BackupManager] = None
         self._tasks: Optional[Tasks] = None
         self._host: Optional[HostManager] = None
         self._ingress: Optional[Ingress] = None
@@ -277,18 +277,18 @@ class CoreSys:
         self._store = value
 
     @property
-    def snapshots(self) -> SnapshotManager:
-        """Return SnapshotManager object."""
-        if self._snapshots is None:
-            raise RuntimeError("SnapshotManager not set!")
-        return self._snapshots
+    def backups(self) -> BackupManager:
+        """Return BackupManager object."""
+        if self._backups is None:
+            raise RuntimeError("BackupManager not set!")
+        return self._backups
 
-    @snapshots.setter
-    def snapshots(self, value: SnapshotManager) -> None:
-        """Set a SnapshotManager object."""
-        if self._snapshots:
-            raise RuntimeError("SnapshotsManager already set!")
-        self._snapshots = value
+    @backups.setter
+    def backups(self, value: BackupManager) -> None:
+        """Set a BackupManager object."""
+        if self._backups:
+            raise RuntimeError("BackupsManager already set!")
+        self._backups = value
 
     @property
     def tasks(self) -> Tasks:
@@ -583,9 +583,9 @@ class CoreSysAttributes:
         return self.coresys.store
 
     @property
-    def sys_snapshots(self) -> SnapshotManager:
-        """Return SnapshotManager object."""
-        return self.coresys.snapshots
+    def sys_backups(self) -> BackupManager:
+        """Return BackupManager object."""
+        return self.coresys.backups
 
     @property
     def sys_tasks(self) -> Tasks:

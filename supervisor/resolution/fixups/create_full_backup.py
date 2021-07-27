@@ -8,18 +8,18 @@ from .base import FixupBase
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class FixupCreateFullSnapshot(FixupBase):
+class FixupCreateFullBackup(FixupBase):
     """Storage class for fixup."""
 
     async def process_fixup(self, reference: Optional[str] = None) -> None:
         """Initialize the fixup class."""
-        _LOGGER.info("Create a full snapshot as backup")
-        await self.sys_snapshots.do_snapshot_full()
+        _LOGGER.info("Creating a full backup")
+        await self.sys_backups.do_backup_full()
 
     @property
     def suggestion(self) -> SuggestionType:
         """Return a SuggestionType enum."""
-        return SuggestionType.CREATE_FULL_SNAPSHOT
+        return SuggestionType.CREATE_FULL_BACKUP
 
     @property
     def context(self) -> ContextType:
