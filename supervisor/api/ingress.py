@@ -5,7 +5,7 @@ import logging
 from typing import Any, Dict, Union
 
 import aiohttp
-from aiohttp import hdrs, web
+from aiohttp import ClientTimeout, hdrs, web
 from aiohttp.web_exceptions import (
     HTTPBadGateway,
     HTTPServiceUnavailable,
@@ -162,8 +162,17 @@ class APIIngress(CoreSysAttributes):
     ) -> Union[web.Response, web.StreamResponse]:
         """Ingress route for request."""
         url = self._create_url(addon, path)
-        data = await request.read()
         source_header = _init_header(request, addon)
+
+        # Passing the raw stream breaks requests for some webservers
+        # since we just need it for POST requests really, for all other methods
+        # we read the bytes and pass that to the request to the add-on
+        # add-ons needs to add support with that in the configuration
+        data = (
+            request.content
+            if request.method == "POST" and addon.ingress_stream
+            else await request.read()
+        )
 
         async with self.sys_websession.request(
             request.method,
@@ -172,6 +181,7 @@ class APIIngress(CoreSysAttributes):
             params=request.query,
             allow_redirects=False,
             data=data,
+            timeout=ClientTimeout(total=None),
         ) as result:
             headers = _response_header(result)
 
@@ -219,6 +229,7 @@ def _init_header(
         if name in (
             hdrs.CONTENT_LENGTH,
             hdrs.CONTENT_ENCODING,
+            hdrs.TRANSFER_ENCODING,
             hdrs.SEC_WEBSOCKET_EXTENSIONS,
             hdrs.SEC_WEBSOCKET_PROTOCOL,
             hdrs.SEC_WEBSOCKET_VERSION,

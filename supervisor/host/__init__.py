@@ -4,10 +4,10 @@ from functools import lru_cache
 import logging
 from typing import List
 
-from ..const import HostFeature
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, PulseAudioError
 from .apparmor import AppArmorControl
+from .const import HostFeature
 from .control import SystemControl
 from .info import InfoCenter
 from .network import NetworkManager
@@ -85,8 +85,11 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.timedate.is_connected:
             features.append(HostFeature.TIMEDATE)
 
+        if self.sys_dbus.agent.is_connected:
+            features.append(HostFeature.AGENT)
+
         if self.sys_hassos.available:
-            features.append(HostFeature.HASSOS)
+            features.append(HostFeature.HAOS)
 
         return features
 
@@ -99,6 +102,9 @@ class HostManager(CoreSysAttributes):
 
         if self.sys_dbus.network.is_connected:
             await self.network.update()
+
+        if self.sys_dbus.agent.is_connected:
+            await self.sys_dbus.agent.update()
 
         with suppress(PulseAudioError):
             await self.sound.update()

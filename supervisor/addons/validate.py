@@ -48,6 +48,7 @@ from ..const import (
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PANEL,
     ATTR_INGRESS_PORT,
+    ATTR_INGRESS_STREAM,
     ATTR_INGRESS_TOKEN,
     ATTR_INIT,
     ATTR_JOURNALD,
@@ -276,6 +277,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
             network_port, vol.Equal(0)
         ),
         vol.Optional(ATTR_INGRESS_ENTRY): str,
+        vol.Optional(ATTR_INGRESS_STREAM, default=False): vol.Boolean(),
         vol.Optional(ATTR_PANEL_ICON, default="mdi:puzzle"): str,
         vol.Optional(ATTR_PANEL_TITLE): str,
         vol.Optional(ATTR_PANEL_ADMIN, default=True): vol.Boolean(),

@@ -76,6 +76,8 @@ class HassOS(CoreSysAttributes):
         # The OS name used to be hassos before renaming to haos...
         if version < 6.0:
             update_os_name = "hassos"
+        else:
+            update_os_name = "haos"
 
         url = raw_url.format(
             version=str(version), board=update_board, os_name=update_os_name
@@ -159,7 +161,11 @@ class HassOS(CoreSysAttributes):
         await self.sys_host.services.restart("hassos-config.service")
 
     @Job(
-        conditions=[JobCondition.HAOS, JobCondition.INTERNET_SYSTEM],
+        conditions=[
+            JobCondition.HAOS,
+            JobCondition.INTERNET_SYSTEM,
+            JobCondition.RUNNING,
+        ],
         limit=JobExecutionLimit.ONCE,
         on_condition=HassOSJobError,
     )

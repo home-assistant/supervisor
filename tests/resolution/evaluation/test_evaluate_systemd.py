@@ -2,8 +2,9 @@
 # pylint: disable=import-error,protected-access
 from unittest.mock import MagicMock, patch
 
-from supervisor.const import CoreState, HostFeature
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.host.const import HostFeature
 from supervisor.resolution.evaluations.systemd import EvaluateSystemd
 
 

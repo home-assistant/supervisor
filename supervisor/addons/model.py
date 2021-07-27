@@ -35,6 +35,7 @@ from ..const import (
     ATTR_HOST_PID,
     ATTR_IMAGE,
     ATTR_INGRESS,
+    ATTR_INGRESS_STREAM,
     ATTR_INIT,
     ATTR_JOURNALD,
     ATTR_KERNEL_MODULES,
@@ -397,6 +398,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def ingress_panel(self) -> Optional[bool]:
         """Return True if the add-on access support ingress."""
         return None
+
+    @property
+    def ingress_stream(self) -> bool:
+        """Return True if post requests to ingress should be streamed."""
+        return self.data[ATTR_INGRESS_STREAM]
 
     @property
     def with_gpio(self) -> bool:

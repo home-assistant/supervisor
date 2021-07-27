@@ -109,7 +109,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
     def validate_session(self, session: str) -> bool:
         """Return True if session valid and make it longer valid."""
         if session not in self.sessions:
-            _LOGGER.debug("Session %f is not known", session)
+            _LOGGER.debug("Session %s is not known", session)
             return False
 
         # check if timestamp valid, to avoid crash on malformed timestamp
