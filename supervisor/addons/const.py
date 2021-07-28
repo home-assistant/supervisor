@@ -2,11 +2,11 @@
 from enum import Enum
 
 
-class SnapshotAddonMode(str, Enum):
-    """Snapshot mode of an Add-on."""
+class AddonBackupMode(str, Enum):
+    """Backup mode of an Add-on."""
 
     HOT = "hot"
     COLD = "cold"
 
 
-ATTR_SNAPSHOT = "snapshot"
+ATTR_BACKUP = "backup"

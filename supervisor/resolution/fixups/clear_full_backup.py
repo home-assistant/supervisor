@@ -2,33 +2,33 @@
 import logging
 from typing import List, Optional
 
-from ...const import SNAPSHOT_FULL
-from ..const import MINIMUM_FULL_SNAPSHOTS, ContextType, IssueType, SuggestionType
+from ...backups.const import BackupType
+from ..const import MINIMUM_FULL_BACKUPS, ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class FixupClearFullSnapshot(FixupBase):
+class FixupClearFullBackup(FixupBase):
     """Storage class for fixup."""
 
     async def process_fixup(self, reference: Optional[str] = None) -> None:
         """Initialize the fixup class."""
-        full_snapshots = [
-            x for x in self.sys_snapshots.list_snapshots if x.sys_type == SNAPSHOT_FULL
+        full_backups = [
+            x for x in self.sys_backups.list_backups if x.sys_type == BackupType.FULL
         ]
 
-        if len(full_snapshots) < MINIMUM_FULL_SNAPSHOTS:
+        if len(full_backups) < MINIMUM_FULL_BACKUPS:
             return
 
-        _LOGGER.info("Starting removal of old full snapshots")
-        for snapshot in sorted(full_snapshots, key=lambda x: x.date)[:-1]:
-            self.sys_snapshots.remove(snapshot)
+        _LOGGER.info("Starting removal of old full backups")
+        for backup in sorted(full_backups, key=lambda x: x.date)[:-1]:
+            self.sys_backups.remove(backup)
 
     @property
     def suggestion(self) -> SuggestionType:
         """Return a SuggestionType enum."""
-        return SuggestionType.CLEAR_FULL_SNAPSHOT
+        return SuggestionType.CLEAR_FULL_BACKUP
 
     @property
     def context(self) -> ContextType:

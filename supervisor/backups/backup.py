@@ -1,4 +1,4 @@
-"""Representation of a snapshot file."""
+"""Representation of a backup file."""
 from base64 import b64decode, b64encode
 import json
 import logging
@@ -48,7 +48,7 @@ from ..exceptions import AddonsError
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile, atomic_contents_add, secure_path
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
-from .validate import ALL_FOLDERS, SCHEMA_SNAPSHOT
+from .validate import ALL_FOLDERS, SCHEMA_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -63,11 +63,11 @@ MAP_FOLDER_EXCLUDE = {
 }
 
 
-class Snapshot(CoreSysAttributes):
-    """A single Supervisor snapshot."""
+class Backup(CoreSysAttributes):
+    """A single Supervisor backup."""
 
     def __init__(self, coresys: CoreSys, tar_file: Path):
-        """Initialize a snapshot."""
+        """Initialize a backup."""
         self.coresys: CoreSys = coresys
         self._tarfile: Path = tar_file
         self._data: Dict[str, Any] = {}
@@ -77,32 +77,32 @@ class Snapshot(CoreSysAttributes):
 
     @property
     def slug(self):
-        """Return snapshot slug."""
+        """Return backup slug."""
         return self._data.get(ATTR_SLUG)
 
     @property
     def sys_type(self):
-        """Return snapshot type."""
+        """Return backup type."""
         return self._data.get(ATTR_TYPE)
 
     @property
     def name(self):
-        """Return snapshot name."""
+        """Return backup name."""
         return self._data[ATTR_NAME]
 
     @property
     def date(self):
-        """Return snapshot date."""
+        """Return backup date."""
         return self._data[ATTR_DATE]
 
     @property
     def protected(self):
-        """Return snapshot date."""
+        """Return backup date."""
         return self._data.get(ATTR_PROTECTED) is not None
 
     @property
     def addons(self):
-        """Return snapshot date."""
+        """Return backup date."""
         return self._data[ATTR_ADDONS]
 
     @property
@@ -117,27 +117,27 @@ class Snapshot(CoreSysAttributes):
 
     @property
     def repositories(self):
-        """Return snapshot date."""
+        """Return backup date."""
         return self._data[ATTR_REPOSITORIES]
 
     @repositories.setter
     def repositories(self, value):
-        """Set snapshot date."""
+        """Set backup date."""
         self._data[ATTR_REPOSITORIES] = value
 
     @property
     def homeassistant_version(self):
-        """Return snapshot Home Assistant version."""
+        """Return backupbackup Home Assistant version."""
         return self._data[ATTR_HOMEASSISTANT].get(ATTR_VERSION)
 
     @property
     def homeassistant(self):
-        """Return snapshot Home Assistant data."""
+        """Return backup Home Assistant data."""
         return self._data[ATTR_HOMEASSISTANT]
 
     @property
     def docker(self):
-        """Return snapshot Docker config data."""
+        """Return backup Docker config data."""
         return self._data.get(ATTR_DOCKER, {})
 
     @docker.setter
@@ -147,7 +147,7 @@ class Snapshot(CoreSysAttributes):
 
     @property
     def size(self):
-        """Return snapshot size."""
+        """Return backup size."""
         if not self.tarfile.is_file():
             return 0
         return round(self.tarfile.stat().st_size / 1048576, 2)  # calc mbyte
@@ -159,11 +159,11 @@ class Snapshot(CoreSysAttributes):
 
     @property
     def tarfile(self):
-        """Return path to Snapshot tarfile."""
+        """Return path to backup tarfile."""
         return self._tarfile
 
     def new(self, slug, name, date, sys_type, password=None):
-        """Initialize a new snapshot."""
+        """Initialize a new backup."""
         # Init metadata
         self._data[ATTR_SLUG] = slug
         self._data[ATTR_NAME] = name
@@ -171,7 +171,7 @@ class Snapshot(CoreSysAttributes):
         self._data[ATTR_TYPE] = sys_type
 
         # Add defaults
-        self._data = SCHEMA_SNAPSHOT(self._data)
+        self._data = SCHEMA_BACKUP(self._data)
 
         # Set password
         if password:
@@ -180,7 +180,7 @@ class Snapshot(CoreSysAttributes):
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
     def set_password(self, password: str) -> bool:
-        """Set the password for an existing snapshot."""
+        """Set the password for an existing backup."""
         if not password:
             return False
 
@@ -223,22 +223,26 @@ class Snapshot(CoreSysAttributes):
         return data.decode()
 
     async def load(self):
-        """Read snapshot.json from tar file."""
+        """Read backup.json from tar file."""
         if not self.tarfile.is_file():
             _LOGGER.error("No tarfile located at %s", self.tarfile)
             return False
 
         def _load_file():
-            """Read snapshot.json."""
-            with tarfile.open(self.tarfile, "r:") as snapshot:
-                json_file = snapshot.extractfile("./snapshot.json")
+            """Read backup.json."""
+            with tarfile.open(self.tarfile, "r:") as backup:
+                if "./snapshot.json" in [entry.name for entry in backup.getmembers()]:
+                    # Old backups stil uses "snapshot.json", we need to support that forever
+                    json_file = backup.extractfile("./snapshot.json")
+                else:
+                    json_file = backup.extractfile("./backup.json")
                 return json_file.read()
 
-        # read snapshot.json
+        # read backup.json
         try:
             raw = await self.sys_run_in_executor(_load_file)
         except (tarfile.TarError, KeyError) as err:
-            _LOGGER.error("Can't read snapshot tarfile %s: %s", self.tarfile, err)
+            _LOGGER.error("Can't read backup tarfile %s: %s", self.tarfile, err)
             return False
 
         # parse data
@@ -250,7 +254,7 @@ class Snapshot(CoreSysAttributes):
 
         # validate
         try:
-            self._data = SCHEMA_SNAPSHOT(raw_dict)
+            self._data = SCHEMA_BACKUP(raw_dict)
         except vol.Invalid as err:
             _LOGGER.error(
                 "Can't validate data for %s: %s",
@@ -262,66 +266,66 @@ class Snapshot(CoreSysAttributes):
         return True
 
     async def __aenter__(self):
-        """Async context to open a snapshot."""
+        """Async context to open a backup."""
         self._tmp = TemporaryDirectory(dir=str(self.sys_config.path_tmp))
 
-        # create a snapshot
+        # create a backup
         if not self.tarfile.is_file():
             return self
 
-        # extract an existing snapshot
-        def _extract_snapshot():
-            """Extract a snapshot."""
+        # extract an existing backup
+        def _extract_backup():
+            """Extract a backup."""
             with tarfile.open(self.tarfile, "r:") as tar:
                 tar.extractall(path=self._tmp.name, members=secure_path(tar))
 
-        await self.sys_run_in_executor(_extract_snapshot)
+        await self.sys_run_in_executor(_extract_backup)
 
     async def __aexit__(self, exception_type, exception_value, traceback):
-        """Async context to close a snapshot."""
-        # exists snapshot or exception on build
+        """Async context to close a backup."""
+        # exists backup or exception on build
         if self.tarfile.is_file() or exception_type is not None:
             self._tmp.cleanup()
             return
 
         # validate data
         try:
-            self._data = SCHEMA_SNAPSHOT(self._data)
+            self._data = SCHEMA_BACKUP(self._data)
         except vol.Invalid as err:
             _LOGGER.error(
                 "Invalid data for %s: %s", self.tarfile, humanize_error(self._data, err)
             )
             raise ValueError("Invalid config") from None
 
-        # new snapshot, build it
-        def _create_snapshot():
-            """Create a new snapshot."""
+        # new backup, build it
+        def _create_backup():
+            """Create a new backup."""
             with tarfile.open(self.tarfile, "w:") as tar:
                 tar.add(self._tmp.name, arcname=".")
 
         try:
-            write_json_file(Path(self._tmp.name, "snapshot.json"), self._data)
-            await self.sys_run_in_executor(_create_snapshot)
+            write_json_file(Path(self._tmp.name, "backup.json"), self._data)
+            await self.sys_run_in_executor(_create_backup)
         except (OSError, json.JSONDecodeError) as err:
-            _LOGGER.error("Can't write snapshot: %s", err)
+            _LOGGER.error("Can't write backup: %s", err)
         finally:
             self._tmp.cleanup()
 
     async def store_addons(self, addon_list: Optional[List[Addon]] = None):
-        """Add a list of add-ons into snapshot."""
+        """Add a list of add-ons into backup."""
         addon_list: List[Addon] = addon_list or self.sys_addons.installed
 
         async def _addon_save(addon: Addon):
-            """Task to store an add-on into snapshot."""
+            """Task to store an add-on into backup."""
             addon_file = SecureTarFile(
                 Path(self._tmp.name, f"{addon.slug}.tar.gz"), "w", key=self._key
             )
 
-            # Take snapshot
+            # Take backup
             try:
-                await addon.snapshot(addon_file)
+                await addon.backup(addon_file)
             except AddonsError:
-                _LOGGER.error("Can't create snapshot for %s", addon.slug)
+                _LOGGER.error("Can't create backup for %s", addon.slug)
                 return
 
             # Store to config
@@ -343,25 +347,25 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
 
     async def restore_addons(self, addon_list: Optional[List[str]] = None):
-        """Restore a list add-on from snapshot."""
+        """Restore a list add-on from backup."""
         addon_list: List[str] = addon_list or self.addon_list
 
         async def _addon_restore(addon_slug: str):
-            """Task to restore an add-on into snapshot."""
+            """Task to restore an add-on into backup."""
             addon_file = SecureTarFile(
                 Path(self._tmp.name, f"{addon_slug}.tar.gz"), "r", key=self._key
             )
 
-            # If exists inside snapshot
+            # If exists inside backup
             if not addon_file.path.exists():
-                _LOGGER.error("Can't find snapshot %s", addon_slug)
+                _LOGGER.error("Can't find backup %s", addon_slug)
                 return
 
             # Perform a restore
             try:
                 await self.sys_addons.restore(addon_slug, addon_file)
             except AddonsError:
-                _LOGGER.error("Can't restore snapshot %s", addon_slug)
+                _LOGGER.error("Can't restore backup %s", addon_slug)
 
         # Save Add-ons sequential
         # avoid issue on slow IO
@@ -372,23 +376,23 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.warning("Can't restore Add-on %s: %s", slug, err)
 
     async def store_folders(self, folder_list: Optional[List[str]] = None):
-        """Backup Supervisor data into snapshot."""
+        """Backup Supervisor data into backup."""
         folder_list: Set[str] = set(folder_list or ALL_FOLDERS)
 
         def _folder_save(name: str):
-            """Take snapshot of a folder."""
+            """Take backup of a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self.sys_config.path_supervisor, name)
 
             # Check if exists
             if not origin_dir.is_dir():
-                _LOGGER.warning("Can't find snapshot folder %s", name)
+                _LOGGER.warning("Can't find backup folder %s", name)
                 return
 
-            # Take snapshot
+            # Take backup
             try:
-                _LOGGER.info("Snapshot folder %s", name)
+                _LOGGER.info("Backing up folder %s", name)
                 with SecureTarFile(tar_name, "w", key=self._key) as tar_file:
                     atomic_contents_add(
                         tar_file,
@@ -397,10 +401,10 @@ class Snapshot(CoreSysAttributes):
                         arcname=".",
                     )
 
-                _LOGGER.info("Snapshot folder %s done", name)
+                _LOGGER.info("Backup folder %s done", name)
                 self._data[ATTR_FOLDERS].append(name)
             except (tarfile.TarError, OSError) as err:
-                _LOGGER.warning("Can't snapshot folder %s: %s", name, err)
+                _LOGGER.warning("Can't backup folder %s: %s", name, err)
 
         # Save folder sequential
         # avoid issue on slow IO
@@ -411,7 +415,7 @@ class Snapshot(CoreSysAttributes):
                 _LOGGER.warning("Can't save folder %s: %s", folder, err)
 
     async def restore_folders(self, folder_list: Optional[List[str]] = None):
-        """Backup Supervisor data into snapshot."""
+        """Backup Supervisor data into backup."""
         folder_list: Set[str] = set(folder_list or self.folders)
 
         def _folder_restore(name: str):
@@ -420,7 +424,7 @@ class Snapshot(CoreSysAttributes):
             tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
             origin_dir = Path(self.sys_config.path_supervisor, name)
 
-            # Check if exists inside snapshot
+            # Check if exists inside backup
             if not tar_name.exists():
                 _LOGGER.warning("Can't find restore folder %s", name)
                 return
@@ -486,11 +490,11 @@ class Snapshot(CoreSysAttributes):
         self.sys_homeassistant.save_data()
 
     def store_repositories(self):
-        """Store repository list into snapshot."""
+        """Store repository list into backup."""
         self.repositories = self.sys_config.addons_repositories
 
     def restore_repositories(self):
-        """Restore repositories from snapshot.
+        """Restore repositories from backup.
 
         Return a coroutine.
         """

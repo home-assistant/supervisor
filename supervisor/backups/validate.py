@@ -1,6 +1,7 @@
 """Validate some things around restore."""
 import voluptuous as vol
 
+from ..backups.const import BackupType
 from ..const import (
     ATTR_ADDONS,
     ATTR_AUDIO_INPUT,
@@ -30,8 +31,6 @@ from ..const import (
     FOLDER_MEDIA,
     FOLDER_SHARE,
     FOLDER_SSL,
-    SNAPSHOT_FULL,
-    SNAPSHOT_PARTIAL,
 )
 from ..validate import (
     SCHEMA_DOCKER_CONFIG,
@@ -55,15 +54,15 @@ def unique_addons(addons_list):
     single = {addon[ATTR_SLUG] for addon in addons_list}
 
     if len(single) != len(addons_list):
-        raise vol.Invalid("Invalid addon list on snapshot!") from None
+        raise vol.Invalid("Invalid addon list in backup!") from None
     return addons_list
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_SNAPSHOT = vol.Schema(
+SCHEMA_BACKUP = vol.Schema(
     {
         vol.Required(ATTR_SLUG): vol.Coerce(str),
-        vol.Required(ATTR_TYPE): vol.In([SNAPSHOT_FULL, SNAPSHOT_PARTIAL]),
+        vol.Required(ATTR_TYPE): vol.Coerce(BackupType),
         vol.Required(ATTR_NAME): vol.Coerce(str),
         vol.Required(ATTR_DATE): vol.Coerce(str),
         vol.Inclusive(ATTR_PROTECTED, "encrypted"): vol.All(

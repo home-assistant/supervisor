@@ -1,11 +1,12 @@
 """Helpers to check and fix issues with free space."""
 from typing import List, Optional
 
-from ...const import SNAPSHOT_FULL, CoreState
+from ...backups.const import BackupType
+from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import (
     MINIMUM_FREE_SPACE_THRESHOLD,
-    MINIMUM_FULL_SNAPSHOTS,
+    MINIMUM_FULL_BACKUPS,
     ContextType,
     IssueType,
     SuggestionType,
@@ -25,10 +26,10 @@ class CheckFreeSpace(CheckBase):
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
-            if len(self.sys_snapshots.list_snapshots) == 0:
-                # No snapshots, let's suggest the user to create one!
+            if len(self.sys_backups.list_backups) == 0:
+                # No backups, let's suggest the user to create one!
                 self.sys_resolution.suggestions = Suggestion(
-                    SuggestionType.CREATE_FULL_SNAPSHOT, ContextType.SYSTEM
+                    SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM
                 )
             return
 
@@ -37,13 +38,13 @@ class CheckFreeSpace(CheckBase):
             len(
                 [
                     x
-                    for x in self.sys_snapshots.list_snapshots
-                    if x.sys_type == SNAPSHOT_FULL
+                    for x in self.sys_backups.list_backups
+                    if x.sys_type == BackupType.FULL
                 ]
             )
-            >= MINIMUM_FULL_SNAPSHOTS
+            >= MINIMUM_FULL_BACKUPS
         ):
-            suggestions.append(SuggestionType.CLEAR_FULL_SNAPSHOT)
+            suggestions.append(SuggestionType.CLEAR_FULL_BACKUP)
 
         self.sys_resolution.create_issue(
             IssueType.FREE_SPACE, ContextType.SYSTEM, suggestions=suggestions
