@@ -5,13 +5,14 @@ import asyncio
 from datetime import datetime
 import logging
 import os
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
 
 import aiohttp
 import sentry_sdk
 
 from .config import CoreConfig
-from .const import ENV_SUPERVISOR_DEV
+from .const import ENV_SUPERVISOR_DEV, SERVER_SOFTWARE
 from .docker import DockerAPI
 from .utils.dt import UTC, get_time_zone
 
@@ -87,6 +88,11 @@ class CoreSys:
         self._resolution: Optional[ResolutionManager] = None
         self._jobs: Optional[JobManager] = None
         self._security: Optional[Security] = None
+
+        # Set default header for aiohttp
+        self._websession._default_headers = MappingProxyType(
+            {aiohttp.hdrs.USER_AGENT: SERVER_SOFTWARE}
+        )
 
     @property
     def dev(self) -> bool:

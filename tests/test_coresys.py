@@ -2,6 +2,8 @@
 
 from datetime import timedelta
 
+from aiohttp.hdrs import USER_AGENT
+
 from supervisor.coresys import CoreSys
 from supervisor.utils.dt import utcnow
 
@@ -29,3 +31,13 @@ def test_now(coresys: CoreSys):
 
     assert zurich != utc
     assert zurich - utc <= timedelta(hours=2)
+
+
+def test_custom_user_agent(coresys: CoreSys):
+    """Test custom useragent."""
+    assert (
+        "HomeAssistantSupervisor/DEV"
+        in coresys.websession._default_headers[  # pylint: disable=protected-access
+            USER_AGENT
+        ]
+    )
