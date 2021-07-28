@@ -2,8 +2,12 @@
 from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
+from sys import version_info as systemversion
+
+from aiohttp import __version__ as aiohttpversion
 
 SUPERVISOR_VERSION = "DEV"
+SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor.txt"
