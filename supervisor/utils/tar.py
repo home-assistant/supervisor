@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives.ciphers import (
     algorithms,
     modes,
 )
+from wcmatch import glob
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -146,7 +147,10 @@ def _is_excluded_by_filter(path: PurePath, exclude_list: List[str]) -> bool:
     """Filter to filter excludes."""
 
     for exclude in exclude_list:
-        if not path.glob(exclude):
+        if not (
+            glob.globmatch(path.as_posix(), exclude, flags=glob.GLOBSTAR)
+            or path.match(exclude)
+        ):
             continue
         _LOGGER.debug("Ignoring %s because of %s", path, exclude)
         return True

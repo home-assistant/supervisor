@@ -43,12 +43,13 @@ def test_not_secure_path():
 
 def test_is_excluded_by_filter_good():
     """Test exclude filter."""
-    filter_list = ["not/match", "/dev/xy"]
+    filter_list = ["not/match", "/dev/xy", "root/*/ab.cd"]
     test_list = [
         PurePath("test.txt"),
         PurePath("data/xy.blob"),
         PurePath("bla/blu/ble"),
         PurePath("data/../xy.blob"),
+        PurePath("root/folder1/folder2/folder3/ab.cd"),
     ]
 
     for path_object in test_list:
@@ -57,12 +58,13 @@ def test_is_excluded_by_filter_good():
 
 def test_is_exclude_by_filter_bad():
     """Test exclude filter."""
-    filter_list = ["*.txt", "data/*", "bla/blu/ble"]
+    filter_list = ["*.txt", "data/*", "bla/blu/ble", "root/**/ab.cd"]
     test_list = [
         PurePath("test.txt"),
         PurePath("data/xy.blob"),
         PurePath("bla/blu/ble"),
         PurePath("data/test_files/kk.txt"),
+        PurePath("root/folder1/folder2/folder3/ab.cd"),
     ]
 
     for path_object in test_list:
