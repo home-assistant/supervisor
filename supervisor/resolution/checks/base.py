@@ -1,5 +1,5 @@
 """Baseclass for system checks."""
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 import logging
 from typing import List, Optional
 
@@ -60,12 +60,12 @@ class CheckBase(ABC, CoreSysAttributes):
         """Approve check if it is affected by issue."""
 
     @property
-    @abstractproperty
+    @abstractmethod
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
 
     @property
-    @abstractproperty
+    @abstractmethod
     def context(self) -> ContextType:
         """Return a ContextType enum."""
 
