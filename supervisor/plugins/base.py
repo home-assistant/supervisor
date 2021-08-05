@@ -1,5 +1,5 @@
 """Supervisor plugins base class."""
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from typing import Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
@@ -37,7 +37,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         self._data[ATTR_IMAGE] = value
 
     @property
-    @abstractproperty
+    @abstractmethod
     def latest_version(self) -> Optional[AwesomeVersion]:
         """Return latest version of the plugin."""
 

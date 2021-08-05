@@ -1,5 +1,5 @@
 """Baseclass for system evaluations."""
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 import logging
 from typing import List
 
@@ -39,7 +39,7 @@ class EvaluateBase(ABC, CoreSysAttributes):
         """Run evaluation."""
 
     @property
-    @abstractproperty
+    @abstractmethod
     def reason(self) -> UnsupportedReason:
         """Return a UnsupportedReason enum."""
 
@@ -49,7 +49,7 @@ class EvaluateBase(ABC, CoreSysAttributes):
         return self.__class__.__module__.rsplit(".", maxsplit=1)[-1]
 
     @property
-    @abstractproperty
+    @abstractmethod
     def on_failure(self) -> str:
         """Return a string that is printed when self.evaluate is False."""
 
