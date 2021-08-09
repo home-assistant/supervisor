@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     from .store import StoreManager
     from .supervisor import Supervisor
     from .updater import Updater
-    from .security import Security
     from .bus import Bus
 
 
