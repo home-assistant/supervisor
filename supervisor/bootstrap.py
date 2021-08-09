@@ -21,6 +21,7 @@ from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth
 from .backups.manager import BackupManager
+from .bus import Bus
 from .const import (
     ENV_HOMEASSISTANT_REPOSITORY,
     ENV_SUPERVISOR_MACHINE,
@@ -39,7 +40,7 @@ from .discovery import Discovery
 from .hardware.module import HardwareManager
 from .hassos import HassOS
 from .homeassistant.module import HomeAssistant
-from .host import HostManager
+from .host.manager import HostManager
 from .ingress import Ingress
 from .misc.filter import filter_data
 from .misc.scheduler import Scheduler
@@ -83,6 +84,7 @@ async def initialize_coresys() -> CoreSys:
     coresys.hassos = HassOS(coresys)
     coresys.scheduler = Scheduler(coresys)
     coresys.security = Security(coresys)
+    coresys.bus = Bus(coresys)
 
     # diagnostics
     setup_diagnostics(coresys)
