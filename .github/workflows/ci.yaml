@@ -10,6 +10,7 @@ on:
 env:
   DEFAULT_PYTHON: 3.9
   PRE_COMMIT_HOME: ~/.cache/pre-commit
+  DEFAULT_VCN: v0.9.8
 
 jobs:
   # Separate job to pre-populate the base dependency cache
@@ -356,7 +357,10 @@ jobs:
       - name: Install CodeNotary
         shell: bash
         run: |
-          bash <(curl https://getvcn.codenotary.com -L)
+          mkdir -p "${{ github.action_path }}/bin"
+          curl -Lo "${{ github.action_path }}/bin/vcn" https://github.com/vchain-us/vcn/releases/download/${{ env.DEFAULT_VCN }}/vcn-${{ env.DEFAULT_VCN }}-linux-amd64-static
+          chmod a+x "${{ github.action_path }}/bin/vcn"
+          echo "${{ github.action_path }}/bin" >> "$GITHUB_PATH"
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v2.1.6
