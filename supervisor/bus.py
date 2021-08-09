@@ -30,6 +30,7 @@ class Bus(CoreSysAttributes):
 
     def fire_event(self, event: BusEvent, reference: Any) -> None:
         """Fire an event to the bus."""
+        _LOGGER.debug("Fire event '%s' with '%s'", event, reference)
         for listener in self._listeners.get(event, []):
             self.sys_create_task(listener.callback(reference))
 
