@@ -4,7 +4,12 @@ from typing import Dict, List, Optional
 
 import docker
 
-from ..const import DOCKER_CPU_RUNTIME_ALLOCATION, ENV_TIME, MACHINE_ID
+from ..const import (
+    DOCKER_CPU_RUNTIME_ALLOCATION,
+    ENV_SUPERVISOR_MACHINE,
+    ENV_TIME,
+    MACHINE_ID,
+)
 from ..coresys import CoreSysAttributes
 from ..hardware.const import PolicyGroup
 from .const import Capabilities
@@ -94,7 +99,10 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             ulimits=self.ulimits,
             cpu_rt_runtime=self.cpu_rt_runtime,
             device_cgroup_rules=self.cgroups_rules,
-            environment={ENV_TIME: self.sys_timezone},
+            environment={
+                ENV_TIME: self.sys_timezone,
+                ENV_SUPERVISOR_MACHINE: self.sys_machine,
+            },
             volumes=self.volumes,
         )
 
