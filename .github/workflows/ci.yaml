@@ -10,6 +10,7 @@ on:
 env:
   DEFAULT_PYTHON: 3.9
   PRE_COMMIT_HOME: ~/.cache/pre-commit
+  DEFAULT_VCN: v0.9.8
 
 jobs:
   # Separate job to pre-populate the base dependency cache
@@ -353,10 +354,10 @@ jobs:
         id: python
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install CodeNotary
-        shell: bash
-        run: |
-          bash <(curl https://getvcn.codenotary.com -L)
+      - name: Install VCN tools
+        uses: home-assistant/actions/helpers/vcn@master
+        with:
+          vnc_version: ${{ env.DEFAULT_VCN }}
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v2.1.6
