@@ -357,10 +357,10 @@ jobs:
       - name: Install CodeNotary
         shell: bash
         run: |
-          mkdir -p "${{ github.action_path }}/bin"
-          curl -Lo "${{ github.action_path }}/bin/vcn" https://github.com/vchain-us/vcn/releases/download/${{ env.DEFAULT_VCN }}/vcn-${{ env.DEFAULT_VCN }}-linux-amd64-static
-          chmod a+x "${{ github.action_path }}/bin/vcn"
-          echo "${{ github.action_path }}/bin" >> "$GITHUB_PATH"
+          mkdir -p "${{ github.workspace }}/bin"
+          curl -Lo "${{ github.workspace }}/bin/vcn" https://github.com/vchain-us/vcn/releases/download/${{ env.DEFAULT_VCN }}/vcn-${{ env.DEFAULT_VCN }}-linux-amd64-static
+          chmod a+x "${{ github.workspace }}/bin/vcn"
+          echo "${{ github.workspace }}/bin" >> "$GITHUB_PATH"
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v2.1.6
