@@ -354,13 +354,10 @@ jobs:
         id: python
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install CodeNotary
-        shell: bash
-        run: |
-          mkdir -p "${{ github.workspace }}/bin"
-          curl -Lo "${{ github.workspace }}/bin/vcn" https://github.com/vchain-us/vcn/releases/download/${{ env.DEFAULT_VCN }}/vcn-${{ env.DEFAULT_VCN }}-linux-amd64-static
-          chmod a+x "${{ github.workspace }}/bin/vcn"
-          echo "${{ github.workspace }}/bin" >> "$GITHUB_PATH"
+      - name: Install VCN tools
+        uses: home-assistant/actions/helpers/vcn@master
+        with:
+          vnc_version: ${{ env.DEFAULT_VCN }}
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v2.1.6
