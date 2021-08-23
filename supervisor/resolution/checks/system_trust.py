@@ -37,7 +37,7 @@ class CheckSupervisorSecurity(CheckBase):
 
         # Supervisor
         try:
-            await self.sys_supervisor.instance.check_trust()
+            await self.sys_supervisor.check_trust()
         except CodeNotaryUntrusted:
             self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
             self.sys_resolution.create_issue(
@@ -48,7 +48,7 @@ class CheckSupervisorSecurity(CheckBase):
 
         # Core
         try:
-            await self.sys_homeassistant.core.instance.check_trust()
+            await self.sys_homeassistant.core.check_trust()
         except CodeNotaryUntrusted:
             self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
             self.sys_resolution.create_issue(
@@ -61,13 +61,13 @@ class CheckSupervisorSecurity(CheckBase):
         """Approve check if it is affected by issue."""
         if reference == TrustReference.SUPERVISOR:
             try:
-                await self.sys_supervisor.instance.check_trust()
+                await self.sys_supervisor.check_trust()
             except CodeNotaryUntrusted:
                 return False
 
         if reference == TrustReference.CORE:
             try:
-                await self.sys_homeassistant.core.instance.check_trust()
+                await self.sys_homeassistant.core.check_trust()
             except CodeNotaryUntrusted:
                 return False
 
