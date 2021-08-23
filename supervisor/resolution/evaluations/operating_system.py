@@ -6,7 +6,7 @@ from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 
-SUPPORTED_OS = ["Debian GNU/Linux 10 (buster)"]
+SUPPORTED_OS = ["Debian GNU/Linux 10 (buster)", "Debian GNU/Linux 11 (bullseye)"]
 
 
 def setup(coresys: CoreSys) -> EvaluateBase:
