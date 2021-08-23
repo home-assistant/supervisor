@@ -7,7 +7,8 @@ from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ..const import ContextType, IssueType, SuggestionType
+from ...exceptions import CodeNotaryUntrusted
+from ..const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from .base import CheckBase
 
 
@@ -27,6 +28,7 @@ class CheckCoreSecurity(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
+        # Security issue < 2021.1.5 & Custom components
         try:
             if self.sys_homeassistant.version < AwesomeVersion("2021.1.5"):
                 if Path(
@@ -40,6 +42,14 @@ class CheckCoreSecurity(CheckBase):
                     )
         except (AwesomeVersionException, OSError):
             return
+
+        # Check if core image is trusted
+        if self.sys_core.state != CoreState.RUNNING:
+            return
+        try:
+            await self.sys_homeassistant.core.instance.check_trust()
+        except CodeNotaryUntrusted:
+            self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
 
     async def approve_check(self, reference: Optional[str] = None) -> bool:
         """Approve check if it is affected by issue."""

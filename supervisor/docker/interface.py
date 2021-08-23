@@ -624,3 +624,17 @@ class DockerInterface(CoreSysAttributes):
             self.sys_security.verify_own_content(checksum=checksum), self.sys_loop
         )
         job.result(timeout=20)
+
+    @process_lock
+    def check_trust(self) -> Awaitable[None]:
+        """Check trust of exists Docker image."""
+        return self.sys_run_in_executor(self._check_trust)
+
+    def _check_trust(self) -> None:
+        """Check trust of current image."""
+        try:
+            image = self.sys_docker.images.get(f"{self.image}:{self.version!s}")
+        except (docker.errors.DockerException, requests.RequestException):
+            return
+
+        self._validate_trust(image.id, self.image, self.version)
