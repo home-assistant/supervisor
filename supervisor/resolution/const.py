@@ -66,6 +66,7 @@ class IssueType(str, Enum):
     FATAL_ERROR = "fatal_error"
     DNS_LOOP = "dns_loop"
     PWNED = "pwned"
+    TRUST = "trust"
 
 
 class SuggestionType(str, Enum):
