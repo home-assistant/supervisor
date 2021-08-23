@@ -6,7 +6,7 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import CodeNotaryError, CodeNotaryUntrusted
 from supervisor.resolution.checks.system_trust import CheckSystemTrust
-from supervisor.resolution.const import IssueType
+from supervisor.resolution.const import IssueType, UnhealthyReason
 
 
 async def test_base(coresys: CoreSys):
@@ -48,6 +48,8 @@ async def test_check(coresys: CoreSys):
     assert coresys.resolution.issues[0].reference == "supervisor"
     assert coresys.resolution.issues[1].type == IssueType.TRUST
     assert coresys.resolution.issues[1].reference == "core"
+
+    assert UnhealthyReason.UNTRUSTED in coresys.resolution.unhealthy
 
 
 async def test_approve(coresys: CoreSys):
