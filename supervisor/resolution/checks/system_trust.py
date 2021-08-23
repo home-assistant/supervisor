@@ -1,11 +1,11 @@
-"""Helpers to check supervisor security."""
+"""Helpers to check system trust."""
 from enum import Enum
 import logging
 from typing import List, Optional
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ...exceptions import CodeNotaryUntrusted
+from ...exceptions import CodeNotaryError, CodeNotaryUntrusted
 from ..const import ContextType, IssueType, UnhealthyReason
 from .base import CheckBase
 
@@ -21,11 +21,11 @@ class TrustReference(str, Enum):
 
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
-    return CheckSupervisorSecurity(coresys)
+    return CheckSystemTrust(coresys)
 
 
-class CheckSupervisorSecurity(CheckBase):
-    """CheckSupervisorSecurity class for check."""
+class CheckSystemTrust(CheckBase):
+    """CheckSystemTrust class for check."""
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
@@ -45,6 +45,8 @@ class CheckSupervisorSecurity(CheckBase):
                 ContextType.SYSTEM,
                 reference=TrustReference.SUPERVISOR.value,
             )
+        except CodeNotaryError:
+            pass
 
         # Core
         try:
@@ -56,22 +58,24 @@ class CheckSupervisorSecurity(CheckBase):
                 ContextType.SYSTEM,
                 reference=TrustReference.CORE.value,
             )
+        except CodeNotaryError:
+            pass
 
     async def approve_check(self, reference: Optional[str] = None) -> bool:
         """Approve check if it is affected by issue."""
         if reference == TrustReference.SUPERVISOR:
             try:
                 await self.sys_supervisor.check_trust()
-            except CodeNotaryUntrusted:
-                return False
+            except CodeNotaryError:
+                return True
 
         if reference == TrustReference.CORE:
             try:
                 await self.sys_homeassistant.core.check_trust()
-            except CodeNotaryUntrusted:
-                return False
+            except CodeNotaryError:
+                return True
 
-        return True
+        return False
 
     @property
     def issue(self) -> IssueType:
