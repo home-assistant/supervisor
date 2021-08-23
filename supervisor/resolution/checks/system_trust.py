@@ -54,7 +54,7 @@ class CheckSupervisorSecurity(CheckBase):
             self.sys_resolution.create_issue(
                 IssueType.TRUST,
                 ContextType.SYSTEM,
-                reference=TrustReference.SUPERVISOR.value,
+                reference=TrustReference.CORE.value,
             )
 
     async def approve_check(self, reference: Optional[str] = None) -> bool:
