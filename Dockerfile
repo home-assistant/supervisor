@@ -29,9 +29,6 @@ RUN \
         https://github.com/codenotary/vcn \
     && cd vcn \
     \
-    # Fix: https://github.com/codenotary/vcn/issues/131
-    && go get github.com/codenotary/immudb@4cf9e2ae06ac2e6ec98a60364c3de3eab5524757 \
-    \
     && if [ "${BUILD_ARCH}" = "armhf" ]; then \
         GOARM=6 GOARCH=arm go build -o vcn -ldflags="-s -w" ./cmd/vcn; \
     elif [ "${BUILD_ARCH}" = "armv7" ]; then \
