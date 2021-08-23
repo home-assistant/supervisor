@@ -90,6 +90,10 @@ async def vcn_validate(
 
     if _ATTR_ERROR in data_json:
         raise CodeNotaryBackendError(data_json[_ATTR_ERROR], _LOGGER.warning)
+    elif proc.returncode != 0:
+        raise CodeNotaryError(
+            f"CodeNotary invalid exit code {proc.returncode}", _LOGGER.error
+        )
 
     if data_json[_ATTR_VERIFICATION][_ATTR_STATUS] == 0:
         _CACHE.add((checksum, path, org, signer))

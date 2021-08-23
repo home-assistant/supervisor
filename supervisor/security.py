@@ -11,7 +11,6 @@ from .const import (
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import CodeNotaryError, CodeNotaryUntrusted, PwnedError
-from .resolution.const import UnhealthyReason
 from .utils.codenotary import vcn_validate
 from .utils.common import FileConfiguration
 from .utils.pwned import check_pwned_password
@@ -69,7 +68,6 @@ class Security(FileConfiguration, CoreSysAttributes):
         try:
             await vcn_validate(checksum, path, org="home-assistant.io")
         except CodeNotaryUntrusted:
-            self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
             raise
         except CodeNotaryError:
             if self.force:

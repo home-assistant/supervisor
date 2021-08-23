@@ -1,6 +1,8 @@
 FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.9
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV \
+    DEBIAN_FRONTEND=noninteractive
+    VCN_VERSION=0.9.8
 
 SHELL ["/bin/bash", "-c"]
 
@@ -50,7 +52,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         network-manager \
         apparmor-utils \
         libpulse0 \
-    && bash <(curl https://getvcn.codenotary.com -L) \
+    && curl -Lo /bin/vcn https://github.com/codenotary/vcn/releases/download/${VCN_VERSION}/vcn-${VCN_VERSION}-linux-amd64-static \
+    && chmod a+x /bin/vcn \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies from requirements.txt if it exists
