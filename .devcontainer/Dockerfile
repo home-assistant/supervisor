@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.9
 
 ENV \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
     VCN_VERSION=0.9.8
 
 SHELL ["/bin/bash", "-c"]
