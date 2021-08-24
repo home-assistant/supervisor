@@ -27,6 +27,7 @@ class CheckCoreSecurity(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
+        # Security issue < 2021.1.5 & Custom components
         try:
             if self.sys_homeassistant.version < AwesomeVersion("2021.1.5"):
                 if Path(

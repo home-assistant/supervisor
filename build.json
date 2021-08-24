@@ -9,7 +9,7 @@
     "i386": "ghcr.io/home-assistant/i386-base-python:3.9-alpine3.14"
   },
   "args": {
-    "VCN_VERSION": "0.9.4"
+    "VCN_VERSION": "0.9.8"
   },
   "labels": {
     "io.hass.type": "supervisor",

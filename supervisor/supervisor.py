@@ -218,6 +218,13 @@ class Supervisor(CoreSysAttributes):
         """
         return self.instance.logs()
 
+    def check_trust(self) -> Awaitable[None]:
+        """Calculate Supervisor docker content trust.
+
+        Return Coroutine.
+        """
+        return self.instance.check_trust()
+
     async def stats(self) -> DockerStats:
         """Return stats of Supervisor."""
         try:

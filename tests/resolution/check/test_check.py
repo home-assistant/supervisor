@@ -36,6 +36,7 @@ async def test_check_running(coresys: CoreSys):
 async def test_if_check_make_issue(coresys: CoreSys):
     """Test check for setup."""
     coresys.core.state = CoreState.RUNNING
+    coresys.security.content_trust = False
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
         await coresys.resolution.check.check_system()
@@ -46,6 +47,7 @@ async def test_if_check_make_issue(coresys: CoreSys):
 async def test_if_check_cleanup_issue(coresys: CoreSys):
     """Test check for setup."""
     coresys.core.state = CoreState.RUNNING
+    coresys.security.content_trust = False
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
         await coresys.resolution.check.check_system()
