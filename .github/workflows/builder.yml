@@ -278,7 +278,7 @@ jobs:
         if: needs.init.outputs.publish == 'true'
         run: |
           echo "Enable Content-Trust"
-          test=$(docker exec hassio_cli ha supervisor options --content-trust=true --no-progress --raw-json | jq -r '.result')
+          test=$(docker exec hassio_cli ha security options --content-trust=true --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ];then
             docker logs hassio_supervisor
             exit 1
