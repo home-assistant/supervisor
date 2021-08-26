@@ -5,7 +5,7 @@ Code: https://github.com/home-assistant/plugin-multicast
 import asyncio
 from contextlib import suppress
 import logging
-from typing import Awaitable, Optional
+from typing import Optional
 
 from awesomeversion import AwesomeVersion
 
@@ -34,11 +34,6 @@ class PluginMulticast(PluginBase):
     def latest_version(self) -> Optional[AwesomeVersion]:
         """Return latest version of Multicast."""
         return self.sys_updater.version_multicast
-
-    @property
-    def in_progress(self) -> bool:
-        """Return True if a task is in progress."""
-        return self.instance.in_progress
 
     async def load(self) -> None:
         """Load multicast setup."""
@@ -143,33 +138,12 @@ class PluginMulticast(PluginBase):
             _LOGGER.error("Can't stop Multicast plugin")
             raise MulticastError() from err
 
-    def logs(self) -> Awaitable[bytes]:
-        """Get Multicast docker logs.
-
-        Return Coroutine.
-        """
-        return self.instance.logs()
-
     async def stats(self) -> DockerStats:
         """Return stats of Multicast."""
         try:
             return await self.instance.stats()
         except DockerError as err:
             raise MulticastError() from err
-
-    def is_running(self) -> Awaitable[bool]:
-        """Return True if Docker container is running.
-
-        Return a coroutine.
-        """
-        return self.instance.is_running()
-
-    def is_failed(self) -> Awaitable[bool]:
-        """Return True if a Docker container is failed state.
-
-        Return a coroutine.
-        """
-        return self.instance.is_failed()
 
     async def repair(self) -> None:
         """Repair Multicast plugin."""

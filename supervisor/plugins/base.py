@@ -1,18 +1,20 @@
 """Supervisor plugins base class."""
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Awaitable, Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ..const import ATTR_IMAGE, ATTR_VERSION
 from ..coresys import CoreSysAttributes
+from ..docker.interface import DockerInterface
 from ..utils.common import FileConfiguration
 
 
 class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     """Base class for plugins."""
 
-    slug: str = ""
+    slug: str
+    instance: DockerInterface
 
     @property
     def version(self) -> Optional[AwesomeVersion]:
@@ -48,6 +50,39 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
             return self.version < self.latest_version
         except (AwesomeVersionException, TypeError):
             return False
+
+    @property
+    def in_progress(self) -> bool:
+        """Return True if a task is in progress."""
+        return self.instance.in_progress
+
+    def check_trust(self) -> Awaitable[None]:
+        """Calculate plugin docker content trust.
+
+        Return Coroutine.
+        """
+        return self.instance.check_trust()
+
+    def logs(self) -> Awaitable[bytes]:
+        """Get docker plugin logs.
+
+        Return Coroutine.
+        """
+        return self.instance.logs()
+
+    def is_running(self) -> Awaitable[bool]:
+        """Return True if Docker container is running.
+
+        Return a coroutine.
+        """
+        return self.instance.is_running()
+
+    def is_failed(self) -> Awaitable[bool]:
+        """Return True if a Docker container is failed state.
+
+        Return a coroutine.
+        """
+        return self.instance.is_failed()
 
     @abstractmethod
     async def load(self) -> None:

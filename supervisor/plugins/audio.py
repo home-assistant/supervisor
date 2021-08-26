@@ -7,7 +7,7 @@ from contextlib import suppress
 import logging
 from pathlib import Path, PurePath
 import shutil
-from typing import Awaitable, Optional
+from typing import Optional
 
 from awesomeversion import AwesomeVersion
 import jinja2
@@ -51,11 +51,6 @@ class PluginAudio(PluginBase):
     def latest_version(self) -> Optional[AwesomeVersion]:
         """Return latest version of Audio."""
         return self.sys_updater.version_audio
-
-    @property
-    def in_progress(self) -> bool:
-        """Return True if a task is in progress."""
-        return self.instance.in_progress
 
     async def load(self) -> None:
         """Load Audio setup."""
@@ -171,26 +166,12 @@ class PluginAudio(PluginBase):
             _LOGGER.error("Can't stop Audio plugin")
             raise AudioError() from err
 
-    def logs(self) -> Awaitable[bytes]:
-        """Get CoreDNS docker logs.
-
-        Return Coroutine.
-        """
-        return self.instance.logs()
-
     async def stats(self) -> DockerStats:
         """Return stats of CoreDNS."""
         try:
             return await self.instance.stats()
         except DockerError as err:
             raise AudioError() from err
-
-    def is_running(self) -> Awaitable[bool]:
-        """Return True if Docker container is running.
-
-        Return a coroutine.
-        """
-        return self.instance.is_running()
 
     async def repair(self) -> None:
         """Repair CoreDNS plugin."""
