@@ -17,7 +17,7 @@ def setup(coresys: CoreSys) -> CheckBase:
 
 
 class CheckPluginTrust(CheckBase):
-    """CheckSystemTrust class for check."""
+    """CheckPluginTrust class for check."""
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
