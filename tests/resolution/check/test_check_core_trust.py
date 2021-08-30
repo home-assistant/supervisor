@@ -1,4 +1,4 @@
-"""Test Check Addon Pwned."""
+"""Test Check Core trust."""
 # pylint: disable=import-error,protected-access
 from unittest.mock import AsyncMock, patch
 

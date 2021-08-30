@@ -42,11 +42,6 @@ class PluginCli(PluginBase):
         """Return an access token for the Supervisor API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
 
-    @property
-    def in_progress(self) -> bool:
-        """Return True if a task is in progress."""
-        return self.instance.in_progress
-
     async def load(self) -> None:
         """Load cli setup."""
         # Check cli state

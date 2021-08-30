@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from .jobs import JobManager
     from .misc.scheduler import Scheduler
     from .misc.tasks import Tasks
-    from .plugins import PluginManager
+    from .plugins.manager import PluginManager
     from .resolution.module import ResolutionManager
     from .security import Security
     from .services import ServiceManager

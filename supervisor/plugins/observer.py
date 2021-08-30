@@ -6,7 +6,7 @@ import asyncio
 from contextlib import suppress
 import logging
 import secrets
-from typing import Awaitable, Optional
+from typing import Optional
 
 import aiohttp
 from awesomeversion import AwesomeVersion
@@ -42,11 +42,6 @@ class PluginObserver(PluginBase):
     def supervisor_token(self) -> str:
         """Return an access token for the Observer API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
-
-    @property
-    def in_progress(self) -> bool:
-        """Return True if a task is in progress."""
-        return self.instance.in_progress
 
     async def load(self) -> None:
         """Load observer setup."""
@@ -144,13 +139,6 @@ class PluginObserver(PluginBase):
             return await self.instance.stats()
         except DockerError as err:
             raise ObserverError() from err
-
-    def is_running(self) -> Awaitable[bool]:
-        """Return True if Docker container is running.
-
-        Return a coroutine.
-        """
-        return self.instance.is_running()
 
     async def rebuild(self) -> None:
         """Rebuild Observer Docker container."""

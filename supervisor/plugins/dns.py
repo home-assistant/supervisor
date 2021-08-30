@@ -7,7 +7,7 @@ from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
-from typing import Awaitable, List, Optional
+from typing import List, Optional
 
 import attr
 from awesomeversion import AwesomeVersion
@@ -97,11 +97,6 @@ class PluginDns(PluginBase):
     def latest_version(self) -> Optional[AwesomeVersion]:
         """Return latest version of CoreDNS."""
         return self.sys_updater.version_dns
-
-    @property
-    def in_progress(self) -> bool:
-        """Return True if a task is in progress."""
-        return self.instance.in_progress
 
     async def load(self) -> None:
         """Load DNS setup."""
@@ -369,33 +364,12 @@ class PluginDns(PluginBase):
                 return entry
         return None
 
-    def logs(self) -> Awaitable[bytes]:
-        """Get CoreDNS docker logs.
-
-        Return Coroutine.
-        """
-        return self.instance.logs()
-
     async def stats(self) -> DockerStats:
         """Return stats of CoreDNS."""
         try:
             return await self.instance.stats()
         except DockerError as err:
             raise CoreDNSError() from err
-
-    def is_running(self) -> Awaitable[bool]:
-        """Return True if Docker container is running.
-
-        Return a coroutine.
-        """
-        return self.instance.is_running()
-
-    def is_failed(self) -> Awaitable[bool]:
-        """Return True if a Docker container is failed state.
-
-        Return a coroutine.
-        """
-        return self.instance.is_failed()
 
     async def repair(self) -> None:
         """Repair CoreDNS plugin."""
