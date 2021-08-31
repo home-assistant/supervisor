@@ -10,5 +10,5 @@ pytest-aiohttp==0.3.0
 pytest-asyncio==0.12.0 # NB!: Versions over 0.12.0 breaks pytest-aiohttp (https://github.com/aio-libs/pytest-aiohttp/issues/16)
 pytest-cov==2.12.1
 pytest-timeout==1.4.2
-pytest==6.2.4
+pytest==6.2.5
 pyupgrade==2.25.0
