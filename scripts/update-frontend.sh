@@ -14,7 +14,6 @@ script/bootstrap
 # Download translations
 start_docker
 ./script/translations_download
-stop_docker
 
 # build frontend
 cd hassio
@@ -23,3 +22,9 @@ cd hassio
 # Copy frontend
 rm -rf ../../supervisor/api/panel/*
 cp -rf build/* ../../supervisor/api/panel/
+
+# Reset frontend git
+cd ..
+git reset --hard HEAD
+
+stop_docker
