@@ -93,7 +93,11 @@ class StoreData(CoreSysAttributes):
             addon_list = [
                 addon
                 for addon in path.glob("**/config.*")
-                if not [part for part in addon.parts if part.startswith(".")]
+                if not [
+                    part
+                    for part in addon.parts
+                    if part.startswith(".") or part == "rootfs"
+                ]
                 and addon.suffix in FILE_SUFFIX_CONFIGURATION
             ]
         except OSError as err:

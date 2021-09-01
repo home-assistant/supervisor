@@ -15,6 +15,7 @@ def test_read_addon_files(coresys: CoreSys):
             Path("somepath/.git/config.yml"),
             Path("somepath/deeper_in_the_structure/.github/config.yml"),
             Path(".github/config.yml"),
+            Path("some/rootfs/config.yml"),
             Path(".circleci/config.yml"),
         ],
     ):
