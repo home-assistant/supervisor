@@ -32,7 +32,7 @@
     {
       "label": "Update Supervisor Panel",
       "type": "shell",
-      "command": "./scripts/update-frontend.sh",
+      "command": "LOKALISE_TOKEN='${input:localiseToken}' ./scripts/update-frontend.sh",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -85,6 +85,13 @@
         "panel": "new"
       },
       "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "localiseToken",
+      "type": "promptString",
+      "description": "Paste your lokalise token to download frontend translations"
     }
   ]
 }

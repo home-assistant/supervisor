@@ -1,4 +1,6 @@
 #!/bin/bash
+source "${BASH_SOURCE[0]%/*}/common.sh"
+
 set -e
 
 # Update frontend
@@ -8,6 +10,11 @@ git submodule update --init --recursive --remote
 cd home-assistant-polymer
 nvm install
 script/bootstrap
+
+# Download translations
+start_docker
+./script/translations_download
+stop_docker
 
 # build frontend
 cd hassio
