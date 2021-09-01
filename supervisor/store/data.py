@@ -109,7 +109,7 @@ class StoreData(CoreSysAttributes):
             _LOGGER.critical(
                 "Can't process %s because of Filesystem issues: %s", repository, err
             )
-            return
+            return None
         return addon_list
 
     def _read_addons_folder(self, path: Path, repository: Dict) -> None:
