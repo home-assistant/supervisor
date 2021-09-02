@@ -18,6 +18,7 @@ from ..const import (
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
+    ATTR_TYPE,
     ATTR_UUID,
     ATTR_VERSION,
     ATTR_WAIT_BOOT,
@@ -268,7 +269,17 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
     async def _hardware_events(self, device: Device) -> None:
         """Process hardware requests."""
-        if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.UART, device):
+        if (
+            not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.UART, device)
+            or not self.version
+            or self.version < "2021.9.0"
+        ):
             return
 
-        self.sys_homeassistant.websocket.supervisor_update_event("usb/scan")
+        configuration = await self.sys_homeassistant.websocket.async_send_command(
+            {ATTR_TYPE: "get_config"}
+        )
+        if not configuration or "usb" not in configuration.get("components", []):
+            return
+
+        self.sys_homeassistant.websocket.send_command({ATTR_TYPE: "usb/scan"})
