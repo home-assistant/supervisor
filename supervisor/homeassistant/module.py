@@ -244,9 +244,6 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
         # Register for events
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
-        self.sys_bus.register_event(
-            BusEvent.HARDWARE_REMOVE_DEVICE, self._hardware_events
-        )
 
     def write_pulse(self):
         """Write asound config to file and return True on success."""
