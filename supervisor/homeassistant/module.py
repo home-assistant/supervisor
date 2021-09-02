@@ -268,7 +268,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
     async def _hardware_events(self, device: Device) -> None:
         """Process hardware requests."""
-        if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.AUDIO, device):
+        if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.UART, device):
             return
 
         self.sys_homeassistant.websocket.supervisor_update_event("usb/scan")
