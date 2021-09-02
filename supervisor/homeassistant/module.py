@@ -23,8 +23,11 @@ from ..const import (
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     FILE_HASSIO_HOMEASSISTANT,
+    BusEvent,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..hardware.const import PolicyGroup
+from ..hardware.data import Device
 from ..utils.common import FileConfiguration
 from .api import HomeAssistantAPI
 from .core import HomeAssistantCore
@@ -238,6 +241,12 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         """Prepare Home Assistant object."""
         await asyncio.wait([self.secrets.load(), self.core.load()])
 
+        # Register for events
+        self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
+        self.sys_bus.register_event(
+            BusEvent.HARDWARE_REMOVE_DEVICE, self._hardware_events
+        )
+
     def write_pulse(self):
         """Write asound config to file and return True on success."""
         pulse_config = self.sys_plugins.audio.pulse_client(
@@ -256,3 +265,10 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             _LOGGER.error("Home Assistant can't write pulse/client.config: %s", err)
         else:
             _LOGGER.info("Update pulse/client.config: %s", self.path_pulse)
+
+    async def _hardware_events(self, device: Device) -> None:
+        """Process hardware requests."""
+        if not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.AUDIO, device):
+            return
+
+        self.sys_homeassistant.websocket.supervisor_update_event("usb/scan")
