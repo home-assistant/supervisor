@@ -127,6 +127,7 @@ jobs:
         run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
 
       - name: Build supervisor
+        if: needs.init.outputs.publish == 'true'
         uses: home-assistant/builder@2021.07.0
         with:
           args: |
@@ -234,7 +235,7 @@ jobs:
             -e SUPERVISOR_SHARE="/tmp/supervisor/data" \
             -e SUPERVISOR_NAME=hassio_supervisor \
             -e SUPERVISOR_DEV=1 \
-            -e SUPERVISOR_MACHINE="qemux86-64" \
+            -e SUPERVISOR_MACHINE="${{ matrix.arch }}" \
           homeassistant/${{ matrix.arch }}-hassio-supervisor:runner
 
       - name: Start the Supervisor
