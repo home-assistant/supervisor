@@ -192,6 +192,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Run the Supervisor
     needs: ["build", "codenotary", "init"]
+    timeout-minutes: 60
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2.3.4
@@ -240,21 +241,18 @@ jobs:
             ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r '.result')
             sleep 5
           done
-          docker logs hassio_supervisor
 
       - name: Check the Supervisor
         run: |
           echo "Checking supervisor info"
           test=$(docker exec hassio_cli ha supervisor info --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ];then
-            docker logs hassio_supervisor
             exit 1
           fi
 
           echo "Checking supervisor network info"
           test=$(docker exec hassio_cli ha network info --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ];then
-            docker logs hassio_supervisor
             exit 1
           fi
 
@@ -263,14 +261,12 @@ jobs:
           echo "Install Core SSH Add-on"
           test=$(docker exec hassio_cli ha addons install core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ];then
-            docker logs hassio_supervisor
             exit 1
           fi
 
           echo "Start Core SSH Add-on"
           test=$(docker exec hassio_cli ha addons start core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ];then
-            docker logs hassio_supervisor
             exit 1
           fi
 
@@ -280,20 +276,21 @@ jobs:
           echo "Enable Content-Trust"
           test=$(docker exec hassio_cli ha security options --content-trust=true --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ];then
-            docker logs hassio_supervisor
             exit 1
           fi
 
           echo "Run supervisor health check"
           test=$(docker exec hassio_cli ha resolution healthcheck --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ];then
-            docker logs hassio_supervisor
             exit 1
           fi
 
           echo "Check supervisor unhealthy"
           test=$(docker exec hassio_cli ha resolution info --no-progress --raw-json | jq -r '.data.unhealthy[]')
           if [ "$test" != "" ];then
-            docker logs hassio_supervisor
             exit 1
           fi
+
+      - name: Get supervisor logs on failiure
+        if: ${{ cancelled() || failure() }}
+        run: docker logs hassio_supervisor
