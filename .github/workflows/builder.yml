@@ -193,6 +193,9 @@ jobs:
     name: Run the Supervisor
     needs: ["build", "codenotary", "init"]
     timeout-minutes: 60
+    strategy:
+      matrix:
+        arch: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2.3.4
@@ -203,15 +206,15 @@ jobs:
         with:
           args: |
             --test \
-            --amd64 \
+            --${{ matrix.arch }} \
             --target /data \
             --generic runner
 
       - name: Pull Supervisor
         if: needs.init.outputs.publish == 'true'
         run: |
-          docker pull homeassistant/amd64-hassio-supervisor:${{ needs.init.outputs.version }}
-          docker tag homeassistant/amd64-hassio-supervisor:${{ needs.init.outputs.version }} homeassistant/amd64-hassio-supervisor:runner
+          docker pull homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}
+          docker tag homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }} homeassistant/${{ matrix.arch }}-hassio-supervisor:runner
 
       - name: Create the Supervisor
         run: |
@@ -228,7 +231,7 @@ jobs:
             -e SUPERVISOR_NAME=hassio_supervisor \
             -e SUPERVISOR_DEV=1 \
             -e SUPERVISOR_MACHINE="qemux86-64" \
-          homeassistant/amd64-hassio-supervisor:runner
+          homeassistant/${{ matrix.arch }}-hassio-supervisor:runner
 
       - name: Start the Supervisor
         run: docker start hassio_supervisor
