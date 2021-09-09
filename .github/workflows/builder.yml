@@ -221,6 +221,19 @@ jobs:
           docker pull homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}
           docker tag homeassistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }} homeassistant/${{ matrix.arch }}-hassio-supervisor:runner
 
+      - name: Set machine type
+        id: machine
+        run: |
+          if [ "${{ matrix.arch }}" == "aarch64" ]; then
+            echo "::set-output name=type::odroid-n2"
+          elif [ "${{ matrix.arch }}" == "armhf" ]; then
+            echo "::set-output name=type::raspberrypi3"
+          elif [ "${{ matrix.arch }}" == "armv7" ]; then
+            echo "::set-output name=type::raspberrypi4-64"
+          else
+            echo "::set-output name=type::generic-x86-64"
+          fi
+
       - name: Create the Supervisor
         run: |
           mkdir -p /tmp/supervisor/data
@@ -235,6 +248,7 @@ jobs:
             -e SUPERVISOR_SHARE="/tmp/supervisor/data" \
             -e SUPERVISOR_NAME=hassio_supervisor \
             -e SUPERVISOR_DEV=1 \
+            -e SUPERVISOR_MACHINE="${{ steps.machine.outputs.type }}" \
           homeassistant/${{ matrix.arch }}-hassio-supervisor:runner
 
       - name: Start the Supervisor
