@@ -210,6 +210,10 @@ jobs:
             --target /data \
             --generic runner
 
+      - name: Enable multiarch for publish
+        if: needs.init.outputs.publish == 'true'
+        run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
       - name: Pull Supervisor
         if: needs.init.outputs.publish == 'true'
         run: |
