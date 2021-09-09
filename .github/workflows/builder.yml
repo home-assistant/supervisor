@@ -98,6 +98,7 @@ jobs:
           wheels-key: ${{ secrets.WHEELS_KEY }}
           wheels-user: wheels
           apk: "build-base;libffi-dev;openssl-dev;cargo"
+          pip: "cffi;Cython"
           skip-binary: aiohttp
           requirements: "requirements.txt"
 
