@@ -235,7 +235,6 @@ jobs:
             -e SUPERVISOR_SHARE="/tmp/supervisor/data" \
             -e SUPERVISOR_NAME=hassio_supervisor \
             -e SUPERVISOR_DEV=1 \
-            -e SUPERVISOR_MACHINE="${{ matrix.arch }}" \
           homeassistant/${{ matrix.arch }}-hassio-supervisor:runner
 
       - name: Start the Supervisor
