@@ -1,4 +1,4 @@
-"""HassOS support on supervisor."""
+"""OS support on supervisor."""
 import asyncio
 import logging
 from pathlib import Path
@@ -8,21 +8,23 @@ import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 from cpe import CPE
 
-from .coresys import CoreSys, CoreSysAttributes
-from .dbus.rauc import RaucState
-from .exceptions import DBusError, HassOSJobError, HassOSUpdateError
-from .jobs.const import JobCondition, JobExecutionLimit
-from .jobs.decorator import Job
+from ..coresys import CoreSys, CoreSysAttributes
+from ..dbus.rauc import RaucState
+from ..exceptions import DBusError, HassOSJobError, HassOSUpdateError
+from ..jobs.const import JobCondition, JobExecutionLimit
+from ..jobs.decorator import Job
+from .disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class HassOS(CoreSysAttributes):
-    """HassOS interface inside supervisor."""
+class OSManager(CoreSysAttributes):
+    """OS interface inside supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize HassOS handler."""
         self.coresys: CoreSys = coresys
+        self._datadisk: DataDisk = DataDisk(coresys)
         self._available: bool = False
         self._version: Optional[AwesomeVersion] = None
         self._board: Optional[str] = None
@@ -60,6 +62,11 @@ class HassOS(CoreSysAttributes):
     def os_name(self) -> Optional[str]:
         """Return OS name."""
         return self._os_name
+
+    @property
+    def datadisk(self) -> DataDisk:
+        """Return Operating-System datadisk."""
+        return self._datadisk
 
     def _get_download_url(self, version: AwesomeVersion) -> str:
         raw_url = self.sys_updater.ota_url

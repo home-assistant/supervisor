@@ -10,6 +10,7 @@ import sentry_sdk
 from ..const import CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import HassioError, JobConditionException, JobException
+from ..host.const import HostFeature
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
 from .const import JobCondition, JobExecutionLimit
 
@@ -167,9 +168,17 @@ class Job(CoreSysAttributes):
                 f"'{self._method.__qualname__}' blocked from execution, no host internet connection"
             )
 
-        if JobCondition.HAOS in self.conditions and not self.sys_hassos.available:
+        if JobCondition.HAOS in self.conditions and not self.sys_os.available:
             raise JobConditionException(
                 f"'{self._method.__qualname__}' blocked from execution, no Home Assistant OS available"
+            )
+
+        if (
+            JobCondition.HOST_AGENT in self.conditions
+            and HostFeature.AGENT not in self.sys_host.features
+        ):
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, no Home Assistant OS-Agent available"
             )
 
     async def _acquire_exection_limit(self) -> None:

@@ -21,10 +21,10 @@ async def test_evaluation(coresys: CoreSys):
     await operating_system()
     assert operating_system.reason in coresys.resolution.unsupported
 
-    coresys.hassos._available = True
+    coresys.os._available = True
     await operating_system()
     assert operating_system.reason not in coresys.resolution.unsupported
-    coresys.hassos._available = False
+    coresys.os._available = False
 
     coresys.host._info = MagicMock(operating_system=SUPPORTED_OS[0])
     await operating_system()

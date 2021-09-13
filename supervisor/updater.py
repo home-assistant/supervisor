@@ -241,10 +241,10 @@ class Updater(FileConfiguration, CoreSysAttributes):
             )
 
             # Update HassOS version
-            if self.sys_hassos.board:
+            if self.sys_os.board:
                 events.append("os")
                 self._data[ATTR_HASSOS] = AwesomeVersion(
-                    data["hassos"][self.sys_hassos.board]
+                    data["hassos"][self.sys_os.board]
                 )
                 self._data[ATTR_OTA] = data["ota"]
 
