@@ -402,6 +402,15 @@ class HomeAssistantCore(CoreSysAttributes):
             # 2: Check if API response
             if await self.sys_homeassistant.api.check_api_state():
                 _LOGGER.info("Detect a running Home Assistant instance")
+                with suppress(HomeAssistantError):
+                    async with self.sys_homeassistant.api.make_request(
+                        "get", "api/config"
+                    ) as resp:
+                        data = await resp.json()
+                        integrations = data.get("components", [])
+                        if "frontend" not in integrations:
+                            _LOGGER.error("API responded but frontend is not loaded")
+                            break
                 self._error_state = False
                 return
 
