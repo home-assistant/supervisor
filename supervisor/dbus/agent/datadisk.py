@@ -1,6 +1,6 @@
 """DataDisk object for OS-Agent."""
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from ...utils.gdbus import DBus
 from ..const import (
@@ -22,11 +22,9 @@ class DataDisk(DBusInterface):
 
     @property
     @dbus_property
-    def current_device(self) -> Optional[Path]:
+    def current_device(self) -> Path:
         """Return current device used for data."""
-        if self.properties[DBUS_ATTR_CURRENT_DEVICE]:
-            return Path(self.properties[DBUS_ATTR_CURRENT_DEVICE])
-        return None
+        return Path(self.properties[DBUS_ATTR_CURRENT_DEVICE])
 
     async def connect(self) -> None:
         """Get connection information."""
