@@ -26,8 +26,6 @@ class JSONEncoder(json.JSONEncoder):
             return list(o)
         if isinstance(o, Path):
             return o.as_posix()
-        if hasattr(o, "as_dict"):
-            return o.as_dict()
 
         return json.JSONEncoder.default(self, o)
 
