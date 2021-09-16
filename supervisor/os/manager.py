@@ -13,7 +13,7 @@ from ..dbus.rauc import RaucState
 from ..exceptions import DBusError, HassOSJobError, HassOSUpdateError
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
-from .disk import DataDisk
+from .data_disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
