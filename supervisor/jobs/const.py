@@ -18,7 +18,7 @@ class JobCondition(str, Enum):
     INTERNET_HOST = "internet_host"
     RUNNING = "running"
     HAOS = "haos"
-    HOST_AGENT = "host_agent"
+    OS_AGENT = "os_agent"
 
 
 class JobExecutionLimit(str, Enum):

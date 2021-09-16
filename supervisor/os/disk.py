@@ -24,7 +24,7 @@ class DataDisk(CoreSysAttributes):
         return self.sys_dbus.agent.datadisk.current_device
 
     @Job(
-        conditions=[JobCondition.HAOS, JobCondition.HOST_AGENT, JobCondition.HEALTHY],
+        conditions=[JobCondition.HAOS, JobCondition.OS_AGENT, JobCondition.HEALTHY],
         limit=JobExecutionLimit.ONCE,
         on_condition=HassOSJobError,
     )

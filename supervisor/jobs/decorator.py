@@ -174,7 +174,7 @@ class Job(CoreSysAttributes):
             )
 
         if (
-            JobCondition.HOST_AGENT in self.conditions
+            JobCondition.OS_AGENT in self.conditions
             and HostFeature.AGENT not in self.sys_host.features
         ):
             raise JobConditionException(
