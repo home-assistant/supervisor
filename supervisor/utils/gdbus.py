@@ -16,6 +16,7 @@ from . import clean_env
 from ..exceptions import (
     DBusFatalError,
     DBusInterfaceError,
+    DBusInterfaceMethodError,
     DBusNotConnectedError,
     DBusParseError,
     DBusProgramError,
@@ -296,7 +297,7 @@ class DBusCallWrapper:
     def __call__(self) -> None:
         """Catch this method from being called."""
         _LOGGER.error("D-Bus method %s not exists!", self.interface)
-        raise DBusFatalError()
+        raise DBusInterfaceMethodError()
 
     def __getattr__(self, name: str):
         """Map to dbus method."""

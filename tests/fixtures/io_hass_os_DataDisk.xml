@@ -45,6 +45,10 @@
 			<arg type="b" direction="out">
 			</arg>
 		</method>
+		<method name="ReloadDevice">
+			<arg type="b" direction="out">
+			</arg>
+		</method>
 		<property name="CurrentDevice" type="s" access="read">
 			<annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true">
 			</annotation>

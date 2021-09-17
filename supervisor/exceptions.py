@@ -278,6 +278,10 @@ class DBusFatalError(DBusError):
     """DBus call going wrong."""
 
 
+class DBusInterfaceMethodError(DBusInterfaceError):
+    """Dbus method was not definied."""
+
+
 class DBusParseError(DBusError):
     """DBus parse error."""
 
