@@ -107,6 +107,10 @@ class HassOSJobError(HassOSError, JobException):
     """Function not supported by HassOS."""
 
 
+class HassOSDataDiskError(HassOSError):
+    """Issues with the DataDisk feature from HAOS."""
+
+
 # HaCli
 
 
