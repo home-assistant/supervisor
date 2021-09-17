@@ -64,6 +64,7 @@ class DataDisk(CoreSysAttributes):
                 f"'{new_disk}' is a system disk and can't be used!", _LOGGER.error
             )
 
+        # Migrate data on Host
         try:
             await self.sys_dbus.agent.datadisk.change_device(new_disk)
         except DBusError as err:
@@ -71,6 +72,7 @@ class DataDisk(CoreSysAttributes):
                 f"Can't move data partition to {new_disk!s}: {err!s}", _LOGGER.error
             ) from err
 
+        # Restart Host for finish the process
         try:
             await self.sys_host.control.reboot()
         except HostError as err:
