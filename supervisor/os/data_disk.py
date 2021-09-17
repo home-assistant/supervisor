@@ -7,7 +7,6 @@ from awesomeversion import AwesomeVersion
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DBusError, HassOSError, HassOSJobError, HostError
-from ..host.const import HostFeature
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 
@@ -30,10 +29,7 @@ class DataDisk(CoreSysAttributes):
     async def load(self) -> None:
         """Load DataDisk feature."""
         # Update datadisk details on OS-Agent
-        if (
-            HostFeature.AGENT in self.sys_host.features
-            and self.sys_dbus.agent.version >= AwesomeVersion("1.2.0")
-        ):
+        if self.sys_dbus.agent.version >= AwesomeVersion("1.2.0"):
             await self.sys_dbus.agent.datadisk.reload_device()
 
     @Job(
