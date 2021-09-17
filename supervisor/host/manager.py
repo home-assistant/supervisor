@@ -91,7 +91,7 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.agent.is_connected:
             features.append(HostFeature.AGENT)
 
-        if self.sys_hassos.available:
+        if self.sys_os.available:
             features.append(HostFeature.HAOS)
 
         return features

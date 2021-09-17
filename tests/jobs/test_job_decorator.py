@@ -119,10 +119,10 @@ async def test_haos(coresys: CoreSys):
             return True
 
     test = TestClass(coresys)
-    coresys.hassos._available = True
+    coresys.os._available = True
     assert await test.execute()
 
-    coresys.hassos._available = False
+    coresys.os._available = False
     assert not await test.execute()
 
 
