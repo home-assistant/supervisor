@@ -146,10 +146,7 @@ class OSManager(CoreSysAttributes):
         self._os_name = cpe.get_product()[0]
 
         await self.sys_dbus.rauc.update()
-
-        # Update datadisk details on OS-Agent
-        if self.sys_dbus.agent.version >= AwesomeVersion("1.2.0"):
-            await self.sys_dbus.agent.datadisk.reload_device()
+        await self.datadisk.load()
 
         _LOGGER.info(
             "Detect Home Assistant Operating System %s / BootSlot %s",

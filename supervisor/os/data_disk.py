@@ -3,8 +3,11 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from awesomeversion import AwesomeVersion
+
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DBusError, HassOSError, HassOSJobError, HostError
+from ..host.const import HostFeature
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 
@@ -22,6 +25,16 @@ class DataDisk(CoreSysAttributes):
     def disk_used(self) -> Optional[Path]:
         """Return Path to used Disk for data."""
         return self.sys_dbus.agent.datadisk.current_device
+
+    @Job(conditions=[JobCondition.OS_AGENT])
+    async def load(self) -> None:
+        """Load DataDisk feature."""
+        # Update datadisk details on OS-Agent
+        if (
+            HostFeature.AGENT in self.sys_host.features
+            and self.sys_dbus.agent.version >= AwesomeVersion("1.2.0")
+        ):
+            await self.sys_dbus.agent.datadisk.reload_device()
 
     @Job(
         conditions=[JobCondition.HAOS, JobCondition.OS_AGENT, JobCondition.HEALTHY],
