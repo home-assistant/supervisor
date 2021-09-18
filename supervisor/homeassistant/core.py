@@ -214,7 +214,20 @@ class HomeAssistantCore(CoreSysAttributes):
         # Update Home Assistant
         with suppress(HomeAssistantError):
             await _update(version)
-            return
+
+        if not self.error_state and rollback:
+            try:
+                data = await self.sys_homeassistant.api.get_config()
+            except HomeAssistantError:
+                # The API stoped responding between the up checks an now
+                self._error_state = True
+
+            # Verify that the frontend is loaded
+            if data and "frontend" not in data.get("components", []):
+                _LOGGER.error("API responds but frontend is not loaded")
+                self._error_state = True
+            else:
+                return
 
         # Update going wrong, revert it
         if self.error_state and rollback:

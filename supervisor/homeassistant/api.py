@@ -105,6 +105,15 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         raise HomeAssistantAPIError()
 
+    async def get_config(self) -> Dict[str, Any]:
+        """Return Home Assistant config."""
+        async with self.make_request("get", "api/config") as resp:
+            if resp.status in (200, 201):
+                return await resp.json()
+            else:
+                _LOGGER.debug("Home Assistant API return: %d", resp.status)
+        raise HomeAssistantAPIError()
+
     async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
         # Skip check on landingpage
@@ -124,12 +133,8 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         # Check if API is up
         with suppress(HomeAssistantAPIError):
-            async with self.make_request("get", "api/config") as resp:
-                if resp.status in (200, 201):
-                    data = await resp.json()
-                    if data.get("state", "RUNNING") == "RUNNING":
-                        return True
-                else:
-                    _LOGGER.debug("Home Assistant API return: %d", resp.status)
-
+            data = await self.get_config()
+            # Older versions of home assistant does not expose the state
+            if data and data.get("state", "RUNNING") == "RUNNING":
+                return True
         return False
