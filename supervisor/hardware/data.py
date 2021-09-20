@@ -51,5 +51,5 @@ class Device:
             None if not udevice.parent else Path(udevice.parent.sys_path),
             [Path(node) for node in udevice.device_links],
             {attr: udevice.properties[attr] for attr in udevice.properties},
-            [Path(node) for node in udevice.children],
+            [Path(node.sys_path) for node in udevice.children],
         )
