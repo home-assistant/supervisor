@@ -18,5 +18,5 @@ def test_device_property(coresys):
     )
 
     assert device.by_id == device.links[0]
-    assert device.cgroups_major == 5
-    assert device.cgroups_minor == 10
+    assert device.major == 5
+    assert device.minor == 10

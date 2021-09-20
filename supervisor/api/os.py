@@ -10,6 +10,7 @@ import voluptuous as vol
 from ..const import (
     ATTR_BOARD,
     ATTR_BOOT,
+    ATTR_DEVICES,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
@@ -59,3 +60,10 @@ class APIOS(CoreSysAttributes):
         body = await api_validate(SCHEMA_DISK, request)
 
         await asyncio.shield(self.sys_os.datadisk.migrate_disk(body[ATTR_DEVICE]))
+
+    @api_process
+    async def list_data(self, request: web.Request) -> Dict[str, Any]:
+        """Return possible data targets."""
+        return {
+            ATTR_DEVICES: self.sys_os.datadisk.available_disks,
+        }

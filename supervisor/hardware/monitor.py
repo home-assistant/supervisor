@@ -107,14 +107,7 @@ class HwMonitor(CoreSysAttributes):
                 )
                 return
 
-            device = Device(
-                udev.sys_name,
-                Path(udev.device_node),
-                Path(udev.sys_path),
-                udev.subsystem,
-                [Path(node) for node in udev.device_links],
-                {attr: udev.properties[attr] for attr in udev.properties},
-            )
+            device = Device.import_udev(udev)
             self.sys_hardware.update_device(device)
 
             # If it's a new device - process actions

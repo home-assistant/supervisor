@@ -1,7 +1,7 @@
 """Home Assistant Operating-System DataDisk."""
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from awesomeversion import AwesomeVersion
 
@@ -33,6 +33,23 @@ class DataDisk(CoreSysAttributes):
         """Return Path to used Disk for data."""
         return self.sys_dbus.agent.datadisk.current_device
 
+    @property
+    def available_disks(self) -> List[Path]:
+        """Return a list of possible new disk locations."""
+        device_paths: List[Path] = []
+        for device in self.sys_hardware.devices:
+            # Filter devices out which can't be a target
+            if (
+                device.subsystem != UdevSubsystem.DISK
+                or device.attributes.get("DEVTYPE") != "disk"
+                or device.minor != 0
+                or self.sys_hardware.disk.is_used_by_system(device)
+            ):
+                continue
+            device_paths.append(device.path)
+
+        return device_paths
+
     @Job(conditions=[JobCondition.OS_AGENT])
     async def load(self) -> None:
         """Load DataDisk feature."""
@@ -55,11 +72,11 @@ class DataDisk(CoreSysAttributes):
                 f"'{new_disk!s}' don't exists on the host!", _LOGGER.error
             ) from None
 
-        if device.subsystem != UdevSubsystem.DISK:
+        if device.subsystem != UdevSubsystem.DISK or device.minor != 0:
             raise HassOSDataDiskError(
                 f"'{new_disk!s}' is not a harddisk!", _LOGGER.error
             )
-        if self.sys_hardware.disk.is_system_partition(device):
+        if self.sys_hardware.disk.is_used_by_system(device):
             raise HassOSDataDiskError(
                 f"'{new_disk}' is a system disk and can't be used!", _LOGGER.error
             )

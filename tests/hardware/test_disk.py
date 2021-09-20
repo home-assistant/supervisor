@@ -17,7 +17,7 @@ def test_system_partition(coresys):
         {"MAJOR": "5", "MINOR": "10"},
     )
 
-    assert not coresys.hardware.disk.is_system_partition(disk)
+    assert not coresys.hardware.disk.is_used_by_system(disk)
 
     disk = Device(
         "sda0",
@@ -28,7 +28,7 @@ def test_system_partition(coresys):
         {"MAJOR": "5", "MINOR": "10", "ID_FS_LABEL": "hassos-overlay"},
     )
 
-    assert coresys.hardware.disk.is_system_partition(disk)
+    assert coresys.hardware.disk.is_used_by_system(disk)
 
 
 def test_free_space(coresys):
