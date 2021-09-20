@@ -14,8 +14,10 @@ def test_device_policy(coresys):
         Path("/dev/ttyACM0"),
         Path("/sys/bus/usb/001"),
         "tty",
+        None,
         [],
         {"MAJOR": "5", "MINOR": "10"},
+        [],
     )
 
     assert coresys.hardware.policy.get_cgroups_rule(device) == "c 5:10 rwm"
@@ -25,8 +27,10 @@ def test_device_policy(coresys):
         Path("/dev/sda0"),
         Path("/sys/bus/usb/001"),
         "block",
+        None,
         [],
         {"MAJOR": "5", "MINOR": "10"},
+        [],
     )
 
     assert coresys.hardware.policy.get_cgroups_rule(disk) == "b 5:10 rwm"
@@ -48,8 +52,10 @@ def test_device_in_policy(coresys):
         Path("/dev/ttyACM0"),
         Path("/sys/bus/usb/001"),
         "tty",
+        None,
         [],
         {"MAJOR": "204", "MINOR": "10"},
+        [],
     )
 
     assert coresys.hardware.policy.is_match_cgroup(PolicyGroup.UART, device)
@@ -64,8 +70,10 @@ def test_allowed_access(coresys):
         Path("/dev/sda0"),
         Path("/sys/bus/usb/001"),
         "block",
+        None,
         [],
         {"MAJOR": "5", "MINOR": "10", "ID_FS_LABEL": "hassos-overlay"},
+        [],
     )
 
     assert not coresys.hardware.policy.allowed_for_access(disk)
@@ -75,8 +83,10 @@ def test_allowed_access(coresys):
         Path("/dev/ttyACM0"),
         Path("/sys/bus/usb/001"),
         "tty",
+        None,
         [],
         {"MAJOR": "204", "MINOR": "10"},
+        [],
     )
 
     assert coresys.hardware.policy.allowed_for_access(device)
@@ -90,32 +100,40 @@ def test_dynamic_group_alloc_minor(coresys):
             Path("/dev/ttyACM0"),
             Path("/sys/bus/usb/001"),
             "tty",
+            None,
             [],
             {"MAJOR": "204", "MINOR": "10"},
+            [],
         ),
         Device(
             "ttyUSB0",
             Path("/dev/ttyUSB0"),
             Path("/sys/bus/usb/000"),
             "tty",
+            None,
             [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
             {"MAJOR": "188", "MINOR": "10"},
+            [],
         ),
         Device(
             "ttyS0",
             Path("/dev/ttyS0"),
             Path("/sys/bus/usb/002"),
             "tty",
+            None,
             [],
             {"MAJOR": "4", "MINOR": "65"},
+            [],
         ),
         Device(
             "video1",
             Path("/dev/video1"),
             Path("/sys/bus/usb/003"),
             "misc",
+            None,
             [],
             {"MAJOR": "38", "MINOR": "10"},
+            [],
         ),
     ):
         coresys.hardware.update_device(device)
@@ -136,32 +154,40 @@ def test_dynamic_group_alloc_major(coresys):
             Path("/dev/gpio16"),
             Path("/sys/bus/usb/001"),
             "gpio",
+            None,
             [],
             {"MAJOR": "254", "MINOR": "10"},
+            [],
         ),
         Device(
             "gpiomem",
             Path("/dev/gpiomem"),
             Path("/sys/bus/usb/000"),
             "gpiomem",
+            None,
             [Path("/dev/ttyS1"), Path("/dev/serial/by-id/xyx")],
             {"MAJOR": "239", "MINOR": "10"},
+            [],
         ),
         Device(
             "ttyS0",
             Path("/dev/ttyS0"),
             Path("/sys/bus/usb/002"),
             "tty",
+            None,
             [],
             {"MAJOR": "4", "MINOR": "65"},
+            [],
         ),
         Device(
             "video1",
             Path("/dev/video1"),
             Path("/sys/bus/usb/003"),
             "misc",
+            None,
             [],
             {"MAJOR": "38", "MINOR": "10"},
+            [],
         ),
     ):
         coresys.hardware.update_device(device)
