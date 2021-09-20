@@ -3,6 +3,8 @@ import pytest
 
 from supervisor.coresys import CoreSys
 
+# pylint: disable=protected-access
+
 
 @pytest.mark.asyncio
 async def test_api_os_info(api_client):
