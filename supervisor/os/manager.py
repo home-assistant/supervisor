@@ -146,6 +146,7 @@ class OSManager(CoreSysAttributes):
         self._os_name = cpe.get_product()[0]
 
         await self.sys_dbus.rauc.update()
+        await self.datadisk.load()
 
         _LOGGER.info(
             "Detect Home Assistant Operating System %s / BootSlot %s",

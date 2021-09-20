@@ -107,6 +107,10 @@ class HassOSJobError(HassOSError, JobException):
     """Function not supported by HassOS."""
 
 
+class HassOSDataDiskError(HassOSError):
+    """Issues with the DataDisk feature from HAOS."""
+
+
 # HaCli
 
 
@@ -276,6 +280,10 @@ class DBusInterfaceError(HassioNotSupportedError):
 
 class DBusFatalError(DBusError):
     """DBus call going wrong."""
+
+
+class DBusInterfaceMethodError(DBusInterfaceError):
+    """Dbus method was not definied."""
 
 
 class DBusParseError(DBusError):
