@@ -40,7 +40,7 @@ async def test_api_os_info_with_agent(api_client, coresys: CoreSys):
 
 @pytest.mark.asyncio
 async def test_api_os_datadisk_move(api_client, coresys: CoreSys):
-    """Test docker info api."""
+    """Test datadisk move without exists disk."""
     await coresys.dbus.agent.connect()
     await coresys.dbus.agent.update()
     coresys.os._available = True
@@ -53,7 +53,7 @@ async def test_api_os_datadisk_move(api_client, coresys: CoreSys):
 
 @pytest.mark.asyncio
 async def test_api_os_datadisk_list(api_client, coresys: CoreSys):
-    """Test docker info api."""
+    """Test datadisk list function."""
     await coresys.dbus.agent.connect()
     await coresys.dbus.agent.update()
 
