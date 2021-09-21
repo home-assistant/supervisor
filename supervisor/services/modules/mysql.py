@@ -1,6 +1,6 @@
 """Provide the MySQL Service."""
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import voluptuous as vol
 
@@ -45,7 +45,7 @@ class MySQLService(ServiceInterface):
         return SERVICE_MYSQL
 
     @property
-    def _data(self) -> Dict[str, Any]:
+    def _data(self) -> dict[str, Any]:
         """Return data of this service."""
         return self.sys_services.data.mysql
 
@@ -55,13 +55,13 @@ class MySQLService(ServiceInterface):
         return SCHEMA_SERVICE_MYSQL
 
     @property
-    def active(self) -> List[str]:
+    def active(self) -> list[str]:
         """Return list of addon slug they have enable that."""
         if not self.enabled:
             return []
         return [self._data[ATTR_ADDON]]
 
-    def set_service_data(self, addon: Addon, data: Dict[str, Any]) -> None:
+    def set_service_data(self, addon: Addon, data: dict[str, Any]) -> None:
         """Write the data into service object."""
         if self.enabled:
             _LOGGER.error(

@@ -1,6 +1,6 @@
 """Evaluation class for container."""
 import logging
-from typing import Any, List
+from typing import Any
 
 from docker.errors import DockerException
 from requests import RequestException
@@ -43,7 +43,7 @@ class EvaluateContainer(EvaluateBase):
         return f"Found images: {self._images} which are not supported, remove these from the host!"
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.SETUP, CoreState.RUNNING, CoreState.INITIALIZE]
 
@@ -68,7 +68,7 @@ class EvaluateContainer(EvaluateBase):
                     self._images.add(image_name)
         return len(self._images) != 0
 
-    def _get_images(self) -> List[Any]:
+    def _get_images(self) -> list[Any]:
         """Return a list of images."""
         images = []
 

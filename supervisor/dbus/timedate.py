@@ -1,7 +1,7 @@
 """Interface to systemd-timedate over D-Bus."""
 from datetime import datetime
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dt import utc_from_timestamp
@@ -28,7 +28,7 @@ class TimeDate(DBusInterface):
 
     def __init__(self) -> None:
         """Initialize Properties."""
-        self.properties: Dict[str, Any] = {}
+        self.properties: dict[str, Any] = {}
 
     @property
     @dbus_property

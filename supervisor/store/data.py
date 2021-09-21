@@ -1,7 +1,7 @@
 """Init file for Supervisor add-on data."""
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -34,8 +34,8 @@ class StoreData(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize data holder."""
         self.coresys: CoreSys = coresys
-        self.repositories: Dict[str, Any] = {}
-        self.addons: Dict[str, Any] = {}
+        self.repositories: dict[str, Any] = {}
+        self.addons: dict[str, Any] = {}
 
     def update(self) -> None:
         """Read data from add-on repository."""
@@ -86,7 +86,7 @@ class StoreData(CoreSysAttributes):
         self.repositories[slug] = repository_info
         self._read_addons_folder(path, slug)
 
-    def _find_addons(self, path: Path, repository: Dict) -> Optional[list[Path]]:
+    def _find_addons(self, path: Path, repository: dict) -> Optional[list[Path]]:
         """Find add-ons in the path."""
         try:
             # Generate a list without artefact, safe for corruptions
@@ -116,7 +116,7 @@ class StoreData(CoreSysAttributes):
             return None
         return addon_list
 
-    def _read_addons_folder(self, path: Path, repository: Dict) -> None:
+    def _read_addons_folder(self, path: Path, repository: dict) -> None:
         """Read data from add-ons folder."""
         if not (addon_list := self._find_addons(path, repository)):
             return

@@ -1,6 +1,6 @@
 """Helpers to check supervisor trust."""
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -54,6 +54,6 @@ class CheckSupervisorTrust(CheckBase):
         return ContextType.SUPERVISOR
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this check can run."""
         return [CoreState.RUNNING, CoreState.STARTUP]

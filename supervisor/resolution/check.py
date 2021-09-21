@@ -1,7 +1,7 @@
 """Helpers to checks the system."""
 from importlib import import_module
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from ..const import ATTR_CHECKS
 from ..coresys import CoreSys, CoreSysAttributes
@@ -18,17 +18,17 @@ class ResolutionCheck(CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the checks class."""
         self.coresys = coresys
-        self._checks: Dict[str, CheckBase] = {}
+        self._checks: dict[str, CheckBase] = {}
 
         self._load()
 
     @property
-    def data(self) -> Dict[str, Any]:
+    def data(self) -> dict[str, Any]:
         """Return data."""
         return self.sys_resolution.data[ATTR_CHECKS]
 
     @property
-    def all_checks(self) -> List[CheckBase]:
+    def all_checks(self) -> list[CheckBase]:
         """Return all list of all checks."""
         return list(self._checks.values())
 

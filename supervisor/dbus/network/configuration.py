@@ -1,6 +1,6 @@
 """NetworkConnection object4s for Network Manager."""
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import attr
 
@@ -10,16 +10,16 @@ class IpConfiguration:
     """NetworkSettingsIPConfig object for Network Manager."""
 
     gateway: Optional[Union[IPv6Address, IPv6Address]] = attr.ib()
-    nameservers: List[Union[IPv6Address, IPv6Address]] = attr.ib()
-    address: List[Union[IPv4Interface, IPv6Interface]] = attr.ib()
+    nameservers: list[Union[IPv6Address, IPv6Address]] = attr.ib()
+    address: list[Union[IPv4Interface, IPv6Interface]] = attr.ib()
 
 
 @attr.s(slots=True)
 class DNSConfiguration:
     """DNS configuration Object."""
 
-    nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
-    domains: List[str] = attr.ib()
+    nameservers: list[Union[IPv4Address, IPv6Address]] = attr.ib()
+    domains: list[str] = attr.ib()
     interface: str = attr.ib()
     priority: int = attr.ib()
     vpn: bool = attr.ib()

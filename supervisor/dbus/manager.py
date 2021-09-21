@@ -1,6 +1,5 @@
 """D-Bus interface objects."""
 import logging
-from typing import List
 
 from ..const import SOCKET_DBUS
 from ..coresys import CoreSys, CoreSysAttributes
@@ -74,7 +73,7 @@ class DBusManager(CoreSysAttributes):
             )
             return
 
-        dbus_loads: List[DBusInterface] = [
+        dbus_loads: list[DBusInterface] = [
             self.agent,
             self.systemd,
             self.logind,

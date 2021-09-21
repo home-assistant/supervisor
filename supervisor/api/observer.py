@@ -1,7 +1,7 @@
 """Init file for Supervisor Observer RESTful API."""
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from aiohttp import web
 import voluptuous as vol
@@ -33,7 +33,7 @@ class APIObserver(CoreSysAttributes):
     """Handle RESTful API for Observer functions."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return HA Observer information."""
         return {
             ATTR_HOST: str(self.sys_docker.network.observer),
@@ -43,7 +43,7 @@ class APIObserver(CoreSysAttributes):
         }
 
     @api_process
-    async def stats(self, request: web.Request) -> Dict[str, Any]:
+    async def stats(self, request: web.Request) -> dict[str, Any]:
         """Return resource information."""
         stats = await self.sys_plugins.observer.stats()
 

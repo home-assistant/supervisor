@@ -3,7 +3,7 @@ import asyncio
 import functools as ft
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import git
 
@@ -31,7 +31,7 @@ class GitRepo(CoreSysAttributes):
         self.path: Path = path
         self.lock: asyncio.Lock = asyncio.Lock()
 
-        self.data: Dict[str, str] = RE_REPOSITORY.match(url).groupdict()
+        self.data: dict[str, str] = RE_REPOSITORY.match(url).groupdict()
 
     def __repr__(self) -> str:
         """Return internal representation."""

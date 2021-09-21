@@ -2,7 +2,7 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Awaitable, Set
+from typing import Awaitable
 
 from awesomeversion.awesomeversion import AwesomeVersion
 from awesomeversion.exceptions import AwesomeVersionCompare
@@ -29,7 +29,7 @@ class BackupManager(CoreSysAttributes):
         self.lock = asyncio.Lock()
 
     @property
-    def list_backups(self) -> Set[Backup]:
+    def list_backups(self) -> set[Backup]:
         """Return a list of all backup objects."""
         return set(self._backups.values())
 

@@ -1,13 +1,12 @@
 """Validate resolution configuration schema."""
 from pathlib import Path
-from typing import List
 
 import voluptuous as vol
 
 from ..const import ATTR_CHECKS, ATTR_ENABLED
 
 
-def get_valid_modules(folder) -> List[str]:
+def get_valid_modules(folder) -> list[str]:
     """Validate check name."""
     module_files = Path(__file__).parent.joinpath(folder)
     if not module_files.exists():

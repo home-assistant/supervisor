@@ -6,7 +6,7 @@ from ipaddress import IPv4Address, ip_address
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Awaitable
 
 from awesomeversion import AwesomeVersion
 import docker
@@ -55,7 +55,7 @@ class DockerAddon(DockerInterface):
         self.addon = addon
 
     @property
-    def image(self) -> Optional[str]:
+    def image(self) -> str | None:
         """Return name of Docker image."""
         return self.addon.image
 
@@ -98,7 +98,7 @@ class DockerAddon(DockerInterface):
         return f"addon_{self.addon.slug}"
 
     @property
-    def environment(self) -> Dict[str, Optional[str]]:
+    def environment(self) -> dict[str, str | None]:
         """Return environment for Docker add-on."""
         addon_env = self.addon.environment or {}
 
@@ -118,7 +118,7 @@ class DockerAddon(DockerInterface):
         }
 
     @property
-    def cgroups_rules(self) -> Optional[List[str]]:
+    def cgroups_rules(self) -> list[str] | None:
         """Return a list of needed cgroups permission."""
         rules = set()
 
@@ -177,7 +177,7 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def ports(self) -> Optional[Dict[str, Union[str, int, None]]]:
+    def ports(self) -> dict[str, str | int | None] | None:
         """Filter None from add-on ports."""
         if self.addon.host_network or not self.addon.ports:
             return None
@@ -189,7 +189,7 @@ class DockerAddon(DockerInterface):
         }
 
     @property
-    def security_opt(self) -> List[str]:
+    def security_opt(self) -> list[str]:
         """Control security options."""
         security = super().security_opt
 
@@ -203,7 +203,7 @@ class DockerAddon(DockerInterface):
         return security
 
     @property
-    def tmpfs(self) -> Optional[Dict[str, str]]:
+    def tmpfs(self) -> dict[str, str] | None:
         """Return tmpfs for Docker add-on."""
         tmpfs = {}
 
@@ -219,7 +219,7 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def network_mapping(self) -> Dict[str, IPv4Address]:
+    def network_mapping(self) -> dict[str, IPv4Address]:
         """Return hosts mapping."""
         return {
             "supervisor": self.sys_docker.network.supervisor,
@@ -227,23 +227,23 @@ class DockerAddon(DockerInterface):
         }
 
     @property
-    def network_mode(self) -> Optional[str]:
+    def network_mode(self) -> str | None:
         """Return network mode for add-on."""
         if self.addon.host_network:
             return "host"
         return None
 
     @property
-    def pid_mode(self) -> Optional[str]:
+    def pid_mode(self) -> str | None:
         """Return PID mode for add-on."""
         if not self.addon.protected and self.addon.host_pid:
             return "host"
         return None
 
     @property
-    def capabilities(self) -> Optional[List[str]]:
+    def capabilities(self) -> list[str] | None:
         """Generate needed capabilities."""
-        capabilities: Set[Capabilities] = set(self.addon.privileged)
+        capabilities: set[Capabilities] = set(self.addon.privileged)
 
         # Need work with kernel modules
         if self.addon.with_kernel_modules:
@@ -259,9 +259,9 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def ulimits(self) -> Optional[List[docker.types.Ulimit]]:
+    def ulimits(self) -> list[docker.types.Ulimit] | None:
         """Generate ulimits for add-on."""
-        limits: List[docker.types.Ulimit] = []
+        limits: list[docker.types.Ulimit] = []
 
         # Need schedule functions
         if self.addon.with_realtime:
@@ -277,7 +277,7 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def cpu_rt_runtime(self) -> Optional[int]:
+    def cpu_rt_runtime(self) -> int | None:
         """Limit CPU real-time runtime in microseconds."""
         if not self.sys_docker.info.support_cpu_realtime:
             return None
@@ -288,7 +288,7 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def volumes(self) -> Dict[str, Dict[str, str]]:
+    def volumes(self) -> dict[str, dict[str, str]]:
         """Generate volumes for mappings."""
         addon_mapping = self.addon.map_volumes
 
@@ -494,7 +494,7 @@ class DockerAddon(DockerInterface):
             self.sys_capture_exception(err)
 
     def _install(
-        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
     ) -> None:
         """Pull Docker image or build it.
 

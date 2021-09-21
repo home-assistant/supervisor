@@ -3,7 +3,7 @@ import asyncio
 from datetime import datetime, timedelta
 from functools import wraps
 import logging
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional
 
 import sentry_sdk
 
@@ -23,7 +23,7 @@ class Job(CoreSysAttributes):
     def __init__(
         self,
         name: Optional[str] = None,
-        conditions: Optional[List[JobCondition]] = None,
+        conditions: Optional[list[JobCondition]] = None,
         cleanup: bool = True,
         on_condition: Optional[JobException] = None,
         limit: Optional[JobExecutionLimit] = None,
@@ -47,7 +47,7 @@ class Job(CoreSysAttributes):
         ):
             raise RuntimeError("Using Job without a Throttle period!")
 
-    def _post_init(self, args: Tuple[Any]) -> None:
+    def _post_init(self, args: tuple[Any]) -> None:
         """Runtime init."""
         if self.name is None:
             self.name = str(self._method.__qualname__).lower().replace(".", "_")

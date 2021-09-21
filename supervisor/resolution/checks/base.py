@@ -1,7 +1,7 @@
 """Baseclass for system checks."""
 from abc import ABC, abstractmethod
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from ...const import ATTR_ENABLED, CoreState
 from ...coresys import CoreSys, CoreSysAttributes
@@ -70,7 +70,7 @@ class CheckBase(ABC, CoreSysAttributes):
         """Return a ContextType enum."""
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this check can run."""
         return []
 

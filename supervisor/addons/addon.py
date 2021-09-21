@@ -10,7 +10,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Dict, List, Optional, Set
+from typing import Any, Awaitable, Optional
 
 import aiohttp
 import voluptuous as vol
@@ -187,17 +187,17 @@ class Addon(AddonModel):
         return self.version != self.latest_version
 
     @property
-    def dns(self) -> List[str]:
+    def dns(self) -> list[str]:
         """Return list of DNS name for that add-on."""
         return [f"{self.hostname}.{DNS_SUFFIX}"]
 
     @property
-    def options(self) -> Dict[str, Any]:
+    def options(self) -> dict[str, Any]:
         """Return options with local changes."""
         return {**self.data[ATTR_OPTIONS], **self.persist[ATTR_OPTIONS]}
 
     @options.setter
-    def options(self, value: Optional[Dict[str, Any]]) -> None:
+    def options(self, value: Optional[dict[str, Any]]) -> None:
         """Store user add-on options."""
         self.persist[ATTR_OPTIONS] = {} if value is None else deepcopy(value)
 
@@ -274,12 +274,12 @@ class Addon(AddonModel):
         self.persist[ATTR_PROTECTED] = value
 
     @property
-    def ports(self) -> Optional[Dict[str, Optional[int]]]:
+    def ports(self) -> Optional[dict[str, Optional[int]]]:
         """Return ports of add-on."""
         return self.persist.get(ATTR_NETWORK, super().ports)
 
     @ports.setter
-    def ports(self, value: Optional[Dict[str, Optional[int]]]) -> None:
+    def ports(self, value: Optional[dict[str, Optional[int]]]) -> None:
         """Set custom ports of add-on."""
         if value is None:
             self.persist.pop(ATTR_NETWORK, None)
@@ -425,7 +425,7 @@ class Addon(AddonModel):
         return Path(self.sys_config.path_extern_tmp, f"{self.slug}_pulse")
 
     @property
-    def devices(self) -> Set[Device]:
+    def devices(self) -> set[Device]:
         """Extract devices from add-on options."""
         options_schema = self.schema
         with suppress(vol.Invalid):
@@ -434,7 +434,7 @@ class Addon(AddonModel):
         return options_schema.devices
 
     @property
-    def pwned(self) -> Set[str]:
+    def pwned(self) -> set[str]:
         """Extract pwned data for add-on options."""
         options_schema = self.schema
         with suppress(vol.Invalid):

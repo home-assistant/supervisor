@@ -1,6 +1,6 @@
 """Init file for Supervisor util for RESTful API."""
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from aiohttp import web
 from aiohttp.hdrs import AUTHORIZATION
@@ -46,7 +46,7 @@ def excract_supervisor_token(request: web.Request) -> Optional[str]:
     return None
 
 
-def json_loads(data: Any) -> Dict[str, Any]:
+def json_loads(data: Any) -> dict[str, Any]:
     """Extract json from string with support for '' and None."""
     if not data:
         return {}
@@ -135,7 +135,7 @@ def api_return_error(
     )
 
 
-def api_return_ok(data: Optional[Dict[str, Any]] = None) -> web.Response:
+def api_return_ok(data: Optional[dict[str, Any]] = None) -> web.Response:
     """Return an API ok answer."""
     return web.json_response(
         {JSON_RESULT: RESULT_OK, JSON_DATA: data or {}},
@@ -144,10 +144,10 @@ def api_return_ok(data: Optional[Dict[str, Any]] = None) -> web.Response:
 
 
 async def api_validate(
-    schema: vol.Schema, request: web.Request, origin: Optional[List[str]] = None
-) -> Dict[str, Any]:
+    schema: vol.Schema, request: web.Request, origin: Optional[list[str]] = None
+) -> dict[str, Any]:
     """Validate request data with schema."""
-    data: Dict[str, Any] = await request.json(loads=json_loads)
+    data: dict[str, Any] = await request.json(loads=json_loads)
     try:
         data_validated = schema(data)
     except vol.Invalid as ex:

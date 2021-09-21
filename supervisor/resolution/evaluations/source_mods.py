@@ -1,7 +1,6 @@
 """Evaluation class for Content Trust."""
 import logging
 from pathlib import Path
-from typing import List
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -32,7 +31,7 @@ class EvaluateSourceMods(EvaluateBase):
         return "System detect unauthorized source code modifications."
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.RUNNING]
 

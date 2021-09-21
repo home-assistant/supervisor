@@ -1,6 +1,5 @@
 """Helpers to fixup the system."""
 import logging
-from typing import List
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..jobs.const import JobCondition
@@ -30,7 +29,7 @@ class ResolutionFixup(CoreSysAttributes):
         self._store_execute_remove = FixupStoreExecuteRemove(coresys)
 
     @property
-    def all_fixes(self) -> List[FixupBase]:
+    def all_fixes(self) -> list[FixupBase]:
         """Return a list of all fixups.
 
         Order can be important!

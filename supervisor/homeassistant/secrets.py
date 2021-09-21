@@ -2,7 +2,7 @@
 from datetime import timedelta
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import YamlFileError
@@ -19,7 +19,7 @@ class HomeAssistantSecrets(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize secret manager."""
         self.coresys: CoreSys = coresys
-        self.secrets: Dict[str, Union[bool, float, int, str]] = {}
+        self.secrets: dict[str, Union[bool, float, int, str]] = {}
 
     @property
     def path_secrets(self) -> Path:

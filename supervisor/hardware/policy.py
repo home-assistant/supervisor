@@ -1,6 +1,5 @@
 """Policy / cgroups management of local host."""
 import logging
-from typing import Dict, List
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import PolicyGroup, UdevSubsystem
@@ -12,7 +11,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # fmt: off
 # https://www.kernel.org/doc/Documentation/admin-guide/devices.txt
 
-_CGROUPS: Dict[PolicyGroup, List[int]] = {
+_CGROUPS: dict[PolicyGroup, list[int]] = {
     PolicyGroup.UART: [
         204,  # ttyAMA / ttySAC (tty)
         188,  # ttyUSB (tty)
@@ -37,7 +36,7 @@ _CGROUPS: Dict[PolicyGroup, List[int]] = {
     ]
 }
 
-_CGROUPS_DYNAMIC_MAJOR: Dict[PolicyGroup, List[UdevSubsystem]] = {
+_CGROUPS_DYNAMIC_MAJOR: dict[PolicyGroup, list[UdevSubsystem]] = {
     PolicyGroup.USB: [
         UdevSubsystem.HIDRAW
     ],
@@ -54,7 +53,7 @@ _CGROUPS_DYNAMIC_MAJOR: Dict[PolicyGroup, List[UdevSubsystem]] = {
     ]
 }
 
-_CGROUPS_DYNAMIC_MINOR: Dict[PolicyGroup, List[UdevSubsystem]] = {
+_CGROUPS_DYNAMIC_MINOR: dict[PolicyGroup, list[UdevSubsystem]] = {
     PolicyGroup.UART: [
         UdevSubsystem.SERIAL
     ]
@@ -74,9 +73,9 @@ class HwPolicy(CoreSysAttributes):
         """Return true if device is in cgroup Policy."""
         return device.major in _CGROUPS.get(group, [])
 
-    def get_cgroups_rules(self, group: PolicyGroup) -> List[str]:
+    def get_cgroups_rules(self, group: PolicyGroup) -> list[str]:
         """Generate cgroups rules for a policy group."""
-        cgroups: List[str] = [f"c {dev}:* rwm" for dev in _CGROUPS[group]]
+        cgroups: list[str] = [f"c {dev}:* rwm" for dev in _CGROUPS[group]]
 
         # Lookup dynamic device groups from host
         if group in _CGROUPS_DYNAMIC_MAJOR:

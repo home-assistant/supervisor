@@ -1,6 +1,6 @@
 """AppArmor object for OS-Agent."""
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from awesomeversion import AwesomeVersion
 
@@ -20,7 +20,7 @@ class AppArmor(DBusInterface):
 
     def __init__(self) -> None:
         """Initialize Properties."""
-        self.properties: Dict[str, Any] = {}
+        self.properties: dict[str, Any] = {}
 
     @property
     @dbus_property

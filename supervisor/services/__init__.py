@@ -1,5 +1,5 @@
 """Handle internal services discovery."""
-from typing import Dict, List, Optional
+from typing import Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import SERVICE_MQTT, SERVICE_MYSQL
@@ -18,10 +18,10 @@ class ServiceManager(CoreSysAttributes):
         """Initialize Services handler."""
         self.coresys: CoreSys = coresys
         self.data: ServicesData = ServicesData()
-        self.services_obj: Dict[str, ServiceInterface] = {}
+        self.services_obj: dict[str, ServiceInterface] = {}
 
     @property
-    def list_services(self) -> List[ServiceInterface]:
+    def list_services(self) -> list[ServiceInterface]:
         """Return a list of services."""
         return list(self.services_obj.values())
 

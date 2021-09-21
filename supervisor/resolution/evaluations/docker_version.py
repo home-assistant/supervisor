@@ -1,5 +1,4 @@
 """Evaluation class for docker version."""
-from typing import List
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -26,7 +25,7 @@ class EvaluateDockerVersion(EvaluateBase):
         return f"Docker version '{self.sys_docker.info.version}' is not supported by the Supervisor!"
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.INITIALIZE]
 

@@ -120,19 +120,13 @@ def test_device_filter(coresys):
         coresys.hardware.update_device(device)
 
     assert sorted(
-        [device.path for device in coresys.hardware.filter_devices()]
-    ) == sorted([device.path for device in coresys.hardware.devices])
+        device.path for device in coresys.hardware.filter_devices()
+    ) == sorted(device.path for device in coresys.hardware.devices)
     assert sorted(
-        [
-            device.path
-            for device in coresys.hardware.filter_devices(
-                subsystem=UdevSubsystem.SERIAL
-            )
-        ]
+        device.path
+        for device in coresys.hardware.filter_devices(subsystem=UdevSubsystem.SERIAL)
     ) == sorted(
-        [
-            device.path
-            for device in coresys.hardware.devices
-            if device.subsystem == UdevSubsystem.SERIAL
-        ]
+        device.path
+        for device in coresys.hardware.devices
+        if device.subsystem == UdevSubsystem.SERIAL
     )

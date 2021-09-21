@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import attr
@@ -31,7 +31,7 @@ class Message:
 
     addon: str = attr.ib()
     service: str = attr.ib()
-    config: Dict[str, Any] = attr.ib(eq=False)
+    config: dict[str, Any] = attr.ib(eq=False)
     uuid: UUID = attr.ib(factory=lambda: uuid4().hex, eq=False)
 
 
@@ -42,7 +42,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         """Initialize discovery handler."""
         super().__init__(FILE_HASSIO_DISCOVERY, SCHEMA_DISCOVERY_CONFIG)
         self.coresys: CoreSys = coresys
-        self.message_obj: Dict[str, Message] = {}
+        self.message_obj: dict[str, Message] = {}
 
     async def load(self) -> None:
         """Load exists discovery message into storage."""
@@ -56,7 +56,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
 
     def save(self) -> None:
         """Write discovery message into data file."""
-        messages: List[Dict[str, Any]] = []
+        messages: list[dict[str, Any]] = []
         for message in self.list_messages:
             messages.append(attr.asdict(message))
 
@@ -64,16 +64,16 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         self._data[ATTR_DISCOVERY].extend(messages)
         self.save_data()
 
-    def get(self, uuid: str) -> Optional[Message]:
+    def get(self, uuid: str) -> Message | None:
         """Return discovery message."""
         return self.message_obj.get(uuid)
 
     @property
-    def list_messages(self) -> List[Message]:
+    def list_messages(self) -> list[Message]:
         """Return list of available discovery messages."""
         return list(self.message_obj.values())
 
-    def send(self, addon: Addon, service: str, config: Dict[str, Any]) -> Message:
+    def send(self, addon: Addon, service: str, config: dict[str, Any]) -> Message:
         """Send a discovery message to Home Assistant."""
         try:
             config = valid_discovery_config(service, config)

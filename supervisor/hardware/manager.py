@@ -1,7 +1,7 @@
 """Hardware Manager of Supervisor."""
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import pyudev
 
@@ -24,7 +24,7 @@ class HardwareManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Hardware Monitor object."""
         self.coresys: CoreSys = coresys
-        self._devices: Dict[str, Device] = {}
+        self._devices: dict[str, Device] = {}
         self._udev = pyudev.Context()
 
         self._montior: HwMonitor = HwMonitor(coresys)
@@ -53,7 +53,7 @@ class HardwareManager(CoreSysAttributes):
         return self._disk
 
     @property
-    def devices(self) -> List[Device]:
+    def devices(self) -> list[Device]:
         """Return List of devices."""
         return list(self._devices.values())
 
@@ -66,7 +66,7 @@ class HardwareManager(CoreSysAttributes):
                 return device
         raise HardwareNotFound()
 
-    def filter_devices(self, subsystem: Optional[UdevSubsystem] = None) -> List[Device]:
+    def filter_devices(self, subsystem: Optional[UdevSubsystem] = None) -> list[Device]:
         """Return a filtered list."""
         devices = set()
         for device in self.devices:
