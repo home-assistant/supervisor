@@ -35,6 +35,7 @@ class HwDisk(CoreSysAttributes):
                 try:
                     device = self.sys_hardware.get_by_path(child)
                 except HardwareNotFound:
+                    print("ERROR")
                     continue
                 if device.subsystem == UdevSubsystem.DISK and device.attributes.get(
                     "ID_FS_LABEL", ""
