@@ -39,8 +39,7 @@ class HwDisk(CoreSysAttributes):
                 if device.subsystem == UdevSubsystem.DISK:
                     if device.attributes.get("ID_FS_LABEL", "").startswith("hassos"):
                         return True
-                    if device.attributes.get("ID_FS_LABEL", "").startswith("haos"):
-                        return True
+            return False
 
         # Partition
         if device.minor > 0 and device.attributes.get("ID_FS_LABEL", "").startswith(
