@@ -1,7 +1,7 @@
 """Common utils."""
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -12,10 +12,10 @@ from .yaml import read_yaml_file, write_yaml_file
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-_DEFAULT: Dict[str, Any] = {}
+_DEFAULT: dict[str, Any] = {}
 
 
-def find_one_filetype(path: Path, filename: str, filetypes: List[str]) -> Path:
+def find_one_filetype(path: Path, filename: str, filetypes: list[str]) -> Path:
     """Find first file matching filetypes."""
     for file in path.glob(f"**/{filename}.*"):
         if file.suffix in filetypes:
@@ -52,7 +52,7 @@ class FileConfiguration:
         """Initialize hass object."""
         self._file: Path = file_path
         self._schema: vol.Schema = schema
-        self._data: Dict[str, Any] = _DEFAULT
+        self._data: dict[str, Any] = _DEFAULT
 
         self.read_data()
 

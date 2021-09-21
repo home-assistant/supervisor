@@ -1,7 +1,7 @@
 """Helpers to check core security."""
 from datetime import timedelta
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from ...const import AddonState, CoreState
 from ...coresys import CoreSys
@@ -99,6 +99,6 @@ class CheckAddonPwned(CheckBase):
         return ContextType.ADDON
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this check can run."""
         return [CoreState.RUNNING]

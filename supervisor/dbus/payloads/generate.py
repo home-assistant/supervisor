@@ -4,7 +4,7 @@ from __future__ import annotations
 from ipaddress import IPv4Address, IPv6Address
 from pathlib import Path
 import socket
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import jinja2
@@ -21,7 +21,7 @@ INTERFACE_UPDATE_TEMPLATE: Path = (
 
 
 def interface_update_payload(
-    interface: Interface, name: Optional[str] = None, uuid: Optional[str] = None
+    interface: Interface, name: str | None = None, uuid: str | None = None
 ) -> str:
     """Generate a payload for network interface update."""
     env = jinja2.Environment()

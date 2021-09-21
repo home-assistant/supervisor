@@ -1,7 +1,7 @@
 """Init file for Supervisor Home Assistant RESTful API."""
 import asyncio
 import logging
-from typing import Any, Awaitable, Dict
+from typing import Any, Awaitable
 
 from aiohttp import web
 import voluptuous as vol
@@ -61,7 +61,7 @@ class APIHomeAssistant(CoreSysAttributes):
     """Handle RESTful API for Home Assistant functions."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return host information."""
         return {
             ATTR_VERSION: self.sys_homeassistant.version,
@@ -117,7 +117,7 @@ class APIHomeAssistant(CoreSysAttributes):
         self.sys_homeassistant.save_data()
 
     @api_process
-    async def stats(self, request: web.Request) -> Dict[Any, str]:
+    async def stats(self, request: web.Request) -> dict[Any, str]:
         """Return resource information."""
         stats = await self.sys_homeassistant.core.stats()
         if not stats:

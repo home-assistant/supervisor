@@ -1,7 +1,7 @@
 """D-Bus interface for hostname."""
 from ipaddress import ip_address
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from ...const import (
     ATTR_DOMAINS,
@@ -34,7 +34,7 @@ class NetworkManagerDNS(DBusInterface):
         """Initialize Properties."""
         self._mode: Optional[str] = None
         self._rc_manager: Optional[str] = None
-        self._configuration: List[DNSConfiguration] = []
+        self._configuration: list[DNSConfiguration] = []
 
     @property
     def mode(self) -> Optional[str]:
@@ -47,7 +47,7 @@ class NetworkManagerDNS(DBusInterface):
         return self._rc_manager
 
     @property
-    def configuration(self) -> List[DNSConfiguration]:
+    def configuration(self) -> list[DNSConfiguration]:
         """Return Propertie configuraton."""
         return self._configuration
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 import logging
-from typing import List, Optional, Union
 
 import attr
 
@@ -40,10 +39,10 @@ class NetworkManager(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize system center handling."""
         self.coresys: CoreSys = coresys
-        self._connectivity: Optional[bool] = None
+        self._connectivity: bool | None = None
 
     @property
-    def connectivity(self) -> Optional[bool]:
+    def connectivity(self) -> bool | None:
         """Return true current connectivity state."""
         return self._connectivity
 
@@ -58,19 +57,19 @@ class NetworkManager(CoreSysAttributes):
         )
 
     @property
-    def interfaces(self) -> List[Interface]:
+    def interfaces(self) -> list[Interface]:
         """Return a dictionary of active interfaces."""
-        interfaces: List[Interface] = []
+        interfaces: list[Interface] = []
         for inet in self.sys_dbus.network.interfaces.values():
             interfaces.append(Interface.from_dbus_interface(inet))
 
         return interfaces
 
     @property
-    def dns_servers(self) -> List[str]:
+    def dns_servers(self) -> list[str]:
         """Return a list of local DNS servers."""
         # Read all local dns servers
-        servers: List[str] = []
+        servers: list[str] = []
         for config in self.sys_dbus.network.dns.configuration:
             if config.vpn or not config.nameservers:
                 continue
@@ -183,7 +182,7 @@ class NetworkManager(CoreSysAttributes):
         )
         await self.update()
 
-    async def scan_wifi(self, interface: Interface) -> List[AccessPoint]:
+    async def scan_wifi(self, interface: Interface) -> list[AccessPoint]:
         """Scan on Interface for AccessPoint."""
         inet = self.sys_dbus.network.interfaces.get(interface.name)
 
@@ -202,7 +201,7 @@ class NetworkManager(CoreSysAttributes):
             await asyncio.sleep(5)
 
         # Process AP
-        accesspoints: List[AccessPoint] = []
+        accesspoints: list[AccessPoint] = []
         for ap_object in (await inet.wireless.get_all_accesspoints())[0]:
             accesspoint = NetworkWirelessAP(ap_object)
 
@@ -241,9 +240,9 @@ class IpConfig:
     """Represent a IP configuration."""
 
     method: InterfaceMethod = attr.ib()
-    address: List[Union[IPv4Interface, IPv6Interface]] = attr.ib()
-    gateway: Optional[Union[IPv4Address, IPv6Address]] = attr.ib()
-    nameservers: List[Union[IPv4Address, IPv6Address]] = attr.ib()
+    address: list[IPv4Interface | IPv6Interface] = attr.ib()
+    gateway: IPv4Address | IPv6Address | None = attr.ib()
+    nameservers: list[IPv4Address | IPv6Address] = attr.ib()
 
 
 @attr.s(slots=True)
@@ -253,8 +252,8 @@ class WifiConfig:
     mode: WifiMode = attr.ib()
     ssid: str = attr.ib()
     auth: AuthMethod = attr.ib()
-    psk: Optional[str] = attr.ib()
-    signal: Optional[int] = attr.ib()
+    psk: str | None = attr.ib()
+    signal: int | None = attr.ib()
 
 
 @attr.s(slots=True)
@@ -274,10 +273,10 @@ class Interface:
     connected: bool = attr.ib()
     primary: bool = attr.ib()
     type: InterfaceType = attr.ib()
-    ipv4: Optional[IpConfig] = attr.ib()
-    ipv6: Optional[IpConfig] = attr.ib()
-    wifi: Optional[WifiConfig] = attr.ib()
-    vlan: Optional[VlanConfig] = attr.ib()
+    ipv4: IpConfig | None = attr.ib()
+    ipv6: IpConfig | None = attr.ib()
+    wifi: WifiConfig | None = attr.ib()
+    vlan: VlanConfig | None = attr.ib()
 
     @staticmethod
     def from_dbus_interface(inet: NetworkInterface) -> Interface:
@@ -320,7 +319,7 @@ class Interface:
         return mapping.get(method, InterfaceMethod.DISABLED)
 
     @staticmethod
-    def _map_nm_connected(connection: Optional[NetworkConnection]) -> bool:
+    def _map_nm_connected(connection: NetworkConnection | None) -> bool:
         """Map connectivity state."""
         if not connection:
             return False
@@ -340,7 +339,7 @@ class Interface:
         return mapping[device_type]
 
     @staticmethod
-    def _map_nm_wifi(inet: NetworkInterface) -> Optional[WifiConfig]:
+    def _map_nm_wifi(inet: NetworkInterface) -> WifiConfig | None:
         """Create mapping to nm wifi property."""
         if inet.type != DeviceType.WIRELESS or not inet.settings:
             return None
@@ -376,7 +375,7 @@ class Interface:
         )
 
     @staticmethod
-    def _map_nm_vlan(inet: NetworkInterface) -> Optional[WifiConfig]:
+    def _map_nm_vlan(inet: NetworkInterface) -> WifiConfig | None:
         """Create mapping to nm vlan property."""
         if inet.type != DeviceType.VLAN or not inet.settings:
             return None

@@ -3,7 +3,7 @@ import hashlib
 import logging
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Union
 
 import voluptuous as vol
 
@@ -59,13 +59,13 @@ class AddonOptions(CoreSysAttributes):
     """Validate Add-ons Options."""
 
     def __init__(
-        self, coresys: CoreSys, raw_schema: Dict[str, Any], name: str, slug: str
+        self, coresys: CoreSys, raw_schema: dict[str, Any], name: str, slug: str
     ):
         """Validate schema."""
         self.coresys: CoreSys = coresys
-        self.raw_schema: Dict[str, Any] = raw_schema
-        self.devices: Set[Device] = set()
-        self.pwned: Set[str] = set()
+        self.raw_schema: dict[str, Any] = raw_schema
+        self.devices: set[Device] = set()
+        self.pwned: set[str] = set()
         self._name = name
         self._slug = slug
 
@@ -187,7 +187,7 @@ class AddonOptions(CoreSysAttributes):
             f"Fatal error for option '{key}' with type '{typ}' in {self._name} ({self._slug})"
         ) from None
 
-    def _nested_validate_list(self, typ: Any, data_list: List[Any], key: str):
+    def _nested_validate_list(self, typ: Any, data_list: list[Any], key: str):
         """Validate nested items."""
         options = []
 
@@ -209,7 +209,7 @@ class AddonOptions(CoreSysAttributes):
         return options
 
     def _nested_validate_dict(
-        self, typ: Dict[Any, Any], data_dict: Dict[Any, Any], key: str
+        self, typ: dict[Any, Any], data_dict: dict[Any, Any], key: str
     ):
         """Validate nested items."""
         options = {}
@@ -241,7 +241,7 @@ class AddonOptions(CoreSysAttributes):
         return options
 
     def _check_missing_options(
-        self, origin: Dict[Any, Any], exists: Dict[Any, Any], root: str
+        self, origin: dict[Any, Any], exists: dict[Any, Any], root: str
     ) -> None:
         """Check if all options are exists."""
         missing = set(origin) - set(exists)
@@ -267,9 +267,9 @@ class UiOptions(CoreSysAttributes):
         """Initialize UI option render."""
         self.coresys = coresys
 
-    def __call__(self, raw_schema: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def __call__(self, raw_schema: dict[str, Any]) -> list[dict[str, Any]]:
         """Generate UI schema."""
-        ui_schema: List[Dict[str, Any]] = []
+        ui_schema: list[dict[str, Any]] = []
 
         # read options
         for key, value in raw_schema.items():
@@ -287,13 +287,13 @@ class UiOptions(CoreSysAttributes):
 
     def _single_ui_option(
         self,
-        ui_schema: List[Dict[str, Any]],
+        ui_schema: list[dict[str, Any]],
         value: str,
         key: str,
         multiple: bool = False,
     ) -> None:
         """Validate a single element."""
-        ui_node: Dict[str, Union[str, bool, float, List[str]]] = {"name": key}
+        ui_node: dict[str, Union[str, bool, float, list[str]]] = {"name": key}
 
         # If multiple
         if multiple:
@@ -365,8 +365,8 @@ class UiOptions(CoreSysAttributes):
 
     def _nested_ui_list(
         self,
-        ui_schema: List[Dict[str, Any]],
-        option_list: List[Any],
+        ui_schema: list[dict[str, Any]],
+        option_list: list[Any],
         key: str,
     ) -> None:
         """UI nested list items."""
@@ -383,8 +383,8 @@ class UiOptions(CoreSysAttributes):
 
     def _nested_ui_dict(
         self,
-        ui_schema: List[Dict[str, Any]],
-        option_dict: Dict[str, Any],
+        ui_schema: list[dict[str, Any]],
+        option_dict: dict[str, Any],
         key: str,
         multiple: bool = False,
     ) -> None:
@@ -408,7 +408,7 @@ class UiOptions(CoreSysAttributes):
         ui_schema.append(ui_node)
 
 
-def _create_device_filter(str_filter: str) -> Dict[str, Any]:
+def _create_device_filter(str_filter: str) -> dict[str, Any]:
     """Generate device Filter."""
     raw_filter = dict(value.split("=") for value in str_filter.split(";"))
 

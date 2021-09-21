@@ -1,5 +1,4 @@
 """Evaluation class for privileged."""
-from typing import List
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -26,7 +25,7 @@ class EvaluatePrivileged(EvaluateBase):
         return "Supervisor does not run in Privileged mode."
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.INITIALIZE]
 

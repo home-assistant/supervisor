@@ -1,7 +1,7 @@
 """Init file for Supervisor Supervisor RESTful API."""
 import asyncio
 import logging
-from typing import Any, Awaitable, Dict
+from typing import Any, Awaitable
 
 from aiohttp import web
 import voluptuous as vol
@@ -82,7 +82,7 @@ class APISupervisor(CoreSysAttributes):
         return True
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return host information."""
         list_addons = []
         for addon in self.sys_addons.installed:
@@ -178,7 +178,7 @@ class APISupervisor(CoreSysAttributes):
         await self.sys_resolution.evaluate.evaluate_system()
 
     @api_process
-    async def stats(self, request: web.Request) -> Dict[str, Any]:
+    async def stats(self, request: web.Request) -> dict[str, Any]:
         """Return resource information."""
         stats = await self.sys_supervisor.stats()
 

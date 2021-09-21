@@ -2,7 +2,7 @@
 import asyncio
 from datetime import date, datetime, time, timedelta
 import logging
-from typing import Awaitable, Callable, List, Optional, Union
+from typing import Awaitable, Callable, Optional, Union
 from uuid import UUID, uuid4
 
 import async_timeout
@@ -32,7 +32,7 @@ class Scheduler(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize task schedule."""
         self.coresys: CoreSys = coresys
-        self._tasks: List[_Task] = []
+        self._tasks: list[_Task] = []
 
     def register_task(
         self,
@@ -96,7 +96,7 @@ class Scheduler(CoreSysAttributes):
 
     async def shutdown(self, timeout=10) -> None:
         """Shutdown all task inside the scheduler."""
-        running: List[asyncio.tasks.Task] = []
+        running: list[asyncio.tasks.Task] = []
 
         # Cancel next task / get running list
         _LOGGER.info("Shutting down scheduled tasks")

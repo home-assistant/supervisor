@@ -1,6 +1,6 @@
 """Init file for Supervisor hardware RESTful API."""
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from aiohttp import web
 
@@ -19,7 +19,7 @@ from .utils import api_process
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def device_struct(device: Device) -> Dict[str, Any]:
+def device_struct(device: Device) -> dict[str, Any]:
     """Return a dict with information of a interface to be used in th API."""
     return {
         ATTR_NAME: device.name,
@@ -35,7 +35,7 @@ class APIHardware(CoreSysAttributes):
     """Handle RESTful API for hardware functions."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Show hardware info."""
         return {
             ATTR_DEVICES: [
@@ -44,7 +44,7 @@ class APIHardware(CoreSysAttributes):
         }
 
     @api_process
-    async def audio(self, request: web.Request) -> Dict[str, Any]:
+    async def audio(self, request: web.Request) -> dict[str, Any]:
         """Show pulse audio profiles."""
         return {
             ATTR_AUDIO: {

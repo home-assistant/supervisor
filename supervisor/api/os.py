@@ -2,7 +2,7 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Any, Awaitable, Dict
+from typing import Any, Awaitable
 
 from aiohttp import web
 import voluptuous as vol
@@ -30,7 +30,7 @@ class APIOS(CoreSysAttributes):
     """Handle RESTful API for OS functions."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return OS information."""
         return {
             ATTR_VERSION: self.sys_os.version,
@@ -62,7 +62,7 @@ class APIOS(CoreSysAttributes):
         await asyncio.shield(self.sys_os.datadisk.migrate_disk(body[ATTR_DEVICE]))
 
     @api_process
-    async def list_data(self, request: web.Request) -> Dict[str, Any]:
+    async def list_data(self, request: web.Request) -> dict[str, Any]:
         """Return possible data targets."""
         return {
             ATTR_DEVICES: self.sys_os.datadisk.available_disks,

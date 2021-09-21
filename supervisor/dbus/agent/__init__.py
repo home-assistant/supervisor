@@ -1,7 +1,7 @@
 """OS-Agent implementation for DBUS."""
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from awesomeversion import AwesomeVersion
 
@@ -30,7 +30,7 @@ class OSAgent(DBusInterface):
 
     def __init__(self) -> None:
         """Initialize Properties."""
-        self.properties: Dict[str, Any] = {}
+        self.properties: dict[str, Any] = {}
 
         self._cgroup: CGroup = CGroup()
         self._apparmor: AppArmor = AppArmor()

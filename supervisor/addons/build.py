@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 from awesomeversion import AwesomeVersion
 
@@ -60,12 +60,12 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         return self._data[ATTR_SQUASH]
 
     @property
-    def additional_args(self) -> Dict[str, str]:
+    def additional_args(self) -> dict[str, str]:
         """Return additional Docker build arguments."""
         return self._data[ATTR_ARGS]
 
     @property
-    def additional_labels(self) -> Dict[str, str]:
+    def additional_labels(self) -> dict[str, str]:
         """Return additional Docker labels."""
         return self._data[ATTR_LABELS]
 

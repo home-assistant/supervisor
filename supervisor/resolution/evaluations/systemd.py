@@ -1,5 +1,4 @@
 """Evaluation class for systemd."""
-from typing import List
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -27,7 +26,7 @@ class EvaluateSystemd(EvaluateBase):
         return "Systemd is not correctly working"
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.SETUP]
 

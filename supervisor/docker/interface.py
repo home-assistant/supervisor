@@ -3,7 +3,7 @@ import asyncio
 from contextlib import suppress
 import logging
 import re
-from typing import Any, Awaitable, Dict, List, Optional
+from typing import Any, Awaitable, Optional
 
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
@@ -44,7 +44,7 @@ class DockerInterface(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
         self.coresys: CoreSys = coresys
-        self._meta: Optional[Dict[str, Any]] = None
+        self._meta: Optional[dict[str, Any]] = None
         self.lock: asyncio.Lock = asyncio.Lock()
 
     @property
@@ -58,21 +58,21 @@ class DockerInterface(CoreSysAttributes):
         return None
 
     @property
-    def meta_config(self) -> Dict[str, Any]:
+    def meta_config(self) -> dict[str, Any]:
         """Return meta data of configuration for container/image."""
         if not self._meta:
             return {}
         return self._meta.get("Config", {})
 
     @property
-    def meta_host(self) -> Dict[str, Any]:
+    def meta_host(self) -> dict[str, Any]:
         """Return meta data of configuration for host."""
         if not self._meta:
             return {}
         return self._meta.get("HostConfig", {})
 
     @property
-    def meta_labels(self) -> Dict[str, str]:
+    def meta_labels(self) -> dict[str, str]:
         """Return meta data of labels for container/image."""
         return self.meta_config.get("Labels") or {}
 
@@ -102,7 +102,7 @@ class DockerInterface(CoreSysAttributes):
         return self.lock.locked()
 
     @property
-    def security_opt(self) -> List[str]:
+    def security_opt(self) -> list[str]:
         """Control security options."""
         # Disable Seccomp / We don't support it official and it
         # causes problems on some types of host systems.
@@ -565,7 +565,7 @@ class DockerInterface(CoreSysAttributes):
 
         Need run inside executor.
         """
-        available_version: List[AwesomeVersion] = []
+        available_version: list[AwesomeVersion] = []
         try:
             for image in self.sys_docker.images.list(self.image):
                 for tag in image.tags:

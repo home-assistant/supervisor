@@ -1,7 +1,7 @@
 """Home Assistant Operating-System DataDisk."""
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from awesomeversion import AwesomeVersion
 
@@ -34,9 +34,9 @@ class DataDisk(CoreSysAttributes):
         return self.sys_dbus.agent.datadisk.current_device
 
     @property
-    def available_disks(self) -> List[Path]:
+    def available_disks(self) -> list[Path]:
         """Return a list of possible new disk locations."""
-        device_paths: List[Path] = []
+        device_paths: list[Path] = []
         for device in self.sys_hardware.devices:
             # Filter devices out which can't be a target
             if (

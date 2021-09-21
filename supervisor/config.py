@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 import os
 from pathlib import Path, PurePath
-from typing import List, Optional
+from typing import Optional
 
 from awesomeversion import AwesomeVersion
 
@@ -294,7 +294,7 @@ class CoreConfig(FileConfiguration):
         return PurePath(self.path_extern_supervisor, MEDIA_DATA)
 
     @property
-    def addons_repositories(self) -> List[str]:
+    def addons_repositories(self) -> list[str]:
         """Return list of custom Add-on repositories."""
         return self._data[ATTR_ADDONS_CUSTOM_LIST]
 

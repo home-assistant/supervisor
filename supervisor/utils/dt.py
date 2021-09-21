@@ -2,7 +2,7 @@
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone, tzinfo
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 import zoneinfo
 
 import ciso8601
@@ -38,7 +38,7 @@ def parse_datetime(dt_str):
     match = DATETIME_RE.match(dt_str)
     if not match:
         return None
-    kws: Dict[str, Any] = match.groupdict()
+    kws: dict[str, Any] = match.groupdict()
     if kws["microsecond"]:
         kws["microsecond"] = kws["microsecond"].ljust(6, "0")
     tzinfo_str = kws.pop("tzinfo")

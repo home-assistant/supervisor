@@ -1,6 +1,6 @@
 """D-Bus interface for hostname."""
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
@@ -27,7 +27,7 @@ class Hostname(DBusInterface):
 
     def __init__(self):
         """Initialize Properties."""
-        self.properties: Dict[str, Any] = {}
+        self.properties: dict[str, Any] = {}
 
     async def connect(self):
         """Connect to system's D-Bus."""

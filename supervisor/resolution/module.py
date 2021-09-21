@@ -1,6 +1,6 @@
 """Supervisor resolution center."""
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
@@ -37,13 +37,13 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._fixup = ResolutionFixup(coresys)
         self._notify = ResolutionNotify(coresys)
 
-        self._suggestions: List[Suggestion] = []
-        self._issues: List[Issue] = []
-        self._unsupported: List[UnsupportedReason] = []
-        self._unhealthy: List[UnhealthyReason] = []
+        self._suggestions: list[Suggestion] = []
+        self._issues: list[Issue] = []
+        self._unsupported: list[UnsupportedReason] = []
+        self._unhealthy: list[UnhealthyReason] = []
 
     @property
-    def data(self) -> Dict[str, Any]:
+    def data(self) -> dict[str, Any]:
         """Return data."""
         return self._data
 
@@ -68,7 +68,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         return self._notify
 
     @property
-    def issues(self) -> List[Issue]:
+    def issues(self) -> list[Issue]:
         """Return a list of issues."""
         return self._issues
 
@@ -83,7 +83,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._issues.append(issue)
 
     @property
-    def suggestions(self) -> List[Suggestion]:
+    def suggestions(self) -> list[Suggestion]:
         """Return a list of suggestions that can handled."""
         return self._suggestions
 
@@ -101,7 +101,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._suggestions.append(suggestion)
 
     @property
-    def unsupported(self) -> List[UnsupportedReason]:
+    def unsupported(self) -> list[UnsupportedReason]:
         """Return a list of unsupported reasons."""
         return self._unsupported
 
@@ -112,7 +112,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             self._unsupported.append(reason)
 
     @property
-    def unhealthy(self) -> List[UnhealthyReason]:
+    def unhealthy(self) -> list[UnhealthyReason]:
         """Return a list of unsupported reasons."""
         return self._unhealthy
 
@@ -143,7 +143,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         issue: IssueType,
         context: ContextType,
         reference: Optional[str] = None,
-        suggestions: Optional[List[SuggestionType]] = None,
+        suggestions: Optional[list[SuggestionType]] = None,
     ) -> None:
         """Create issues and suggestion."""
         self.issues = Issue(issue, context, reference)

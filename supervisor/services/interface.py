@@ -1,6 +1,6 @@
 """Interface for single service."""
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import voluptuous as vol
 
@@ -23,7 +23,7 @@ class ServiceInterface(CoreSysAttributes, ABC):
 
     @property
     @abstractmethod
-    def _data(self) -> Dict[str, Any]:
+    def _data(self) -> dict[str, Any]:
         """Return data of this service."""
 
     @property
@@ -32,7 +32,7 @@ class ServiceInterface(CoreSysAttributes, ABC):
         """Return data schema of this service."""
 
     @property
-    def providers(self) -> List[str]:
+    def providers(self) -> list[str]:
         """Return name of service providers addon."""
         addons = []
         for addon in self.sys_addons.installed:
@@ -42,7 +42,7 @@ class ServiceInterface(CoreSysAttributes, ABC):
 
     @property
     @abstractmethod
-    def active(self) -> List[str]:
+    def active(self) -> list[str]:
         """Return list of addon slug they have enable that."""
 
     @property
@@ -54,14 +54,14 @@ class ServiceInterface(CoreSysAttributes, ABC):
         """Save changes."""
         self.sys_services.data.save_data()
 
-    def get_service_data(self) -> Optional[Dict[str, Any]]:
+    def get_service_data(self) -> Optional[dict[str, Any]]:
         """Return the requested service data."""
         if self.enabled:
             return self._data
         return None
 
     @abstractmethod
-    def set_service_data(self, addon: Addon, data: Dict[str, Any]) -> None:
+    def set_service_data(self, addon: Addon, data: dict[str, Any]) -> None:
         """Write the data into service object."""
 
     @abstractmethod

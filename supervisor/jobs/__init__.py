@@ -1,6 +1,6 @@
 """Supervisor job manager."""
 import logging
-from typing import Dict, List, Optional
+from typing import Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.common import FileConfiguration
@@ -56,20 +56,20 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         """Initialize the JobManager class."""
         super().__init__(FILE_CONFIG_JOBS, SCHEMA_JOBS_CONFIG)
         self.coresys: CoreSys = coresys
-        self._jobs: Dict[str, SupervisorJob] = {}
+        self._jobs: dict[str, SupervisorJob] = {}
 
     @property
-    def jobs(self) -> List[SupervisorJob]:
+    def jobs(self) -> list[SupervisorJob]:
         """Return a list of current jobs."""
         return self._jobs
 
     @property
-    def ignore_conditions(self) -> List[JobCondition]:
+    def ignore_conditions(self) -> list[JobCondition]:
         """Return a list of ingore condition."""
         return self._data[ATTR_IGNORE_CONDITIONS]
 
     @ignore_conditions.setter
-    def ignore_conditions(self, value: List[JobCondition]) -> None:
+    def ignore_conditions(self, value: list[JobCondition]) -> None:
         """Set a list of ignored condition."""
         self._data[ATTR_IGNORE_CONDITIONS] = value
 

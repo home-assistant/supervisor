@@ -2,7 +2,7 @@
 import asyncio
 from ipaddress import ip_address
 import logging
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 import aiohttp
 from aiohttp import ClientTimeout, hdrs, web
@@ -54,7 +54,7 @@ class APIIngress(CoreSysAttributes):
         return f"http://{addon.ip_address}:{addon.ingress_port}/{path}"
 
     @api_process
-    async def panels(self, request: web.Request) -> Dict[str, Any]:
+    async def panels(self, request: web.Request) -> dict[str, Any]:
         """Create a list of panel data."""
         addons = {}
         for addon in self.sys_ingress.addons:
@@ -69,14 +69,14 @@ class APIIngress(CoreSysAttributes):
 
     @api_process
     @require_home_assistant
-    async def create_session(self, request: web.Request) -> Dict[str, Any]:
+    async def create_session(self, request: web.Request) -> dict[str, Any]:
         """Create a new session."""
         session = self.sys_ingress.create_session()
         return {ATTR_SESSION: session}
 
     @api_process
     @require_home_assistant
-    async def validate_session(self, request: web.Request) -> Dict[str, Any]:
+    async def validate_session(self, request: web.Request) -> dict[str, Any]:
         """Validate session and extending how long it's valid for."""
         data = await api_validate(VALIDATE_SESSION_DATA, request)
 
@@ -220,7 +220,7 @@ class APIIngress(CoreSysAttributes):
 
 def _init_header(
     request: web.Request, addon: str
-) -> Union[CIMultiDict, Dict[str, str]]:
+) -> Union[CIMultiDict, dict[str, str]]:
     """Create initial header."""
     headers = {}
 
@@ -248,7 +248,7 @@ def _init_header(
     return headers
 
 
-def _response_header(response: aiohttp.ClientResponse) -> Dict[str, str]:
+def _response_header(response: aiohttp.ClientResponse) -> dict[str, str]:
     """Create response header."""
     headers = {}
 

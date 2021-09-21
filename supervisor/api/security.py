@@ -1,6 +1,6 @@
 """Init file for Supervisor Security RESTful API."""
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from aiohttp import web
 import voluptuous as vol
@@ -25,7 +25,7 @@ class APISecurity(CoreSysAttributes):
     """Handle RESTful API for Security functions."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return Security information."""
         return {
             ATTR_CONTENT_TRUST: self.sys_security.content_trust,

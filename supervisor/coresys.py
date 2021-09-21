@@ -6,7 +6,7 @@ from datetime import datetime
 import logging
 import os
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 
 import aiohttp
 import sentry_sdk
@@ -54,8 +54,8 @@ class CoreSys:
     def __init__(self):
         """Initialize coresys."""
         # Static attributes protected
-        self._machine_id: Optional[str] = None
-        self._machine: Optional[str] = None
+        self._machine_id: str | None = None
+        self._machine: str | None = None
 
         # External objects
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
@@ -66,30 +66,30 @@ class CoreSys:
         self._docker: DockerAPI = DockerAPI()
 
         # Internal objects pointers
-        self._core: Optional[Core] = None
-        self._arch: Optional[CpuArch] = None
-        self._auth: Optional[Auth] = None
-        self._homeassistant: Optional[HomeAssistant] = None
-        self._supervisor: Optional[Supervisor] = None
-        self._addons: Optional[AddonManager] = None
-        self._api: Optional[RestAPI] = None
-        self._updater: Optional[Updater] = None
-        self._backups: Optional[BackupManager] = None
-        self._tasks: Optional[Tasks] = None
-        self._host: Optional[HostManager] = None
-        self._ingress: Optional[Ingress] = None
-        self._dbus: Optional[DBusManager] = None
-        self._os: Optional[OSManager] = None
-        self._services: Optional[ServiceManager] = None
-        self._scheduler: Optional[Scheduler] = None
-        self._store: Optional[StoreManager] = None
-        self._discovery: Optional[Discovery] = None
-        self._hardware: Optional[HardwareManager] = None
-        self._plugins: Optional[PluginManager] = None
-        self._resolution: Optional[ResolutionManager] = None
-        self._jobs: Optional[JobManager] = None
-        self._security: Optional[Security] = None
-        self._bus: Optional[Bus] = None
+        self._core: Core | None = None
+        self._arch: CpuArch | None = None
+        self._auth: Auth | None = None
+        self._homeassistant: HomeAssistant | None = None
+        self._supervisor: Supervisor | None = None
+        self._addons: AddonManager | None = None
+        self._api: RestAPI | None = None
+        self._updater: Updater | None = None
+        self._backups: BackupManager | None = None
+        self._tasks: Tasks | None = None
+        self._host: HostManager | None = None
+        self._ingress: Ingress | None = None
+        self._dbus: DBusManager | None = None
+        self._os: OSManager | None = None
+        self._services: ServiceManager | None = None
+        self._scheduler: Scheduler | None = None
+        self._store: StoreManager | None = None
+        self._discovery: Discovery | None = None
+        self._hardware: HardwareManager | None = None
+        self._plugins: PluginManager | None = None
+        self._resolution: ResolutionManager | None = None
+        self._jobs: JobManager | None = None
+        self._security: Security | None = None
+        self._bus: Bus | None = None
 
         # Set default header for aiohttp
         self._websession._default_headers = MappingProxyType(
@@ -467,7 +467,7 @@ class CoreSys:
         self._jobs = value
 
     @property
-    def machine(self) -> Optional[str]:
+    def machine(self) -> str | None:
         """Return machine type string."""
         return self._machine
 
@@ -479,7 +479,7 @@ class CoreSys:
         self._machine = value
 
     @property
-    def machine_id(self) -> Optional[str]:
+    def machine_id(self) -> str | None:
         """Return machine-id type string."""
         return self._machine_id
 
@@ -520,7 +520,7 @@ class CoreSysAttributes:
         return self.coresys.timezone
 
     @property
-    def sys_machine(self) -> Optional[str]:
+    def sys_machine(self) -> str | None:
         """Return running machine type of the Supervisor system."""
         return self.coresys.machine
 
