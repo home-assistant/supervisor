@@ -63,6 +63,7 @@ class APIHost(CoreSysAttributes):
             ATTR_DT_SYNCHRONIZED: self.sys_host.info.dt_synchronized,
             ATTR_USE_NTP: self.sys_host.info.use_ntp,
             ATTR_USE_RTC: self.sys_host.info.use_rtc,
+            "startup_time": self.sys_host.info.startup_time,
         }
 
     @api_process

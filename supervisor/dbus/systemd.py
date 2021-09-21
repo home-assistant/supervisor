@@ -1,10 +1,20 @@
 """Interface to Systemd over D-Bus."""
 import logging
+from typing import Any, Dict
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
-from .const import DBUS_NAME_SYSTEMD, DBUS_OBJECT_SYSTEMD
-from .interface import DBusInterface
+from .const import (
+    DBUS_ATTR_FINISH_TIMESTAMP_MONOTONIC,
+    DBUS_ATTR_FIRMWARE_TIMESTAMP_MONOTONIC,
+    DBUS_ATTR_INITRD_TIMESTAMP_MONOTONIC,
+    DBUS_ATTR_KERNEL_TIMESTAMP_MONOTONIC,
+    DBUS_ATTR_LOADER_TIMESTAMP_MONOTONIC,
+    DBUS_ATTR_USERSPACE_TIMESTAMP_MONOTONIC,
+    DBUS_NAME_SYSTEMD,
+    DBUS_OBJECT_SYSTEMD,
+)
+from .interface import DBusInterface, dbus_property
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -14,6 +24,10 @@ class Systemd(DBusInterface):
     """Systemd function handler."""
 
     name = DBUS_NAME_SYSTEMD
+
+    def __init__(self) -> None:
+        """Initialize Properties."""
+        self.properties: Dict[str, Any] = {}
 
     async def connect(self):
         """Connect to D-Bus."""
@@ -25,6 +39,19 @@ class Systemd(DBusInterface):
             _LOGGER.warning(
                 "No systemd support on the host. Host control has been disabled."
             )
+
+    @property
+    @dbus_property
+    def startup_time(self) -> float:
+        """Return startup time in seconds."""
+        return (
+            float(self.properties[DBUS_ATTR_FIRMWARE_TIMESTAMP_MONOTONIC])
+            + float(self.properties[DBUS_ATTR_LOADER_TIMESTAMP_MONOTONIC])
+            + float(self.properties[DBUS_ATTR_KERNEL_TIMESTAMP_MONOTONIC])
+            + float(self.properties[DBUS_ATTR_INITRD_TIMESTAMP_MONOTONIC])
+            + float(self.properties[DBUS_ATTR_USERSPACE_TIMESTAMP_MONOTONIC])
+            + float(self.properties[DBUS_ATTR_FINISH_TIMESTAMP_MONOTONIC])
+        ) / 1e6
 
     @dbus_connected
     def reboot(self):
@@ -81,3 +108,8 @@ class Systemd(DBusInterface):
         Return a coroutine.
         """
         return self.dbus.Manager.ListUnits()
+
+    @dbus_connected
+    async def update(self):
+        """Update Properties."""
+        self.properties = await self.dbus.get_properties(DBUS_NAME_SYSTEMD)
