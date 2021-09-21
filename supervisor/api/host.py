@@ -25,7 +25,13 @@ from ..const import (
     CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
-from .const import ATTR_DT_SYNCHRONIZED, ATTR_DT_UTC, ATTR_USE_NTP, ATTR_USE_RTC
+from .const import (
+    ATTR_AGENT_VERSION,
+    ATTR_DT_SYNCHRONIZED,
+    ATTR_DT_UTC,
+    ATTR_USE_NTP,
+    ATTR_USE_RTC,
+)
 from .utils import api_process, api_process_raw, api_validate
 
 SERVICE = "service"
@@ -40,6 +46,7 @@ class APIHost(CoreSysAttributes):
     async def info(self, request):
         """Return host information."""
         return {
+            ATTR_AGENT_VERSION: self.sys_dbus.agent.version,
             ATTR_CHASSIS: self.sys_host.info.chassis,
             ATTR_CPE: self.sys_host.info.cpe,
             ATTR_DEPLOYMENT: self.sys_host.info.deployment,

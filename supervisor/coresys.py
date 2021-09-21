@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from .dbus.manager import DBusManager
     from .discovery import Discovery
     from .hardware.module import HardwareManager
-    from .hassos import HassOS
+    from .os.manager import OSManager
     from .homeassistant.module import HomeAssistant
     from .host.manager import HostManager
     from .ingress import Ingress
@@ -79,7 +79,7 @@ class CoreSys:
         self._host: Optional[HostManager] = None
         self._ingress: Optional[Ingress] = None
         self._dbus: Optional[DBusManager] = None
-        self._hassos: Optional[HassOS] = None
+        self._os: Optional[OSManager] = None
         self._services: Optional[ServiceManager] = None
         self._scheduler: Optional[Scheduler] = None
         self._store: Optional[StoreManager] = None
@@ -411,18 +411,18 @@ class CoreSys:
         self._ingress = value
 
     @property
-    def hassos(self) -> HassOS:
-        """Return HassOS object."""
-        if self._hassos is None:
-            raise RuntimeError("HassOS not set!")
-        return self._hassos
+    def os(self) -> OSManager:
+        """Return OSManager object."""
+        if self._os is None:
+            raise RuntimeError("OSManager not set!")
+        return self._os
 
-    @hassos.setter
-    def hassos(self, value: HassOS) -> None:
-        """Set a HassOS object."""
-        if self._hassos:
-            raise RuntimeError("HassOS already set!")
-        self._hassos = value
+    @os.setter
+    def os(self, value: OSManager) -> None:
+        """Set a OSManager object."""
+        if self._os:
+            raise RuntimeError("OSManager already set!")
+        self._os = value
 
     @property
     def resolution(self) -> ResolutionManager:
@@ -650,9 +650,9 @@ class CoreSysAttributes:
         return self.coresys.ingress
 
     @property
-    def sys_hassos(self) -> HassOS:
-        """Return HassOS object."""
-        return self.coresys.hassos
+    def sys_os(self) -> OSManager:
+        """Return OSManager object."""
+        return self.coresys.os
 
     @property
     def sys_resolution(self) -> ResolutionManager:

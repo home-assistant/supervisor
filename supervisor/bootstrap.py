@@ -38,13 +38,13 @@ from .coresys import CoreSys
 from .dbus.manager import DBusManager
 from .discovery import Discovery
 from .hardware.module import HardwareManager
-from .hassos import HassOS
 from .homeassistant.module import HomeAssistant
 from .host.manager import HostManager
 from .ingress import Ingress
 from .misc.filter import filter_data
 from .misc.scheduler import Scheduler
 from .misc.tasks import Tasks
+from .os.manager import OSManager
 from .plugins.manager import PluginManager
 from .resolution.module import ResolutionManager
 from .security import Security
@@ -81,7 +81,7 @@ async def initialize_coresys() -> CoreSys:
     coresys.store = StoreManager(coresys)
     coresys.discovery = Discovery(coresys)
     coresys.dbus = DBusManager(coresys)
-    coresys.hassos = HassOS(coresys)
+    coresys.os = OSManager(coresys)
     coresys.scheduler = Scheduler(coresys)
     coresys.security = Security(coresys)
     coresys.bus = Bus(coresys)

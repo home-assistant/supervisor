@@ -26,3 +26,14 @@ async def test_dbus_osagent_datadisk_change_device(coresys: CoreSys):
     await coresys.dbus.agent.connect()
 
     assert await coresys.dbus.agent.datadisk.change_device(Path("/dev/sdb")) is None
+
+
+async def test_dbus_osagent_datadisk_reload_device(coresys: CoreSys):
+    """Change datadisk on device."""
+
+    with pytest.raises(DBusNotConnectedError):
+        await coresys.dbus.agent.datadisk.reload_device()
+
+    await coresys.dbus.agent.connect()
+
+    assert await coresys.dbus.agent.datadisk.reload_device() is None

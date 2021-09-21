@@ -36,7 +36,7 @@ class APIInfo(CoreSysAttributes):
         return {
             ATTR_SUPERVISOR: self.sys_supervisor.version,
             ATTR_HOMEASSISTANT: self.sys_homeassistant.version,
-            ATTR_HASSOS: self.sys_hassos.version,
+            ATTR_HASSOS: self.sys_os.version,
             ATTR_DOCKER: self.sys_docker.info.version,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,

@@ -56,7 +56,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
             },
             "host": {
                 "arch": coresys.arch.default,
-                "board": coresys.hassos.board,
+                "board": coresys.os.board,
                 "deployment": coresys.host.info.deployment,
                 "disk_free_space": coresys.host.info.free_space,
                 "host": coresys.host.info.operating_system,
@@ -72,7 +72,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "docker": coresys.docker.info.version,
                 "multicast": coresys.plugins.multicast.version,
                 "observer": coresys.plugins.observer.version,
-                "os": coresys.hassos.version,
+                "os": coresys.os.version,
                 "supervisor": coresys.supervisor.version,
             },
             "resolution": {
@@ -87,7 +87,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     )
     event.setdefault("tags", []).extend(
         [
-            ["installation_type", "os" if coresys.hassos.available else "supervised"],
+            ["installation_type", "os" if coresys.os.available else "supervised"],
             ["machine", coresys.machine],
         ],
     )

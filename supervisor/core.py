@@ -125,7 +125,7 @@ class Core(CoreSysAttributes):
             # Load CPU/Arch
             self.sys_arch.load(),
             # Load HassOS
-            self.sys_hassos.load(),
+            self.sys_os.load(),
             # Load Stores
             self.sys_store.load(),
             # Load Add-ons
@@ -169,7 +169,7 @@ class Core(CoreSysAttributes):
             )
 
         # Mark booted partition as healthy
-        await self.sys_hassos.mark_healthy()
+        await self.sys_os.mark_healthy()
 
         # On release channel, try update itself
         if self.sys_supervisor.need_update:
