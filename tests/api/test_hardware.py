@@ -24,8 +24,10 @@ async def test_api_hardware_info_device(api_client, coresys):
             Path("/dev/sda"),
             Path("/sys/bus/usb/000"),
             "sound",
+            None,
             [Path("/dev/serial/by-id/test")],
             {"ID_NAME": "xy"},
+            [],
         )
     )
 
