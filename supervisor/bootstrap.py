@@ -37,7 +37,7 @@ from .core import Core
 from .coresys import CoreSys
 from .dbus.manager import DBusManager
 from .discovery import Discovery
-from .hardware.module import HardwareManager
+from .hardware.manager import HardwareManager
 from .homeassistant.module import HomeAssistant
 from .host.manager import HostManager
 from .ingress import Ingress

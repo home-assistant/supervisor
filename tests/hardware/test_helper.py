@@ -16,8 +16,10 @@ def test_have_audio(coresys):
             Path("/dev/sda"),
             Path("/sys/bus/usb/000"),
             "sound",
+            None,
             [],
             {"ID_NAME": "xy"},
+            [],
         )
     )
 
@@ -34,8 +36,10 @@ def test_have_usb(coresys):
             Path("/dev/sda"),
             Path("/sys/bus/usb/000"),
             "usb",
+            None,
             [],
             {"ID_NAME": "xy"},
+            [],
         )
     )
 
@@ -52,8 +56,10 @@ def test_have_gpio(coresys):
             Path("/dev/sda"),
             Path("/sys/bus/usb/000"),
             "gpio",
+            None,
             [],
             {"ID_NAME": "xy"},
+            [],
         )
     )
 

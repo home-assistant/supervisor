@@ -107,15 +107,7 @@ class HardwareManager(CoreSysAttributes):
             # Skip devices without mapping
             if not device.device_node or self.helper.hide_virtual_device(device):
                 continue
-
-            self._devices[device.sys_name] = Device(
-                device.sys_name,
-                Path(device.device_node),
-                Path(device.sys_path),
-                device.subsystem,
-                [Path(node) for node in device.device_links],
-                {attr: device.properties[attr] for attr in device.properties},
-            )
+            self._devices[device.sys_name] = Device.import_udev(device)
 
     async def load(self) -> None:
         """Load hardware backend."""

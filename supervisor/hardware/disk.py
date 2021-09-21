@@ -4,6 +4,8 @@ from pathlib import Path
 import shutil
 from typing import Union
 
+from supervisor.exceptions import HardwareNotFound
+
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import UdevSubsystem
 from .data import Device
@@ -22,13 +24,29 @@ class HwDisk(CoreSysAttributes):
         """Init hardware object."""
         self.coresys = coresys
 
-    def is_system_partition(self, device: Device) -> bool:
-        """Return true if this is a system disk/partition."""
+    def is_used_by_system(self, device: Device) -> bool:
+        """Return true if this is a system partition."""
         if device.subsystem != UdevSubsystem.DISK:
             return False
 
-        if device.attributes.get("ID_FS_LABEL", "").startswith("hassos"):
+        # Root
+        if device.minor == 0:
+            for child in device.children:
+                try:
+                    device = self.sys_hardware.get_by_path(child)
+                except HardwareNotFound:
+                    continue
+                if device.subsystem == UdevSubsystem.DISK:
+                    if device.attributes.get("ID_FS_LABEL", "").startswith("hassos"):
+                        return True
+            return False
+
+        # Partition
+        if device.minor > 0 and device.attributes.get("ID_FS_LABEL", "").startswith(
+            "hassos"
+        ):
             return True
+
         return False
 
     def get_disk_total_space(self, path: Union[str, Path]) -> float:

@@ -146,6 +146,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/os/update", api_os.update),
                 web.post("/os/config/sync", api_os.config_sync),
                 web.post("/os/datadisk/move", api_os.migrate_data),
+                web.get("/os/datadisk/list", api_os.list_data),
             ]
         )
 

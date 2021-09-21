@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from .core import Core
     from .dbus.manager import DBusManager
     from .discovery import Discovery
-    from .hardware.module import HardwareManager
+    from .hardware.manager import HardwareManager
     from .os.manager import OSManager
     from .homeassistant.module import HomeAssistant
     from .host.manager import HostManager

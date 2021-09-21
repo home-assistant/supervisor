@@ -3,32 +3,51 @@
 from pathlib import Path
 from unittest.mock import patch
 
+from supervisor.coresys import CoreSys
 from supervisor.hardware.data import Device
 
 
-def test_system_partition(coresys):
-    """Test if it is a system partition."""
+def test_system_partition_disk(coresys: CoreSys):
+    """Test if it is a system disk/partition."""
     disk = Device(
-        "sda0",
-        Path("/dev/sda0"),
+        "sda1",
+        Path("/dev/sda1"),
         Path("/sys/bus/usb/001"),
         "block",
+        None,
         [],
         {"MAJOR": "5", "MINOR": "10"},
+        [],
     )
 
-    assert not coresys.hardware.disk.is_system_partition(disk)
+    assert not coresys.hardware.disk.is_used_by_system(disk)
 
     disk = Device(
-        "sda0",
-        Path("/dev/sda0"),
+        "sda1",
+        Path("/dev/sda1"),
         Path("/sys/bus/usb/001"),
         "block",
+        None,
         [],
         {"MAJOR": "5", "MINOR": "10", "ID_FS_LABEL": "hassos-overlay"},
+        [],
     )
 
-    assert coresys.hardware.disk.is_system_partition(disk)
+    assert coresys.hardware.disk.is_used_by_system(disk)
+
+    coresys.hardware.update_device(disk)
+    disk_root = Device(
+        "sda",
+        Path("/dev/sda"),
+        Path("/sys/bus/usb/001"),
+        "block",
+        None,
+        [],
+        {"MAJOR": "5", "MINOR": "0"},
+        [Path("/dev/sda1")],
+    )
+
+    assert coresys.hardware.disk.is_used_by_system(disk_root)
 
 
 def test_free_space(coresys):

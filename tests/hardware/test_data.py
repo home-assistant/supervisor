@@ -13,10 +13,12 @@ def test_device_property(coresys):
         Path("/dev/ttyACM0"),
         Path("/sys/bus/usb/001"),
         "tty",
+        None,
         [Path("/dev/serial/by-id/fixed-device")],
         {"MAJOR": "5", "MINOR": "10"},
+        [],
     )
 
     assert device.by_id == device.links[0]
-    assert device.cgroups_major == 5
-    assert device.cgroups_minor == 10
+    assert device.major == 5
+    assert device.minor == 10
