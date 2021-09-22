@@ -45,8 +45,7 @@ class HwHelper(CoreSysAttributes):
     def last_boot(self) -> Optional[str]:
         """Return last boot time."""
         try:
-            with _PROC_STAT.open("r") as stat_file:
-                stats: str = stat_file.read()
+            stats: str = _PROC_STAT.read_text(encoding="utf-8")
         except OSError as err:
             _LOGGER.error("Can't read stat data: %s", err)
             return None

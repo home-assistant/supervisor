@@ -530,8 +530,7 @@ class Addon(AddonModel):
 
         # Write pulse config
         try:
-            with self.path_pulse.open("w") as config_file:
-                config_file.write(pulse_config)
+            self.path_pulse.write_text(pulse_config, encoding="utf-8")
         except OSError as err:
             _LOGGER.error(
                 "Add-on %s can't write pulse/client.config: %s", self.slug, err

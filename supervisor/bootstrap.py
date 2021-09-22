@@ -94,7 +94,7 @@ async def initialize_coresys() -> CoreSys:
 
     # Set Machine/Host ID
     if MACHINE_ID.exists():
-        coresys.machine_id = MACHINE_ID.read_text().strip()
+        coresys.machine_id = MACHINE_ID.read_text(encoding="utf-8").strip()
 
     # Check if ENV is in development mode
     if coresys.dev:

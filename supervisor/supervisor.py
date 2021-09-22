@@ -143,7 +143,7 @@ class Supervisor(CoreSysAttributes):
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
             profile_file = Path(tmp_dir, "apparmor.txt")
             try:
-                profile_file.write_text(data)
+                profile_file.write_text(data, encoding="utf-8")
             except OSError as err:
                 raise SupervisorAppArmorError(
                     f"Can't write temporary profile: {err!s}", _LOGGER.error

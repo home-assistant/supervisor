@@ -312,7 +312,7 @@ class PluginDns(PluginBase):
         data = self.hosts_template.render(entries=self._hosts)
 
         try:
-            self.hosts.write_text(data)
+            self.hosts.write_text(data, encoding="utf-8")
         except OSError as err:
             _LOGGER.error("Can't update hosts: %s", err)
             raise CoreDNSError() from err
