@@ -5,12 +5,12 @@ from typing import Any, Dict
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
 from .const import (
-    DBUS_ATTR_FINISH_TIMESTAMP_MONOTONIC,
+    DBUS_ATTR_FINISH_TIMESTAMP,
     DBUS_ATTR_FIRMWARE_TIMESTAMP_MONOTONIC,
-    DBUS_ATTR_INITRD_TIMESTAMP_MONOTONIC,
     DBUS_ATTR_KERNEL_TIMESTAMP_MONOTONIC,
     DBUS_ATTR_LOADER_TIMESTAMP_MONOTONIC,
     DBUS_ATTR_USERSPACE_TIMESTAMP_MONOTONIC,
+    DBUS_NAME_ROOT,
     DBUS_NAME_SYSTEMD,
     DBUS_OBJECT_SYSTEMD,
 )
@@ -48,10 +48,14 @@ class Systemd(DBusInterface):
             float(self.properties[DBUS_ATTR_FIRMWARE_TIMESTAMP_MONOTONIC])
             + float(self.properties[DBUS_ATTR_LOADER_TIMESTAMP_MONOTONIC])
             + float(self.properties[DBUS_ATTR_KERNEL_TIMESTAMP_MONOTONIC])
-            + float(self.properties[DBUS_ATTR_INITRD_TIMESTAMP_MONOTONIC])
             + float(self.properties[DBUS_ATTR_USERSPACE_TIMESTAMP_MONOTONIC])
-            + float(self.properties[DBUS_ATTR_FINISH_TIMESTAMP_MONOTONIC])
         ) / 1e6
+
+    @property
+    @dbus_property
+    def boot_timestamp(self) -> int:
+        """Return the boot timestamp."""
+        return self.properties[DBUS_ATTR_FINISH_TIMESTAMP]
 
     @dbus_connected
     def reboot(self):
@@ -112,4 +116,4 @@ class Systemd(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_NAME_SYSTEMD)
+        self.properties = await self.dbus.get_properties(DBUS_NAME_ROOT)

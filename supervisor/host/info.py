@@ -78,6 +78,11 @@ class InfoCenter(CoreSysAttributes):
         return self.sys_dbus.systemd.startup_time
 
     @property
+    def boot_timestamp(self) -> Optional[int]:
+        """Return the boot timestamp."""
+        return self.sys_dbus.systemd.boot_timestamp
+
+    @property
     def total_space(self) -> float:
         """Return total space (GiB) on disk for supervisor data directory."""
         return self.sys_hardware.disk.get_disk_total_space(
