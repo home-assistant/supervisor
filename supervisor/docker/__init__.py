@@ -4,7 +4,7 @@ from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompare
@@ -47,7 +47,7 @@ class DockerInfo:
     logging: str = attr.ib()
 
     @staticmethod
-    def new(data: Dict[str, Any]):
+    def new(data: dict[str, Any]):
         """Create a object from docker info."""
         return DockerInfo(
             AwesomeVersion(data["ServerVersion"]), data["Driver"], data["LoggingDriver"]
@@ -77,7 +77,7 @@ class DockerConfig(FileConfiguration):
         super().__init__(FILE_HASSIO_DOCKER, SCHEMA_DOCKER_CONFIG)
 
     @property
-    def registries(self) -> Dict[str, Any]:
+    def registries(self) -> dict[str, Any]:
         """Return credentials for docker registries."""
         return self._data.get(ATTR_REGISTRIES, {})
 
@@ -91,7 +91,7 @@ class DockerAPI:
     def __init__(self):
         """Initialize Docker base wrapper."""
         self.docker: docker.DockerClient = docker.DockerClient(
-            base_url="unix:/{}".format(str(SOCKET_DOCKER)), version="auto", timeout=900
+            base_url=f"unix:/{str(SOCKET_DOCKER)}", version="auto", timeout=900
         )
         self.network: DockerNetwork = DockerNetwork(self.docker)
         self._info: DockerInfo = DockerInfo.new(self.docker.info())

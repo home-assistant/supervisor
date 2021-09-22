@@ -1,7 +1,7 @@
 """Interface class for D-Bus wrappers."""
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from ..utils.gdbus import DBus
 
@@ -44,7 +44,7 @@ class DBusInterfaceProxy(ABC):
 
     dbus: Optional[DBus] = None
     object_path: Optional[str] = None
-    properties: Optional[Dict[str, Any]] = None
+    properties: Optional[dict[str, Any]] = None
 
     @abstractmethod
     async def connect(self):

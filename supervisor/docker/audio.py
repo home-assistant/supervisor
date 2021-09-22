@@ -1,6 +1,6 @@
 """Audio docker object."""
 import logging
-from typing import Dict, List, Optional
+from typing import Optional
 
 import docker
 
@@ -34,7 +34,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         return AUDIO_DOCKER_NAME
 
     @property
-    def volumes(self) -> Dict[str, Dict[str, str]]:
+    def volumes(self) -> dict[str, dict[str, str]]:
         """Return Volumes for the mount."""
         volumes = {
             "/dev": {"bind": "/dev", "mode": "ro"},
@@ -50,19 +50,19 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         return volumes
 
     @property
-    def cgroups_rules(self) -> List[str]:
+    def cgroups_rules(self) -> list[str]:
         """Return a list of needed cgroups permission."""
         return self.sys_hardware.policy.get_cgroups_rules(
             PolicyGroup.AUDIO
         ) + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.BLUETOOTH)
 
     @property
-    def capabilities(self) -> List[str]:
+    def capabilities(self) -> list[str]:
         """Generate needed capabilities."""
         return [cap.value for cap in (Capabilities.SYS_NICE, Capabilities.SYS_RESOURCE)]
 
     @property
-    def ulimits(self) -> List[docker.types.Ulimit]:
+    def ulimits(self) -> list[docker.types.Ulimit]:
         """Generate ulimits for audio."""
         # Pulseaudio by default tries to use real-time scheduling with priority of 5.
         return [docker.types.Ulimit(name="rtprio", soft=10, hard=10)]

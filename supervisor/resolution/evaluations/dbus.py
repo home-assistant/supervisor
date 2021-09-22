@@ -1,5 +1,4 @@
 """Evaluation class for dbus."""
-from typing import List
 
 from ...const import SOCKET_DBUS, CoreState
 from ...coresys import CoreSys
@@ -26,7 +25,7 @@ class EvaluateDbus(EvaluateBase):
         return "D-Bus is required for Home Assistant."
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.INITIALIZE]
 

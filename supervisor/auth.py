@@ -2,7 +2,7 @@
 import asyncio
 import hashlib
 import logging
-from typing import Dict, Optional
+from typing import Optional
 
 from .addons.addon import Addon
 from .const import ATTR_ADDON, ATTR_PASSWORD, ATTR_USERNAME, FILE_HASSIO_AUTH
@@ -22,7 +22,7 @@ class Auth(FileConfiguration, CoreSysAttributes):
         super().__init__(FILE_HASSIO_AUTH, SCHEMA_AUTH_CONFIG)
         self.coresys: CoreSys = coresys
 
-        self._running: Dict[str, asyncio.Task] = {}
+        self._running: dict[str, asyncio.Task] = {}
 
     def _check_cache(self, username: str, password: str) -> Optional[bool]:
         """Check password in cache."""

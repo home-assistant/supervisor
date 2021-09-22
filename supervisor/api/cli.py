@@ -1,7 +1,7 @@
 """Init file for Supervisor HA cli RESTful API."""
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from aiohttp import web
 import voluptuous as vol
@@ -32,7 +32,7 @@ class APICli(CoreSysAttributes):
     """Handle RESTful API for HA Cli functions."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return HA cli information."""
         return {
             ATTR_VERSION: self.sys_plugins.cli.version,
@@ -41,7 +41,7 @@ class APICli(CoreSysAttributes):
         }
 
     @api_process
-    async def stats(self, request: web.Request) -> Dict[str, Any]:
+    async def stats(self, request: web.Request) -> dict[str, Any]:
         """Return resource information."""
         stats = await self.sys_plugins.cli.stats()
 

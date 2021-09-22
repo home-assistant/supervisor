@@ -2,7 +2,6 @@
 import asyncio
 import io
 import logging
-from typing import Set
 
 import aiohttp
 
@@ -11,7 +10,7 @@ from ..exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _API_CALL: str = "https://api.pwnedpasswords.com/range/{hash}"
 
-_CACHE: Set[str] = set()
+_CACHE: set[str] = set()
 
 
 async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) -> None:

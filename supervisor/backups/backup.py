@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Optional
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
@@ -70,7 +70,7 @@ class Backup(CoreSysAttributes):
         """Initialize a backup."""
         self.coresys: CoreSys = coresys
         self._tarfile: Path = tar_file
-        self._data: Dict[str, Any] = {}
+        self._data: dict[str, Any] = {}
         self._tmp = None
         self._key: Optional[bytes] = None
         self._aes: Optional[Cipher] = None
@@ -311,9 +311,9 @@ class Backup(CoreSysAttributes):
         finally:
             self._tmp.cleanup()
 
-    async def store_addons(self, addon_list: Optional[List[Addon]] = None):
+    async def store_addons(self, addon_list: Optional[list[Addon]] = None):
         """Add a list of add-ons into backup."""
-        addon_list: List[Addon] = addon_list or self.sys_addons.installed
+        addon_list: list[Addon] = addon_list or self.sys_addons.installed
 
         async def _addon_save(addon: Addon):
             """Task to store an add-on into backup."""
@@ -346,9 +346,9 @@ class Backup(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
 
-    async def restore_addons(self, addon_list: Optional[List[str]] = None):
+    async def restore_addons(self, addon_list: Optional[list[str]] = None):
         """Restore a list add-on from backup."""
-        addon_list: List[str] = addon_list or self.addon_list
+        addon_list: list[str] = addon_list or self.addon_list
 
         async def _addon_restore(addon_slug: str):
             """Task to restore an add-on into backup."""
@@ -375,9 +375,9 @@ class Backup(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore Add-on %s: %s", slug, err)
 
-    async def store_folders(self, folder_list: Optional[List[str]] = None):
+    async def store_folders(self, folder_list: Optional[list[str]] = None):
         """Backup Supervisor data into backup."""
-        folder_list: Set[str] = set(folder_list or ALL_FOLDERS)
+        folder_list: set[str] = set(folder_list or ALL_FOLDERS)
 
         def _folder_save(name: str):
             """Take backup of a folder."""
@@ -414,9 +414,9 @@ class Backup(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't save folder %s: %s", folder, err)
 
-    async def restore_folders(self, folder_list: Optional[List[str]] = None):
+    async def restore_folders(self, folder_list: Optional[list[str]] = None):
         """Backup Supervisor data into backup."""
-        folder_list: Set[str] = set(folder_list or self.folders)
+        folder_list: set[str] = set(folder_list or self.folders)
 
         def _folder_restore(name: str):
             """Intenal function to restore a folder."""

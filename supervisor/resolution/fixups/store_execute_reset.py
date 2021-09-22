@@ -1,6 +1,6 @@
 """Helpers to check and fix issues with free space."""
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from ...exceptions import (
     ResolutionFixupError,
@@ -52,7 +52,7 @@ class FixupStoreExecuteReset(FixupBase):
         return ContextType.STORE
 
     @property
-    def issues(self) -> List[IssueType]:
+    def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
         return [IssueType.CORRUPT_REPOSITORY, IssueType.FATAL_ERROR]
 

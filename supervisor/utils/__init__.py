@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import re
 import socket
-from typing import Any, Dict
+from typing import Any
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ async def remove_folder(folder: Path, content_only: bool = False) -> None:
     _LOGGER.error("Can't remove folder %s: %s", folder, error_msg)
 
 
-def clean_env() -> Dict[str, str]:
+def clean_env() -> dict[str, str]:
     """Return a clean env from system."""
     new_env = {}
     for key in ("HOME", "PATH", "PWD", "CWD", "SHLVL"):

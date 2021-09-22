@@ -1,6 +1,6 @@
 """Network Manager implementation for DBUS."""
 import logging
-from typing import Any, Awaitable, Dict
+from typing import Any, Awaitable
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 import sentry_sdk
@@ -42,9 +42,9 @@ class NetworkManager(DBusInterface):
         """Initialize Properties."""
         self._dns: NetworkManagerDNS = NetworkManagerDNS()
         self._settings: NetworkManagerSettings = NetworkManagerSettings()
-        self._interfaces: Dict[str, NetworkInterface] = {}
+        self._interfaces: dict[str, NetworkInterface] = {}
 
-        self.properties: Dict[str, Any] = {}
+        self.properties: dict[str, Any] = {}
 
     @property
     def dns(self) -> NetworkManagerDNS:
@@ -57,7 +57,7 @@ class NetworkManager(DBusInterface):
         return self._settings
 
     @property
-    def interfaces(self) -> Dict[str, NetworkInterface]:
+    def interfaces(self) -> dict[str, NetworkInterface]:
         """Return a dictionary of active interfaces."""
         return self._interfaces
 

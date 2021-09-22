@@ -1,7 +1,7 @@
 """Home Assistant Websocket API."""
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import aiohttp
 from awesomeversion import AwesomeVersion
@@ -30,7 +30,7 @@ class WSClient:
         self.message_id: int = 0
         self._lock: asyncio.Lock = asyncio.Lock()
 
-    async def async_send_command(self, message: Dict[str, Any]):
+    async def async_send_command(self, message: dict[str, Any]):
         """Send a websocket command."""
         async with self._lock:
             self.message_id += 1
@@ -103,7 +103,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
 
             return client
 
-    async def async_send_command(self, message: Dict[str, Any]):
+    async def async_send_command(self, message: dict[str, Any]):
         """Send a command with the WS client."""
         if self.sys_core.state in CLOSING_STATES:
             raise HomeAssistantWSNotSupported(
@@ -136,7 +136,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             raise HomeAssistantWSError from err
 
     async def async_supervisor_update_event(
-        self, key: str, data: Optional[Dict[str, Any]] = None
+        self, key: str, data: Optional[dict[str, Any]] = None
     ):
         """Send a supervisor/event command."""
         try:
@@ -155,13 +155,13 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         except HomeAssistantWSError as err:
             _LOGGER.error(err)
 
-    def supervisor_update_event(self, key: str, data: Optional[Dict[str, Any]] = None):
+    def supervisor_update_event(self, key: str, data: Optional[dict[str, Any]] = None):
         """Send a supervisor/event command."""
         if self.sys_core.state in CLOSING_STATES:
             return
         self.sys_create_task(self.async_supervisor_update_event(key, data))
 
-    def send_command(self, message: Dict[str, Any]):
+    def send_command(self, message: dict[str, Any]):
         """Send a supervisor/event command."""
         if self.sys_core.state in CLOSING_STATES:
             return

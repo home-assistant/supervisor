@@ -1,7 +1,6 @@
 """Baseclass for system evaluations."""
 from abc import ABC, abstractmethod
 import logging
-from typing import List
 
 from ...const import CoreState
 from ...coresys import CoreSys, CoreSysAttributes
@@ -54,6 +53,6 @@ class EvaluateBase(ABC, CoreSysAttributes):
         """Return a string that is printed when self.evaluate is False."""
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return []

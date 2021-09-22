@@ -1,7 +1,7 @@
 """Init file for Supervisor Multicast RESTful API."""
 import asyncio
 import logging
-from typing import Any, Awaitable, Dict
+from typing import Any, Awaitable
 
 from aiohttp import web
 import voluptuous as vol
@@ -34,7 +34,7 @@ class APIMulticast(CoreSysAttributes):
     """Handle RESTful API for Multicast functions."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return Multicast information."""
         return {
             ATTR_VERSION: self.sys_plugins.multicast.version,
@@ -43,7 +43,7 @@ class APIMulticast(CoreSysAttributes):
         }
 
     @api_process
-    async def stats(self, request: web.Request) -> Dict[str, Any]:
+    async def stats(self, request: web.Request) -> dict[str, Any]:
         """Return resource information."""
         stats = await self.sys_plugins.multicast.stats()
 

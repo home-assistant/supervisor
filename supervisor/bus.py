@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Awaitable, Callable, Dict, List
+from typing import Any, Awaitable, Callable
 
 import attr
 
@@ -18,7 +18,7 @@ class Bus(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize bus backend."""
         self.coresys = coresys
-        self._listeners: Dict[BusEvent, List[EventListener]] = {}
+        self._listeners: dict[BusEvent, list[EventListener]] = {}
 
     def register_event(
         self, event: BusEvent, callback: Callable[[Any], Awaitable[None]]

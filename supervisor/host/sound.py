@@ -2,7 +2,7 @@
 from datetime import timedelta
 from enum import Enum
 import logging
-from typing import List, Optional
+from typing import Optional
 
 import attr
 from pulsectl import Pulse, PulseError, PulseIndexError, PulseOperationFailed
@@ -48,7 +48,7 @@ class AudioStream:
     mute: bool = attr.ib()
     default: bool = attr.ib()
     card: Optional[int] = attr.ib()
-    applications: List[AudioApplication] = attr.ib()
+    applications: list[AudioApplication] = attr.ib()
 
 
 @attr.s(frozen=True)
@@ -67,7 +67,7 @@ class SoundCard:
     name: str = attr.ib()
     index: int = attr.ib()
     driver: str = attr.ib()
-    profiles: List[SoundProfile] = attr.ib()
+    profiles: list[SoundProfile] = attr.ib()
 
 
 class SoundControl(CoreSysAttributes):
@@ -76,28 +76,28 @@ class SoundControl(CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize PulseAudio sound control."""
         self.coresys: CoreSys = coresys
-        self._cards: List[SoundCard] = []
-        self._inputs: List[AudioStream] = []
-        self._outputs: List[AudioStream] = []
-        self._applications: List[AudioApplication] = []
+        self._cards: list[SoundCard] = []
+        self._inputs: list[AudioStream] = []
+        self._outputs: list[AudioStream] = []
+        self._applications: list[AudioApplication] = []
 
     @property
-    def cards(self) -> List[SoundCard]:
+    def cards(self) -> list[SoundCard]:
         """Return a list of available sound cards and profiles."""
         return self._cards
 
     @property
-    def inputs(self) -> List[AudioStream]:
+    def inputs(self) -> list[AudioStream]:
         """Return a list of available input streams."""
         return self._inputs
 
     @property
-    def outputs(self) -> List[AudioStream]:
+    def outputs(self) -> list[AudioStream]:
         """Return a list of available output streams."""
         return self._outputs
 
     @property
-    def applications(self) -> List[AudioApplication]:
+    def applications(self) -> list[AudioApplication]:
         """Return a list of available application streams."""
         return self._applications
 
@@ -311,7 +311,7 @@ class SoundControl(CoreSysAttributes):
                     # Update Sound Card
                     self._cards.clear()
                     for card in pulse.card_list():
-                        sound_profiles: List[SoundProfile] = []
+                        sound_profiles: list[SoundProfile] = []
 
                         # Generate profiles
                         for profile in card.profile_list:

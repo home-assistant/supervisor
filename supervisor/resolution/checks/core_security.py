@@ -1,7 +1,7 @@
 """Helpers to check core security."""
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
@@ -64,6 +64,6 @@ class CheckCoreSecurity(CheckBase):
         return ContextType.CORE
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this check can run."""
         return [CoreState.RUNNING, CoreState.STARTUP]

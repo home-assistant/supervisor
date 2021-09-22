@@ -1,7 +1,6 @@
 """Evaluation class for lxc."""
 from contextlib import suppress
 from pathlib import Path
-from typing import List
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -28,7 +27,7 @@ class EvaluateLxc(EvaluateBase):
         return "Detected Docker running inside LXC."
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.INITIALIZE]
 

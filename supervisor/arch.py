@@ -2,7 +2,6 @@
 import logging
 from pathlib import Path
 import platform
-from typing import List
 
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import ConfigurationFileError, HassioArchNotFound
@@ -28,7 +27,7 @@ class CpuArch(CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize CPU Architecture handler."""
         self.coresys = coresys
-        self._supported_arch: List[str] = []
+        self._supported_arch: list[str] = []
         self._default_arch: str
 
     @property
@@ -42,7 +41,7 @@ class CpuArch(CoreSysAttributes):
         return self.sys_supervisor.arch
 
     @property
-    def supported(self) -> List[str]:
+    def supported(self) -> list[str]:
         """Return support arch by CPU/Machine."""
         return self._supported_arch
 
@@ -71,11 +70,11 @@ class CpuArch(CoreSysAttributes):
         if native_support not in self._supported_arch:
             self._supported_arch.append(native_support)
 
-    def is_supported(self, arch_list: List[str]) -> bool:
+    def is_supported(self, arch_list: list[str]) -> bool:
         """Return True if there is a supported arch by this platform."""
         return not set(self.supported).isdisjoint(set(arch_list))
 
-    def match(self, arch_list: List[str]) -> str:
+    def match(self, arch_list: list[str]) -> str:
         """Return best match for this CPU/Platform."""
         for self_arch in self.supported:
             if self_arch in arch_list:

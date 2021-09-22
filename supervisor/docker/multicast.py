@@ -1,6 +1,5 @@
 """HA Cli docker object."""
 import logging
-from typing import List
 
 from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
@@ -26,7 +25,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         return MULTICAST_DOCKER_NAME
 
     @property
-    def capabilities(self) -> List[str]:
+    def capabilities(self) -> list[str]:
         """Generate needed capabilities."""
         return [Capabilities.NET_ADMIN.value]
 

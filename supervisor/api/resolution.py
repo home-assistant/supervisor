@@ -1,6 +1,6 @@
 """Handle REST API for resoulution."""
 import asyncio
-from typing import Any, Awaitable, Dict
+from typing import Any, Awaitable
 
 from aiohttp import web
 import attr
@@ -26,7 +26,7 @@ class APIResoulution(CoreSysAttributes):
     """Handle REST API for resoulution."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return network information."""
         return {
             ATTR_UNSUPPORTED: self.sys_resolution.unsupported,

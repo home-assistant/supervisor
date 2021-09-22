@@ -1,5 +1,4 @@
 """Evaluation class for operating system."""
-from typing import List
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -28,7 +27,7 @@ class EvaluateOperatingSystem(EvaluateBase):
         return f"Detected unsupported OS: {self.sys_host.info.operating_system}"
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.SETUP]
 

@@ -3,7 +3,7 @@ from datetime import timedelta
 import logging
 import random
 import secrets
-from typing import Dict, List, Optional
+from typing import Optional
 
 from .addons.addon import Addon
 from .const import ATTR_PORTS, ATTR_SESSION, FILE_HASSIO_INGRESS
@@ -23,7 +23,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         """Initialize updater."""
         super().__init__(FILE_HASSIO_INGRESS, SCHEMA_INGRESS_CONFIG)
         self.coresys: CoreSys = coresys
-        self.tokens: Dict[str, str] = {}
+        self.tokens: dict[str, str] = {}
 
     def get(self, token: str) -> Optional[Addon]:
         """Return addon they have this ingress token."""
@@ -32,17 +32,17 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         return self.sys_addons.get(self.tokens[token], local_only=True)
 
     @property
-    def sessions(self) -> Dict[str, float]:
+    def sessions(self) -> dict[str, float]:
         """Return sessions."""
         return self._data[ATTR_SESSION]
 
     @property
-    def ports(self) -> Dict[str, int]:
+    def ports(self) -> dict[str, int]:
         """Return list of dynamic ports."""
         return self._data[ATTR_PORTS]
 
     @property
-    def addons(self) -> List[Addon]:
+    def addons(self) -> list[Addon]:
         """Return list of ingress Add-ons."""
         addons = []
         for addon in self.sys_addons.installed:

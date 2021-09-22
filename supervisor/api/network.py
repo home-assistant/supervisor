@@ -1,7 +1,7 @@
 """REST API for network."""
 import asyncio
 from ipaddress import ip_address, ip_interface
-from typing import Any, Awaitable, Dict
+from typing import Any, Awaitable
 
 from aiohttp import web
 import attr
@@ -82,7 +82,7 @@ SCHEMA_UPDATE = vol.Schema(
 )
 
 
-def ipconfig_struct(config: IpConfig) -> Dict[str, Any]:
+def ipconfig_struct(config: IpConfig) -> dict[str, Any]:
     """Return a dict with information about ip configuration."""
     return {
         ATTR_METHOD: config.method,
@@ -92,7 +92,7 @@ def ipconfig_struct(config: IpConfig) -> Dict[str, Any]:
     }
 
 
-def wifi_struct(config: WifiConfig) -> Dict[str, Any]:
+def wifi_struct(config: WifiConfig) -> dict[str, Any]:
     """Return a dict with information about wifi configuration."""
     return {
         ATTR_MODE: config.mode,
@@ -102,7 +102,7 @@ def wifi_struct(config: WifiConfig) -> Dict[str, Any]:
     }
 
 
-def vlan_struct(config: VlanConfig) -> Dict[str, Any]:
+def vlan_struct(config: VlanConfig) -> dict[str, Any]:
     """Return a dict with information about VLAN configuration."""
     return {
         ATTR_ID: config.id,
@@ -110,7 +110,7 @@ def vlan_struct(config: VlanConfig) -> Dict[str, Any]:
     }
 
 
-def interface_struct(interface: Interface) -> Dict[str, Any]:
+def interface_struct(interface: Interface) -> dict[str, Any]:
     """Return a dict with information of a interface to be used in th API."""
     return {
         ATTR_INTERFACE: interface.name,
@@ -125,7 +125,7 @@ def interface_struct(interface: Interface) -> Dict[str, Any]:
     }
 
 
-def accesspoint_struct(accesspoint: AccessPoint) -> Dict[str, Any]:
+def accesspoint_struct(accesspoint: AccessPoint) -> dict[str, Any]:
     """Return a dict for AccessPoint."""
     return {
         ATTR_MODE: accesspoint.mode,
@@ -158,7 +158,7 @@ class APINetwork(CoreSysAttributes):
         raise APIError(f"Interface {name} does not exist") from None
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return network information."""
         return {
             ATTR_INTERFACES: [
@@ -176,7 +176,7 @@ class APINetwork(CoreSysAttributes):
         }
 
     @api_process
-    async def interface_info(self, request: web.Request) -> Dict[str, Any]:
+    async def interface_info(self, request: web.Request) -> dict[str, Any]:
         """Return network information for a interface."""
         interface = self._get_interface(request.match_info.get(ATTR_INTERFACE))
 
@@ -223,7 +223,7 @@ class APINetwork(CoreSysAttributes):
         return asyncio.shield(self.sys_host.network.update())
 
     @api_process
-    async def scan_accesspoints(self, request: web.Request) -> Dict[str, Any]:
+    async def scan_accesspoints(self, request: web.Request) -> dict[str, Any]:
         """Scan and return a list of available networks."""
         interface = self._get_interface(request.match_info.get(ATTR_INTERFACE))
 

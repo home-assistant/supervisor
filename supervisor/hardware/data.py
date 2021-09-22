@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import attr
 import pyudev
@@ -16,10 +15,10 @@ class Device:
     path: Path = attr.ib(eq=False)
     sysfs: Path = attr.ib(eq=True)
     subsystem: str = attr.ib(eq=False)
-    parent: Optional[Path] = attr.ib(eq=False)
-    links: List[Path] = attr.ib(eq=False)
-    attributes: Dict[str, str] = attr.ib(eq=False)
-    children: List[Path] = attr.ib(eq=False)
+    parent: Path | None = attr.ib(eq=False)
+    links: list[Path] = attr.ib(eq=False)
+    attributes: dict[str, str] = attr.ib(eq=False)
+    children: list[Path] = attr.ib(eq=False)
 
     @property
     def major(self) -> int:
@@ -32,7 +31,7 @@ class Device:
         return int(self.attributes.get("MINOR", 0))
 
     @property
-    def by_id(self) -> Optional[Path]:
+    def by_id(self) -> Path | None:
         """Return path by-id."""
         for link in self.links:
             if not link.match("/dev/*/by-id/*"):

@@ -3,7 +3,7 @@ import asyncio
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
 import logging
-from typing import Any, AsyncContextManager, Dict, Optional
+from typing import Any, AsyncContextManager, Optional
 
 import aiohttp
 from aiohttp import hdrs
@@ -64,12 +64,12 @@ class HomeAssistantAPI(CoreSysAttributes):
         self,
         method: str,
         path: str,
-        json: Optional[Dict[str, Any]] = None,
+        json: Optional[dict[str, Any]] = None,
         content_type: Optional[str] = None,
         data: Any = None,
         timeout: int = 30,
-        params: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        params: Optional[dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> AsyncContextManager[aiohttp.ClientResponse]:
         """Async context manager to make a request with right auth."""
         url = f"{self.sys_homeassistant.api_url}/{path}"
@@ -105,7 +105,7 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         raise HomeAssistantAPIError()
 
-    async def get_config(self) -> Dict[str, Any]:
+    async def get_config(self) -> dict[str, Any]:
         """Return Home Assistant config."""
         async with self.make_request("get", "api/config") as resp:
             if resp.status in (200, 201):

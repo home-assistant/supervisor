@@ -1,7 +1,6 @@
 """Add-on Store handler."""
 import asyncio
 import logging
-from typing import Dict, List
 
 from ..const import URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
@@ -25,10 +24,10 @@ class StoreManager(CoreSysAttributes):
         """Initialize Docker base wrapper."""
         self.coresys: CoreSys = coresys
         self.data = StoreData(coresys)
-        self.repositories: Dict[str, Repository] = {}
+        self.repositories: dict[str, Repository] = {}
 
     @property
-    def all(self) -> List[Repository]:
+    def all(self) -> list[Repository]:
         """Return list of add-on repositories."""
         return list(self.repositories.values())
 

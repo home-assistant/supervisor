@@ -1,6 +1,5 @@
 """Evaluation class for docker configuration."""
 import logging
-from typing import List
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -32,7 +31,7 @@ class EvaluateDockerConfiguration(EvaluateBase):
         return "The configuration of Docker is not supported"
 
     @property
-    def states(self) -> List[CoreState]:
+    def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.INITIALIZE]
 

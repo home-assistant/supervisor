@@ -1,6 +1,6 @@
 """Init file for Supervisor add-on data."""
 from copy import deepcopy
-from typing import Any, Dict
+from typing import Any
 
 from ..const import (
     ATTR_IMAGE,
@@ -16,7 +16,7 @@ from ..utils.common import FileConfiguration
 from .addon import Addon
 from .validate import SCHEMA_ADDONS_FILE
 
-Config = Dict[str, Any]
+Config = dict[str, Any]
 
 
 class AddonsData(FileConfiguration, CoreSysAttributes):

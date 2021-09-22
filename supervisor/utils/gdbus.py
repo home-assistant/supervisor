@@ -7,7 +7,7 @@ import logging
 import re
 import shlex
 from signal import SIGINT
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 import xml.etree.ElementTree as ET
 
 import sentry_sdk
@@ -55,7 +55,7 @@ RE_MONITOR_OUTPUT: re.Pattern[Any] = re.compile(
 )
 
 # Map GDBus to errors
-MAP_GDBUS_ERROR: Dict[str, Any] = {
+MAP_GDBUS_ERROR: dict[str, Any] = {
     "GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown": DBusInterfaceError,
     "GDBus.Error:org.freedesktop.DBus.Error.Spawn.ChildExited": DBusFatalError,
     "No such file or directory": DBusNotConnectedError,
@@ -91,8 +91,8 @@ class DBus:
         """Initialize dbus object."""
         self.bus_name: str = bus_name
         self.object_path: str = object_path
-        self.methods: Set[str] = set()
-        self.signals: Set[str] = set()
+        self.methods: set[str] = set()
+        self.signals: set[str] = set()
 
     @staticmethod
     async def connect(bus_name: str, object_path: str) -> DBus:
@@ -186,12 +186,12 @@ class DBus:
             raise DBusParseError() from err
 
     @staticmethod
-    def gvariant_args(args: List[Any]) -> str:
+    def gvariant_args(args: list[Any]) -> str:
         """Convert args into gvariant."""
         gvariant = ""
         for arg in args:
             if isinstance(arg, bool):
-                gvariant += " {}".format(str(arg).lower())
+                gvariant += f" {str(arg).lower()}"
             elif isinstance(arg, (int, float)):
                 gvariant += f" {arg}"
             elif isinstance(arg, str):
@@ -201,7 +201,7 @@ class DBus:
 
         return gvariant.lstrip()
 
-    async def call_dbus(self, method: str, *args: List[Any]) -> str:
+    async def call_dbus(self, method: str, *args: list[Any]) -> str:
         """Call a dbus method."""
         command = shlex.split(
             CALL.format(
@@ -219,7 +219,7 @@ class DBus:
         # Parse and return data
         return self.parse_gvariant(data)
 
-    async def get_properties(self, interface: str) -> Dict[str, Any]:
+    async def get_properties(self, interface: str) -> dict[str, Any]:
         """Read all properties from interface."""
         try:
             return (await self.call_dbus(DBUS_METHOD_GETALL, interface))[0]
@@ -229,7 +229,7 @@ class DBus:
 
     async def set_property(
         self, interface: str, name: str, value: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Set a property from interface."""
         try:
             return (await self.call_dbus(DBUS_METHOD_SET, interface, name, value))[0]
@@ -237,7 +237,7 @@ class DBus:
             _LOGGER.error("No Set attribute %s for %s", name, interface)
             raise DBusFatalError() from err
 
-    async def _send(self, command: List[str], silent=False) -> str:
+    async def _send(self, command: list[str], silent=False) -> str:
         """Send command over dbus."""
         # Run command
         _LOGGER.debug("Send D-Bus command: %s", command)
@@ -319,11 +319,11 @@ class DBusCallWrapper:
 class DBusSignalWrapper:
     """Process Signals."""
 
-    def __init__(self, dbus: DBus, signals: Optional[str] = None):
+    def __init__(self, dbus: DBus, signals: str | None = None):
         """Initialize dbus signal wrapper."""
         self.dbus: DBus = dbus
-        self._signals: Optional[str] = signals
-        self._proc: Optional[asyncio.Process] = None
+        self._signals: str | None = signals
+        self._proc: asyncio.Process | None = None
 
     async def __aenter__(self):
         """Start monitor events."""

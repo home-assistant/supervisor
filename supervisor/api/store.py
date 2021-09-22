@@ -1,6 +1,6 @@
 """Init file for Supervisor Home Assistant RESTful API."""
 import asyncio
-from typing import Any, Awaitable, Dict, List
+from typing import Any, Awaitable
 
 from aiohttp import web
 
@@ -67,7 +67,7 @@ class APIStore(CoreSysAttributes):
 
         return repository
 
-    def _generate_addon_information(self, addon: AddonStore) -> Dict[str, Any]:
+    def _generate_addon_information(self, addon: AddonStore) -> dict[str, Any]:
         """Generate addon information."""
         return {
             ATTR_ADVANCED: addon.advanced,
@@ -90,7 +90,7 @@ class APIStore(CoreSysAttributes):
 
     def _generate_repository_information(
         self, repository: Repository
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate repository information."""
         return {
             ATTR_SLUG: repository.slug,
@@ -106,7 +106,7 @@ class APIStore(CoreSysAttributes):
         await asyncio.shield(self.sys_store.reload())
 
     @api_process
-    async def store_info(self, request: web.Request) -> Dict[str, Any]:
+    async def store_info(self, request: web.Request) -> dict[str, Any]:
         """Return store information."""
         return {
             ATTR_ADDONS: [
@@ -120,7 +120,7 @@ class APIStore(CoreSysAttributes):
         }
 
     @api_process
-    async def addons_list(self, request: web.Request) -> List[Dict[str, Any]]:
+    async def addons_list(self, request: web.Request) -> list[dict[str, Any]]:
         """Return all store add-ons."""
         return [
             self._generate_addon_information(self.sys_addons.store[addon])
@@ -142,13 +142,13 @@ class APIStore(CoreSysAttributes):
         return asyncio.shield(addon.update())
 
     @api_process
-    async def addons_addon_info(self, request: web.Request) -> Dict[str, Any]:
+    async def addons_addon_info(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information."""
         addon: AddonStore = self._extract_addon(request)
         return self._generate_addon_information(addon)
 
     @api_process
-    async def repositories_list(self, request: web.Request) -> List[Dict[str, Any]]:
+    async def repositories_list(self, request: web.Request) -> list[dict[str, Any]]:
         """Return all repositories."""
         return [
             self._generate_repository_information(repository)
@@ -158,7 +158,7 @@ class APIStore(CoreSysAttributes):
     @api_process
     async def repositories_repository_info(
         self, request: web.Request
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Return repository information."""
         repository: Repository = self._extract_repository(request)
         return self._generate_repository_information(repository)

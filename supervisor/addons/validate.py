@@ -2,7 +2,7 @@
 import logging
 import re
 import secrets
-from typing import Any, Dict
+from typing import Any
 import uuid
 
 import voluptuous as vol
@@ -148,7 +148,7 @@ RE_MACHINE = re.compile(
 )
 
 
-def _warn_addon_config(config: Dict[str, Any]):
+def _warn_addon_config(config: dict[str, Any]):
     """Warn about miss configs."""
     name = config.get(ATTR_NAME)
     if not name:
@@ -179,7 +179,7 @@ def _warn_addon_config(config: Dict[str, Any]):
 def _migrate_addon_config(protocol=False):
     """Migrate addon config."""
 
-    def _migrate(config: Dict[str, Any]):
+    def _migrate(config: dict[str, Any]):
         name = config.get(ATTR_NAME)
         if not name:
             raise vol.Invalid("Invalid Add-on config!")

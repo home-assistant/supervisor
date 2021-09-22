@@ -1,7 +1,7 @@
 """Init file for Supervisor DNS RESTful API."""
 import asyncio
 import logging
-from typing import Any, Awaitable, Dict
+from typing import Any, Awaitable
 
 from aiohttp import web
 import voluptuous as vol
@@ -40,7 +40,7 @@ class APICoreDNS(CoreSysAttributes):
     """Handle RESTful API for DNS functions."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return DNS information."""
         return {
             ATTR_VERSION: self.sys_plugins.dns.version,
@@ -63,7 +63,7 @@ class APICoreDNS(CoreSysAttributes):
         self.sys_plugins.dns.save_data()
 
     @api_process
-    async def stats(self, request: web.Request) -> Dict[str, Any]:
+    async def stats(self, request: web.Request) -> dict[str, Any]:
         """Return resource information."""
         stats = await self.sys_plugins.dns.stats()
 

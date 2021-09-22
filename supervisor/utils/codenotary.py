@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 import shlex
-from typing import Optional, Set, Tuple, Union
+from typing import Optional, Union
 
 import async_timeout
 
@@ -15,7 +15,7 @@ from ..exceptions import CodeNotaryBackendError, CodeNotaryError, CodeNotaryUntr
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 _VCN_CMD: str = "vcn authenticate --silent --output json"
-_CACHE: Set[Tuple[str, Path, str, str]] = set()
+_CACHE: set[tuple[str, Path, str, str]] = set()
 
 
 _ATTR_ERROR = "error"

@@ -1,6 +1,6 @@
 """Init file for Supervisor Jobs RESTful API."""
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from aiohttp import web
 import voluptuous as vol
@@ -20,7 +20,7 @@ class APIJobs(CoreSysAttributes):
     """Handle RESTful API for OS functions."""
 
     @api_process
-    async def info(self, request: web.Request) -> Dict[str, Any]:
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return JobManager information."""
         return {
             ATTR_IGNORE_CONDITIONS: self.sys_jobs.ignore_conditions,

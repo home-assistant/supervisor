@@ -1,5 +1,4 @@
 """Test docker addon setup."""
-from typing import Dict
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -15,7 +14,7 @@ from ..common import load_json_fixture
 
 
 @pytest.fixture(name="addonsdata_system")
-def fixture_addonsdata_system() -> Dict[str, Data]:
+def fixture_addonsdata_system() -> dict[str, Data]:
     """Mock AddonsData.system."""
     with patch(
         "supervisor.addons.data.AddonsData.system", new_callable=PropertyMock
@@ -24,7 +23,7 @@ def fixture_addonsdata_system() -> Dict[str, Data]:
 
 
 @pytest.fixture(name="addonsdata_user", autouse=True)
-def fixture_addonsdata_user() -> Dict[str, Data]:
+def fixture_addonsdata_user() -> dict[str, Data]:
     """Mock AddonsData.user."""
     with patch(
         "supervisor.addons.data.AddonsData.user", new_callable=PropertyMock
@@ -41,7 +40,7 @@ def fixture_os_environ():
 
 
 def get_docker_addon(
-    coresys: CoreSys, addonsdata_system: Dict[str, Data], config_file: str
+    coresys: CoreSys, addonsdata_system: dict[str, Data], config_file: str
 ):
     """Make and return docker addon object."""
     config = vd.SCHEMA_ADDON_CONFIG(load_json_fixture(config_file))
@@ -53,7 +52,7 @@ def get_docker_addon(
     return docker_addon
 
 
-def test_base_volumes_included(coresys: CoreSys, addonsdata_system: Dict[str, Data]):
+def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Dev and data volumes always included."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
@@ -73,7 +72,7 @@ def test_base_volumes_included(coresys: CoreSys, addonsdata_system: Dict[str, Da
 
 
 def test_addon_map_folder_defaults(
-    coresys: CoreSys, addonsdata_system: Dict[str, Data]
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Validate defaults for mapped folders in addons."""
     docker_addon = get_docker_addon(
@@ -97,7 +96,7 @@ def test_addon_map_folder_defaults(
     assert str(docker_addon.sys_config.path_extern_share) not in volumes
 
 
-def test_journald_addon(coresys: CoreSys, addonsdata_system: Dict[str, Data]):
+def test_journald_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Validate volume for journald option."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "journald-addon-config.json"
@@ -116,7 +115,7 @@ def test_journald_addon(coresys: CoreSys, addonsdata_system: Dict[str, Data]):
     assert volumes.get(str(SYSTEMD_JOURNAL_VOLATILE)).get("mode") == "ro"
 
 
-def test_not_journald_addon(coresys: CoreSys, addonsdata_system: Dict[str, Data]):
+def test_not_journald_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Validate journald option defaults off."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"

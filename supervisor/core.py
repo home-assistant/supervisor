@@ -3,7 +3,7 @@ import asyncio
 from contextlib import suppress
 from datetime import timedelta
 import logging
-from typing import Awaitable, List, Optional
+from typing import Awaitable, Optional
 
 import async_timeout
 
@@ -105,7 +105,7 @@ class Core(CoreSysAttributes):
         await self.sys_supervisor.check_connectivity()
 
         # Order can be important!
-        setup_loads: List[Awaitable[None]] = [
+        setup_loads: list[Awaitable[None]] = [
             # rest api views
             self.sys_api.load(),
             # Load Host Hardware
