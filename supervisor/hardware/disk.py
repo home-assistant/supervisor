@@ -65,7 +65,7 @@ class HwDisk(CoreSysAttributes):
         return round(free / (1024.0 ** 3), 1)
 
     def _get_mountinfo(self, path: str) -> str:
-        mountinfo = _MOUNTINFO.read_text()
+        mountinfo = _MOUNTINFO.read_text(encoding="utf-8")
         for line in mountinfo.splitlines():
             mountinfoarr = line.split()
             if mountinfoarr[4] == path:
@@ -92,7 +92,7 @@ class HwDisk(CoreSysAttributes):
             return None
 
         # JEDEC health status DEVICE_LIFE_TIME_EST_TYP_A/B
-        emmc_life_time = life_time_path.read_text().split()
+        emmc_life_time = life_time_path.read_text(encoding="utf-8").split()
 
         if len(emmc_life_time) < 2:
             return None

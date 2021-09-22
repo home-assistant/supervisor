@@ -35,6 +35,6 @@ class EvaluateAppArmor(EvaluateBase):
     async def evaluate(self) -> None:
         """Run evaluation."""
         try:
-            return _APPARMOR_KERNEL.read_text().strip().upper() != "Y"
+            return _APPARMOR_KERNEL.read_text(encoding="utf-8").strip().upper() != "Y"
         except OSError:
             return True

@@ -55,7 +55,7 @@ class Core(CoreSysAttributes):
         if self._state == new_state:
             return
         try:
-            RUN_SUPERVISOR_STATE.write_text(new_state.value)
+            RUN_SUPERVISOR_STATE.write_text(new_state.value, encoding="utf-8")
         except OSError as err:
             _LOGGER.warning(
                 "Can't update the Supervisor state to %s: %s", new_state, err

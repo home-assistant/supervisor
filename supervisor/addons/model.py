@@ -184,8 +184,7 @@ class AddonModel(CoreSysAttributes, ABC):
             return None
 
         # Return data
-        with readme.open("r") as readme_file:
-            return readme_file.read()
+        return readme.read_text(encoding="utf-8")
 
     @property
     def repository(self) -> str:
