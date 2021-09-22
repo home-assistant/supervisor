@@ -27,19 +27,20 @@ class ContextType(str, Enum):
 class UnsupportedReason(str, Enum):
     """Reasons for unsupported status."""
 
-    CONTAINER = "container"
-    DBUS = "dbus"
     APPARMOR = "apparmor"
+    CONTAINER = "container"
+    CONTENT_TRUST = "content_trust"
+    DBUS = "dbus"
     DOCKER_CONFIGURATION = "docker_configuration"
     DOCKER_VERSION = "docker_version"
+    JOB_CONDITIONS = "job_conditions"
     LXC = "lxc"
     NETWORK_MANAGER = "network_manager"
     OS = "os"
+    OS_AGENT = "os_agent"
     PRIVILEGED = "privileged"
-    SYSTEMD = "systemd"
-    JOB_CONDITIONS = "job_conditions"
-    CONTENT_TRUST = "content_trust"
     SOURCE_MODS = "source_mods"
+    SYSTEMD = "systemd"
 
 
 class UnhealthyReason(str, Enum):

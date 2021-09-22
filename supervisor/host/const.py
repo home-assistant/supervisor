@@ -44,5 +44,5 @@ class HostFeature(str, Enum):
     REBOOT = "reboot"
     SERVICES = "services"
     SHUTDOWN = "shutdown"
-    AGENT = "agent"
+    OS_AGENT = "os_agent"
     TIMEDATE = "timedate"
