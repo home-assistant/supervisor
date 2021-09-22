@@ -72,7 +72,7 @@ def dbus() -> DBus:
         if latest.isnumeric():
             fixture = f"{fixture}_{latest}"
 
-        return load_json_fixture(f"{fixture or 'base'}.json")
+        return load_json_fixture(f"{fixture}.json")
 
     async def mock_wait_signal(_, __):
         pass
