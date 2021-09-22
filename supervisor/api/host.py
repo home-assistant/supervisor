@@ -27,8 +27,10 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from .const import (
     ATTR_AGENT_VERSION,
+    ATTR_BOOT_TIMESTAMP,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
+    ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
     ATTR_USE_RTC,
 )
@@ -63,6 +65,8 @@ class APIHost(CoreSysAttributes):
             ATTR_DT_SYNCHRONIZED: self.sys_host.info.dt_synchronized,
             ATTR_USE_NTP: self.sys_host.info.use_ntp,
             ATTR_USE_RTC: self.sys_host.info.use_rtc,
+            ATTR_STARTUP_TIME: self.sys_host.info.startup_time,
+            ATTR_BOOT_TIMESTAMP: self.sys_host.info.boot_timestamp,
         }
 
     @api_process

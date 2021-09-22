@@ -73,6 +73,16 @@ class InfoCenter(CoreSysAttributes):
         return self.sys_dbus.timedate.ntp_synchronized
 
     @property
+    def startup_time(self) -> Optional[float]:
+        """Return startup time in seconds."""
+        return self.sys_dbus.systemd.startup_time
+
+    @property
+    def boot_timestamp(self) -> Optional[int]:
+        """Return the boot timestamp."""
+        return self.sys_dbus.systemd.boot_timestamp
+
+    @property
     def total_space(self) -> float:
         """Return total space (GiB) on disk for supervisor data directory."""
         return self.sys_hardware.disk.get_disk_total_space(
@@ -123,5 +133,7 @@ class InfoCenter(CoreSysAttributes):
                 await self.sys_dbus.hostname.update()
             if self.sys_dbus.timedate.is_connected:
                 await self.sys_dbus.timedate.update()
+            if self.sys_dbus.systemd.is_connected:
+                await self.sys_dbus.systemd.update()
         except DBusError:
             _LOGGER.warning("Can't update host system information!")
