@@ -88,7 +88,7 @@ class HostManager(CoreSysAttributes):
             features.append(HostFeature.TIMEDATE)
 
         if self.sys_dbus.agent.is_connected:
-            features.append(HostFeature.AGENT)
+            features.append(HostFeature.OS_AGENT)
 
         if self.sys_os.available:
             features.append(HostFeature.HAOS)

@@ -175,7 +175,7 @@ class Job(CoreSysAttributes):
 
         if (
             JobCondition.OS_AGENT in self.conditions
-            and HostFeature.AGENT not in self.sys_host.features
+            and HostFeature.OS_AGENT not in self.sys_host.features
         ):
             raise JobConditionException(
                 f"'{self._method.__qualname__}' blocked from execution, no Home Assistant OS-Agent available"

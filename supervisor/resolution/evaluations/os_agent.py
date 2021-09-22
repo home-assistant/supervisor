@@ -1,4 +1,4 @@
-"""Evaluation class for systemd."""
+"""Evaluation class for host agent."""
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -9,21 +9,21 @@ from .base import EvaluateBase
 
 def setup(coresys: CoreSys) -> EvaluateBase:
     """Initialize evaluation-setup function."""
-    return EvaluateSystemd(coresys)
+    return EvaluateOSAgent(coresys)
 
 
-class EvaluateSystemd(EvaluateBase):
-    """Evaluate systemd."""
+class EvaluateOSAgent(EvaluateBase):
+    """Evaluate host agent support."""
 
     @property
     def reason(self) -> UnsupportedReason:
         """Return a UnsupportedReason enum."""
-        return UnsupportedReason.SYSTEMD
+        return UnsupportedReason.OS_AGENT
 
     @property
     def on_failure(self) -> str:
         """Return a string that is printed when self.evaluate is False."""
-        return "Systemd is not correctly working"
+        return "OS-Agent is not correctly working"
 
     @property
     def states(self) -> list[CoreState]:
@@ -32,13 +32,4 @@ class EvaluateSystemd(EvaluateBase):
 
     async def evaluate(self):
         """Run evaluation."""
-        return any(
-            feature not in self.sys_host.features
-            for feature in (
-                HostFeature.HOSTNAME,
-                HostFeature.SERVICES,
-                HostFeature.SHUTDOWN,
-                HostFeature.REBOOT,
-                HostFeature.TIMEDATE,
-            )
-        )
+        return HostFeature.OS_AGENT not in self.sys_host.features
