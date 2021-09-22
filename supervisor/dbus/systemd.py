@@ -1,6 +1,6 @@
 """Interface to Systemd over D-Bus."""
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.gdbus import DBus
@@ -27,7 +27,7 @@ class Systemd(DBusInterface):
 
     def __init__(self) -> None:
         """Initialize Properties."""
-        self.properties: Dict[str, Any] = {}
+        self.properties: dict[str, Any] = {}
 
     async def connect(self):
         """Connect to D-Bus."""
