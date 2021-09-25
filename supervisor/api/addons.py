@@ -110,7 +110,7 @@ from .utils import api_process, api_process_raw, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): vol.Coerce(str)})
+SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): str})
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
@@ -118,8 +118,8 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_BOOT): vol.Coerce(AddonBoot),
         vol.Optional(ATTR_NETWORK): vol.Maybe(docker_ports),
         vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
-        vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(str),
+        vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
     }

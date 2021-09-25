@@ -21,7 +21,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SCHEMA_DOCKER_REGISTRY = vol.Schema(
     {
-        vol.Coerce(str): {
+        str: {
             vol.Required(ATTR_USERNAME): str,
             vol.Required(ATTR_PASSWORD): str,
         }

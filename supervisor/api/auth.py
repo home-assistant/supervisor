@@ -23,8 +23,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SCHEMA_PASSWORD_RESET = vol.Schema(
     {
-        vol.Required(ATTR_USERNAME): vol.Coerce(str),
-        vol.Required(ATTR_PASSWORD): vol.Coerce(str),
+        vol.Required(ATTR_USERNAME): str,
+        vol.Required(ATTR_PASSWORD): str,
     }
 )
 

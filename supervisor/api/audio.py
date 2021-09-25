@@ -56,10 +56,10 @@ SCHEMA_MUTE = vol.Schema(
     }
 )
 
-SCHEMA_DEFAULT = vol.Schema({vol.Required(ATTR_NAME): vol.Coerce(str)})
+SCHEMA_DEFAULT = vol.Schema({vol.Required(ATTR_NAME): str})
 
 SCHEMA_PROFILE = vol.Schema(
-    {vol.Required(ATTR_CARD): vol.Coerce(str), vol.Required(ATTR_NAME): vol.Coerce(str)}
+    {vol.Required(ATTR_CARD): str, vol.Required(ATTR_NAME): str}
 )
 
 

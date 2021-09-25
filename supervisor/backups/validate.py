@@ -61,12 +61,12 @@ def unique_addons(addons_list):
 # pylint: disable=no-value-for-parameter
 SCHEMA_BACKUP = vol.Schema(
     {
-        vol.Required(ATTR_SLUG): vol.Coerce(str),
+        vol.Required(ATTR_SLUG): str,
         vol.Required(ATTR_TYPE): vol.Coerce(BackupType),
-        vol.Required(ATTR_NAME): vol.Coerce(str),
-        vol.Required(ATTR_DATE): vol.Coerce(str),
+        vol.Required(ATTR_NAME): str,
+        vol.Required(ATTR_DATE): str,
         vol.Inclusive(ATTR_PROTECTED, "encrypted"): vol.All(
-            vol.Coerce(str), vol.Length(min=1, max=1)
+            str, vol.Length(min=1, max=1)
         ),
         vol.Inclusive(ATTR_CRYPTO, "encrypted"): CRYPTO_AES128,
         vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema(
@@ -76,17 +76,13 @@ SCHEMA_BACKUP = vol.Schema(
                 vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
                 vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
                 vol.Optional(ATTR_PORT, default=8123): network_port,
-                vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
+                vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(str),
                 vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
                 vol.Optional(ATTR_WAIT_BOOT, default=600): vol.All(
                     vol.Coerce(int), vol.Range(min=60)
                 ),
-                vol.Optional(ATTR_AUDIO_OUTPUT, default=None): vol.Maybe(
-                    vol.Coerce(str)
-                ),
-                vol.Optional(ATTR_AUDIO_INPUT, default=None): vol.Maybe(
-                    vol.Coerce(str)
-                ),
+                vol.Optional(ATTR_AUDIO_OUTPUT, default=None): vol.Maybe(str),
+                vol.Optional(ATTR_AUDIO_INPUT, default=None): vol.Maybe(str),
             },
             extra=vol.REMOVE_EXTRA,
         ),
@@ -98,8 +94,8 @@ SCHEMA_BACKUP = vol.Schema(
             [
                 vol.Schema(
                     {
-                        vol.Required(ATTR_SLUG): vol.Coerce(str),
-                        vol.Required(ATTR_NAME): vol.Coerce(str),
+                        vol.Required(ATTR_SLUG): str,
+                        vol.Required(ATTR_NAME): str,
                         vol.Required(ATTR_VERSION): version_tag,
                         vol.Optional(ATTR_SIZE, default=0): vol.Coerce(float),
                     },

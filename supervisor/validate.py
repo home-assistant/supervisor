@@ -54,7 +54,9 @@ sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
 
 
-def version_tag(value: Union[str, None, int, float, AwesomeVersion]) -> Optional[AwesomeVersion]:
+def version_tag(
+    value: Union[str, None, int, float, AwesomeVersion]
+) -> Optional[AwesomeVersion]:
     """Validate main version handling."""
     if value is None:
         return None
@@ -100,7 +102,7 @@ repositories = vol.All([validate_repository], vol.Unique())
 
 docker_port = vol.All(str, vol.Match(r"^\d+(?:/tcp|/udp)?$"))
 docker_ports = vol.Schema({docker_port: vol.Maybe(network_port)})
-docker_ports_description = vol.Schema({docker_port: vol.Coerce(str)})
+docker_ports_description = vol.Schema({docker_port: str})
 
 
 # pylint: disable=no-value-for-parameter
@@ -139,7 +141,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
 SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_TIMEZONE): validate_timezone,
-        vol.Optional(ATTR_LAST_BOOT): vol.Coerce(str),
+        vol.Optional(ATTR_LAST_BOOT): str,
         vol.Optional(
             ATTR_VERSION, default=AwesomeVersion(SUPERVISOR_VERSION)
         ): version_tag,
@@ -180,9 +182,7 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
         vol.Required(ATTR_SESSION, default=dict): vol.Schema(
             {token: vol.Coerce(float)}
         ),
-        vol.Required(ATTR_PORTS, default=dict): vol.Schema(
-            {vol.Coerce(str): network_port}
-        ),
+        vol.Required(ATTR_PORTS, default=dict): vol.Schema({str: network_port}),
     },
     extra=vol.REMOVE_EXTRA,
 )
