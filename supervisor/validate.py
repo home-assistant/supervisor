@@ -54,10 +54,12 @@ sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
 
 
-def version_tag(value: Union[str, None, int, float]) -> Optional[AwesomeVersion]:
+def version_tag(value: Union[str, None, int, float, AwesomeVersion]) -> Optional[AwesomeVersion]:
     """Validate main version handling."""
     if value is None:
         return None
+    if isinstance(value, AwesomeVersion):
+        return value
     return AwesomeVersion(value)
 
 

@@ -281,7 +281,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_PANEL_ICON, default="mdi:puzzle"): str,
         vol.Optional(ATTR_PANEL_TITLE): str,
         vol.Optional(ATTR_PANEL_ADMIN, default=True): vol.Boolean(),
-        vol.Optional(ATTR_HOMEASSISTANT): vol.Maybe(version_tag),
+        vol.Optional(ATTR_HOMEASSISTANT): version_tag,
         vol.Optional(ATTR_HOST_NETWORK, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_PID, default=False): vol.Boolean(),
         vol.Optional(ATTR_HOST_IPC, default=False): vol.Boolean(),

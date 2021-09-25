@@ -270,6 +270,18 @@ jobs:
             exit 1
           fi
 
+          echo "Install Core Samba Add-on"
+          test=$(docker exec hassio_cli ha addons install core_samba --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ];then
+            exit 1
+          fi
+
+          echo "Start Core Samba Add-on"
+          test=$(docker exec hassio_cli ha addons start core_samba --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ];then
+            exit 1
+          fi
+
       - name: Check the Supervisor code sign
         if: needs.init.outputs.publish == 'true'
         run: |
