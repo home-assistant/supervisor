@@ -309,7 +309,7 @@ class APIAddons(CoreSysAttributes):
 
         # Extend schema with add-on specific validation
         addon_schema = SCHEMA_OPTIONS.extend(
-            {vol.Optional(ATTR_OPTIONS): vol.Any(None, addon.schema)}
+            {vol.Optional(ATTR_OPTIONS): vol.Maybe(addon.schema)}
         )
 
         # Validate/Process Body
