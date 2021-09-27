@@ -221,6 +221,7 @@ class HomeAssistantCore(CoreSysAttributes):
             except HomeAssistantError:
                 # The API stoped responding between the up checks an now
                 self._error_state = True
+                data = None
 
             # Verify that the frontend is loaded
             if data and "frontend" not in data.get("components", []):
