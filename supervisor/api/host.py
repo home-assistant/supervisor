@@ -38,7 +38,7 @@ from .utils import api_process, api_process_raw, api_validate
 
 SERVICE = "service"
 
-SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): vol.Coerce(str)})
+SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): str})
 
 
 class APIHost(CoreSysAttributes):

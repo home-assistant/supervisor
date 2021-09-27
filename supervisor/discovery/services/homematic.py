@@ -7,9 +7,9 @@ from ..const import ATTR_HOST, ATTR_PORT
 
 SCHEMA = vol.Schema(
     {
-        vol.Coerce(str): vol.Schema(
+        str: vol.Schema(
             {
-                vol.Required(ATTR_HOST): vol.Coerce(str),
+                vol.Required(ATTR_HOST): str,
                 vol.Required(ATTR_PORT): network_port,
             }
         )

@@ -24,16 +24,14 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_SERVICE_MYSQL = vol.Schema(
     {
-        vol.Required(ATTR_HOST): vol.Coerce(str),
+        vol.Required(ATTR_HOST): str,
         vol.Required(ATTR_PORT): network_port,
-        vol.Optional(ATTR_USERNAME): vol.Coerce(str),
-        vol.Optional(ATTR_PASSWORD): vol.Coerce(str),
+        vol.Optional(ATTR_USERNAME): str,
+        vol.Optional(ATTR_PASSWORD): str,
     }
 )
 
-SCHEMA_CONFIG_MYSQL = SCHEMA_SERVICE_MYSQL.extend(
-    {vol.Required(ATTR_ADDON): vol.Coerce(str)}
-)
+SCHEMA_CONFIG_MYSQL = SCHEMA_SERVICE_MYSQL.extend({vol.Required(ATTR_ADDON): str})
 
 
 class MySQLService(ServiceInterface):

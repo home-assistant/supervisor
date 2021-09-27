@@ -48,9 +48,9 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_SSL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
         vol.Optional(ATTR_WAIT_BOOT): vol.All(vol.Coerce(int), vol.Range(min=60)),
-        vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(vol.Coerce(str)),
-        vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(vol.Coerce(str)),
+        vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(str),
+        vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(str),
+        vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
     }
 )
 

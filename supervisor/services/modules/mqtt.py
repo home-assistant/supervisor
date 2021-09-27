@@ -26,20 +26,18 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # pylint: disable=no-value-for-parameter
 SCHEMA_SERVICE_MQTT = vol.Schema(
     {
-        vol.Required(ATTR_HOST): vol.Coerce(str),
+        vol.Required(ATTR_HOST): str,
         vol.Required(ATTR_PORT): network_port,
-        vol.Optional(ATTR_USERNAME): vol.Coerce(str),
-        vol.Optional(ATTR_PASSWORD): vol.Coerce(str),
+        vol.Optional(ATTR_USERNAME): str,
+        vol.Optional(ATTR_PASSWORD): str,
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
         vol.Optional(ATTR_PROTOCOL, default="3.1.1"): vol.All(
-            vol.Coerce(str), vol.In(["3.1", "3.1.1"])
+            str, vol.In(["3.1", "3.1.1"])
         ),
     }
 )
 
-SCHEMA_CONFIG_MQTT = SCHEMA_SERVICE_MQTT.extend(
-    {vol.Required(ATTR_ADDON): vol.Coerce(str)}
-)
+SCHEMA_CONFIG_MQTT = SCHEMA_SERVICE_MQTT.extend({vol.Required(ATTR_ADDON): str})
 
 
 class MQTTService(ServiceInterface):

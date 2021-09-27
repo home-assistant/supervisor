@@ -38,27 +38,25 @@ RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
 # pylint: disable=no-value-for-parameter
 SCHEMA_RESTORE_PARTIAL = vol.Schema(
     {
-        vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
+        vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
-        vol.Optional(ATTR_ADDONS): vol.All([vol.Coerce(str)], vol.Unique()),
+        vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
         vol.Optional(ATTR_FOLDERS): vol.All([vol.In(ALL_FOLDERS)], vol.Unique()),
     }
 )
 
-SCHEMA_RESTORE_FULL = vol.Schema(
-    {vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str))}
-)
+SCHEMA_RESTORE_FULL = vol.Schema({vol.Optional(ATTR_PASSWORD): vol.Maybe(str)})
 
 SCHEMA_BACKUP_FULL = vol.Schema(
     {
-        vol.Optional(ATTR_NAME): vol.Coerce(str),
-        vol.Optional(ATTR_PASSWORD): vol.Any(None, vol.Coerce(str)),
+        vol.Optional(ATTR_NAME): str,
+        vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
     }
 )
 
 SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
     {
-        vol.Optional(ATTR_ADDONS): vol.All([vol.Coerce(str)], vol.Unique()),
+        vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
         vol.Optional(ATTR_FOLDERS): vol.All([vol.In(ALL_FOLDERS)], vol.Unique()),
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     }
