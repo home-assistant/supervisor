@@ -357,7 +357,7 @@ jobs:
       - name: Install VCN tools
         uses: home-assistant/actions/helpers/vcn@master
         with:
-          vnc_version: ${{ env.DEFAULT_VCN }}
+          vcn_version: ${{ env.DEFAULT_VCN }}
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v2.1.6
