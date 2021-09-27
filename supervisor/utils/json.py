@@ -27,7 +27,7 @@ class JSONEncoder(json.JSONEncoder):
         if isinstance(o, Path):
             return o.as_posix()
 
-        return json.JSONEncoder.default(self, o)
+        return super().default(o)
 
 
 def write_json_file(jsonfile: Path, data: Any) -> None:
