@@ -89,8 +89,8 @@ RE_OLD_AUDIO = re.compile(r"\d+,\d+")
 WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
 
 _OPTIONS_MERGER: Final = Merger(
-    type_strategies=[(list, ["overwrite"]), (dict, ["merge"])],
-    fallback_strategies=["override"],
+    type_strategies=[(dict, ["merge"])],
+    fallback_strategies=["use_existing"],
     type_conflict_strategies=["override"],
 )
 
