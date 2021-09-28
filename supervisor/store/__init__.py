@@ -72,7 +72,7 @@ class StoreManager(CoreSysAttributes):
         old_rep = {repository.source for repository in self.all}
 
         # add new repository
-        async def _add_repository(url: str, step: int):
+        async def _add_repository(url: str):
             """Add a repository."""
             if url == URL_HASSIO_ADDONS:
                 url = StoreType.CORE
@@ -108,7 +108,7 @@ class StoreManager(CoreSysAttributes):
             self.repositories[repository.slug] = repository
 
         repos = new_rep - old_rep
-        tasks = [_add_repository(url, 80 / len(repos)) for url in repos]
+        tasks = [_add_repository(url) for url in repos]
         if tasks:
             await asyncio.wait(tasks)
 
