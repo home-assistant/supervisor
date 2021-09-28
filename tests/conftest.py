@@ -11,6 +11,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor import config as su_config
+from supervisor.addons.addon import Addon
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.const import REQUEST_FROM
@@ -21,7 +22,8 @@ from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.gdbus import DBus
 
-from tests.common import exists_fixture, load_fixture, load_json_fixture
+from .common import exists_fixture, load_fixture, load_json_fixture
+from .const import TEST_ADDON_SLUG
 
 # pylint: disable=redefined-outer-name, protected-access
 
@@ -139,6 +141,7 @@ async def coresys(loop, docker, network_manager, aiohttp_client, run_dir) -> Cor
     coresys_obj._config.save_data = MagicMock()
     coresys_obj._jobs.save_data = MagicMock()
     coresys_obj._resolution.save_data = MagicMock()
+    coresys_obj._addons.data.save_data = MagicMock()
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
@@ -254,3 +257,12 @@ async def repository(coresys: CoreSys):
     coresys.store.repositories[repository_obj.slug] = repository_obj
 
     yield repository_obj
+
+
+@pytest.fixture
+def install_addon_ssh(coresys: CoreSys, repository):
+    """Install local_ssh add-on."""
+    store = coresys.addons.store[TEST_ADDON_SLUG]
+    coresys.addons.data.install(store)
+    addon = Addon(coresys, store.slug)
+    coresys.addons.local[addon.slug] = addon

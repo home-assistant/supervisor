@@ -90,7 +90,7 @@ WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
 
 _OPTIONS_MERGER: Final = Merger(
     type_strategies=[(dict, ["merge"])],
-    fallback_strategies=["use_existing"],
+    fallback_strategies=["override"],
     type_conflict_strategies=["override"],
 )
 
