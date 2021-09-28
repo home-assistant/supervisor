@@ -249,6 +249,7 @@ def store_addon(coresys: CoreSys, tmp_path):
 @pytest.fixture
 async def repository(coresys: CoreSys):
     """Repository fixture."""
+    coresys.config.drop_addon_repository("https://github.com/hassio-addons/repository")
     await coresys.store.load()
     repository_obj = Repository(
         coresys, "https://github.com/awesome-developer/awesome-repo"
