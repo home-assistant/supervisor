@@ -10,6 +10,7 @@ from aiohttp import web
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor import config as su_config
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.const import REQUEST_FROM
@@ -154,6 +155,17 @@ async def coresys(loop, docker, network_manager, aiohttp_client, run_dir) -> Cor
     coresys_obj.supervisor._connectivity = True
     coresys_obj.host.network._connectivity = True
 
+    # Fix Paths
+    su_config.ADDONS_CORE = Path(
+        Path(__file__).parent.joinpath("fixtures"), "addons/core"
+    )
+    su_config.ADDONS_LOCAL = Path(
+        Path(__file__).parent.joinpath("fixtures"), "addons/local"
+    )
+    su_config.ADDONS_GIT = Path(
+        Path(__file__).parent.joinpath("fixtures"), "addons/git"
+    )
+
     # WebSocket
     coresys_obj.homeassistant.api.check_api_state = mock_async_return_true
     coresys_obj.homeassistant._websocket._client = AsyncMock(
@@ -232,8 +244,9 @@ def store_addon(coresys: CoreSys, tmp_path):
 
 
 @pytest.fixture
-def repository(coresys: CoreSys):
+async def repository(coresys: CoreSys):
     """Repository fixture."""
+    await coresys.store.load()
     repository_obj = Repository(
         coresys, "https://github.com/awesome-developer/awesome-repo"
     )

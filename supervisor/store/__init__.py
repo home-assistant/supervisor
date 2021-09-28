@@ -68,14 +68,12 @@ class StoreManager(CoreSysAttributes):
     @Job(conditions=[JobCondition.INTERNET_SYSTEM])
     async def update_repositories(self, list_repositories):
         """Add a new custom repository."""
-        job = self.sys_jobs.get_job("storemanager_update_repositories")
         new_rep = set(list_repositories)
         old_rep = {repository.source for repository in self.all}
 
         # add new repository
         async def _add_repository(url: str, step: int):
             """Add a repository."""
-            job.update(progress=job.progress + step, stage=f"Checking {url} started")
             if url == URL_HASSIO_ADDONS:
                 url = StoreType.CORE
 
@@ -109,7 +107,6 @@ class StoreManager(CoreSysAttributes):
                 self.sys_config.add_addon_repository(repository.source)
             self.repositories[repository.slug] = repository
 
-        job.update(progress=10, stage="Check repositories")
         repos = new_rep - old_rep
         tasks = [_add_repository(url, 80 / len(repos)) for url in repos]
         if tasks:
@@ -122,13 +119,8 @@ class StoreManager(CoreSysAttributes):
             self.sys_config.drop_addon_repository(url)
 
         # update data
-        job.update(progress=90, stage="Update addons")
         self.data.update()
-
-        job.update(progress=95, stage="Read addons")
         self._read_addons()
-
-        job.update(progress=100)
 
     def _read_addons(self) -> None:
         """Reload add-ons inside store."""
