@@ -237,7 +237,7 @@ def run_dir(tmp_path):
 
 
 @pytest.fixture
-def store_addon(coresys: CoreSys, tmp_path):
+def store_addon(coresys: CoreSys, tmp_path, repository):
     """Store add-on fixture."""
     addon_obj = AddonStore(coresys, "test_store_addon")
 
