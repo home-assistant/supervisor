@@ -37,3 +37,14 @@ def test_options_merge(coresys: CoreSys, install_addon_ssh) -> None:
         "password": "test",
         "server": {"tcp_forwarding": True},
     }
+
+    # Test overwrite
+    test = addon.options
+    test["server"]["test"] = 1
+    assert addon.options == {
+        "apks": [],
+        "authorized_keys": [],
+        "password": "test",
+        "server": {"tcp_forwarding": True},
+    }
+    addon.options = {"password": "test", "server": {"tcp_forwarding": True}}

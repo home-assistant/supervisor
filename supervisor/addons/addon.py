@@ -202,7 +202,7 @@ class Addon(AddonModel):
     def options(self) -> dict[str, Any]:
         """Return options with local changes."""
         return _OPTIONS_MERGER.merge(
-            self.data[ATTR_OPTIONS], self.persist[ATTR_OPTIONS]
+            deepcopy(self.data[ATTR_OPTIONS]), self.persist[ATTR_OPTIONS]
         )
 
     @options.setter
