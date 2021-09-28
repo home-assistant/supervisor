@@ -17,10 +17,18 @@ def test_options_merge(coresys: CoreSys, install_addon_ssh) -> None:
     }
 
     addon.options = {"password": "test"}
-
     assert addon.persist["options"] == {"password": "test"}
     assert addon.options == {
         "apks": [],
+        "authorized_keys": [],
+        "password": "test",
+        "server": {"tcp_forwarding": False},
+    }
+
+    addon.options = {"password": "test", "apks": ["gcc"]}
+    assert addon.persist["options"] == {"password": "test", "apks": ["gcc"]}
+    assert addon.options == {
+        "apks": ["gcc"],
         "authorized_keys": [],
         "password": "test",
         "server": {"tcp_forwarding": False},
