@@ -27,13 +27,7 @@ class CheckPluginTrust(CheckBase):
             )
             return
 
-        for plugin in (
-            self.sys_plugins.dns,
-            self.sys_plugins.audio,
-            self.sys_plugins.cli,
-            self.sys_plugins.observer,
-            self.sys_plugins.multicast,
-        ):
+        for plugin in self.sys_plugins.all_plugins:
             try:
                 await plugin.check_trust()
             except CodeNotaryUntrusted:
@@ -46,13 +40,7 @@ class CheckPluginTrust(CheckBase):
 
     async def approve_check(self, reference: Optional[str] = None) -> bool:
         """Approve check if it is affected by issue."""
-        for plugin in (
-            self.sys_plugins.dns,
-            self.sys_plugins.audio,
-            self.sys_plugins.cli,
-            self.sys_plugins.observer,
-            self.sys_plugins.multicast,
-        ):
+        for plugin in self.sys_plugins.all_plugins:
             if reference != plugin.slug:
                 continue
             try:

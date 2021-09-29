@@ -6,6 +6,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from .audio import PluginAudio
+from .base import PluginBase
 from .cli import PluginCli
 from .dns import PluginDns
 from .multicast import PluginMulticast
@@ -26,6 +27,11 @@ class PluginManager(CoreSysAttributes):
         self._audio: PluginAudio = PluginAudio(coresys)
         self._observer: PluginObserver = PluginObserver(coresys)
         self._multicast: PluginMulticast = PluginMulticast(coresys)
+
+    @property
+    def all_plugins(self) -> list[PluginBase]:
+        """Return cli handler."""
+        return [self._cli, self._dns, self._audio, self._observer, self._multicast]
 
     @property
     def cli(self) -> PluginCli:
@@ -55,13 +61,7 @@ class PluginManager(CoreSysAttributes):
     async def load(self) -> None:
         """Load Supervisor plugins."""
         # Sequential to avoid issue on slow IO
-        for plugin in (
-            self.dns,
-            self.audio,
-            self.cli,
-            self.observer,
-            self.multicast,
-        ):
+        for plugin in self.all_plugins:
             try:
                 await plugin.load()
             except Exception as err:  # pylint: disable=broad-except
@@ -76,13 +76,7 @@ class PluginManager(CoreSysAttributes):
 
         # Check requirements
         await self.sys_updater.reload()
-        for plugin in (
-            self.dns,
-            self.audio,
-            self.cli,
-            self.observer,
-            self.multicast,
-        ):
+        for plugin in self.all_plugins:
             # Check if need an update
             if not plugin.need_update:
                 continue
@@ -112,24 +106,13 @@ class PluginManager(CoreSysAttributes):
 
     async def repair(self) -> None:
         """Repair Supervisor plugins."""
-        await asyncio.wait(
-            [
-                self.dns.repair(),
-                self.audio.repair(),
-                self.cli.repair(),
-                self.observer.repair(),
-                self.multicast.repair(),
-            ]
-        )
+        await asyncio.wait([plugin.repair() for plugin in self.all_plugins])
 
     async def shutdown(self) -> None:
         """Shutdown Supervisor plugin."""
         # Sequential to avoid issue on slow IO
         for plugin in (
-            self.audio,
-            self.cli,
-            self.multicast,
-            self.dns,
+            plugin for plugin in self.all_plugins if plugin.slug != "observer"
         ):
             try:
                 await plugin.stop()
