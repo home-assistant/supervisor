@@ -1,4 +1,5 @@
 """Small wrapper for CodeNotary."""
+# pylint:  disable=unreachable
 import asyncio
 import hashlib
 import json
@@ -37,6 +38,7 @@ async def vcn_validate(
     signer: Optional[str] = None,
 ) -> None:
     """Validate data against CodeNotary."""
+    return None
     if (checksum, path, org, signer) in _CACHE:
         return
     command = shlex.split(_VCN_CMD)
