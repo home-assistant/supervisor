@@ -65,14 +65,10 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "images": list(coresys.resolution.evaluate.cached_images),
             },
             "versions": {
-                "audio": coresys.plugins.audio.version,
-                "cli": coresys.plugins.cli.version,
                 "core": coresys.homeassistant.version,
-                "dns": coresys.plugins.dns.version,
-                "docker": coresys.docker.info.version,
-                "multicast": coresys.plugins.multicast.version,
-                "observer": coresys.plugins.observer.version,
                 "os": coresys.os.version,
+                "agent": coresys.dbus.agent.version,
+                "docker": coresys.docker.info.version,
                 "supervisor": coresys.supervisor.version,
             },
             "resolution": {
@@ -85,6 +81,11 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
             },
         }
     )
+
+    event["contexts"]["versions"].update(
+        {plugin.slug: plugin.version for plugin in coresys.plugins.all_plugins}
+    )
+
     event.setdefault("tags", []).extend(
         [
             ["installation_type", "os" if coresys.os.available else "supervised"],
