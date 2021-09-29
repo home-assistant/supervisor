@@ -14,7 +14,6 @@ async def test_api_store(
     resp = await api_client.get("/store")
     result = await resp.json()
 
-    print(result)
     assert result["data"]["addons"][-1]["slug"] == store_addon.slug
     assert result["data"]["repositories"][-1]["slug"] == repository.slug
 
