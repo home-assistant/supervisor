@@ -10,9 +10,10 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Optional
+from typing import Any, Awaitable, Final, Optional
 
 import aiohttp
+from deepmerge import Merger
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -86,6 +87,12 @@ RE_WATCHDOG = re.compile(
 RE_OLD_AUDIO = re.compile(r"\d+,\d+")
 
 WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
+
+_OPTIONS_MERGER: Final = Merger(
+    type_strategies=[(dict, ["merge"])],
+    fallback_strategies=["override"],
+    type_conflict_strategies=["override"],
+)
 
 
 class Addon(AddonModel):
@@ -194,7 +201,9 @@ class Addon(AddonModel):
     @property
     def options(self) -> dict[str, Any]:
         """Return options with local changes."""
-        return {**self.data[ATTR_OPTIONS], **self.persist[ATTR_OPTIONS]}
+        return _OPTIONS_MERGER.merge(
+            deepcopy(self.data[ATTR_OPTIONS]), deepcopy(self.persist[ATTR_OPTIONS])
+        )
 
     @options.setter
     def options(self, value: Optional[dict[str, Any]]) -> None:
