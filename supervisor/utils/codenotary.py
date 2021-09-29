@@ -1,4 +1,5 @@
 """Small wrapper for CodeNotary."""
+# pylint:  disable=unreachable
 import asyncio
 import hashlib
 import json
