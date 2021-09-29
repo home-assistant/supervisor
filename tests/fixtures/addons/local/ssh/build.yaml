@@ -1,0 +1,13 @@
+build_from:
+  aarch64: "ghcr.io/home-assistant/aarch64-base:3.14"
+  amd64: "ghcr.io/home-assistant/amd64-base:3.14"
+  armhf: "ghcr.io/home-assistant/armhf-base:3.14"
+  armv7: "ghcr.io/home-assistant/armv7-base:3.14"
+  i386: "ghcr.io/home-assistant/i386-base:3.14"
+labels:
+  org.opencontainers.image.title: "Home Assistant Add-on: Test add-on"
+  org.opencontainers.image.description: "Test add-on PyTest."
+  org.opencontainers.image.source: "https://github.com/home-assistant/supervisor"
+  org.opencontainers.image.licenses: "Apache License 2.0"
+args:
+  TEST_VERSION: "2021.05.0"

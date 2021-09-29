@@ -14,8 +14,8 @@ async def test_api_store(
     resp = await api_client.get("/store")
     result = await resp.json()
 
-    assert result["data"]["addons"][0]["slug"] == store_addon.slug
-    assert result["data"]["repositories"][0]["slug"] == repository.slug
+    assert result["data"]["addons"][-1]["slug"] == store_addon.slug
+    assert result["data"]["repositories"][-1]["slug"] == repository.slug
 
 
 @pytest.mark.asyncio
@@ -26,7 +26,7 @@ async def test_api_store_addons(api_client: TestClient, store_addon: AddonStore)
     result = await resp.json()
     print(result)
 
-    assert result["data"][0]["slug"] == store_addon.slug
+    assert result["data"][-1]["slug"] == store_addon.slug
 
 
 @pytest.mark.asyncio
@@ -53,7 +53,7 @@ async def test_api_store_repositories(api_client: TestClient, repository: Reposi
     resp = await api_client.get("/store/repositories")
     result = await resp.json()
 
-    assert result["data"][0]["slug"] == repository.slug
+    assert result["data"][-1]["slug"] == repository.slug
 
 
 @pytest.mark.asyncio

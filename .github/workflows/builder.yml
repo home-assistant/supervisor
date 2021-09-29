@@ -219,7 +219,7 @@ jobs:
           docker create --name hassio_supervisor \
             --privileged \
             --security-opt seccomp=unconfined \
-            --security-opt apparmor:unconfined \
+            --security-opt apparmor=unconfined \
             -v /run/docker.sock:/run/docker.sock \
             -v /run/dbus:/run/dbus \
             -v /tmp/supervisor/data:/data \

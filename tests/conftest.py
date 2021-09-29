@@ -10,6 +10,8 @@ from aiohttp import web
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor import config as su_config
+from supervisor.addons.addon import Addon
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.const import REQUEST_FROM
@@ -20,7 +22,8 @@ from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.gdbus import DBus
 
-from tests.common import exists_fixture, load_fixture, load_json_fixture
+from .common import exists_fixture, load_fixture, load_json_fixture
+from .const import TEST_ADDON_SLUG
 
 # pylint: disable=redefined-outer-name, protected-access
 
@@ -138,6 +141,7 @@ async def coresys(loop, docker, network_manager, aiohttp_client, run_dir) -> Cor
     coresys_obj._config.save_data = MagicMock()
     coresys_obj._jobs.save_data = MagicMock()
     coresys_obj._resolution.save_data = MagicMock()
+    coresys_obj._addons.data.save_data = MagicMock()
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
@@ -153,6 +157,17 @@ async def coresys(loop, docker, network_manager, aiohttp_client, run_dir) -> Cor
     # Set internet state
     coresys_obj.supervisor._connectivity = True
     coresys_obj.host.network._connectivity = True
+
+    # Fix Paths
+    su_config.ADDONS_CORE = Path(
+        Path(__file__).parent.joinpath("fixtures"), "addons/core"
+    )
+    su_config.ADDONS_LOCAL = Path(
+        Path(__file__).parent.joinpath("fixtures"), "addons/local"
+    )
+    su_config.ADDONS_GIT = Path(
+        Path(__file__).parent.joinpath("fixtures"), "addons/git"
+    )
 
     # WebSocket
     coresys_obj.homeassistant.api.check_api_state = mock_async_return_true
@@ -222,7 +237,7 @@ def run_dir(tmp_path):
 
 
 @pytest.fixture
-def store_addon(coresys: CoreSys, tmp_path):
+def store_addon(coresys: CoreSys, tmp_path, repository):
     """Store add-on fixture."""
     addon_obj = AddonStore(coresys, "test_store_addon")
 
@@ -232,8 +247,10 @@ def store_addon(coresys: CoreSys, tmp_path):
 
 
 @pytest.fixture
-def repository(coresys: CoreSys):
+async def repository(coresys: CoreSys):
     """Repository fixture."""
+    coresys.config.drop_addon_repository("https://github.com/hassio-addons/repository")
+    await coresys.store.load()
     repository_obj = Repository(
         coresys, "https://github.com/awesome-developer/awesome-repo"
     )
@@ -241,3 +258,12 @@ def repository(coresys: CoreSys):
     coresys.store.repositories[repository_obj.slug] = repository_obj
 
     yield repository_obj
+
+
+@pytest.fixture
+def install_addon_ssh(coresys: CoreSys, repository):
+    """Install local_ssh add-on."""
+    store = coresys.addons.store[TEST_ADDON_SLUG]
+    coresys.addons.data.install(store)
+    addon = Addon(coresys, store.slug)
+    coresys.addons.local[addon.slug] = addon

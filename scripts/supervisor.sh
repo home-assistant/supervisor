@@ -36,7 +36,7 @@ function run_supervisor() {
         --name hassio_supervisor \
         --privileged \
         --security-opt seccomp=unconfined \
-        --security-opt apparmor:unconfined \
+        --security-opt apparmor=unconfined \
         -v /run/docker.sock:/run/docker.sock:rw \
         -v /run/dbus:/run/dbus:ro \
         -v /run/udev:/run/udev:ro \
