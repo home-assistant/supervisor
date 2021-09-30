@@ -43,8 +43,6 @@ NO_SECURITY_CHECK = re.compile(
 # Observer allow API calls
 OBSERVER_CHECK = re.compile(
     r"^(?:"
-    r"|/supervisor/ping"
-    r"|/core/api/config"
     r"|/.+/info"
     r")$"
 )
