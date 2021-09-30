@@ -173,7 +173,7 @@ class SecurityMiddleware(CoreSysAttributes):
 
         # Observer
         if supervisor_token == self.sys_plugins.observer.supervisor_token:
-            if not OBSERVER_CHECK.match(request.url):
+            if not OBSERVER_CHECK.match(request.path):
                 _LOGGER.warning("%s invalid Observer access", request.path)
                 raise HTTPForbidden()
             _LOGGER.debug("%s access from Observer", request.path)
