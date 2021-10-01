@@ -306,23 +306,23 @@ class AddonManager(CoreSysAttributes):
     async def rebuild(self, slug: str) -> None:
         """Perform a rebuild of local build add-on."""
         if slug not in self.local:
-            raise AddonsError("Add-on {slug} is not installed", _LOGGER.error)
+            raise AddonsError(f"Add-on {slug} is not installed", _LOGGER.error)
         addon = self.local[slug]
 
         if addon.is_detached:
             raise AddonsError(
-                "Add-on {slug} is not available inside store", _LOGGER.error
+                f"Add-on {slug} is not available inside store", _LOGGER.error
             )
         store = self.store[slug]
 
         # Check if a rebuild is possible now
         if addon.version != store.version:
             raise AddonsError(
-                "Version changed, use Update instead Rebuild", _LOGGER.error
+                f"Version changed, use Update instead Rebuild", _LOGGER.error
             )
         if not addon.need_build:
             raise AddonsNotSupportedError(
-                "Can't rebuild a image based add-on", _LOGGER.error
+                f"Can't rebuild a image based add-on", _LOGGER.error
             )
 
         # remove docker container but not addon config
