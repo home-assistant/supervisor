@@ -1,11 +1,9 @@
 {
   "name": "Supervisor dev",
-  "context": "..",
-  "dockerFile": "Dockerfile",
-  "appPort": "9123:8123",
-  "postCreateCommand": "pre-commit install",
+  "image": "ghcr.io/home-assistant/devcontainer:supervisor",
+  "appPort": ["9123:8123", "7357:4357"],
+  "postCreateCommand": "bash devcontainer_bootstrap",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
-  "containerEnv": { "NVM_DIR": "/usr/local/share/nvm" },
   "extensions": [
     "ms-python.python",
     "ms-python.vscode-pylance",
@@ -13,7 +11,12 @@
     "esbenp.prettier-vscode"
   ],
   "settings": {
-    "terminal.integrated.shell.linux": "/bin/bash",
+    "terminal.integrated.profiles.linux": {
+      "zsh": {
+        "path": "/usr/bin/zsh"
+      }
+    },
+    "terminal.integrated.defaultProfile.linux": "zsh",
     "editor.formatOnPaste": false,
     "editor.formatOnSave": true,
     "editor.formatOnType": true,
