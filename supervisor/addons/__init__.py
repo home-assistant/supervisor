@@ -318,7 +318,7 @@ class AddonManager(CoreSysAttributes):
         # Check if a rebuild is possible now
         if addon.version != store.version:
             raise AddonsError(
-                f"Version changed, use Update instead Rebuild", _LOGGER.error
+                "Version changed, use Update instead Rebuild", _LOGGER.error
             )
         if not addon.need_build:
             raise AddonsNotSupportedError(
