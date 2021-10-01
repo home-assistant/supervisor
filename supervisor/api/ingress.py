@@ -44,8 +44,9 @@ class APIIngress(CoreSysAttributes):
         # Find correct add-on
         addon = self.sys_ingress.get(token)
         if not addon:
-            _LOGGER.warning("Ingress for %s not available", token)
-            raise HTTPServiceUnavailable()
+            raise HTTPServiceUnavailable(
+                f"Ingress for {token} not available", _LOGGER.warning
+            )
 
         return addon
 
@@ -82,8 +83,9 @@ class APIIngress(CoreSysAttributes):
 
         # Check Ingress Session
         if not self.sys_ingress.validate_session(data[ATTR_SESSION]):
-            _LOGGER.warning("No valid ingress session %s", data[ATTR_SESSION])
-            raise HTTPUnauthorized()
+            raise HTTPUnauthorized(
+                f"No valid ingress session {data[ATTR_SESSION]}", _LOGGER.warning
+            )
 
     @require_home_assistant
     async def handler(
@@ -94,8 +96,9 @@ class APIIngress(CoreSysAttributes):
         # Check Ingress Session
         session = request.cookies.get(COOKIE_INGRESS)
         if not self.sys_ingress.validate_session(session):
-            _LOGGER.warning("No valid ingress session %s", session)
-            raise HTTPUnauthorized()
+            raise HTTPUnauthorized(
+                f"No valid ingress session {session}", _LOGGER.warning
+            )
 
         # Process requests
         addon = self._extract_addon(request)
