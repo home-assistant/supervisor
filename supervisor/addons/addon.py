@@ -679,8 +679,9 @@ class Addon(AddonModel):
         Return a coroutine.
         """
         if not self.with_stdin:
-            _LOGGER.error("Add-on %s does not support writing to stdin!", self.slug)
-            raise AddonsNotSupportedError()
+            raise AddonsNotSupportedError(
+                f"Add-on {self.slug} does not support writing to stdin!", _LOGGER.error
+            )
 
         try:
             return await self.instance.write_stdin(data)
@@ -727,8 +728,9 @@ class Addon(AddonModel):
             try:
                 write_json_file(temp_path.joinpath("addon.json"), data)
             except ConfigurationFileError as err:
-                _LOGGER.error("Can't save meta for %s", self.slug)
-                raise AddonsError() from err
+                raise AddonsError(
+                    f"Can't save meta for {self.slug}", _LOGGER.error
+                ) from err
 
             # Store AppArmor Profile
             if self.sys_host.apparmor.exists(self.slug):
@@ -736,8 +738,9 @@ class Addon(AddonModel):
                 try:
                     self.sys_host.apparmor.backup_profile(self.slug, profile)
                 except HostAppArmorError as err:
-                    _LOGGER.error("Can't backup AppArmor profile")
-                    raise AddonsError() from err
+                    raise AddonsError(
+                        "Can't backup AppArmor profile", _LOGGER.error
+                    ) from err
 
             # write into tarfile
             def _write_tarfile():
@@ -769,8 +772,9 @@ class Addon(AddonModel):
                 _LOGGER.info("Building backup for add-on %s", self.slug)
                 await self.sys_run_in_executor(_write_tarfile)
             except (tarfile.TarError, OSError) as err:
-                _LOGGER.error("Can't write tarfile %s: %s", tar_file, err)
-                raise AddonsError() from err
+                raise AddonsError(
+                    f"Can't write tarfile {tar_file}: {err}", _LOGGER.error
+                ) from err
             finally:
                 if (
                     is_running
@@ -796,8 +800,9 @@ class Addon(AddonModel):
             try:
                 await self.sys_run_in_executor(_extract_tarfile)
             except tarfile.TarError as err:
-                _LOGGER.error("Can't read tarfile %s: %s", tar_file, err)
-                raise AddonsError() from err
+                raise AddonsError(
+                    f"Can't read tarfile {tar_file}: {err}", _LOGGER.error
+                ) from err
 
             # Read backup data
             try:
@@ -818,8 +823,10 @@ class Addon(AddonModel):
 
             # If available
             if not self._available(data[ATTR_SYSTEM]):
-                _LOGGER.error("Add-on %s is not available for this platform", self.slug)
-                raise AddonsNotSupportedError()
+                raise AddonsNotSupportedError(
+                    f"Add-on {self.slug} is not available for this platform",
+                    _LOGGER.error,
+                )
 
             # Restore local add-on information
             _LOGGER.info("Restore config for addon %s", self.slug)
@@ -860,8 +867,9 @@ class Addon(AddonModel):
             try:
                 await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:
-                _LOGGER.error("Can't restore origin data: %s", err)
-                raise AddonsError() from err
+                raise AddonsError(
+                    f"Can't restore origin data: {err}", _LOGGER.error
+                ) from err
 
             # Restore AppArmor
             profile_file = Path(temp, "apparmor.txt")
