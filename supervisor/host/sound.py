@@ -118,11 +118,13 @@ class SoundControl(CoreSysAttributes):
                         pulse.sink_default_set(sink)
 
             except PulseIndexError as err:
-                _LOGGER.error("Can't find %s stream %s", source, name)
-                raise PulseAudioError() from err
+                raise PulseAudioError(
+                    f"Can't find {source} stream {name}", _LOGGER.error
+                ) from err
             except PulseError as err:
-                _LOGGER.error("Can't set %s as stream: %s", name, err)
-                raise PulseAudioError() from err
+                raise PulseAudioError(
+                    f"Can't set {name} as stream: {err}", _LOGGER.error
+                ) from err
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_default)
@@ -150,13 +152,14 @@ class SoundControl(CoreSysAttributes):
                     # Set volume
                     pulse.volume_set_all_chans(stream, volume)
             except PulseIndexError as err:
-                _LOGGER.error(
-                    "Can't find %s stream %d (App: %s)", stream_type, index, application
-                )
-                raise PulseAudioError() from err
+                raise PulseAudioError(
+                    f"Can't find {stream_type} stream {index} (App: {application})",
+                    _LOGGER.error,
+                ) from err
             except PulseError as err:
-                _LOGGER.error("Can't set %d volume: %s", index, err)
-                raise PulseAudioError() from err
+                raise PulseAudioError(
+                    f"Can't set {index} volume: {err}", _LOGGER.error
+                ) from err
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_volume)
@@ -184,13 +187,14 @@ class SoundControl(CoreSysAttributes):
                     # Mute stream
                     pulse.mute(stream, mute)
             except PulseIndexError as err:
-                _LOGGER.error(
-                    "Can't find %s stream %d (App: %s)", stream_type, index, application
-                )
-                raise PulseAudioError() from err
+                raise PulseAudioError(
+                    f"Can't find {stream_type} stream {index} (App: {application})",
+                    _LOGGER.error,
+                ) from err
             except PulseError as err:
-                _LOGGER.error("Can't set %d volume: %s", index, err)
-                raise PulseAudioError() from err
+                raise PulseAudioError(
+                    f"Can't set {index} volume: {err}", _LOGGER.error
+                ) from err
 
         # Run and Reload data
         await self.sys_run_in_executor(_set_mute)
@@ -206,13 +210,14 @@ class SoundControl(CoreSysAttributes):
                     pulse.card_profile_set(card, profile_name)
 
             except PulseIndexError as err:
-                _LOGGER.error("Can't find %s profile %s", card_name, profile_name)
-                raise PulseAudioError() from err
+                raise PulseAudioError(
+                    f"Can't find {card_name} profile {profile_name}", _LOGGER.error
+                ) from err
             except PulseError as err:
-                _LOGGER.error(
-                    "Can't activate %s profile %s: %s", card_name, profile_name, err
-                )
-                raise PulseAudioError() from err
+                raise PulseAudioError(
+                    f"Can't activate {card_name} profile {profile_name}: {err}",
+                    _LOGGER.error,
+                ) from err
 
         # Run and Reload data
         await self.sys_run_in_executor(_activate_profile)
@@ -332,8 +337,9 @@ class SoundControl(CoreSysAttributes):
                         )
 
             except PulseOperationFailed as err:
-                _LOGGER.error("Error while processing pulse update: %s", err)
-                raise PulseAudioError() from err
+                raise PulseAudioError(
+                    f"Error while processing pulse update: {err}", _LOGGER.error
+                ) from err
             except PulseError as err:
                 _LOGGER.debug("Can't update PulseAudio data: %s", err)
 
