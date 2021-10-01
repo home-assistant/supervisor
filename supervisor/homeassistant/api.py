@@ -49,8 +49,7 @@ class HomeAssistantAPI(CoreSysAttributes):
                 ssl=False,
             ) as resp:
                 if resp.status != 200:
-                    _LOGGER.error("Can't update Home Assistant access token!")
-                    raise HomeAssistantAuthError()
+                    raise HomeAssistantAuthError("Can't update Home Assistant access token!", _LOGGER.error)
 
                 _LOGGER.info("Updated Home Assistant API token")
                 tokens = await resp.json()
@@ -111,8 +110,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             if resp.status in (200, 201):
                 return await resp.json()
             else:
-                _LOGGER.debug("Home Assistant API return: %d", resp.status)
-        raise HomeAssistantAPIError()
+        raise HomeAssistantAPIError(f"Home Assistant API return: %d", resp.status_LOGGER.debug)
 
     async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
