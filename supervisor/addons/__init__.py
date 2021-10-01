@@ -322,7 +322,7 @@ class AddonManager(CoreSysAttributes):
             )
         if not addon.need_build:
             raise AddonsNotSupportedError(
-                f"Can't rebuild a image based add-on", _LOGGER.error
+                "Can't rebuild a image based add-on", _LOGGER.error
             )
 
         # remove docker container but not addon config
