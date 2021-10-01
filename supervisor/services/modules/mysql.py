@@ -62,7 +62,10 @@ class MySQLService(ServiceInterface):
     def set_service_data(self, addon: Addon, data: dict[str, Any]) -> None:
         """Write the data into service object."""
         if self.enabled:
-            raise ServicesError(f"There is already a MySQL service in use from {self._data[ATTR_ADDON]}", _LOGGER.error)
+            raise ServicesError(
+                f"There is already a MySQL service in use from {self._data[ATTR_ADDON]}",
+                _LOGGER.error,
+            )
 
         self._data.update(data)
         self._data[ATTR_ADDON] = addon.slug
@@ -73,7 +76,7 @@ class MySQLService(ServiceInterface):
     def del_service_data(self, addon: Addon) -> None:
         """Remove the data from service object."""
         if not self.enabled:
-            raise ServicesError(f"Can't remove not exists services", _LOGGER.warning)
+            raise ServicesError("Can't remove not exists services", _LOGGER.warning)
 
         self._data.clear()
         self.save()
