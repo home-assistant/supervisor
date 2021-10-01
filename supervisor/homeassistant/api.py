@@ -49,8 +49,9 @@ class HomeAssistantAPI(CoreSysAttributes):
                 ssl=False,
             ) as resp:
                 if resp.status != 200:
-                    _LOGGER.error("Can't update Home Assistant access token!")
-                    raise HomeAssistantAuthError()
+                    raise HomeAssistantAuthError(
+                        "Can't update Home Assistant access token!", _LOGGER.error
+                    )
 
                 _LOGGER.info("Updated Home Assistant API token")
                 tokens = await resp.json()
