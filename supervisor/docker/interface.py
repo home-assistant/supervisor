@@ -295,7 +295,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _stop(self, remove_container=True) -> None:
         """Stop/remove Docker container.
-        
         Need run inside executor.
         """
         try:
