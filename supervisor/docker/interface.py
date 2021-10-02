@@ -284,7 +284,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _run(self) -> None:
         """Run Docker image.
-        
         Need run inside executor.
         """
         raise NotImplementedError()
