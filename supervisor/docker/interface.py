@@ -321,7 +321,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _start(self) -> None:
         """Start docker container.
-        
         Need run inside executor.
         """
         try:
