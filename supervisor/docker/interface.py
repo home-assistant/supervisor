@@ -235,7 +235,6 @@ class DockerInterface(CoreSysAttributes):
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker is running.
-        
         Return a Future.
         """
         return self.sys_run_in_executor(self._is_running)
