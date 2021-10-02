@@ -405,7 +405,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _logs(self) -> bytes:
         """Return Docker logs of container.
-        
         Need run inside executor.
         """
         try:
