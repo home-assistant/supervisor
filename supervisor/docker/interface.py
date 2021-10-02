@@ -159,7 +159,6 @@ class DockerInterface(CoreSysAttributes):
         self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> None:
         """Pull Docker image.
-        
         Need run inside executor.
         """
         image = image or self.image
