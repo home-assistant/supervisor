@@ -596,7 +596,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _run_inside(self, command: str) -> CommandReturn:
         """Execute a command inside Docker container.
-        
         Need run inside executor.
         """
         try:
