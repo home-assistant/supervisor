@@ -399,7 +399,6 @@ class DockerInterface(CoreSysAttributes):
 
     def logs(self) -> Awaitable[bytes]:
         """Return Docker logs of container.
-        
         Return a Future.
         """
         return self.sys_run_in_executor(self._logs)
