@@ -241,7 +241,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _is_running(self) -> bool:
         """Return True if Docker is running.
-        
         Need run inside executor.
         """
         try:
