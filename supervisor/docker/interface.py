@@ -528,7 +528,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _is_failed(self) -> bool:
         """Return True if Docker is failing state.
-        
         Need run inside executor.
         """
         try:
