@@ -226,7 +226,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _exists(self) -> bool:
         """Return True if Docker image exists in local repository.
-        
         Need run inside executor.
         """
         with suppress(docker.errors.DockerException, requests.RequestException):
