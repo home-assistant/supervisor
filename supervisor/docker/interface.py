@@ -422,7 +422,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _cleanup(self, old_image: Optional[str] = None) -> None:
         """Check if old version exists and cleanup.
-        
         Need run inside executor.
         """
         try:
