@@ -261,7 +261,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _attach(self, version: AwesomeVersion) -> None:
         """Attach to running docker container.
-        
         Need run inside executor.
         """
         with suppress(docker.errors.DockerException, requests.RequestException):
