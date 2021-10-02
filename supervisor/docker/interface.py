@@ -559,7 +559,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _get_latest_version(self) -> AwesomeVersion:
         """Return latest version of local image.
-        
         Need run inside executor.
         """
         available_version: list[AwesomeVersion] = []
