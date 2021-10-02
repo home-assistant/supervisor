@@ -522,7 +522,6 @@ class DockerInterface(CoreSysAttributes):
 
     def is_failed(self) -> Awaitable[bool]:
         """Return True if Docker is failing state.
-        
         Return a Future.
         """
         return self.sys_run_in_executor(self._is_failed)
