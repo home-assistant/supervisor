@@ -500,7 +500,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command.
-        
         Need run inside executor.
         """
         raise NotImplementedError()
