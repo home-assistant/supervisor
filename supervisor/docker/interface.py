@@ -475,7 +475,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _restart(self) -> None:
         """Restart docker container.
-        
         Need run inside executor.
         """
         try:
