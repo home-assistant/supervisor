@@ -149,14 +149,17 @@ class DockerAPI:
                 f"{image}:{tag}", use_config_proxy=False, **kwargs
             )
         except docker.errors.NotFound as err:
-            _LOGGER.error("Image %s not exists for %s", image, name)
-            raise DockerNotFound() from err
+            raise DockerNotFound(
+                f"Image {image} not exists for {name}", _LOGGER.error
+            ) from err
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't create container from %s: %s", name, err)
-            raise DockerAPIError() from err
+            raise DockerAPIError(
+                f"Can't create container from {name}: {err}", _LOGGER.error
+            ) from err
         except requests.RequestException as err:
-            _LOGGER.error("Dockerd connection issue for %s: %s", name, err)
-            raise DockerRequestError() from err
+            raise DockerRequestError(
+                f"Dockerd connection issue for {name}: {err}", _LOGGER.error
+            ) from err
 
         # Attach network
         if not network_mode:
@@ -186,11 +189,11 @@ class DockerAPI:
         try:
             container.start()
         except docker.errors.DockerException as err:
-            _LOGGER.error("Can't start %s: %s", name, err)
-            raise DockerAPIError() from err
+            raise DockerAPIError(f"Can't start {name}: {err}", _LOGGER.error) from err
         except requests.RequestException as err:
-            _LOGGER.error("Dockerd connection issue for %s: %s", name, err)
-            raise DockerRequestError() from err
+            raise DockerRequestError(
+                f"Dockerd connection issue for {name}: {err}", _LOGGER.error
+            ) from err
 
         # Update metadata
         with suppress(docker.errors.DockerException, requests.RequestException):
@@ -228,8 +231,7 @@ class DockerAPI:
             output = container.logs(stdout=stdout, stderr=stderr)
 
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Can't execute command: %s", err)
-            raise DockerError() from err
+            raise DockerError(f"Can't execute command: {err}", _LOGGER.error) from err
 
         finally:
             # cleanup container
