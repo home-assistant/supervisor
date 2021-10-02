@@ -52,9 +52,7 @@ class PluginCli(PluginBase):
 
             await self.instance.attach(version=self.version)
         except DockerError:
-            raise DockerError(
-                f"No cli plugin Docker image {self.instance.image} found.", _LOGGER.info
-            )
+            _LOGGER.info("No cli plugin Docker image %s found.", self.instance.image)
 
             # Install cli
             with suppress(CliError):
