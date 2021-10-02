@@ -505,7 +505,6 @@ class DockerInterface(CoreSysAttributes):
 
     def _stats(self) -> DockerStats:
         """Create a temporary container and run command.
-        
         Need run inside executor.
         """
         try:
