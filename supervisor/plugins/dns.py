@@ -218,7 +218,7 @@ class PluginDns(PluginBase):
         try:
             await self.instance.stop()
         except DockerError as err:
-            raise CoreDNSError(f"Can't stop CoreDNS plugin", _LOGGER.error) from err
+            raise CoreDNSError("Can't stop CoreDNS plugin", _LOGGER.error) from err
 
     async def reset(self) -> None:
         """Reset DNS and hosts."""
