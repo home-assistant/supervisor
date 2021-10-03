@@ -178,8 +178,8 @@ class PluginDns(PluginBase):
         try:
             await self.instance.update(version, image=self.sys_updater.image_dns)
         except DockerError as err:
-            _LOGGER.error("CoreDNS update failed")
-            raise CoreDNSUpdateError() from err
+            raise CoreDNSUpdateError(f"CoreDNS update failed", _LOGGER.error) from err
+
         else:
             self.version = version
             self.image = self.sys_updater.image_dns
@@ -199,8 +199,7 @@ class PluginDns(PluginBase):
         try:
             await self.instance.restart()
         except DockerError as err:
-            _LOGGER.error("Can't start CoreDNS plugin")
-            raise CoreDNSError() from err
+            raise CoreDNSError(f"Can't start CoreDNS plugin", _LOGGER.error) from err
 
     async def start(self) -> None:
         """Run CoreDNS."""
@@ -211,8 +210,7 @@ class PluginDns(PluginBase):
         try:
             await self.instance.run()
         except DockerError as err:
-            _LOGGER.error("Can't start CoreDNS plugin")
-            raise CoreDNSError() from err
+            raise CoreDNSError(f"Can't start CoreDNS plugin", _LOGGER.error) from err
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
@@ -220,8 +218,7 @@ class PluginDns(PluginBase):
         try:
             await self.instance.stop()
         except DockerError as err:
-            _LOGGER.error("Can't stop CoreDNS plugin")
-            raise CoreDNSError() from err
+            raise CoreDNSError(f"Can't stop CoreDNS plugin", _LOGGER.error) from err
 
     async def reset(self) -> None:
         """Reset DNS and hosts."""
@@ -288,8 +285,9 @@ class PluginDns(PluginBase):
                 },
             )
         except ConfigurationFileError as err:
-            _LOGGER.error("Can't update coredns config: %s", err)
-            raise CoreDNSError() from err
+            raise CoreDNSError(
+                f"Can't update coredns config: {err}", _LOGGER.error
+            ) from err
 
     def _init_hosts(self) -> None:
         """Import hosts entry."""
@@ -314,8 +312,7 @@ class PluginDns(PluginBase):
         try:
             self.hosts.write_text(data, encoding="utf-8")
         except OSError as err:
-            _LOGGER.error("Can't update hosts: %s", err)
-            raise CoreDNSError() from err
+            raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
 
     def add_host(self, ipv4: IPv4Address, names: list[str], write: bool = True) -> None:
         """Add a new host entry."""
