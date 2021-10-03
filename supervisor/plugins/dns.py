@@ -178,7 +178,7 @@ class PluginDns(PluginBase):
         try:
             await self.instance.update(version, image=self.sys_updater.image_dns)
         except DockerError as err:
-            raise CoreDNSUpdateError(f"CoreDNS update failed", _LOGGER.error) from err
+            raise CoreDNSUpdateError("CoreDNS update failed", _LOGGER.error) from err
 
         else:
             self.version = version
