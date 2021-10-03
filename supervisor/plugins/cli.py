@@ -102,8 +102,7 @@ class PluginCli(PluginBase):
         try:
             await self.instance.update(version, image=self.sys_updater.image_cli)
         except DockerError as err:
-            _LOGGER.error("CLI update failed")
-            raise CliUpdateError() from err
+            raise CliUpdateError("CLI update failed", _LOGGER.error) from err
         else:
             self.version = version
             self.image = self.sys_updater.image_cli
@@ -127,8 +126,7 @@ class PluginCli(PluginBase):
         try:
             await self.instance.run()
         except DockerError as err:
-            _LOGGER.error("Can't start cli plugin")
-            raise CliError() from err
+            raise CliError("Can't start cli plugin", _LOGGER.error) from err
 
     async def stop(self) -> None:
         """Stop cli."""
@@ -136,8 +134,7 @@ class PluginCli(PluginBase):
         try:
             await self.instance.stop()
         except DockerError as err:
-            _LOGGER.error("Can't stop cli plugin")
-            raise CliError() from err
+            raise CliError("Can't stop cli plugin", _LOGGER.error) from err
 
     async def stats(self) -> DockerStats:
         """Return stats of cli."""
