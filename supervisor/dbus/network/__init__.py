@@ -126,8 +126,10 @@ class NetworkManager(DBusInterface):
         except (AwesomeVersionException, KeyError):
             pass
 
-        _LOGGER.error("Version '%s' of NetworkManager is not supported!", self.version)
-        raise HostNotSupportedError()
+        raise HostNotSupportedError(
+            f"Version '{self.version}' of NetworkManager is not supported!",
+            _LOGGER.error,
+        )
 
     @dbus_connected
     async def update(self):
