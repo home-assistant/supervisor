@@ -17,7 +17,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..validate import version_tag
-from .const import ATTR_DEVICE, ATTR_DISK_DATA
+from .const import ATTR_DATA_DISK, ATTR_DEVICE
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class APIOS(CoreSysAttributes):
             ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
             ATTR_BOARD: self.sys_os.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
-            ATTR_DISK_DATA: self.sys_os.datadisk.disk_used,
+            ATTR_DATA_DISK: self.sys_os.datadisk.disk_used,
         }
 
     @api_process

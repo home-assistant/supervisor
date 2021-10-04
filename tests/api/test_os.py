@@ -21,7 +21,7 @@ async def test_api_os_info(api_client):
         "update_available",
         "board",
         "boot",
-        "disk_data",
+        "data_disk",
     ):
         assert attr in result["data"]
 
@@ -35,7 +35,7 @@ async def test_api_os_info_with_agent(api_client, coresys: CoreSys):
     resp = await api_client.get("/os/info")
     result = await resp.json()
 
-    assert result["data"]["disk_data"] == "/dev/sda"
+    assert result["data"]["data_disk"] == "/dev/sda"
 
 
 @pytest.mark.asyncio
