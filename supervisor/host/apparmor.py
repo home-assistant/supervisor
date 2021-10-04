@@ -40,8 +40,9 @@ class AppArmorControl(CoreSysAttributes):
     def _get_profile(self, profile_name):
         """Get a profile from AppArmor store."""
         if profile_name not in self._profiles:
-            _LOGGER.error("Can't find %s for removing", profile_name)
-            raise HostAppArmorError()
+            raise HostAppArmorError(
+                f"Can't find {profile_name} for removing", _LOGGER.error
+            )
         return Path(self.sys_config.path_apparmor, profile_name)
 
     async def load(self):
@@ -67,16 +68,18 @@ class AppArmorControl(CoreSysAttributes):
     async def load_profile(self, profile_name, profile_file):
         """Load/Update a new/exists profile into AppArmor."""
         if not validate_profile(profile_name, profile_file):
-            _LOGGER.error("AppArmor profile '%s' is not valid", profile_name)
-            raise HostAppArmorError()
+            raise HostAppArmorError(
+                f"AppArmor profile '{profile_name}' is not valid", _LOGGER.error
+            )
 
         # Copy to AppArmor folder
         dest_profile = Path(self.sys_config.path_apparmor, profile_name)
         try:
             shutil.copyfile(profile_file, dest_profile)
         except OSError as err:
-            _LOGGER.error("Can't copy %s: %s", profile_file, err)
-            raise HostAppArmorError() from err
+            raise HostAppArmorError(
+                f"Can't copy {profile_file}: {err}", _LOGGER.error
+            ) from err
 
         # Load profiles
         _LOGGER.info("Adding/updating AppArmor profile: %s", profile_name)
@@ -93,8 +96,9 @@ class AppArmorControl(CoreSysAttributes):
             try:
                 profile_file.unlink()
             except OSError as err:
-                _LOGGER.error("Can't remove profile: %s", err)
-                raise HostAppArmorError() from err
+                raise HostAppArmorError(
+                    f"Can't remove profile: {err}", _LOGGER.error
+                ) from err
             return
 
         # Marks als remove and start host process
@@ -102,8 +106,9 @@ class AppArmorControl(CoreSysAttributes):
         try:
             profile_file.rename(remove_profile)
         except OSError as err:
-            _LOGGER.error("Can't mark profile as remove: %s", err)
-            raise HostAppArmorError() from err
+            raise HostAppArmorError(
+                f"Can't mark profile as remove: {err}", _LOGGER.error
+            ) from err
 
         _LOGGER.info("Removing AppArmor profile: %s", profile_name)
         self._profiles.remove(profile_name)
@@ -116,5 +121,6 @@ class AppArmorControl(CoreSysAttributes):
         try:
             shutil.copy(profile_file, backup_file)
         except OSError as err:
-            _LOGGER.error("Can't backup profile %s: %s", profile_name, err)
-            raise HostAppArmorError() from err
+            raise HostAppArmorError(
+                f"Can't backup profile {profile_name}: {err}", _LOGGER.error
+            ) from err
