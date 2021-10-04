@@ -159,6 +159,7 @@ class DockerInterface(CoreSysAttributes):
         self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> None:
         """Pull Docker image.
+
         Need run inside executor.
         """
         image = image or self.image
@@ -226,6 +227,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _exists(self) -> bool:
         """Return True if Docker image exists in local repository.
+
         Need run inside executor.
         """
         with suppress(docker.errors.DockerException, requests.RequestException):
@@ -235,12 +237,14 @@ class DockerInterface(CoreSysAttributes):
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker is running.
+
         Return a Future.
         """
         return self.sys_run_in_executor(self._is_running)
 
     def _is_running(self) -> bool:
         """Return True if Docker is running.
+
         Need run inside executor.
         """
         try:
@@ -261,6 +265,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _attach(self, version: AwesomeVersion) -> None:
         """Attach to running docker container.
+
         Need run inside executor.
         """
         with suppress(docker.errors.DockerException, requests.RequestException):
@@ -284,6 +289,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _run(self) -> None:
         """Run Docker image.
+
         Need run inside executor.
         """
         raise NotImplementedError()
@@ -295,6 +301,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _stop(self, remove_container=True) -> None:
         """Stop/remove Docker container.
+
         Need run inside executor.
         """
         try:
@@ -321,6 +328,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _start(self) -> None:
         """Start docker container.
+
         Need run inside executor.
         """
         try:
@@ -343,6 +351,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _remove(self) -> None:
         """Remove docker images.
+
         Needs run inside executor.
         """
         # Cleanup container
@@ -378,6 +387,7 @@ class DockerInterface(CoreSysAttributes):
         self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
     ) -> None:
         """Update a docker image.
+
         Need run inside executor.
         """
         image = image or self.image
@@ -395,12 +405,14 @@ class DockerInterface(CoreSysAttributes):
 
     def logs(self) -> Awaitable[bytes]:
         """Return Docker logs of container.
+
         Return a Future.
         """
         return self.sys_run_in_executor(self._logs)
 
     def _logs(self) -> bytes:
         """Return Docker logs of container.
+
         Need run inside executor.
         """
         try:
@@ -422,6 +434,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _cleanup(self, old_image: Optional[str] = None) -> None:
         """Check if old version exists and cleanup.
+
         Need run inside executor.
         """
         try:
@@ -473,6 +486,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _restart(self) -> None:
         """Restart docker container.
+
         Need run inside executor.
         """
         try:
@@ -495,6 +509,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command.
+
         Need run inside executor.
         """
         raise NotImplementedError()
@@ -505,6 +520,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _stats(self) -> DockerStats:
         """Create a temporary container and run command.
+
         Need run inside executor.
         """
         try:
@@ -522,12 +538,14 @@ class DockerInterface(CoreSysAttributes):
 
     def is_failed(self) -> Awaitable[bool]:
         """Return True if Docker is failing state.
+
         Return a Future.
         """
         return self.sys_run_in_executor(self._is_failed)
 
     def _is_failed(self) -> bool:
         """Return True if Docker is failing state.
+
         Need run inside executor.
         """
         try:
@@ -550,6 +568,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _get_latest_version(self) -> AwesomeVersion:
         """Return latest version of local image.
+
         Need run inside executor.
         """
         available_version: list[AwesomeVersion] = []
@@ -586,6 +605,7 @@ class DockerInterface(CoreSysAttributes):
 
     def _run_inside(self, command: str) -> CommandReturn:
         """Execute a command inside Docker container.
+
         Need run inside executor.
         """
         try:
