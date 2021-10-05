@@ -153,6 +153,12 @@ class Core(CoreSysAttributes):
                 self.sys_resolution.unhealthy = UnhealthyReason.SETUP
                 self.sys_capture_exception(err)
 
+        # Set OS Agent diagnostics if needed
+        if self.sys_config.diagnostics is not None and (
+            self.sys_dbus.agent.diagnostics != self.sys_config.diagnostics
+        ):
+            self.sys_dbus.agent.diagnostics = self.sys_config.diagnostics
+
         # Evaluate the system
         await self.sys_resolution.evaluate.evaluate_system()
 

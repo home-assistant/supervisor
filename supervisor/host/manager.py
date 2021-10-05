@@ -111,12 +111,6 @@ class HostManager(CoreSysAttributes):
         with suppress(PulseAudioError):
             await self.sound.update()
 
-        # Set OS Agent diagnostics if needed
-        if self.sys_config.diagnostics is not None and (
-            self.sys_dbus.agent.diagnostics != self.sys_config.diagnostics
-        ):
-            self.sys_dbus.agent.diagnostics = self.sys_config.diagnostics
-
         _LOGGER.info("Host information reload completed")
         self.supported_features.cache_clear()  # pylint: disable=no-member
 
