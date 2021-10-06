@@ -97,8 +97,9 @@ class PluginMulticast(PluginBase):
         try:
             await self.instance.update(version, image=self.sys_updater.image_multicast)
         except DockerError as err:
-            _LOGGER.error("Multicast update failed")
-            raise MulticastUpdateError() from err
+            raise MulticastUpdateError(
+                "Multicast update failed", _LOGGER.error
+            ) from err
         else:
             self.version = version
             self.image = self.sys_updater.image_multicast
@@ -117,8 +118,7 @@ class PluginMulticast(PluginBase):
         try:
             await self.instance.restart()
         except DockerError as err:
-            _LOGGER.error("Can't start Multicast plugin")
-            raise MulticastError() from err
+            raise MulticastError("Can't start Multicast plugin", _LOGGER.error) from err
 
     async def start(self) -> None:
         """Run Multicast."""
@@ -126,8 +126,7 @@ class PluginMulticast(PluginBase):
         try:
             await self.instance.run()
         except DockerError as err:
-            _LOGGER.error("Can't start Multicast plugin")
-            raise MulticastError() from err
+            raise MulticastError("Can't start Multicast plugin", _LOGGER.error) from err
 
     async def stop(self) -> None:
         """Stop Multicast."""
@@ -135,8 +134,7 @@ class PluginMulticast(PluginBase):
         try:
             await self.instance.stop()
         except DockerError as err:
-            _LOGGER.error("Can't stop Multicast plugin")
-            raise MulticastError() from err
+            raise MulticastError("Can't stop Multicast plugin", _LOGGER.error) from err
 
     async def stats(self) -> DockerStats:
         """Return stats of Multicast."""
