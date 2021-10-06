@@ -176,8 +176,9 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
     async def apply_suggestion(self, suggestion: Suggestion) -> None:
         """Apply suggested action."""
         if suggestion not in self._suggestions:
-            _LOGGER.warning("Suggestion %s is not valid", suggestion.uuid)
-            raise ResolutionError()
+            raise ResolutionError(
+                f"Suggestion {suggestion.uuid} is not valid", _LOGGER.warning
+            )
 
         await self.fixup.apply_fixup(suggestion)
         await self.healthcheck()
@@ -185,20 +186,21 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
     def dismiss_suggestion(self, suggestion: Suggestion) -> None:
         """Dismiss suggested action."""
         if suggestion not in self._suggestions:
-            _LOGGER.warning("The UUID %s is not valid suggestion", suggestion.uuid)
-            raise ResolutionError()
+            raise ResolutionError(
+                f"The UUID {suggestion.uuid} is not valid suggestion", _LOGGER.warning
+            )
         self._suggestions.remove(suggestion)
 
     def dismiss_issue(self, issue: Issue) -> None:
         """Dismiss suggested action."""
         if issue not in self._issues:
-            _LOGGER.warning("The UUID %s is not a valid issue", issue.uuid)
-            raise ResolutionError()
+            raise ResolutionError(
+                f"The UUID {issue.uuid} is not a valid issue", _LOGGER.warning
+            )
         self._issues.remove(issue)
 
     def dismiss_unsupported(self, reason: Issue) -> None:
         """Dismiss a reason for unsupported."""
         if reason not in self._unsupported:
-            _LOGGER.warning("The reason %s is not active", reason)
-            raise ResolutionError()
+            raise ResolutionError(f"The reason {reason} is not active", _LOGGER.warning)
         self._unsupported.remove(reason)
