@@ -120,9 +120,7 @@ class InfoCenter(CoreSysAttributes):
         try:
             stdout, _ = await proc.communicate()
         except OSError as err:
-            raise HostError(
-                f"Can't read kernel log: {err}", _LOGGER.error
-            ) from err
+            raise HostError(f"Can't read kernel log: {err}", _LOGGER.error) from err
 
         return stdout
 
