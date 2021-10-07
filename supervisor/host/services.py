@@ -31,7 +31,7 @@ class ServiceManager(CoreSysAttributes):
             )
 
         if unit and not self.exists(unit):
-            raise HostServiceError(f"Unit {unit} not found", _LOGGER.error)
+            raise HostServiceError(f"Unit '{unit}' not found", _LOGGER.error)
 
     def start(self, unit):
         """Start a service on host."""
