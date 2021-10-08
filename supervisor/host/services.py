@@ -27,7 +27,7 @@ class ServiceManager(CoreSysAttributes):
         """Check available dbus connection."""
         if not self.sys_dbus.systemd.is_connected:
             raise HostNotSupportedError(
-                f"No systemd D-Bus connection available", _LOGGER.error
+                "No systemd D-Bus connection available", _LOGGER.error
             )
 
         if unit and not self.exists(unit):
