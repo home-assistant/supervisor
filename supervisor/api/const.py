@@ -2,8 +2,8 @@
 
 ATTR_AGENT_VERSION = "agent_version"
 ATTR_BOOT_TIMESTAMP = "boot_timestamp"
+ATTR_DATA_DISK = "data_disk"
 ATTR_DEVICE = "device"
-ATTR_DISK_DATA = "disk_data"
 ATTR_DT_SYNCHRONIZED = "dt_synchronized"
 ATTR_DT_UTC = "dt_utc"
 ATTR_STARTUP_TIME = "startup_time"

@@ -112,7 +112,6 @@ class Repository(CoreSysAttributes):
     async def remove(self) -> None:
         """Remove add-on repository."""
         if self.type != StoreType.GIT:
-            _LOGGER.error("Can't remove built-in repositories!")
-            raise StoreError()
+            raise StoreError("Can't remove built-in repositories!", _LOGGER.error)
 
         await self.git.remove()

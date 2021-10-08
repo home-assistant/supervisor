@@ -26,12 +26,12 @@ class ServiceManager(CoreSysAttributes):
     def _check_dbus(self, unit=None):
         """Check available dbus connection."""
         if not self.sys_dbus.systemd.is_connected:
-            _LOGGER.error("No systemd D-Bus connection available")
-            raise HostNotSupportedError()
+            raise HostNotSupportedError(
+                "No systemd D-Bus connection available", _LOGGER.error
+            )
 
         if unit and not self.exists(unit):
-            _LOGGER.error("Unit '%s' not found", unit)
-            raise HostServiceError()
+            raise HostServiceError(f"Unit '{unit}' not found", _LOGGER.error)
 
     def start(self, unit):
         """Start a service on host."""

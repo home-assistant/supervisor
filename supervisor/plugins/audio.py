@@ -125,8 +125,7 @@ class PluginAudio(PluginBase):
         try:
             await self.instance.update(version, image=self.sys_updater.image_audio)
         except DockerError as err:
-            _LOGGER.error("Audio update failed")
-            raise AudioUpdateError() from err
+            raise AudioUpdateError("Audio update failed", _LOGGER.error) from err
         else:
             self.version = version
             self.image = self.sys_updater.image_audio
@@ -145,8 +144,7 @@ class PluginAudio(PluginBase):
         try:
             await self.instance.restart()
         except DockerError as err:
-            _LOGGER.error("Can't start Audio plugin")
-            raise AudioError() from err
+            raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
 
     async def start(self) -> None:
         """Run CoreDNS."""
@@ -154,8 +152,7 @@ class PluginAudio(PluginBase):
         try:
             await self.instance.run()
         except DockerError as err:
-            _LOGGER.error("Can't start Audio plugin")
-            raise AudioError() from err
+            raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
@@ -163,8 +160,7 @@ class PluginAudio(PluginBase):
         try:
             await self.instance.stop()
         except DockerError as err:
-            _LOGGER.error("Can't stop Audio plugin")
-            raise AudioError() from err
+            raise AudioError("Can't stop Audio plugin", _LOGGER.error) from err
 
     async def stats(self) -> DockerStats:
         """Return stats of CoreDNS."""

@@ -111,8 +111,9 @@ class NetworkManager(CoreSysAttributes):
         except DBusError:
             _LOGGER.warning("Can't update network information!")
         except DBusNotConnectedError as err:
-            _LOGGER.error("No network D-Bus connection available")
-            raise HostNotSupportedError() from err
+            raise HostNotSupportedError(
+                "No network D-Bus connection available", _LOGGER.error
+            ) from err
 
         await self.check_connectivity()
 
@@ -139,8 +140,9 @@ class NetworkManager(CoreSysAttributes):
                     inet.settings.object_path, inet.object_path
                 )
             except DBusError as err:
-                _LOGGER.error("Can't update config on %s: %s", interface.name, err)
-                raise HostNetworkError() from err
+                raise HostNetworkError(
+                    f"Can't update config on {interface.name}: {err}", _LOGGER.error
+                ) from err
 
         # Create new configuration and activate interface
         elif inet and interface.enabled:
@@ -151,18 +153,19 @@ class NetworkManager(CoreSysAttributes):
                     settings, inet.object_path
                 )
             except DBusError as err:
-                _LOGGER.error(
-                    "Can't create config and activate %s: %s", interface.name, err
-                )
-                raise HostNetworkError() from err
+                raise HostNetworkError(
+                    f"Can't create config and activate {interface.name}: {err}",
+                    _LOGGER.error,
+                ) from err
 
         # Remove config from interface
         elif inet and inet.settings and not interface.enabled:
             try:
                 await inet.settings.delete()
             except DBusError as err:
-                _LOGGER.error("Can't disable interface %s: %s", interface.name, err)
-                raise HostNetworkError() from err
+                raise HostNetworkError(
+                    f"Can't disable interface {interface.name}: {err}", _LOGGER.error
+                ) from err
 
         # Create new interface (like vlan)
         elif not inet:
@@ -171,11 +174,13 @@ class NetworkManager(CoreSysAttributes):
             try:
                 await self.sys_dbus.network.settings.add_connection(settings)
             except DBusError as err:
-                _LOGGER.error("Can't create new interface: %s", err)
-                raise HostNetworkError() from err
+                raise HostNetworkError(
+                    f"Can't create new interface: {err}", _LOGGER.error
+                ) from err
         else:
-            _LOGGER.warning("Requested Network interface update is not possible")
-            raise HostNetworkError()
+            raise HostNetworkError(
+                "Requested Network interface update is not possible", _LOGGER.warning
+            )
 
         await self.sys_dbus.network.dbus.wait_signal(
             DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED
@@ -187,8 +192,9 @@ class NetworkManager(CoreSysAttributes):
         inet = self.sys_dbus.network.interfaces.get(interface.name)
 
         if inet.type != DeviceType.WIRELESS:
-            _LOGGER.error("Can only scan with wireless card - %s", interface.name)
-            raise HostNotSupportedError()
+            raise HostNotSupportedError(
+                f"Can only scan with wireless card - {interface.name}", _LOGGER.error
+            )
 
         # Request Scan
         try:
