@@ -77,8 +77,9 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             docker_container.image.tag(self.image, tag=str(self.version))
             docker_container.image.tag(self.image, tag="latest")
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Can't retag Supervisor version: %s", err)
-            raise DockerError() from err
+            raise DockerError(
+                f"Can't retag Supervisor version: {err}", _LOGGER.error
+            ) from err
 
     def update_start_tag(self, image: str, version: AwesomeVersion) -> Awaitable[None]:
         """Update start tag to new version."""
@@ -105,5 +106,4 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
                 docker_image.tag(start_image, version.string)
 
         except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Can't fix start tag: %s", err)
-            raise DockerError() from err
+            raise DockerError(f"Can't fix start tag: {err}", _LOGGER.error) from err
