@@ -104,8 +104,9 @@ class PluginObserver(PluginBase):
         try:
             await self.instance.update(version, image=self.sys_updater.image_observer)
         except DockerError as err:
-            _LOGGER.error("HA observer update failed")
-            raise ObserverUpdateError() from err
+            raise ObserverUpdateError(
+                "HA observer update failed", _LOGGER.error
+            ) from err
         else:
             self.version = version
             self.image = self.sys_updater.image_observer
@@ -130,8 +131,7 @@ class PluginObserver(PluginBase):
         try:
             await self.instance.run()
         except DockerError as err:
-            _LOGGER.error("Can't start observer plugin")
-            raise ObserverError() from err
+            raise ObserverError("Can't start observer plugin", _LOGGER.error) from err
 
     async def stats(self) -> DockerStats:
         """Return stats of observer."""
