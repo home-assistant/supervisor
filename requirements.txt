@@ -13,7 +13,7 @@ debugpy==1.4.3
 deepmerge==0.3.0
 docker==5.0.3
 gitpython==3.1.24
-jinja2==3.0.1
+jinja2==3.0.2
 pulsectl==21.9.1
 pyudev==0.22.0
 ruamel.yaml==0.15.100
