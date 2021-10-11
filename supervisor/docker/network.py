@@ -39,7 +39,7 @@ class DockerNetwork:
             except docker.errors.NotFound:
                 _LOGGER.warning("Docker network is corrupt! %s", cid)
             except (docker.errors.DockerException, requests.RequestException) as err:
-                _LOGGER.error(f"Unknown error with container lookup {err}")
+                _LOGGER.error("Unknown error with container lookup %s", err)
 
         return containers
 
