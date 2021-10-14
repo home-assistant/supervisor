@@ -22,9 +22,9 @@ DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED = (
 DBUS_NAME_RAUC = "de.pengutronix.rauc"
 DBUS_NAME_RAUC_INSTALLER = "de.pengutronix.rauc.Installer"
 DBUS_NAME_RAUC_INSTALLER_COMPLETED = "de.pengutronix.rauc.Installer.Completed"
-DBUS_NAME_ROOT = ""
 DBUS_NAME_SETTINGS_CONNECTION = "org.freedesktop.NetworkManager.Settings.Connection"
 DBUS_NAME_SYSTEMD = "org.freedesktop.systemd1"
+DBUS_NAME_SYSTEMD_MANAGER = "org.freedesktop.systemd1.Manager"
 DBUS_NAME_TIMEDATE = "org.freedesktop.timedate1"
 
 
