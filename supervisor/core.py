@@ -247,9 +247,13 @@ class Core(CoreSysAttributes):
                 self.sys_create_task(self.sys_homeassistant.core.install())
 
             # Upate Host/Deivce information
-            self.sys_create_task(self.sys_host.reload())
-            self.sys_create_task(self.sys_updater.reload())
-            self.sys_create_task(self.sys_resolution.healthcheck())
+            t1 = self.sys_create_task(self.sys_host.reload())
+            t2 = self.sys_create_task(self.sys_updater.reload())
+            t3 = self.sys_create_task(self.sys_resolution.healthcheck())
+
+            await t1
+            await t2
+            await t3
 
             self.state = CoreState.RUNNING
             self.sys_homeassistant.websocket.supervisor_update_event("supervisor", {})
