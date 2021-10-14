@@ -16,7 +16,7 @@ RUN \
         eudev \
         eudev-libs \
         git \
-        glib \
+        dbus-libs \
         libffi \
         libpulse \
         musl \
