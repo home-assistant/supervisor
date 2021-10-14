@@ -44,7 +44,7 @@ class NetworkWirelessAP(DBusInterfaceProxy):
     @property
     def strength(self) -> int:
         """Return details about mac address."""
-        return int(self.properties[DBUS_ATTR_STRENGTH][0])
+        return int(self.properties[DBUS_ATTR_STRENGTH])
 
     async def connect(self) -> None:
         """Get connection information."""
