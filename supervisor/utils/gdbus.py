@@ -10,6 +10,8 @@ from signal import SIGINT
 from typing import Any
 import xml.etree.ElementTree as ET
 
+import dbussy
+from dbussy import DBUS
 import sentry_sdk
 
 from . import clean_env
@@ -71,6 +73,22 @@ DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
 DBUS_METHOD_SET: str = "org.freedesktop.DBus.Properties.Set"
 
 
+def _remove_dbus_signature(data: Any) -> Any:
+    if isinstance(data, tuple) and isinstance(data[0], dbussy.DBUS.Signature):
+        return _remove_dbus_signature(data[1])
+    elif isinstance(data, dict):
+        for k in data:
+            data[k] = _remove_dbus_signature(data[k])
+        return data
+    elif isinstance(data, list):
+        new_list = []
+        for item in data:
+            new_list.append(_remove_dbus_signature(item))
+        return new_list
+    else:
+        return data
+
+
 def _convert_bytes(value: str) -> str:
     """Convert bytes to string or byte-array."""
     data: bytes = bytes(int(char, 0) for char in value.split(", "))
@@ -106,16 +124,30 @@ class DBus:
         return self
 
     async def _init_proxy(self) -> None:
-        """Read interface data."""
-        # Wait for dbus object to be available after restart
-        command_wait = shlex.split(WAIT.format(bus=self.bus_name))
-        await self._send(command_wait, silent=True)
+        # """Read interface data."""
+        # # Wait for dbus object to be available after restart
+        # command_wait = shlex.split(WAIT.format(bus=self.bus_name))
+        # await self._send(command_wait, silent=True)
 
-        # Introspect object & Parse XML
-        command_introspect = shlex.split(
-            INTROSPECT.format(bus=self.bus_name, object=self.object_path)
+        # # Introspect object & Parse XML
+        # command_introspect = shlex.split(
+        #     INTROSPECT.format(bus=self.bus_name, object=self.object_path)
+        # )
+        # data = await self._send(command_introspect)
+
+        self._conn = await dbussy.Connection.bus_get_async(
+            DBUS.BUS_SYSTEM, private=False
         )
-        data = await self._send(command_introspect)
+
+        message = dbussy.Message.new_method_call(
+            destination=self.bus_name,
+            path=self.object_path,
+            iface=DBUS.INTERFACE_INTROSPECTABLE,
+            method="Introspect",
+        )
+
+        reply = await self._conn.send_await_reply(message, timeout=5000)
+        data = reply.expect_return_objects("s")[0]
         try:
             xml = ET.fromstring(data)
         except ET.ParseError as err:
@@ -201,7 +233,7 @@ class DBus:
 
         return gvariant.lstrip()
 
-    async def call_dbus(self, method: str, *args: list[Any]) -> str:
+    async def call_dbus_old(self, method: str, *args: list[Any]) -> str:
         """Call a dbus method."""
         command = shlex.split(
             CALL.format(
@@ -217,10 +249,52 @@ class DBus:
         data = await self._send(command)
 
         # Parse and return data
-        return self.parse_gvariant(data)
+        parsed_data = self.parse_gvariant(data)
+        _LOGGER.debug(parsed_data)
+        return parsed_data
+
+    async def call_dbus(self, method: str, *args: list[Any]) -> str:
+        """Call a dbus method."""
+
+        _LOGGER.debug(
+            "Call %s on %s (bus name %s)", method, self.object_path, self.bus_name
+        )
+        method_parts = method.split(".")
+        request = dbussy.Message.new_method_call(
+            destination=self.bus_name,
+            path=self.object_path,
+            iface=".".join(method_parts[:-1]),
+            method=method_parts[-1],
+        )
+
+        for arg in args:
+            _LOGGER.debug("...arg %s (type %s)", str(arg), type(arg))
+            if isinstance(arg, bool):
+                request.append_objects("b", arg)
+            elif isinstance(arg, int):
+                request.append_objects("i", arg)
+            elif isinstance(arg, float):
+                request.append_objects("d", arg)
+            elif isinstance(arg, str):
+                request.append_objects("s", arg)
+            else:
+                raise DBusFatalError(f"Type %s not supported")
+
+        reply = await self._conn.send_await_reply(request)
+
+        reply_object = _remove_dbus_signature(reply.all_objects)
+        _LOGGER.debug(reply_object)
+        return reply_object
 
     async def get_properties(self, interface: str) -> dict[str, Any]:
         """Read all properties from interface."""
+        _LOGGER.debug("Get all properties for interface %s.")
+        try:
+            dbussy.valid_interface(interface)
+        except dbussy.DBusError as err:
+            _LOGGER.error("Invalid interface %s", interface)
+            raise DBusFatalError() from err
+
         try:
             return (await self.call_dbus(DBUS_METHOD_GETALL, interface))[0]
         except IndexError as err:
