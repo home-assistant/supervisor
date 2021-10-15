@@ -49,6 +49,7 @@ class DBus:
         self.object_path: str = object_path
         self.methods: set[str] = set()
         self.signals: set[str] = set()
+        self._bus = None
 
     @staticmethod
     async def connect(bus_name: str, object_path: str) -> DBus:
@@ -132,12 +133,11 @@ class DBus:
                 "org.freedesktop.DBus.Error.UnknownMethod",
             ):
                 raise DBusInterfaceError(reply.body[0])
-            elif reply.error_name == "org.freedesktop.DBus.Error.Disconnected":
+            if reply.error_name == "org.freedesktop.DBus.Error.Disconnected":
                 raise DBusNotConnectedError()
             if reply.body and len(reply.body) > 0:
                 raise DBusFatalError(reply.body[0])
-            else:
-                raise DBusFatalError()
+            raise DBusFatalError()
 
         return _remove_dbus_signature(reply.body)
 
