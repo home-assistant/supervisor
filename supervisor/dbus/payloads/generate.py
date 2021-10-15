@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 def get_connection_from_interface(
     interface: Interface, name: str | None = None, uuid: str | None = None
 ) -> Any:
+    """Generate message argument for network interface update."""
+
     # Generate/Update ID/name
     if not name or not name.startswith("Supervisor"):
         name = f"Supervisor {interface.name}"
