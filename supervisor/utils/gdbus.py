@@ -87,16 +87,24 @@ class DBus:
         method_parts = method.split(".")
         signature = ""
 
+        arg_list = []
         for arg in args:
             _LOGGER.debug("...arg %s (type %s)", str(arg), type(arg))
             if isinstance(arg, bool):
                 signature += "b"
+                arg_list.append(arg)
             elif isinstance(arg, int):
                 signature += "i"
+                arg_list.append(arg)
             elif isinstance(arg, float):
                 signature += "d"
+                arg_list.append(arg)
             elif isinstance(arg, str):
                 signature += "s"
+                arg_list.append(arg)
+            elif isinstance(arg, tuple):
+                signature += arg[0]
+                arg_list.append(arg[1])
             else:
                 raise DBusFatalError(f"Type %s not supported")
 
@@ -107,7 +115,7 @@ class DBus:
                     interface=".".join(method_parts[:-1]),
                     member=method_parts[-1],
                     signature=signature,
-                    body=[*args]))
+                    body=arg_list))
 
         if reply.message_type == MessageType.ERROR:
             if reply.error_name in ("org.freedesktop.DBus.Error.ServiceUnknown", "org.freedesktop.DBus.Error.UnknownMethod"):

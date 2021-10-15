@@ -91,9 +91,9 @@ class NetworkSetting(DBusInterfaceProxy):
         return self.dbus.Settings.Connection.GetSettings()
 
     @dbus_connected
-    def update(self, settings: str) -> Awaitable[None]:
+    def update(self, settings: Any) -> Awaitable[None]:
         """Update connection settings."""
-        return self.dbus.Settings.Connection.Update(settings)
+        return self.dbus.Settings.Connection.Update(("a{sa{sv}}", settings))
 
     @dbus_connected
     def delete(self) -> Awaitable[None]:

@@ -77,16 +77,20 @@ class NetworkManager(DBusInterface):
     ) -> Awaitable[Any]:
         """Activate a connction on a device."""
         return self.dbus.ActivateConnection(
-            connection_object, device_object, DBUS_OBJECT_BASE
+            ("o", connection_object),
+            ("o", device_object),
+            ("o", DBUS_OBJECT_BASE)
         )
 
     @dbus_connected
     def add_and_activate_connection(
-        self, settings: str, device_object: str
+        self, settings: Any, device_object: str
     ) -> Awaitable[Any]:
         """Activate a connction on a device."""
         return self.dbus.AddAndActivateConnection(
-            settings, device_object, DBUS_OBJECT_BASE
+            ("a{sa{sv}}", settings),
+            ("o", device_object),
+            ("o", DBUS_OBJECT_BASE)
         )
 
     @dbus_connected
