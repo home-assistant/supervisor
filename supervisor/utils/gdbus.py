@@ -112,7 +112,7 @@ class DBus:
                 signature += arg[0]
                 arg_list.append(arg[1])
             else:
-                raise DBusFatalError(f"Type %s not supported")
+                raise DBusFatalError(f"Type {type(arg)} not supported")
 
         _LOGGER.debug("Call %s on %s", method, self.object_path)
         reply = await self._bus.call(
