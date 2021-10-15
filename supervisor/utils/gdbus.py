@@ -16,6 +16,7 @@ from ..exceptions import (
     DBusParseError,
 )
 
+
 def _remove_dbus_signature(data: Any) -> Any:
     if isinstance(data, Variant):
         return _remove_dbus_signature(data.value)
@@ -31,10 +32,12 @@ def _remove_dbus_signature(data: Any) -> Any:
     else:
         return data
 
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
 DBUS_METHOD_SET: str = "org.freedesktop.DBus.Properties.Set"
+
 
 class DBus:
     """DBus handler."""
@@ -63,7 +66,9 @@ class DBus:
         self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
 
         try:
-            introspection = await self._bus.introspect(self.bus_name, self.object_path, timeout=10)
+            introspection = await self._bus.introspect(
+                self.bus_name, self.object_path, timeout=10
+            )
         except InvalidIntrospectionError as err:
             _LOGGER.error("Can't parse introspect data: %s", err)
             raise DBusParseError() from err
@@ -110,15 +115,21 @@ class DBus:
 
         _LOGGER.debug("Call %s on %s", method, self.object_path)
         reply = await self._bus.call(
-            Message(destination=self.bus_name,
-                    path=self.object_path,
-                    interface=".".join(method_parts[:-1]),
-                    member=method_parts[-1],
-                    signature=signature,
-                    body=arg_list))
+            Message(
+                destination=self.bus_name,
+                path=self.object_path,
+                interface=".".join(method_parts[:-1]),
+                member=method_parts[-1],
+                signature=signature,
+                body=arg_list,
+            )
+        )
 
         if reply.message_type == MessageType.ERROR:
-            if reply.error_name in ("org.freedesktop.DBus.Error.ServiceUnknown", "org.freedesktop.DBus.Error.UnknownMethod"):
+            if reply.error_name in (
+                "org.freedesktop.DBus.Error.ServiceUnknown",
+                "org.freedesktop.DBus.Error.UnknownMethod",
+            ):
                 raise DBusInterfaceError(reply.body[0])
             elif reply.error_name == "org.freedesktop.DBus.Error.Disconnected":
                 raise DBusNotConnectedError()
@@ -155,12 +166,15 @@ class DBus:
 
         _LOGGER.debug("Wait for signal %s", signal)
         await self._bus.call(
-            Message(destination='org.freedesktop.DBus',
-                interface='org.freedesktop.DBus',
-                path='/org/freedesktop/DBus',
-                member='AddMatch',
-                signature='s',
-                body=[f"type='signal',interface={interface},member={member}"]))
+            Message(
+                destination="org.freedesktop.DBus",
+                interface="org.freedesktop.DBus",
+                path="/org/freedesktop/DBus",
+                member="AddMatch",
+                signature="s",
+                body=[f"type='signal',interface={interface},member={member}"],
+            )
+        )
 
         loop = asyncio.get_event_loop()
         future = loop.create_future()
@@ -169,7 +183,9 @@ class DBus:
             if msg.message_type != MessageType.SIGNAL:
                 return
 
-            _LOGGER.debug("Signal message received %s, %s %s", msg, msg.interface, msg.member)
+            _LOGGER.debug(
+                "Signal message received %s, %s %s", msg, msg.interface, msg.member
+            )
             if msg.interface != interface or msg.member != member:
                 return
 
@@ -184,7 +200,6 @@ class DBus:
         self._bus.remove_message_handler(message_handler)
 
         return result
-
 
     def __getattr__(self, name: str) -> DBusCallWrapper:
         """Map to dbus method."""
