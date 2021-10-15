@@ -17,7 +17,7 @@ DBUS_NAME_IP6CONFIG = "org.freedesktop.NetworkManager.IP6Config"
 DBUS_NAME_LOGIND = "org.freedesktop.login1"
 DBUS_NAME_NM = "org.freedesktop.NetworkManager"
 DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED = (
-    "org.freedesktop.NetworkManager.Connection.Active.PropertiesChanged"
+    "org.freedesktop.NetworkManager.Connection.Active.StateChanged"
 )
 DBUS_NAME_RAUC = "de.pengutronix.rauc"
 DBUS_NAME_RAUC_INSTALLER = "de.pengutronix.rauc.Installer"
