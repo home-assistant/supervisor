@@ -8,7 +8,8 @@ import re
 import shlex
 from signal import SIGINT
 from typing import Any
-import xml.etree.ElementTree as ET
+from dbus_next import Message, MessageType, BusType, InvalidIntrospectionError
+from dbus_next.aio import MessageBus
 
 import sentry_sdk
 
@@ -62,10 +63,8 @@ MAP_GDBUS_ERROR: dict[str, Any] = {
 }
 
 # Commands for dbus
-INTROSPECT: str = "gdbus introspect --system --dest {bus} --object-path {object} --xml"
 CALL: str = "gdbus call --system --dest {bus} --object-path {object} --timeout 10 --method {method} {args}"
 MONITOR: str = "gdbus monitor --system --dest {bus}"
-WAIT: str = "gdbus wait --system --activate {bus} --timeout 5 {bus}"
 
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
 DBUS_METHOD_SET: str = "org.freedesktop.DBus.Properties.Set"
@@ -108,33 +107,26 @@ class DBus:
     async def _init_proxy(self) -> None:
         """Read interface data."""
         # Wait for dbus object to be available after restart
-        command_wait = shlex.split(WAIT.format(bus=self.bus_name))
-        await self._send(command_wait, silent=True)
+        self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
 
-        # Introspect object & Parse XML
-        command_introspect = shlex.split(
-            INTROSPECT.format(bus=self.bus_name, object=self.object_path)
-        )
-        data = await self._send(command_introspect)
         try:
-            xml = ET.fromstring(data)
-        except ET.ParseError as err:
+            introspection = await self._bus.introspect(self.bus_name, self.object_path, timeout=10)
+        except InvalidIntrospectionError as err:
             _LOGGER.error("Can't parse introspect data: %s", err)
-            _LOGGER.debug("Introspect %s on %s", self.bus_name, self.object_path)
             raise DBusParseError() from err
 
         # Read available methods
-        for interface in xml.findall("./interface"):
-            interface_name = interface.get("name")
+        for interface in introspection.interfaces:
+            interface_name = interface.name
 
             # Methods
-            for method in interface.findall("./method"):
-                method_name = method.get("name")
+            for method in interface.methods:
+                method_name = method.name
                 self.methods.add(f"{interface_name}.{method_name}")
 
             # Signals
-            for signal in interface.findall("./signal"):
-                signal_name = signal.get("name")
+            for signal in interface.signals:
+                signal_name = signal.name
                 self.signals.add(f"{interface_name}.{signal_name}")
 
     @staticmethod
