@@ -9,8 +9,8 @@ from uuid import uuid4
 
 from aiohttp import web
 from awesomeversion import AwesomeVersion
+from dbus_next import introspection as intr
 import pytest
-from dbus_next import introspection as intr, ArgDirection, PropertyAccess, SignatureType
 
 from supervisor import config as su_config
 from supervisor.addons.addon import Addon
