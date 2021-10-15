@@ -9,6 +9,7 @@ import shlex
 from signal import SIGINT
 from typing import Any
 from dbus_next import Message, MessageType, BusType, InvalidIntrospectionError
+from dbus_next.signature import Variant
 from dbus_next.aio import MessageBus
 
 import sentry_sdk
@@ -22,6 +23,22 @@ from ..exceptions import (
     DBusParseError,
     DBusProgramError,
 )
+
+def _remove_dbus_signature(data: Any) -> Any:
+    if isinstance(data, Variant):
+        return _remove_dbus_signature(data.value)
+    elif isinstance(data, dict):
+        for k in data:
+            data[k] = _remove_dbus_signature(data[k])
+        return data
+    elif isinstance(data, list):
+        new_list = []
+        for item in data:
+            new_list.append(_remove_dbus_signature(item))
+        return new_list
+    else:
+        return data
+
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -177,39 +194,39 @@ class DBus:
             sentry_sdk.capture_exception(err)
             raise DBusParseError() from err
 
-    @staticmethod
-    def gvariant_args(args: list[Any]) -> str:
-        """Convert args into gvariant."""
-        gvariant = ""
-        for arg in args:
-            if isinstance(arg, bool):
-                gvariant += f" {str(arg).lower()}"
-            elif isinstance(arg, (int, float)):
-                gvariant += f" {arg}"
-            elif isinstance(arg, str):
-                gvariant += f' "{arg}"'
-            else:
-                gvariant += f" {arg!s}"
-
-        return gvariant.lstrip()
-
     async def call_dbus(self, method: str, *args: list[Any]) -> str:
         """Call a dbus method."""
-        command = shlex.split(
-            CALL.format(
-                bus=self.bus_name,
-                object=self.object_path,
-                method=method,
-                args=self.gvariant_args(args),
-            )
-        )
+        method_parts = method.split(".")
+        signature = ""
 
-        # Run command
+        for arg in args:
+            _LOGGER.debug("...arg %s (type %s)", str(arg), type(arg))
+            if isinstance(arg, bool):
+                signature += "b"
+            elif isinstance(arg, int):
+                signature += "i"
+            elif isinstance(arg, float):
+                signature += "d"
+            elif isinstance(arg, str):
+                signature += "s"
+            else:
+                raise DBusFatalError(f"Type %s not supported")
+
         _LOGGER.debug("Call %s on %s", method, self.object_path)
-        data = await self._send(command)
+        reply = await self._bus.call(
+            Message(destination=self.bus_name,
+                    path=self.object_path,
+                    interface=".".join(method_parts[:-1]),
+                    member=method_parts[-1],
+                    signature=signature,
+                    body=[*args]))
+
+        if reply.message_type == MessageType.ERROR:
+            raise DBusFatalError(reply.body[0])
 
         # Parse and return data
-        return self.parse_gvariant(data)
+        obj = _remove_dbus_signature(reply.body)
+        return obj
 
     async def get_properties(self, interface: str) -> dict[str, Any]:
         """Read all properties from interface."""
