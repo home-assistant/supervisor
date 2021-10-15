@@ -75,7 +75,7 @@ class Rauc(DBusInterface):
 
         Return a coroutine.
         """
-        return self.dbus.Installer.Install(raucb_file)
+        return self.dbus.Installer.Install(str(raucb_file))
 
     @dbus_connected
     def get_slot_status(self):
