@@ -25,11 +25,11 @@ def get_connection_from_interface(
         name = f"{name}.{interface.vlan.id}"
 
     if interface.type == "ethernet":
-        type = "802-3-ethernet"
+        iftype = "802-3-ethernet"
     elif interface.type == "wireless":
-        type = "802-11-wireless"
+        iftype = "802-11-wireless"
     else:
-        type = interface.type.value
+        iftype = interface.type.value
 
     # Generate UUID
     if not uuid:
@@ -38,7 +38,7 @@ def get_connection_from_interface(
     connection = {
         "id": Variant("s", name),
         "interface-name": Variant("s", interface.name),
-        "type": Variant("s", type),
+        "type": Variant("s", iftype),
         "uuid": Variant("s", uuid),
         "llmnr": Variant("i", 2),
         "mdns": Variant("i", 2),

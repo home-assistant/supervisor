@@ -185,7 +185,7 @@ class NetworkManager(CoreSysAttributes):
                 "Requested Network interface update is not possible", _LOGGER.warning
             )
 
-        # TODO: This signal is fired twice: Activating -> Activated. It seems we miss the first
+        # This signal is fired twice: Activating -> Activated. It seems we miss the first
         # "usually"...  We should filter by state and explicitly wait for the second.
         await self.sys_dbus.network.dbus.wait_signal(
             DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED
