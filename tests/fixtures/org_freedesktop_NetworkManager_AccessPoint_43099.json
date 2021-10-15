@@ -7,6 +7,6 @@
   "HwAddress": "E4:57:40:A9:D7:DE",
   "Mode": 2,
   "MaxBitrate": 195000,
-  "Strength": [47],
+  "Strength": 47,
   "LastSeen": 1398776
 }

@@ -62,19 +62,7 @@ class DBus:
         _LOGGER.debug("Connect to D-Bus: %s - %s", bus_name, object_path)
         return self
 
-    async def _init_proxy(self) -> None:
-        """Read interface data."""
-        # Wait for dbus object to be available after restart
-        self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
-
-        try:
-            introspection = await self._bus.introspect(
-                self.bus_name, self.object_path, timeout=10
-            )
-        except InvalidIntrospectionError as err:
-            _LOGGER.error("Can't parse introspect data: %s", err)
-            raise DBusParseError() from err
-
+    def _add_interfaces(self, introspection: Any):
         # Read available methods
         for interface in introspection.interfaces:
             interface_name = interface.name
@@ -88,6 +76,21 @@ class DBus:
             for signal in interface.signals:
                 signal_name = signal.name
                 self.signals.add(f"{interface_name}.{signal_name}")
+
+    async def _init_proxy(self) -> None:
+        """Read interface data."""
+        # Wait for dbus object to be available after restart
+        self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+
+        try:
+            introspection = await self._bus.introspect(
+                self.bus_name, self.object_path, timeout=10
+            )
+        except InvalidIntrospectionError as err:
+            _LOGGER.error("Can't parse introspect data: %s", err)
+            raise DBusParseError() from err
+
+        self._add_interfaces(introspection)
 
     async def call_dbus(self, method: str, *args: list[Any]) -> str:
         """Call a dbus method."""

@@ -1,9 +1,10 @@
 """Common test functions."""
 import json
 from pathlib import Path
+from typing import Any
 
 
-def load_json_fixture(filename: str) -> dict:
+def load_json_fixture(filename: str) -> Any:
     """Load a json fixture."""
     path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
     return json.loads(path.read_text(encoding="utf-8"))
