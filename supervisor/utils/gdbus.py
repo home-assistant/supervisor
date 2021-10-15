@@ -122,6 +122,9 @@ class DBus:
                 request.append_objects("d", arg)
             elif isinstance(arg, str):
                 request.append_objects("s", arg)
+            elif isinstance(arg, tuple):
+                # We consider the first element the signature if its a tuple
+                request.append_objects(arg[0], arg[1])
             else:
                 _LOGGER.warning("No explicit support for type %s, assuming string", type(arg))
                 request.append_objects("s", str(arg))
@@ -159,7 +162,7 @@ class DBus:
 
     async def wait_signal(self, signal):
         """Wait for single event."""
-        _LOGGER.debug("wait_signal")
+        _LOGGER.debug("Waiting for signal %s", signal)
         conn = await dbussy.Connection.bus_get_async(DBUS.BUS_SYSTEM, private=True)
         conn.enable_receive_message({DBUS.MESSAGE_TYPE_SIGNAL})
 

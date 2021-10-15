@@ -26,9 +26,9 @@ class NetworkManagerSettings(DBusInterface):
             )
 
     @dbus_connected
-    def add_connection(self, settings: str) -> Awaitable[Any]:
+    def add_connection(self, settings: Any) -> Awaitable[Any]:
         """Add new connection."""
-        return self.dbus.Settings.AddConnection(settings)
+        return self.dbus.Settings.AddConnection(("a{sa{sv}}", settings))
 
     @dbus_connected
     def reload_connections(self) -> Awaitable[Any]:

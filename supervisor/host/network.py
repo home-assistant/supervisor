@@ -19,7 +19,7 @@ from ..dbus.const import (
 from ..dbus.network.accesspoint import NetworkWirelessAP
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
-from ..dbus.payloads.generate import interface_update_payload
+from ..dbus.payloads.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
@@ -128,7 +128,8 @@ class NetworkManager(CoreSysAttributes):
             and inet.settings.connection.interface_name == interface.name
             and interface.enabled
         ):
-            settings = interface_update_payload(
+            _LOGGER.debug("Updating existing configuration for %s", interface.name)
+            settings = get_connection_from_interface(
                 interface,
                 name=inet.settings.connection.id,
                 uuid=inet.settings.connection.uuid,
@@ -146,12 +147,14 @@ class NetworkManager(CoreSysAttributes):
 
         # Create new configuration and activate interface
         elif inet and interface.enabled:
-            settings = interface_update_payload(interface)
+            _LOGGER.debug("Create new configuration for %s", interface.name)
+            settings = get_connection_from_interface(interface)
 
             try:
-                await self.sys_dbus.network.add_and_activate_connection(
+                new_con = await self.sys_dbus.network.add_and_activate_connection(
                     settings, inet.object_path
                 )
+                _LOGGER.debug("add_and_activate_connection returns %s", new_con)
             except DBusError as err:
                 raise HostNetworkError(
                     f"Can't create config and activate {interface.name}: {err}",
@@ -169,7 +172,7 @@ class NetworkManager(CoreSysAttributes):
 
         # Create new interface (like vlan)
         elif not inet:
-            settings = interface_update_payload(interface)
+            settings = get_connection_from_interface(interface)
 
             try:
                 await self.sys_dbus.network.settings.add_connection(settings)
@@ -182,9 +185,12 @@ class NetworkManager(CoreSysAttributes):
                 "Requested Network interface update is not possible", _LOGGER.warning
             )
 
+        # TODO: This signal is fired twice: Activating -> Activated. It seems we miss the first
+        # "usually"...  We should filter by state and explicitly wait for the second.
         await self.sys_dbus.network.dbus.wait_signal(
             DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED
         )
+
         await self.update()
 
     async def scan_wifi(self, interface: Interface) -> list[AccessPoint]:
