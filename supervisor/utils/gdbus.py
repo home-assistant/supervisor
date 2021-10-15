@@ -4,9 +4,10 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
-from dbus_next import Message, MessageType, BusType, InvalidIntrospectionError
-from dbus_next.signature import Variant
+
+from dbus_next import BusType, InvalidIntrospectionError, Message, MessageType
 from dbus_next.aio import MessageBus
+from dbus_next.signature import Variant
 
 from ..exceptions import (
     DBusFatalError,
