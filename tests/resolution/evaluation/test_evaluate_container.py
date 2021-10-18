@@ -6,6 +6,7 @@ from docker.errors import DockerException
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.resolution.const import UnhealthyReason
 from supervisor.resolution.evaluations.container import EvaluateContainer
 
 
@@ -31,22 +32,20 @@ async def test_evaluation(coresys: CoreSys):
     coresys.core.state = CoreState.RUNNING
 
     assert container.reason not in coresys.resolution.unsupported
+    assert UnhealthyReason.DOCKER not in coresys.resolution.unhealthy
 
     with patch(
         "supervisor.resolution.evaluations.container.EvaluateContainer._get_images",
         return_value=[
-            MagicMock(
-                tags=[
-                    "armhfbuild/watchtower:latest",
-                    "concerco/watchtowerv6:10.0.2",
-                    "containrrr/watchtower:1.1",
-                    "pyouroboros/ouroboros:1.4.3",
-                ]
-            )
+            "armhfbuild/watchtower:latest",
+            "concerco/watchtowerv6:10.0.2",
+            "containrrr/watchtower:1.1",
+            "pyouroboros/ouroboros:1.4.3",
         ],
     ):
         await container()
         assert container.reason in coresys.resolution.unsupported
+        assert UnhealthyReason.DOCKER in coresys.resolution.unhealthy
 
     assert coresys.resolution.evaluate.cached_images == {
         "armhfbuild/watchtower:latest",
@@ -57,7 +56,7 @@ async def test_evaluation(coresys: CoreSys):
 
     with patch(
         "supervisor.resolution.evaluations.container.EvaluateContainer._get_images",
-        return_value=[MagicMock(tags=[])],
+        return_value=[],
     ):
         await container()
         assert container.reason not in coresys.resolution.unsupported
