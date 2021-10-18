@@ -258,10 +258,6 @@ def check_environment() -> None:
     if not SOCKET_DOCKER.is_socket():
         _LOGGER.critical("Can't find Docker socket!")
 
-    # check socat exec
-    if not shutil.which("gdbus"):
-        _LOGGER.critical("Can't find gdbus!")
-
 
 def reg_signal(loop, coresys: CoreSys) -> None:
     """Register SIGTERM and SIGKILL to stop system."""
