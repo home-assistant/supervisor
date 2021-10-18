@@ -3,11 +3,10 @@ import pytest
 
 from supervisor.dbus.const import DeviceType
 from supervisor.dbus.network import NetworkManager
+from supervisor.dbus.network.setting.generate import get_connection_from_interface
 from supervisor.host.network import Interface
 
 from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
-
-from supervisor.dbus.network.setting.generate import get_connection_from_interface
 
 
 @pytest.mark.asyncio

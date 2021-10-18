@@ -7,11 +7,6 @@ from uuid import uuid4
 
 from dbus_next.signature import Variant
 
-from ....host.const import InterfaceMethod, InterfaceType
-
-if TYPE_CHECKING:
-    from ....host.network import Interface
-
 from . import (
     ATTR_ASSIGNED_MAC,
     CONF_ATTR_802_ETHERNET,
@@ -22,6 +17,10 @@ from . import (
     CONF_ATTR_IPV6,
     CONF_ATTR_VLAN,
 )
+from ....host.const import InterfaceMethod, InterfaceType
+
+if TYPE_CHECKING:
+    from ....host.network import Interface
 
 
 def get_connection_from_interface(
