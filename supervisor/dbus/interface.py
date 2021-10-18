@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Any, Optional
 
-from ..utils.gdbus import DBus
+from ..utils.dbus import DBus
 
 
 def dbus_property(func):

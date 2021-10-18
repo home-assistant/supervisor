@@ -20,7 +20,7 @@ async def test_dbus_systemd_info(coresys: CoreSys):
             f"{DBUS_NAME_SYSTEMD.replace('.', '_')}_properties.json"
         )
 
-    with patch("supervisor.utils.gdbus.DBus.get_properties", new=mock_get_properties):
+    with patch("supervisor.utils.dbus.DBus.get_properties", new=mock_get_properties):
         await coresys.dbus.systemd.update()
 
     assert coresys.dbus.systemd.boot_timestamp == 1632236713344227

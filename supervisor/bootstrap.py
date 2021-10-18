@@ -2,7 +2,6 @@
 import logging
 import os
 from pathlib import Path
-import shutil
 import signal
 
 from colorlog import ColoredFormatter
@@ -257,10 +256,6 @@ def check_environment() -> None:
     # check docker socket
     if not SOCKET_DOCKER.is_socket():
         _LOGGER.critical("Can't find Docker socket!")
-
-    # check socat exec
-    if not shutil.which("gdbus"):
-        _LOGGER.critical("Can't find gdbus!")
 
 
 def reg_signal(loop, coresys: CoreSys) -> None:

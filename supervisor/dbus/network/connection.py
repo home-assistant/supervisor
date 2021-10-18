@@ -3,7 +3,7 @@ from ipaddress import ip_address, ip_interface
 from typing import Optional
 
 from ...const import ATTR_ADDRESS, ATTR_PREFIX
-from ...utils.gdbus import DBus
+from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ADDRESS_DATA,
     DBUS_ATTR_CONNECTION,

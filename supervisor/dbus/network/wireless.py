@@ -1,7 +1,7 @@
 """Connection object for Network Manager."""
 from typing import Any, Awaitable, Optional
 
-from ...utils.gdbus import DBus
+from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_ACCESSPOINT,
     DBUS_NAME_DEVICE_WIRELESS,
@@ -31,7 +31,7 @@ class NetworkWireless(DBusInterfaceProxy):
     @dbus_connected
     def request_scan(self) -> Awaitable[None]:
         """Request a new AP scan."""
-        return self.dbus.Device.Wireless.RequestScan("[]")
+        return self.dbus.Device.Wireless.RequestScan(("a{sv}", {}))
 
     @dbus_connected
     def get_all_accesspoints(self) -> Awaitable[Any]:

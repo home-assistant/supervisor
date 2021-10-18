@@ -1,6 +1,6 @@
 """Connection object for Network Manager."""
 
-from ...utils.gdbus import DBus
+from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_FREQUENCY,
     DBUS_ATTR_HWADDRESS,
@@ -44,7 +44,7 @@ class NetworkWirelessAP(DBusInterfaceProxy):
     @property
     def strength(self) -> int:
         """Return details about mac address."""
-        return int(self.properties[DBUS_ATTR_STRENGTH][0])
+        return int(self.properties[DBUS_ATTR_STRENGTH])
 
     async def connect(self) -> None:
         """Get connection information."""

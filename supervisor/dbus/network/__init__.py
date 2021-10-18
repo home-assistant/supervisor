@@ -7,11 +7,11 @@ import sentry_sdk
 
 from ...exceptions import (
     DBusError,
+    DBusFatalError,
     DBusInterfaceError,
-    DBusProgramError,
     HostNotSupportedError,
 )
-from ...utils.gdbus import DBus
+from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CONNECTION_ENABLED,
     DBUS_ATTR_DEVICES,
@@ -77,16 +77,16 @@ class NetworkManager(DBusInterface):
     ) -> Awaitable[Any]:
         """Activate a connction on a device."""
         return self.dbus.ActivateConnection(
-            connection_object, device_object, DBUS_OBJECT_BASE
+            ("o", connection_object), ("o", device_object), ("o", DBUS_OBJECT_BASE)
         )
 
     @dbus_connected
     def add_and_activate_connection(
-        self, settings: str, device_object: str
+        self, settings: Any, device_object: str
     ) -> Awaitable[Any]:
         """Activate a connction on a device."""
         return self.dbus.AddAndActivateConnection(
-            settings, device_object, DBUS_OBJECT_BASE
+            ("a{sa{sv}}", settings), ("o", device_object), ("o", DBUS_OBJECT_BASE)
         )
 
     @dbus_connected
@@ -145,7 +145,7 @@ class NetworkManager(DBusInterface):
             # Connect to interface
             try:
                 await interface.connect()
-            except DBusProgramError as err:
+            except DBusFatalError as err:
                 _LOGGER.warning("Can't process %s: %s", device, err)
                 continue
             except Exception as err:  # pylint: disable=broad-except
