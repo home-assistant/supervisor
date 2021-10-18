@@ -3,7 +3,7 @@ import logging
 from typing import Any
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.gdbus import DBus
+from ..utils.dbus_next import DBus
 from .const import (
     DBUS_ATTR_FINISH_TIMESTAMP,
     DBUS_ATTR_FIRMWARE_TIMESTAMP_MONOTONIC,

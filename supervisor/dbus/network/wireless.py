@@ -1,7 +1,7 @@
 """Connection object for Network Manager."""
 from typing import Any, Awaitable, Optional
 
-from ...utils.gdbus import DBus
+from ...utils.dbus_next import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_ACCESSPOINT,
     DBUS_NAME_DEVICE_WIRELESS,

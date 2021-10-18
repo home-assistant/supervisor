@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Any
 
-from ...utils.gdbus import DBus
+from ...utils.dbus_next import DBus
 from ..const import (
     DBUS_ATTR_CURRENT_DEVICE,
     DBUS_NAME_HAOS,

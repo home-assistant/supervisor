@@ -11,7 +11,7 @@ from ...const import (
     ATTR_VPN,
 )
 from ...exceptions import DBusError, DBusInterfaceError
-from ...utils.gdbus import DBus
+from ...utils.dbus_next import DBus
 from ..const import (
     DBUS_ATTR_CONFIGURATION,
     DBUS_ATTR_MODE,

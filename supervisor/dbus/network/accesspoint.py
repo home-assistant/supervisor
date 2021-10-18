@@ -1,6 +1,6 @@
 """Connection object for Network Manager."""
 
-from ...utils.gdbus import DBus
+from ...utils.dbus_next import DBus
 from ..const import (
     DBUS_ATTR_FREQUENCY,
     DBUS_ATTR_HWADDRESS,
