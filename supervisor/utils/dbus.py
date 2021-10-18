@@ -125,7 +125,7 @@ class DBus:
         """Call a dbus method."""
         method_parts = method.split(".")
 
-        signature, arg_list = self._prepare_args(args)
+        signature, arg_list = self._prepare_args(*args)
 
         _LOGGER.debug("Call %s on %s", method, self.object_path)
         reply = await self._bus.call(
