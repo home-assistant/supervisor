@@ -11,7 +11,7 @@ jobs:
     name: Release Drafter
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2.3.5
         with:
           fetch-depth: 0
 
