@@ -3,7 +3,7 @@ import logging
 from typing import Optional
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.gdbus import DBus
+from ..utils.dbus import DBus
 from .const import (
     DBUS_ATTR_BOOT_SLOT,
     DBUS_ATTR_COMPATIBLE,
@@ -75,7 +75,7 @@ class Rauc(DBusInterface):
 
         Return a coroutine.
         """
-        return self.dbus.Installer.Install(raucb_file)
+        return self.dbus.Installer.Install(str(raucb_file))
 
     @dbus_connected
     def get_slot_status(self):

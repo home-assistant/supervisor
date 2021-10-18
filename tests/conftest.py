@@ -3,11 +3,13 @@ from functools import partial
 from inspect import unwrap
 from pathlib import Path
 import re
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp import web
 from awesomeversion import AwesomeVersion
+from dbus_next import introspection as intr
 import pytest
 
 from supervisor import config as su_config
@@ -20,7 +22,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
-from supervisor.utils.gdbus import DBus
+from supervisor.utils.dbus import DBus
 
 from .common import exists_fixture, load_fixture, load_json_fixture
 from .const import TEST_ADDON_SLUG
@@ -80,35 +82,38 @@ def dbus() -> DBus:
     async def mock_wait_signal(_, __):
         pass
 
-    async def mock_send(_, command, silent=False):
-        if silent:
-            return ""
+    async def mock_init_proxy(self):
 
-        fixture = command[6].replace("/", "_")[1:]
-        if command[1] == "introspect":
-            filetype = "xml"
+        filetype = "xml"
+        fixture = self.object_path.replace("/", "_")[1:]
+        if not exists_fixture(f"{fixture}.{filetype}"):
+            fixture = re.sub(r"_[0-9]+$", "", fixture)
 
-            if not exists_fixture(f"{fixture}.{filetype}"):
-                fixture = re.sub(r"_[0-9]+$", "", fixture)
+            # special case
+            if exists_fixture(f"{fixture}_~.{filetype}"):
+                fixture = f"{fixture}_~"
 
-                # special case
-                if exists_fixture(f"{fixture}_~.{filetype}"):
-                    fixture = f"{fixture}_~"
-        else:
-            fixture = f"{fixture}-{command[10].split('.')[-1]}"
-            filetype = "fixture"
+        # Use dbus-next infrastructure to parse introspection xml
+        node = intr.Node.parse(load_fixture(f"{fixture}.{filetype}"))
+        self._add_interfaces(node)
 
-            dbus_commands.append(fixture)
+    async def mock_call_dbus(self, method: str, *args: list[Any]):
 
-        return load_fixture(f"{fixture}.{filetype}")
+        fixture = self.object_path.replace("/", "_")[1:]
+        fixture = f"{fixture}-{method.split('.')[-1]}"
+        dbus_commands.append(fixture)
 
-    with patch("supervisor.utils.gdbus.DBus._send", new=mock_send), patch(
-        "supervisor.utils.gdbus.DBus.wait_signal", new=mock_wait_signal
+        return load_json_fixture(f"{fixture}.json")
+
+    with patch("supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus), patch(
+        "supervisor.utils.dbus.DBus.wait_signal", new=mock_wait_signal
     ), patch(
         "supervisor.dbus.interface.DBusInterface.is_connected",
         return_value=True,
     ), patch(
-        "supervisor.utils.gdbus.DBus.get_properties", new=mock_get_properties
+        "supervisor.utils.dbus.DBus.get_properties", new=mock_get_properties
+    ), patch(
+        "supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy
     ):
         yield dbus_commands
 

@@ -1,6 +1,6 @@
 """System object for OS-Agent."""
 
-from ...utils.gdbus import DBus
+from ...utils.dbus import DBus
 from ..const import DBUS_NAME_HAOS, DBUS_OBJECT_HAOS_SYSTEM
 from ..interface import DBusInterface
 from ..utils import dbus_connected

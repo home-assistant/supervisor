@@ -1,12 +1,13 @@
 """Connection object for Network Manager."""
+import logging
 from typing import Any, Awaitable, Optional
 
-from ...const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
-from ...utils.gdbus import DBus
-from ..const import DBUS_NAME_NM
-from ..interface import DBusInterfaceProxy
-from ..utils import dbus_connected
-from .configuration import (
+from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
+from ....utils.dbus import DBus
+from ...const import DBUS_NAME_NM
+from ...interface import DBusInterfaceProxy
+from ...utils import dbus_connected
+from ..configuration import (
     ConnectionProperties,
     EthernetProperties,
     IpProperties,
@@ -29,9 +30,11 @@ ATTR_TYPE = "type"
 ATTR_PARENT = "parent"
 ATTR_ASSIGNED_MAC = "assigned-mac-address"
 ATTR_POWERSAVE = "powersave"
-ATTR_AUTH_ALGO = "auth-algo"
+ATTR_AUTH_ALG = "auth-alg"
 ATTR_KEY_MGMT = "key-mgmt"
 ATTR_INTERFACE_NAME = "interface-name"
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class NetworkSetting(DBusInterfaceProxy):
@@ -91,9 +94,9 @@ class NetworkSetting(DBusInterfaceProxy):
         return self.dbus.Settings.Connection.GetSettings()
 
     @dbus_connected
-    def update(self, settings: str) -> Awaitable[None]:
+    def update(self, settings: Any) -> Awaitable[None]:
         """Update connection settings."""
-        return self.dbus.Settings.Connection.Update(settings)
+        return self.dbus.Settings.Connection.Update(("a{sa{sv}}", settings))
 
     @dbus_connected
     def delete(self) -> Awaitable[None]:
@@ -128,7 +131,7 @@ class NetworkSetting(DBusInterfaceProxy):
 
         if CONF_ATTR_802_WIRELESS_SECURITY in data:
             self._wireless_security = WirelessSecurityProperties(
-                data[CONF_ATTR_802_WIRELESS_SECURITY].get(ATTR_AUTH_ALGO),
+                data[CONF_ATTR_802_WIRELESS_SECURITY].get(ATTR_AUTH_ALG),
                 data[CONF_ATTR_802_WIRELESS_SECURITY].get(ATTR_KEY_MGMT),
                 data[CONF_ATTR_802_WIRELESS_SECURITY].get(ATTR_PSK),
             )
