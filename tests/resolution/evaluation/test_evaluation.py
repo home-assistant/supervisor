@@ -41,9 +41,6 @@ async def test_evaluation_setup(coresys: CoreSys):
         "supervisor.resolution.evaluations.operating_system.EvaluateOperatingSystem.evaluate",
         return_value=False,
     ) as operating_system, patch(
-        "supervisor.resolution.evaluations.container.EvaluateContainer.evaluate",
-        return_value=False,
-    ) as container, patch(
         "supervisor.resolution.evaluations.network_manager.EvaluateNetworkManager.evaluate",
         return_value=False,
     ) as network_manager, patch(
@@ -52,7 +49,6 @@ async def test_evaluation_setup(coresys: CoreSys):
     ) as systemd:
         await coresys.resolution.evaluate.evaluate_system()
         operating_system.assert_called_once()
-        container.assert_called_once()
         network_manager.assert_called_once()
         systemd.assert_called_once()
 
