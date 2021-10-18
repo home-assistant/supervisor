@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from dbus_next import BusType, InvalidIntrospectionError, Message, MessageType
 from dbus_next.aio import MessageBus
