@@ -122,8 +122,9 @@ class DockerNetwork:
         try:
             self.network.connect(container, aliases=alias, ipv4_address=ipv4_address)
         except docker.errors.APIError as err:
-            _LOGGER.error("Can't link container to hassio-net: %s", err)
-            raise DockerError() from err
+            raise DockerError(
+                f"Can't link container to hassio-net: {err}", _LOGGER.error
+            ) from err
 
     def detach_default_bridge(
         self, container: docker.models.containers.Container
@@ -140,8 +141,9 @@ class DockerNetwork:
             return
 
         except docker.errors.APIError as err:
-            _LOGGER.warning("Can't disconnect container from default: %s", err)
-            raise DockerError() from err
+            raise DockerError(
+                f"Can't disconnect container from default: {err}", _LOGGER.warning
+            ) from err
 
     def stale_cleanup(self, container_name: str):
         """Remove force a container from Network.
