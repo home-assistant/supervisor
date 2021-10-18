@@ -51,7 +51,7 @@ class EvaluateContainer(EvaluateBase):
     @property
     def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.SETUP, CoreState.RUNNING, CoreState.INITIALIZE]
+        return [CoreState.RUNNING]
 
     @property
     def known_images(self) -> set[str]:
