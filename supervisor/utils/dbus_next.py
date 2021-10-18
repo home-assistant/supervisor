@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Optional, Tuple
 
 from dbus_next import BusType, InvalidIntrospectionError, Message, MessageType
 from dbus_next.aio import MessageBus
@@ -49,7 +49,7 @@ class DBus:
         self.object_path: str = object_path
         self.methods: set[str] = set()
         self.signals: set[str] = set()
-        self._bus = None
+        self._bus: Optional[MessageBus] = None
 
     @staticmethod
     async def connect(bus_name: str, object_path: str) -> DBus:
@@ -95,12 +95,10 @@ class DBus:
 
         self._add_interfaces(introspection)
 
-    async def call_dbus(self, method: str, *args: list[Any]) -> str:
-        """Call a dbus method."""
-        method_parts = method.split(".")
+    def _prepare_args(self, *args: list[Any]) -> Tuple[str, list[Any]]:
         signature = ""
-
         arg_list = []
+
         for arg in args:
             _LOGGER.debug("...arg %s (type %s)", str(arg), type(arg))
             if isinstance(arg, bool):
@@ -120,6 +118,14 @@ class DBus:
                 arg_list.append(arg[1])
             else:
                 raise DBusFatalError(f"Type {type(arg)} not supported")
+
+        return signature, arg_list
+
+    async def call_dbus(self, method: str, *args: list[Any]) -> str:
+        """Call a dbus method."""
+        method_parts = method.split(".")
+
+        signature, arg_list = self._prepare_args(args)
 
         _LOGGER.debug("Call %s on %s", method, self.object_path)
         reply = await self._bus.call(
