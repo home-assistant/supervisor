@@ -2,7 +2,6 @@
 import logging
 import os
 from pathlib import Path
-import shutil
 import signal
 
 from colorlog import ColoredFormatter
