@@ -49,7 +49,7 @@ class DBus:
         self.object_path: str = object_path
         self.methods: set[str] = set()
         self.signals: set[str] = set()
-        self._bus: Optional[MessageBus] = None
+        self._bus: MessageBus = None
 
     @staticmethod
     async def connect(bus_name: str, object_path: str) -> DBus:
@@ -95,7 +95,7 @@ class DBus:
 
         self._add_interfaces(introspection)
 
-    def _prepare_args(self, *args: list[Any]) -> Tuple[str, list[Any]]:
+    def _prepare_args(self, *args: list[Any]) -> tuple[str, list[Any]]:
         signature = ""
         arg_list = []
 
