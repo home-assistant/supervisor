@@ -112,10 +112,10 @@ async def test_resolution_create_issue_suggestion(coresys: CoreSys):
 @pytest.mark.asyncio
 async def test_resolution_dismiss_unsupported(coresys: CoreSys):
     """Test resolution manager dismiss unsupported reason."""
-    coresys.resolution.unsupported = UnsupportedReason.CONTAINER
+    coresys.resolution.unsupported = UnsupportedReason.SOFTWARE
 
-    coresys.resolution.dismiss_unsupported(UnsupportedReason.CONTAINER)
-    assert UnsupportedReason.CONTAINER not in coresys.resolution.unsupported
+    coresys.resolution.dismiss_unsupported(UnsupportedReason.SOFTWARE)
+    assert UnsupportedReason.SOFTWARE not in coresys.resolution.unsupported
 
     with pytest.raises(ResolutionError):
-        coresys.resolution.dismiss_unsupported(UnsupportedReason.CONTAINER)
+        coresys.resolution.dismiss_unsupported(UnsupportedReason.SOFTWARE)
