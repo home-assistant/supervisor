@@ -1,9 +1,7 @@
 """Test NetwrokInterface."""
-from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
-
 import pytest
 
-from supervisor.dbus.const import DeviceType, InterfaceMethod
+from supervisor.dbus.const import DeviceType
 from supervisor.dbus.network import NetworkManager
 from supervisor.host.network import Interface
 

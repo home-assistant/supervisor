@@ -13,16 +13,15 @@ if TYPE_CHECKING:
     from ....host.network import Interface
 
 from . import (
-    CONF_ATTR_CONNECTION,
+    ATTR_ASSIGNED_MAC,
     CONF_ATTR_802_ETHERNET,
     CONF_ATTR_802_WIRELESS,
     CONF_ATTR_802_WIRELESS_SECURITY,
-    CONF_ATTR_VLAN,
+    CONF_ATTR_CONNECTION,
     CONF_ATTR_IPV4,
     CONF_ATTR_IPV6,
+    CONF_ATTR_VLAN,
 )
-
-from . import ATTR_ASSIGNED_MAC
 
 
 def get_connection_from_interface(
