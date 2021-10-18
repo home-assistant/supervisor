@@ -30,7 +30,7 @@ ATTR_TYPE = "type"
 ATTR_PARENT = "parent"
 ATTR_ASSIGNED_MAC = "assigned-mac-address"
 ATTR_POWERSAVE = "powersave"
-ATTR_AUTH_ALGO = "auth-algo"
+ATTR_AUTH_ALG = "auth-alg"
 ATTR_KEY_MGMT = "key-mgmt"
 ATTR_INTERFACE_NAME = "interface-name"
 
@@ -131,7 +131,7 @@ class NetworkSetting(DBusInterfaceProxy):
 
         if CONF_ATTR_802_WIRELESS_SECURITY in data:
             self._wireless_security = WirelessSecurityProperties(
-                data[CONF_ATTR_802_WIRELESS_SECURITY].get(ATTR_AUTH_ALGO),
+                data[CONF_ATTR_802_WIRELESS_SECURITY].get(ATTR_AUTH_ALG),
                 data[CONF_ATTR_802_WIRELESS_SECURITY].get(ATTR_KEY_MGMT),
                 data[CONF_ATTR_802_WIRELESS_SECURITY].get(ATTR_PSK),
             )
