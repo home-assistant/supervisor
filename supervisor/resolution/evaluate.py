@@ -11,7 +11,6 @@ from .validate import get_valid_modules
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 UNHEALTHY = [
-    UnsupportedReason.CONTAINER,
     UnsupportedReason.DOCKER_VERSION,
     UnsupportedReason.LXC,
     UnsupportedReason.PRIVILEGED,

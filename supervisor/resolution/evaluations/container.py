@@ -7,7 +7,13 @@ from requests import RequestException
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ..const import ContextType, IssueType, SuggestionType, UnsupportedReason
+from ..const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnhealthyReason,
+    UnsupportedReason,
+)
 from .base import EvaluateBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -47,6 +53,16 @@ class EvaluateContainer(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.SETUP, CoreState.RUNNING, CoreState.INITIALIZE]
 
+    @property
+    def known_images(self) -> set[str]:
+        """Return a set of all known images."""
+        return {
+            self.sys_homeassistant.image,
+            self.sys_supervisor.image,
+            *(plugin.image for plugin in self.sys_plugins.all_plugins),
+            *(addon.image for addon in self.sys_addons.installed),
+        }
+
     async def evaluate(self) -> None:
         """Run evaluation."""
         self.sys_resolution.evaluate.cached_images.clear()
@@ -57,15 +73,18 @@ class EvaluateContainer(EvaluateBase):
                 self.sys_resolution.evaluate.cached_images.add(tag)
 
                 # Evalue system
-                image_name = tag.partition(":")[0].split("/")[-1]
-                if (
-                    any(
-                        image_name.startswith(deny_name)
-                        for deny_name in DOCKER_IMAGE_DENYLIST
-                    )
-                    and image_name not in self._images
-                ):
+                image_name = tag.partition(":")[0]
+                if image_name not in self.known_images:
                     self._images.add(image_name)
+                    if any(
+                        image_name.split("/")[-1].startswith(deny_name)
+                        for deny_name in DOCKER_IMAGE_DENYLIST
+                    ):
+                        _LOGGER.error(
+                            "Found image in deny-list '%s' on the host", image_name
+                        )
+                        self.sys_resolution.unhealthy = UnhealthyReason.DOCKER
+
         return len(self._images) != 0
 
     def _get_images(self) -> list[Any]:
@@ -73,7 +92,9 @@ class EvaluateContainer(EvaluateBase):
         images = []
 
         try:
-            images = self.sys_docker.images.list()
+            images = [
+                container.image for container in self.sys_docker.containers.list()
+            ]
         except (DockerException, RequestException) as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
             self.sys_resolution.create_issue(

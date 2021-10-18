@@ -92,12 +92,3 @@ async def test_adding_and_removing_unsupported_reason(coresys: CoreSys):
         await coresys.resolution.evaluate.evaluate_system()
         assert UnsupportedReason.NETWORK_MANAGER not in coresys.resolution.unsupported
         assert coresys.core.supported
-
-
-async def test_set_unhealthy(coresys: CoreSys):
-    """Test setting unhealthy."""
-    assert coresys.core.healthy
-    coresys.resolution.unsupported = UnsupportedReason.CONTAINER
-    await coresys.resolution.evaluate.evaluate_system()
-
-    assert not coresys.core.healthy
