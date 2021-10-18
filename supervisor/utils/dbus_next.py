@@ -5,7 +5,6 @@ import asyncio
 import logging
 from typing import Any
 
-import dbus_next
 from dbus_next import BusType, InvalidIntrospectionError, Message, MessageType
 from dbus_next.aio import MessageBus
 from dbus_next.signature import Variant
@@ -81,7 +80,10 @@ class DBus:
     async def _init_proxy(self) -> None:
         """Read interface data."""
         # Wait for dbus object to be available after restart
-        self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+        try:
+            self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+        except Exception as err:
+            raise DBusFatalError() from err
 
         try:
             introspection = await self._bus.introspect(

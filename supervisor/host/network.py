@@ -23,7 +23,6 @@ from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
-    DBusProgramError,
     HostNetworkError,
     HostNetworkNotFound,
     HostNotSupportedError,
@@ -205,9 +204,8 @@ class NetworkManager(CoreSysAttributes):
         # Request Scan
         try:
             await inet.wireless.request_scan()
-        except DBusProgramError as err:
-            _LOGGER.debug("Can't request a new scan: %s", err)
         except DBusError as err:
+            _LOGGER.warning("Can't request a new scan: %s", err)
             raise HostNetworkError() from err
         else:
             await asyncio.sleep(5)
