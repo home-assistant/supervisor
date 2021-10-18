@@ -3,7 +3,7 @@ import logging
 from typing import Any, Optional
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus_next import DBus
+from ..utils.dbus import DBus
 from .const import (
     DBUS_ATTR_CHASSIS,
     DBUS_ATTR_DEPLOYMENT,

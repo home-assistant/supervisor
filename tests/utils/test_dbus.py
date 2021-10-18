@@ -2,7 +2,7 @@
 from dbus_next.signature import Variant
 
 from supervisor.coresys import CoreSys
-from supervisor.utils.dbus_next import DBus, _remove_dbus_signature
+from supervisor.utils.dbus import DBus, _remove_dbus_signature
 
 
 def test_remove_dbus_signature():

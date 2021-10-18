@@ -1,7 +1,7 @@
 """NetworkInterface object for Network Manager."""
 from typing import Optional
 
-from ...utils.dbus_next import DBus
+from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_CONNECTION,
     DBUS_ATTR_DEVICE_INTERFACE,

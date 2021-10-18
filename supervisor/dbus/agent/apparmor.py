@@ -4,7 +4,7 @@ from typing import Any
 
 from awesomeversion import AwesomeVersion
 
-from ...utils.dbus_next import DBus
+from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_PARSER_VERSION,
     DBUS_NAME_HAOS,

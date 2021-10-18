@@ -263,7 +263,7 @@ class ServicesError(HassioError):
     """Services Errors."""
 
 
-# utils/dbus_next
+# utils/dbus
 
 
 class DBusError(HassioError):

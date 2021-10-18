@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus_next import DBus
+from ..utils.dbus import DBus
 from ..utils.dt import utc_from_timestamp
 from .const import (
     DBUS_ATTR_LOCALRTC,

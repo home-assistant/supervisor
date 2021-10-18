@@ -6,7 +6,7 @@ from typing import Any
 from awesomeversion import AwesomeVersion
 
 from ...exceptions import DBusError, DBusInterfaceError
-from ...utils.dbus_next import DBus
+from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_DIAGNOSTICS,
     DBUS_ATTR_VERSION,

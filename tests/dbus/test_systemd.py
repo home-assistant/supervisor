@@ -21,7 +21,7 @@ async def test_dbus_systemd_info(coresys: CoreSys):
         )
 
     with patch(
-        "supervisor.utils.dbus_next.DBus.get_properties", new=mock_get_properties
+        "supervisor.utils.dbus.DBus.get_properties", new=mock_get_properties
     ):
         await coresys.dbus.systemd.update()
 

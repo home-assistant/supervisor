@@ -11,7 +11,7 @@ from ...exceptions import (
     DBusInterfaceError,
     HostNotSupportedError,
 )
-from ...utils.dbus_next import DBus
+from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CONNECTION_ENABLED,
     DBUS_ATTR_DEVICES,

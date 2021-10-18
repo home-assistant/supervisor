@@ -2,7 +2,7 @@
 import logging
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus_next import DBus
+from ..utils.dbus import DBus
 from .const import DBUS_NAME_LOGIND, DBUS_OBJECT_LOGIND
 from .interface import DBusInterface
 from .utils import dbus_connected

@@ -22,7 +22,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
-from supervisor.utils.dbus_next import DBus
+from supervisor.utils.dbus import DBus
 
 from .common import exists_fixture, load_fixture, load_json_fixture
 from .const import TEST_ADDON_SLUG
@@ -105,15 +105,15 @@ def dbus() -> DBus:
 
         return load_json_fixture(f"{fixture}.json")
 
-    with patch("supervisor.utils.dbus_next.DBus.call_dbus", new=mock_call_dbus), patch(
-        "supervisor.utils.dbus_next.DBus.wait_signal", new=mock_wait_signal
+    with patch("supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus), patch(
+        "supervisor.utils.dbus.DBus.wait_signal", new=mock_wait_signal
     ), patch(
         "supervisor.dbus.interface.DBusInterface.is_connected",
         return_value=True,
     ), patch(
-        "supervisor.utils.dbus_next.DBus.get_properties", new=mock_get_properties
+        "supervisor.utils.dbus.DBus.get_properties", new=mock_get_properties
     ), patch(
-        "supervisor.utils.dbus_next.DBus._init_proxy", new=mock_init_proxy
+        "supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy
     ):
         yield dbus_commands
 

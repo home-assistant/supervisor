@@ -3,7 +3,7 @@ import logging
 from typing import Any, Awaitable
 
 from ...exceptions import DBusError, DBusInterfaceError
-from ...utils.dbus_next import DBus
+from ...utils.dbus import DBus
 from ..const import DBUS_NAME_NM, DBUS_OBJECT_SETTINGS
 from ..interface import DBusInterface
 from ..utils import dbus_connected
