@@ -7,10 +7,22 @@ from uuid import uuid4
 
 from dbus_next.signature import Variant
 
-from ...host.const import InterfaceType
+from ....host.const import InterfaceMethod, InterfaceType
 
 if TYPE_CHECKING:
-    from ...host.network import Interface
+    from ....host.network import Interface
+
+from . import (
+    CONF_ATTR_CONNECTION,
+    CONF_ATTR_802_ETHERNET,
+    CONF_ATTR_802_WIRELESS,
+    CONF_ATTR_802_WIRELESS_SECURITY,
+    CONF_ATTR_VLAN,
+    CONF_ATTR_IPV4,
+    CONF_ATTR_IPV6,
+)
+
+from . import ATTR_ASSIGNED_MAC
 
 
 def get_connection_from_interface(
@@ -24,9 +36,9 @@ def get_connection_from_interface(
     if interface.type == InterfaceType.VLAN:
         name = f"{name}.{interface.vlan.id}"
 
-    if interface.type == "ethernet":
+    if interface.type == InterfaceType.ETHERNET:
         iftype = "802-3-ethernet"
-    elif interface.type == "wireless":
+    elif interface.type == InterfaceType.WIRELESS:
         iftype = "802-11-wireless"
     else:
         iftype = interface.type.value
@@ -45,12 +57,12 @@ def get_connection_from_interface(
     }
 
     conn = {}
-    conn["connection"] = connection
+    conn[CONF_ATTR_CONNECTION] = connection
 
     ipv4 = {}
-    if interface.ipv4.method == "auto":
+    if interface.ipv4.method == InterfaceMethod.AUTO:
         ipv4["method"] = Variant("s", "auto")
-    elif interface.ipv4.method == "disabled":
+    elif interface.ipv4.method == InterfaceMethod.DISABLED:
         ipv4["method"] = Variant("s", "disabled")
     else:
         ipv4["method"] = Variant("s", "manual")
@@ -74,12 +86,12 @@ def get_connection_from_interface(
         ipv4["address-data"] = Variant("aa{sv}", adressdata)
         ipv4["gateway"] = Variant("s", str(interface.ipv4.gateway))
 
-    conn["ipv4"] = ipv4
+    conn[CONF_ATTR_IPV4] = ipv4
 
     ipv6 = {}
-    if interface.ipv6.method == "auto":
+    if interface.ipv6.method == InterfaceMethod.AUTO:
         ipv6["method"] = Variant("s", "auto")
-    elif interface.ipv6.method == "disabled":
+    elif interface.ipv6.method == InterfaceMethod.DISABLED:
         ipv6["method"] = Variant("s", "disabled")
     else:
         ipv6["method"] = Variant("s", "manual")
@@ -98,29 +110,29 @@ def get_connection_from_interface(
                 }
             )
 
-        ipv4["address-data"] = Variant("(a{sv})", adressdata)
+        ipv6["address-data"] = Variant("(a{sv})", adressdata)
         ipv4["gateway"] = Variant("s", str(interface.ipv6.gateway))
 
-    conn["ipv6"] = ipv6
+    conn[CONF_ATTR_IPV6] = ipv6
 
-    if interface.type == "ethernet":
-        conn["802-3-ethernet"] = {"assigned-mac-address": Variant("s", "preserve")}
+    if interface.type == InterfaceType.ETHERNET:
+        conn[CONF_ATTR_802_ETHERNET] = {ATTR_ASSIGNED_MAC: Variant("s", "preserve")}
     elif interface.type == "vlan":
-        conn["vlan"] = {
+        conn[CONF_ATTR_VLAN] = {
             "id": Variant("u", interface.vlan.id),
             "parent": Variant("s", interface.vlan.interface),
         }
-    elif interface.type == "wireless":
+    elif interface.type == InterfaceType.WIRELESS:
         wireless = {
-            "assigned-mac-address": Variant("s", "preserve"),
+            ATTR_ASSIGNED_MAC: Variant("s", "preserve"),
             "ssid": Variant("ay", interface.wifi.ssid.encode("UTF-8")),
             "mode": Variant("s", "infrastructure"),
             "powersave": Variant("i", 1),
         }
-        conn["802-11-wireless"] = wireless
+        conn[CONF_ATTR_802_WIRELESS] = wireless
 
         if interface.wifi.auth != "open":
-            wireless["security"] = Variant("s", "802-11-wireless-security")
+            wireless["security"] = Variant("s", CONF_ATTR_802_WIRELESS_SECURITY)
             wireless_security = {}
             if interface.wifi.auth == "wep":
                 wireless_security["auth-alg"] = Variant("s", "none")
@@ -131,6 +143,6 @@ def get_connection_from_interface(
 
             if interface.wifi.psk:
                 wireless_security["psk"] = Variant("s", interface.wifi.psk)
-            conn["802-11-wireless-security"] = wireless_security
+            conn[CONF_ATTR_802_WIRELESS_SECURITY] = wireless_security
 
     return conn

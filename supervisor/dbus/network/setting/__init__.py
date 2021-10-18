@@ -1,12 +1,13 @@
 """Connection object for Network Manager."""
+import logging
 from typing import Any, Awaitable, Optional
 
-from ...const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
-from ...utils.gdbus import DBus
-from ..const import DBUS_NAME_NM
-from ..interface import DBusInterfaceProxy
-from ..utils import dbus_connected
-from .configuration import (
+from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
+from ....utils.gdbus import DBus
+from ...const import DBUS_NAME_NM
+from ...interface import DBusInterfaceProxy
+from ...utils import dbus_connected
+from ..configuration import (
     ConnectionProperties,
     EthernetProperties,
     IpProperties,
@@ -32,6 +33,8 @@ ATTR_POWERSAVE = "powersave"
 ATTR_AUTH_ALGO = "auth-algo"
 ATTR_KEY_MGMT = "key-mgmt"
 ATTR_INTERFACE_NAME = "interface-name"
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class NetworkSetting(DBusInterfaceProxy):

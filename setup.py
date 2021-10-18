@@ -35,7 +35,7 @@ setup(
         "supervisor.api",
         "supervisor.backups",
         "supervisor.dbus.network",
-        "supervisor.dbus.payloads",
+        "supervisor.dbus.network.setting",
         "supervisor.dbus",
         "supervisor.discovery.services",
         "supervisor.discovery",

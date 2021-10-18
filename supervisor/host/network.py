@@ -19,7 +19,7 @@ from ..dbus.const import (
 from ..dbus.network.accesspoint import NetworkWirelessAP
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
-from ..dbus.payloads.generate import get_connection_from_interface
+from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
