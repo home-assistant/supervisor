@@ -12,4 +12,3 @@ pytest-cov==2.12.1
 pytest-timeout==1.4.2
 pytest==6.2.5
 pyupgrade==2.29.0
-dbus-next==0.2.3

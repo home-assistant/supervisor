@@ -56,7 +56,6 @@ RUN \
     && pip3 install --no-cache-dir --no-index --only-binary=:all: --find-links \
         "https://wheels.home-assistant.io/alpine-$(cut -d '.' -f 1-2 < /etc/alpine-release)/${BUILD_ARCH}/" \
         -r ./requirements.txt \
-    && pip3 install dbus-next \
     && rm -f requirements.txt
 
 # Install Home Assistant Supervisor
