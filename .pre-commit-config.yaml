@@ -23,8 +23,8 @@ repos:
       - id: check-executables-have-shebangs
         stages: [manual]
       - id: check-json
-  - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v4.3.21
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.9.3
     hooks:
       - id: isort
   - repo: https://github.com/asottile/pyupgrade
