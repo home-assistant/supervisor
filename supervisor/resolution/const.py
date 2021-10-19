@@ -28,7 +28,6 @@ class UnsupportedReason(str, Enum):
     """Reasons for unsupported status."""
 
     APPARMOR = "apparmor"
-    CONTAINER = "container"
     CONTENT_TRUST = "content_trust"
     DBUS = "dbus"
     DOCKER_CONFIGURATION = "docker_configuration"
@@ -39,6 +38,7 @@ class UnsupportedReason(str, Enum):
     OS = "os"
     OS_AGENT = "os_agent"
     PRIVILEGED = "privileged"
+    SOFTWARE = "software"
     SOURCE_MODS = "source_mods"
     SYSTEMD = "systemd"
 
