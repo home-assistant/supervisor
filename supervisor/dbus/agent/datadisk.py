@@ -5,8 +5,8 @@ from typing import Any
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CURRENT_DEVICE,
+    DBUS_IFACE_HAOS_DATADISK,
     DBUS_NAME_HAOS,
-    DBUS_NAME_HAOS_DATADISK,
     DBUS_OBJECT_HAOS_DATADISK,
 )
 from ..interface import DBusInterface, dbus_property
@@ -33,7 +33,7 @@ class DataDisk(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_NAME_HAOS_DATADISK)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_HAOS_DATADISK)
 
     @dbus_connected
     async def change_device(self, device: Path) -> None:

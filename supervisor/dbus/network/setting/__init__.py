@@ -38,7 +38,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class NetworkSetting(DBusInterfaceProxy):
-    """NetworkConnection object for Network Manager."""
+    """Network connection setting object for Network Manager.
+
+    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Settings.Connection.html
+    """
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
@@ -108,6 +111,8 @@ class NetworkSetting(DBusInterfaceProxy):
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
         data = (await self.get_settings())[0]
 
+        # Get configuration settings we care about
+        # See: https://developer-old.gnome.org/NetworkManager/stable/ch01.html
         if CONF_ATTR_CONNECTION in data:
             self._connection = ConnectionProperties(
                 data[CONF_ATTR_CONNECTION].get(ATTR_ID),

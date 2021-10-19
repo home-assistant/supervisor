@@ -12,6 +12,7 @@ from .const import (
     DBUS_ATTR_NTPSYNCHRONIZED,
     DBUS_ATTR_TIMEUSEC,
     DBUS_ATTR_TIMEZONE,
+    DBUS_IFACE_TIMEDATE,
     DBUS_NAME_TIMEDATE,
     DBUS_OBJECT_TIMEDATE,
 )
@@ -90,4 +91,4 @@ class TimeDate(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_NAME_TIMEDATE)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_TIMEDATE)

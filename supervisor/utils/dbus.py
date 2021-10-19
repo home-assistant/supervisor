@@ -49,7 +49,12 @@ class DBus:
         self.object_path: str = object_path
         self.methods: set[str] = set()
         self.signals: set[str] = set()
-        self._bus: MessageBus = None
+        self._bus: MessageBus | None = None
+
+    def __del__(self):
+        """Delete dbus object."""
+        if self._bus:
+            self._bus.disconnect()
 
     @staticmethod
     async def connect(bus_name: str, object_path: str) -> DBus:
@@ -171,13 +176,14 @@ class DBus:
             _LOGGER.error("No Set attribute %s for %s", name, interface)
             raise DBusFatalError() from err
 
-    async def wait_signal(self, signal):
-        """Wait for single event."""
-        signal_parts = signal.split(".")
+    async def wait_signal(self, signal_member, message_filter=None) -> Any:
+        """Wait for signal on this object."""
+        signal_parts = signal_member.split(".")
         interface = ".".join(signal_parts[:-1])
         member = signal_parts[-1]
+        match = f"type='signal',interface={interface},member={member},path={self.object_path}"
 
-        _LOGGER.debug("Wait for signal %s", signal)
+        _LOGGER.debug("Install match for signal %s", signal_member)
         await self._bus.call(
             Message(
                 destination="org.freedesktop.DBus",
@@ -185,7 +191,7 @@ class DBus:
                 path="/org/freedesktop/DBus",
                 member="AddMatch",
                 signature="s",
-                body=[f"type='signal',interface={interface},member={member}"],
+                body=[match],
             )
         )
 
@@ -197,20 +203,43 @@ class DBus:
                 return
 
             _LOGGER.debug(
-                "Signal message received %s, %s %s", msg, msg.interface, msg.member
+                "Signal message received %s, %s.%s object %s",
+                msg.body,
+                msg.interface,
+                msg.member,
+                msg.path,
             )
-            if msg.interface != interface or msg.member != member:
+            if (
+                msg.interface != interface
+                or msg.member != member
+                or msg.path != self.object_path
+            ):
                 return
 
             # Avoid race condition: We already received signal but handler not yet removed.
             if future.done():
                 return
 
-            future.set_result(_remove_dbus_signature(msg.body))
+            msg_body = _remove_dbus_signature(msg.body)
+            if message_filter and not message_filter(msg_body):
+                return
+
+            future.set_result(msg_body)
 
         self._bus.add_message_handler(message_handler)
         result = await future
         self._bus.remove_message_handler(message_handler)
+
+        await self._bus.call(
+            Message(
+                destination="org.freedesktop.DBus",
+                interface="org.freedesktop.DBus",
+                path="/org/freedesktop/DBus",
+                member="RemoveMatch",
+                signature="s",
+                body=[match],
+            )
+        )
 
         return result
 

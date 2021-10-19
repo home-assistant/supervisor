@@ -8,7 +8,7 @@ from ..const import (
     DBUS_ATTR_DEVICE_TYPE,
     DBUS_ATTR_DRIVER,
     DBUS_ATTR_MANAGED,
-    DBUS_NAME_DEVICE,
+    DBUS_IFACE_DEVICE,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
     DeviceType,
@@ -20,7 +20,10 @@ from .wireless import NetworkWireless
 
 
 class NetworkInterface(DBusInterfaceProxy):
-    """NetworkInterface object for Network Manager."""
+    """NetworkInterface object represents Network Manager Device objects.
+
+    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Device.html
+    """
 
     def __init__(self, nm_dbus: DBus, object_path: str) -> None:
         """Initialize NetworkConnection object."""
@@ -72,13 +75,13 @@ class NetworkInterface(DBusInterfaceProxy):
     async def connect(self) -> None:
         """Get device information."""
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
-        self.properties = await self.dbus.get_properties(DBUS_NAME_DEVICE)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_DEVICE)
 
         # Abort if device is not managed
         if not self.managed:
             return
 
-        # If connection exists
+        # If active connection exists
         if self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
             self._connection = NetworkConnection(
                 self.properties[DBUS_ATTR_ACTIVE_CONNECTION]

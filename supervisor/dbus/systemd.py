@@ -10,8 +10,8 @@ from .const import (
     DBUS_ATTR_KERNEL_TIMESTAMP_MONOTONIC,
     DBUS_ATTR_LOADER_TIMESTAMP_MONOTONIC,
     DBUS_ATTR_USERSPACE_TIMESTAMP_MONOTONIC,
+    DBUS_IFACE_SYSTEMD_MANAGER,
     DBUS_NAME_SYSTEMD,
-    DBUS_NAME_SYSTEMD_MANAGER,
     DBUS_OBJECT_SYSTEMD,
 )
 from .interface import DBusInterface, dbus_property
@@ -116,4 +116,4 @@ class Systemd(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_NAME_SYSTEMD_MANAGER)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_SYSTEMD_MANAGER)
