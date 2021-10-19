@@ -1,5 +1,5 @@
 #!/bin/bash
-source "${BASH_SOURCE[0]%/*}/common.sh"
+source "/etc/supervisor_scripts/common"
 
 set -e
 
