@@ -117,6 +117,7 @@ class NetworkManager(CoreSysAttributes):
     async def apply_changes(self, interface: Interface) -> None:
         """Apply Interface changes to host."""
         inet = self.sys_dbus.network.interfaces.get(interface.name)
+        con: NetworkConnection = None
 
         # Update exist configuration
         if (
@@ -134,8 +135,12 @@ class NetworkManager(CoreSysAttributes):
 
             try:
                 await inet.settings.update(settings)
-                await self.sys_dbus.network.activate_connection(
+                con = await self.sys_dbus.network.activate_connection(
                     inet.settings.object_path, inet.object_path
+                )
+                _LOGGER.debug(
+                    "activate_connection returns %s",
+                    con.object_path,
                 )
             except DBusError as err:
                 raise HostNetworkError(
@@ -148,10 +153,13 @@ class NetworkManager(CoreSysAttributes):
             settings = get_connection_from_interface(interface)
 
             try:
-                new_con = await self.sys_dbus.network.add_and_activate_connection(
+                settings, con = await self.sys_dbus.network.add_and_activate_connection(
                     settings, inet.object_path
                 )
-                _LOGGER.debug("add_and_activate_connection returns %s", new_con)
+                _LOGGER.debug(
+                    "add_and_activate_connection returns %s",
+                    con.object_path,
+                )
             except DBusError as err:
                 raise HostNetworkError(
                     f"Can't create config and activate {interface.name}: {err}",
@@ -182,11 +190,26 @@ class NetworkManager(CoreSysAttributes):
                 "Requested Network interface update is not possible", _LOGGER.warning
             )
 
-        # This signal is fired twice: Activating -> Activated. It seems we miss the first
-        # "usually"...  We should filter by state and explicitly wait for the second.
-        await self.sys_dbus.network.dbus.wait_signal(
-            DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
-        )
+        if con:
+            # Only consider activated or deactivated signals, continue waiting on others
+            def message_filter(msg_body):
+                state: ConnectionStateType = msg_body[0]
+                if state == ConnectionStateType.DEACTIVATED:
+                    return True
+                elif state == ConnectionStateType.ACTIVATED:
+                    return True
+                return False
+
+            result = await con.dbus.wait_signal(
+                DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED, message_filter
+            )
+
+            _LOGGER.debug("StateChanged signal received, result: %s", str(result))
+            state: ConnectionStateType = result[0]
+            if state == ConnectionStateType.DEACTIVATED:
+                raise HostNetworkError(
+                    "Activating connection failed, check connection settings."
+                )
 
         await self.update()
 

@@ -38,7 +38,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class NetworkSetting(DBusInterfaceProxy):
-    """NetworkConnection object for Network Manager."""
+    """Network connection setting object for Network Manager."""
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""

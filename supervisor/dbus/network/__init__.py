@@ -1,9 +1,13 @@
 """Network Manager implementation for DBUS."""
+import asyncio
 import logging
 from typing import Any, Awaitable
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 import sentry_sdk
+
+from supervisor.dbus.network.connection import NetworkConnection
+from supervisor.dbus.network.setting import NetworkSetting
 
 from ...exceptions import (
     DBusError,
@@ -73,22 +77,31 @@ class NetworkManager(DBusInterface):
         return AwesomeVersion(self.properties[DBUS_ATTR_VERSION])
 
     @dbus_connected
-    def activate_connection(
+    async def activate_connection(
         self, connection_object: str, device_object: str
-    ) -> Awaitable[Any]:
+    ) -> NetworkConnection:
         """Activate a connction on a device."""
-        return self.dbus.ActivateConnection(
+        result = await self.dbus.ActivateConnection(
             ("o", connection_object), ("o", device_object), ("o", DBUS_OBJECT_BASE)
         )
+        obj_active_con = result[0]
+        active_con = NetworkConnection(obj_active_con)
+        await active_con.connect()
+        return active_con
 
     @dbus_connected
-    def add_and_activate_connection(
+    async def add_and_activate_connection(
         self, settings: Any, device_object: str
-    ) -> Awaitable[Any]:
+    ) -> tuple[NetworkSetting, NetworkConnection]:
         """Activate a connction on a device."""
-        return self.dbus.AddAndActivateConnection(
+        obj_con_setting, obj_active_con = await self.dbus.AddAndActivateConnection(
             ("a{sa{sv}}", settings), ("o", device_object), ("o", DBUS_OBJECT_BASE)
         )
+
+        con_setting = NetworkSetting(obj_con_setting)
+        active_con = NetworkConnection(obj_active_con)
+        await asyncio.gather(con_setting.connect(), active_con.connect())
+        return con_setting, active_con
 
     @dbus_connected
     async def check_connectivity(self) -> Awaitable[Any]:

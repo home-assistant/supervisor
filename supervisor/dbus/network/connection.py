@@ -21,13 +21,14 @@ from ..const import (
     DBUS_IFACE_IP6CONFIG,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
+    ConnectionStateType,
 )
 from ..interface import DBusInterfaceProxy
 from .configuration import IpConfiguration
 
 
 class NetworkConnection(DBusInterfaceProxy):
-    """NetworkConnection object for Network Manager."""
+    """Active network connection object for Network Manager."""
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
@@ -53,7 +54,7 @@ class NetworkConnection(DBusInterfaceProxy):
         return self.properties[DBUS_ATTR_UUID]
 
     @property
-    def state(self) -> int:
+    def state(self) -> ConnectionStateType:
         """Return the state of the connection."""
         return self.properties[DBUS_ATTR_STATE]
 

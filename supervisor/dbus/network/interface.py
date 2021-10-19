@@ -78,7 +78,7 @@ class NetworkInterface(DBusInterfaceProxy):
         if not self.managed:
             return
 
-        # If connection exists
+        # If active connection exists
         if self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
             self._connection = NetworkConnection(
                 self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
