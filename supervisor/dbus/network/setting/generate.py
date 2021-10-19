@@ -47,18 +47,20 @@ def get_connection_from_interface(
 
     connection = {
         "id": Variant("s", name),
-        "interface-name": Variant("s", interface.name),
         "type": Variant("s", iftype),
         "uuid": Variant("s", uuid),
         "llmnr": Variant("i", 2),
         "mdns": Variant("i", 2),
     }
 
+    if interface.type != InterfaceType.VLAN:
+        connection["interface-name"] = Variant("s", interface.name)
+
     conn = {}
     conn[CONF_ATTR_CONNECTION] = connection
 
     ipv4 = {}
-    if interface.ipv4.method == InterfaceMethod.AUTO:
+    if not interface.ipv4 or interface.ipv4.method == InterfaceMethod.AUTO:
         ipv4["method"] = Variant("s", "auto")
     elif interface.ipv4.method == InterfaceMethod.DISABLED:
         ipv4["method"] = Variant("s", "disabled")
@@ -87,7 +89,7 @@ def get_connection_from_interface(
     conn[CONF_ATTR_IPV4] = ipv4
 
     ipv6 = {}
-    if interface.ipv6.method == InterfaceMethod.AUTO:
+    if not interface.ipv6 or interface.ipv6.method == InterfaceMethod.AUTO:
         ipv6["method"] = Variant("s", "auto")
     elif interface.ipv6.method == InterfaceMethod.DISABLED:
         ipv6["method"] = Variant("s", "disabled")
@@ -109,7 +111,7 @@ def get_connection_from_interface(
             )
 
         ipv6["address-data"] = Variant("(a{sv})", adressdata)
-        ipv4["gateway"] = Variant("s", str(interface.ipv6.gateway))
+        ipv6["gateway"] = Variant("s", str(interface.ipv6.gateway))
 
     conn[CONF_ATTR_IPV6] = ipv6
 
