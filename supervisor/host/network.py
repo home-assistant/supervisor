@@ -206,7 +206,7 @@ class NetworkManager(CoreSysAttributes):
 
             _LOGGER.debug("StateChanged signal received, result: %s", str(result))
             state: ConnectionStateType = result[0]
-            if state == ConnectionStateType.DEACTIVATED:
+            if state != ConnectionStateType.ACTIVATED:
                 raise HostNetworkError(
                     "Activating connection failed, check connection settings."
                 )

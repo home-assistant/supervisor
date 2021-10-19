@@ -18,6 +18,7 @@ from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.const import REQUEST_FROM
 from supervisor.coresys import CoreSys
+from supervisor.dbus.const import DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker import DockerAPI
 from supervisor.store.addon import AddonStore
@@ -79,8 +80,9 @@ def dbus() -> DBus:
 
         return load_json_fixture(f"{fixture}.json")
 
-    async def mock_wait_signal(_, __):
-        pass
+    async def mock_wait_signal(_, signal_method, ___):
+        if signal_method == DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED:
+            return [2, 0]
 
     async def mock_init_proxy(self):
 
