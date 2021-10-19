@@ -51,6 +51,11 @@ class DBus:
         self.signals: set[str] = set()
         self._bus: MessageBus = None
 
+    def __del__(self):
+        """Delete dbus object."""
+        if self._bus:
+            self._bus.disconnect()
+
     @staticmethod
     async def connect(bus_name: str, object_path: str) -> DBus:
         """Read object data."""
