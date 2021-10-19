@@ -14,7 +14,10 @@ from .accesspoint import NetworkWirelessAP
 
 
 class NetworkWireless(DBusInterfaceProxy):
-    """NetworkWireless object for Network Manager."""
+    """Wireless object for Network Manager.
+
+    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Device.Wireless.html
+    """
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""

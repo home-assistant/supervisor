@@ -12,7 +12,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class NetworkManagerSettings(DBusInterface):
-    """Handle D-Bus interface for Network Manager."""
+    """Handle D-Bus interface for Network Manager Connection Settings Profile Manager.
+
+    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Settings.html
+    """
 
     async def connect(self) -> None:
         """Connect to system's D-Bus."""

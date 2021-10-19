@@ -28,7 +28,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class NetworkManagerDNS(DBusInterface):
-    """Handle D-Bus interface for NMI DnsManager."""
+    """Handle D-Bus interface for NM DnsManager.
+
+    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.DnsManager.html
+    """
 
     def __init__(self) -> None:
         """Initialize Properties."""

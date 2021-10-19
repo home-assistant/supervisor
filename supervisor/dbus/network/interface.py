@@ -20,7 +20,10 @@ from .wireless import NetworkWireless
 
 
 class NetworkInterface(DBusInterfaceProxy):
-    """NetworkInterface object for Network Manager."""
+    """NetworkInterface object represents Network Manager Device objects.
+
+    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Device.html
+    """
 
     def __init__(self, nm_dbus: DBus, object_path: str) -> None:
         """Initialize NetworkConnection object."""

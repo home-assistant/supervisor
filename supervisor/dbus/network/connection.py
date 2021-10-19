@@ -28,7 +28,10 @@ from .configuration import IpConfiguration
 
 
 class NetworkConnection(DBusInterfaceProxy):
-    """Active network connection object for Network Manager."""
+    """Active network connection object for Network Manager.
+
+    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Connection.Active.html
+    """
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
