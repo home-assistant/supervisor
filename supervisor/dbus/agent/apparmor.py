@@ -7,8 +7,8 @@ from awesomeversion import AwesomeVersion
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_PARSER_VERSION,
+    DBUS_IFACE_HAOS_APPARMOR,
     DBUS_NAME_HAOS,
-    DBUS_NAME_HAOS_APPARMOR,
     DBUS_OBJECT_HAOS_APPARMOR,
 )
 from ..interface import DBusInterface, dbus_property
@@ -35,7 +35,7 @@ class AppArmor(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_NAME_HAOS_APPARMOR)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_HAOS_APPARMOR)
 
     @dbus_connected
     async def load_profile(self, profile: Path, cache: Path) -> None:

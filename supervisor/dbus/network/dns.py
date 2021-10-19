@@ -16,7 +16,7 @@ from ..const import (
     DBUS_ATTR_CONFIGURATION,
     DBUS_ATTR_MODE,
     DBUS_ATTR_RCMANAGER,
-    DBUS_NAME_DNS,
+    DBUS_IFACE_DNS,
     DBUS_NAME_NM,
     DBUS_OBJECT_DNS,
 )
@@ -65,7 +65,7 @@ class NetworkManagerDNS(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        data = await self.dbus.get_properties(DBUS_NAME_DNS)
+        data = await self.dbus.get_properties(DBUS_IFACE_DNS)
         if not data:
             _LOGGER.warning("Can't get properties for DnsManager")
             return

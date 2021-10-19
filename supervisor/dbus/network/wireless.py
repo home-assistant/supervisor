@@ -4,7 +4,7 @@ from typing import Any, Awaitable, Optional
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_ACCESSPOINT,
-    DBUS_NAME_DEVICE_WIRELESS,
+    DBUS_IFACE_DEVICE_WIRELESS,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
 )
@@ -41,7 +41,7 @@ class NetworkWireless(DBusInterfaceProxy):
     async def connect(self) -> None:
         """Get connection information."""
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
-        self.properties = await self.dbus.get_properties(DBUS_NAME_DEVICE_WIRELESS)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_DEVICE_WIRELESS)
 
         # Get details from current active
         if self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT] != DBUS_OBJECT_BASE:

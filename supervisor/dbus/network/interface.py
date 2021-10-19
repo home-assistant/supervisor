@@ -8,7 +8,7 @@ from ..const import (
     DBUS_ATTR_DEVICE_TYPE,
     DBUS_ATTR_DRIVER,
     DBUS_ATTR_MANAGED,
-    DBUS_NAME_DEVICE,
+    DBUS_IFACE_DEVICE,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
     DeviceType,
@@ -72,7 +72,7 @@ class NetworkInterface(DBusInterfaceProxy):
     async def connect(self) -> None:
         """Get device information."""
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
-        self.properties = await self.dbus.get_properties(DBUS_NAME_DEVICE)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_DEVICE)
 
         # Abort if device is not managed
         if not self.managed:

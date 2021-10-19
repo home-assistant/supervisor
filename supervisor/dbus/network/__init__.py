@@ -17,6 +17,7 @@ from ..const import (
     DBUS_ATTR_DEVICES,
     DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_ATTR_VERSION,
+    DBUS_IFACE_NM,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
     DBUS_OBJECT_NM,
@@ -118,7 +119,7 @@ class NetworkManager(DBusInterface):
 
     async def _validate_version(self) -> None:
         """Validate Version of NetworkManager."""
-        self.properties = await self.dbus.get_properties(DBUS_NAME_NM)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_NM)
 
         try:
             if self.version >= MINIMAL_VERSION:
@@ -134,7 +135,7 @@ class NetworkManager(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_NAME_NM)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_NM)
 
         await self.dns.update()
 

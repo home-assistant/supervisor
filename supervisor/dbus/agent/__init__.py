@@ -10,6 +10,7 @@ from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_DIAGNOSTICS,
     DBUS_ATTR_VERSION,
+    DBUS_IFACE_HAOS,
     DBUS_NAME_HAOS,
     DBUS_OBJECT_HAOS,
 )
@@ -74,7 +75,7 @@ class OSAgent(DBusInterface):
     def diagnostics(self, value: bool) -> None:
         """Enable or disable OS-Agent diagnostics."""
         asyncio.create_task(
-            self.dbus.set_property(DBUS_NAME_HAOS, DBUS_ATTR_DIAGNOSTICS, value)
+            self.dbus.set_property(DBUS_IFACE_HAOS, DBUS_ATTR_DIAGNOSTICS, value)
         )
 
     async def connect(self) -> None:
@@ -95,6 +96,6 @@ class OSAgent(DBusInterface):
     @dbus_connected
     async def update(self):
         """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_NAME_HAOS)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_HAOS)
         await self.apparmor.update()
         await self.datadisk.update()

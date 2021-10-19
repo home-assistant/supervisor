@@ -10,7 +10,7 @@ import attr
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
-    DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED,
+    DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
     ConnectionStateType,
     ConnectivityState,
     DeviceType,
@@ -185,7 +185,7 @@ class NetworkManager(CoreSysAttributes):
         # This signal is fired twice: Activating -> Activated. It seems we miss the first
         # "usually"...  We should filter by state and explicitly wait for the second.
         await self.sys_dbus.network.dbus.wait_signal(
-            DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED
+            DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
         )
 
         await self.update()
