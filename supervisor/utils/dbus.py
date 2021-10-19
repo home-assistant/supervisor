@@ -49,7 +49,7 @@ class DBus:
         self.object_path: str = object_path
         self.methods: set[str] = set()
         self.signals: set[str] = set()
-        self._bus: MessageBus = None
+        self._bus: MessageBus | None = None
 
     def __del__(self):
         """Delete dbus object."""
