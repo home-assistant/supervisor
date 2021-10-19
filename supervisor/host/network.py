@@ -12,6 +12,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
     DBUS_NAME_NM_CONNECTION_ACTIVE_CHANGED,
     ConnectionStateType,
+    ConnectivityState,
     DeviceType,
     InterfaceMethod as NMInterfaceMethod,
     WirelessMethodType,
@@ -77,18 +78,15 @@ class NetworkManager(CoreSysAttributes):
         return list(dict.fromkeys(servers))
 
     async def check_connectivity(self):
-        """Check the internet connection.
+        """Check the internet connection."""
 
-        ConnectionState 4 == FULL (has internet)
-        https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMConnectivityState
-        """
         if not self.sys_dbus.network.connectivity_enabled:
             return
 
         # Check connectivity
         try:
             state = await self.sys_dbus.network.check_connectivity()
-            self.connectivity = state[0] == 4
+            self.connectivity = state[0] == ConnectivityState.CONNECTIVITY_FULL
         except DBusError as err:
             _LOGGER.warning("Can't update connectivity information: %s", err)
             self.connectivity = False

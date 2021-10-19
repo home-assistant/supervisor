@@ -135,6 +135,19 @@ class ConnectionStateType(int, Enum):
     DEACTIVATED = 4
 
 
+class ConnectivityState(int, Enum):
+    """Network connectvity.
+
+    https://developer.gnome.org/NetworkManager/unstable/nm-dbus-types.html#NMConnectivityState
+    """
+
+    CONNECTIVITY_UNKNOWN = 0
+    CONNECTIVITY_NONE = 1
+    CONNECTIVITY_PORTAL = 2
+    CONNECTIVITY_LIMITED = 3
+    CONNECTIVITY_FULL = 4
+
+
 class DeviceType(int, Enum):
     """Device types.
 
