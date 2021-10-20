@@ -80,9 +80,18 @@ def dbus() -> DBus:
 
         return load_json_fixture(f"{fixture}.json")
 
-    async def mock_wait_signal(_, signal_method, ___):
-        if signal_method == DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED:
+    async def mock_wait_for_signal(self):
+        if (
+            self._interface + "." + self._method
+            == DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
+        ):
             return [2, 0]
+
+    async def mock_signal___aenter__(self):
+        return self
+
+    async def mock_signal___aexit__(self, exc_t, exc_v, exc_tb):
+        pass
 
     async def mock_init_proxy(self):
 
@@ -108,14 +117,19 @@ def dbus() -> DBus:
         return load_json_fixture(f"{fixture}.json")
 
     with patch("supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus), patch(
-        "supervisor.utils.dbus.DBus.wait_signal", new=mock_wait_signal
-    ), patch(
         "supervisor.dbus.interface.DBusInterface.is_connected",
         return_value=True,
     ), patch(
         "supervisor.utils.dbus.DBus.get_properties", new=mock_get_properties
     ), patch(
         "supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy
+    ), patch(
+        "supervisor.utils.dbus.DBusSignalWrapper.__aenter__", new=mock_signal___aenter__
+    ), patch(
+        "supervisor.utils.dbus.DBusSignalWrapper.__aexit__", new=mock_signal___aexit__
+    ), patch(
+        "supervisor.utils.dbus.DBusSignalWrapper.wait_for_signal",
+        new=mock_wait_for_signal,
     ):
         yield dbus_commands
 
