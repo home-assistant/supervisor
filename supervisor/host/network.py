@@ -191,25 +191,24 @@ class NetworkManager(CoreSysAttributes):
             )
 
         if con:
-            # Only consider activated or deactivated signals, continue waiting on others
-            def message_filter(msg_body):
-                state: ConnectionStateType = msg_body[0]
-                if state == ConnectionStateType.DEACTIVATED:
-                    return True
-                elif state == ConnectionStateType.ACTIVATED:
-                    return True
-                return False
+            async with con.dbus.signal_wrapper(
+                DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
+            ) as signal:
+                # From this point we monitor signals. However, it might be that
+                # the state change before this point. Get the state currently to
+                # avoid any race condition.
+                await con.update()
+                state: ConnectionStateType = con.state
 
-            result = await con.dbus.wait_signal(
-                DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED, message_filter
-            )
+                while state != ConnectionStateType.ACTIVATED:
+                    if state == ConnectionStateType.DEACTIVATED:
+                        raise HostNetworkError(
+                            "Activating connection failed, check connection settings."
+                        )
 
-            _LOGGER.debug("StateChanged signal received, result: %s", str(result))
-            state: ConnectionStateType = result[0]
-            if state != ConnectionStateType.ACTIVATED:
-                raise HostNetworkError(
-                    "Activating connection failed, check connection settings."
-                )
+                    msg = await signal.wait_for_signal()
+                    state = msg[0]
+                    _LOGGER.debug("Active connection state changed to %s", state)
 
         await self.update()
 

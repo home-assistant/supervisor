@@ -193,72 +193,14 @@ class DBus:
             _LOGGER.error("No Set attribute %s for %s", name, interface)
             raise DBusFatalError() from err
 
-    async def wait_signal(self, signal_member, message_filter=None) -> Any:
+    def signal(self, signal_member) -> DBusSignalWrapper:
+        """Get signal context manager for this object."""
+        return DBusSignalWrapper(self, signal_member)
+
+    async def wait_signal(self, signal_member) -> Any:
         """Wait for signal on this object."""
-        signal_parts = signal_member.split(".")
-        interface = ".".join(signal_parts[:-1])
-        member = signal_parts[-1]
-        match = f"type='signal',interface={interface},member={member},path={self.object_path}"
-
-        _LOGGER.debug("Install match for signal %s", signal_member)
-        await self._bus.call(
-            Message(
-                destination="org.freedesktop.DBus",
-                interface="org.freedesktop.DBus",
-                path="/org/freedesktop/DBus",
-                member="AddMatch",
-                signature="s",
-                body=[match],
-            )
-        )
-
-        loop = asyncio.get_event_loop()
-        future = loop.create_future()
-
-        def message_handler(msg: Message):
-            if msg.message_type != MessageType.SIGNAL:
-                return
-
-            _LOGGER.debug(
-                "Signal message received %s, %s.%s object %s",
-                msg.body,
-                msg.interface,
-                msg.member,
-                msg.path,
-            )
-            if (
-                msg.interface != interface
-                or msg.member != member
-                or msg.path != self.object_path
-            ):
-                return
-
-            # Avoid race condition: We already received signal but handler not yet removed.
-            if future.done():
-                return
-
-            msg_body = _remove_dbus_signature(msg.body)
-            if message_filter and not message_filter(msg_body):
-                return
-
-            future.set_result(msg_body)
-
-        self._bus.add_message_handler(message_handler)
-        result = await future
-        self._bus.remove_message_handler(message_handler)
-
-        await self._bus.call(
-            Message(
-                destination="org.freedesktop.DBus",
-                interface="org.freedesktop.DBus",
-                path="/org/freedesktop/DBus",
-                member="RemoveMatch",
-                signature="s",
-                body=[match],
-            )
-        )
-
-        return result
+        async with self.signal(signal_member) as signal:
+            return await signal.wait_for_signal()
 
     def __getattr__(self, name: str) -> DBusCallWrapper:
         """Map to dbus method."""
@@ -293,3 +235,75 @@ class DBusCallWrapper:
             return self.dbus.call_dbus(interface, *args)
 
         return _method_wrapper
+
+
+class DBusSignalWrapper:
+    """Wrapper for D-Bus Signal."""
+
+    def __init__(self, dbus: DBus, signal_member: str) -> None:
+        """Initialize wrapper."""
+        self._dbus: DBus = dbus
+        signal_parts = signal_member.split(".")
+        self._interface = ".".join(signal_parts[:-1])
+        self._member = signal_parts[-1]
+        self._match: str = f"type='signal',interface={self._interface},member={self._member},path={self._dbus.object_path}"
+        self._messages: asyncio.Queue[Message] = asyncio.Queue()
+
+    def _message_handler(self, msg: Message):
+        if msg.message_type != MessageType.SIGNAL:
+            return
+
+        _LOGGER.debug(
+            "Signal message received %s, %s.%s object %s",
+            msg.body,
+            msg.interface,
+            msg.member,
+            msg.path,
+        )
+        if (
+            msg.interface != self._interface
+            or msg.member != self._member
+            or msg.path != self._dbus.object_path
+        ):
+            return
+
+        self._messages.put_nowait(msg)
+
+    async def __aenter__(self):
+        """Install match for signals and start collecting signal messages."""
+
+        _LOGGER.debug("Install match for signal %s.%s", self._interface, self._member)
+        await self._dbus._bus.call(
+            Message(
+                destination="org.freedesktop.DBus",
+                interface="org.freedesktop.DBus",
+                path="/org/freedesktop/DBus",
+                member="AddMatch",
+                signature="s",
+                body=[self._match],
+            )
+        )
+
+        self._dbus._bus.add_message_handler(self._message_handler)
+        return self
+
+    async def wait_for_signal(self) -> Message:
+        """Wait for signal and returns signal payload."""
+        msg = await self._messages.get()
+        return msg.body
+
+    async def __aexit__(self, exc_t, exc_v, exc_tb):
+        """Stop collecting signal messages and remove match for signals."""
+
+        self._dbus._bus.remove_message_handler(self._message_handler)
+
+        await self._dbus._bus.call(
+            Message(
+                destination="org.freedesktop.DBus",
+                interface="org.freedesktop.DBus",
+                path="/org/freedesktop/DBus",
+                member="RemoveMatch",
+                signature="s",
+                body=[self._match],
+            )
+        )
