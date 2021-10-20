@@ -7,6 +7,7 @@ from typing import Any
 
 from dbus_next import BusType, InvalidIntrospectionError, Message, MessageType
 from dbus_next.aio import MessageBus
+from dbus_next.introspection import Node
 from dbus_next.signature import Variant
 
 from ..exceptions import (
@@ -85,6 +86,7 @@ class DBus:
     async def _init_proxy(self) -> None:
         """Read interface data."""
         # Wait for dbus object to be available after restart
+        introspection: Node | None = None
         try:
             self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
         except Exception as err:
@@ -96,8 +98,9 @@ class DBus:
                     self.bus_name, self.object_path, timeout=10
                 )
             except InvalidIntrospectionError as err:
-                _LOGGER.error("Can't parse introspect data: %s", err)
-                raise DBusParseError() from err
+                raise DBusParseError(
+                    f"Can't parse introspect data: {err}", _LOGGER.error
+                ) from err
             except EOFError:
                 _LOGGER.warning(
                     "Busy system at %s - %s", self.bus_name, self.object_path
@@ -106,6 +109,11 @@ class DBus:
                 break
 
             await asyncio.sleep(3)
+
+        if introspection is None:
+            raise DBusFatalError(
+                "Could not get introspection data after 3 attempts", _LOGGER.error
+            )
 
         self._add_interfaces(introspection)
 
