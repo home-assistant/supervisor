@@ -191,7 +191,7 @@ class NetworkManager(CoreSysAttributes):
             )
 
         if con:
-            async with con.dbus.signal_wrapper(
+            async with con.dbus.signal(
                 DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
             ) as signal:
                 # From this point we monitor signals. However, it might be that
