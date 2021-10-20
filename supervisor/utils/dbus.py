@@ -90,13 +90,22 @@ class DBus:
         except Exception as err:
             raise DBusFatalError() from err
 
-        try:
-            introspection = await self._bus.introspect(
-                self.bus_name, self.object_path, timeout=10
-            )
-        except InvalidIntrospectionError as err:
-            _LOGGER.error("Can't parse introspect data: %s", err)
-            raise DBusParseError() from err
+        for _ in range(3):
+            try:
+                introspection = await self._bus.introspect(
+                    self.bus_name, self.object_path, timeout=10
+                )
+            except InvalidIntrospectionError as err:
+                _LOGGER.error("Can't parse introspect data: %s", err)
+                raise DBusParseError() from err
+            except EOFError:
+                _LOGGER.warning(
+                    "Busy system at %s - %s", self.bus_name, self.object_path
+                )
+            else:
+                break
+
+            await asyncio.sleep(3)
 
         self._add_interfaces(introspection)
 
