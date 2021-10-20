@@ -13,6 +13,7 @@ from ...exceptions import (
     DBusError,
     DBusFatalError,
     DBusInterfaceError,
+    DBusInterfaceMethodError,
     HostNotSupportedError,
 )
 from ...utils.dbus import DBus
@@ -162,7 +163,10 @@ class NetworkManager(DBusInterface):
             # Connect to interface
             try:
                 await interface.connect()
-            except DBusFatalError as err:
+            except (DBusFatalError, DBusInterfaceMethodError) as err:
+                # Docker creates and deletes interfaces quite often, sometimes
+                # this causes a race condition: A device disappears while we
+                # try to query it. Ignore those cases.
                 _LOGGER.warning("Can't process %s: %s", device, err)
                 continue
             except Exception as err:  # pylint: disable=broad-except

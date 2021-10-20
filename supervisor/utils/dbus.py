@@ -162,11 +162,10 @@ class DBus:
         )
 
         if reply.message_type == MessageType.ERROR:
-            if reply.error_name in (
-                "org.freedesktop.DBus.Error.ServiceUnknown",
-                "org.freedesktop.DBus.Error.UnknownMethod",
-            ):
+            if reply.error_name == "org.freedesktop.DBus.Error.ServiceUnknown":
                 raise DBusInterfaceError(reply.body[0])
+            if reply.error_name == "org.freedesktop.DBus.Error.UnknownMethod":
+                raise DBusInterfaceMethodError(reply.body[0])
             if reply.error_name == "org.freedesktop.DBus.Error.Disconnected":
                 raise DBusNotConnectedError()
             if reply.body and len(reply.body) > 0:
