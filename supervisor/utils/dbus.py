@@ -95,7 +95,6 @@ class DBus:
                 introspection = await self._bus.introspect(
                     self.bus_name, self.object_path, timeout=10
                 )
-                break
             except InvalidIntrospectionError as err:
                 _LOGGER.error("Can't parse introspect data: %s", err)
                 raise DBusParseError() from err
@@ -103,6 +102,8 @@ class DBus:
                 _LOGGER.warning(
                     "Busy system at %s - %s", self.bus_name, self.object_path
                 )
+            else:
+                break
 
             await asyncio.sleep(3)
 
