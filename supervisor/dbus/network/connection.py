@@ -2,6 +2,8 @@
 from ipaddress import ip_address, ip_interface
 from typing import Optional
 
+from supervisor.dbus.utils import dbus_connected
+
 from ...const import ATTR_ADDRESS, ATTR_PREFIX
 from ...utils.dbus import DBus
 from ..const import (
@@ -79,6 +81,11 @@ class NetworkConnection(DBusInterfaceProxy):
     async def connect(self) -> None:
         """Get connection information."""
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
+        await self.update()
+
+    @dbus_connected
+    async def update(self):
+        """Update connection information."""
         self.properties = await self.dbus.get_properties(DBUS_IFACE_CONNECTION_ACTIVE)
 
         # IPv4
