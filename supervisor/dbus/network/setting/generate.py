@@ -110,7 +110,7 @@ def get_connection_from_interface(
                 }
             )
 
-        ipv6["address-data"] = Variant("(a{sv})", adressdata)
+        ipv6["address-data"] = Variant("aa{sv}", adressdata)
         ipv6["gateway"] = Variant("s", str(interface.ipv6.gateway))
 
     conn[CONF_ATTR_IPV6] = ipv6
