@@ -101,8 +101,6 @@ def get_connection_from_interface(
 
         adressdata = []
         for address in interface.ipv6.address:
-            if address.with_prefixlen.startswith("fe80::"):
-                continue
             adressdata.append(
                 {
                     "address": Variant("s", str(address.ip)),
