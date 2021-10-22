@@ -101,8 +101,6 @@ def get_connection_from_interface(
 
         adressdata = []
         for address in interface.ipv6.address:
-            if address.with_prefixlen.startswith("fe80::"):
-                continue
             adressdata.append(
                 {
                     "address": Variant("s", str(address.ip)),
@@ -110,7 +108,7 @@ def get_connection_from_interface(
                 }
             )
 
-        ipv6["address-data"] = Variant("(a{sv})", adressdata)
+        ipv6["address-data"] = Variant("aa{sv}", adressdata)
         ipv6["gateway"] = Variant("s", str(interface.ipv6.gateway))
 
     conn[CONF_ATTR_IPV6] = ipv6
