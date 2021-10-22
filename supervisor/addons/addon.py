@@ -859,11 +859,16 @@ class Addon(AddonModel):
             # Restore data
             def _restore_data():
                 """Restore data."""
-                shutil.copytree(Path(temp, "data"), self.path_data, symlinks=True)
+                temp_data = Path(temp, "data")
+                if temp_data.is_dir():
+                    shutil.copytree(temp_data, self.path_data, symlinks=True)
+                else:
+                    self.path_data.mkdir()
 
             _LOGGER.info("Restoring data for addon %s", self.slug)
             if self.path_data.is_dir():
                 await remove_data(self.path_data)
+
             try:
                 await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:
