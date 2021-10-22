@@ -174,12 +174,19 @@ def initialize_system(coresys: CoreSys) -> None:
         _LOGGER.debug("Creating Supervisor share folder at '%s'", config.path_share)
         config.path_share.mkdir()
 
-    # Apparmor folder
+    # Apparmor folders
     if not config.path_apparmor.is_dir():
         _LOGGER.debug(
-            "Creating Supervisor Apparmor folder at '%s'", config.path_apparmor
+            "Creating Supervisor Apparmor Profile folder at '%s'", config.path_apparmor
         )
         config.path_apparmor.mkdir()
+
+    if not config.path_apparmor_cache.is_dir():
+        _LOGGER.debug(
+            "Creating Supervisor Apparmor Cache folder at '%s'",
+            config.path_apparmor_cache,
+        )
+        config.path_apparmor_cache.mkdir()
 
     # DNS folder
     if not config.path_dns.is_dir():
