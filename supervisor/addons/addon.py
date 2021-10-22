@@ -868,7 +868,6 @@ class Addon(AddonModel):
             _LOGGER.info("Restoring data for addon %s", self.slug)
             if self.path_data.is_dir():
                 await remove_data(self.path_data)
-
             try:
                 await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:
