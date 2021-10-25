@@ -45,7 +45,7 @@ class EvaluateContainer(EvaluateBase):
     @property
     def on_failure(self) -> str:
         """Return a string that is printed when self.evaluate is False."""
-        return f"Found images: {self._images} which are not supported."
+        return f"Found unsupported images: {self._images}"
 
     @property
     def states(self) -> list[CoreState]:
