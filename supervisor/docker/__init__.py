@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import attr
-from awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 import docker
 import requests
 
@@ -58,7 +58,7 @@ class DockerInfo:
         """Return true, if docker version is supported."""
         try:
             return self.version >= MIN_SUPPORTED_DOCKER
-        except AwesomeVersionCompare:
+        except AwesomeVersionCompareException:
             return False
 
     @property
