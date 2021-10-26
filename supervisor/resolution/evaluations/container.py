@@ -21,6 +21,7 @@ UNHEALTHY_IMAGES = [
     "watchtower",
     "ouroboros",
 ]
+IGNORE_IMAGES = ["sha256"]
 
 
 def setup(coresys: CoreSys) -> EvaluateBase:
@@ -45,7 +46,7 @@ class EvaluateContainer(EvaluateBase):
     @property
     def on_failure(self) -> str:
         """Return a string that is printed when self.evaluate is False."""
-        return f"Found images: {self._images} which are not supported, remove these from the host!"
+        return f"Found unsupported images: {self._images}"
 
     @property
     def states(self) -> list[CoreState]:
@@ -71,7 +72,7 @@ class EvaluateContainer(EvaluateBase):
             self.sys_resolution.evaluate.cached_images.add(image)
 
             image_name = image.partition(":")[0]
-            if image_name not in self.known_images:
+            if image_name not in IGNORE_IMAGES and image_name not in self.known_images:
                 self._images.add(image_name)
                 if any(
                     image_name.split("/")[-1].startswith(unhealthy)
