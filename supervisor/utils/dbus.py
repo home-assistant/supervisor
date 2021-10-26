@@ -183,14 +183,13 @@ class DBus:
             raise DBusFatalError() from err
 
     async def set_property(
-        self, interface: str, name: str, value: Any
-    ) -> dict[str, Any]:
+        self,
+        interface: str,
+        name: str,
+        value: Any,
+    ) -> dict[str, Any] | None:
         """Set a property from interface."""
-        try:
-            return (await self.call_dbus(DBUS_METHOD_SET, interface, name, value))[0]
-        except IndexError as err:
-            _LOGGER.error("No Set attribute %s for %s", name, interface)
-            raise DBusFatalError() from err
+        return await self.call_dbus(DBUS_METHOD_SET, interface, name, value)
 
     def signal(self, signal_member) -> DBusSignalWrapper:
         """Get signal context manager for this object."""
