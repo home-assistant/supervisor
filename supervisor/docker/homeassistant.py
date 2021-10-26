@@ -3,7 +3,7 @@ from ipaddress import IPv4Address
 import logging
 from typing import Awaitable, Optional
 
-from awesomeversion import AwesomeVersion, AwesomeVersionCompare
+from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 import docker
 import requests
 
@@ -220,7 +220,7 @@ class DockerHomeAssistant(DockerInterface):
         try:
             if version != LANDINGPAGE and version < _VERIFY_TRUST:
                 return
-        except AwesomeVersionCompare:
+        except AwesomeVersionCompareException:
             return
 
         super()._validate_trust(image_id, image, version)

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Awaitable
 
 from awesomeversion.awesomeversion import AwesomeVersion
-from awesomeversion.exceptions import AwesomeVersionCompare
+from awesomeversion.exceptions import AwesomeVersionCompareException
 
 from ..const import FOLDER_HOMEASSISTANT, CoreState
 from ..coresys import CoreSysAttributes
@@ -393,7 +393,7 @@ class BackupManager(CoreSysAttributes):
             try:
                 if version == self.sys_homeassistant.version:
                     return
-            except (AwesomeVersionCompare, TypeError):
+            except (AwesomeVersionCompareException, TypeError):
                 pass
             await self.sys_homeassistant.core.update(version)
 
