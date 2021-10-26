@@ -8,7 +8,12 @@ from typing import Any, Optional
 
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompare
-import docker
+from docker import errors as docker_errors
+from docker.api.client import APIClient
+from docker.client import DockerClient
+from docker.models.containers import Container, ContainerCollection
+from docker.models.images import ImageCollection
+from docker.models.networks import Network
 import requests
 
 from ..const import (
@@ -90,7 +95,7 @@ class DockerAPI:
 
     def __init__(self):
         """Initialize Docker base wrapper."""
-        self.docker: docker.DockerClient = docker.DockerClient(
+        self.docker: DockerClient = DockerClient(
             base_url=f"unix:/{str(SOCKET_DOCKER)}", version="auto", timeout=900
         )
         self.network: DockerNetwork = DockerNetwork(self.docker)
@@ -98,17 +103,17 @@ class DockerAPI:
         self.config: DockerConfig = DockerConfig()
 
     @property
-    def images(self) -> docker.models.images.ImageCollection:
+    def images(self) -> ImageCollection:
         """Return API images."""
         return self.docker.images
 
     @property
-    def containers(self) -> docker.models.containers.ContainerCollection:
+    def containers(self) -> ContainerCollection:
         """Return API containers."""
         return self.docker.containers
 
     @property
-    def api(self) -> docker.APIClient:
+    def api(self) -> APIClient:
         """Return API containers."""
         return self.docker.api
 
@@ -124,7 +129,7 @@ class DockerAPI:
         dns: bool = True,
         ipv4: Optional[IPv4Address] = None,
         **kwargs: Any,
-    ) -> docker.models.containers.Container:
+    ) -> Container:
         """Create a Docker container and run it.
 
         Need run inside executor.
@@ -148,11 +153,11 @@ class DockerAPI:
             container = self.docker.containers.create(
                 f"{image}:{tag}", use_config_proxy=False, **kwargs
             )
-        except docker.errors.NotFound as err:
+        except docker_errors.NotFound as err:
             raise DockerNotFound(
                 f"Image {image} not exists for {name}", _LOGGER.error
             ) from err
-        except docker.errors.DockerException as err:
+        except docker_errors.DockerException as err:
             raise DockerAPIError(
                 f"Can't create container from {name}: {err}", _LOGGER.error
             ) from err
@@ -172,9 +177,7 @@ class DockerAPI:
                 with suppress(DockerError):
                     self.network.detach_default_bridge(container)
         else:
-            host_network: docker.models.networks.Network = self.docker.networks.get(
-                DOCKER_NETWORK_HOST
-            )
+            host_network: Network = self.docker.networks.get(DOCKER_NETWORK_HOST)
 
             # Check if container is register on host
             # https://github.com/moby/moby/issues/23302
@@ -182,13 +185,13 @@ class DockerAPI:
                 val.get("Name")
                 for val in host_network.attrs.get("Containers", {}).values()
             ):
-                with suppress(docker.errors.NotFound):
+                with suppress(docker_errors.NotFound):
                     host_network.disconnect(name, force=True)
 
         # Run container
         try:
             container.start()
-        except docker.errors.DockerException as err:
+        except docker_errors.DockerException as err:
             raise DockerAPIError(f"Can't start {name}: {err}", _LOGGER.error) from err
         except requests.RequestException as err:
             raise DockerRequestError(
@@ -196,7 +199,7 @@ class DockerAPI:
             ) from err
 
         # Update metadata
-        with suppress(docker.errors.DockerException, requests.RequestException):
+        with suppress(docker_errors.DockerException, requests.RequestException):
             container.reload()
 
         return container
@@ -230,13 +233,13 @@ class DockerAPI:
             result = container.wait()
             output = container.logs(stdout=stdout, stderr=stderr)
 
-        except (docker.errors.DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(f"Can't execute command: {err}", _LOGGER.error) from err
 
         finally:
             # cleanup container
             if container:
-                with suppress(docker.errors.DockerException, requests.RequestException):
+                with suppress(docker_errors.DockerException, requests.RequestException):
                     container.remove(force=True)
 
         return CommandReturn(result.get("StatusCode"), output)
@@ -248,47 +251,47 @@ class DockerAPI:
         try:
             output = self.docker.api.prune_containers()
             _LOGGER.debug("Containers prune: %s", output)
-        except docker.errors.APIError as err:
+        except docker_errors.APIError as err:
             _LOGGER.warning("Error for containers prune: %s", err)
 
         _LOGGER.info("Prune stale images")
         try:
             output = self.docker.api.prune_images(filters={"dangling": False})
             _LOGGER.debug("Images prune: %s", output)
-        except docker.errors.APIError as err:
+        except docker_errors.APIError as err:
             _LOGGER.warning("Error for images prune: %s", err)
 
         _LOGGER.info("Prune stale builds")
         try:
             output = self.docker.api.prune_builds()
             _LOGGER.debug("Builds prune: %s", output)
-        except docker.errors.APIError as err:
+        except docker_errors.APIError as err:
             _LOGGER.warning("Error for builds prune: %s", err)
 
         _LOGGER.info("Prune stale volumes")
         try:
             output = self.docker.api.prune_builds()
             _LOGGER.debug("Volumes prune: %s", output)
-        except docker.errors.APIError as err:
+        except docker_errors.APIError as err:
             _LOGGER.warning("Error for volumes prune: %s", err)
 
         _LOGGER.info("Prune stale networks")
         try:
             output = self.docker.api.prune_networks()
             _LOGGER.debug("Networks prune: %s", output)
-        except docker.errors.APIError as err:
+        except docker_errors.APIError as err:
             _LOGGER.warning("Error for networks prune: %s", err)
 
         _LOGGER.info("Fix stale container on hassio network")
         try:
             self.prune_networks(DOCKER_NETWORK)
-        except docker.errors.APIError as err:
+        except docker_errors.APIError as err:
             _LOGGER.warning("Error for networks hassio prune: %s", err)
 
         _LOGGER.info("Fix stale container on host network")
         try:
             self.prune_networks(DOCKER_NETWORK_HOST)
-        except docker.errors.APIError as err:
+        except docker_errors.APIError as err:
             _LOGGER.warning("Error for networks host prune: %s", err)
 
     def prune_networks(self, network_name: str) -> None:
@@ -296,21 +299,21 @@ class DockerAPI:
 
         Fix: https://github.com/moby/moby/issues/23302
         """
-        network: docker.models.networks.Network = self.docker.networks.get(network_name)
+        network: Network = self.docker.networks.get(network_name)
 
         for cid, data in network.attrs.get("Containers", {}).items():
             try:
                 self.docker.containers.get(cid)
                 continue
-            except docker.errors.NotFound:
+            except docker_errors.NotFound:
                 _LOGGER.debug(
                     "Docker network %s is corrupt on container: %s", network_name, cid
                 )
-            except (docker.errors.DockerException, requests.RequestException):
+            except (docker_errors.DockerException, requests.RequestException):
                 _LOGGER.warning(
                     "Docker fatal error on container %s on %s", cid, network_name
                 )
                 continue
 
-            with suppress(docker.errors.DockerException, requests.RequestException):
+            with suppress(docker_errors.DockerException, requests.RequestException):
                 network.disconnect(data.get("Name", cid), force=True)
