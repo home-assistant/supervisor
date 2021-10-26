@@ -528,6 +528,10 @@ class DockerInterface(CoreSysAttributes):
         except (docker.errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
+        # container is not running
+        if docker_container.status != "running":
+            raise DockerError(f"Container {self.name} is not running", _LOGGER.error)
+
         try:
             stats = docker_container.stats(stream=False)
             return DockerStats(stats)
