@@ -187,7 +187,7 @@ class DBus:
         interface: str,
         name: str,
         value: Any,
-    ) -> dict[str, Any] | None:
+    ) -> list[Any] | dict[str, Any] | None:
         """Set a property from interface."""
         return await self.call_dbus(DBUS_METHOD_SET, interface, name, value)
 
