@@ -27,6 +27,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from .const import (
     ATTR_AGENT_VERSION,
+    ATTR_APPARMOR_VERSION,
     ATTR_BOOT_TIMESTAMP,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
@@ -49,6 +50,7 @@ class APIHost(CoreSysAttributes):
         """Return host information."""
         return {
             ATTR_AGENT_VERSION: self.sys_dbus.agent.version,
+            ATTR_APPARMOR_VERSION: self.sys_host.apparmor.version,
             ATTR_CHASSIS: self.sys_host.info.chassis,
             ATTR_CPE: self.sys_host.info.cpe,
             ATTR_DEPLOYMENT: self.sys_host.info.deployment,
