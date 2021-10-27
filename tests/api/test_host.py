@@ -21,4 +21,4 @@ async def test_api_host_info(api_client, tmp_path, coresys: CoreSys):
     resp = await api_client.get("/host/info")
     result = await resp.json()
 
-    assert result["data"]["apparmor"] == "2.13.2"
+    assert result["data"]["apparmor_version"] == "2.13.2"
