@@ -126,7 +126,7 @@ class AppArmorControl(CoreSysAttributes):
         try:
             await self.sys_dbus.agent.apparmor.load_profile(
                 self.sys_config.path_extern_apparmor.joinpath(profile_name),
-                self.sys_config.path_apparmor_cache,
+                self.sys_config.path_extern_apparmor_cache,
             )
         except DBusError as err:
             raise HostAppArmorError(
@@ -138,7 +138,7 @@ class AppArmorControl(CoreSysAttributes):
         try:
             await self.sys_dbus.agent.apparmor.unload_profile(
                 self.sys_config.path_extern_apparmor.joinpath(profile_name),
-                self.sys_config.path_apparmor_cache,
+                self.sys_config.path_extern_apparmor_cache,
             )
         except DBusError as err:
             raise HostAppArmorError(
