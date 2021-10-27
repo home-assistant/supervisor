@@ -736,7 +736,7 @@ class Addon(AddonModel):
             if self.sys_host.apparmor.exists(self.slug):
                 profile = temp_path.joinpath("apparmor.txt")
                 try:
-                    self.sys_host.apparmor.backup_profile(self.slug, profile)
+                    await self.sys_host.apparmor.backup_profile(self.slug, profile)
                 except HostAppArmorError as err:
                     raise AddonsError(
                         "Can't backup AppArmor profile", _LOGGER.error

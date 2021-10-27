@@ -194,8 +194,10 @@ class DockerAddon(DockerInterface):
         security = super().security_opt
 
         # AppArmor
-        apparmor = self.sys_host.apparmor.available
-        if not apparmor or self.addon.apparmor == SECURITY_DISABLE:
+        if (
+            not self.sys_host.apparmor.available
+            or self.addon.apparmor == SECURITY_DISABLE
+        ):
             security.append("apparmor=unconfined")
         elif self.addon.apparmor == SECURITY_PROFILE:
             security.append(f"apparmor={self.addon.slug}")

@@ -42,6 +42,7 @@ BACKUP_DATA = PurePath("backup")
 SHARE_DATA = PurePath("share")
 TMP_DATA = PurePath("tmp")
 APPARMOR_DATA = PurePath("apparmor")
+APPARMOR_CACHE = PurePath("apparmor/cache")
 DNS_DATA = PurePath("dns")
 AUDIO_DATA = PurePath("audio")
 MEDIA_DATA = PurePath("media")
@@ -267,6 +268,21 @@ class CoreConfig(FileConfiguration):
     def path_apparmor(self) -> Path:
         """Return root Apparmor profile folder."""
         return Path(SUPERVISOR_DATA, APPARMOR_DATA)
+
+    @property
+    def path_apparmor_cache(self) -> Path:
+        """Return root Apparmor cache folder."""
+        return Path(SUPERVISOR_DATA, APPARMOR_CACHE)
+
+    @property
+    def path_extern_apparmor(self) -> Path:
+        """Return root Apparmor profile folder external."""
+        return Path(self.path_extern_supervisor, APPARMOR_DATA)
+
+    @property
+    def path_extern_apparmor_cache(self) -> Path:
+        """Return root Apparmor cache folder external."""
+        return Path(self.path_extern_supervisor, APPARMOR_CACHE)
 
     @property
     def path_extern_share(self) -> PurePath:
