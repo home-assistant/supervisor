@@ -27,6 +27,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from .const import (
     ATTR_AGENT_VERSION,
+    ATTR_APPARMOR,
     ATTR_BOOT_TIMESTAMP,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
@@ -60,6 +61,7 @@ class APIHost(CoreSysAttributes):
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_KERNEL: self.sys_host.info.kernel,
             ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
+            ATTR_APPARMOR: self.sys_host.apparmor.version,
             ATTR_TIMEZONE: self.sys_host.info.timezone,
             ATTR_DT_UTC: self.sys_host.info.dt_utc,
             ATTR_DT_SYNCHRONIZED: self.sys_host.info.dt_synchronized,

@@ -1,12 +1,15 @@
 """AppArmor control for host."""
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 import shutil
 
-from supervisor.resolution.const import UnsupportedReason
+from awesomeversion import AwesomeVersion
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DBusError, HostAppArmorError
+from ..resolution.const import UnsupportedReason
 from ..utils.apparmor import validate_profile
 from .const import HostFeature
 
@@ -28,6 +31,11 @@ class AppArmorControl(CoreSysAttributes):
             HostFeature.OS_AGENT in self.sys_host.features
             and UnsupportedReason.APPARMOR not in self.sys_resolution.unsupported
         )
+
+    @property
+    def version(self) -> AwesomeVersion | None:
+        """Return hosts AppArmor Version."""
+        return self.sys_dbus.agent.apparmor.version
 
     def exists(self, profile_name: str) -> bool:
         """Return True if a profile exists."""
