@@ -46,6 +46,7 @@ def rating_security(addon: AddonModel) -> int:
                 Capabilities.SYS_PTRACE,
                 Capabilities.SYS_MODULE,
                 Capabilities.DAC_READ_SEARCH,
+                Capabilities.IPC_LOCK,
             )
         )
         or addon.with_kernel_modules
