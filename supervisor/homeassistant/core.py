@@ -204,7 +204,7 @@ class HomeAssistantCore(CoreSysAttributes):
 
             if running:
                 await self._start()
-            _LOGGER.info("Successful started Home Assistant %s", to_version)
+            _LOGGER.info("Successfully started Home Assistant %s", to_version)
 
             # Successfull - last step
             self.sys_homeassistant.save_data()
