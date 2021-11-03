@@ -3,6 +3,8 @@ from contextlib import suppress
 from functools import lru_cache
 import logging
 
+from supervisor.host.logs import LogsControl
+
 from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, PulseAudioError
@@ -32,6 +34,7 @@ class HostManager(CoreSysAttributes):
         self._services: ServiceManager = ServiceManager(coresys)
         self._network: NetworkManager = NetworkManager(coresys)
         self._sound: SoundControl = SoundControl(coresys)
+        self._logs: LogsControl = LogsControl(coresys)
 
     @property
     def apparmor(self) -> AppArmorControl:
@@ -62,6 +65,11 @@ class HostManager(CoreSysAttributes):
     def sound(self) -> SoundControl:
         """Return host PulseAudio control."""
         return self._sound
+
+    @property
+    def logs(self) -> LogsControl:
+        """Return host logs handler."""
+        return self._logs
 
     @property
     def features(self) -> list[HostFeature]:
@@ -95,6 +103,9 @@ class HostManager(CoreSysAttributes):
 
         if self.sys_dbus.resolved.is_connected:
             features.append(HostFeature.RESOLVED)
+
+        if self._logs.available:
+            features.append(HostFeature.JOURNAL)
 
         return features
 

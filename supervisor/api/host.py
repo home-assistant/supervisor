@@ -1,9 +1,13 @@
 """Init file for Supervisor host RESTful API."""
 import asyncio
+import logging
 from typing import Awaitable
 
 from aiohttp import web
+from aiohttp.hdrs import ACCEPT
 import voluptuous as vol
+
+from supervisor.exceptions import APIError
 
 from ..const import (
     ATTR_CHASSIS,
@@ -36,10 +40,14 @@ from .const import (
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
     CONTENT_TYPE_BINARY,
+    CONTENT_TYPE_TEXT,
 )
 from .utils import api_process, api_process_raw, api_validate
 
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+
 SERVICE = "service"
+IDENTIFIER = "identifier"
 
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): str})
 
@@ -144,3 +152,35 @@ class APIHost(CoreSysAttributes):
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return host kernel logs."""
         return self.sys_host.info.get_dmesg()
+
+    @api_process
+    async def advanced_logs(self, request: web.Request) -> web.StreamResponse:
+        """Return systemd-journald logs."""
+        params = {}
+        if IDENTIFIER in request.match_info:
+            params["SYSLOG_IDENTIFIER"] = request.match_info.get(IDENTIFIER)
+        if "boot" in request.query:
+            params["boot"] = ""
+        if "follow" in request.query:
+            params["follow"] = ""
+
+        if ACCEPT in request.headers and request.headers[ACCEPT] not in [
+            CONTENT_TYPE_TEXT,
+            "*/*",
+        ]:
+            raise APIError(
+                "Invalid content type requested. Only text/plain supported for now."
+            )
+
+        async with self.sys_host.logs.journald_logs(params) as resp:
+            try:
+                response = web.StreamResponse()
+                response.content_type = CONTENT_TYPE_TEXT
+                await response.prepare(request)
+                async for data in resp.content:
+                    await response.write(data)
+            except ConnectionResetError:
+                _LOGGER.info("Connection reset (client probably disconnected)")
+            except Exception:
+                _LOGGER.exception("Error while returning log data", exc_info=True)
+            return response

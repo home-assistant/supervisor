@@ -47,3 +47,4 @@ class HostFeature(str, Enum):
     SHUTDOWN = "shutdown"
     OS_AGENT = "os_agent"
     TIMEDATE = "timedate"
+    JOURNAL = "journal"

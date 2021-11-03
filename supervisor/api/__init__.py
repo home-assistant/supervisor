@@ -104,6 +104,8 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/host/info", api_host.info),
                 web.get("/host/logs", api_host.logs),
+                web.get("/host/logs/entries", api_host.advanced_logs),
+                web.get("/host/logs/{identifier}/entries", api_host.advanced_logs),
                 web.post("/host/reboot", api_host.reboot),
                 web.post("/host/shutdown", api_host.shutdown),
                 web.post("/host/reload", api_host.reload),
