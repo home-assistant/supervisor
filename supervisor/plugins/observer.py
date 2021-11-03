@@ -121,9 +121,8 @@ class PluginObserver(PluginBase):
     async def start(self) -> None:
         """Run observer."""
         # Create new API token
-        if not self.supervisor_token:
-            self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
-            self.save_data()
+        self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
+        self.save_data()
 
         # Start Instance
         _LOGGER.info("Starting observer plugin")
