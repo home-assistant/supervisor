@@ -12,6 +12,7 @@ from aiohttp.connector import UnixConnector
 from aiohttp.hdrs import ACCEPT, RANGE
 
 from supervisor.coresys import CoreSys, CoreSysAttributes
+from supervisor.exceptions import HostNotSupportedError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -34,6 +35,12 @@ class LogsControl(CoreSysAttributes):
     @asynccontextmanager
     async def journald_logs(self, params, range) -> AsyncIterator[ClientResponse]:
         """Get logs from systemd-journal-gatewayd."""
+
+        if not self.available:
+            raise HostNotSupportedError(
+                "No systemd-journal-gatewayd Unix socket available", _LOGGER.error
+            )
+
         conn = UnixConnector(path="/run/systemd-journal-gatewayd.sock")
 
         async with ClientSession(connector=conn) as session:
