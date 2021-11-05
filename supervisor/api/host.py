@@ -4,7 +4,7 @@ import logging
 from typing import Awaitable
 
 from aiohttp import web
-from aiohttp.hdrs import ACCEPT
+from aiohttp.hdrs import ACCEPT, RANGE
 import voluptuous as vol
 
 from supervisor.exceptions import APIError
@@ -172,7 +172,9 @@ class APIHost(CoreSysAttributes):
                 "Invalid content type requested. Only text/plain supported for now."
             )
 
-        async with self.sys_host.logs.journald_logs(params) as resp:
+        range = request.headers.get(RANGE)
+
+        async with self.sys_host.logs.journald_logs(params, range) as resp:
             try:
                 response = web.StreamResponse()
                 response.content_type = CONTENT_TYPE_TEXT

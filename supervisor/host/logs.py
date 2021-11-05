@@ -9,7 +9,7 @@ from typing import AsyncIterator
 from aiohttp import ClientSession
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import UnixConnector
-from aiohttp.hdrs import ACCEPT
+from aiohttp.hdrs import ACCEPT, RANGE
 
 from supervisor.coresys import CoreSys, CoreSysAttributes
 
@@ -32,12 +32,14 @@ class LogsControl(CoreSysAttributes):
         return SYSTEMD_JOURNAL_GATEWAYD_SOCKET.is_socket()
 
     @asynccontextmanager
-    async def journald_logs(self, params) -> AsyncIterator[ClientResponse]:
+    async def journald_logs(self, params, range) -> AsyncIterator[ClientResponse]:
         """Get logs from systemd-journal-gatewayd."""
         conn = UnixConnector(path="/run/systemd-journal-gatewayd.sock")
 
         async with ClientSession(connector=conn) as session:
             headers = {ACCEPT: "text/plain"}
+            if range:
+                headers[RANGE] = range
             async with session.get(
                 "http://localhost/entries",
                 headers=headers,
