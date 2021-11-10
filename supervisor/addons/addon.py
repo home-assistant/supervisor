@@ -587,7 +587,9 @@ class Addon(AddonModel):
             return True
 
         # merge options
-        options = {**self.persist[ATTR_OPTIONS], **default_options}
+        options = _OPTIONS_MERGER.merge(
+            deepcopy(default_options), deepcopy(self.persist[ATTR_OPTIONS])
+        )
 
         # create voluptuous
         new_schema = vol.Schema(
