@@ -379,8 +379,10 @@ class APIAddons(CoreSysAttributes):
         slug: str = request.match_info.get("addon")
         if slug != "self":
             raise APIForbidden("This can be only read by the Add-on itself!")
-
         addon = self._extract_addon_installed(request)
+
+        # Lookup/reload secrets
+        await self.sys_homeassistant.secrets.reload()
         try:
             return addon.schema.validate(addon.options)
         except vol.Invalid:
