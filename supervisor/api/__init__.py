@@ -284,6 +284,9 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
+                web.get(
+                    "/supervisor/available_updates", api_supervisor.available_updates
+                ),
                 web.get("/supervisor/ping", api_supervisor.ping),
                 web.get("/supervisor/info", api_supervisor.info),
                 web.get("/supervisor/stats", api_supervisor.stats),

@@ -50,6 +50,13 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
 from ..validate import repositories, version_tag, wait_boot
+from .const import (
+    ATTR_CHANGELOG_PATH,
+    ATTR_CHANGELOG_URL,
+    ATTR_PANEL_PATH,
+    ATTR_UPDATE_PATH,
+    ATTR_UPDATE_TYPE,
+)
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -239,3 +246,67 @@ class APISupervisor(CoreSysAttributes):
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return supervisor Docker logs."""
         return self.sys_supervisor.logs()
+
+    @api_process
+    async def available_updates(self, request: web.Request) -> list[dict[str, Any]]:
+        """Return a list of items with available updates."""
+        available_updates = []
+
+        # Core
+        if self.sys_homeassistant.need_update:
+            available_updates.append(
+                {
+                    ATTR_UPDATE_TYPE: "core",
+                    ATTR_UPDATE_PATH: "/core/update",
+                    ATTR_PANEL_PATH: "/update-available/core",
+                    ATTR_CHANGELOG_URL: "https://www.home-assistant.io/latest-release-notes/",
+                    ATTR_VERSION: self.sys_homeassistant.version,
+                    ATTR_VERSION_LATEST: self.sys_homeassistant.latest_version,
+                }
+            )
+
+        # Supervisor
+        if self.sys_supervisor.need_update:
+            available_updates.append(
+                {
+                    ATTR_UPDATE_TYPE: "supervisor",
+                    ATTR_UPDATE_PATH: "/supervisor/update",
+                    ATTR_PANEL_PATH: "/update-available/supervisor",
+                    ATTR_CHANGELOG_URL: f"https://github.com/home-assistant/supervisor/compare/{self.sys_supervisor.version}...{self.sys_supervisor.latest_version}",
+                    ATTR_VERSION: self.sys_supervisor.version,
+                    ATTR_VERSION_LATEST: self.sys_supervisor.latest_version,
+                }
+            )
+
+        # OS
+        if self.sys_os.need_update:
+            available_updates.append(
+                {
+                    ATTR_UPDATE_TYPE: "os",
+                    ATTR_UPDATE_PATH: "/os/update",
+                    ATTR_PANEL_PATH: "/update-available/os",
+                    ATTR_CHANGELOG_URL: f"https://github.com/home-assistant/operating-system/compare/{self.sys_os.version}...{self.sys_os.latest_version}",
+                    ATTR_VERSION: self.sys_os.version,
+                    ATTR_VERSION_LATEST: self.sys_os.latest_version,
+                }
+            )
+
+        # Add-ons
+        available_updates.extend(
+            {
+                ATTR_UPDATE_TYPE: "addon",
+                ATTR_NAME: addon.name,
+                ATTR_ICON: f"/addons/{addon.slug}/icon" if addon.with_icon else None,
+                ATTR_CHANGELOG_PATH: f"/addons/{addon.slug}/changelog"
+                if addon.with_changelog
+                else None,
+                ATTR_UPDATE_PATH: f"/addons/{addon.slug}/update",
+                ATTR_PANEL_PATH: f"/update-available/{addon.slug}",
+                ATTR_VERSION: addon.version,
+                ATTR_VERSION_LATEST: addon.latest_version,
+            }
+            for addon in self.sys_addons.installed
+            if not addon.need_update
+        )
+
+        return available_updates
