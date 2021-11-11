@@ -2,6 +2,7 @@
 
 import pytest
 
+from supervisor.api.const import ATTR_AVAILABLE_UPDATES
 from supervisor.coresys import CoreSys
 
 
@@ -22,7 +23,7 @@ async def test_api_supervisor_available_updates(api_client, coresys: CoreSys):
     async def available_updates():
         return (await (await api_client.get("/supervisor/available_updates")).json())[
             "data"
-        ]
+        ][ATTR_AVAILABLE_UPDATES]
 
     assert len(await available_updates()) == 0
 

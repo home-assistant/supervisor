@@ -138,7 +138,7 @@ def api_return_error(
 def api_return_ok(data: Optional[dict[str, Any]] = None) -> web.Response:
     """Return an API ok answer."""
     return web.json_response(
-        {JSON_RESULT: RESULT_OK, JSON_DATA: data if data is not None else {}},
+        {JSON_RESULT: RESULT_OK, JSON_DATA: data or {}},
         dumps=lambda x: json.dumps(x, cls=JSONEncoder),
     )
 

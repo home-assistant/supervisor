@@ -51,6 +51,7 @@ from ..exceptions import APIError
 from ..utils.validate import validate_timezone
 from ..validate import repositories, version_tag, wait_boot
 from .const import (
+    ATTR_AVAILABLE_UPDATES,
     ATTR_CHANGELOG_PATH,
     ATTR_CHANGELOG_URL,
     ATTR_PANEL_PATH,
@@ -248,7 +249,7 @@ class APISupervisor(CoreSysAttributes):
         return self.sys_supervisor.logs()
 
     @api_process
-    async def available_updates(self, request: web.Request) -> list[dict[str, Any]]:
+    async def available_updates(self, request: web.Request) -> dict[str, Any]:
         """Return a list of items with available updates."""
         available_updates = []
 
@@ -309,4 +310,4 @@ class APISupervisor(CoreSysAttributes):
             if not addon.need_update
         )
 
-        return available_updates
+        return {ATTR_AVAILABLE_UPDATES: available_updates}
