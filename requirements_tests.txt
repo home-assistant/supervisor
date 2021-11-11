@@ -1,6 +1,6 @@
 black==21.9b0
 codecov==2.1.12
-coverage==5.5
+coverage==6.1.2
 flake8-docstrings==1.6.0
 flake8==4.0.1
 pre-commit==2.15.0
