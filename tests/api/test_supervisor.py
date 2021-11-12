@@ -5,6 +5,8 @@ import pytest
 from supervisor.api.const import ATTR_AVAILABLE_UPDATES
 from supervisor.coresys import CoreSys
 
+from tests.const import TEST_ADDON_SLUG
+
 
 @pytest.mark.asyncio
 async def test_api_supervisor_options_debug(api_client, coresys: CoreSys):
@@ -17,20 +19,37 @@ async def test_api_supervisor_options_debug(api_client, coresys: CoreSys):
 
 
 @pytest.mark.asyncio
-async def test_api_supervisor_available_updates(api_client, coresys: CoreSys):
+async def test_api_supervisor_available_updates(
+    install_addon_ssh,
+    api_client,
+    coresys: CoreSys,
+):
     """Test available_updates."""
+    installed_addon = coresys.addons.get(TEST_ADDON_SLUG)
+    installed_addon.persist["version"] = "1.2.3"
 
     async def available_updates():
         return (await (await api_client.get("/supervisor/available_updates")).json())[
             "data"
         ][ATTR_AVAILABLE_UPDATES]
 
-    assert len(await available_updates()) == 0
+    updates = await available_updates()
+    assert len(updates) == 1
+    assert updates[-1] == {
+        "changelog_path": None,
+        "icon": None,
+        "name": "Terminal & SSH",
+        "panel_path": "/update-available/local_ssh",
+        "update_path": "/addons/local_ssh/update",
+        "update_type": "addon",
+        "version": "1.2.3",
+        "version_latest": "9.2.1",
+    }
 
     coresys.updater._data["hassos"] = "321"
     coresys.os._version = "123"
     updates = await available_updates()
-    assert len(updates) == 1
+    assert len(updates) == 2
     assert updates[0] == {
         "changelog_url": "https://github.com/home-assistant/operating-system/compare/123...321",
         "panel_path": "/update-available/os",
@@ -43,7 +62,7 @@ async def test_api_supervisor_available_updates(api_client, coresys: CoreSys):
     coresys.updater._data["homeassistant"] = "321"
     coresys.homeassistant.version = "123"
     updates = await available_updates()
-    assert len(updates) == 2
+    assert len(updates) == 3
     assert updates[0] == {
         "changelog_url": "https://www.home-assistant.io/latest-release-notes/",
         "panel_path": "/update-available/core",

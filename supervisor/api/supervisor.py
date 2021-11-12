@@ -307,7 +307,7 @@ class APISupervisor(CoreSysAttributes):
                 ATTR_VERSION_LATEST: addon.latest_version,
             }
             for addon in self.sys_addons.installed
-            if not addon.need_update
+            if addon.need_update
         )
 
         return {ATTR_AVAILABLE_UPDATES: available_updates}
