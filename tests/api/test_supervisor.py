@@ -36,7 +36,6 @@ async def test_api_supervisor_available_updates(
     updates = await available_updates()
     assert len(updates) == 1
     assert updates[-1] == {
-        "changelog_path": None,
         "icon": None,
         "name": "Terminal & SSH",
         "panel_path": "/update-available/local_ssh",
@@ -51,7 +50,6 @@ async def test_api_supervisor_available_updates(
     updates = await available_updates()
     assert len(updates) == 2
     assert updates[0] == {
-        "changelog_url": "https://github.com/home-assistant/operating-system/compare/123...321",
         "panel_path": "/update-available/os",
         "update_path": "/os/update",
         "update_type": "os",
@@ -64,7 +62,6 @@ async def test_api_supervisor_available_updates(
     updates = await available_updates()
     assert len(updates) == 3
     assert updates[0] == {
-        "changelog_url": "https://www.home-assistant.io/latest-release-notes/",
         "panel_path": "/update-available/core",
         "update_path": "/core/update",
         "update_type": "core",
