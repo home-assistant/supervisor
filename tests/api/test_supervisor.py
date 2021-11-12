@@ -1,5 +1,5 @@
 """Test Supervisor API."""
-
+# pylint: disable=protected-access
 import pytest
 
 from supervisor.api.const import ATTR_AVAILABLE_UPDATES
