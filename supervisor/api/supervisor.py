@@ -50,12 +50,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
 from ..validate import repositories, version_tag, wait_boot
-from .const import (
-    ATTR_AVAILABLE_UPDATES,
-    ATTR_PANEL_PATH,
-    ATTR_UPDATE_PATH,
-    ATTR_UPDATE_TYPE,
-)
+from .const import ATTR_AVAILABLE_UPDATES, ATTR_PANEL_PATH, ATTR_UPDATE_TYPE
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -256,7 +251,6 @@ class APISupervisor(CoreSysAttributes):
             available_updates.append(
                 {
                     ATTR_UPDATE_TYPE: "core",
-                    ATTR_UPDATE_PATH: "/core/update",
                     ATTR_PANEL_PATH: "/update-available/core",
                     ATTR_VERSION: self.sys_homeassistant.version,
                     ATTR_VERSION_LATEST: self.sys_homeassistant.latest_version,
@@ -268,7 +262,6 @@ class APISupervisor(CoreSysAttributes):
             available_updates.append(
                 {
                     ATTR_UPDATE_TYPE: "supervisor",
-                    ATTR_UPDATE_PATH: "/supervisor/update",
                     ATTR_PANEL_PATH: "/update-available/supervisor",
                     ATTR_VERSION: self.sys_supervisor.version,
                     ATTR_VERSION_LATEST: self.sys_supervisor.latest_version,
@@ -280,7 +273,6 @@ class APISupervisor(CoreSysAttributes):
             available_updates.append(
                 {
                     ATTR_UPDATE_TYPE: "os",
-                    ATTR_UPDATE_PATH: "/os/update",
                     ATTR_PANEL_PATH: "/update-available/os",
                     ATTR_VERSION: self.sys_os.version,
                     ATTR_VERSION_LATEST: self.sys_os.latest_version,
@@ -293,7 +285,6 @@ class APISupervisor(CoreSysAttributes):
                 ATTR_UPDATE_TYPE: "addon",
                 ATTR_NAME: addon.name,
                 ATTR_ICON: f"/addons/{addon.slug}/icon" if addon.with_icon else None,
-                ATTR_UPDATE_PATH: f"/addons/{addon.slug}/update",
                 ATTR_PANEL_PATH: f"/update-available/{addon.slug}",
                 ATTR_VERSION: addon.version,
                 ATTR_VERSION_LATEST: addon.latest_version,
