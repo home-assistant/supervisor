@@ -145,6 +145,11 @@ class BackupManager(CoreSysAttributes):
                     await backup.store_addons(addon_list)
 
                 # Backup folders
+                if FOLDER_HOMEASSISTANT in folder_list:
+                    await backup.store_homeassistant_config_dir()
+                    folder_list = list(folder_list)
+                    folder_list.remove(FOLDER_HOMEASSISTANT)
+
                 if folder_list:
                     _LOGGER.info("Backing up %s store folders", backup.slug)
                     await backup.store_folders(folder_list)
@@ -153,11 +158,9 @@ class BackupManager(CoreSysAttributes):
             _LOGGER.exception("Backup %s error", backup.slug)
             self.sys_capture_exception(err)
             return None
-
         else:
             self._backups[backup.slug] = backup
             return backup
-
         finally:
             self.sys_core.state = CoreState.RUNNING
 
@@ -233,6 +236,9 @@ class BackupManager(CoreSysAttributes):
 
                 if FOLDER_HOMEASSISTANT in folder_list:
                     backup.restore_homeassistant()
+                    await backup.restore_homeassistant_config_dir()
+                    folder_list = list(folder_list)
+                    folder_list.remove(FOLDER_HOMEASSISTANT)
 
                 # Process folders
                 if folder_list:
