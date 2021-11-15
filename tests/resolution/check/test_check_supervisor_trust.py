@@ -2,7 +2,7 @@
 # pylint: disable=import-error,protected-access
 from unittest.mock import AsyncMock, patch
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import CodeNotaryError, CodeNotaryUntrusted
 from supervisor.resolution.checks.supervisor_trust import CheckSupervisorTrust
@@ -19,7 +19,7 @@ async def test_base(coresys: CoreSys):
 async def test_check(coresys: CoreSys):
     """Test check."""
     supervisor_trust = CheckSupervisorTrust(coresys)
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     assert len(coresys.resolution.issues) == 0
 
@@ -46,7 +46,7 @@ async def test_check(coresys: CoreSys):
 async def test_approve(coresys: CoreSys):
     """Test check."""
     supervisor_trust = CheckSupervisorTrust(coresys)
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     coresys.supervisor.check_trust = AsyncMock(side_effect=CodeNotaryUntrusted)
     assert await supervisor_trust.approve_check()
@@ -59,7 +59,7 @@ async def test_with_global_disable(coresys: CoreSys, caplog):
     """Test when pwned is globally disabled."""
     coresys.security.content_trust = False
     supervisor_trust = CheckSupervisorTrust(coresys)
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     assert len(coresys.resolution.issues) == 0
     coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryUntrusted)
@@ -74,7 +74,7 @@ async def test_did_run(coresys: CoreSys):
     """Test that the check ran as expected."""
     supervisor_trust = CheckSupervisorTrust(coresys)
     should_run = supervisor_trust.states
-    should_not_run = [state for state in CoreState if state not in should_run]
+    should_not_run = [state for state in SupervisorState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 

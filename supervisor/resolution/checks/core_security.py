@@ -5,7 +5,7 @@ from typing import Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from ...const import CoreState
+from ...const import SupervisorState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
@@ -64,6 +64,6 @@ class CheckCoreSecurity(CheckBase):
         return ContextType.CORE
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this check can run."""
-        return [CoreState.RUNNING, CoreState.STARTUP]
+        return [SupervisorState.RUNNING, SupervisorState.STARTUP]

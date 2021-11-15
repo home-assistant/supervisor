@@ -2,7 +2,7 @@
 # pylint: disable=import-error, protected-access
 from unittest.mock import AsyncMock, patch
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, SuggestionType
 from supervisor.resolution.data import Suggestion
@@ -10,7 +10,7 @@ from supervisor.resolution.data import Suggestion
 
 async def test_check_autofix(coresys: CoreSys):
     """Test check for setup."""
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     coresys.resolution.fixup._create_full_backup.process_fixup = AsyncMock()
 

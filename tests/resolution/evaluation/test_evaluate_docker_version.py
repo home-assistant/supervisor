@@ -2,7 +2,7 @@
 # pylint: disable=import-error,protected-access
 from unittest.mock import patch
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.evaluations.docker_version import EvaluateDockerVersion
 
@@ -10,7 +10,7 @@ from supervisor.resolution.evaluations.docker_version import EvaluateDockerVersi
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     docker_version = EvaluateDockerVersion(coresys)
-    coresys.core.state = CoreState.INITIALIZE
+    coresys.core.state = SupervisorState.INITIALIZE
 
     assert docker_version.reason not in coresys.resolution.unsupported
 
@@ -27,7 +27,7 @@ async def test_did_run(coresys: CoreSys):
     """Test that the evaluation ran as expected."""
     docker_version = EvaluateDockerVersion(coresys)
     should_run = docker_version.states
-    should_not_run = [state for state in CoreState if state not in should_run]
+    should_not_run = [state for state in SupervisorState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 

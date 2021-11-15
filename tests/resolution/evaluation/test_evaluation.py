@@ -2,14 +2,14 @@
 # pylint: disable=import-error
 from unittest.mock import patch
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import UnsupportedReason
 
 
 async def test_evaluation_initialize(coresys: CoreSys):
     """Test evaluation for initialize."""
-    coresys.core.state = CoreState.INITIALIZE
+    coresys.core.state = SupervisorState.INITIALIZE
     with patch(
         "supervisor.resolution.evaluations.dbus.EvaluateDbus.evaluate",
         return_value=False,
@@ -36,7 +36,7 @@ async def test_evaluation_initialize(coresys: CoreSys):
 
 async def test_evaluation_setup(coresys: CoreSys):
     """Test evaluation for setup."""
-    coresys.core.state = CoreState.SETUP
+    coresys.core.state = SupervisorState.SETUP
     with patch(
         "supervisor.resolution.evaluations.operating_system.EvaluateOperatingSystem.evaluate",
         return_value=False,
@@ -55,7 +55,7 @@ async def test_evaluation_setup(coresys: CoreSys):
 
 async def test_evaluation_running(coresys: CoreSys):
     """Test evaluation for running."""
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     with patch(
         "supervisor.resolution.evaluations.container.EvaluateContainer.evaluate",
         return_value=False,
@@ -70,7 +70,7 @@ async def test_evaluation_running(coresys: CoreSys):
 
 async def test_adding_and_removing_unsupported_reason(coresys: CoreSys):
     """Test adding and removing unsupported reason."""
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     assert UnsupportedReason.NETWORK_MANAGER not in coresys.resolution.unsupported
 
     with patch(

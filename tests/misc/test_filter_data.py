@@ -5,7 +5,7 @@ from unittest.mock import patch
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.const import SUPERVISOR_VERSION, CoreState
+from supervisor.const import SUPERVISOR_VERSION, SupervisorState
 from supervisor.exceptions import AddonConfigurationError
 from supervisor.misc.filter import filter_data
 from supervisor.resolution.const import (
@@ -56,10 +56,10 @@ def test_not_started(coresys):
     """Test if supervisor not fully started."""
     coresys.config.diagnostics = True
 
-    coresys.core.state = CoreState.INITIALIZE
+    coresys.core.state = SupervisorState.INITIALIZE
     assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
 
-    coresys.core.state = CoreState.SETUP
+    coresys.core.state = SupervisorState.SETUP
     assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
 
 
@@ -67,7 +67,7 @@ def test_defaults(coresys):
     """Test event defaults."""
     coresys.config.diagnostics = True
 
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
         filtered = filter_data(coresys, SAMPLE_EVENT, {})
 
@@ -96,7 +96,7 @@ def test_sanitize(coresys):
     }
     coresys.config.diagnostics = True
 
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
         filtered = filter_data(coresys, event, {})
 
@@ -118,7 +118,7 @@ def test_issues_on_report(coresys):
     coresys.resolution.create_issue(IssueType.FATAL_ERROR, ContextType.SYSTEM)
 
     coresys.config.diagnostics = True
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
         event = filter_data(coresys, SAMPLE_EVENT, {})
@@ -138,7 +138,7 @@ def test_suggestions_on_report(coresys):
     )
 
     coresys.config.diagnostics = True
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
         event = filter_data(coresys, SAMPLE_EVENT, {})
@@ -160,7 +160,7 @@ def test_unhealthy_on_report(coresys):
     """Attach unhealthy to report."""
 
     coresys.config.diagnostics = True
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     coresys.resolution.unhealthy = UnhealthyReason.DOCKER
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
@@ -174,7 +174,7 @@ def test_images_report(coresys):
     """Attach image to report."""
 
     coresys.config.diagnostics = True
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     coresys.resolution.evaluate.cached_images.add("my/test:image")
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionNotFound
 from supervisor.resolution.const import IssueType
@@ -13,7 +13,7 @@ from supervisor.resolution.validate import get_valid_modules
 
 async def test_check_setup(coresys: CoreSys):
     """Test check for setup."""
-    coresys.core.state = CoreState.SETUP
+    coresys.core.state = SupervisorState.SETUP
     with patch(
         "supervisor.resolution.checks.free_space.CheckFreeSpace.run_check",
         return_value=False,
@@ -24,7 +24,7 @@ async def test_check_setup(coresys: CoreSys):
 
 async def test_check_running(coresys: CoreSys):
     """Test check for setup."""
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     with patch(
         "supervisor.resolution.checks.free_space.CheckFreeSpace.run_check",
         return_value=False,
@@ -35,7 +35,7 @@ async def test_check_running(coresys: CoreSys):
 
 async def test_if_check_make_issue(coresys: CoreSys):
     """Test check for setup."""
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     coresys.security.content_trust = False
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
@@ -46,7 +46,7 @@ async def test_if_check_make_issue(coresys: CoreSys):
 
 async def test_if_check_cleanup_issue(coresys: CoreSys):
     """Test check for setup."""
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     coresys.security.content_trust = False
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
@@ -62,7 +62,7 @@ async def test_if_check_cleanup_issue(coresys: CoreSys):
 
 async def test_enable_disable_checks(coresys: CoreSys):
     """Test enable and disable check."""
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     free_space = coresys.resolution.check.get("free_space")
 
     # Ensure the check was enabled

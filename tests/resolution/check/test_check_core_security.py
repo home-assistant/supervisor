@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from awesomeversion import AwesomeVersion
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.core_security import CheckCoreSecurity
 from supervisor.resolution.const import IssueType
@@ -22,7 +22,7 @@ async def test_check(coresys: CoreSys, tmp_path):
     """Test check."""
     with patch("supervisor.config.CoreConfig.path_homeassistant", tmp_path):
         core_security = CheckCoreSecurity(coresys)
-        coresys.core.state = CoreState.RUNNING
+        coresys.core.state = SupervisorState.RUNNING
 
         assert len(coresys.resolution.issues) == 0
 
@@ -56,7 +56,7 @@ async def test_approve(coresys: CoreSys, tmp_path):
     """Test check."""
     with patch("supervisor.config.CoreConfig.path_homeassistant", tmp_path):
         core_security = CheckCoreSecurity(coresys)
-        coresys.core.state = CoreState.RUNNING
+        coresys.core.state = SupervisorState.RUNNING
         coresys.homeassistant._data["version"] = None
         assert await core_security.approve_check()
 
@@ -74,7 +74,7 @@ async def test_did_run(coresys: CoreSys):
     """Test that the check ran as expected."""
     core_security = CheckCoreSecurity(coresys)
     should_run = core_security.states
-    should_not_run = [state for state in CoreState if state not in should_run]
+    should_not_run = [state for state in SupervisorState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 

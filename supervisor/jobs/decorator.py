@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 import sentry_sdk
 
-from ..const import CoreState
+from ..const import SupervisorState
 from ..coresys import CoreSysAttributes
 from ..exceptions import HassioError, JobConditionException, JobException
 from ..host.const import HostFeature
@@ -136,7 +136,7 @@ class Job(CoreSysAttributes):
 
         if (
             JobCondition.RUNNING in used_conditions
-            and self.sys_core.state != CoreState.RUNNING
+            and self.sys_core.state != SupervisorState.RUNNING
         ):
             raise JobConditionException(
                 f"'{self._method.__qualname__}' blocked from execution, system is not running - {self.sys_core.state!s}"

@@ -2,7 +2,7 @@
 # pylint: disable=import-error,protected-access
 from unittest.mock import MagicMock, patch
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.evaluations.operating_system import (
     SUPPORTED_OS,
@@ -13,7 +13,7 @@ from supervisor.resolution.evaluations.operating_system import (
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     operating_system = EvaluateOperatingSystem(coresys)
-    coresys.core.state = CoreState.SETUP
+    coresys.core.state = SupervisorState.SETUP
 
     assert operating_system.reason not in coresys.resolution.unsupported
 
@@ -35,7 +35,7 @@ async def test_did_run(coresys: CoreSys):
     """Test that the evaluation ran as expected."""
     operating_system = EvaluateOperatingSystem(coresys)
     should_run = operating_system.states
-    should_not_run = [state for state in CoreState if state not in should_run]
+    should_not_run = [state for state in SupervisorState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 

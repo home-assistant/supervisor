@@ -7,7 +7,7 @@ from typing import Awaitable, Optional
 
 import async_timeout
 
-from .const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
+from .const import RUN_SUPERVISOR_STATE, AddonStartup, SupervisorState
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     HassioError,
@@ -31,11 +31,11 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
-        self._state: Optional[CoreState] = None
+        self._state: Optional[SupervisorState] = None
         self.exit_code: int = 0
 
     @property
-    def state(self) -> CoreState:
+    def state(self) -> SupervisorState:
         """Return state of the core."""
         return self._state
 
@@ -50,7 +50,7 @@ class Core(CoreSysAttributes):
         return len(self.sys_resolution.unhealthy) == 0
 
     @state.setter
-    def state(self, new_state: CoreState) -> None:
+    def state(self, new_state: SupervisorState) -> None:
         """Set core into new state."""
         if self._state == new_state:
             return
@@ -68,7 +68,7 @@ class Core(CoreSysAttributes):
 
     async def connect(self):
         """Connect Supervisor container."""
-        self.state = CoreState.INITIALIZE
+        self.state = SupervisorState.INITIALIZE
 
         # Load information from container
         await self.sys_supervisor.load()
@@ -99,7 +99,7 @@ class Core(CoreSysAttributes):
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
-        self.state = CoreState.SETUP
+        self.state = SupervisorState.SETUP
 
         # Check internet on startup
         await self.sys_supervisor.check_connectivity()
@@ -164,7 +164,7 @@ class Core(CoreSysAttributes):
 
     async def start(self):
         """Start Supervisor orchestration."""
-        self.state = CoreState.STARTUP
+        self.state = SupervisorState.STARTUP
 
         # Check if system is healthy
         if not self.supported:
@@ -257,20 +257,20 @@ class Core(CoreSysAttributes):
             self.sys_create_task(self.sys_updater.reload())
             self.sys_create_task(self.sys_resolution.healthcheck())
 
-            self.state = CoreState.RUNNING
+            self.state = SupervisorState.RUNNING
             self.sys_homeassistant.websocket.supervisor_update_event("supervisor", {})
             _LOGGER.info("Supervisor is up and running")
 
     async def stop(self):
         """Stop a running orchestration."""
         # store new last boot / prevent time adjustments
-        if self.state in (CoreState.RUNNING, CoreState.SHUTDOWN):
+        if self.state in (SupervisorState.RUNNING, SupervisorState.SHUTDOWN):
             self._update_last_boot()
-        if self.state in (CoreState.STOPPING, CoreState.CLOSE):
+        if self.state in (SupervisorState.STOPPING, SupervisorState.CLOSE):
             return
 
         # don't process scheduler anymore
-        self.state = CoreState.STOPPING
+        self.state = SupervisorState.STOPPING
 
         # Stage 1
         try:
@@ -292,15 +292,15 @@ class Core(CoreSysAttributes):
         except asyncio.TimeoutError:
             _LOGGER.warning("Stage 2: Force Shutdown!")
 
-        self.state = CoreState.CLOSE
+        self.state = SupervisorState.CLOSE
         _LOGGER.info("Supervisor is down - %d", self.exit_code)
         self.sys_loop.stop()
 
     async def shutdown(self):
         """Shutdown all running containers in correct order."""
         # don't process scheduler anymore
-        if self.state == CoreState.RUNNING:
-            self.state = CoreState.SHUTDOWN
+        if self.state == SupervisorState.RUNNING:
+            self.state = SupervisorState.SHUTDOWN
 
         # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(AddonStartup.APPLICATION)
@@ -315,7 +315,7 @@ class Core(CoreSysAttributes):
         await self.sys_addons.shutdown(AddonStartup.INITIALIZE)
 
         # Shutdown all Plugins
-        if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
+        if self.state in (SupervisorState.STOPPING, SupervisorState.SHUTDOWN):
             await self.sys_plugins.shutdown()
 
     def _update_last_boot(self):

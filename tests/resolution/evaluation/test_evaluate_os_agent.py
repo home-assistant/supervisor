@@ -2,7 +2,7 @@
 # pylint: disable=import-error,protected-access
 from unittest.mock import MagicMock, patch
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.host.const import HostFeature
 from supervisor.resolution.evaluations.os_agent import EvaluateOSAgent
@@ -11,7 +11,7 @@ from supervisor.resolution.evaluations.os_agent import EvaluateOSAgent
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     agent = EvaluateOSAgent(coresys)
-    coresys.core.state = CoreState.SETUP
+    coresys.core.state = SupervisorState.SETUP
 
     assert agent.reason not in coresys.resolution.unsupported
 
@@ -32,7 +32,7 @@ async def test_did_run(coresys: CoreSys):
     """Test that the evaluation ran as expected."""
     agent = EvaluateOSAgent(coresys)
     should_run = agent.states
-    should_not_run = [state for state in CoreState if state not in should_run]
+    should_not_run = [state for state in SupervisorState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 

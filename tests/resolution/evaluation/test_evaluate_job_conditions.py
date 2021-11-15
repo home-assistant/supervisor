@@ -2,7 +2,7 @@
 # pylint: disable=import-error,protected-access
 from unittest.mock import patch
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.jobs.const import JobCondition
 from supervisor.resolution.evaluations.job_conditions import EvaluateJobConditions
@@ -11,7 +11,7 @@ from supervisor.resolution.evaluations.job_conditions import EvaluateJobConditio
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     job_conditions = EvaluateJobConditions(coresys)
-    coresys.core.state = CoreState.SETUP
+    coresys.core.state = SupervisorState.SETUP
 
     await job_conditions()
     assert job_conditions.reason not in coresys.resolution.unsupported
@@ -25,7 +25,7 @@ async def test_did_run(coresys: CoreSys):
     """Test that the evaluation ran as expected."""
     job_conditions = EvaluateJobConditions(coresys)
     should_run = job_conditions.states
-    should_not_run = [state for state in CoreState if state not in should_run]
+    should_not_run = [state for state in SupervisorState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 

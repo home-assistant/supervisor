@@ -1,6 +1,6 @@
 """Evaluation class for Content Trust."""
 
-from ...const import CoreState
+from ...const import SupervisorState
 from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
@@ -25,9 +25,13 @@ class EvaluateContentTrust(EvaluateBase):
         return "System run with disabled trusted content security."
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.INITIALIZE, CoreState.SETUP, CoreState.RUNNING]
+        return [
+            SupervisorState.INITIALIZE,
+            SupervisorState.SETUP,
+            SupervisorState.RUNNING,
+        ]
 
     async def evaluate(self) -> None:
         """Run evaluation."""

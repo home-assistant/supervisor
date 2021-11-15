@@ -2,7 +2,7 @@
 import logging
 from pathlib import Path
 
-from ...const import CoreState
+from ...const import SupervisorState
 from ...coresys import CoreSys
 from ...exceptions import CodeNotaryError, CodeNotaryUntrusted
 from ..const import UnsupportedReason
@@ -31,9 +31,9 @@ class EvaluateSourceMods(EvaluateBase):
         return "System detect unauthorized source code modifications."
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.RUNNING]
+        return [SupervisorState.RUNNING]
 
     async def evaluate(self) -> None:
         """Run evaluation."""

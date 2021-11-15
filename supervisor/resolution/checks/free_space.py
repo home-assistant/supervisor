@@ -2,7 +2,7 @@
 from typing import Optional
 
 from ...backups.const import BackupType
-from ...const import CoreState
+from ...const import SupervisorState
 from ...coresys import CoreSys
 from ..const import (
     MINIMUM_FREE_SPACE_THRESHOLD,
@@ -67,6 +67,6 @@ class CheckFreeSpace(CheckBase):
         return ContextType.SYSTEM
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this check can run."""
-        return [CoreState.RUNNING, CoreState.STARTUP]
+        return [SupervisorState.RUNNING, SupervisorState.STARTUP]

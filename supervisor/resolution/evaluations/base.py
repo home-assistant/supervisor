@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 import logging
 
-from ...const import CoreState
+from ...const import SupervisorState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import UnsupportedReason
 
@@ -53,6 +53,6 @@ class EvaluateBase(ABC, CoreSysAttributes):
         """Return a string that is printed when self.evaluate is False."""
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this evaluation can run."""
         return []

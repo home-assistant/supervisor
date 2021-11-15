@@ -1,16 +1,16 @@
 """Testing handling with CoreState."""
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 
 
 def test_write_state(run_dir, coresys: CoreSys):
     """Test write corestate to /run/supervisor."""
 
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
-    assert run_dir.read_text() == CoreState.RUNNING.value
+    assert run_dir.read_text() == SupervisorState.RUNNING.value
 
-    coresys.core.state = CoreState.SHUTDOWN
+    coresys.core.state = SupervisorState.SHUTDOWN
 
-    assert run_dir.read_text() == CoreState.SHUTDOWN.value
+    assert run_dir.read_text() == SupervisorState.SHUTDOWN.value

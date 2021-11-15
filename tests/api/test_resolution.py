@@ -8,7 +8,7 @@ from supervisor.const import (
     ATTR_SUGGESTIONS,
     ATTR_UNHEALTHY,
     ATTR_UNSUPPORTED,
-    CoreState,
+    SupervisorState,
 )
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionError
@@ -122,7 +122,7 @@ async def test_api_resolution_check_options(coresys: CoreSys, api_client):
 @pytest.mark.asyncio
 async def test_api_resolution_check_run(coresys: CoreSys, api_client):
     """Test client API with run check."""
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     free_space = coresys.resolution.check.get("free_space")
 
     free_space.run_check = AsyncMock()

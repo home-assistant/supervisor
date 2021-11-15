@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import logging
 from typing import Optional
 
-from ...const import ATTR_ENABLED, CoreState
+from ...const import ATTR_ENABLED, SupervisorState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import ContextType, IssueType
 
@@ -70,7 +70,7 @@ class CheckBase(ABC, CoreSysAttributes):
         """Return a ContextType enum."""
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this check can run."""
         return []
 

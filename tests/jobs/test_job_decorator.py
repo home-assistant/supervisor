@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HassioError, JobException
 from supervisor.jobs.const import JobExecutionLimit
@@ -38,7 +38,7 @@ async def test_healthy(coresys: CoreSys):
 
 async def test_internet(coresys: CoreSys):
     """Test the internet decorator."""
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     class TestClass:
         """Test class."""
@@ -185,10 +185,10 @@ async def test_running(coresys: CoreSys):
 
     test = TestClass(coresys)
 
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     assert await test.execute()
 
-    coresys.core.state = CoreState.FREEZE
+    coresys.core.state = SupervisorState.FREEZE
     assert not await test.execute()
 
 
@@ -209,10 +209,10 @@ async def test_ignore_conditions(coresys: CoreSys):
 
     test = TestClass(coresys)
 
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     assert await test.execute()
 
-    coresys.core.state = CoreState.FREEZE
+    coresys.core.state = SupervisorState.FREEZE
     assert not await test.execute()
 
     coresys.jobs.ignore_conditions = [JobCondition.RUNNING]
@@ -236,10 +236,10 @@ async def test_exception_conditions(coresys: CoreSys):
 
     test = TestClass(coresys)
 
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
     assert await test.execute()
 
-    coresys.core.state = CoreState.FREEZE
+    coresys.core.state = SupervisorState.FREEZE
     with pytest.raises(HassioError):
         await test.execute()
 

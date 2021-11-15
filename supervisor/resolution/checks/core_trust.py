@@ -2,7 +2,7 @@
 import logging
 from typing import Optional
 
-from ...const import CoreState
+from ...const import SupervisorState
 from ...coresys import CoreSys
 from ...exceptions import CodeNotaryError, CodeNotaryUntrusted
 from ..const import ContextType, IssueType, UnhealthyReason
@@ -54,6 +54,6 @@ class CheckCoreTrust(CheckBase):
         return ContextType.CORE
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this check can run."""
-        return [CoreState.RUNNING, CoreState.STARTUP]
+        return [SupervisorState.RUNNING, SupervisorState.STARTUP]

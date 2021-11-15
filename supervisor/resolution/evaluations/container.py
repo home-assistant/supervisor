@@ -4,7 +4,7 @@ import logging
 from docker.errors import DockerException
 from requests import RequestException
 
-from ...const import CoreState
+from ...const import SupervisorState
 from ...coresys import CoreSys
 from ..const import (
     ContextType,
@@ -49,9 +49,9 @@ class EvaluateContainer(EvaluateBase):
         return f"Found unsupported images: {self._images}"
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.RUNNING]
+        return [SupervisorState.RUNNING]
 
     @property
     def known_images(self) -> set[str]:

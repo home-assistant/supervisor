@@ -7,7 +7,7 @@ from typing import Awaitable
 from awesomeversion.awesomeversion import AwesomeVersion
 from awesomeversion.exceptions import AwesomeVersionCompareException
 
-from ..const import FOLDER_HOMEASSISTANT, CoreState
+from ..const import FOLDER_HOMEASSISTANT, SupervisorState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
 from ..jobs.decorator import Job, JobCondition
@@ -136,7 +136,7 @@ class BackupManager(CoreSysAttributes):
         backup = self._create_backup(name, BackupType.FULL, password)
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
         try:
-            self.sys_core.state = CoreState.FREEZE
+            self.sys_core.state = SupervisorState.FREEZE
             await self.lock.acquire()
 
             async with backup:
@@ -159,7 +159,7 @@ class BackupManager(CoreSysAttributes):
             return backup
 
         finally:
-            self.sys_core.state = CoreState.RUNNING
+            self.sys_core.state = SupervisorState.RUNNING
             self.lock.release()
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
@@ -182,7 +182,7 @@ class BackupManager(CoreSysAttributes):
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
         try:
-            self.sys_core.state = CoreState.FREEZE
+            self.sys_core.state = SupervisorState.FREEZE
             await self.lock.acquire()
 
             async with backup:
@@ -215,7 +215,7 @@ class BackupManager(CoreSysAttributes):
             return backup
 
         finally:
-            self.sys_core.state = CoreState.RUNNING
+            self.sys_core.state = SupervisorState.RUNNING
             self.lock.release()
 
     @Job(
@@ -243,7 +243,7 @@ class BackupManager(CoreSysAttributes):
 
         _LOGGER.info("Full-Restore %s start", backup.slug)
         try:
-            self.sys_core.state = CoreState.FREEZE
+            self.sys_core.state = SupervisorState.FREEZE
             await self.lock.acquire()
 
             async with backup:
@@ -299,7 +299,7 @@ class BackupManager(CoreSysAttributes):
             return True
 
         finally:
-            self.sys_core.state = CoreState.RUNNING
+            self.sys_core.state = SupervisorState.RUNNING
             self.lock.release()
 
     @Job(
@@ -328,7 +328,7 @@ class BackupManager(CoreSysAttributes):
 
         _LOGGER.info("Partial-Restore %s start", backup.slug)
         try:
-            self.sys_core.state = CoreState.FREEZE
+            self.sys_core.state = SupervisorState.FREEZE
             await self.lock.acquire()
 
             async with backup:
@@ -383,7 +383,7 @@ class BackupManager(CoreSysAttributes):
             return True
 
         finally:
-            self.sys_core.state = CoreState.RUNNING
+            self.sys_core.state = SupervisorState.RUNNING
             self.lock.release()
 
     def _update_core_task(self, version: AwesomeVersion) -> Awaitable[None]:

@@ -2,7 +2,7 @@
 # pylint: disable=import-error,protected-access
 from unittest.mock import AsyncMock, patch
 
-from supervisor.const import AddonState, CoreState
+from supervisor.const import AddonState, SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import PwnedSecret
 from supervisor.resolution.checks.addon_pwned import CheckAddonPwned
@@ -28,7 +28,7 @@ async def test_base(coresys: CoreSys):
 async def test_check(coresys: CoreSys):
     """Test check."""
     addon_pwned = CheckAddonPwned(coresys)
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     addon = TestAddon()
     coresys.addons.local[addon.slug] = addon
@@ -60,7 +60,7 @@ async def test_check(coresys: CoreSys):
 async def test_approve(coresys: CoreSys):
     """Test check."""
     addon_pwned = CheckAddonPwned(coresys)
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     addon = TestAddon()
     coresys.addons.local[addon.slug] = addon
@@ -81,7 +81,7 @@ async def test_with_global_disable(coresys: CoreSys, caplog):
     """Test when pwned is globally disabled."""
     coresys.security.pwned = False
     addon_pwned = CheckAddonPwned(coresys)
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     addon = TestAddon()
     coresys.addons.local[addon.slug] = addon
@@ -97,7 +97,7 @@ async def test_did_run(coresys: CoreSys):
     """Test that the check ran as expected."""
     addon_pwned = CheckAddonPwned(coresys)
     should_run = addon_pwned.states
-    should_not_run = [state for state in CoreState if state not in should_run]
+    should_not_run = [state for state in SupervisorState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 

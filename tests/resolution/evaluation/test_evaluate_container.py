@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from docker.errors import DockerException
 
-from supervisor.const import CoreState
+from supervisor.const import SupervisorState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import UnhealthyReason
 from supervisor.resolution.evaluations.container import EvaluateContainer
@@ -29,7 +29,7 @@ def test_get_images(coresys: CoreSys):
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     container = EvaluateContainer(coresys)
-    coresys.core.state = CoreState.RUNNING
+    coresys.core.state = SupervisorState.RUNNING
 
     assert container.reason not in coresys.resolution.unsupported
     assert UnhealthyReason.DOCKER not in coresys.resolution.unhealthy
@@ -68,7 +68,7 @@ async def test_did_run(coresys: CoreSys):
     """Test that the evaluation ran as expected."""
     container = EvaluateContainer(coresys)
     should_run = container.states
-    should_not_run = [state for state in CoreState if state not in should_run]
+    should_not_run = [state for state in SupervisorState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 

@@ -3,7 +3,7 @@ from datetime import timedelta
 import logging
 from typing import Optional
 
-from ...const import AddonState, CoreState
+from ...const import AddonState, SupervisorState
 from ...coresys import CoreSys
 from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
 from ...jobs.const import JobCondition, JobExecutionLimit
@@ -99,6 +99,6 @@ class CheckAddonPwned(CheckBase):
         return ContextType.ADDON
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this check can run."""
-        return [CoreState.RUNNING]
+        return [SupervisorState.RUNNING]

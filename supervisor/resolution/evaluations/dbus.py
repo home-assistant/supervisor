@@ -1,6 +1,6 @@
 """Evaluation class for dbus."""
 
-from ...const import SOCKET_DBUS, CoreState
+from ...const import SOCKET_DBUS, SupervisorState
 from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
@@ -25,9 +25,9 @@ class EvaluateDbus(EvaluateBase):
         return "D-Bus is required for Home Assistant."
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.INITIALIZE]
+        return [SupervisorState.INITIALIZE]
 
     async def evaluate(self) -> None:
         """Run evaluation."""

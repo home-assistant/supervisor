@@ -1,7 +1,7 @@
 """Evaluation class for AppArmor."""
 from pathlib import Path
 
-from ...const import CoreState
+from ...const import SupervisorState
 from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
@@ -28,9 +28,9 @@ class EvaluateAppArmor(EvaluateBase):
         return "AppArmor is required for Home Assistant."
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.INITIALIZE]
+        return [SupervisorState.INITIALIZE]
 
     async def evaluate(self) -> None:
         """Run evaluation."""

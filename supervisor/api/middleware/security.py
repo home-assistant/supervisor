@@ -12,7 +12,7 @@ from ...const import (
     ROLE_DEFAULT,
     ROLE_HOMEASSISTANT,
     ROLE_MANAGER,
-    CoreState,
+    SupervisorState,
 )
 from ...coresys import CoreSys, CoreSysAttributes
 from ..utils import api_return_error, excract_supervisor_token
@@ -128,9 +128,9 @@ class SecurityMiddleware(CoreSysAttributes):
     ) -> Response:
         """Check if core is ready to response."""
         if self.sys_core.state not in (
-            CoreState.STARTUP,
-            CoreState.RUNNING,
-            CoreState.FREEZE,
+            SupervisorState.STARTUP,
+            SupervisorState.RUNNING,
+            SupervisorState.FREEZE,
         ):
             return api_return_error(
                 message=f"System is not ready with state: {self.sys_core.state.value}"

@@ -1,6 +1,6 @@
 """Evaluation class for network manager."""
 
-from ...const import CoreState
+from ...const import SupervisorState
 from ...coresys import CoreSys
 from ...host.const import HostFeature
 from ..const import UnsupportedReason
@@ -26,9 +26,9 @@ class EvaluateNetworkManager(EvaluateBase):
         return "NetworkManager is not correctly configured"
 
     @property
-    def states(self) -> list[CoreState]:
+    def states(self) -> list[SupervisorState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.SETUP, CoreState.RUNNING]
+        return [SupervisorState.SETUP, SupervisorState.RUNNING]
 
     async def evaluate(self):
         """Run evaluation."""
