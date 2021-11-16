@@ -252,7 +252,6 @@ class APISupervisor(CoreSysAttributes):
                 {
                     ATTR_UPDATE_TYPE: "core",
                     ATTR_PANEL_PATH: "/update-available/core",
-                    ATTR_VERSION: self.sys_homeassistant.version,
                     ATTR_VERSION_LATEST: self.sys_homeassistant.latest_version,
                 }
             )
@@ -263,7 +262,6 @@ class APISupervisor(CoreSysAttributes):
                 {
                     ATTR_UPDATE_TYPE: "supervisor",
                     ATTR_PANEL_PATH: "/update-available/supervisor",
-                    ATTR_VERSION: self.sys_supervisor.version,
                     ATTR_VERSION_LATEST: self.sys_supervisor.latest_version,
                 }
             )
@@ -274,7 +272,6 @@ class APISupervisor(CoreSysAttributes):
                 {
                     ATTR_UPDATE_TYPE: "os",
                     ATTR_PANEL_PATH: "/update-available/os",
-                    ATTR_VERSION: self.sys_os.version,
                     ATTR_VERSION_LATEST: self.sys_os.latest_version,
                 }
             )
@@ -286,7 +283,6 @@ class APISupervisor(CoreSysAttributes):
                 ATTR_NAME: addon.name,
                 ATTR_ICON: f"/addons/{addon.slug}/icon" if addon.with_icon else None,
                 ATTR_PANEL_PATH: f"/update-available/{addon.slug}",
-                ATTR_VERSION: addon.version,
                 ATTR_VERSION_LATEST: addon.latest_version,
             }
             for addon in self.sys_addons.installed

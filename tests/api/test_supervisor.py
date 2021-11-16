@@ -40,7 +40,6 @@ async def test_api_supervisor_available_updates(
         "name": "Terminal & SSH",
         "panel_path": "/update-available/local_ssh",
         "update_type": "addon",
-        "version": "1.2.3",
         "version_latest": "9.2.1",
     }
 
@@ -51,7 +50,6 @@ async def test_api_supervisor_available_updates(
     assert updates[0] == {
         "panel_path": "/update-available/os",
         "update_type": "os",
-        "version": "123",
         "version_latest": "321",
     }
 
@@ -62,6 +60,5 @@ async def test_api_supervisor_available_updates(
     assert updates[0] == {
         "panel_path": "/update-available/core",
         "update_type": "core",
-        "version": "123",
         "version_latest": "321",
     }
