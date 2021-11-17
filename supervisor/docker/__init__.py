@@ -155,7 +155,7 @@ class DockerAPI:
             )
         except docker_errors.NotFound as err:
             raise DockerNotFound(
-                f"Image {image} not exists for {name}", _LOGGER.error
+                f"Image {image}:{tag} does not exist for {name}", _LOGGER.error
             ) from err
         except docker_errors.DockerException as err:
             raise DockerAPIError(
