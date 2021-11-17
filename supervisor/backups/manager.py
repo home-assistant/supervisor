@@ -7,6 +7,9 @@ from typing import Awaitable
 from awesomeversion.awesomeversion import AwesomeVersion
 from awesomeversion.exceptions import AwesomeVersionCompareException
 
+from supervisor.addons.addon import Addon
+from supervisor.backups.validate import ALL_FOLDERS
+
 from ..const import FOLDER_HOMEASSISTANT, CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
@@ -126,6 +129,38 @@ class BackupManager(CoreSysAttributes):
         self._backups[backup.slug] = backup
         return backup
 
+    async def _do_backup(
+        self,
+        backup: Backup,
+        addon_list: list[Addon],
+        folder_list: list[str],
+    ):
+        try:
+            self.sys_core.state = CoreState.FREEZE
+
+            async with backup:
+                # Backup add-ons
+                if addon_list:
+                    _LOGGER.info("Backing up %s store Add-ons", backup.slug)
+                    await backup.store_addons(addon_list)
+
+                # Backup folders
+                if folder_list:
+                    _LOGGER.info("Backing up %s store folders", backup.slug)
+                    await backup.store_folders(folder_list)
+
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.exception("Backup %s error", backup.slug)
+            self.sys_capture_exception(err)
+            return None
+
+        else:
+            self._backups[backup.slug] = backup
+            return backup
+
+        finally:
+            self.sys_core.state = CoreState.RUNNING
+
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_backup_full(self, name="", password=None):
         """Create a full backup."""
@@ -134,33 +169,15 @@ class BackupManager(CoreSysAttributes):
             return None
 
         backup = self._create_backup(name, BackupType.FULL, password)
+
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
-        try:
-            self.sys_core.state = CoreState.FREEZE
-            await self.lock.acquire()
-
-            async with backup:
-                # Backup add-ons
-                _LOGGER.info("Backing up %s store Add-ons", backup.slug)
-                await backup.store_addons()
-
-                # Backup folders
-                _LOGGER.info("Backing up %s store folders", backup.slug)
-                await backup.store_folders()
-
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Backup %s error", backup.slug)
-            self.sys_capture_exception(err)
-            return None
-
-        else:
-            _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
-            self._backups[backup.slug] = backup
+        async with self.lock:
+            backup = await self._do_backup(
+                backup, self.sys_addons.installed, ALL_FOLDERS
+            )
+            if backup:
+                _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
             return backup
-
-        finally:
-            self.sys_core.state = CoreState.RUNNING
-            self.lock.release()
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_backup_partial(
@@ -176,47 +193,25 @@ class BackupManager(CoreSysAttributes):
 
         if len(addons) == 0 and len(folders) == 0 and not homeassistant:
             _LOGGER.error("Nothing to create backup for")
-            return
 
         backup = self._create_backup(name, BackupType.PARTIAL, password, homeassistant)
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
-        try:
-            self.sys_core.state = CoreState.FREEZE
-            await self.lock.acquire()
+        async with self.lock:
+            addon_list = []
+            for addon_slug in addons:
+                addon = self.sys_addons.get(addon_slug)
+                if addon and addon.is_installed:
+                    addon_list.append(addon)
+                    continue
+                _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
-            async with backup:
-                # Backup add-ons
-                addon_list = []
-                for addon_slug in addons:
-                    addon = self.sys_addons.get(addon_slug)
-                    if addon and addon.is_installed:
-                        addon_list.append(addon)
-                        continue
-                    _LOGGER.warning("Add-on %s not found/installed", addon_slug)
-
-                if addon_list:
-                    _LOGGER.info("Backing up %s store Add-ons", backup.slug)
-                    await backup.store_addons(addon_list)
-
-                # Backup folders
-                if folders:
-                    _LOGGER.info("Backing up %s store folders", backup.slug)
-                    await backup.store_folders(folders)
-
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Backup %s error", backup.slug)
-            self.sys_capture_exception(err)
-            return None
-
-        else:
-            _LOGGER.info("Creating partial backup with slug %s completed", backup.slug)
-            self._backups[backup.slug] = backup
+            backup = await self._do_backup(backup, addon_list, folders)
+            if backup:
+                _LOGGER.info(
+                    "Creating partial backup with slug %s completed", backup.slug
+                )
             return backup
-
-        finally:
-            self.sys_core.state = CoreState.RUNNING
-            self.lock.release()
 
     @Job(
         conditions=[

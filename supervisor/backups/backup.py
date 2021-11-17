@@ -48,7 +48,7 @@ from ..exceptions import AddonsError
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile, atomic_contents_add, secure_path
 from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
-from .validate import ALL_FOLDERS, SCHEMA_BACKUP
+from .validate import SCHEMA_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -311,9 +311,8 @@ class Backup(CoreSysAttributes):
         finally:
             self._tmp.cleanup()
 
-    async def store_addons(self, addon_list: Optional[list[Addon]] = None):
+    async def store_addons(self, addon_list: list[str]):
         """Add a list of add-ons into backup."""
-        addon_list: list[Addon] = addon_list or self.sys_addons.installed
 
         async def _addon_save(addon: Addon):
             """Task to store an add-on into backup."""
@@ -375,9 +374,8 @@ class Backup(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore Add-on %s: %s", slug, err)
 
-    async def store_folders(self, folder_list: Optional[list[str]] = None):
+    async def store_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
-        folder_list: set[str] = set(folder_list or ALL_FOLDERS)
 
         def _folder_save(name: str):
             """Take backup of a folder."""
