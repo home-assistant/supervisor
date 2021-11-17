@@ -158,11 +158,11 @@ class AddonManager(CoreSysAttributes):
         store = self.store.get(slug)
 
         if not store:
-            raise AddonsError(f"Add-on {slug} not exists", _LOGGER.error)
+            raise AddonsError(f"Add-on {slug} does not exist", _LOGGER.error)
 
         if not store.available:
             raise AddonsNotSupportedError(
-                f"Add-on {slug} not supported on that platform", _LOGGER.error
+                f"Add-on {slug} not supported on this platform", _LOGGER.error
             )
 
         self.data.install(store)
