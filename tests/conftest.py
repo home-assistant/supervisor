@@ -42,7 +42,7 @@ def docker() -> DockerAPI:
     """Mock DockerAPI."""
     images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
 
-    with patch("docker.DockerClient", return_value=MagicMock()), patch(
+    with patch("supervisor.docker.DockerClient", return_value=MagicMock()), patch(
         "supervisor.docker.DockerAPI.images", return_value=MagicMock()
     ), patch("supervisor.docker.DockerAPI.containers", return_value=MagicMock()), patch(
         "supervisor.docker.DockerAPI.api", return_value=MagicMock()
