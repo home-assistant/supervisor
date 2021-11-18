@@ -110,7 +110,9 @@ class WSClient:
                 future.set_result(data["result"])
                 return
 
-            _LOGGER.error("Unsuccessful websocket message - %s", data)
+            future.set_exception(
+                HomeAssistantWSError(f"Unsuccessful websocket message - {data}")
+            )
 
     @classmethod
     async def connect_with_auth(
