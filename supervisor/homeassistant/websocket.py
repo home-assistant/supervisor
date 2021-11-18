@@ -36,7 +36,6 @@ class WSClient:
         self._client = client
         self._message_id: int = 0
         self._loop = loop
-        self._lock: asyncio.Lock = asyncio.Lock()
         self._futures: dict[int, asyncio.Future[dict]] = {}
 
     @property
