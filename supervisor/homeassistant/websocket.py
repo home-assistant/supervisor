@@ -1,15 +1,19 @@
 """Home Assistant Websocket API."""
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import aiohttp
+from aiohttp.http_websocket import WSMsgType
 from awesomeversion import AwesomeVersion
 
 from ..const import ATTR_ACCESS_TOKEN, ATTR_DATA, ATTR_EVENT, ATTR_TYPE, ATTR_UPDATE_KEY
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     HomeAssistantAPIError,
+    HomeAssistantWSConnectionError,
     HomeAssistantWSError,
     HomeAssistantWSNotSupported,
 )
@@ -22,61 +26,113 @@ class WSClient:
     """Home Assistant Websocket client."""
 
     def __init__(
-        self, ha_version: AwesomeVersion, client: aiohttp.ClientWebSocketResponse
+        self,
+        loop: asyncio.BaseEventLoop,
+        ha_version: AwesomeVersion,
+        client: aiohttp.ClientWebSocketResponse,
     ):
         """Initialise the WS client."""
-        self.ha_version: AwesomeVersion = ha_version
-        self.client: aiohttp.ClientWebSocketResponse = client
-        self.message_id: int = 0
+        self.ha_version = ha_version
+        self._client = client
+        self._message_id: int = 0
+        self._loop = loop
         self._lock: asyncio.Lock = asyncio.Lock()
+        self._futures: dict[int, asyncio.Future[dict]] = {}
 
-    async def async_send_command(self, message: dict[str, Any]):
-        """Send a websocket command."""
-        async with self._lock:
-            self.message_id += 1
-            message["id"] = self.message_id
+    @property
+    def connected(self) -> bool:
+        """Return if we're currently connected."""
+        return self._client is not None and not self._client.closed
 
-            _LOGGER.debug("Sending: %s", message)
-            try:
-                await self.client.send_json(message)
-            except ConnectionError:
+    async def close(self) -> None:
+        """Close down the client."""
+        if not self._client.closed:
+            await self._client.close()
+
+    async def async_send_command(self, message: dict[str, Any]) -> dict | None:
+        """Send a websocket message, and return the response."""
+        self._message_id += 1
+        message["id"] = self._message_id
+        self._futures[message["id"]] = self._loop.create_future()
+        _LOGGER.debug("Sending: %s", message)
+        try:
+            await self._client.send_json(message)
+        except ConnectionError as err:
+            raise HomeAssistantWSConnectionError(err) from err
+
+        try:
+            return await self._futures[message["id"]]
+        finally:
+            self._futures.pop(message["id"])
+
+    async def start_listener(self) -> None:
+        """Start listening to the websocket."""
+        if not self.connected:
+            raise HomeAssistantWSConnectionError("Not connected when start listening")
+
+        try:
+            while self.connected:
+                await self._receive_json()
+        except HomeAssistantWSConnectionError:
+            pass
+
+        except HomeAssistantWSError as err:
+            _LOGGER.warning(err)
+
+        finally:
+            await self.close()
+
+    async def _receive_json(self) -> None:
+        """Receive json."""
+        msg = await self._client.receive()
+        _LOGGER.debug("Received: %s", msg)
+
+        if msg.type in (
+            WSMsgType.CLOSE,
+            WSMsgType.CLOSED,
+            WSMsgType.CLOSING,
+            WSMsgType.ERROR,
+        ):
+            raise HomeAssistantWSConnectionError()
+
+        if msg.type != WSMsgType.TEXT:
+            raise HomeAssistantWSError(f"Received non-Text message: {msg.type}")
+
+        try:
+            data = msg.json()
+        except ValueError as err:
+            raise HomeAssistantWSError(f"Received invalid JSON - {msg}") from err
+
+        if data["type"] == "result":
+            if (future := self._futures.get(data["id"])) is None:
                 return
 
-            try:
-                response = await self.client.receive_json()
-            except ConnectionError:
+            if data["success"]:
+                future.set_result(data["result"])
                 return
 
-            _LOGGER.debug("Received: %s", response)
-
-            if response["success"]:
-                return response["result"]
-
-            raise HomeAssistantWSError(response)
+            _LOGGER.error("Unsuccessful websocket message - %s", data)
 
     @classmethod
     async def connect_with_auth(
-        cls, session: aiohttp.ClientSession, url: str, token: str
+        cls, session: aiohttp.ClientSession, loop, url: str, token: str
     ) -> "WSClient":
         """Create an authenticated websocket client."""
         try:
-            client = await session.ws_connect(url, ssl=False)
+            client = await session.ws_connect(url, timeout=500)
         except aiohttp.client_exceptions.ClientConnectorError:
             raise HomeAssistantWSError("Can't connect") from None
 
         hello_message = await client.receive_json()
 
-        try:
-            await client.send_json({ATTR_TYPE: WSType.AUTH, ATTR_ACCESS_TOKEN: token})
-        except HomeAssistantWSNotSupported:
-            return
+        await client.send_json({ATTR_TYPE: WSType.AUTH, ATTR_ACCESS_TOKEN: token})
 
         auth_ok_message = await client.receive_json()
 
         if auth_ok_message[ATTR_TYPE] != "auth_ok":
             raise HomeAssistantAPIError("AUTH NOT OK")
 
-        return cls(AwesomeVersion(hello_message["ha_version"]), client)
+        return cls(loop, AwesomeVersion(hello_message["ha_version"]), client)
 
 
 class HomeAssistantWebSocket(CoreSysAttributes):
@@ -85,25 +141,27 @@ class HomeAssistantWebSocket(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Home Assistant object."""
         self.coresys: CoreSys = coresys
-        self._client: Optional[WSClient] = None
+        self._client: WSClient | None = None
         self._lock: asyncio.Lock = asyncio.Lock()
 
     async def _get_ws_client(self) -> WSClient:
         """Return a websocket client."""
         async with self._lock:
-            if self._client is not None:
+            if self._client is not None and self._client.connected:
                 return self._client
 
             await self.sys_homeassistant.api.ensure_access_token()
             client = await WSClient.connect_with_auth(
                 self.sys_websession,
-                f"{self.sys_homeassistant.api_url}/api/websocket",
+                self.sys_loop,
+                self.sys_homeassistant.ws_url,
                 self.sys_homeassistant.api.access_token,
             )
 
+            self.sys_create_task(client.start_listener())
             return client
 
-    async def async_send_command(self, message: dict[str, Any]):
+    async def async_send_command(self, message: dict[str, Any]) -> dict[str, Any]:
         """Send a command with the WS client."""
         if self.sys_core.state in CLOSING_STATES:
             raise HomeAssistantWSNotSupported(
@@ -114,6 +172,9 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             return
 
         if not self._client:
+            self._client = await self._get_ws_client()
+
+        if not self._client.connected:
             self._client = await self._get_ws_client()
 
         message_type = message.get("type")
@@ -132,12 +193,15 @@ class HomeAssistantWebSocket(CoreSysAttributes):
 
         try:
             return await self._client.async_send_command(message)
-        except HomeAssistantAPIError as err:
-            raise HomeAssistantWSError from err
+        except HomeAssistantWSError:
+            await self._client.close()
+            self._client = None
 
     async def async_supervisor_update_event(
-        self, key: str, data: Optional[dict[str, Any]] = None
-    ):
+        self,
+        key: str,
+        data: dict[str, Any] | None = None,
+    ) -> None:
         """Send a supervisor/event command."""
         try:
             await self.async_send_command(
@@ -155,13 +219,17 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         except HomeAssistantWSError as err:
             _LOGGER.error(err)
 
-    def supervisor_update_event(self, key: str, data: Optional[dict[str, Any]] = None):
+    def supervisor_update_event(
+        self,
+        key: str,
+        data: dict[str, Any] | None = None,
+    ) -> None:
         """Send a supervisor/event command."""
         if self.sys_core.state in CLOSING_STATES:
             return
         self.sys_create_task(self.async_supervisor_update_event(key, data))
 
-    def send_command(self, message: dict[str, Any]):
+    def send_command(self, message: dict[str, Any]) -> None:
         """Send a supervisor/event command."""
         if self.sys_core.state in CLOSING_STATES:
             return
