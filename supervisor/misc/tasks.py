@@ -170,19 +170,20 @@ class Tasks(CoreSysAttributes):
 
     async def _watchdog_homeassistant_docker(self):
         """Check running state of Docker and start if they is close."""
-        # if Home Assistant is active
-        if (
-            not await self.sys_homeassistant.core.is_failed()
-            or not self.sys_homeassistant.watchdog
-            or self.sys_homeassistant.error_state
-        ):
+        if not self.sys_homeassistant.watchdog:
+            # Watchdog is not enabled for Home Assistant
             return
-
-        # if Home Assistant is running
-        if (
-            self.sys_homeassistant.core.in_progress
-            or await self.sys_homeassistant.core.is_running()
-        ):
+        if self.sys_homeassistant.error_state:
+            # Home Assistant is in an error state, this is handled by the rollback feature
+            return
+        if not await self.sys_homeassistant.core.is_failed():
+            # The home assistant container is not in a failed state
+            return
+        if self.sys_homeassistant.core.in_progress:
+            # Home Assistant has a task in progress
+            return
+        if await self.sys_homeassistant.core.is_running():
+            # Home Assistant is running
             return
 
         _LOGGER.warning("Watchdog found a problem with Home Assistant Docker!")
@@ -203,23 +204,24 @@ class Tasks(CoreSysAttributes):
         Try 2 times to call API before we restart Home-Assistant. Maybe we had
         a delay in our system.
         """
-        # Home-Assistant is active/running
-        if (
-            not await self.sys_homeassistant.core.is_running()
-            or not self.sys_homeassistant.watchdog
-            or self.sys_homeassistant.error_state
-        ):
+        if not self.sys_homeassistant.watchdog:
+            # Watchdog is not enabled for Home Assistant
+            return
+        if self.sys_homeassistant.error_state:
+            # Home Assistant is in an error state, this is handled by the rollback feature
+            return
+        if not await self.sys_homeassistant.core.is_running():
+            # The home assistant container is not running
+            return
+        if self.sys_homeassistant.core.in_progress:
+            # Home Assistant has a task in progress
+            return
+        if await self.sys_homeassistant.api.check_api_state():
+            # Home Assistant is running properly
             return
 
         # Init cache data
         retry_scan = self._cache.get(HASS_WATCHDOG_API, 0)
-
-        # Home-Assistant API is up
-        if (
-            self.sys_homeassistant.core.in_progress
-            or await self.sys_homeassistant.api.check_api_state()
-        ):
-            return
 
         # Look like we run into a problem
         retry_scan += 1
