@@ -118,7 +118,7 @@ class WSClient:
     ) -> "WSClient":
         """Create an authenticated websocket client."""
         try:
-            client = await session.ws_connect(url, timeout=500)
+            client = await session.ws_connect(url, ssl=False)
         except aiohttp.client_exceptions.ClientConnectorError:
             raise HomeAssistantWSError("Can't connect") from None
 
