@@ -345,9 +345,8 @@ class Backup(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
 
-    async def restore_addons(self, addon_list: Optional[list[str]] = None):
+    async def restore_addons(self, addon_list: list[str]):
         """Restore a list add-on from backup."""
-        addon_list: list[str] = addon_list or self.addon_list
 
         async def _addon_restore(addon_slug: str):
             """Task to restore an add-on into backup."""
@@ -412,9 +411,8 @@ class Backup(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't save folder %s: %s", folder, err)
 
-    async def restore_folders(self, folder_list: Optional[list[str]] = None):
+    async def restore_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
-        folder_list: set[str] = set(folder_list or self.folders)
 
         def _folder_restore(name: str):
             """Intenal function to restore a folder."""
