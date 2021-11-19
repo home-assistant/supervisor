@@ -48,6 +48,15 @@ class WSClient:
         if not self._client.closed:
             await self._client.close()
 
+    async def async_send_message(self, message: dict[str, Any]) -> None:
+        """Send a websocket message, don't wait for response."""
+        self._message_id += 1
+        _LOGGER.debug("Sending: %s", message)
+        try:
+            await self._client.send_json(message)
+        except ConnectionError as err:
+            raise HomeAssistantWSConnectionError(err) from err
+
     async def async_send_command(self, message: dict[str, Any]) -> dict | None:
         """Send a websocket message, and return the response."""
         self._message_id += 1
@@ -72,11 +81,8 @@ class WSClient:
         try:
             while self.connected:
                 await self._receive_json()
-        except HomeAssistantWSConnectionError:
+        except HomeAssistantWSError:
             pass
-
-        except HomeAssistantWSError as err:
-            _LOGGER.warning(err)
 
         finally:
             await self.close()
@@ -86,21 +92,31 @@ class WSClient:
         msg = await self._client.receive()
         _LOGGER.debug("Received: %s", msg)
 
+        if msg.type == WSMsgType.CLOSE:
+            raise HomeAssistantWSConnectionError("Connection was closed", _LOGGER.debug)
+
         if msg.type in (
-            WSMsgType.CLOSE,
             WSMsgType.CLOSED,
             WSMsgType.CLOSING,
-            WSMsgType.ERROR,
         ):
-            raise HomeAssistantWSConnectionError()
+            raise HomeAssistantWSConnectionError(
+                "Connection is closed", _LOGGER.warning
+            )
+
+        if msg.type == WSMsgType.ERROR:
+            raise HomeAssistantWSError(f"WebSocket Error: {msg}", _LOGGER.error)
 
         if msg.type != WSMsgType.TEXT:
-            raise HomeAssistantWSError(f"Received non-Text message: {msg.type}")
+            raise HomeAssistantWSError(
+                f"Received non-Text message: {msg.type}", _LOGGER.error
+            )
 
         try:
             data = msg.json()
         except ValueError as err:
-            raise HomeAssistantWSError(f"Received invalid JSON - {msg}") from err
+            raise HomeAssistantWSError(
+                f"Received invalid JSON - {msg}", _LOGGER.error
+            ) from err
 
         if data["type"] == "result":
             if (future := self._futures.get(data["id"])) is None:
@@ -162,15 +178,13 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             self.sys_create_task(client.start_listener())
             return client
 
-    async def async_send_command(self, message: dict[str, Any]) -> dict[str, Any]:
-        """Send a command with the WS client."""
+    async def _can_send(self, message: dict[str, Any]) -> bool:
+        """Determine if we can use WebSocket messages."""
         if self.sys_core.state in CLOSING_STATES:
-            raise HomeAssistantWSNotSupported(
-                f"Can't execute in a ${self.sys_core.state} state"
-            )
+            return False
         if not await self.sys_homeassistant.api.check_api_state():
             # No core access, don't try.
-            return
+            return False
 
         if not self._client:
             self._client = await self._get_ws_client()
@@ -190,6 +204,23 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 message_type,
                 MIN_VERSION[message_type],
             )
+            return False
+        return True
+
+    async def async_send_message(self, message: dict[str, Any]) -> None:
+        """Send a command with the WS client."""
+        if not await self._can_send(message):
+            return
+
+        try:
+            await self._client.async_send_command(message)
+        except HomeAssistantWSError:
+            await self._client.close()
+            self._client = None
+
+    async def async_send_command(self, message: dict[str, Any]) -> dict[str, Any]:
+        """Send a command with the WS client and wait for the response."""
+        if not await self._can_send(message):
             return
 
         try:
@@ -205,7 +236,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
     ) -> None:
         """Send a supervisor/event command."""
         try:
-            await self.async_send_command(
+            await self.async_send_message(
                 {
                     ATTR_TYPE: WSType.SUPERVISOR_EVENT,
                     ATTR_DATA: {
@@ -230,8 +261,8 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             return
         self.sys_create_task(self.async_supervisor_update_event(key, data))
 
-    def send_command(self, message: dict[str, Any]) -> None:
+    def send_message(self, message: dict[str, Any]) -> None:
         """Send a supervisor/event command."""
         if self.sys_core.state in CLOSING_STATES:
             return
-        self.sys_create_task(self.async_send_command(message))
+        self.sys_create_task(self.async_send_message(message))

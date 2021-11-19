@@ -283,4 +283,4 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         if not configuration or "usb" not in configuration.get("components", []):
             return
 
-        self.sys_homeassistant.websocket.send_command({ATTR_TYPE: "usb/scan"})
+        self.sys_homeassistant.websocket.send_message({ATTR_TYPE: "usb/scan"})
