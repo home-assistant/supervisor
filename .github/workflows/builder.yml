@@ -133,9 +133,9 @@ jobs:
             $BUILD_ARGS \
             --${{ matrix.arch }} \
             --target /data \
-            --with-codenotary "${{ secrets.VCN_USER }}" "${{ secrets.VCN_PASSWORD }}" "${{ secrets.VCN_ORG }}" \
-            --validate-from "${{ secrets.VCN_ORG }}" \
             --generic ${{ needs.init.outputs.version }}
+        env:
+          CAS_API_KEY: ${{ secrets.CAS_TOKEN }}
 
   codenotary:
     name: CodeNotary signature
