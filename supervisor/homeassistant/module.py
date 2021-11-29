@@ -119,6 +119,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         )
 
     @property
+    def ws_url(self) -> str:
+        """Return API url to Home Assistant."""
+        return f"{'wss' if self.api_ssl else 'ws'}://{self.ip_address}:{self.api_port}/api/websocket"
+
+    @property
     def watchdog(self) -> bool:
         """Return True if the watchdog should protect Home Assistant."""
         return self._data[ATTR_WATCHDOG]
@@ -278,4 +283,4 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         if not configuration or "usb" not in configuration.get("components", []):
             return
 
-        self.sys_homeassistant.websocket.send_command({ATTR_TYPE: "usb/scan"})
+        self.sys_homeassistant.websocket.send_message({ATTR_TYPE: "usb/scan"})

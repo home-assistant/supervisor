@@ -45,7 +45,7 @@ class HomeAssistantSecrets(CoreSysAttributes):
     async def _read_secrets(self):
         """Read secrets.yaml into memory."""
         if not self.path_secrets.exists():
-            _LOGGER.debug("Home Assistant secrets not exists")
+            _LOGGER.debug("Home Assistant secrets.yaml does not exist")
             return
 
         # Read secrets

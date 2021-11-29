@@ -167,7 +167,7 @@ class AddonOptions(CoreSysAttributes):
                 device = self.sys_hardware.get_by_path(Path(value))
             except HardwareNotFound:
                 raise vol.Invalid(
-                    f"Device '{value}' does not exists! in {self._name} ({self._slug})"
+                    f"Device '{value}' does not exist in {self._name} ({self._slug})"
                 ) from None
 
             # Have filter
