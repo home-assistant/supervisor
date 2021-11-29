@@ -69,6 +69,10 @@ class HomeAssistantWSNotSupported(HomeAssistantWSError):
     """Raise when WebSockets are not supported."""
 
 
+class HomeAssistantWSConnectionError(HomeAssistantWSError):
+    """Raise when the WebSocket connection has an error."""
+
+
 class HomeAssistantJobError(HomeAssistantError, JobException):
     """Raise on Home Assistant job error."""
 

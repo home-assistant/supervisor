@@ -119,7 +119,7 @@ class Addon(AddonModel):
         if self._state == new_state:
             return
         self._state = new_state
-        self.sys_homeassistant.websocket.send_command(
+        self.sys_homeassistant.websocket.send_message(
             {
                 ATTR_TYPE: WSType.SUPERVISOR_EVENT,
                 ATTR_DATA: {
