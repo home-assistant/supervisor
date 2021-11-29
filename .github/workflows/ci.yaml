@@ -26,12 +26,12 @@ jobs:
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
@@ -48,7 +48,7 @@ jobs:
           pip install -r requirements.txt -r requirements_tests.txt
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -69,13 +69,13 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
@@ -113,13 +113,13 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
@@ -131,7 +131,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -157,13 +157,13 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
@@ -189,13 +189,13 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
@@ -207,7 +207,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -230,13 +230,13 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
@@ -248,7 +248,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -274,13 +274,13 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
@@ -306,13 +306,13 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
@@ -324,7 +324,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -350,7 +350,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         id: python
         with:
           python-version: ${{ matrix.python-version }}
@@ -360,7 +360,7 @@ jobs:
           vcn_version: ${{ env.DEFAULT_VCN }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
@@ -408,13 +408,13 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2.4.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2.2.2
+        uses: actions/setup-python@v2.3.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: venv
           key: |
