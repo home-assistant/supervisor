@@ -17,6 +17,7 @@ from ..docker.homeassistant import DockerHomeAssistant
 from ..docker.stats import DockerStats
 from ..exceptions import (
     DockerError,
+    HomeAssistantAPIError,
     HomeAssistantCrashError,
     HomeAssistantError,
     HomeAssistantJobError,
@@ -205,6 +206,25 @@ class HomeAssistantCore(CoreSysAttributes):
             if running:
                 await self._start()
             _LOGGER.info("Successfully started Home Assistant %s", to_version)
+
+            data = await self.sys_homeassistant.api.get_config()
+            if data and "logbook" in data.get("components", []):
+                try:
+                    async with self.sys_homeassistant.api.make_request(
+                        "post",
+                        "api/services/logbook/log",
+                        json={
+                            "name": "Home Assistant Core",
+                            "message": f"Has been updated to version {to_version}",
+                            "domain": "hassio",
+                        },
+                    ) as resp:
+                        if resp.status in (200, 201):
+                            _LOGGER.debug("Successfully created logbook entry")
+                        else:
+                            _LOGGER.error("Can't create logbook entry")
+                except HomeAssistantAPIError:
+                    _LOGGER.error("Can't create logbook entry")
 
             # Successfull - last step
             self.sys_homeassistant.save_data()
