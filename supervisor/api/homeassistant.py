@@ -43,7 +43,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_BOOT): vol.Boolean(),
-        vol.Optional(ATTR_IMAGE): docker_image,
+        vol.Optional(ATTR_IMAGE): vol.Maybe(docker_image),
         vol.Optional(ATTR_PORT): network_port,
         vol.Optional(ATTR_SSL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
