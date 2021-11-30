@@ -156,7 +156,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         return f"ghcr.io/home-assistant/{self.sys_machine}-homeassistant"
 
     @image.setter
-    def image(self, value: str) -> None:
+    def image(self, value: Optional[str]) -> None:
         """Set image name of Home Assistant container."""
         self._data[ATTR_IMAGE] = value
 
@@ -201,7 +201,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         return self._data.get(ATTR_REFRESH_TOKEN)
 
     @refresh_token.setter
-    def refresh_token(self, value: str):
+    def refresh_token(self, value: Optional[str]):
         """Set Home Assistant refresh_token."""
         self._data[ATTR_REFRESH_TOKEN] = value
 
