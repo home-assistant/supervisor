@@ -437,7 +437,8 @@ def test_log_entry(coresys, caplog):
     options = AddonOptions(coresys, {}, MOCK_ADDON_NAME, MOCK_ADDON_SLUG)(
         {"test": "str"}
     )
-    assert options == {}
+    assert isinstance(options, dict)
+    assert not options
     assert (
         "Option 'test' does not exist in the schema for Mock Add-on (mock_addon)"
         in caplog.text
