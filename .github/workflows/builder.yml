@@ -27,7 +27,7 @@ on:
     paths:
       - "rootfs/**"
       - "supervisor/**"
-      - build.json
+      - build.yaml
       - Dockerfile
       - requirements.txt
       - setup.py
