@@ -108,7 +108,7 @@ class StoreManager(CoreSysAttributes):
             self.repositories[repository.slug] = repository
 
         repos = new_rep - old_rep
-        tasks = [_add_repository(url) for url in repos]
+        tasks = [self.sys_create_task(_add_repository(url)) for url in repos]
         if tasks:
             await asyncio.wait(tasks)
 
