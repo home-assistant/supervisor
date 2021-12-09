@@ -39,6 +39,7 @@ if __name__ == "__main__":
 
     _LOGGER.info("Initializing Supervisor setup")
     coresys = loop.run_until_complete(bootstrap.initialize_coresys())
+    loop.set_debug(coresys.config.debug)
     loop.run_until_complete(coresys.core.connect())
 
     bootstrap.supervisor_debugger(coresys)
