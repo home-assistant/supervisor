@@ -119,7 +119,7 @@ class StoreManager(CoreSysAttributes):
                 addon.repository for addon in self.sys_addons.installed
             ):
                 raise StoreError(
-                    f"Can't remove {repository.source} it's used by installed add-ons.",
+                    f"Can't remove '{repository.source}'. It's used by installed add-ons",
                     logger=_LOGGER.error,
                 )
             await self.repositories.pop(repository.slug).remove()
