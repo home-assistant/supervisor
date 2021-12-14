@@ -7,7 +7,7 @@ from ruamel.yaml import YAML, YAMLError
 
 from ..exceptions import YamlFileError
 
-_YAML = YAML()
+_YAML = YAML(typ="safe")
 _YAML.allow_duplicate_keys = True
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
