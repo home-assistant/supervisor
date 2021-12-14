@@ -4,6 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
+from supervisor.addons.addon import Addon
+from supervisor.exceptions import StoreError
 from supervisor.resolution.const import SuggestionType
 from supervisor.store import BUILTIN_REPOSITORIES
 
@@ -72,3 +74,17 @@ async def test_preinstall_valid_repository(coresys, store_manager):
         await store_manager.update_repositories(BUILTIN_REPOSITORIES)
         assert store_manager.get("core").validate()
         assert store_manager.get("local").validate()
+
+
+@pytest.mark.asyncio
+async def test_remove_used_repository(coresys, store_manager, store_addon):
+    """Test removing used custom repository."""
+    coresys.addons.data.install(store_addon)
+    addon = Addon(coresys, store_addon.slug)
+    coresys.addons.local[addon.slug] = addon
+
+    with pytest.raises(
+        StoreError,
+        match="Can't remove 'https://github.com/awesome-developer/awesome-repo'. It's used by installed add-ons",
+    ):
+        await store_manager.update_repositories([])

@@ -4,7 +4,7 @@ import logging
 
 from ..const import URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import StoreGitError, StoreJobError, StoreNotFound
+from ..exceptions import StoreError, StoreGitError, StoreJobError, StoreNotFound
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from .addon import AddonStore
@@ -115,6 +115,13 @@ class StoreManager(CoreSysAttributes):
         # Delete stale repositories
         for url in old_rep - new_rep - BUILTIN_REPOSITORIES:
             repository = self.get_from_url(url)
+            if repository.slug in (
+                addon.repository for addon in self.sys_addons.installed
+            ):
+                raise StoreError(
+                    f"Can't remove '{repository.source}'. It's used by installed add-ons",
+                    logger=_LOGGER.error,
+                )
             await self.repositories.pop(repository.slug).remove()
             self.sys_config.drop_addon_repository(url)
 
