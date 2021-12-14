@@ -7,6 +7,9 @@ from typing import Awaitable
 from awesomeversion.awesomeversion import AwesomeVersion
 from awesomeversion.exceptions import AwesomeVersionCompareException
 
+from supervisor.addons.addon import Addon
+from supervisor.backups.validate import ALL_FOLDERS
+
 from ..const import FOLDER_HOMEASSISTANT, CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
@@ -126,6 +129,38 @@ class BackupManager(CoreSysAttributes):
         self._backups[backup.slug] = backup
         return backup
 
+    async def _do_backup(
+        self,
+        backup: Backup,
+        addon_list: list[Addon],
+        folder_list: list[str],
+    ):
+        try:
+            self.sys_core.state = CoreState.FREEZE
+
+            async with backup:
+                # Backup add-ons
+                if addon_list:
+                    _LOGGER.info("Backing up %s store Add-ons", backup.slug)
+                    await backup.store_addons(addon_list)
+
+                # Backup folders
+                if folder_list:
+                    _LOGGER.info("Backing up %s store folders", backup.slug)
+                    await backup.store_folders(folder_list)
+
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.exception("Backup %s error", backup.slug)
+            self.sys_capture_exception(err)
+            return None
+
+        else:
+            self._backups[backup.slug] = backup
+            return backup
+
+        finally:
+            self.sys_core.state = CoreState.RUNNING
+
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_backup_full(self, name="", password=None):
         """Create a full backup."""
@@ -134,33 +169,15 @@ class BackupManager(CoreSysAttributes):
             return None
 
         backup = self._create_backup(name, BackupType.FULL, password)
+
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
-        try:
-            self.sys_core.state = CoreState.FREEZE
-            await self.lock.acquire()
-
-            async with backup:
-                # Backup add-ons
-                _LOGGER.info("Backing up %s store Add-ons", backup.slug)
-                await backup.store_addons()
-
-                # Backup folders
-                _LOGGER.info("Backing up %s store folders", backup.slug)
-                await backup.store_folders()
-
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Backup %s error", backup.slug)
-            self.sys_capture_exception(err)
-            return None
-
-        else:
-            _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
-            self._backups[backup.slug] = backup
+        async with self.lock:
+            backup = await self._do_backup(
+                backup, self.sys_addons.installed, ALL_FOLDERS
+            )
+            if backup:
+                _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
             return backup
-
-        finally:
-            self.sys_core.state = CoreState.RUNNING
-            self.lock.release()
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_backup_partial(
@@ -176,47 +193,99 @@ class BackupManager(CoreSysAttributes):
 
         if len(addons) == 0 and len(folders) == 0 and not homeassistant:
             _LOGGER.error("Nothing to create backup for")
-            return
 
         backup = self._create_backup(name, BackupType.PARTIAL, password, homeassistant)
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
-        try:
-            self.sys_core.state = CoreState.FREEZE
-            await self.lock.acquire()
+        async with self.lock:
+            addon_list = []
+            for addon_slug in addons:
+                addon = self.sys_addons.get(addon_slug)
+                if addon and addon.is_installed:
+                    addon_list.append(addon)
+                    continue
+                _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
-            async with backup:
-                # Backup add-ons
-                addon_list = []
-                for addon_slug in addons:
-                    addon = self.sys_addons.get(addon_slug)
-                    if addon and addon.is_installed:
-                        addon_list.append(addon)
-                        continue
-                    _LOGGER.warning("Add-on %s not found/installed", addon_slug)
-
-                if addon_list:
-                    _LOGGER.info("Backing up %s store Add-ons", backup.slug)
-                    await backup.store_addons(addon_list)
-
-                # Backup folders
-                if folders:
-                    _LOGGER.info("Backing up %s store folders", backup.slug)
-                    await backup.store_folders(folders)
-
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Backup %s error", backup.slug)
-            self.sys_capture_exception(err)
-            return None
-
-        else:
-            _LOGGER.info("Creating partial backup with slug %s completed", backup.slug)
-            self._backups[backup.slug] = backup
+            backup = await self._do_backup(backup, addon_list, folders)
+            if backup:
+                _LOGGER.info(
+                    "Creating partial backup with slug %s completed", backup.slug
+                )
             return backup
 
+    async def _do_restore(
+        self,
+        backup: Backup,
+        addon_list: list[Addon],
+        folder_list: list[str],
+        homeassistant: bool,
+        remove_other_addons: bool,
+    ):
+        try:
+            # Stop Home Assistant Core if we restore the version or config directory
+            if FOLDER_HOMEASSISTANT in folder_list or homeassistant:
+                await self.sys_homeassistant.core.stop()
+
+            async with backup:
+                # Restore docker config
+                _LOGGER.info("Restoring %s Docker config", backup.slug)
+                backup.restore_dockerconfig()
+
+                if FOLDER_HOMEASSISTANT in folder_list:
+                    backup.restore_homeassistant()
+
+                # Process folders
+                if folder_list:
+                    _LOGGER.info("Restoring %s folders", backup.slug)
+                    await backup.restore_folders(folder_list)
+
+                # Process Home-Assistant
+                task_hass = None
+                if homeassistant:
+                    _LOGGER.info("Restoring %s Home Assistant Core", backup.slug)
+                    task_hass = self._update_core_task(backup.homeassistant_version)
+
+                if addon_list:
+                    _LOGGER.info("Restoring %s Repositories", backup.slug)
+                    await backup.restore_repositories()
+
+                    _LOGGER.info("Restoring %s Add-ons", backup.slug)
+                    await backup.restore_addons(addon_list)
+
+                # Delete delta add-ons
+                if remove_other_addons:
+                    _LOGGER.info("Removing Add-ons not in the backup %s", backup.slug)
+                    for addon in self.sys_addons.installed:
+                        if addon.slug in backup.addon_list:
+                            continue
+
+                        # Remove Add-on because it's not a part of the new env
+                        # Do it sequential avoid issue on slow IO
+                        try:
+                            await addon.uninstall()
+                        except AddonsError:
+                            _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
+
+                # Wait for Home Assistant Core update/downgrade
+                if task_hass:
+                    _LOGGER.info("Restore %s wait for Home-Assistant", backup.slug)
+                    await task_hass
+
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.exception("Restore %s error", backup.slug)
+            self.sys_capture_exception(err)
+            return False
+        else:
+            return True
         finally:
-            self.sys_core.state = CoreState.RUNNING
-            self.lock.release()
+            # Do we need start Home Assistant Core?
+            if not await self.sys_homeassistant.core.is_running():
+                await self.sys_homeassistant.core.start()
+
+            # Check If we can access to API / otherwise restart
+            if not await self.sys_homeassistant.api.check_api_state():
+                _LOGGER.warning("Need restart HomeAssistant for API")
+                await self.sys_homeassistant.core.restart()
 
     @Job(
         conditions=[
@@ -227,7 +296,7 @@ class BackupManager(CoreSysAttributes):
             JobCondition.RUNNING,
         ]
     )
-    async def do_restore_full(self, backup, password=None):
+    async def do_restore_full(self, backup: Backup, password=None):
         """Restore a backup."""
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
@@ -242,65 +311,20 @@ class BackupManager(CoreSysAttributes):
             return False
 
         _LOGGER.info("Full-Restore %s start", backup.slug)
-        try:
+        async with self.lock:
             self.sys_core.state = CoreState.FREEZE
-            await self.lock.acquire()
 
-            async with backup:
-                # Stop Home-Assistant / Add-ons
-                await self.sys_core.shutdown()
+            # Stop Home-Assistant / Add-ons
+            await self.sys_core.shutdown()
 
-                # Restore folders
-                _LOGGER.info("Restoring %s folders", backup.slug)
-                await backup.restore_folders()
+            success = await self._do_restore(
+                backup, backup.addon_list, backup.folders, True, True
+            )
 
-                # Restore docker config
-                _LOGGER.info("Restoring %s Docker Config", backup.slug)
-                backup.restore_dockerconfig()
-
-                # Start homeassistant restore
-                _LOGGER.info("Restoring %s Home-Assistant", backup.slug)
-                backup.restore_homeassistant()
-                task_hass = self._update_core_task(backup.homeassistant_version)
-
-                # Restore repositories
-                _LOGGER.info("Restoring %s Repositories", backup.slug)
-                await backup.restore_repositories()
-
-                # Delete delta add-ons
-                _LOGGER.info("Removing add-ons not in the backup %s", backup.slug)
-                for addon in self.sys_addons.installed:
-                    if addon.slug in backup.addon_list:
-                        continue
-
-                    # Remove Add-on because it's not a part of the new env
-                    # Do it sequential avoid issue on slow IO
-                    try:
-                        await addon.uninstall()
-                    except AddonsError:
-                        _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
-
-                # Restore add-ons
-                _LOGGER.info("Restore %s old add-ons", backup.slug)
-                await backup.restore_addons()
-
-                # finish homeassistant task
-                _LOGGER.info("Restore %s wait until homeassistant ready", backup.slug)
-                await task_hass
-                await self.sys_homeassistant.core.start()
-
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Restore %s error", backup.slug)
-            self.sys_capture_exception(err)
-            return False
-
-        else:
-            _LOGGER.info("Full-Restore %s done", backup.slug)
-            return True
-
-        finally:
             self.sys_core.state = CoreState.RUNNING
-            self.lock.release()
+
+            if success:
+                _LOGGER.info("Full-Restore %s done", backup.slug)
 
     @Job(
         conditions=[
@@ -323,68 +347,21 @@ class BackupManager(CoreSysAttributes):
             _LOGGER.error("Invalid password for backup %s", backup.slug)
             return False
 
-        addons = addons or []
-        folders = folders or []
+        addon_list = addons or []
+        folder_list = folders or []
 
         _LOGGER.info("Partial-Restore %s start", backup.slug)
-        try:
+        async with self.lock:
             self.sys_core.state = CoreState.FREEZE
-            await self.lock.acquire()
 
-            async with backup:
-                # Restore docker config
-                _LOGGER.info("Restoring %s Docker Config", backup.slug)
-                backup.restore_dockerconfig()
+            success = await self._do_restore(
+                backup, addon_list, folder_list, homeassistant, False
+            )
 
-                # Stop Home-Assistant for config restore
-                if FOLDER_HOMEASSISTANT in folders:
-                    await self.sys_homeassistant.core.stop()
-                    backup.restore_homeassistant()
-
-                # Process folders
-                if folders:
-                    _LOGGER.info("Restoring %s folders", backup.slug)
-                    await backup.restore_folders(folders)
-
-                # Process Home-Assistant
-                task_hass = None
-                if homeassistant:
-                    _LOGGER.info("Restoring %s Home-Assistant", backup.slug)
-                    task_hass = self._update_core_task(backup.homeassistant_version)
-
-                if addons:
-                    _LOGGER.info("Restoring %s Repositories", backup.slug)
-                    await backup.restore_repositories()
-
-                    _LOGGER.info("Restoring %s old add-ons", backup.slug)
-                    await backup.restore_addons(addons)
-
-                # Make sure homeassistant run agen
-                if task_hass:
-                    _LOGGER.info("Restore %s wait for Home-Assistant", backup.slug)
-                    await task_hass
-
-                # Do we need start HomeAssistant?
-                if not await self.sys_homeassistant.core.is_running():
-                    await self.sys_homeassistant.core.start()
-
-                # Check If we can access to API / otherwise restart
-                if not await self.sys_homeassistant.api.check_api_state():
-                    _LOGGER.warning("Need restart HomeAssistant for API")
-                    await self.sys_homeassistant.core.restart()
-
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.exception("Restore %s error", backup.slug)
-            self.sys_capture_exception(err)
-            return False
-
-        else:
-            _LOGGER.info("Partial-Restore %s done", backup.slug)
-            return True
-
-        finally:
             self.sys_core.state = CoreState.RUNNING
-            self.lock.release()
+
+            if success:
+                _LOGGER.info("Partial-Restore %s done", backup.slug)
 
     def _update_core_task(self, version: AwesomeVersion) -> Awaitable[None]:
         """Process core update if needed and make awaitable object."""

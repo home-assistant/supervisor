@@ -288,3 +288,4 @@ def install_addon_ssh(coresys: CoreSys, repository):
     coresys.addons.data.install(store)
     addon = Addon(coresys, store.slug)
     coresys.addons.local[addon.slug] = addon
+    yield addon
