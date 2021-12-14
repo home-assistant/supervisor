@@ -1,10 +1,13 @@
 {
   "advanced": false,
-  "arch": ["amd64"],
+  "arch": [
+    "amd64"
+  ],
+  "slug": "test",
   "description": "Test add-on",
   "location": "tmp_path",
   "name": "Test Add-on",
-  "repository": "https://github.com/awesome-developer/awesome-repo",
+  "repository": "a474bbd1",
   "stage": "stable",
   "version": "1.0.0"
 }
