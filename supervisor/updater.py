@@ -243,11 +243,9 @@ class Updater(FileConfiguration, CoreSysAttributes):
             # Update HassOS version
             if self.sys_os.board:
                 self._data[ATTR_OTA] = data["ota"]
-                if self.sys_os.board in data["hassos"]:
+                if version := data["hassos"].get(self.sys_os.board):
                     events.append("os")
-                    self._data[ATTR_HASSOS] = AwesomeVersion(
-                        data["hassos"][self.sys_os.board]
-                    )
+                    self._data[ATTR_HASSOS] = AwesomeVersion(version)
                 else:
                     _LOGGER.warning(
                         "Board '%s' not found in version file. No OS updates.",
