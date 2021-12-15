@@ -214,7 +214,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
 
         try:
             await self._client.async_send_command(message)
-        except HomeAssistantWSError:
+        except HomeAssistantWSConnectionError:
             await self._client.close()
             self._client = None
 
@@ -225,7 +225,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
 
         try:
             return await self._client.async_send_command(message)
-        except HomeAssistantWSError:
+        except HomeAssistantWSConnectionError:
             await self._client.close()
             self._client = None
 
