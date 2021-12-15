@@ -7,7 +7,11 @@ from ..const import CoreState
 
 LANDINGPAGE: AwesomeVersion = AwesomeVersion("landingpage")
 
-MIN_VERSION = {"supervisor/event": "2021.2.4"}
+MIN_VERSION = {
+    "supervisor/event": "2021.2.4",
+    "backup/start": "2021.12.0",
+    "backup/end": "2021.12.0",
+}
 
 CLOSING_STATES = [
     CoreState.SHUTDOWN,
