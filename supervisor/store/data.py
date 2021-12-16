@@ -1,7 +1,7 @@
 """Init file for Supervisor add-on data."""
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Awaitable, Optional
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -37,8 +37,11 @@ class StoreData(CoreSysAttributes):
         self.repositories: dict[str, Any] = {}
         self.addons: dict[str, Any] = {}
 
-    def update(self) -> None:
+    async def update(self) -> Awaitable[None]:
         """Read data from add-on repository."""
+        return await self.sys_run_in_executor(self._update)
+
+    def _update(self) -> None:
         self.repositories.clear()
         self.addons.clear()
 

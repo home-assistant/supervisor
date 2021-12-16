@@ -47,7 +47,7 @@ class StoreManager(CoreSysAttributes):
 
     async def load(self) -> None:
         """Start up add-on management."""
-        self.data.update()
+        await self.data.update()
 
         # Init Supervisor built-in repositories
         repositories = set(self.sys_config.addons_repositories) | BUILTIN_REPOSITORIES
@@ -126,7 +126,7 @@ class StoreManager(CoreSysAttributes):
             self.sys_config.drop_addon_repository(url)
 
         # update data
-        self.data.update()
+        await self.data.update()
         self._read_addons()
 
     def _read_addons(self) -> None:
