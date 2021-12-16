@@ -41,6 +41,7 @@ from ..const import (
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     CRYPTO_AES128,
+    FOLDER_HOMEASSISTANT,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
@@ -483,6 +484,7 @@ class Backup(CoreSysAttributes):
         )
 
         await self.sys_homeassistant.backup(homeassistant_file)
+        self._data[ATTR_FOLDERS].append(FOLDER_HOMEASSISTANT)
 
     async def restore_homeassistant_config_dir(self):
         """Restore Home Assitant Core configuration folder."""
