@@ -3,13 +3,15 @@ import asyncio
 from typing import Any, Awaitable
 
 from aiohttp import web
+import voluptuous as vol
 
 from ..addons import AnyAddon
-from ..api.utils import api_process
+from ..api.utils import api_process, api_validate
 from ..const import (
     ATTR_ADDONS,
     ATTR_ADVANCED,
     ATTR_AVAILABLE,
+    ATTR_BACKUP,
     ATTR_BUILD,
     ATTR_DESCRIPTON,
     ATTR_HOMEASSISTANT,
@@ -33,6 +35,12 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
 from ..store.addon import AddonStore
 from ..store.repository import Repository
+
+SCHEMA_UPDATE = vol.Schema(
+    {
+        vol.Optional(ATTR_BACKUP): bool,
+    }
+)
 
 
 class APIStore(CoreSysAttributes):
@@ -134,12 +142,22 @@ class APIStore(CoreSysAttributes):
         return asyncio.shield(addon.install())
 
     @api_process
-    def addons_addon_update(self, request: web.Request) -> Awaitable[None]:
+    async def addons_addon_update(self, request: web.Request) -> None:
         """Update add-on."""
         addon = self._extract_addon(request, installed=True)
         if addon == request.get(REQUEST_FROM):
             raise APIForbidden(f"Add-on {addon.slug} can't update itself!")
-        return asyncio.shield(addon.update())
+
+        body = await api_validate(SCHEMA_UPDATE, request)
+
+        if body.get(ATTR_BACKUP):
+            await self.sys_backups.do_backup_partial(
+                name=f"addon_{addon.slug}_{addon.version}",
+                homeassistant=False,
+                addons=[addon.slug],
+            )
+
+        return await asyncio.shield(addon.update())
 
     @api_process
     async def addons_addon_info(self, request: web.Request) -> dict[str, Any]:
