@@ -325,7 +325,9 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 )
 
         try:
+            _LOGGER.info("Backing up Home Assistant Core config folder")
             await self.sys_run_in_executor(_write_tarfile)
+            _LOGGER.info("Backup Home Assistant Core config folder done")
         finally:
             try:
                 await self.sys_homeassistant.websocket.async_send_command(
