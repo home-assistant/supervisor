@@ -235,7 +235,6 @@ class BackupManager(CoreSysAttributes):
                 backup.restore_dockerconfig()
 
                 if FOLDER_HOMEASSISTANT in folder_list:
-                    backup.restore_homeassistant()
                     await backup.restore_homeassistant_config_dir()
                     folder_list = list(folder_list)
                     folder_list.remove(FOLDER_HOMEASSISTANT)
@@ -249,6 +248,7 @@ class BackupManager(CoreSysAttributes):
                 task_hass = None
                 if homeassistant:
                     _LOGGER.info("Restoring %s Home Assistant Core", backup.slug)
+                    backup.restore_homeassistant()
                     task_hass = self._update_core_task(backup.homeassistant_version)
 
                 if addon_list:
