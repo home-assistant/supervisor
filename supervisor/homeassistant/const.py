@@ -7,12 +7,6 @@ from ..const import CoreState
 
 LANDINGPAGE: AwesomeVersion = AwesomeVersion("landingpage")
 
-MIN_VERSION = {
-    "supervisor/event": "2021.2.4",
-    "backup/start": "2021.12.0",
-    "backup/end": "2021.12.0",
-}
-
 CLOSING_STATES = [
     CoreState.SHUTDOWN,
     CoreState.STOPPING,
@@ -27,6 +21,13 @@ class WSType(str, Enum):
     SUPERVISOR_EVENT = "supervisor/event"
     BACKUP_START = "backup/start"
     BACKUP_END = "backup/start"
+
+
+MIN_VERSION = {
+    WSType.SUPERVISOR_EVENT: "2021.2.4",
+    WSType.BACKUP_START: "2021.12.0",
+    WSType.BACKUP_END: "2021.12.0",
+}
 
 
 class WSEvent(str, Enum):
