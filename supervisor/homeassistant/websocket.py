@@ -17,7 +17,13 @@ from ..exceptions import (
     HomeAssistantWSError,
     HomeAssistantWSNotSupported,
 )
-from .const import CLOSING_STATES, MIN_VERSION, WSEvent, WSType
+from .const import CLOSING_STATES, WSEvent, WSType
+
+MIN_VERSION = {
+    WSType.SUPERVISOR_EVENT: "2021.2.4",
+    WSType.BACKUP_START: "2021.12.0",
+    WSType.BACKUP_END: "2021.12.0",
+}
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

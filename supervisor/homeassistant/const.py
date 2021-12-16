@@ -23,13 +23,6 @@ class WSType(str, Enum):
     BACKUP_END = "backup/start"
 
 
-MIN_VERSION = {
-    WSType.SUPERVISOR_EVENT: "2021.2.4",
-    WSType.BACKUP_START: "2021.12.0",
-    WSType.BACKUP_END: "2021.12.0",
-}
-
-
 class WSEvent(str, Enum):
     """Websocket events."""
 
