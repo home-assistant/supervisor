@@ -25,6 +25,8 @@ class WSType(str, Enum):
 
     AUTH = "auth"
     SUPERVISOR_EVENT = "supervisor/event"
+    BACKUP_START = "backup/start"
+    BACKUP_END = "backup/start"
 
 
 class WSEvent(str, Enum):

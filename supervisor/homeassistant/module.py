@@ -11,6 +11,7 @@ from uuid import UUID
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from supervisor.exceptions import HomeAssistantWSError
+from supervisor.homeassistant.const import WSType
 from supervisor.utils.tar import SecureTarFile, atomic_contents_add
 
 from ..const import (
@@ -303,7 +304,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
         # Let Home Assistant Core know we are about to backup
         try:
-            await self.websocket.async_send_command({ATTR_TYPE: "backup/start"})
+            await self.websocket.async_send_command({ATTR_TYPE: WSType.BACKUP_START})
 
         except HomeAssistantWSError:
             _LOGGER.warning(
@@ -328,7 +329,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         finally:
             try:
                 await self.sys_homeassistant.websocket.async_send_command(
-                    {ATTR_TYPE: "backup/end"}
+                    {ATTR_TYPE: WSType.BACKUP_END}
                 )
             except HomeAssistantWSError:
                 _LOGGER.warning(
