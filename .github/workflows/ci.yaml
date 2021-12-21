@@ -36,9 +36,6 @@ jobs:
           path: venv
           key: |
             ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements_tests.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
-            ${{ runner.os }}-venv-${{ steps.python.outputs.python-version }}-
       - name: Create Python virtual environment
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
