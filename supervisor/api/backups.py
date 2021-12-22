@@ -13,6 +13,7 @@ from ..backups.validate import ALL_FOLDERS
 from ..const import (
     ATTR_ADDONS,
     ATTR_BACKUPS,
+    ATTR_COMPRESSED,
     ATTR_CONTENT,
     ATTR_DATE,
     ATTR_FOLDERS,
@@ -51,6 +52,7 @@ SCHEMA_BACKUP_FULL = vol.Schema(
     {
         vol.Optional(ATTR_NAME): str,
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
+        vol.Optional(ATTR_COMPRESSED): vol.Maybe(vol.Boolean()),
     }
 )
 
@@ -86,6 +88,7 @@ class APIBackups(CoreSysAttributes):
                     ATTR_TYPE: backup.sys_type,
                     ATTR_SIZE: backup.size,
                     ATTR_PROTECTED: backup.protected,
+                    ATTR_COMPRESSED: backup.compressed,
                     ATTR_CONTENT: {
                         ATTR_HOMEASSISTANT: backup.homeassistant_version is not None,
                         ATTR_ADDONS: backup.addon_list,
@@ -128,6 +131,7 @@ class APIBackups(CoreSysAttributes):
             ATTR_NAME: backup.name,
             ATTR_DATE: backup.date,
             ATTR_SIZE: backup.size,
+            ATTR_COMPRESSED: backup.compressed,
             ATTR_PROTECTED: backup.protected,
             ATTR_HOMEASSISTANT: backup.homeassistant_version,
             ATTR_ADDONS: data_addons,

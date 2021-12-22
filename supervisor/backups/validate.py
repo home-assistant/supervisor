@@ -7,6 +7,7 @@ from ..const import (
     ATTR_AUDIO_INPUT,
     ATTR_AUDIO_OUTPUT,
     ATTR_BOOT,
+    ATTR_COMPRESSED,
     ATTR_CRYPTO,
     ATTR_DATE,
     ATTR_DOCKER,
@@ -65,6 +66,7 @@ SCHEMA_BACKUP = vol.Schema(
         vol.Required(ATTR_TYPE): vol.Coerce(BackupType),
         vol.Required(ATTR_NAME): str,
         vol.Required(ATTR_DATE): str,
+        vol.Optional(ATTR_COMPRESSED, default=True): vol.Boolean(),
         vol.Inclusive(ATTR_PROTECTED, "encrypted"): vol.All(
             str, vol.Length(min=1, max=1)
         ),

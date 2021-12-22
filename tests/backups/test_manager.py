@@ -23,6 +23,37 @@ async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
     # Check Backup has been created without password
     assert backup_instance.new.call_args[0][3] == BackupType.FULL
     assert backup_instance.new.call_args[0][4] is None
+    assert backup_instance.new.call_args[0][5] is True
+
+    backup_instance.store_homeassistant.assert_called_once()
+    backup_instance.store_repositories.assert_called_once()
+    backup_instance.store_dockerconfig.assert_called_once()
+
+    backup_instance.store_addons.assert_called_once()
+    assert install_addon_ssh in backup_instance.store_addons.call_args[0][0]
+
+    backup_instance.store_folders.assert_called_once()
+    assert len(backup_instance.store_folders.call_args[0][0]) == 4
+
+    assert coresys.core.state == CoreState.RUNNING
+
+
+async def test_do_backup_full_uncompressed(
+    coresys: CoreSys, backup_mock, install_addon_ssh
+):
+    """Test creating Backup."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    manager = BackupManager(coresys)
+
+    # backup_mock fixture causes Backup() to be a MagicMock
+    backup_instance: MagicMock = await manager.do_backup_full(compressed=False)
+
+    # Check Backup has been created without password
+    assert backup_instance.new.call_args[0][3] == BackupType.FULL
+    assert backup_instance.new.call_args[0][4] is None
+    assert backup_instance.new.call_args[0][5] is False
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
@@ -53,6 +84,37 @@ async def test_do_backup_partial_minimal(
     # Check Backup has been created without password
     assert backup_instance.new.call_args[0][3] == BackupType.PARTIAL
     assert backup_instance.new.call_args[0][4] is None
+    assert backup_instance.new.call_args[0][5] is True
+
+    backup_instance.store_homeassistant.assert_not_called()
+    backup_instance.store_repositories.assert_called_once()
+    backup_instance.store_dockerconfig.assert_called_once()
+
+    backup_instance.store_addons.assert_not_called()
+
+    backup_instance.store_folders.assert_not_called()
+
+    assert coresys.core.state == CoreState.RUNNING
+
+
+async def test_do_backup_partial_minimal_uncompressed(
+    coresys: CoreSys, backup_mock, install_addon_ssh
+):
+    """Test creating minimal partial Backup."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    manager = BackupManager(coresys)
+
+    # backup_mock fixture causes Backup() to be a MagicMock
+    backup_instance: MagicMock = await manager.do_backup_partial(
+        homeassistant=False, compressed=False
+    )
+
+    # Check Backup has been created without password
+    assert backup_instance.new.call_args[0][3] == BackupType.PARTIAL
+    assert backup_instance.new.call_args[0][4] is None
+    assert backup_instance.new.call_args[0][5] is False
 
     backup_instance.store_homeassistant.assert_not_called()
     backup_instance.store_repositories.assert_called_once()
@@ -84,6 +146,7 @@ async def test_do_backup_partial_maximal(
     # Check Backup has been created without password
     assert backup_instance.new.call_args[0][3] == BackupType.PARTIAL
     assert backup_instance.new.call_args[0][4] is None
+    assert backup_instance.new.call_args[0][5] is True
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
