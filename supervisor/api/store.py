@@ -150,14 +150,7 @@ class APIStore(CoreSysAttributes):
 
         body = await api_validate(SCHEMA_UPDATE, request)
 
-        if body.get(ATTR_BACKUP):
-            await self.sys_backups.do_backup_partial(
-                name=f"addon_{addon.slug}_{addon.version}",
-                homeassistant=False,
-                addons=[addon.slug],
-            )
-
-        return await asyncio.shield(addon.update())
+        return await asyncio.shield(addon.update(backup=body.get(ATTR_BACKUP)))
 
     @api_process
     async def addons_addon_info(self, request: web.Request) -> dict[str, Any]:

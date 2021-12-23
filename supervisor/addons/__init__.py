@@ -252,7 +252,7 @@ class AddonManager(CoreSysAttributes):
         ],
         on_condition=AddonsJobError,
     )
-    async def update(self, slug: str) -> None:
+    async def update(self, slug: str, backup: Optional[bool] = False) -> None:
         """Update add-on."""
         if slug not in self.local:
             raise AddonsError(f"Add-on {slug} is not installed", _LOGGER.error)
@@ -271,6 +271,13 @@ class AddonManager(CoreSysAttributes):
         if not store.available:
             raise AddonsNotSupportedError(
                 f"Add-on {slug} not supported on that platform", _LOGGER.error
+            )
+
+        if backup:
+            await self.sys_backups.do_backup_partial(
+                name=f"addon_{addon.slug}_{addon.version}",
+                homeassistant=False,
+                addons=[addon.slug],
             )
 
         # Update instance
