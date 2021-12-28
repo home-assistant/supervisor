@@ -5,6 +5,7 @@ from pathlib import Path
 from ...const import CoreState
 from ...coresys import CoreSys
 from ...exceptions import CodeNotaryError, CodeNotaryUntrusted
+from ...utils.codenotary import calc_checksum_path_sourcecode
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 
@@ -41,8 +42,13 @@ class EvaluateSourceMods(EvaluateBase):
             _LOGGER.warning("Disabled content-trust, skipping evaluation")
             return
 
+        # Calculate sume of the sourcecode
+        checksum = await self.sys_run_in_executor(
+            calc_checksum_path_sourcecode, _SUPERVISOR_SOURCE
+        )
+
         try:
-            await self.sys_security.verify_own_content(path=_SUPERVISOR_SOURCE)
+            await self.sys_security.verify_own_content(checksum)
         except CodeNotaryUntrusted:
             return True
         except CodeNotaryError:

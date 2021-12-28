@@ -1,7 +1,6 @@
 """Fetch last versions from webserver."""
 import logging
-from pathlib import Path
-from typing import Awaitable, Optional
+from typing import Awaitable
 
 from .const import (
     ATTR_CONTENT_TRUST,
@@ -11,7 +10,7 @@ from .const import (
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import CodeNotaryError, CodeNotaryUntrusted, PwnedError
-from .utils.codenotary import vcn_validate
+from .utils.codenotary import cas_validate
 from .utils.common import FileConfiguration
 from .utils.pwned import check_pwned_password
 from .validate import SCHEMA_SECURITY_CONFIG
@@ -57,16 +56,14 @@ class Security(FileConfiguration, CoreSysAttributes):
         """Set pwned is enabled/disabled."""
         self._data[ATTR_PWNED] = value
 
-    async def verify_own_content(
-        self, checksum: Optional[str] = None, path: Optional[Path] = None
-    ) -> Awaitable[None]:
+    async def verify_own_content(self, checksum: str) -> Awaitable[None]:
         """Verify content from HA org."""
         if not self.content_trust:
             _LOGGER.warning("Disabled content-trust, skip validation")
             return
 
         try:
-            await vcn_validate(checksum, path, org="home-assistant.io")
+            await cas_validate(checksum, signer="notary@home-assistant.io")
         except CodeNotaryUntrusted:
             raise
         except CodeNotaryError:
