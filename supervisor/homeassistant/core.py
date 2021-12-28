@@ -12,6 +12,8 @@ from typing import Awaitable, Optional
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
+from supervisor.const import ATTR_HOMEASSISTANT
+
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.homeassistant import DockerHomeAssistant
 from ..docker.stats import DockerStats
@@ -173,7 +175,11 @@ class HomeAssistantCore(CoreSysAttributes):
         ],
         on_condition=HomeAssistantJobError,
     )
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    async def update(
+        self,
+        version: Optional[AwesomeVersion] = None,
+        backup: Optional[bool] = False,
+    ) -> None:
         """Update HomeAssistant version."""
         version = version or self.sys_homeassistant.latest_version
         old_image = self.sys_homeassistant.image
@@ -184,6 +190,13 @@ class HomeAssistantCore(CoreSysAttributes):
         if exists and version == self.instance.version:
             raise HomeAssistantUpdateError(
                 f"Version {version!s} is already installed", _LOGGER.warning
+            )
+
+        if backup:
+            await self.sys_backups.do_backup_partial(
+                name=f"core_{self.instance.version}",
+                homeassistant=True,
+                folders=[ATTR_HOMEASSISTANT],
             )
 
         # process an update

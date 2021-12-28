@@ -10,6 +10,7 @@ from ..const import (
     ATTR_ARCH,
     ATTR_AUDIO_INPUT,
     ATTR_AUDIO_OUTPUT,
+    ATTR_BACKUP,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_BOOT,
@@ -54,7 +55,12 @@ SCHEMA_OPTIONS = vol.Schema(
     }
 )
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
+SCHEMA_UPDATE = vol.Schema(
+    {
+        vol.Optional(ATTR_VERSION): version_tag,
+        vol.Optional(ATTR_BACKUP): bool,
+    }
+)
 
 
 class APIHomeAssistant(CoreSysAttributes):
@@ -137,10 +143,14 @@ class APIHomeAssistant(CoreSysAttributes):
     @api_process
     async def update(self, request: web.Request) -> None:
         """Update Home Assistant."""
-        body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_homeassistant.latest_version)
+        body = await api_validate(SCHEMA_UPDATE, request)
 
-        await asyncio.shield(self.sys_homeassistant.core.update(version))
+        await asyncio.shield(
+            self.sys_homeassistant.core.update(
+                version=body.get(ATTR_VERSION, self.sys_homeassistant.latest_version),
+                backup=body.get(ATTR_BACKUP),
+            )
+        )
 
     @api_process
     def stop(self, request: web.Request) -> Awaitable[None]:
