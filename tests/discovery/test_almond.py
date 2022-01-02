@@ -1,4 +1,4 @@
-"""Test adguard discovery."""
+"""Test almond discovery."""
 
 import pytest
 import voluptuous as vol
