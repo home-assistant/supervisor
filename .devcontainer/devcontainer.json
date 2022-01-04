@@ -10,6 +10,8 @@
     "visualstudioexptteam.vscodeintellicode",
     "esbenp.prettier-vscode"
   ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/supervisor,type=bind",
+  "workspaceFolder": "/workspaces/supervisor",
   "settings": {
     "terminal.integrated.profiles.linux": {
       "zsh": {
