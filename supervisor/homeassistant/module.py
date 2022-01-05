@@ -4,10 +4,15 @@ from ipaddress import IPv4Address
 import logging
 from pathlib import Path
 import shutil
+import tarfile
 from typing import Optional
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
+
+from supervisor.exceptions import HomeAssistantWSError
+from supervisor.homeassistant.const import WSType
+from supervisor.utils.tar import SecureTarFile, atomic_contents_add
 
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -24,6 +29,7 @@ from ..const import (
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     FILE_HASSIO_HOMEASSISTANT,
+    FOLDER_HOMEASSISTANT,
     BusEvent,
 )
 from ..coresys import CoreSys, CoreSysAttributes
@@ -37,6 +43,15 @@ from .validate import SCHEMA_HASS_CONFIG
 from .websocket import HomeAssistantWebSocket
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+HOMEASSISTANT_BACKUP_EXCLUDE = [
+    "*.db-shm",
+    "__pycache__/*",
+    "*.log",
+    "*.log.*",
+    "OZW_Log.txt",
+]
 
 
 class HomeAssistant(FileConfiguration, CoreSysAttributes):
@@ -284,3 +299,59 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             return
 
         self.sys_homeassistant.websocket.send_message({ATTR_TYPE: "usb/scan"})
+
+    async def backup(self, secure_tar_file: SecureTarFile) -> None:
+        """Backup Home Assistant Core config/ directory."""
+
+        # Let Home Assistant Core know we are about to backup
+        try:
+            await self.websocket.async_send_command({ATTR_TYPE: WSType.BACKUP_START})
+
+        except HomeAssistantWSError:
+            _LOGGER.warning(
+                "Preparing backup of Home Assistant Core failed. Check HA Core logs."
+            )
+
+        def _write_tarfile():
+            with secure_tar_file as tar_file:
+                # Backup system
+                origin_dir = Path(self.sys_config.path_supervisor, FOLDER_HOMEASSISTANT)
+
+                # Backup data
+                atomic_contents_add(
+                    tar_file,
+                    origin_dir,
+                    excludes=HOMEASSISTANT_BACKUP_EXCLUDE,
+                    arcname=".",
+                )
+
+        try:
+            _LOGGER.info("Backing up Home Assistant Core config folder")
+            await self.sys_run_in_executor(_write_tarfile)
+            _LOGGER.info("Backup Home Assistant Core config folder done")
+        finally:
+            try:
+                await self.sys_homeassistant.websocket.async_send_command(
+                    {ATTR_TYPE: WSType.BACKUP_END}
+                )
+            except HomeAssistantWSError:
+                _LOGGER.warning(
+                    "Error during Home Assistant Core backup. Check HA Core logs."
+                )
+
+    async def restore(self, secure_tar_file: SecureTarFile) -> None:
+        """Restore Home Assistant Core config/ directory."""
+
+        # Perform a restore
+        def _restore_tarfile():
+            origin_dir = Path(self.sys_config.path_supervisor, FOLDER_HOMEASSISTANT)
+
+            with secure_tar_file as tar_file:
+                tar_file.extractall(path=origin_dir, members=tar_file)
+
+        try:
+            _LOGGER.info("Restore Home Assistant Core config folder")
+            await self.sys_run_in_executor(_restore_tarfile)
+            _LOGGER.info("Restore Home Assistant Core config folder done")
+        except (tarfile.TarError, OSError) as err:
+            _LOGGER.warning("Can't restore Home Assistant Core config folder: %s", err)

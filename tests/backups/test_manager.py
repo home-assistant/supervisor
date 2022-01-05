@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from supervisor.backups.const import BackupType
 from supervisor.backups.manager import BackupManager
-from supervisor.const import FOLDER_HOMEASSISTANT, CoreState
+from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, CoreState
 from supervisor.coresys import CoreSys
 
 from tests.const import TEST_ADDON_SLUG
@@ -32,7 +32,8 @@ async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
     assert install_addon_ssh in backup_instance.store_addons.call_args[0][0]
 
     backup_instance.store_folders.assert_called_once()
-    assert len(backup_instance.store_folders.call_args[0][0]) == 5
+    assert len(backup_instance.store_folders.call_args[0][0]) == 4
+    backup_instance.store_homeassistant_config_dir.assert_called_once()
 
     assert coresys.core.state == CoreState.RUNNING
 
@@ -75,7 +76,9 @@ async def test_do_backup_partial_maximal(
 
     # backup_mock fixture causes Backup() to be a MagicMock
     backup_instance: MagicMock = await manager.do_backup_partial(
-        addons=[TEST_ADDON_SLUG], folders=["/test"], homeassistant=True
+        addons=[TEST_ADDON_SLUG],
+        folders=[FOLDER_SHARE, FOLDER_HOMEASSISTANT],
+        homeassistant=True,
     )
 
     # Check Backup has been created without password
@@ -91,6 +94,7 @@ async def test_do_backup_partial_maximal(
 
     backup_instance.store_folders.assert_called_once()
     assert len(backup_instance.store_folders.call_args[0][0]) == 1
+    backup_instance.store_homeassistant_config_dir.assert_called_once()
 
     assert coresys.core.state == CoreState.RUNNING
 
@@ -190,7 +194,7 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
     await manager.do_restore_partial(
         backup_instance,
         addons=[TEST_ADDON_SLUG],
-        folders=[FOLDER_HOMEASSISTANT],
+        folders=[FOLDER_SHARE, FOLDER_HOMEASSISTANT],
         homeassistant=True,
     )
 
@@ -201,5 +205,6 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
     backup_instance.restore_addons.assert_called_once()
 
     backup_instance.restore_folders.assert_called_once()
+    backup_instance.restore_homeassistant_config_dir.assert_called_once()
 
     assert coresys.core.state == CoreState.RUNNING

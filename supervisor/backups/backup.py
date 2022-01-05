@@ -52,17 +52,6 @@ from .validate import SCHEMA_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-MAP_FOLDER_EXCLUDE = {
-    FOLDER_HOMEASSISTANT: [
-        "*.db-wal",
-        "*.db-shm",
-        "__pycache__/*",
-        "*.log",
-        "*.log.*",
-        "OZW_Log.txt",
-    ]
-}
-
 
 class Backup(CoreSysAttributes):
     """A single Supervisor backup."""
@@ -395,7 +384,7 @@ class Backup(CoreSysAttributes):
                     atomic_contents_add(
                         tar_file,
                         origin_dir,
-                        excludes=MAP_FOLDER_EXCLUDE.get(name, []),
+                        excludes=[],
                         arcname=".",
                     )
 
@@ -485,6 +474,27 @@ class Backup(CoreSysAttributes):
 
         # save
         self.sys_homeassistant.save_data()
+
+    async def store_homeassistant_config_dir(self):
+        """Backup Home Assitant Core configuration folder."""
+
+        # Backup Home Assistant Core config directory
+        homeassistant_file = SecureTarFile(
+            Path(self._tmp.name, "homeassistant.tar.gz"), "w", key=self._key
+        )
+
+        await self.sys_homeassistant.backup(homeassistant_file)
+        self._data[ATTR_FOLDERS].append(FOLDER_HOMEASSISTANT)
+
+    async def restore_homeassistant_config_dir(self):
+        """Restore Home Assitant Core configuration folder."""
+
+        # Restore Home Assistant Core config directory
+        homeassistant_file = SecureTarFile(
+            Path(self._tmp.name, "homeassistant.tar.gz"), "r", key=self._key
+        )
+
+        await self.sys_homeassistant.restore(homeassistant_file)
 
     def store_repositories(self):
         """Store repository list into backup."""
