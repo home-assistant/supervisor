@@ -109,14 +109,14 @@ jobs:
 
       - name: Login to DockerHub
         if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@v1.10.0
+        uses: docker/login-action@v1.12.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
         if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@v1.10.0
+        uses: docker/login-action@v1.12.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -127,7 +127,7 @@ jobs:
         run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
 
       - name: Build supervisor
-        uses: home-assistant/builder@2021.11.4
+        uses: home-assistant/builder@2021.12.0
         with:
           args: |
             $BUILD_ARGS \
@@ -199,7 +199,7 @@ jobs:
 
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2021.11.4
+        uses: home-assistant/builder@2021.12.0
         with:
           args: |
             --test \

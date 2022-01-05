@@ -49,6 +49,7 @@ HOMEASSISTANT_BACKUP_EXCLUDE = [
     "*.db-shm",
     "__pycache__/*",
     "*.log",
+    "*.log.*",
     "OZW_Log.txt",
 ]
 

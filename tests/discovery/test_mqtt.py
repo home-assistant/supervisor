@@ -15,7 +15,7 @@ def test_good_config():
 
 
 def test_bad_config():
-    """Test good mqtt config."""
+    """Test bad mqtt config."""
 
     with pytest.raises(vol.Invalid):
         valid_discovery_config("mqtt", {"host": "test", "username": "bla", "ssl": True})

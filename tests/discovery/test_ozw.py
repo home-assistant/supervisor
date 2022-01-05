@@ -16,7 +16,7 @@ def test_good_config():
 
 
 def test_bad_config():
-    """Test good zwave mqtt config."""
+    """Test bad zwave mqtt config."""
 
     with pytest.raises(vol.Invalid):
         valid_discovery_config("ozw", {"host": "test", "username": "bla", "ssl": True})

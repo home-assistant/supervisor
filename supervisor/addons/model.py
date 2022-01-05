@@ -622,9 +622,9 @@ class AddonModel(CoreSysAttributes, ABC):
         """Uninstall this add-on."""
         return self.sys_addons.uninstall(self.slug)
 
-    def update(self) -> Awaitable[None]:
+    def update(self, backup: Optional[bool] = False) -> Awaitable[None]:
         """Update this add-on."""
-        return self.sys_addons.update(self.slug)
+        return self.sys_addons.update(self.slug, backup=backup)
 
     def rebuild(self) -> Awaitable[None]:
         """Rebuild this add-on."""

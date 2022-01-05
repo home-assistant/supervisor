@@ -16,7 +16,7 @@ def test_good_config():
 
 
 def test_bad_config():
-    """Test good deconz config."""
+    """Test bad deconz config."""
 
     with pytest.raises(vol.Invalid):
         valid_discovery_config("deconz", {"host": "test", "port": 8080})
