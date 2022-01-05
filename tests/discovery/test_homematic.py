@@ -16,7 +16,7 @@ def test_good_config():
 
 
 def test_bad_config():
-    """Test good homematic config."""
+    """Test bad homematic config."""
 
     with pytest.raises(vol.Invalid):
         valid_discovery_config("homematic", {"test": {"bla": "test", "port": 8080}})

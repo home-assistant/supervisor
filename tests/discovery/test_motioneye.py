@@ -12,6 +12,6 @@ def test_good_config() -> None:
 
 
 def test_bad_config() -> None:
-    """Test good motionEye config."""
+    """Test bad motionEye config."""
     with pytest.raises(vol.Invalid):
         valid_discovery_config("motioneye", {})

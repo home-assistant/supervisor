@@ -16,7 +16,7 @@ def test_good_config():
 
 
 def test_bad_config():
-    """Test good zwave js config."""
+    """Test bad zwave js config."""
 
     with pytest.raises(vol.Invalid):
         valid_discovery_config("zwave_js", {"host": "test"})
