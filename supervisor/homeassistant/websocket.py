@@ -51,6 +51,12 @@ class WSClient:
 
     async def close(self) -> None:
         """Close down the client."""
+        for future in self._futures.values():
+            if not future.done():
+                future.set_exception(
+                    HomeAssistantWSConnectionError("Connection was closed")
+                )
+
         if not self._client.closed:
             await self._client.close()
 
@@ -234,6 +240,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         except HomeAssistantWSConnectionError:
             await self._client.close()
             self._client = None
+            raise
 
     async def async_supervisor_update_event(
         self,
