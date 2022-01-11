@@ -54,6 +54,12 @@ class WSClient:
         if not self._client.closed:
             await self._client.close()
 
+        for future in self._futures.values():
+            if not future.done():
+                future.set_exception(
+                    HomeAssistantWSConnectionError("Connection was closed")
+                )
+
     async def async_send_message(self, message: dict[str, Any]) -> None:
         """Send a websocket message, don't wait for response."""
         self._message_id += 1
@@ -93,20 +99,12 @@ class WSClient:
         finally:
             await self.close()
 
-    def _handle_connection_close(self) -> None:
-        for future in self._futures.values():
-            if not future.done():
-                future.set_exception(
-                    HomeAssistantWSConnectionError("Connection was closed")
-                )
-
     async def _receive_json(self) -> None:
         """Receive json."""
         msg = await self._client.receive()
         _LOGGER.debug("Received: %s", msg)
 
         if msg.type == WSMsgType.CLOSE:
-            self._handle_connection_close()
             raise HomeAssistantWSConnectionError("Connection was closed", _LOGGER.debug)
 
         if msg.type in (
