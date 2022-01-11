@@ -10,7 +10,6 @@
     "visualstudioexptteam.vscodeintellicode",
     "esbenp.prettier-vscode"
   ],
-  "mounts": [ "type=volume,target=/var/lib/docker" ],
   "settings": {
     "terminal.integrated.profiles.linux": {
       "zsh": {

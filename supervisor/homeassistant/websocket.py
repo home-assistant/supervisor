@@ -51,14 +51,14 @@ class WSClient:
 
     async def close(self) -> None:
         """Close down the client."""
-        if not self._client.closed:
-            await self._client.close()
-
         for future in self._futures.values():
             if not future.done():
                 future.set_exception(
                     HomeAssistantWSConnectionError("Connection was closed")
                 )
+
+        if not self._client.closed:
+            await self._client.close()
 
     async def async_send_message(self, message: dict[str, Any]) -> None:
         """Send a websocket message, don't wait for response."""
@@ -229,7 +229,6 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         except HomeAssistantWSConnectionError:
             await self._client.close()
             self._client = None
-            raise
 
     async def async_send_command(self, message: dict[str, Any]) -> dict[str, Any]:
         """Send a command with the WS client and wait for the response."""
