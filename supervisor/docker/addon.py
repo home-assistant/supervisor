@@ -582,9 +582,15 @@ class DockerAddon(DockerInterface):
         """
         try:
             with tar_file.open("rb") as read_tar:
-                self.sys_docker.api.load_image(read_tar, quiet=True)
+                docker_image_list = self.sys_docker.images.load(read_tar)
 
-            docker_image = self.sys_docker.images.get(f"{self.image}:{self.version}")
+            if len(docker_image_list) != 1:
+                _LOGGER.warning(
+                    "Unexpected image count %d while importing image from tar",
+                    len(docker_image_list),
+                )
+                return
+            docker_image = docker_image_list[0]
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s: %s", self.image, err)
             raise DockerError() from err
