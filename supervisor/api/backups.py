@@ -84,6 +84,7 @@ class APIBackups(CoreSysAttributes):
                     ATTR_NAME: backup.name,
                     ATTR_DATE: backup.date,
                     ATTR_TYPE: backup.sys_type,
+                    ATTR_SIZE: backup.size,
                     ATTR_PROTECTED: backup.protected,
                     ATTR_CONTENT: {
                         ATTR_HOMEASSISTANT: backup.homeassistant_version is not None,
