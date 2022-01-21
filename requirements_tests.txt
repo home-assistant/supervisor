@@ -6,7 +6,7 @@ flake8==4.0.1
 pre-commit==2.17.0
 pydocstyle==6.1.1
 pylint==2.12.2
-pytest-aiohttp==0.3.0
+pytest-aiohttp==1.0.2
 pytest-asyncio==0.12.0 # NB!: Versions over 0.12.0 breaks pytest-aiohttp (https://github.com/aio-libs/pytest-aiohttp/issues/16)
 pytest-cov==3.0.0
 pytest-timeout==2.0.2
