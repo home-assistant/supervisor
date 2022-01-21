@@ -17,7 +17,7 @@ from .docker import APIDocker
 from .hardware import APIHardware
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
-from .info import APIInfo
+from .root import APIRoot
 from .ingress import APIIngress
 from .jobs import APIJobs
 from .middleware.security import SecurityMiddleware
@@ -70,7 +70,7 @@ class RestAPI(CoreSysAttributes):
         self._register_hardware()
         self._register_homeassistant()
         self._register_host()
-        self._register_info()
+        self._register_root()
         self._register_ingress()
         self._register_multicast()
         self._register_network()
@@ -228,12 +228,21 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
-    def _register_info(self) -> None:
-        """Register info functions."""
-        api_info = APIInfo()
-        api_info.coresys = self.coresys
+    def _register_root(self) -> None:
+        """Register root functions."""
+        api_root = APIRoot()
+        api_root.coresys = self.coresys
 
-        self.webapp.add_routes([web.get("/info", api_info.info)])
+        self.webapp.add_routes([web.get("/info", api_root.info)])
+        self.webapp.add_routes([web.post("/refresh_updates", api_root.refresh_updates)])
+        self.webapp.add_routes(
+            [web.get("/available_updates", api_root.available_updates)]
+        )
+
+        # Remove 2023
+        self.webapp.add_routes(
+            [web.get("/supervisor/available_updates", api_root.available_updates)]
+        )
 
     def _register_resolution(self) -> None:
         """Register info functions."""
@@ -284,9 +293,6 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                web.get(
-                    "/supervisor/available_updates", api_supervisor.available_updates
-                ),
                 web.get("/supervisor/ping", api_supervisor.ping),
                 web.get("/supervisor/info", api_supervisor.info),
                 web.get("/supervisor/stats", api_supervisor.stats),
