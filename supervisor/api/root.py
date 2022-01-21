@@ -13,8 +13,10 @@ from ..const import (
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
     ATTR_HOSTNAME,
+    ATTR_ICON,
     ATTR_LOGGING,
     ATTR_MACHINE,
+    ATTR_NAME,
     ATTR_OPERATING_SYSTEM,
     ATTR_STATE,
     ATTR_SUPERVISOR,
@@ -22,8 +24,6 @@ from ..const import (
     ATTR_SUPPORTED_ARCH,
     ATTR_TIMEZONE,
     ATTR_VERSION_LATEST,
-    ATTR_NAME,
-    ATTR_ICON,
 )
 from ..coresys import CoreSysAttributes
 from .const import ATTR_AVAILABLE_UPDATES, ATTR_PANEL_PATH, ATTR_UPDATE_TYPE
