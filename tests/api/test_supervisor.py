@@ -2,10 +2,7 @@
 # pylint: disable=protected-access
 import pytest
 
-from supervisor.api.const import ATTR_AVAILABLE_UPDATES
 from supervisor.coresys import CoreSys
-
-from tests.const import TEST_ADDON_SLUG
 
 
 @pytest.mark.asyncio

@@ -17,7 +17,6 @@ from .docker import APIDocker
 from .hardware import APIHardware
 from .homeassistant import APIHomeAssistant
 from .host import APIHost
-from .root import APIRoot
 from .ingress import APIIngress
 from .jobs import APIJobs
 from .middleware.security import SecurityMiddleware
@@ -27,6 +26,7 @@ from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
 from .resolution import APIResoulution
+from .root import APIRoot
 from .security import APISecurity
 from .services import APIServices
 from .store import APIStore

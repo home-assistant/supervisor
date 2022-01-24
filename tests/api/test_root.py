@@ -18,7 +18,7 @@ async def test_api_info(api_client):
 
     assert result["data"]["supervisor"] == "DEV"
     assert result["data"]["docker"] == "1.0.0"
-    assert result["data"]["supported"] == True
+    assert result["data"]["supported"] is True
     assert result["data"]["channel"] == "stable"
     assert result["data"]["logging"] == "info"
     assert result["data"]["timezone"] == "UTC"
