@@ -50,7 +50,6 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..utils.validate import validate_timezone
 from ..validate import repositories, version_tag, wait_boot
-from .const import ATTR_AVAILABLE_UPDATES, ATTR_PANEL_PATH, ATTR_UPDATE_TYPE
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -240,53 +239,3 @@ class APISupervisor(CoreSysAttributes):
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return supervisor Docker logs."""
         return self.sys_supervisor.logs()
-
-    @api_process
-    async def available_updates(self, request: web.Request) -> dict[str, Any]:
-        """Return a list of items with available updates."""
-        available_updates = []
-
-        # Core
-        if self.sys_homeassistant.need_update:
-            available_updates.append(
-                {
-                    ATTR_UPDATE_TYPE: "core",
-                    ATTR_PANEL_PATH: "/update-available/core",
-                    ATTR_VERSION_LATEST: self.sys_homeassistant.latest_version,
-                }
-            )
-
-        # Supervisor
-        if self.sys_supervisor.need_update:
-            available_updates.append(
-                {
-                    ATTR_UPDATE_TYPE: "supervisor",
-                    ATTR_PANEL_PATH: "/update-available/supervisor",
-                    ATTR_VERSION_LATEST: self.sys_supervisor.latest_version,
-                }
-            )
-
-        # OS
-        if self.sys_os.need_update:
-            available_updates.append(
-                {
-                    ATTR_UPDATE_TYPE: "os",
-                    ATTR_PANEL_PATH: "/update-available/os",
-                    ATTR_VERSION_LATEST: self.sys_os.latest_version,
-                }
-            )
-
-        # Add-ons
-        available_updates.extend(
-            {
-                ATTR_UPDATE_TYPE: "addon",
-                ATTR_NAME: addon.name,
-                ATTR_ICON: f"/addons/{addon.slug}/icon" if addon.with_icon else None,
-                ATTR_PANEL_PATH: f"/update-available/{addon.slug}",
-                ATTR_VERSION_LATEST: addon.latest_version,
-            }
-            for addon in self.sys_addons.installed
-            if addon.need_update
-        )
-
-        return {ATTR_AVAILABLE_UPDATES: available_updates}
