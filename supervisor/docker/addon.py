@@ -684,7 +684,9 @@ class DockerAddon(DockerInterface):
             return
 
         try:
-            docker_container = self.sys_docker.containers.get(self.name)
+            docker_container = await self.sys_run_in_executor(
+                self.sys_docker.containers.get, self.name
+            )
         except docker.errors.NotFound:
             self.sys_bus.remove_listener(self._hw_listener)
             self._hw_listener = None
