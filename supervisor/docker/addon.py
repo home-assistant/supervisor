@@ -13,6 +13,7 @@ import docker
 import requests
 
 from ..addons.build import AddonBuild
+from ..bus import EventListener
 from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
     ENV_TIME,
@@ -28,10 +29,19 @@ from ..const import (
     SECURITY_PROFILE,
     SYSTEMD_JOURNAL_PERSISTENT,
     SYSTEMD_JOURNAL_VOLATILE,
+    BusEvent,
 )
 from ..coresys import CoreSys
-from ..exceptions import CoreDNSError, DockerError, DockerNotFound, HardwareNotFound
+from ..exceptions import (
+    CoreDNSError,
+    DBusError,
+    DockerError,
+    DockerNotFound,
+    HardwareNotFound,
+)
 from ..hardware.const import PolicyGroup
+from ..hardware.data import Device
+from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from .const import Capabilities
@@ -52,7 +62,9 @@ class DockerAddon(DockerInterface):
     def __init__(self, coresys: CoreSys, addon: Addon):
         """Initialize Docker Home Assistant wrapper."""
         super().__init__(coresys)
-        self.addon = addon
+        self.addon: Addon = addon
+
+        self._hw_listener: EventListener | None = None
 
     @property
     def image(self) -> str | None:
@@ -495,6 +507,12 @@ class DockerAddon(DockerInterface):
             _LOGGER.warning("Can't update DNS for %s", self.name)
             self.sys_capture_exception(err)
 
+        # Hardware Access
+        if self.addon.static_devices:
+            self._hw_listener = self.sys_bus.register_event(
+                BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events
+            )
+
     def _install(
         self, version: AwesomeVersion, image: str | None = None, latest: bool = False
     ) -> None:
@@ -636,15 +654,49 @@ class DockerAddon(DockerInterface):
 
         Need run inside executor.
         """
+        # DNS
         if self.ip_address != NO_ADDDRESS:
             try:
                 self.sys_plugins.dns.delete_host(self.addon.hostname)
             except CoreDNSError as err:
                 _LOGGER.warning("Can't update DNS for %s", self.name)
                 self.sys_capture_exception(err)
+
+        # Hardware
+        if self._hw_listener:
+            self.sys_bus.remove_listener(self._hw_listener)
+
         super()._stop(remove_container)
 
     def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion
     ) -> None:
         """Validate trust of content."""
+
+    @Job(conditions=[JobCondition.OS_AGENT])
+    async def _hardware_events(self, device: Device) -> None:
+        """Process Hardware events for adjust device access."""
+        if not any(
+            device_path in (device.path, device.sysfs)
+            for device_path in self.addon.static_devices
+        ):
+            return
+
+        try:
+            docker_container = self.sys_docker.containers.get(self.name)
+        except docker.errors.NotFound:
+            self.sys_bus.remove_listener(self._hw_listener)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Can't process Hardware Event on {self.name}: {err!s}", _LOGGER.error
+            ) from err
+
+        try:
+            await self.sys_dbus.agent.cgroup.add_devices_allowed(
+                docker_container.id, self.sys_hardware.policy.get_cgroups_rule(device)
+            )
+        except DBusError as err:
+            raise DockerError(
+                f"Can't cgroup permission on the host for {self.name}",
+                _LOGGER.error,
+            ) from err
