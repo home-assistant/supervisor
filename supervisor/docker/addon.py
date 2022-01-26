@@ -698,7 +698,9 @@ class DockerAddon(DockerInterface):
             await self.sys_dbus.agent.cgroup.add_devices_allowed(
                 docker_container.id, self.sys_hardware.policy.get_cgroups_rule(device)
             )
-            _LOGGER.info("Added cgroup permissions for device %s to %s", device.path, self.name)
+            _LOGGER.info(
+                "Added cgroup permissions for device %s to %s", device.path, self.name
+            )
         except DBusError as err:
             raise DockerError(
                 f"Can't set cgroup permission on the host for {self.name}",
