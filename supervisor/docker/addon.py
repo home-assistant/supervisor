@@ -701,6 +701,6 @@ class DockerAddon(DockerInterface):
             _LOGGER.info("Added cgroup permissions for device %s to %s", device.path, self.name)
         except DBusError as err:
             raise DockerError(
-                f"Can't cgroup permission on the host for {self.name}",
+                f"Can't set cgroup permission on the host for {self.name}",
                 _LOGGER.error,
             ) from err
