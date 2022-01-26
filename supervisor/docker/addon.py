@@ -665,6 +665,7 @@ class DockerAddon(DockerInterface):
         # Hardware
         if self._hw_listener:
             self.sys_bus.remove_listener(self._hw_listener)
+            self._hw_listener = None
 
         super()._stop(remove_container)
 
@@ -686,6 +687,8 @@ class DockerAddon(DockerInterface):
             docker_container = self.sys_docker.containers.get(self.name)
         except docker.errors.NotFound:
             self.sys_bus.remove_listener(self._hw_listener)
+            self._hw_listener = None
+            return
         except (docker.errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't process Hardware Event on {self.name}: {err!s}", _LOGGER.error
