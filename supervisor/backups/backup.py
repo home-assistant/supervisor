@@ -19,6 +19,7 @@ from ..const import (
     ATTR_AUDIO_INPUT,
     ATTR_AUDIO_OUTPUT,
     ATTR_BOOT,
+    ATTR_COMPRESSED,
     ATTR_CRYPTO,
     ATTR_DATE,
     ATTR_DOCKER,
@@ -91,6 +92,11 @@ class Backup(CoreSysAttributes):
         return self._data.get(ATTR_PROTECTED) is not None
 
     @property
+    def compressed(self):
+        """Return whether backup is compressed."""
+        return self._data.get(ATTR_COMPRESSED)
+
+    @property
     def addons(self):
         """Return backup date."""
         return self._data[ATTR_ADDONS]
@@ -152,7 +158,7 @@ class Backup(CoreSysAttributes):
         """Return path to backup tarfile."""
         return self._tarfile
 
-    def new(self, slug, name, date, sys_type, password=None):
+    def new(self, slug, name, date, sys_type, password=None, compressed=True):
         """Initialize a new backup."""
         # Init metadata
         self._data[ATTR_SLUG] = slug
@@ -168,6 +174,9 @@ class Backup(CoreSysAttributes):
             self._init_password(password)
             self._data[ATTR_PROTECTED] = password_for_validating(password)
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
+
+        if not compressed:
+            self._data[ATTR_COMPRESSED] = False
 
     def set_password(self, password: str) -> bool:
         """Set the password for an existing backup."""
@@ -306,8 +315,9 @@ class Backup(CoreSysAttributes):
 
         async def _addon_save(addon: Addon):
             """Task to store an add-on into backup."""
+            tar_name = f"{addon.slug}.tar{'.gz' if self.compressed else ''}"
             addon_file = SecureTarFile(
-                Path(self._tmp.name, f"{addon.slug}.tar.gz"), "w", key=self._key
+                Path(self._tmp.name, tar_name), "w", key=self._key, gzip=self.compressed
             )
 
             # Take backup
@@ -340,8 +350,9 @@ class Backup(CoreSysAttributes):
 
         async def _addon_restore(addon_slug: str):
             """Task to restore an add-on into backup."""
+            tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
             addon_file = SecureTarFile(
-                Path(self._tmp.name, f"{addon_slug}.tar.gz"), "r", key=self._key
+                Path(self._tmp.name, tar_name), "r", key=self._key, gzip=self.compressed
             )
 
             # If exists inside backup
@@ -369,7 +380,9 @@ class Backup(CoreSysAttributes):
         def _folder_save(name: str):
             """Take backup of a folder."""
             slug_name = name.replace("/", "_")
-            tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
+            tar_name = Path(
+                self._tmp.name, f"{slug_name}.tar{'.gz' if self.compressed else ''}"
+            )
             origin_dir = Path(self.sys_config.path_supervisor, name)
 
             # Check if exists
@@ -380,7 +393,9 @@ class Backup(CoreSysAttributes):
             # Take backup
             try:
                 _LOGGER.info("Backing up folder %s", name)
-                with SecureTarFile(tar_name, "w", key=self._key) as tar_file:
+                with SecureTarFile(
+                    tar_name, "w", key=self._key, gzip=self.compressed
+                ) as tar_file:
                     atomic_contents_add(
                         tar_file,
                         origin_dir,
@@ -407,7 +422,9 @@ class Backup(CoreSysAttributes):
         def _folder_restore(name: str):
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
-            tar_name = Path(self._tmp.name, f"{slug_name}.tar.gz")
+            tar_name = Path(
+                self._tmp.name, f"{slug_name}.tar{'.gz' if self.compressed else ''}"
+            )
             origin_dir = Path(self.sys_config.path_supervisor, name)
 
             # Check if exists inside backup
@@ -422,7 +439,9 @@ class Backup(CoreSysAttributes):
             # Perform a restore
             try:
                 _LOGGER.info("Restore folder %s", name)
-                with SecureTarFile(tar_name, "r", key=self._key) as tar_file:
+                with SecureTarFile(
+                    tar_name, "r", key=self._key, gzip=self.compressed
+                ) as tar_file:
                     tar_file.extractall(path=origin_dir, members=tar_file)
                 _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:

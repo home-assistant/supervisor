@@ -40,7 +40,9 @@ class BackupManager(CoreSysAttributes):
         """Return backup object."""
         return self._backups.get(slug)
 
-    def _create_backup(self, name, sys_type, password, homeassistant=True):
+    def _create_backup(
+        self, name, sys_type, password, compressed=True, homeassistant=True
+    ):
         """Initialize a new backup object from name."""
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
@@ -48,7 +50,7 @@ class BackupManager(CoreSysAttributes):
 
         # init object
         backup = Backup(self.coresys, tar_file)
-        backup.new(slug, name, date_str, sys_type, password)
+        backup.new(slug, name, date_str, sys_type, password, compressed)
 
         # set general data
         if homeassistant:
@@ -165,13 +167,13 @@ class BackupManager(CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
-    async def do_backup_full(self, name="", password=None):
+    async def do_backup_full(self, name="", password=None, compressed=True):
         """Create a full backup."""
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
             return None
 
-        backup = self._create_backup(name, BackupType.FULL, password)
+        backup = self._create_backup(name, BackupType.FULL, password, compressed)
 
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
         async with self.lock:
@@ -184,7 +186,13 @@ class BackupManager(CoreSysAttributes):
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_backup_partial(
-        self, name="", addons=None, folders=None, password=None, homeassistant=True
+        self,
+        name="",
+        addons=None,
+        folders=None,
+        password=None,
+        homeassistant=True,
+        compressed=True,
     ):
         """Create a partial backup."""
         if self.lock.locked():
@@ -197,7 +205,9 @@ class BackupManager(CoreSysAttributes):
         if len(addons) == 0 and len(folders) == 0 and not homeassistant:
             _LOGGER.error("Nothing to create backup for")
 
-        backup = self._create_backup(name, BackupType.PARTIAL, password, homeassistant)
+        backup = self._create_backup(
+            name, BackupType.PARTIAL, password, compressed, homeassistant
+        )
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
         async with self.lock:
