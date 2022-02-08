@@ -150,7 +150,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
             ATTR_ADDONS_CUSTOM_LIST,
             default=[
                 "https://github.com/hassio-addons/repository",
-                "https://github.com/esphome/hassio",
+                "https://github.com/esphome/home-assistant-addon",
             ],
         ): repositories,
         vol.Optional(ATTR_WAIT_BOOT, default=5): wait_boot,
