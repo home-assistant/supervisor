@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 import shlex
-from typing import Union, Final
+from typing import Final, Union
 
 import async_timeout
 from dirhash import dirhash
@@ -34,7 +34,7 @@ def calc_checksum(data: Union[str, bytes]) -> str:
 
 
 def calc_checksum_path_sourcecode(folder: Path) -> str:
-    """Calculate checksum for a path source code"""
+    """Calculate checksum for a path source code."""
     return dirhash(folder.as_posix(), "sha256", match=["*.py"])
 
 

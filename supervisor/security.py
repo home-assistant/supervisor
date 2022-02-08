@@ -63,7 +63,7 @@ class Security(FileConfiguration, CoreSysAttributes):
             return
 
         try:
-            await cas_validate(checksum, signer="notary@home-assistant.io")
+            await cas_validate(checksum=checksum, signer="notary@home-assistant.io")
         except CodeNotaryUntrusted:
             raise
         except CodeNotaryError:

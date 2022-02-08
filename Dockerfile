@@ -20,12 +20,12 @@ RUN \
         libffi \
         libpulse \
         musl \
-        openssl
+        openssl \
     && apk add --no-cache --virtual .build-dependencies \
         build-base \
         go \
     \
-    && git clone -b v${CAS_VERSION} --depth 1 \
+    && git clone -b "v${CAS_VERSION}" --depth 1 \
         https://github.com/codenotary/cas \
     && cd cas \
     && make cas \
