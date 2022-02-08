@@ -31,4 +31,4 @@ do
 
 done
 
-basio::exit.nok "Watchdog detected issue with Supervisor - taking container down!"
+bashio::exit.nok "Watchdog detected issue with Supervisor - taking container down!"
