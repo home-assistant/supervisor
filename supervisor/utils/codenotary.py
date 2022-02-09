@@ -22,7 +22,6 @@ _CACHE: set[tuple[str, str]] = set()
 
 
 _ATTR_ERROR: Final = "error"
-_ATTR_VERIFICATION: Final = "verification"
 _ATTR_STATUS: Final = "status"
 
 
@@ -83,7 +82,7 @@ async def cas_validate(
     if _ATTR_ERROR in data_json:
         raise CodeNotaryBackendError(data_json[_ATTR_ERROR], _LOGGER.warning)
 
-    if data_json[_ATTR_VERIFICATION][_ATTR_STATUS] == 0:
+    if data_json[_ATTR_STATUS] == 0:
         _CACHE.add((checksum, signer))
     else:
         raise CodeNotaryUntrusted()
