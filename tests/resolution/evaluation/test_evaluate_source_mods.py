@@ -14,7 +14,7 @@ async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     with patch(
         "supervisor.resolution.evaluations.source_mods._SUPERVISOR_SOURCE",
-        Path(os.getcwd()),
+        Path(f"{os.getcwd()}/supervisor"),
     ):
         sourcemods = EvaluateSourceMods(coresys)
         coresys.core.state = CoreState.RUNNING
