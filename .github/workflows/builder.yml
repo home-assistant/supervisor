@@ -155,6 +155,12 @@ jobs:
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
+      - name: Set version
+        if: needs.init.outputs.publish == 'true'
+        uses: home-assistant/actions/helpers/version@master
+        with:
+          type: ${{ env.BUILD_TYPE }}
+
       - name: Install dirhash and calc hash
         if: needs.init.outputs.publish == 'true'
         id: dirhash
@@ -162,12 +168,6 @@ jobs:
           pip3 install dirhash
           dir_hash="$(dirhash "${{ github.workspace }}/supervisor" -a sha256 --match "*.py")"
           echo "::set-output name=dirhash::${dir_hash}"
-
-      - name: Set version
-        if: needs.init.outputs.publish == 'true'
-        uses: home-assistant/actions/helpers/version@master
-        with:
-          type: ${{ env.BUILD_TYPE }}
 
       - name: Signing Source
         if: needs.init.outputs.publish == 'true'
@@ -302,6 +302,12 @@ jobs:
           echo "Check supervisor unhealthy"
           test=$(docker exec hassio_cli ha resolution info --no-progress --raw-json | jq -r '.data.unhealthy[]')
           if [ "$test" != "" ];then
+            exit 1
+          fi
+
+          echo "Check supervisor supported"
+          test=$(docker exec hassio_cli ha resolution info --no-progress --raw-json | jq -r '.data.unsupported[]')
+          if [ "$test" =~ source_mods ];then
             exit 1
           fi
 
