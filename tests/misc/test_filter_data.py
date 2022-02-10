@@ -68,7 +68,7 @@ def test_defaults(coresys):
     coresys.config.diagnostics = True
 
     coresys.core.state = CoreState.RUNNING
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         filtered = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert ["installation_type", "supervised"] in filtered["tags"]
@@ -97,7 +97,7 @@ def test_sanitize(coresys):
     coresys.config.diagnostics = True
 
     coresys.core.state = CoreState.RUNNING
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         filtered = filter_data(coresys, event, {})
 
     assert ["url", "https://example.com"] in filtered["tags"]
@@ -120,7 +120,7 @@ def test_issues_on_report(coresys):
     coresys.config.diagnostics = True
     coresys.core.state = CoreState.RUNNING
 
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         event = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert "issues" in event["contexts"]["resolution"]
@@ -140,7 +140,7 @@ def test_suggestions_on_report(coresys):
     coresys.config.diagnostics = True
     coresys.core.state = CoreState.RUNNING
 
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         event = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert "issues" in event["contexts"]["resolution"]
@@ -163,7 +163,7 @@ def test_unhealthy_on_report(coresys):
     coresys.core.state = CoreState.RUNNING
     coresys.resolution.unhealthy = UnhealthyReason.DOCKER
 
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         event = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert "issues" in event["contexts"]["resolution"]
@@ -177,7 +177,7 @@ def test_images_report(coresys):
     coresys.core.state = CoreState.RUNNING
     coresys.resolution.evaluate.cached_images.add("my/test:image")
 
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         event = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert "issues" in event["contexts"]["resolution"]

@@ -30,7 +30,7 @@ async def test_fixup(coresys: CoreSys, tmp_path):
     mock_repositorie.git.path = test_repo
     coresys.store.repositories["test"] = mock_repositorie
 
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         await store_execute_reset()
 
     assert not test_repo.exists()

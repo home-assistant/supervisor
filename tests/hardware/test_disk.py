@@ -52,7 +52,7 @@ def test_system_partition_disk(coresys: CoreSys):
 
 def test_free_space(coresys):
     """Test free space helper."""
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         free = coresys.hardware.disk.get_disk_free_space("/data")
 
     assert free == 2.0
@@ -60,7 +60,7 @@ def test_free_space(coresys):
 
 def test_total_space(coresys):
     """Test total space helper."""
-    with patch("shutil.disk_usage", return_value=(10 * (1024.0 ** 3), 42, 42)):
+    with patch("shutil.disk_usage", return_value=(10 * (1024.0**3), 42, 42)):
         total = coresys.hardware.disk.get_disk_total_space("/data")
 
     assert total == 10.0
@@ -68,7 +68,7 @@ def test_total_space(coresys):
 
 def test_used_space(coresys):
     """Test used space helper."""
-    with patch("shutil.disk_usage", return_value=(42, 8 * (1024.0 ** 3), 42)):
+    with patch("shutil.disk_usage", return_value=(42, 8 * (1024.0**3), 42)):
         used = coresys.hardware.disk.get_disk_used_space("/data")
 
     assert used == 8.0

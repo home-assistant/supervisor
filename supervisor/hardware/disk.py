@@ -52,17 +52,17 @@ class HwDisk(CoreSysAttributes):
     def get_disk_total_space(self, path: Union[str, Path]) -> float:
         """Return total space (GiB) on disk for path."""
         total, _, _ = shutil.disk_usage(path)
-        return round(total / (1024.0 ** 3), 1)
+        return round(total / (1024.0**3), 1)
 
     def get_disk_used_space(self, path: Union[str, Path]) -> float:
         """Return used space (GiB) on disk for path."""
         _, used, _ = shutil.disk_usage(path)
-        return round(used / (1024.0 ** 3), 1)
+        return round(used / (1024.0**3), 1)
 
     def get_disk_free_space(self, path: Union[str, Path]) -> float:
         """Return free space (GiB) on disk for path."""
         _, _, free = shutil.disk_usage(path)
-        return round(free / (1024.0 ** 3), 1)
+        return round(free / (1024.0**3), 1)
 
     def _get_mountinfo(self, path: str) -> str:
         mountinfo = _MOUNTINFO.read_text(encoding="utf-8")
