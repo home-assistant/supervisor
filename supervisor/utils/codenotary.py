@@ -71,9 +71,12 @@ async def cas_validate(
 
     # Check if Notarized
     if proc.returncode != 0 and not data:
-        error = error.decode("utf-8")
-        if "not notarized" in error:
-            raise CodeNotaryUntrusted()
+        if error:
+            error = error.decode("utf-8")
+            if "not notarized" in error:
+                raise CodeNotaryUntrusted()
+        else:
+            error = "Unknown CodeNotary backend issue"
         raise CodeNotaryBackendError(error, _LOGGER.warning)
 
     # Parse data
