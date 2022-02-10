@@ -10,7 +10,7 @@ on:
 env:
   DEFAULT_PYTHON: 3.9
   PRE_COMMIT_HOME: ~/.cache/pre-commit
-  DEFAULT_VCN: v0.9.8
+  DEFAULT_CAS: v1.0.1
 
 jobs:
   # Separate job to pre-populate the base dependency cache
@@ -351,10 +351,10 @@ jobs:
         id: python
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install VCN tools
-        uses: home-assistant/actions/helpers/vcn@master
+      - name: Install CAS tools
+        uses: home-assistant/actions/helpers/cas@master
         with:
-          vcn_version: ${{ env.DEFAULT_VCN }}
+          version: ${{ env.DEFAULT_CAS }}
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v2.1.7

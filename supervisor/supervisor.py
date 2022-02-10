@@ -127,7 +127,7 @@ class Supervisor(CoreSysAttributes):
 
         # Validate
         try:
-            await self.sys_security.verify_own_content(checksum=calc_checksum(data))
+            await self.sys_security.verify_own_content(calc_checksum(data))
         except CodeNotaryUntrusted as err:
             raise SupervisorAppArmorError(
                 "Content-Trust is broken for the AppArmor profile fetch!",

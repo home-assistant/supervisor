@@ -1,5 +1,7 @@
 """Test evaluation base."""
 # pylint: disable=import-error,protected-access
+import os
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from supervisor.const import CoreState
@@ -10,21 +12,25 @@ from supervisor.resolution.evaluations.source_mods import EvaluateSourceMods
 
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
-    sourcemods = EvaluateSourceMods(coresys)
-    coresys.core.state = CoreState.RUNNING
+    with patch(
+        "supervisor.resolution.evaluations.source_mods._SUPERVISOR_SOURCE",
+        Path(os.getcwd()),
+    ):
+        sourcemods = EvaluateSourceMods(coresys)
+        coresys.core.state = CoreState.RUNNING
 
-    assert sourcemods.reason not in coresys.resolution.unsupported
-    coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryUntrusted)
-    await sourcemods()
-    assert sourcemods.reason in coresys.resolution.unsupported
+        assert sourcemods.reason not in coresys.resolution.unsupported
+        coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryUntrusted)
+        await sourcemods()
+        assert sourcemods.reason in coresys.resolution.unsupported
 
-    coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryError)
-    await sourcemods()
-    assert sourcemods.reason not in coresys.resolution.unsupported
+        coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryError)
+        await sourcemods()
+        assert sourcemods.reason not in coresys.resolution.unsupported
 
-    coresys.security.verify_own_content = AsyncMock()
-    await sourcemods()
-    assert sourcemods.reason not in coresys.resolution.unsupported
+        coresys.security.verify_own_content = AsyncMock()
+        await sourcemods()
+        assert sourcemods.reason not in coresys.resolution.unsupported
 
 
 async def test_did_run(coresys: CoreSys):

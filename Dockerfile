@@ -5,10 +5,12 @@ ENV \
     S6_SERVICES_GRACETIME=10000 \
     SUPERVISOR_API=http://localhost
 
-ARG BUILD_ARCH
-WORKDIR /usr/src
+ARG \
+    BUILD_ARCH \
+    CAS_VERSION
 
 # Install base
+WORKDIR /usr/src
 RUN \
     set -x \
     && apk add --no-cache \
@@ -18,7 +20,20 @@ RUN \
         libffi \
         libpulse \
         musl \
-        openssl
+        openssl \
+    && apk add --no-cache --virtual .build-dependencies \
+        build-base \
+        go \
+    \
+    && git clone -b "v${CAS_VERSION}" --depth 1 \
+        https://github.com/codenotary/cas \
+    && cd cas \
+    && make cas \
+    && mv cas /usr/bin/cas \
+    \
+    && apk del .build-dependencies \
+    && rm -rf /root/go /root/.cache \
+    && rm -rf /usr/src/cas
 
 # Install requirements
 COPY requirements.txt .

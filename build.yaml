@@ -9,6 +9,8 @@ build_from:
 codenotary:
   signer: notary@home-assistant.io
   base_image: notary@home-assistant.io
+args:
+  CAS_VERSION: 1.0.1
 labels:
   io.hass.type: supervisor
   org.opencontainers.image.title: Home Assistant Supervisor
