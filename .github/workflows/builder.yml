@@ -173,7 +173,8 @@ jobs:
         if: needs.init.outputs.publish == 'true'
         uses: home-assistant/actions/helpers/codenotary@master
         with:
-          source: hash://${{ steps.dirhash.outputs.dirhash }}
+          source: ${{ steps.dirhash.outputs.dirhash }}
+          asset: supervisor-${{ needs.init.outputs.version }}
           token: ${{ secrets.CAS_TOKEN }}
 
   version:
