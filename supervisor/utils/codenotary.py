@@ -21,7 +21,6 @@ _CAS_CMD: str = (
 _CACHE: set[tuple[str, str]] = set()
 
 
-_ATTR_ERROR: Final = "error"
 _ATTR_STATUS: Final = "status"
 
 
@@ -55,12 +54,12 @@ async def cas_validate(
             *command,
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
             env=clean_env(),
         )
 
         async with async_timeout.timeout(10):
-            data, _ = await proc.communicate()
+            data, error = await proc.communicate()
     except OSError as err:
         raise CodeNotaryError(
             f"CodeNotary fatal error: {err!s}", _LOGGER.critical
@@ -70,6 +69,16 @@ async def cas_validate(
             "Timeout while processing CodeNotary", _LOGGER.error
         ) from None
 
+    # Check if Notarized
+    if proc.returncode != 0 and not data:
+        if error:
+            error = error.decode("utf-8")
+            if "not notarized" in error:
+                raise CodeNotaryUntrusted()
+        else:
+            error = "Unknown CodeNotary backend issue"
+        raise CodeNotaryBackendError(error, _LOGGER.warning)
+
     # Parse data
     try:
         data_json = json.loads(data)
@@ -78,9 +87,6 @@ async def cas_validate(
         raise CodeNotaryError(
             f"Can't parse CodeNotary output: {data!s} - {err!s}", _LOGGER.error
         ) from err
-
-    if _ATTR_ERROR in data_json:
-        raise CodeNotaryBackendError(data_json[_ATTR_ERROR], _LOGGER.warning)
 
     if data_json[_ATTR_STATUS] == 0:
         _CACHE.add((checksum, signer))

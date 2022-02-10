@@ -9,7 +9,7 @@ from ...utils.codenotary import calc_checksum_path_sourcecode
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 
-_SUPERVISOR_SOURCE = Path("/usr/src/supervisor")
+_SUPERVISOR_SOURCE = Path("/usr/src/supervisor/supervisor")
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
