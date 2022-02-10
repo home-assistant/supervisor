@@ -54,7 +54,7 @@ async def test_if_check_cleanup_issue(coresys: CoreSys):
 
     assert coresys.resolution.issues[-1].type == IssueType.FREE_SPACE
 
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         await coresys.resolution.check.check_system()
 
     assert len(coresys.resolution.issues) == 0

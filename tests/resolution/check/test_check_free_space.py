@@ -22,7 +22,7 @@ async def test_check(coresys: CoreSys):
 
     assert len(coresys.resolution.issues) == 0
 
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         await free_space.run_check()
 
     assert len(coresys.resolution.issues) == 0
@@ -41,7 +41,7 @@ async def test_approve(coresys: CoreSys):
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
         assert await free_space.approve_check()
 
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         assert not await free_space.approve_check()
 
 

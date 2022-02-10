@@ -35,7 +35,7 @@ from .supervisor import APISupervisor
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-MAX_CLIENT_SIZE: int = 1024 ** 2 * 16
+MAX_CLIENT_SIZE: int = 1024**2 * 16
 
 
 class RestAPI(CoreSysAttributes):

@@ -96,10 +96,10 @@ async def test_free_space(coresys: CoreSys):
             return True
 
     test = TestClass(coresys)
-    with patch("shutil.disk_usage", return_value=(42, 42, (1024.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, (1024.0**3))):
         assert await test.execute()
 
-    with patch("shutil.disk_usage", return_value=(42, 42, (512.0 ** 3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, (512.0**3))):
         assert not await test.execute()
 
 
