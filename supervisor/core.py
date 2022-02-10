@@ -154,8 +154,11 @@ class Core(CoreSysAttributes):
                 self.sys_capture_exception(err)
 
         # Set OS Agent diagnostics if needed
-        if self.sys_config.diagnostics is not None and (
-            self.sys_dbus.agent.diagnostics != self.sys_config.diagnostics
+        if (
+            self.sys_config.diagnostics is not None
+            and self.sys_dbus.agent.diagnostics != self.sys_config.diagnostics
+            and not self.sys_dev
+            and self.supported
         ):
             self.sys_dbus.agent.diagnostics = self.sys_config.diagnostics
 
