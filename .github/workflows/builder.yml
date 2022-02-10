@@ -160,7 +160,7 @@ jobs:
         id: dirhash
         run: |
           pip3 install dirhash
-          dir_hash="$(dirhash "${{ github.workspace }}" -a sha256 --match "*.py")"
+          dir_hash="$(dirhash "${{ github.workspace }}/supervisor" -a sha256 --match "*.py")"
           echo "::set-output name=dirhash::${dir_hash}"
 
       - name: Set version
@@ -169,7 +169,7 @@ jobs:
         with:
           type: ${{ env.BUILD_TYPE }}
 
-      - name: Signing image
+      - name: Signing Source
         if: needs.init.outputs.publish == 'true'
         uses: home-assistant/actions/helpers/codenotary@master
         with:
