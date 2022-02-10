@@ -54,7 +54,7 @@ async def cas_validate(
             *command,
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
             env=clean_env(),
         )
 
