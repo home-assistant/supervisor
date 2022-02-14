@@ -10,7 +10,7 @@ on:
 env:
   DEFAULT_PYTHON: 3.9
   PRE_COMMIT_HOME: ~/.cache/pre-commit
-  DEFAULT_CAS: v1.0.1
+  DEFAULT_CAS: v1.0.2
 
 jobs:
   # Separate job to pre-populate the base dependency cache
