@@ -106,6 +106,7 @@ from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
 from ..exceptions import APIError, APIForbidden, PwnedError, PwnedSecret
 from ..validate import docker_ports
+from .const import ATTR_SIGNED
 from .utils import api_process, api_process_raw, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -269,6 +270,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_IP_ADDRESS: None,
             ATTR_TRANSLATIONS: addon.translations,
             ATTR_INGRESS: addon.with_ingress,
+            ATTR_SIGNED: addon.signed,
             ATTR_INGRESS_ENTRY: None,
             ATTR_INGRESS_URL: None,
             ATTR_INGRESS_PORT: None,

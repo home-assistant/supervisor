@@ -21,7 +21,7 @@ def rating_security(addon: AddonModel) -> int:
     1 = not secure
     6 = high secure
     """
-    rating = 5
+    rating = 4
 
     # AppArmor
     if addon.apparmor == SECURITY_DISABLE:
@@ -33,6 +33,10 @@ def rating_security(addon: AddonModel) -> int:
     if addon.with_ingress:
         rating += 2
     elif addon.access_auth_api:
+        rating += 1
+
+    # Signed
+    if addon.signed:
         rating += 1
 
     # Privileged options
