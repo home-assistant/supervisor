@@ -16,12 +16,12 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def rating_security(addon: AddonModel) -> int:
-    """Return 1-6 for security rating.
+    """Return 1-8 for security rating.
 
     1 = not secure
-    6 = high secure
+    8 = high secure
     """
-    rating = 4
+    rating = 5
 
     # AppArmor
     if addon.apparmor == SECURITY_DISABLE:
@@ -74,7 +74,7 @@ def rating_security(addon: AddonModel) -> int:
     if addon.access_docker_api or addon.with_full_access:
         rating = 1
 
-    return max(min(6, rating), 1)
+    return max(min(8, rating), 1)
 
 
 async def remove_data(folder: Path) -> None:
