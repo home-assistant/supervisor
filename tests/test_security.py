@@ -36,7 +36,7 @@ async def test_disabled_content_trust(coresys: CoreSys):
         assert not cas_validate.called
 
 
-async def test_foce_content_trust(coresys: CoreSys):
+async def test_force_content_trust(coresys: CoreSys):
     """Force Content-Trust tests."""
 
     with patch(
