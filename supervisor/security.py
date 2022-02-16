@@ -56,7 +56,7 @@ class Security(FileConfiguration, CoreSysAttributes):
         """Set pwned is enabled/disabled."""
         self._data[ATTR_PWNED] = value
 
-    async def verify_content(self, checksum: str, signer: str) -> None:
+    async def verify_content(self, signer: str, checksum: str) -> None:
         """Verify content on CAS."""
         if not self.content_trust:
             _LOGGER.warning("Disabled content-trust, skip validation")
@@ -73,7 +73,7 @@ class Security(FileConfiguration, CoreSysAttributes):
 
     def verify_own_content(self, checksum: str) -> Awaitable[None]:
         """Verify content from HA org."""
-        return self.verify_content(checksum, "notary@home-assistant.io")
+        return self.verify_content("notary@home-assistant.io", checksum)
 
     async def verify_secret(self, pwned_hash: str) -> None:
         """Verify pwned state of a secret."""

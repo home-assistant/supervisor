@@ -679,7 +679,7 @@ class DockerAddon(DockerInterface):
 
         checksum = image_id.partition(":")[2]
         job = asyncio.run_coroutine_threadsafe(
-            self.sys_security.verify_content(checksum, self.addon.codenotary),
+            self.sys_security.verify_content(self.addon.codenotary, checksum),
             self.sys_loop,
         )
         job.result(timeout=20)

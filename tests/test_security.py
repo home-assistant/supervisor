@@ -11,7 +11,7 @@ async def test_content_trust(coresys: CoreSys):
     """Test Content-Trust."""
 
     with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
-        await coresys.security.verify_content("ffffffffffffff", "test@mail.com")
+        await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
         assert cas_validate.called
         cas_validate.assert_called_once_with("test@mail.com", "ffffffffffffff")
 
@@ -28,7 +28,7 @@ async def test_disabled_content_trust(coresys: CoreSys):
     coresys.security.content_trust = False
 
     with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
-        await coresys.security.verify_content("ffffffffffffff", "test@mail.com")
+        await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
         assert not cas_validate.called
 
     with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
@@ -42,7 +42,7 @@ async def test_foce_content_trust(coresys: CoreSys):
     with patch(
         "supervisor.security.cas_validate", AsyncMock(side_effect=CodeNotaryError)
     ) as cas_validate:
-        await coresys.security.verify_content("ffffffffffffff", "test@mail.com")
+        await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
         assert cas_validate.called
         cas_validate.assert_called_once_with("test@mail.com", "ffffffffffffff")
 
@@ -52,4 +52,4 @@ async def test_foce_content_trust(coresys: CoreSys):
         "supervisor.security.cas_validate", AsyncMock(side_effect=CodeNotaryError)
     ) as cas_validate:
         with pytest.raises(CodeNotaryError):
-            await coresys.security.verify_content("ffffffffffffff", "test@mail.com")
+            await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
