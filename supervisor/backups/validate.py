@@ -4,9 +4,6 @@ import voluptuous as vol
 from ..backups.const import BackupType
 from ..const import (
     ATTR_ADDONS,
-    ATTR_AUDIO_INPUT,
-    ATTR_AUDIO_OUTPUT,
-    ATTR_BOOT,
     ATTR_COMPRESSED,
     ATTR_CRYPTO,
     ATTR_DATE,
@@ -15,17 +12,12 @@ from ..const import (
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
     ATTR_NAME,
-    ATTR_PORT,
     ATTR_PROTECTED,
-    ATTR_REFRESH_TOKEN,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
-    ATTR_SSL,
     ATTR_TYPE,
     ATTR_VERSION,
-    ATTR_WAIT_BOOT,
-    ATTR_WATCHDOG,
     CRYPTO_AES128,
     FOLDER_ADDONS,
     FOLDER_HOMEASSISTANT,
@@ -33,13 +25,7 @@ from ..const import (
     FOLDER_SHARE,
     FOLDER_SSL,
 )
-from ..validate import (
-    SCHEMA_DOCKER_CONFIG,
-    docker_image,
-    network_port,
-    repositories,
-    version_tag,
-)
+from ..validate import SCHEMA_DOCKER_CONFIG, docker_image, repositories, version_tag
 
 ALL_FOLDERS = [
     FOLDER_HOMEASSISTANT,
@@ -67,26 +53,16 @@ SCHEMA_BACKUP = vol.Schema(
         vol.Required(ATTR_NAME): str,
         vol.Required(ATTR_DATE): str,
         vol.Optional(ATTR_COMPRESSED, default=True): vol.Boolean(),
-        vol.Inclusive(ATTR_PROTECTED, "encrypted"): vol.All(
-            str, vol.Length(min=1, max=1)
-        ),
-        vol.Inclusive(ATTR_CRYPTO, "encrypted"): CRYPTO_AES128,
-        vol.Optional(ATTR_HOMEASSISTANT, default=dict): vol.Schema(
-            {
-                vol.Optional(ATTR_VERSION): version_tag,
-                vol.Optional(ATTR_IMAGE): docker_image,
-                vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
-                vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
-                vol.Optional(ATTR_PORT, default=8123): network_port,
-                vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(str),
-                vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
-                vol.Optional(ATTR_WAIT_BOOT, default=600): vol.All(
-                    vol.Coerce(int), vol.Range(min=60)
-                ),
-                vol.Optional(ATTR_AUDIO_OUTPUT, default=None): vol.Maybe(str),
-                vol.Optional(ATTR_AUDIO_INPUT, default=None): vol.Maybe(str),
-            },
-            extra=vol.REMOVE_EXTRA,
+        vol.Optional(ATTR_PROTECTED, default=False): vol.Boolean(),
+        vol.Optional(ATTR_CRYPTO, default=None): vol.Maybe(CRYPTO_AES128),
+        vol.Optional(ATTR_HOMEASSISTANT, default=None): vol.Maybe(
+            vol.Schema(
+                {
+                    vol.Optional(ATTR_VERSION): version_tag,
+                    vol.Optional(ATTR_IMAGE): docker_image,
+                },
+                extra=vol.REMOVE_EXTRA,
+            )
         ),
         vol.Optional(ATTR_DOCKER, default=dict): SCHEMA_DOCKER_CONFIG,
         vol.Optional(ATTR_FOLDERS, default=list): vol.All(

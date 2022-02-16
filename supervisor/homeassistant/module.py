@@ -12,7 +12,7 @@ from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from supervisor.exceptions import HomeAssistantWSError
 from supervisor.homeassistant.const import WSType
-from supervisor.utils.tar import SecureTarFile, atomic_contents_add
+from supervisor.utils.tar import atomic_contents_add
 
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -29,7 +29,6 @@ from ..const import (
     ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     FILE_HASSIO_HOMEASSISTANT,
-    FOLDER_HOMEASSISTANT,
     BusEvent,
 )
 from ..coresys import CoreSys, CoreSysAttributes
@@ -300,7 +299,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
         self.sys_homeassistant.websocket.send_message({ATTR_TYPE: "usb/scan"})
 
-    async def backup(self, secure_tar_file: SecureTarFile) -> None:
+    async def backup(self, tar_file: tarfile.TarFile) -> None:
         """Backup Home Assistant Core config/ directory."""
 
         # Let Home Assistant Core know we are about to backup
@@ -312,17 +311,14 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 "Preparing backup of Home Assistant Core failed. Check HA Core logs."
             )
 
+        # Backup data config folder
         def _write_tarfile():
-            with secure_tar_file as tar_file:
-                # Backup system
-                origin_dir = Path(self.sys_config.path_supervisor, FOLDER_HOMEASSISTANT)
-
-                # Backup data
+            with tar_file as backup:
                 atomic_contents_add(
-                    tar_file,
-                    origin_dir,
+                    backup,
+                    self.sys_config.path_homeassistant,
                     excludes=HOMEASSISTANT_BACKUP_EXCLUDE,
-                    arcname=".",
+                    arcname="data",
                 )
 
         try:
@@ -339,15 +335,15 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                     "Error during Home Assistant Core backup. Check HA Core logs."
                 )
 
-    async def restore(self, secure_tar_file: SecureTarFile) -> None:
+    async def restore(self, tar_file: tarfile.TarFile) -> None:
         """Restore Home Assistant Core config/ directory."""
 
         # Perform a restore
         def _restore_tarfile():
-            origin_dir = Path(self.sys_config.path_supervisor, FOLDER_HOMEASSISTANT)
-
-            with secure_tar_file as tar_file:
-                tar_file.extractall(path=origin_dir, members=tar_file)
+            with tar_file as backup:
+                backup.extractall(
+                    path=self.sys_config.path_homeassistant, members=tar_file
+                )
 
         try:
             _LOGGER.info("Restore Home Assistant Core config folder")
