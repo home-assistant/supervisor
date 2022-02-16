@@ -47,6 +47,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 HOMEASSISTANT_BACKUP_EXCLUDE = [
     "*.db-shm",
+    "*.corrupt.*",
     "__pycache__/*",
     "*.log",
     "*.log.*",
