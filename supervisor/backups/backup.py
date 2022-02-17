@@ -478,12 +478,17 @@ class Backup(CoreSysAttributes):
         """Store repository list into backup."""
         self.repositories = self.sys_config.addons_repositories
 
-    def restore_repositories(self):
+    async def restore_repositories(self, replace: bool = False):
         """Restore repositories from backup.
 
         Return a coroutine.
         """
-        return self.sys_store.update_repositories(self.repositories)
+        if replace:
+            new_list = self.repositories
+        else:
+            new_list = self.repositories + self.sys_config.addons_repositories
+
+        await self.sys_store.update_repositories(new_list)
 
     def store_dockerconfig(self):
         """Store the configuration for Docker."""
@@ -497,8 +502,11 @@ class Backup(CoreSysAttributes):
             }
         }
 
-    def restore_dockerconfig(self):
+    def restore_dockerconfig(self, replace: bool = False):
         """Restore the configuration for Docker."""
+        if replace:
+            self.sys_docker.config.registries.clear()
+
         if ATTR_REGISTRIES in self.docker:
             self.sys_docker.config.registries.update(
                 {

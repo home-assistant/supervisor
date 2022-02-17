@@ -232,7 +232,7 @@ class BackupManager(CoreSysAttributes):
         addon_list: list[Addon],
         folder_list: list[str],
         homeassistant: bool,
-        remove_other_addons: bool,
+        replace: bool,
     ):
         # Version 1
         if FOLDER_HOMEASSISTANT in folder_list:
@@ -248,7 +248,7 @@ class BackupManager(CoreSysAttributes):
             async with backup:
                 # Restore docker config
                 _LOGGER.info("Restoring %s Docker config", backup.slug)
-                backup.restore_dockerconfig()
+                backup.restore_dockerconfig(replace)
 
                 # Process folders
                 if folder_list:
@@ -269,7 +269,7 @@ class BackupManager(CoreSysAttributes):
                     await backup.restore_addons(addon_list)
 
                 # Delete delta add-ons
-                if remove_other_addons:
+                if replace:
                     _LOGGER.info("Removing Add-ons not in the backup %s", backup.slug)
                     for addon in self.sys_addons.installed:
                         if addon.slug in backup.addon_list:
@@ -281,6 +281,7 @@ class BackupManager(CoreSysAttributes):
                             await addon.uninstall()
                         except AddonsError:
                             _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
+                    await backup.restore_repositories(True)
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
