@@ -261,13 +261,6 @@ class BackupManager(CoreSysAttributes):
                     await backup.restore_homeassistant()
                     task_hass = self._update_core_task(backup.homeassistant_version)
 
-                if addon_list:
-                    _LOGGER.info("Restoring %s Repositories", backup.slug)
-                    await backup.restore_repositories()
-
-                    _LOGGER.info("Restoring %s Add-ons", backup.slug)
-                    await backup.restore_addons(addon_list)
-
                 # Delete delta add-ons
                 if replace:
                     _LOGGER.info("Removing Add-ons not in the backup %s", backup.slug)
@@ -281,7 +274,13 @@ class BackupManager(CoreSysAttributes):
                             await addon.uninstall()
                         except AddonsError:
                             _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
-                    await backup.restore_repositories(True)
+
+                if addon_list:
+                    _LOGGER.info("Restoring %s Repositories", backup.slug)
+                    await backup.restore_repositories(replace)
+
+                    _LOGGER.info("Restoring %s Add-ons", backup.slug)
+                    await backup.restore_addons(addon_list)
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
