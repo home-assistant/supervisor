@@ -136,6 +136,7 @@ class BackupManager(CoreSysAttributes):
         backup: Backup,
         addon_list: list[Addon],
         folder_list: list[str],
+        homeassistant: bool,
     ):
         try:
             self.sys_core.state = CoreState.FREEZE
@@ -147,7 +148,8 @@ class BackupManager(CoreSysAttributes):
                     await backup.store_addons(addon_list)
 
                 # Backup folders
-                if FOLDER_HOMEASSISTANT in folder_list:
+                # HomeAssistant Folder is for v1
+                if FOLDER_HOMEASSISTANT in folder_list or homeassistant:
                     await backup.store_homeassistant()
                     folder_list = list(folder_list)
                     folder_list.remove(FOLDER_HOMEASSISTANT)
@@ -205,9 +207,7 @@ class BackupManager(CoreSysAttributes):
         if len(addons) == 0 and len(folders) == 0 and not homeassistant:
             _LOGGER.error("Nothing to create backup for")
 
-        backup = self._create_backup(
-            name, BackupType.PARTIAL, password, compressed, homeassistant
-        )
+        backup = self._create_backup(name, BackupType.PARTIAL, password, compressed)
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
         async with self.lock:
@@ -219,7 +219,7 @@ class BackupManager(CoreSysAttributes):
                     continue
                 _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
-            backup = await self._do_backup(backup, addon_list, folders)
+            backup = await self._do_backup(backup, addon_list, folders, homeassistant)
             if backup:
                 _LOGGER.info(
                     "Creating partial backup with slug %s completed", backup.slug
@@ -234,20 +234,21 @@ class BackupManager(CoreSysAttributes):
         homeassistant: bool,
         remove_other_addons: bool,
     ):
+        # Version 1
+        if FOLDER_HOMEASSISTANT in folder_list:
+            folder_list.remove(FOLDER_HOMEASSISTANT)
+            homeassistant = True
+
         try:
-            # Stop Home Assistant Core if we restore the version or config directory
-            if FOLDER_HOMEASSISTANT in folder_list or homeassistant:
+            # Stop Home Assistant Core if we restore
+            if homeassistant:
                 await self.sys_homeassistant.core.stop()
 
+            task_hass = None
             async with backup:
                 # Restore docker config
                 _LOGGER.info("Restoring %s Docker config", backup.slug)
                 backup.restore_dockerconfig()
-
-                if FOLDER_HOMEASSISTANT in folder_list:
-                    await backup.restore_homeassistant()
-                    folder_list = list(folder_list)
-                    folder_list.remove(FOLDER_HOMEASSISTANT)
 
                 # Process folders
                 if folder_list:
@@ -255,9 +256,9 @@ class BackupManager(CoreSysAttributes):
                     await backup.restore_folders(folder_list)
 
                 # Process Home-Assistant
-                task_hass = None
                 if homeassistant:
                     _LOGGER.info("Restoring %s Home Assistant Core", backup.slug)
+                    await backup.restore_homeassistant()
                     task_hass = self._update_core_task(backup.homeassistant_version)
 
                 if addon_list:
