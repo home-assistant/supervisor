@@ -35,7 +35,6 @@ from ..const import (
     ATTR_USERNAME,
     ATTR_VERSION,
     CRYPTO_AES128,
-    FOLDER_HOMEASSISTANT,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
@@ -407,7 +406,7 @@ class Backup(CoreSysAttributes):
     async def restore_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
 
-        def _folder_restore(name: str):
+        async def _folder_restore(name: str) -> None:
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(
@@ -422,24 +421,27 @@ class Backup(CoreSysAttributes):
 
             # Clean old stuff
             if origin_dir.is_dir():
-                remove_folder(origin_dir)
+                await remove_folder(origin_dir, content_only=True)
 
             # Perform a restore
-            try:
-                _LOGGER.info("Restore folder %s", name)
-                with SecureTarFile(
-                    tar_name, "r", key=self._key, gzip=self.compressed
-                ) as tar_file:
-                    tar_file.extractall(path=origin_dir, members=tar_file)
-                _LOGGER.info("Restore folder %s done", name)
-            except (tarfile.TarError, OSError) as err:
-                _LOGGER.warning("Can't restore folder %s: %s", name, err)
+            def _restore() -> None:
+                try:
+                    _LOGGER.info("Restore folder %s", name)
+                    with SecureTarFile(
+                        tar_name, "r", key=self._key, gzip=self.compressed
+                    ) as tar_file:
+                        tar_file.extractall(path=origin_dir, members=tar_file)
+                    _LOGGER.info("Restore folder %s done", name)
+                except (tarfile.TarError, OSError) as err:
+                    _LOGGER.warning("Can't restore folder %s: %s", name, err)
+
+            await self.sys_run_in_executor(_restore, name)
 
         # Restore folder sequential
         # avoid issue on slow IO
         for folder in folder_list:
             try:
-                await self.sys_run_in_executor(_folder_restore, folder)
+                await _folder_restore(folder)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore folder %s: %s", folder, err)
 
@@ -454,7 +456,6 @@ class Backup(CoreSysAttributes):
         )
 
         await self.sys_homeassistant.backup(homeassistant_file)
-        self._data[ATTR_FOLDERS].append(FOLDER_HOMEASSISTANT)
 
     async def restore_homeassistant(self):
         """Restore Home Assitant Core configuration folder."""
