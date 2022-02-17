@@ -5,8 +5,9 @@ import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Optional
+from typing import Any, Awaitable, Optional
 
+from awesomeversion import AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -464,8 +465,9 @@ class Backup(CoreSysAttributes):
 
         await self.sys_homeassistant.backup(homeassistant_file)
 
-    async def restore_homeassistant(self):
+    async def restore_homeassistant(self) -> Awaitable[None]:
         """Restore Home Assitant Core configuration folder."""
+        await self.sys_homeassistant.core.stop()
 
         # Restore Home Assistant Core config directory
         homeassistant_file = SecureTarFile(
@@ -473,6 +475,17 @@ class Backup(CoreSysAttributes):
         )
 
         await self.sys_homeassistant.restore(homeassistant_file)
+
+        # Generate restore task
+        async def _core_update():
+            try:
+                if self.homeassistant_version == self.sys_homeassistant.version:
+                    return
+            except (AwesomeVersionCompareException, TypeError):
+                pass
+            await self.sys_homeassistant.core.update(self.homeassistant_version)
+
+        return self.sys_create_task(_core_update())
 
     def store_repositories(self):
         """Store repository list into backup."""
