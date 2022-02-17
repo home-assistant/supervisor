@@ -48,6 +48,7 @@ def unique_addons(addons_list):
 # pylint: disable=no-value-for-parameter
 SCHEMA_BACKUP = vol.Schema(
     {
+        vol.Optional(ATTR_VERSION, default=1): vol.All(vol.Coerce(int), vol.In((1, 2))),
         vol.Required(ATTR_SLUG): str,
         vol.Required(ATTR_TYPE): vol.Coerce(BackupType),
         vol.Required(ATTR_NAME): str,

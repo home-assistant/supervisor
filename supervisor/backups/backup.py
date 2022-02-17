@@ -40,6 +40,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils import remove_folder
 from ..utils.json import write_json_file
+from .const import BackupType
 from .utils import key_to_iv, password_to_key
 from .validate import SCHEMA_BACKUP
 
@@ -59,17 +60,22 @@ class Backup(CoreSysAttributes):
         self._aes: Optional[Cipher] = None
 
     @property
-    def slug(self):
+    def version(self) -> int:
+        """Return backup version."""
+        return self._data[ATTR_VERSION]
+
+    @property
+    def slug(self) -> str:
         """Return backup slug."""
-        return self._data.get(ATTR_SLUG)
+        return self._data[ATTR_SLUG]
 
     @property
-    def sys_type(self):
+    def sys_type(self) -> BackupType:
         """Return backup type."""
-        return self._data.get(ATTR_TYPE)
+        return self._data[ATTR_TYPE]
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return backup name."""
         return self._data[ATTR_NAME]
 
@@ -79,14 +85,14 @@ class Backup(CoreSysAttributes):
         return self._data[ATTR_DATE]
 
     @property
-    def protected(self):
+    def protected(self) -> bool:
         """Return backup date."""
-        return self._data.get(ATTR_PROTECTED) is not None
+        return self._data[ATTR_PROTECTED]
 
     @property
-    def compressed(self):
+    def compressed(self) -> bool:
         """Return whether backup is compressed."""
-        return self._data.get(ATTR_COMPRESSED)
+        return self._data[ATTR_COMPRESSED]
 
     @property
     def addons(self):
@@ -153,6 +159,7 @@ class Backup(CoreSysAttributes):
     def new(self, slug, name, date, sys_type, password=None, compressed=True):
         """Initialize a new backup."""
         # Init metadata
+        self._data[ATTR_VERSION] = 2
         self._data[ATTR_SLUG] = slug
         self._data[ATTR_NAME] = name
         self._data[ATTR_DATE] = date

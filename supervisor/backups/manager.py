@@ -2,7 +2,7 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Awaitable
+from typing import Awaitable, Optional
 
 from awesomeversion.awesomeversion import AwesomeVersion
 from awesomeversion.exceptions import AwesomeVersionCompareException
@@ -41,8 +41,12 @@ class BackupManager(CoreSysAttributes):
         return self._backups.get(slug)
 
     def _create_backup(
-        self, name, sys_type, password, compressed=True, homeassistant=True
-    ):
+        self,
+        name: str,
+        sys_type: BackupType,
+        password: Optional[str],
+        compressed: bool = True,
+    ) -> Backup:
         """Initialize a new backup object from name."""
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
