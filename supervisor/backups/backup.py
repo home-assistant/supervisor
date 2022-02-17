@@ -10,6 +10,7 @@ from typing import Any, Optional
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from securetar import SecureTarFile, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -40,7 +41,6 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
 from ..utils import remove_folder
 from ..utils.json import write_json_file
-from ..utils.tar import SecureTarFile, atomic_contents_add, secure_path
 from .utils import key_to_iv, password_to_key
 from .validate import SCHEMA_BACKUP
 

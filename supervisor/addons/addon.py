@@ -14,6 +14,7 @@ from typing import Any, Awaitable, Final, Optional
 
 import aiohttp
 from deepmerge import Merger
+from securetar import atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -65,7 +66,6 @@ from ..homeassistant.const import WSEvent, WSType
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
-from ..utils.tar import atomic_contents_add, secure_path
 from .const import AddonBackupMode
 from .model import AddonModel, Data
 from .options import AddonOptions
