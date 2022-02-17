@@ -16,9 +16,6 @@ from voluptuous.humanize import humanize_error
 from ..addons import Addon
 from ..const import (
     ATTR_ADDONS,
-    ATTR_AUDIO_INPUT,
-    ATTR_AUDIO_OUTPUT,
-    ATTR_BOOT,
     ATTR_COMPRESSED,
     ATTR_CRYPTO,
     ATTR_DATE,
@@ -28,19 +25,14 @@ from ..const import (
     ATTR_IMAGE,
     ATTR_NAME,
     ATTR_PASSWORD,
-    ATTR_PORT,
     ATTR_PROTECTED,
-    ATTR_REFRESH_TOKEN,
     ATTR_REGISTRIES,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
-    ATTR_SSL,
     ATTR_TYPE,
     ATTR_USERNAME,
     ATTR_VERSION,
-    ATTR_WAIT_BOOT,
-    ATTR_WATCHDOG,
     CRYPTO_AES128,
     FOLDER_HOMEASSISTANT,
 )
@@ -455,47 +447,10 @@ class Backup(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore folder %s: %s", folder, err)
 
-    def store_homeassistant(self):
-        """Read all data from Home Assistant object."""
-        self.homeassistant[ATTR_VERSION] = self.sys_homeassistant.version
-        self.homeassistant[ATTR_WATCHDOG] = self.sys_homeassistant.watchdog
-        self.homeassistant[ATTR_BOOT] = self.sys_homeassistant.boot
-        self.homeassistant[ATTR_WAIT_BOOT] = self.sys_homeassistant.wait_boot
-        self.homeassistant[ATTR_IMAGE] = self.sys_homeassistant.image
-
-        # API/Proxy
-        self.homeassistant[ATTR_PORT] = self.sys_homeassistant.api_port
-        self.homeassistant[ATTR_SSL] = self.sys_homeassistant.api_ssl
-        self.homeassistant[ATTR_REFRESH_TOKEN] = self._encrypt_data(
-            self.sys_homeassistant.refresh_token
-        )
-
-        # Audio
-        self.homeassistant[ATTR_AUDIO_INPUT] = self.sys_homeassistant.audio_input
-        self.homeassistant[ATTR_AUDIO_OUTPUT] = self.sys_homeassistant.audio_output
-
-    def restore_homeassistant(self):
-        """Write all data to the Home Assistant object."""
-        self.sys_homeassistant.watchdog = self.homeassistant[ATTR_WATCHDOG]
-        self.sys_homeassistant.boot = self.homeassistant[ATTR_BOOT]
-        self.sys_homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
-
-        # API/Proxy
-        self.sys_homeassistant.api_port = self.homeassistant[ATTR_PORT]
-        self.sys_homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
-        self.sys_homeassistant.refresh_token = self._decrypt_data(
-            self.homeassistant[ATTR_REFRESH_TOKEN]
-        )
-
-        # Audio
-        self.sys_homeassistant.audio_input = self.homeassistant[ATTR_AUDIO_INPUT]
-        self.sys_homeassistant.audio_output = self.homeassistant[ATTR_AUDIO_OUTPUT]
-
-        # save
-        self.sys_homeassistant.save_data()
-
-    async def store_homeassistant_config_dir(self):
+    async def store_homeassistant(self):
         """Backup Home Assitant Core configuration folder."""
+        self.homeassistant[ATTR_VERSION] = self.sys_homeassistant.version
+        self.homeassistant[ATTR_IMAGE] = self.sys_homeassistant.image
 
         # Backup Home Assistant Core config directory
         homeassistant_file = SecureTarFile(
@@ -505,7 +460,7 @@ class Backup(CoreSysAttributes):
         await self.sys_homeassistant.backup(homeassistant_file)
         self._data[ATTR_FOLDERS].append(FOLDER_HOMEASSISTANT)
 
-    async def restore_homeassistant_config_dir(self):
+    async def restore_homeassistant(self):
         """Restore Home Assitant Core configuration folder."""
 
         # Restore Home Assistant Core config directory
