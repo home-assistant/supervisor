@@ -1,5 +1,4 @@
 """Representation of a backup file."""
-from base64 import b64decode, b64encode
 import json
 import logging
 from pathlib import Path
@@ -7,9 +6,6 @@ import tarfile
 from tempfile import TemporaryDirectory
 from typing import Any, Optional
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -38,9 +34,10 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError
+from ..utils import remove_folder
 from ..utils.json import write_json_file
 from ..utils.tar import SecureTarFile, atomic_contents_add, secure_path
-from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
+from .utils import password_to_key
 from .validate import SCHEMA_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -56,7 +53,6 @@ class Backup(CoreSysAttributes):
         self._data: dict[str, Any] = {}
         self._tmp = None
         self._key: Optional[bytes] = None
-        self._aes: Optional[Cipher] = None
 
     @property
     def slug(self):
@@ -164,7 +160,7 @@ class Backup(CoreSysAttributes):
         # Set password
         if password:
             self._init_password(password)
-            self._data[ATTR_PROTECTED] = password_for_validating(password)
+            self._data[ATTR_PROTECTED] = True
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
         if not compressed:
@@ -175,43 +171,12 @@ class Backup(CoreSysAttributes):
         if not password:
             return False
 
-        validating = password_for_validating(password)
-        if validating != self._data[ATTR_PROTECTED]:
-            return False
-
         self._init_password(password)
         return True
 
     def _init_password(self, password: str) -> None:
         """Set password + init aes cipher."""
         self._key = password_to_key(password)
-        self._aes = Cipher(
-            algorithms.AES(self._key),
-            modes.CBC(key_to_iv(self._key)),
-            backend=default_backend(),
-        )
-
-    def _encrypt_data(self, data: str) -> str:
-        """Make data secure."""
-        if not self._key or data is None:
-            return data
-
-        encrypt = self._aes.encryptor()
-        padder = padding.PKCS7(128).padder()
-
-        data = padder.update(data.encode()) + padder.finalize()
-        return b64encode(encrypt.update(data)).decode()
-
-    def _decrypt_data(self, data: str) -> str:
-        """Make data readable."""
-        if not self._key or data is None:
-            return data
-
-        decrypt = self._aes.decryptor()
-        padder = padding.PKCS7(128).unpadder()
-
-        data = padder.update(decrypt.update(b64decode(data))) + padder.finalize()
-        return data.decode()
 
     async def load(self):
         """Read backup.json from tar file."""
