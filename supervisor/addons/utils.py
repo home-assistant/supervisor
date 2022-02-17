@@ -16,10 +16,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def rating_security(addon: AddonModel) -> int:
-    """Return 1-6 for security rating.
+    """Return 1-8 for security rating.
 
     1 = not secure
-    6 = high secure
+    8 = high secure
     """
     rating = 5
 
@@ -33,6 +33,10 @@ def rating_security(addon: AddonModel) -> int:
     if addon.with_ingress:
         rating += 2
     elif addon.access_auth_api:
+        rating += 1
+
+    # Signed
+    if addon.signed:
         rating += 1
 
     # Privileged options
@@ -70,7 +74,7 @@ def rating_security(addon: AddonModel) -> int:
     if addon.access_docker_api or addon.with_full_access:
         rating = 1
 
-    return max(min(6, rating), 1)
+    return max(min(8, rating), 1)
 
 
 async def remove_data(folder: Path) -> None:

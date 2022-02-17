@@ -110,7 +110,7 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
-from .const import ATTR_BACKUP
+from .const import ATTR_BACKUP, ATTR_CODENOTARY
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -317,6 +317,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_BACKUP, default=AddonBackupMode.HOT): vol.Coerce(
             AddonBackupMode
         ),
+        vol.Optional(ATTR_CODENOTARY): vol.Email(),
         vol.Optional(ATTR_OPTIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
             vol.Schema(

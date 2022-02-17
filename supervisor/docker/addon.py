@@ -1,6 +1,7 @@
 """Init file for Supervisor add-on Docker object."""
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
 from ipaddress import IPv4Address, ip_address
 import logging
@@ -673,6 +674,15 @@ class DockerAddon(DockerInterface):
         self, image_id: str, image: str, version: AwesomeVersion
     ) -> None:
         """Validate trust of content."""
+        if not self.addon.signed:
+            return
+
+        checksum = image_id.partition(":")[2]
+        job = asyncio.run_coroutine_threadsafe(
+            self.sys_security.verify_content(self.addon.codenotary, checksum),
+            self.sys_loop,
+        )
+        job.result(timeout=20)
 
     @Job(conditions=[JobCondition.OS_AGENT])
     async def _hardware_events(self, device: Device) -> None:
