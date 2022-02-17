@@ -2,6 +2,8 @@
 # pylint: disable=import-error,protected-access
 from pathlib import Path
 
+from securetar import SecureTarFile
+
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.const import ATTR_DATE, ATTR_SLUG, ATTR_TYPE
@@ -10,7 +12,6 @@ from supervisor.resolution.const import ContextType, SuggestionType
 from supervisor.resolution.data import Suggestion
 from supervisor.resolution.fixups.clear_full_backup import FixupClearFullBackup
 from supervisor.utils.dt import utcnow
-from supervisor.utils.tar import SecureTarFile
 
 
 async def test_fixup(coresys: CoreSys, tmp_path):

@@ -9,10 +9,10 @@ from typing import Optional
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
+from securetar import atomic_contents_add
 
 from supervisor.exceptions import HomeAssistantWSError
 from supervisor.homeassistant.const import WSType
-from supervisor.utils.tar import atomic_contents_add
 
 from ..const import (
     ATTR_ACCESS_TOKEN,
