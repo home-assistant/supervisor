@@ -64,7 +64,7 @@ async def test_do_backup_full_uncompressed(
 
     backup_instance.store_folders.assert_called_once()
     assert len(backup_instance.store_folders.call_args[0][0]) == 4
-    backup_instance.store_homeassistant_config_dir.assert_called_once()
+    backup_instance.store_homeassistant.assert_called_once()
 
     assert coresys.core.state == CoreState.RUNNING
 
@@ -157,7 +157,7 @@ async def test_do_backup_partial_maximal(
 
     backup_instance.store_folders.assert_called_once()
     assert len(backup_instance.store_folders.call_args[0][0]) == 1
-    backup_instance.store_homeassistant_config_dir.assert_called_once()
+    backup_instance.store_homeassistant.assert_called_once()
 
     assert coresys.core.state == CoreState.RUNNING
 
@@ -268,6 +268,6 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
     backup_instance.restore_addons.assert_called_once()
 
     backup_instance.restore_folders.assert_called_once()
-    backup_instance.restore_homeassistant_config_dir.assert_called_once()
+    backup_instance.restore_homeassistant.assert_called_once()
 
     assert coresys.core.state == CoreState.RUNNING
