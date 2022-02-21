@@ -454,7 +454,7 @@ class Backup(CoreSysAttributes):
 
     async def store_homeassistant(self):
         """Backup Home Assitant Core configuration folder."""
-        self.homeassistant[ATTR_VERSION] = self.sys_homeassistant.version
+        self.homeassistant = {ATTR_VERSION: self.sys_homeassistant.version}
 
         # Backup Home Assistant Core config directory
         homeassistant_file = SecureTarFile(

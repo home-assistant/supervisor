@@ -226,8 +226,8 @@ class BackupManager(CoreSysAttributes):
     async def _do_restore(
         self,
         backup: Backup,
-        addon_list: list[Addon],
-        folder_list: list[str],
+        addon_list: list[str],
+        folder_list: list[Path],
         homeassistant: bool,
         replace: bool,
     ):
@@ -344,7 +344,12 @@ class BackupManager(CoreSysAttributes):
         ]
     )
     async def do_restore_partial(
-        self, backup, homeassistant=False, addons=None, folders=None, password=None
+        self,
+        backup: Backup,
+        homeassistant: bool = False,
+        addons: list[str] | None = None,
+        folders: list[Path] | None = None,
+        password: str | None = None,
     ):
         """Restore a backup."""
         if self.lock.locked():
@@ -353,6 +358,10 @@ class BackupManager(CoreSysAttributes):
 
         if backup.protected and not backup.set_password(password):
             _LOGGER.error("Invalid password for backup %s", backup.slug)
+            return False
+
+        if backup.homeassistant is None and homeassistant:
+            _LOGGER.error("No Home Assistant Core data inside the backup")
             return False
 
         addon_list = addons or []
