@@ -45,7 +45,7 @@ from ..hardware.data import Device
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
-from .const import Capabilities
+from .const import DBUS_PATH, DBUS_VOLUME, Capabilities
 from .interface import DockerInterface
 
 if TYPE_CHECKING:
@@ -409,7 +409,7 @@ class DockerAddon(DockerInterface):
 
         # Host D-Bus system
         if self.addon.host_dbus:
-            volumes.update({"/run/dbus": {"bind": "/run/dbus", "mode": "ro"}})
+            volumes.update({DBUS_PATH: DBUS_VOLUME})
 
         # Configuration Audio
         if self.addon.with_audio:
