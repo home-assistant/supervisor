@@ -10,7 +10,9 @@ from typing import Optional
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-from securetar import atomic_contents_add
+from securetar import atomic_contents_add, secure_path
+import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -38,8 +40,9 @@ from ..exceptions import (
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from ..jobs.decorator import Job
+from ..utils import remove_folder
 from ..utils.common import FileConfiguration
-from ..utils.json import write_json_file
+from ..utils.json import read_json_file, write_json_file
 from .api import HomeAssistantAPI
 from .const import WSType
 from .core import HomeAssistantCore
@@ -332,6 +335,10 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             # Backup data config folder
             def _write_tarfile():
                 with tar_file as backup:
+                    # Backup metadata
+                    backup.add(temp, arcname=".")
+
+                    # Backup data
                     atomic_contents_add(
                         backup,
                         self.sys_config.path_homeassistant,
@@ -355,17 +362,73 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
     async def restore(self, tar_file: tarfile.TarFile) -> None:
         """Restore Home Assistant Core config/ directory."""
+        with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
+            temp_path = Path(temp)
+            temp_data = temp_path.joinpath("data")
+            temp_meta = temp_path.joinpath("homeassistant.json")
 
-        # Perform a restore
-        def _restore_tarfile():
-            with tar_file as backup:
-                backup.extractall(
-                    path=self.sys_config.path_homeassistant, members=tar_file
+            # extract backup
+            def _extract_tarfile():
+                """Extract tar backup."""
+                with tar_file as backup:
+                    backup.extractall(path=temp_path, members=secure_path(backup))
+
+            try:
+                await self.sys_run_in_executor(_extract_tarfile)
+            except tarfile.TarError as err:
+                raise HomeAssistantError(
+                    f"Can't read tarfile {tar_file}: {err}", _LOGGER.error
+                ) from err
+
+            # Check old backup format v1
+            if not temp_data.exists():
+                temp_data = temp_path
+
+            # Restore data
+            def _restore_data():
+                """Restore data."""
+                shutil.copytree(
+                    temp_data, self.sys_config.path_homeassistant, symlinks=True
                 )
 
-        try:
             _LOGGER.info("Restore Home Assistant Core config folder")
-            await self.sys_run_in_executor(_restore_tarfile)
+            await remove_folder(self.sys_config.path_homeassistant)
+            try:
+                await self.sys_run_in_executor(_restore_data)
+            except shutil.Error as err:
+                raise HomeAssistantError(
+                    f"Can't restore origin data: {err}", _LOGGER.error
+                ) from err
+
             _LOGGER.info("Restore Home Assistant Core config folder done")
-        except (tarfile.TarError, OSError) as err:
-            _LOGGER.warning("Can't restore Home Assistant Core config folder: %s", err)
+
+            if not temp_meta.exists():
+                return
+            _LOGGER.info("Restore Home Assistant Core metadata")
+
+            # Read backup data
+            try:
+                data = read_json_file(temp_meta)
+            except ConfigurationFileError as err:
+                raise HomeAssistantError() from err
+
+            # Validate
+            try:
+                data = SCHEMA_HASS_CONFIG(data)
+            except vol.Invalid as err:
+                raise HomeAssistantError(
+                    f"Can't validate backup data: {humanize_error(data, err)}",
+                    _LOGGER.err,
+                ) from err
+
+            # Restore metadata
+            for attr in (
+                ATTR_AUDIO_INPUT,
+                ATTR_AUDIO_OUTPUT,
+                ATTR_PORT,
+                ATTR_SSL,
+                ATTR_REFRESH_TOKEN,
+                ATTR_WATCHDOG,
+                ATTR_WAIT_BOOT,
+            ):
+                self._data[attr] = data[attr]

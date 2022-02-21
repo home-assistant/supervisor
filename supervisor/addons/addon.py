@@ -748,8 +748,7 @@ class Addon(AddonModel):
             def _write_tarfile():
                 """Write tar inside loop."""
                 with tar_file as backup:
-                    # Backup system
-
+                    # Backup metadata
                     backup.add(temp, arcname=".")
 
                     # Backup data
@@ -816,12 +815,10 @@ class Addon(AddonModel):
             try:
                 data = SCHEMA_ADDON_BACKUP(data)
             except vol.Invalid as err:
-                _LOGGER.error(
-                    "Can't validate %s, backup data: %s",
-                    self.slug,
-                    humanize_error(data, err),
-                )
-                raise AddonsError() from err
+                raise AddonsError(
+                    f"Can't validate {self.slug}, backup data: {humanize_error(data, err)}",
+                    _LOGGER.error,
+                ) from err
 
             # If available
             if not self._available(data[ATTR_SYSTEM]):
