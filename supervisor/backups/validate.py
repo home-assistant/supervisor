@@ -10,7 +10,6 @@ from ..const import (
     ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
-    ATTR_IMAGE,
     ATTR_NAME,
     ATTR_PROTECTED,
     ATTR_REPOSITORIES,
@@ -25,7 +24,7 @@ from ..const import (
     FOLDER_SHARE,
     FOLDER_SSL,
 )
-from ..validate import SCHEMA_DOCKER_CONFIG, docker_image, repositories, version_tag
+from ..validate import SCHEMA_DOCKER_CONFIG, repositories, version_tag
 
 ALL_FOLDERS = [
     FOLDER_HOMEASSISTANT,
@@ -60,7 +59,7 @@ SCHEMA_BACKUP = vol.Schema(
             vol.Schema(
                 {
                     vol.Optional(ATTR_VERSION): version_tag,
-                    vol.Optional(ATTR_IMAGE): docker_image,
+                    vol.Optional(ATTR_SIZE, default=0): vol.Coerce(float),
                 },
                 extra=vol.REMOVE_EXTRA,
             )

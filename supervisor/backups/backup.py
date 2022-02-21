@@ -24,7 +24,6 @@ from ..const import (
     ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
-    ATTR_IMAGE,
     ATTR_NAME,
     ATTR_PASSWORD,
     ATTR_PROTECTED,
@@ -456,7 +455,6 @@ class Backup(CoreSysAttributes):
     async def store_homeassistant(self):
         """Backup Home Assitant Core configuration folder."""
         self.homeassistant[ATTR_VERSION] = self.sys_homeassistant.version
-        self.homeassistant[ATTR_IMAGE] = self.sys_homeassistant.image
 
         # Backup Home Assistant Core config directory
         homeassistant_file = SecureTarFile(
@@ -464,6 +462,9 @@ class Backup(CoreSysAttributes):
         )
 
         await self.sys_homeassistant.backup(homeassistant_file)
+
+        # Store size
+        self.homeassistant[ATTR_SIZE] = homeassistant_file.size
 
     async def restore_homeassistant(self) -> Awaitable[None]:
         """Restore Home Assitant Core configuration folder."""
