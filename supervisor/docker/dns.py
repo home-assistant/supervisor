@@ -3,6 +3,7 @@ import logging
 
 from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
+from .const import DBUS_PATH, DBUS_VOLUME
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -47,7 +48,8 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
             security_opt=self.security_opt,
             environment={ENV_TIME: self.sys_timezone},
             volumes={
-                str(self.sys_config.path_extern_dns): {"bind": "/config", "mode": "rw"}
+                str(self.sys_config.path_extern_dns): {"bind": "/config", "mode": "rw"},
+                DBUS_PATH: DBUS_VOLUME,
             },
         )
 

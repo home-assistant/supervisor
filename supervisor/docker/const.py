@@ -15,3 +15,7 @@ class Capabilities(str, Enum):
     SYS_RAWIO = "SYS_RAWIO"
     SYS_RESOURCE = "SYS_RESOURCE"
     SYS_TIME = "SYS_TIME"
+
+
+DBUS_PATH = "/run/dbus"
+DBUS_VOLUME = {"bind": DBUS_PATH, "mode": "ro"}
