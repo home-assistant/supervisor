@@ -58,7 +58,7 @@ SCHEMA_BACKUP = vol.Schema(
         vol.Optional(ATTR_HOMEASSISTANT, default=None): vol.Maybe(
             vol.Schema(
                 {
-                    vol.Optional(ATTR_VERSION): version_tag,
+                    vol.Required(ATTR_VERSION): version_tag,
                     vol.Optional(ATTR_SIZE, default=0): vol.Coerce(float),
                 },
                 extra=vol.REMOVE_EXTRA,
