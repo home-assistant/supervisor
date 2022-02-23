@@ -460,3 +460,10 @@ class StoreNotFound(StoreError):
 
 class StoreJobError(StoreError, JobException):
     """Raise on job error with git."""
+
+
+# Backup
+
+
+class BackupError(HassioError):
+    """Raise if an error durin backup is happening."""

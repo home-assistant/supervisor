@@ -37,7 +37,7 @@ from ..const import (
     CRYPTO_AES128,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import AddonsError
+from ..exceptions import AddonsError, BackupError
 from ..utils import remove_folder
 from ..utils.json import write_json_file
 from .const import BackupType
@@ -482,8 +482,14 @@ class Backup(CoreSysAttributes):
             try:
                 if self.homeassistant_version == self.sys_homeassistant.version:
                     return
-            except (AwesomeVersionCompareException, TypeError):
+            except TypeError:
+                # Home Assistant is not yet installed / None
                 pass
+            except AwesomeVersionCompareException as err:
+                raise BackupError(
+                    f"Invalid Home Assistant Core version {self.homeassistant_version}",
+                    _LOGGER.error,
+                ) from err
             await self.sys_homeassistant.core.update(self.homeassistant_version)
 
         return self.sys_create_task(_core_update())
@@ -497,12 +503,11 @@ class Backup(CoreSysAttributes):
 
         Return a coroutine.
         """
-        if replace:
-            new_list = self.repositories
-        else:
-            new_list = self.repositories + self.sys_config.addons_repositories
+        new_list: set[str] = set(self.repositories)
+        if not replace:
+            new_list.update(self.sys_config.addons_repositories)
 
-        await self.sys_store.update_repositories(new_list)
+        await self.sys_store.update_repositories(list(new_list))
 
     def store_dockerconfig(self):
         """Store the configuration for Docker."""
