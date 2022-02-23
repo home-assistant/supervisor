@@ -79,7 +79,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import Capabilities
-from .const import ATTR_BACKUP
+from .const import ATTR_BACKUP, ATTR_CODENOTARY
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE, RE_VOLUME
 
@@ -577,6 +577,16 @@ class AddonModel(CoreSysAttributes, ABC):
     def with_journald(self) -> bool:
         """Return True if the add-on accesses the system journal."""
         return self.data[ATTR_JOURNALD]
+
+    @property
+    def signed(self) -> bool:
+        """Return True if the image is signed."""
+        return ATTR_CODENOTARY in self.data
+
+    @property
+    def codenotary(self) -> Optional[str]:
+        """Return Signer email address for CAS."""
+        return self.data.get(ATTR_CODENOTARY)
 
     def __eq__(self, other):
         """Compaired add-on objects."""
