@@ -146,7 +146,7 @@ class BackupManager(CoreSysAttributes):
 
                 # Backup folders
                 # HomeAssistant Folder is for v1
-                if FOLDER_HOMEASSISTANT in folder_list or homeassistant:
+                if homeassistant or FOLDER_HOMEASSISTANT in folder_list:
                     await backup.store_homeassistant()
                     folder_list = list(folder_list)
                     folder_list.remove(FOLDER_HOMEASSISTANT)
