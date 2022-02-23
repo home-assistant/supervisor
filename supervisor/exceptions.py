@@ -466,4 +466,4 @@ class StoreJobError(StoreError, JobException):
 
 
 class BackupError(HassioError):
-    """Raise if an error durin backup is happening."""
+    """Raise if an error during backup is happening."""
