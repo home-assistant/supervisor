@@ -5,50 +5,43 @@ import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Optional
+from typing import Any, Awaitable, Optional
 
+from awesomeversion import AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from securetar import SecureTarFile, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..addons import Addon
 from ..const import (
     ATTR_ADDONS,
-    ATTR_AUDIO_INPUT,
-    ATTR_AUDIO_OUTPUT,
-    ATTR_BOOT,
     ATTR_COMPRESSED,
     ATTR_CRYPTO,
     ATTR_DATE,
     ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
-    ATTR_IMAGE,
     ATTR_NAME,
     ATTR_PASSWORD,
-    ATTR_PORT,
     ATTR_PROTECTED,
-    ATTR_REFRESH_TOKEN,
     ATTR_REGISTRIES,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
-    ATTR_SSL,
     ATTR_TYPE,
     ATTR_USERNAME,
     ATTR_VERSION,
-    ATTR_WAIT_BOOT,
-    ATTR_WATCHDOG,
     CRYPTO_AES128,
-    FOLDER_HOMEASSISTANT,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import AddonsError
+from ..exceptions import AddonsError, BackupError
+from ..utils import remove_folder
 from ..utils.json import write_json_file
-from ..utils.tar import SecureTarFile, atomic_contents_add, secure_path
-from .utils import key_to_iv, password_for_validating, password_to_key, remove_folder
+from .const import BackupType
+from .utils import key_to_iv, password_to_key
 from .validate import SCHEMA_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -67,17 +60,22 @@ class Backup(CoreSysAttributes):
         self._aes: Optional[Cipher] = None
 
     @property
-    def slug(self):
+    def version(self) -> int:
+        """Return backup version."""
+        return self._data[ATTR_VERSION]
+
+    @property
+    def slug(self) -> str:
         """Return backup slug."""
-        return self._data.get(ATTR_SLUG)
+        return self._data[ATTR_SLUG]
 
     @property
-    def sys_type(self):
+    def sys_type(self) -> BackupType:
         """Return backup type."""
-        return self._data.get(ATTR_TYPE)
+        return self._data[ATTR_TYPE]
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return backup name."""
         return self._data[ATTR_NAME]
 
@@ -87,14 +85,14 @@ class Backup(CoreSysAttributes):
         return self._data[ATTR_DATE]
 
     @property
-    def protected(self):
+    def protected(self) -> bool:
         """Return backup date."""
-        return self._data.get(ATTR_PROTECTED) is not None
+        return self._data[ATTR_PROTECTED]
 
     @property
-    def compressed(self):
+    def compressed(self) -> bool:
         """Return whether backup is compressed."""
-        return self._data.get(ATTR_COMPRESSED)
+        return self._data[ATTR_COMPRESSED]
 
     @property
     def addons(self):
@@ -161,6 +159,7 @@ class Backup(CoreSysAttributes):
     def new(self, slug, name, date, sys_type, password=None, compressed=True):
         """Initialize a new backup."""
         # Init metadata
+        self._data[ATTR_VERSION] = 2
         self._data[ATTR_SLUG] = slug
         self._data[ATTR_NAME] = name
         self._data[ATTR_DATE] = date
@@ -172,7 +171,7 @@ class Backup(CoreSysAttributes):
         # Set password
         if password:
             self._init_password(password)
-            self._data[ATTR_PROTECTED] = password_for_validating(password)
+            self._data[ATTR_PROTECTED] = True
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
 
         if not compressed:
@@ -182,11 +181,6 @@ class Backup(CoreSysAttributes):
         """Set the password for an existing backup."""
         if not password:
             return False
-
-        validating = password_for_validating(password)
-        if validating != self._data[ATTR_PROTECTED]:
-            return False
-
         self._init_password(password)
         return True
 
@@ -419,7 +413,7 @@ class Backup(CoreSysAttributes):
     async def restore_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
 
-        def _folder_restore(name: str):
+        async def _folder_restore(name: str) -> None:
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(
@@ -434,68 +428,33 @@ class Backup(CoreSysAttributes):
 
             # Clean old stuff
             if origin_dir.is_dir():
-                remove_folder(origin_dir)
+                await remove_folder(origin_dir, content_only=True)
 
             # Perform a restore
-            try:
-                _LOGGER.info("Restore folder %s", name)
-                with SecureTarFile(
-                    tar_name, "r", key=self._key, gzip=self.compressed
-                ) as tar_file:
-                    tar_file.extractall(path=origin_dir, members=tar_file)
-                _LOGGER.info("Restore folder %s done", name)
-            except (tarfile.TarError, OSError) as err:
-                _LOGGER.warning("Can't restore folder %s: %s", name, err)
+            def _restore() -> None:
+                try:
+                    _LOGGER.info("Restore folder %s", name)
+                    with SecureTarFile(
+                        tar_name, "r", key=self._key, gzip=self.compressed
+                    ) as tar_file:
+                        tar_file.extractall(path=origin_dir, members=tar_file)
+                    _LOGGER.info("Restore folder %s done", name)
+                except (tarfile.TarError, OSError) as err:
+                    _LOGGER.warning("Can't restore folder %s: %s", name, err)
+
+            await self.sys_run_in_executor(_restore, name)
 
         # Restore folder sequential
         # avoid issue on slow IO
         for folder in folder_list:
             try:
-                await self.sys_run_in_executor(_folder_restore, folder)
+                await _folder_restore(folder)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore folder %s: %s", folder, err)
 
-    def store_homeassistant(self):
-        """Read all data from Home Assistant object."""
-        self.homeassistant[ATTR_VERSION] = self.sys_homeassistant.version
-        self.homeassistant[ATTR_WATCHDOG] = self.sys_homeassistant.watchdog
-        self.homeassistant[ATTR_BOOT] = self.sys_homeassistant.boot
-        self.homeassistant[ATTR_WAIT_BOOT] = self.sys_homeassistant.wait_boot
-        self.homeassistant[ATTR_IMAGE] = self.sys_homeassistant.image
-
-        # API/Proxy
-        self.homeassistant[ATTR_PORT] = self.sys_homeassistant.api_port
-        self.homeassistant[ATTR_SSL] = self.sys_homeassistant.api_ssl
-        self.homeassistant[ATTR_REFRESH_TOKEN] = self._encrypt_data(
-            self.sys_homeassistant.refresh_token
-        )
-
-        # Audio
-        self.homeassistant[ATTR_AUDIO_INPUT] = self.sys_homeassistant.audio_input
-        self.homeassistant[ATTR_AUDIO_OUTPUT] = self.sys_homeassistant.audio_output
-
-    def restore_homeassistant(self):
-        """Write all data to the Home Assistant object."""
-        self.sys_homeassistant.watchdog = self.homeassistant[ATTR_WATCHDOG]
-        self.sys_homeassistant.boot = self.homeassistant[ATTR_BOOT]
-        self.sys_homeassistant.wait_boot = self.homeassistant[ATTR_WAIT_BOOT]
-
-        # API/Proxy
-        self.sys_homeassistant.api_port = self.homeassistant[ATTR_PORT]
-        self.sys_homeassistant.api_ssl = self.homeassistant[ATTR_SSL]
-        self.sys_homeassistant.refresh_token = self._decrypt_data(
-            self.homeassistant[ATTR_REFRESH_TOKEN]
-        )
-
-        # Audio
-        self.sys_homeassistant.audio_input = self.homeassistant[ATTR_AUDIO_INPUT]
-        self.sys_homeassistant.audio_output = self.homeassistant[ATTR_AUDIO_OUTPUT]
-
-        # save
-        self.sys_homeassistant.save_data()
-
-    async def store_homeassistant_config_dir(self):
+    async def store_homeassistant(self):
         """Backup Home Assitant Core configuration folder."""
+        self._data[ATTR_HOMEASSISTANT] = {ATTR_VERSION: self.sys_homeassistant.version}
 
         # Backup Home Assistant Core config directory
         homeassistant_file = SecureTarFile(
@@ -503,10 +462,13 @@ class Backup(CoreSysAttributes):
         )
 
         await self.sys_homeassistant.backup(homeassistant_file)
-        self._data[ATTR_FOLDERS].append(FOLDER_HOMEASSISTANT)
 
-    async def restore_homeassistant_config_dir(self):
+        # Store size
+        self.homeassistant[ATTR_SIZE] = homeassistant_file.size
+
+    async def restore_homeassistant(self) -> Awaitable[None]:
         """Restore Home Assitant Core configuration folder."""
+        await self.sys_homeassistant.core.stop()
 
         # Restore Home Assistant Core config directory
         homeassistant_file = SecureTarFile(
@@ -515,16 +477,37 @@ class Backup(CoreSysAttributes):
 
         await self.sys_homeassistant.restore(homeassistant_file)
 
+        # Generate restore task
+        async def _core_update():
+            try:
+                if self.homeassistant_version == self.sys_homeassistant.version:
+                    return
+            except TypeError:
+                # Home Assistant is not yet installed / None
+                pass
+            except AwesomeVersionCompareException as err:
+                raise BackupError(
+                    f"Invalid Home Assistant Core version {self.homeassistant_version}",
+                    _LOGGER.error,
+                ) from err
+            await self.sys_homeassistant.core.update(self.homeassistant_version)
+
+        return self.sys_create_task(_core_update())
+
     def store_repositories(self):
         """Store repository list into backup."""
         self.repositories = self.sys_config.addons_repositories
 
-    def restore_repositories(self):
+    async def restore_repositories(self, replace: bool = False):
         """Restore repositories from backup.
 
         Return a coroutine.
         """
-        return self.sys_store.update_repositories(self.repositories)
+        new_list: set[str] = set(self.repositories)
+        if not replace:
+            new_list.update(self.sys_config.addons_repositories)
+
+        await self.sys_store.update_repositories(list(new_list))
 
     def store_dockerconfig(self):
         """Store the configuration for Docker."""
@@ -538,8 +521,11 @@ class Backup(CoreSysAttributes):
             }
         }
 
-    def restore_dockerconfig(self):
+    def restore_dockerconfig(self, replace: bool = False):
         """Restore the configuration for Docker."""
+        if replace:
+            self.sys_docker.config.registries.clear()
+
         if ATTR_REGISTRIES in self.docker:
             self.sys_docker.config.registries.update(
                 {

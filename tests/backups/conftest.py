@@ -19,10 +19,10 @@ def fixture_backup_mock():
 
         backup_instance.store_addons = AsyncMock(return_value=None)
         backup_instance.store_folders = AsyncMock(return_value=None)
-        backup_instance.store_homeassistant_config_dir = AsyncMock(return_value=None)
+        backup_instance.store_homeassistant = AsyncMock(return_value=None)
         backup_instance.store_addons = AsyncMock(return_value=None)
         backup_instance.restore_folders = AsyncMock(return_value=None)
-        backup_instance.restore_homeassistant_config_dir = AsyncMock(return_value=None)
+        backup_instance.restore_homeassistant = AsyncMock(return_value=None)
         backup_instance.restore_addons = AsyncMock(return_value=None)
         backup_instance.restore_repositories = AsyncMock(return_value=None)
 

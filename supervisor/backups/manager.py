@@ -1,15 +1,11 @@
 """Backup manager."""
+from __future__ import annotations
+
 import asyncio
 import logging
 from pathlib import Path
-from typing import Awaitable
 
-from awesomeversion.awesomeversion import AwesomeVersion
-from awesomeversion.exceptions import AwesomeVersionCompareException
-
-from supervisor.addons.addon import Addon
-from supervisor.backups.validate import ALL_FOLDERS
-
+from ..addons.addon import Addon
 from ..const import FOLDER_HOMEASSISTANT, CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
@@ -18,6 +14,7 @@ from ..utils.dt import utcnow
 from .backup import Backup
 from .const import BackupType
 from .utils import create_slug
+from .validate import ALL_FOLDERS
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -41,8 +38,12 @@ class BackupManager(CoreSysAttributes):
         return self._backups.get(slug)
 
     def _create_backup(
-        self, name, sys_type, password, compressed=True, homeassistant=True
-    ):
+        self,
+        name: str,
+        sys_type: BackupType,
+        password: str | None,
+        compressed: bool = True,
+    ) -> Backup:
         """Initialize a new backup object from name."""
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
@@ -51,10 +52,6 @@ class BackupManager(CoreSysAttributes):
         # init object
         backup = Backup(self.coresys, tar_file)
         backup.new(slug, name, date_str, sys_type, password, compressed)
-
-        # set general data
-        if homeassistant:
-            backup.store_homeassistant()
 
         backup.store_repositories()
         backup.store_dockerconfig()
@@ -136,6 +133,7 @@ class BackupManager(CoreSysAttributes):
         backup: Backup,
         addon_list: list[Addon],
         folder_list: list[str],
+        homeassistant: bool,
     ):
         try:
             self.sys_core.state = CoreState.FREEZE
@@ -147,8 +145,9 @@ class BackupManager(CoreSysAttributes):
                     await backup.store_addons(addon_list)
 
                 # Backup folders
-                if FOLDER_HOMEASSISTANT in folder_list:
-                    await backup.store_homeassistant_config_dir()
+                # HomeAssistant Folder is for v1
+                if homeassistant or FOLDER_HOMEASSISTANT in folder_list:
+                    await backup.store_homeassistant()
                     folder_list = list(folder_list)
                     folder_list.remove(FOLDER_HOMEASSISTANT)
 
@@ -178,7 +177,7 @@ class BackupManager(CoreSysAttributes):
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
         async with self.lock:
             backup = await self._do_backup(
-                backup, self.sys_addons.installed, ALL_FOLDERS
+                backup, self.sys_addons.installed, ALL_FOLDERS, True
             )
             if backup:
                 _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
@@ -205,9 +204,7 @@ class BackupManager(CoreSysAttributes):
         if len(addons) == 0 and len(folders) == 0 and not homeassistant:
             _LOGGER.error("Nothing to create backup for")
 
-        backup = self._create_backup(
-            name, BackupType.PARTIAL, password, compressed, homeassistant
-        )
+        backup = self._create_backup(name, BackupType.PARTIAL, password, compressed)
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
         async with self.lock:
@@ -219,7 +216,7 @@ class BackupManager(CoreSysAttributes):
                     continue
                 _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
-            backup = await self._do_backup(backup, addon_list, folders)
+            backup = await self._do_backup(backup, addon_list, folders, homeassistant)
             if backup:
                 _LOGGER.info(
                     "Creating partial backup with slug %s completed", backup.slug
@@ -229,25 +226,22 @@ class BackupManager(CoreSysAttributes):
     async def _do_restore(
         self,
         backup: Backup,
-        addon_list: list[Addon],
-        folder_list: list[str],
+        addon_list: list[str],
+        folder_list: list[Path],
         homeassistant: bool,
-        remove_other_addons: bool,
+        replace: bool,
     ):
-        try:
-            # Stop Home Assistant Core if we restore the version or config directory
-            if FOLDER_HOMEASSISTANT in folder_list or homeassistant:
-                await self.sys_homeassistant.core.stop()
+        # Version 1
+        if FOLDER_HOMEASSISTANT in folder_list:
+            folder_list.remove(FOLDER_HOMEASSISTANT)
+            homeassistant = True
 
+        try:
+            task_hass = None
             async with backup:
                 # Restore docker config
                 _LOGGER.info("Restoring %s Docker config", backup.slug)
-                backup.restore_dockerconfig()
-
-                if FOLDER_HOMEASSISTANT in folder_list:
-                    await backup.restore_homeassistant_config_dir()
-                    folder_list = list(folder_list)
-                    folder_list.remove(FOLDER_HOMEASSISTANT)
+                backup.restore_dockerconfig(replace)
 
                 # Process folders
                 if folder_list:
@@ -255,21 +249,12 @@ class BackupManager(CoreSysAttributes):
                     await backup.restore_folders(folder_list)
 
                 # Process Home-Assistant
-                task_hass = None
                 if homeassistant:
                     _LOGGER.info("Restoring %s Home Assistant Core", backup.slug)
-                    backup.restore_homeassistant()
-                    task_hass = self._update_core_task(backup.homeassistant_version)
-
-                if addon_list:
-                    _LOGGER.info("Restoring %s Repositories", backup.slug)
-                    await backup.restore_repositories()
-
-                    _LOGGER.info("Restoring %s Add-ons", backup.slug)
-                    await backup.restore_addons(addon_list)
+                    task_hass = await backup.restore_homeassistant()
 
                 # Delete delta add-ons
-                if remove_other_addons:
+                if replace:
                     _LOGGER.info("Removing Add-ons not in the backup %s", backup.slug)
                     for addon in self.sys_addons.installed:
                         if addon.slug in backup.addon_list:
@@ -281,6 +266,13 @@ class BackupManager(CoreSysAttributes):
                             await addon.uninstall()
                         except AddonsError:
                             _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
+
+                if addon_list:
+                    _LOGGER.info("Restoring %s Repositories", backup.slug)
+                    await backup.restore_repositories(replace)
+
+                    _LOGGER.info("Restoring %s Add-ons", backup.slug)
+                    await backup.restore_addons(addon_list)
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
@@ -352,7 +344,12 @@ class BackupManager(CoreSysAttributes):
         ]
     )
     async def do_restore_partial(
-        self, backup, homeassistant=False, addons=None, folders=None, password=None
+        self,
+        backup: Backup,
+        homeassistant: bool = False,
+        addons: list[str] | None = None,
+        folders: list[Path] | None = None,
+        password: str | None = None,
     ):
         """Restore a backup."""
         if self.lock.locked():
@@ -361,6 +358,10 @@ class BackupManager(CoreSysAttributes):
 
         if backup.protected and not backup.set_password(password):
             _LOGGER.error("Invalid password for backup %s", backup.slug)
+            return False
+
+        if backup.homeassistant is None and homeassistant:
+            _LOGGER.error("No Home Assistant Core data inside the backup")
             return False
 
         addon_list = addons or []
@@ -378,16 +379,3 @@ class BackupManager(CoreSysAttributes):
 
             if success:
                 _LOGGER.info("Partial-Restore %s done", backup.slug)
-
-    def _update_core_task(self, version: AwesomeVersion) -> Awaitable[None]:
-        """Process core update if needed and make awaitable object."""
-
-        async def _core_update():
-            try:
-                if version == self.sys_homeassistant.version:
-                    return
-            except (AwesomeVersionCompareException, TypeError):
-                pass
-            await self.sys_homeassistant.core.update(version)
-
-        return self.sys_create_task(_core_update())
