@@ -234,10 +234,10 @@ class BackupManager(CoreSysAttributes):
         # Version 1
         if FOLDER_HOMEASSISTANT in folder_list:
             folder_list.remove(FOLDER_HOMEASSISTANT)
-            homeassistant = True
+            homeassistant = backup.homeassistant_version is not None
 
         try:
-            task_hass = None
+            task_hass: asyncio.Task | None = None
             async with backup:
                 # Restore docker config
                 _LOGGER.info("Restoring %s Docker config", backup.slug)

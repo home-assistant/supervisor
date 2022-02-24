@@ -1,4 +1,8 @@
 """Validate some things around restore."""
+from __future__ import annotations
+
+from typing import Any
+
 import voluptuous as vol
 
 from ..backups.const import BackupType
@@ -44,6 +48,19 @@ def unique_addons(addons_list):
     return addons_list
 
 
+def v1_homeassistant(
+    homeassistant_data: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    """Cleanup homeassistant artefacts from v1."""
+    if not homeassistant_data:
+        return None
+
+    if homeassistant_data.get(ATTR_VERSION) is None:
+        return None
+
+    return homeassistant_data
+
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_BACKUP = vol.Schema(
     {
@@ -55,14 +72,17 @@ SCHEMA_BACKUP = vol.Schema(
         vol.Optional(ATTR_COMPRESSED, default=True): vol.Boolean(),
         vol.Optional(ATTR_PROTECTED, default=False): vol.Boolean(),
         vol.Optional(ATTR_CRYPTO, default=None): vol.Maybe(CRYPTO_AES128),
-        vol.Optional(ATTR_HOMEASSISTANT, default=None): vol.Maybe(
-            vol.Schema(
-                {
-                    vol.Required(ATTR_VERSION): version_tag,
-                    vol.Optional(ATTR_SIZE, default=0): vol.Coerce(float),
-                },
-                extra=vol.REMOVE_EXTRA,
-            )
+        vol.Optional(ATTR_HOMEASSISTANT, default=None): vol.All(
+            v1_homeassistant,
+            vol.Maybe(
+                vol.Schema(
+                    {
+                        vol.Required(ATTR_VERSION): version_tag,
+                        vol.Optional(ATTR_SIZE, default=0): vol.Coerce(float),
+                    },
+                    extra=vol.REMOVE_EXTRA,
+                )
+            ),
         ),
         vol.Optional(ATTR_DOCKER, default=dict): SCHEMA_DOCKER_CONFIG,
         vol.Optional(ATTR_FOLDERS, default=list): vol.All(
