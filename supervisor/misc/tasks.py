@@ -146,7 +146,7 @@ class Tasks(CoreSysAttributes):
             # avoid issue on slow IO
             _LOGGER.info("Add-on auto update process %s", addon.slug)
             try:
-                await addon.update()
+                await addon.update(backup=True)
             except AddonsError:
                 _LOGGER.error("Can't auto update Add-on %s", addon.slug)
 
