@@ -23,3 +23,21 @@ def test_v1_homeassistant_migration():
     )
 
     assert data[validate.ATTR_HOMEASSISTANT] is None
+
+
+def test_v1_folder_migration():
+    """Test v1 folder validation migration."""
+    data = validate.SCHEMA_BACKUP(
+        {
+            **VALID_DEFAULT,
+            **{
+                validate.ATTR_TYPE: validate.BackupType.PARTIAL,
+                validate.ATTR_FOLDERS: [
+                    validate.FOLDER_ADDONS,
+                    validate.ATTR_HOMEASSISTANT,
+                ],
+            },
+        }
+    )
+
+    assert data[validate.ATTR_FOLDERS] == [validate.FOLDER_ADDONS]
