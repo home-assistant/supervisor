@@ -122,7 +122,9 @@ class Backup(CoreSysAttributes):
     @property
     def homeassistant_version(self):
         """Return backupbackup Home Assistant version."""
-        return self._data[ATTR_HOMEASSISTANT].get(ATTR_VERSION)
+        if self.homeassistant is None:
+            return None
+        return self._data[ATTR_HOMEASSISTANT][ATTR_VERSION]
 
     @property
     def homeassistant(self):
