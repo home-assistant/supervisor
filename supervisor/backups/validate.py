@@ -61,6 +61,13 @@ def v1_homeassistant(
     return homeassistant_data
 
 
+def v1_folderlist(folder_data: list[str]) -> list[str]:
+    """Cleanup folder artefacts from v1."""
+    if FOLDER_HOMEASSISTANT in folder_data:
+        folder_data.remove(FOLDER_HOMEASSISTANT)
+    return folder_data
+
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_BACKUP = vol.Schema(
     {
@@ -86,7 +93,7 @@ SCHEMA_BACKUP = vol.Schema(
         ),
         vol.Optional(ATTR_DOCKER, default=dict): SCHEMA_DOCKER_CONFIG,
         vol.Optional(ATTR_FOLDERS, default=list): vol.All(
-            [vol.In(ALL_FOLDERS)], vol.Unique()
+            v1_folderlist, [vol.In(ALL_FOLDERS)], vol.Unique()
         ),
         vol.Optional(ATTR_ADDONS, default=list): vol.All(
             [
