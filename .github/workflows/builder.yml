@@ -9,7 +9,7 @@ on:
         default: "dev"
       version:
         description: "Version"
-        required: true
+        required: false
       publish:
         description: "Publish"
         required: true
