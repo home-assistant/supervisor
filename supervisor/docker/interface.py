@@ -37,6 +37,14 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
 DOCKER_HUB = "hub.docker.com"
 
+MAP_ARCH = {
+    "armv7": "linux/arm/v7",
+    "armhf": "linux/arm/v6",
+    "aarch64": "linux/arm64",
+    "i386": "linux/386",
+    "amd64": "linux/amd64",
+}
+
 
 class DockerInterface(CoreSysAttributes):
     """Docker Supervisor interface."""
@@ -171,7 +179,10 @@ class DockerInterface(CoreSysAttributes):
                 self._docker_login(image)
 
             # Pull new image
-            docker_image = self.sys_docker.images.pull(f"{image}:{version!s}")
+            docker_image = self.sys_docker.images.pull(
+                f"{image}:{version!s}",
+                platform=MAP_ARCH[self.sys_arch.default],
+            )
 
             # Validate content
             try:
