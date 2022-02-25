@@ -178,7 +178,7 @@ class AddonManager(CoreSysAttributes):
         await addon.install_apparmor()
 
         try:
-            await addon.instance.install(store.version, store.image)
+            await addon.instance.install(store.version, store.image, arch=addon.arch)
         except DockerError as err:
             self.data.uninstall(addon)
             raise AddonsError() from err

@@ -504,6 +504,11 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data.get(ATTR_MACHINE, [])
 
     @property
+    def arch(self) -> str:
+        """Return architecture to use for the addon's image."""
+        return self._arch(self.data)
+
+    @property
     def image(self) -> Optional[str]:
         """Generate image name from data."""
         return self._image(self.data)
@@ -614,15 +619,22 @@ class AddonModel(CoreSysAttributes, ABC):
         except (AwesomeVersionException, TypeError):
             return True
 
+    def _arch(self, config) -> str:
+        """Determine best fit architecture for the addon's image."""
+        if ATTR_IMAGE in config:
+            return self.sys_arch.match(config[ATTR_ARCH])
+
+        return self.sys_arch.default
+
     def _image(self, config) -> str:
         """Generate image name from data."""
+        arch = self.arch
         # Repository with Dockerhub images
         if ATTR_IMAGE in config:
-            arch = self.sys_arch.match(config[ATTR_ARCH])
             return config[ATTR_IMAGE].format(arch=arch)
 
         # local build
-        return f"{config[ATTR_REPOSITORY]}/{self.sys_arch.default}-addon-{config[ATTR_SLUG]}"
+        return f"{config[ATTR_REPOSITORY]}/{arch}-addon-{config[ATTR_SLUG]}"
 
     def install(self) -> Awaitable[None]:
         """Install this add-on."""

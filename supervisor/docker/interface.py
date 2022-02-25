@@ -158,19 +158,28 @@ class DockerInterface(CoreSysAttributes):
 
     @process_lock
     def install(
-        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
+        self,
+        version: AwesomeVersion,
+        image: Optional[str] = None,
+        latest: bool = False,
+        arch: Optional[str] = None,
     ):
         """Pull docker image."""
-        return self.sys_run_in_executor(self._install, version, image, latest)
+        return self.sys_run_in_executor(self._install, version, image, latest, arch)
 
     def _install(
-        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
+        self,
+        version: AwesomeVersion,
+        image: Optional[str] = None,
+        latest: bool = False,
+        arch: Optional[str] = None,
     ) -> None:
         """Pull Docker image.
 
         Need run inside executor.
         """
         image = image or self.image
+        arch = arch or self.sys_arch.default
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
         try:
@@ -181,7 +190,7 @@ class DockerInterface(CoreSysAttributes):
             # Pull new image
             docker_image = self.sys_docker.images.pull(
                 f"{image}:{version!s}",
-                platform=MAP_ARCH[self.sys_arch.default],
+                platform=MAP_ARCH[arch],
             )
 
             # Validate content
