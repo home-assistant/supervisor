@@ -116,14 +116,14 @@ class Core(CoreSysAttributes):
             self.sys_host.load(),
             # Adjust timezone / time settings
             self._adjust_system_datetime(),
+            # Load CPU/Arch
+            self.sys_arch.load(),
             # Load Plugins container
             self.sys_plugins.load(),
             # load last available data
             self.sys_updater.load(),
             # Load Home Assistant
             self.sys_homeassistant.load(),
-            # Load CPU/Arch
-            self.sys_arch.load(),
             # Load HassOS
             self.sys_os.load(),
             # Load Stores
