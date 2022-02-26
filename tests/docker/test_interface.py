@@ -39,13 +39,13 @@ async def test_docker_image_platform(coresys: CoreSys, cpu_arch: str, platform: 
 
 
 async def test_docker_image_default_platform(coresys: CoreSys):
-    """Test platform set using default arch when omitted."""
+    """Test platform set using supervisor arch when omitted."""
     with patch.object(
-        type(coresys.arch), "default", PropertyMock(return_value="aarch64")
+        type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
     ), patch.object(
         coresys.docker.images, "pull", return_value=Mock(id="test:1.2.3")
     ) as pull:
         instance = DockerInterface(coresys)
         await instance.install(AwesomeVersion("1.2.3"), "test")
         assert pull.call_count == 1
-        assert pull.call_args == call("test:1.2.3", platform="linux/arm64")
+        assert pull.call_args == call("test:1.2.3", platform="linux/386")

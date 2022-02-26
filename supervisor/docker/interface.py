@@ -179,7 +179,8 @@ class DockerInterface(CoreSysAttributes):
         Need run inside executor.
         """
         image = image or self.image
-        arch = arch or self.sys_arch.default
+        # sys_arch.default not set before plugins and may be an unsupported arch
+        arch = arch or self.sys_supervisor.arch
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
         try:
