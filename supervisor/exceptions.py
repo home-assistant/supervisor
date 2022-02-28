@@ -467,3 +467,7 @@ class StoreJobError(StoreError, JobException):
 
 class BackupError(HassioError):
     """Raise if an error during backup is happening."""
+
+
+class HomeAssistantBackupError(BackupError):
+    """Raise if an error during Home Assistant Core backup is happening."""
