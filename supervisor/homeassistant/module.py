@@ -335,16 +335,21 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
             # Backup data config folder
             def _write_tarfile():
-                with tar_file as backup:
-                    # Backup metadata
-                    backup.add(temp, arcname=".")
+                try:
+                    with tar_file as backup:
+                        # Backup metadata
+                        backup.add(temp, arcname=".")
 
-                    # Backup data
-                    atomic_contents_add(
-                        backup,
-                        self.sys_config.path_homeassistant,
-                        excludes=HOMEASSISTANT_BACKUP_EXCLUDE,
-                        arcname="data",
+                        # Backup data
+                        atomic_contents_add(
+                            backup,
+                            self.sys_config.path_homeassistant,
+                            excludes=HOMEASSISTANT_BACKUP_EXCLUDE,
+                            arcname="data",
+                        )
+                except (tarfile.TarError, OSError) as err:
+                    _LOGGER.warning(
+                        "Can't backup Home Assistant Core config folder: %s", err
                     )
 
             try:
