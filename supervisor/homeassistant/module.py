@@ -354,7 +354,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 _LOGGER.info("Backup Home Assistant Core config folder done")
             except (tarfile.TarError, OSError) as err:
                 raise HomeAssistantBackupError(
-                    "Can't backup Home Assistant Core config folder", _LOGGER.error
+                    f"Can't backup Home Assistant Core config folder: {err}", _LOGGER.error
                 ) from err
             finally:
                 try:

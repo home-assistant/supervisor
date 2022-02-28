@@ -407,7 +407,7 @@ class Backup(CoreSysAttributes):
             try:
                 await self.sys_run_in_executor(_folder_save, folder)
             except (tarfile.TarError, OSError) as err:
-                raise BackupError(f"Can't backup folder {folder}", _LOGGER.error) from err
+                raise BackupError(f"Can't backup folder {folder}: {err}", _LOGGER.error) from err
 
     async def restore_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
