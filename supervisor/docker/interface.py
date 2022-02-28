@@ -1,9 +1,11 @@
 """Interface class for Supervisor Docker object."""
+from __future__ import annotations
+
 import asyncio
 from contextlib import suppress
 import logging
 import re
-from typing import Any, Awaitable, Optional
+from typing import Any, Awaitable
 
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
@@ -17,6 +19,7 @@ from ..const import (
     ATTR_USERNAME,
     LABEL_ARCH,
     LABEL_VERSION,
+    CpuArch,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -52,7 +55,7 @@ class DockerInterface(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
         self.coresys: CoreSys = coresys
-        self._meta: Optional[dict[str, Any]] = None
+        self._meta: dict[str, Any] | None = None
         self.lock: asyncio.Lock = asyncio.Lock()
 
     @property
@@ -61,7 +64,7 @@ class DockerInterface(CoreSysAttributes):
         return 10
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """Return name of Docker container."""
         return None
 
@@ -85,7 +88,7 @@ class DockerInterface(CoreSysAttributes):
         return self.meta_config.get("Labels") or {}
 
     @property
-    def image(self) -> Optional[str]:
+    def image(self) -> str | None:
         """Return name of Docker image."""
         try:
             return self.meta_config["Image"].partition(":")[0]
@@ -93,14 +96,14 @@ class DockerInterface(CoreSysAttributes):
             return None
 
     @property
-    def version(self) -> Optional[AwesomeVersion]:
+    def version(self) -> AwesomeVersion | None:
         """Return version of Docker image."""
         if LABEL_VERSION not in self.meta_labels:
             return None
         return AwesomeVersion(self.meta_labels[LABEL_VERSION])
 
     @property
-    def arch(self) -> Optional[str]:
+    def arch(self) -> str | None:
         """Return arch of Docker image."""
         return self.meta_labels.get(LABEL_ARCH)
 
@@ -160,9 +163,9 @@ class DockerInterface(CoreSysAttributes):
     def install(
         self,
         version: AwesomeVersion,
-        image: Optional[str] = None,
+        image: str | None = None,
         latest: bool = False,
-        arch: Optional[str] = None,
+        arch: CpuArch | None = None,
     ):
         """Pull docker image."""
         return self.sys_run_in_executor(self._install, version, image, latest, arch)
@@ -170,17 +173,16 @@ class DockerInterface(CoreSysAttributes):
     def _install(
         self,
         version: AwesomeVersion,
-        image: Optional[str] = None,
+        image: str | None = None,
         latest: bool = False,
-        arch: Optional[str] = None,
+        arch: CpuArch | None = None,
     ) -> None:
         """Pull Docker image.
 
         Need run inside executor.
         """
         image = image or self.image
-        # sys_arch.default not set before plugins and may be an unsupported arch
-        arch = arch or self.sys_supervisor.arch
+        arch = arch or self.sys_arch.supervisor
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
         try:
@@ -399,13 +401,13 @@ class DockerInterface(CoreSysAttributes):
 
     @process_lock
     def update(
-        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
     ) -> Awaitable[None]:
         """Update a Docker image."""
         return self.sys_run_in_executor(self._update, version, image, latest)
 
     def _update(
-        self, version: AwesomeVersion, image: Optional[str] = None, latest: bool = False
+        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
     ) -> None:
         """Update a docker image.
 
@@ -449,11 +451,11 @@ class DockerInterface(CoreSysAttributes):
         return b""
 
     @process_lock
-    def cleanup(self, old_image: Optional[str] = None) -> Awaitable[None]:
+    def cleanup(self, old_image: str | None = None) -> Awaitable[None]:
         """Check if old version exists and cleanup."""
         return self.sys_run_in_executor(self._cleanup, old_image)
 
-    def _cleanup(self, old_image: Optional[str] = None) -> None:
+    def _cleanup(self, old_image: str | None = None) -> None:
         """Check if old version exists and cleanup.
 
         Need run inside executor.

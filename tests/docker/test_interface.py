@@ -4,6 +4,7 @@ from unittest.mock import Mock, PropertyMock, call, patch
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
 
@@ -20,11 +21,11 @@ def mock_verify_content(coresys: CoreSys):
 @pytest.mark.parametrize(
     "cpu_arch, platform",
     [
-        ("armv7", "linux/arm/v7"),
-        ("armhf", "linux/arm/v6"),
-        ("aarch64", "linux/arm64"),
-        ("i386", "linux/386"),
-        ("amd64", "linux/amd64"),
+        (CpuArch.ARMV7, "linux/arm/v7"),
+        (CpuArch.ARMHF, "linux/arm/v6"),
+        (CpuArch.AARCH64, "linux/arm64"),
+        (CpuArch.I386, "linux/386"),
+        (CpuArch.AMD64, "linux/amd64"),
     ],
 )
 async def test_docker_image_platform(coresys: CoreSys, cpu_arch: str, platform: str):

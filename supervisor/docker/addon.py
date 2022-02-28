@@ -31,6 +31,7 @@ from ..const import (
     SYSTEMD_JOURNAL_PERSISTENT,
     SYSTEMD_JOURNAL_VOLATILE,
     BusEvent,
+    CpuArch,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -519,7 +520,7 @@ class DockerAddon(DockerInterface):
         version: AwesomeVersion,
         image: str | None = None,
         latest: bool = False,
-        arch: str | None = None,
+        arch: CpuArch | None = None,
     ) -> None:
         """Pull Docker image or build it.
 
