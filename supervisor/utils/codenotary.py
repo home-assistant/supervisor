@@ -58,7 +58,7 @@ async def cas_validate(
             env=clean_env(),
         )
 
-        async with async_timeout.timeout(15):
+        async with async_timeout.timeout(30):
             data, error = await proc.communicate()
     except OSError as err:
         raise CodeNotaryError(
