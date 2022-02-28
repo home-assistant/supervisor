@@ -387,30 +387,27 @@ class Backup(CoreSysAttributes):
                 return
 
             # Take backup
-            try:
-                _LOGGER.info("Backing up folder %s", name)
-                with SecureTarFile(
-                    tar_name, "w", key=self._key, gzip=self.compressed
-                ) as tar_file:
-                    atomic_contents_add(
-                        tar_file,
-                        origin_dir,
-                        excludes=[],
-                        arcname=".",
-                    )
+            _LOGGER.info("Backing up folder %s", name)
+            with SecureTarFile(
+                tar_name, "w", key=self._key, gzip=self.compressed
+            ) as tar_file:
+                atomic_contents_add(
+                    tar_file,
+                    origin_dir,
+                    excludes=[],
+                    arcname=".",
+                )
 
-                _LOGGER.info("Backup folder %s done", name)
-                self._data[ATTR_FOLDERS].append(name)
-            except (tarfile.TarError, OSError) as err:
-                _LOGGER.warning("Can't backup folder %s: %s", name, err)
+            _LOGGER.info("Backup folder %s done", name)
+            self._data[ATTR_FOLDERS].append(name)
 
         # Save folder sequential
         # avoid issue on slow IO
         for folder in folder_list:
             try:
                 await self.sys_run_in_executor(_folder_save, folder)
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't save folder %s: %s", folder, err)
+            except (tarfile.TarError, OSError) as err:
+                raise BackupError(f"Can't backup folder {folder}") from err
 
     async def restore_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
