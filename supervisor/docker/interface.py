@@ -41,11 +41,11 @@ IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
 DOCKER_HUB = "hub.docker.com"
 
 MAP_ARCH = {
-    "armv7": "linux/arm/v7",
-    "armhf": "linux/arm/v6",
-    "aarch64": "linux/arm64",
-    "i386": "linux/386",
-    "amd64": "linux/amd64",
+    CpuArch.ARMV7: "linux/arm/v7",
+    CpuArch.ARMHF: "linux/arm/v6",
+    CpuArch.AARCH64: "linux/arm64",
+    CpuArch.I386: "linux/386",
+    CpuArch.AMD64: "linux/amd64",
 }
 
 
