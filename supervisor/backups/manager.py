@@ -201,8 +201,8 @@ class BackupManager(CoreSysAttributes):
 
         # HomeAssistant Folder is for v1
         if FOLDER_HOMEASSISTANT in folders:
-            homeassistant = True
             folders.remove(FOLDER_HOMEASSISTANT)
+            homeassistant = True
 
         if len(addons) == 0 and len(folders) == 0 and not homeassistant:
             _LOGGER.error("Nothing to create backup for")
