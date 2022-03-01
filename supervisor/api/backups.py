@@ -9,7 +9,7 @@ from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
-from ..backups.validate import ALL_FOLDERS
+from ..backups.validate import ALL_FOLDERS, FOLDER_HOMEASSISTANT
 from ..const import (
     ATTR_ADDONS,
     ATTR_BACKUPS,
@@ -36,13 +36,16 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
 
+# Backwards compatible / Remove 2022.08
+_ALL_FOLDERS = ALL_FOLDERS + [FOLDER_HOMEASSISTANT]
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_RESTORE_PARTIAL = vol.Schema(
     {
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
         vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
-        vol.Optional(ATTR_FOLDERS): vol.All([vol.In(ALL_FOLDERS)], vol.Unique()),
+        vol.Optional(ATTR_FOLDERS): vol.All([vol.In(_ALL_FOLDERS)], vol.Unique()),
     }
 )
 
@@ -59,7 +62,7 @@ SCHEMA_BACKUP_FULL = vol.Schema(
 SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
     {
         vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
-        vol.Optional(ATTR_FOLDERS): vol.All([vol.In(ALL_FOLDERS)], vol.Unique()),
+        vol.Optional(ATTR_FOLDERS): vol.All([vol.In(_ALL_FOLDERS)], vol.Unique()),
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     }
 )

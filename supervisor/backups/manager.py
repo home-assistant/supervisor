@@ -148,7 +148,7 @@ class BackupManager(CoreSysAttributes):
                 # HomeAssistant Folder is for v1
                 if homeassistant or FOLDER_HOMEASSISTANT in folder_list:
                     await backup.store_homeassistant()
-                    folder_list = list(folder_list)
+                if FOLDER_HOMEASSISTANT in folder_list:
                     folder_list.remove(FOLDER_HOMEASSISTANT)
 
                 if folder_list:
@@ -186,12 +186,12 @@ class BackupManager(CoreSysAttributes):
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_backup_partial(
         self,
-        name="",
-        addons=None,
-        folders=None,
-        password=None,
-        homeassistant=True,
-        compressed=True,
+        name: str = "",
+        addons: list[str] | None = None,
+        folders: list[str] | None = None,
+        password: str | None = None,
+        homeassistant: bool = False,
+        compressed: bool = True,
     ):
         """Create a partial backup."""
         if self.lock.locked():
@@ -227,7 +227,7 @@ class BackupManager(CoreSysAttributes):
         self,
         backup: Backup,
         addon_list: list[str],
-        folder_list: list[Path],
+        folder_list: list[str],
         homeassistant: bool,
         replace: bool,
     ):
