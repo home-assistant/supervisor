@@ -21,6 +21,7 @@ _CAS_CMD: str = (
 _CACHE: set[tuple[str, str]] = set()
 
 
+_ATTR_ERROR: Final = "error"
 _ATTR_STATUS: Final = "status"
 
 
@@ -87,6 +88,9 @@ async def cas_validate(
         raise CodeNotaryError(
             f"Can't parse CodeNotary output: {data!s} - {err!s}", _LOGGER.error
         ) from err
+
+    if _ATTR_ERROR in data_json:
+        raise CodeNotaryBackendError(data_json[_ATTR_ERROR], _LOGGER.warning)
 
     if data_json[_ATTR_STATUS] == 0:
         _CACHE.add((checksum, signer))
