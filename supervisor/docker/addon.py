@@ -31,6 +31,7 @@ from ..const import (
     SYSTEMD_JOURNAL_PERSISTENT,
     SYSTEMD_JOURNAL_VOLATILE,
     BusEvent,
+    CpuArch,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -515,7 +516,11 @@ class DockerAddon(DockerInterface):
             )
 
     def _install(
-        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
+        self,
+        version: AwesomeVersion,
+        image: str | None = None,
+        latest: bool = False,
+        arch: CpuArch | None = None,
     ) -> None:
         """Pull Docker image or build it.
 
@@ -524,7 +529,7 @@ class DockerAddon(DockerInterface):
         if self.addon.need_build:
             self._build(version)
         else:
-            super()._install(version, image, latest)
+            super()._install(version, image, latest, arch)
 
     def _build(self, version: AwesomeVersion) -> None:
         """Build a Docker container.

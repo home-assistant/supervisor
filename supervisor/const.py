@@ -454,3 +454,13 @@ class BusEvent(str, Enum):
 
     HARDWARE_NEW_DEVICE = "hardware_new_device"
     HARDWARE_REMOVE_DEVICE = "hardware_remove_device"
+
+
+class CpuArch(str, Enum):
+    """Supported CPU architectures."""
+
+    ARMV7 = "armv7"
+    ARMHF = "armhf"
+    AARCH64 = "aarch64"
+    I386 = "i386"
+    AMD64 = "amd64"
