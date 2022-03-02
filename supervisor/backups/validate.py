@@ -31,7 +31,6 @@ from ..const import (
 from ..validate import SCHEMA_DOCKER_CONFIG, repositories, version_tag
 
 ALL_FOLDERS = [
-    FOLDER_HOMEASSISTANT,
     FOLDER_SHARE,
     FOLDER_ADDONS,
     FOLDER_SSL,

@@ -144,13 +144,11 @@ class BackupManager(CoreSysAttributes):
                     _LOGGER.info("Backing up %s store Add-ons", backup.slug)
                     await backup.store_addons(addon_list)
 
-                # Backup folders
                 # HomeAssistant Folder is for v1
-                if homeassistant or FOLDER_HOMEASSISTANT in folder_list:
+                if homeassistant:
                     await backup.store_homeassistant()
-                    folder_list = list(folder_list)
-                    folder_list.remove(FOLDER_HOMEASSISTANT)
 
+                # Backup folders
                 if folder_list:
                     _LOGGER.info("Backing up %s store folders", backup.slug)
                     await backup.store_folders(folder_list)
@@ -186,12 +184,12 @@ class BackupManager(CoreSysAttributes):
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_backup_partial(
         self,
-        name="",
-        addons=None,
-        folders=None,
-        password=None,
-        homeassistant=True,
-        compressed=True,
+        name: str = "",
+        addons: list[str] | None = None,
+        folders: list[str] | None = None,
+        password: str | None = None,
+        homeassistant: bool = False,
+        compressed: bool = True,
     ):
         """Create a partial backup."""
         if self.lock.locked():
@@ -200,6 +198,11 @@ class BackupManager(CoreSysAttributes):
 
         addons = addons or []
         folders = folders or []
+
+        # HomeAssistant Folder is for v1
+        if FOLDER_HOMEASSISTANT in folders:
+            folders.remove(FOLDER_HOMEASSISTANT)
+            homeassistant = True
 
         if len(addons) == 0 and len(folders) == 0 and not homeassistant:
             _LOGGER.error("Nothing to create backup for")
@@ -227,15 +230,10 @@ class BackupManager(CoreSysAttributes):
         self,
         backup: Backup,
         addon_list: list[str],
-        folder_list: list[Path],
+        folder_list: list[str],
         homeassistant: bool,
         replace: bool,
     ):
-        # Version 1
-        if FOLDER_HOMEASSISTANT in folder_list:
-            folder_list.remove(FOLDER_HOMEASSISTANT)
-            homeassistant = backup.homeassistant_version is not None
-
         try:
             task_hass: asyncio.Task | None = None
             async with backup:
@@ -356,6 +354,14 @@ class BackupManager(CoreSysAttributes):
             _LOGGER.error("A backup/restore process is already running")
             return False
 
+        addon_list = addons or []
+        folder_list = folders or []
+
+        # Version 1
+        if FOLDER_HOMEASSISTANT in folder_list:
+            folder_list.remove(FOLDER_HOMEASSISTANT)
+            homeassistant = True
+
         if backup.protected and not backup.set_password(password):
             _LOGGER.error("Invalid password for backup %s", backup.slug)
             return False
@@ -363,9 +369,6 @@ class BackupManager(CoreSysAttributes):
         if backup.homeassistant is None and homeassistant:
             _LOGGER.error("No Home Assistant Core data inside the backup")
             return False
-
-        addon_list = addons or []
-        folder_list = folders or []
 
         _LOGGER.info("Partial-Restore %s start", backup.slug)
         async with self.lock:
