@@ -41,6 +41,7 @@ class UnsupportedReason(str, Enum):
     SOFTWARE = "software"
     SOURCE_MODS = "source_mods"
     SYSTEMD = "systemd"
+    SYSTEMD_RESOLVED = "systemd_resolved"
 
 
 class UnhealthyReason(str, Enum):
