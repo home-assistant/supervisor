@@ -23,10 +23,10 @@ jobs:
     name: Prepare Python ${{ matrix.python-version }} dependencies
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Restore Python virtual environment
@@ -64,9 +64,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -93,7 +93,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Register hadolint problem matcher
         run: |
           echo "::add-matcher::.github/workflows/matchers/hadolint.json"
@@ -108,9 +108,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -152,9 +152,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -184,9 +184,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -225,9 +225,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -269,9 +269,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -301,9 +301,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -345,9 +345,9 @@ jobs:
     name: Run tests Python ${{ matrix.python-version }}
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         id: python
         with:
           python-version: ${{ matrix.python-version }}
@@ -403,9 +403,9 @@ jobs:
     needs: pytest
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.0.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v3.0.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
