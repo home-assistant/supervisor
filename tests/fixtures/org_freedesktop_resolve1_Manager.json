@@ -1,0 +1,39 @@
+{
+  "LLMNRHostname": "homeassistant",
+  "LLMNR": "yes",
+  "MulticastDNS": "resolve",
+  "DNSOverTLS": "no",
+  "DNS": [
+    [0, 2, [127, 0, 0, 1]],
+    [0, 10, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]]
+  ],
+  "DNSEx": [
+    [0, 2, [127, 0, 0, 1], 0, ""],
+    [0, 10, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], 0, ""]
+  ],
+  "FallbackDNS": [
+    [0, 2, [1, 1, 1, 1]],
+    [0, 10, [38, 6, 71, 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 17]]
+  ],
+  "FallbackDNSEx": [
+    [0, 2, [1, 1, 1, 1], 0, "cloudflare-dns.com"],
+    [
+      0,
+      10,
+      [38, 6, 71, 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 17],
+      0,
+      "cloudflare-dns.com"
+    ]
+  ],
+  "CurrentDNSServer": [0, 2, [127, 0, 0, 1]],
+  "CurrentDNSServerEx": [0, 2, [127, 0, 0, 1], 0, ""],
+  "Domains": [[0, "local.hass.io", false]],
+  "TransactionStatistics": [0, 100000],
+  "CacheStatistics": [10, 50000, 10000],
+  "DNSSEC": "no",
+  "DNSSECStatistics": [0, 0, 0, 0],
+  "DNSSECSupported": false,
+  "DNSSECNegativeTrustAnchors": ["168.192.in-addr.arpa", "local"],
+  "DNSStubListener": "no",
+  "ResolvConfMode": "foreign"
+}

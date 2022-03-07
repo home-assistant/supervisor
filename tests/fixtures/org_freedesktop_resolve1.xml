@@ -1,0 +1,194 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+ <interface name="org.freedesktop.DBus.Peer">
+  <method name="Ping"/>
+  <method name="GetMachineId">
+   <arg type="s" name="machine_uuid" direction="out"/>
+  </method>
+ </interface>
+ <interface name="org.freedesktop.DBus.Introspectable">
+  <method name="Introspect">
+   <arg name="data" type="s" direction="out"/>
+  </method>
+ </interface>
+ <interface name="org.freedesktop.DBus.Properties">
+  <method name="Get">
+   <arg name="interface" direction="in" type="s"/>
+   <arg name="property" direction="in" type="s"/>
+   <arg name="value" direction="out" type="v"/>
+  </method>
+  <method name="GetAll">
+   <arg name="interface" direction="in" type="s"/>
+   <arg name="properties" direction="out" type="a{sv}"/>
+  </method>
+  <method name="Set">
+   <arg name="interface" direction="in" type="s"/>
+   <arg name="property" direction="in" type="s"/>
+   <arg name="value" direction="in" type="v"/>
+  </method>
+  <signal name="PropertiesChanged">
+   <arg type="s" name="interface"/>
+   <arg type="a{sv}" name="changed_properties"/>
+   <arg type="as" name="invalidated_properties"/>
+  </signal>
+ </interface>
+ <interface name="org.freedesktop.resolve1.Manager">
+  <property name="LLMNRHostname" type="s" access="read">
+  </property>
+  <property name="LLMNR" type="s" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="MulticastDNS" type="s" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="DNSOverTLS" type="s" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="DNS" type="a(iiay)" access="read">
+  </property>
+  <property name="DNSEx" type="a(iiayqs)" access="read">
+  </property>
+  <property name="FallbackDNS" type="a(iiay)" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="const"/>
+  </property>
+  <property name="FallbackDNSEx" type="a(iiayqs)" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="const"/>
+  </property>
+  <property name="CurrentDNSServer" type="(iiay)" access="read">
+  </property>
+  <property name="CurrentDNSServerEx" type="(iiayqs)" access="read">
+  </property>
+  <property name="Domains" type="a(isb)" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="TransactionStatistics" type="(tt)" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="CacheStatistics" type="(ttt)" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="DNSSEC" type="s" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="DNSSECStatistics" type="(tttt)" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="DNSSECSupported" type="b" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="DNSSECNegativeTrustAnchors" type="as" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="DNSStubListener" type="s" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <property name="ResolvConfMode" type="s" access="read">
+   <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+  </property>
+  <method name="ResolveHostname">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="s" name="name" direction="in"/>
+   <arg type="i" name="family" direction="in"/>
+   <arg type="t" name="flags" direction="in"/>
+   <arg type="a(iiay)" name="addresses" direction="out"/>
+   <arg type="s" name="canonical" direction="out"/>
+   <arg type="t" name="flags" direction="out"/>
+  </method>
+  <method name="ResolveAddress">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="i" name="family" direction="in"/>
+   <arg type="ay" name="address" direction="in"/>
+   <arg type="t" name="flags" direction="in"/>
+   <arg type="a(is)" name="names" direction="out"/>
+   <arg type="t" name="flags" direction="out"/>
+  </method>
+  <method name="ResolveRecord">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="s" name="name" direction="in"/>
+   <arg type="q" name="class" direction="in"/>
+   <arg type="q" name="type" direction="in"/>
+   <arg type="t" name="flags" direction="in"/>
+   <arg type="a(iqqay)" name="records" direction="out"/>
+   <arg type="t" name="flags" direction="out"/>
+  </method>
+  <method name="ResolveService">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="s" name="name" direction="in"/>
+   <arg type="s" name="type" direction="in"/>
+   <arg type="s" name="domain" direction="in"/>
+   <arg type="i" name="family" direction="in"/>
+   <arg type="t" name="flags" direction="in"/>
+   <arg type="a(qqqsa(iiay)s)" name="srv_data" direction="out"/>
+   <arg type="aay" name="txt_data" direction="out"/>
+   <arg type="s" name="canonical_name" direction="out"/>
+   <arg type="s" name="canonical_type" direction="out"/>
+   <arg type="s" name="canonical_domain" direction="out"/>
+   <arg type="t" name="flags" direction="out"/>
+  </method>
+  <method name="GetLink">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="o" name="path" direction="out"/>
+  </method>
+  <method name="SetLinkDNS">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="a(iay)" name="addresses" direction="in"/>
+  </method>
+  <method name="SetLinkDNSEx">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="a(iayqs)" name="addresses" direction="in"/>
+  </method>
+  <method name="SetLinkDomains">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="a(sb)" name="domains" direction="in"/>
+  </method>
+  <method name="SetLinkDefaultRoute">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="b" name="enable" direction="in"/>
+  </method>
+  <method name="SetLinkLLMNR">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="s" name="mode" direction="in"/>
+  </method>
+  <method name="SetLinkMulticastDNS">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="s" name="mode" direction="in"/>
+  </method>
+  <method name="SetLinkDNSOverTLS">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="s" name="mode" direction="in"/>
+  </method>
+  <method name="SetLinkDNSSEC">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="s" name="mode" direction="in"/>
+  </method>
+  <method name="SetLinkDNSSECNegativeTrustAnchors">
+   <arg type="i" name="ifindex" direction="in"/>
+   <arg type="as" name="names" direction="in"/>
+  </method>
+  <method name="RevertLink">
+   <arg type="i" name="ifindex" direction="in"/>
+  </method>
+  <method name="RegisterService">
+   <arg type="s" name="name" direction="in"/>
+   <arg type="s" name="name_template" direction="in"/>
+   <arg type="s" name="type" direction="in"/>
+   <arg type="q" name="service_port" direction="in"/>
+   <arg type="q" name="service_priority" direction="in"/>
+   <arg type="q" name="service_weight" direction="in"/>
+   <arg type="aa{say}" name="txt_datas" direction="in"/>
+   <arg type="o" name="service_path" direction="out"/>
+  </method>
+  <method name="UnregisterService">
+   <arg type="o" name="service_path" direction="in"/>
+  </method>
+  <method name="ResetStatistics">
+  </method>
+  <method name="FlushCaches">
+  </method>
+  <method name="ResetServerFeatures">
+  </method>
+ </interface>
+ <node name="link"/>
+ <node name="dnssd"/>
+</node>

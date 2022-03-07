@@ -9,6 +9,7 @@ from .interface import DBusInterface
 from .logind import Logind
 from .network import NetworkManager
 from .rauc import Rauc
+from .resolved import Resolved
 from .systemd import Systemd
 from .timedate import TimeDate
 
@@ -29,6 +30,7 @@ class DBusManager(CoreSysAttributes):
         self._network: NetworkManager = NetworkManager()
         self._agent: OSAgent = OSAgent()
         self._timedate: TimeDate = TimeDate()
+        self._resolved: Resolved = Resolved()
 
     @property
     def systemd(self) -> Systemd:
@@ -65,6 +67,11 @@ class DBusManager(CoreSysAttributes):
         """Return the timedate interface."""
         return self._timedate
 
+    @property
+    def resolved(self) -> Resolved:
+        """Return the resolved interface."""
+        return self._resolved
+
     async def load(self) -> None:
         """Connect interfaces to D-Bus."""
         if not SOCKET_DBUS.exists():
@@ -81,6 +88,7 @@ class DBusManager(CoreSysAttributes):
             self.timedate,
             self.network,
             self.rauc,
+            self.resolved,
         ]
         for dbus in dbus_loads:
             _LOGGER.info("Load dbus interface %s", dbus.name)
