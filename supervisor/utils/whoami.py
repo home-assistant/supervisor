@@ -13,7 +13,7 @@ from ..exceptions import WhoamiConnectivityError, WhoamiError, WhoamiSSLError
 from .dt import utc_from_timestamp
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-_API_CALL: str = "whoami.home-assistant.io/v1"
+_API_CALL: str = "services.home-assistant.io/whoami/v1"
 
 
 @attr.s(slots=True, frozen=True)
