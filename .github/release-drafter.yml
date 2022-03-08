@@ -31,6 +31,7 @@ categories:
 
   - title: ":arrow_up: Dependency Updates"
     label: "dependencies"
+    collapse-after: 3
 
 include-labels:
   - "breaking-change"
