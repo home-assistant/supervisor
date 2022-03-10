@@ -46,7 +46,7 @@ def fixture_subprocess_exec(request):
         yield subprocess_exec
 
 
-@pytest.disable()
+@pytest.mark.skip()
 def test_checksum_calc():
     """Calc Checkusm as test."""
     assert calc_checksum("test") == calc_checksum(b"test")
@@ -56,7 +56,7 @@ def test_checksum_calc():
     )
 
 
-@pytest.disable()
+@pytest.mark.skip()
 async def test_valid_checksum():
     """Test a valid autorization."""
     await cas_validate(
@@ -65,7 +65,7 @@ async def test_valid_checksum():
     )
 
 
-@pytest.disable()
+@pytest.mark.skip()
 async def test_invalid_checksum():
     """Test a invalid autorization."""
     with pytest.raises(CodeNotaryUntrusted):
@@ -75,7 +75,7 @@ async def test_invalid_checksum():
         )
 
 
-@pytest.disable()
+@pytest.mark.skip()
 @pytest.mark.parametrize(
     "subprocess_exec",
     [
@@ -93,7 +93,7 @@ async def test_cas_backend_error(subprocess_exec):
         )
 
 
-@pytest.disable()
+@pytest.mark.skip()
 @pytest.mark.parametrize(
     "subprocess_exec",
     [SubprocessResponse(returncode=0, data='{"status":1}')],
@@ -108,7 +108,7 @@ async def test_cas_notarized_untrusted(subprocess_exec):
         )
 
 
-@pytest.disable()
+@pytest.mark.skip()
 @pytest.mark.parametrize(
     "subprocess_exec", [SubprocessResponse(exception=OSError())], indirect=True
 )
