@@ -328,6 +328,22 @@ jobs:
             exit 1
           fi
 
+      - name: Restart supervisor
+        run: |
+          test=$(docker exec hassio_cli ha supervisor restart --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ]; then
+            exit 1
+          fi
+
+      - name: Wait for Supervisor to come up
+        run: |
+          SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
+          ping="error"
+          while [ "$ping" != "ok" ]; do
+            ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r '.result')
+            sleep 5
+          done
+
       - name: Restore SSH add-on from backup
         run: |
           test=$(docker exec hassio_cli ha backups restore ${{ steps.backup.outputs.slug }} --addons core_ssh --no-progress --raw-json | jq -r '.result')
