@@ -7,6 +7,7 @@ from supervisor.coresys import CoreSys
 from supervisor.exceptions import CodeNotaryError
 
 
+@pytest.disable()
 async def test_content_trust(coresys: CoreSys):
     """Test Content-Trust."""
 
@@ -23,6 +24,7 @@ async def test_content_trust(coresys: CoreSys):
         )
 
 
+@pytest.disable()
 async def test_disabled_content_trust(coresys: CoreSys):
     """Test Content-Trust."""
     coresys.security.content_trust = False
@@ -36,6 +38,7 @@ async def test_disabled_content_trust(coresys: CoreSys):
         assert not cas_validate.called
 
 
+@pytest.disable()
 async def test_force_content_trust(coresys: CoreSys):
     """Force Content-Trust tests."""
 
