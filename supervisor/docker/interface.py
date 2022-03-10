@@ -658,7 +658,7 @@ class DockerInterface(CoreSysAttributes):
         job = asyncio.run_coroutine_threadsafe(
             self.sys_security.verify_own_content(checksum), self.sys_loop
         )
-        job.result(timeout=20)
+        job.result()
 
     @process_lock
     def check_trust(self) -> Awaitable[None]:
