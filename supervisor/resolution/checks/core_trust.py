@@ -33,7 +33,7 @@ class CheckCoreTrust(CheckBase):
             self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
             self.sys_resolution.create_issue(IssueType.TRUST, ContextType.CORE)
         except CodeNotaryBackendError:
-            _LOGGER.warning("CAS issues happening, skip tests for now")
+            _LOGGER.warning("CAS backend issue, skipping check")
             return
         except CodeNotaryError:
             pass
