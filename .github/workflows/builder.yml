@@ -315,7 +315,7 @@ jobs:
       - name: Create full backup
         id: backup
         run: |
-          test=$(docker exec hassio_cli ha backups new --no-progress --raw-json | jq -r '.result')
+          test=$(docker exec hassio_cli ha backups new --no-progress --raw-json)
           if [ "$(echo $test | jq '.result')" != "ok" ]; then
             exit 1
           fi
