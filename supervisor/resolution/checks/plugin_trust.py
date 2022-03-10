@@ -36,7 +36,7 @@ class CheckPluginTrust(CheckBase):
                     IssueType.TRUST, ContextType.PLUGIN, reference=plugin.slug
                 )
             except CodeNotaryBackendError:
-                _LOGGER.warning("CAS issues happening, skip tests for now")
+                _LOGGER.warning("CAS backend issue, skipping check")
                 return
             except CodeNotaryError:
                 pass
