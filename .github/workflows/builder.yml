@@ -312,6 +312,29 @@ jobs:
             exit 1
           fi
 
+      - name: Create full backup
+        id: backup
+        run: |
+          test=$(docker exec hassio_cli ha backups new --no-progress --raw-json | jq -r '.result')
+          if [ "$(echo $test | jq '.result')" != "ok" ]; then
+            exit 1
+          fi
+          echo "::set-output name=slug::$(echo $test | jq '.data.slug')"
+
+      - name: Uninstall SSH add-on
+        run: |
+          test=$(docker exec hassio_cli ha addons uninstall core_ssh --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ]; then
+            exit 1
+          fi
+
+      - name: Restore SSH add-on from backup
+        run: |
+          test=$(docker exec hassio_cli ha backups restore ${{ steps.backup.outputs.slug }} --addons core_ssh --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ]; then
+            exit 1
+          fi
+
       - name: Get supervisor logs on failiure
         if: ${{ cancelled() || failure() }}
         run: docker logs hassio_supervisor
