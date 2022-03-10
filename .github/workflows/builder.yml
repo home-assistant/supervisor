@@ -335,6 +335,13 @@ jobs:
             exit 1
           fi
 
+      - name: Restore SSL directory from backup
+        run: |
+          test=$(docker exec hassio_cli ha backups restore ${{ steps.backup.outputs.slug }} --folder ssl --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ]; then
+            exit 1
+          fi
+
       - name: Get supervisor logs on failiure
         if: ${{ cancelled() || failure() }}
         run: docker logs hassio_supervisor
