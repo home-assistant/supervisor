@@ -34,7 +34,6 @@ class CheckCoreTrust(CheckBase):
             self.sys_resolution.create_issue(IssueType.TRUST, ContextType.CORE)
         except CodeNotaryBackendError:
             _LOGGER.warning("CAS backend issue, skipping check")
-            return
         except CodeNotaryError:
             pass
 
