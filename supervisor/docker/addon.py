@@ -687,7 +687,7 @@ class DockerAddon(DockerInterface):
             self.sys_security.verify_content(self.addon.codenotary, checksum),
             self.sys_loop,
         )
-        job.result(timeout=20)
+        job.result()
 
     @Job(conditions=[JobCondition.OS_AGENT])
     async def _hardware_events(self, device: Device) -> None:
