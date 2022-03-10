@@ -279,7 +279,7 @@ jobs:
           fi
 
           # Make sure it actually installed
-          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.version')
+          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
           if [[ "$test" == "null" ]]; then
             exit 1
           fi
@@ -358,7 +358,7 @@ jobs:
           fi
 
           # Make sure it actually installed
-          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.version')
+          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
           if [[ "$test" == "null" ]]; then
             exit 1
           fi
