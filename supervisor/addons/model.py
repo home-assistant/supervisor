@@ -626,10 +626,11 @@ class AddonModel(CoreSysAttributes, ABC):
         """Generate image name from data."""
         # Repository with Dockerhub images
         if ATTR_IMAGE in config:
-            return config[ATTR_IMAGE].format(arch=self.arch)
+            arch = self.sys_arch.match(config[ATTR_ARCH])
+            return config[ATTR_IMAGE].format(arch=arch)
 
         # local build
-        return f"{config[ATTR_REPOSITORY]}/{self.arch}-addon-{config[ATTR_SLUG]}"
+        return f"{config[ATTR_REPOSITORY]}/{self.sys_arch.default}-addon-{config[ATTR_SLUG]}"
 
     def install(self) -> Awaitable[None]:
         """Install this add-on."""
