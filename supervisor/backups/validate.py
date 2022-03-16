@@ -67,6 +67,13 @@ def v1_folderlist(folder_data: list[str]) -> list[str]:
     return folder_data
 
 
+def v1_protected(protected: bool | str) -> bool:
+    """Cleanup old protected handling."""
+    if isinstance(protected, bool):
+        return protected
+    return True
+
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_BACKUP = vol.Schema(
     {
@@ -76,7 +83,9 @@ SCHEMA_BACKUP = vol.Schema(
         vol.Required(ATTR_NAME): str,
         vol.Required(ATTR_DATE): str,
         vol.Optional(ATTR_COMPRESSED, default=True): vol.Boolean(),
-        vol.Optional(ATTR_PROTECTED, default=False): vol.Boolean(),
+        vol.Optional(ATTR_PROTECTED, default=False): vol.All(
+            v1_protected, vol.Boolean()
+        ),
         vol.Optional(ATTR_CRYPTO, default=None): vol.Maybe(CRYPTO_AES128),
         vol.Optional(ATTR_HOMEASSISTANT, default=None): vol.All(
             v1_homeassistant,
