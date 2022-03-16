@@ -49,7 +49,7 @@ def test_v1_protected():
         {
             **VALID_DEFAULT,
             **{
-                validate.ATTR_PROTECTED: 8,
+                validate.ATTR_PROTECTED: "8",
                 validate.ATTR_TYPE: validate.BackupType.FULL,
             },
         }

@@ -67,7 +67,7 @@ def v1_folderlist(folder_data: list[str]) -> list[str]:
     return folder_data
 
 
-def v1_protected(protected: bool | Any) -> bool:
+def v1_protected(protected: bool | str) -> bool:
     """Cleanup old protected handling."""
     if isinstance(protected, bool):
         return protected
