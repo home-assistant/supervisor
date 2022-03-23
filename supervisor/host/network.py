@@ -79,7 +79,6 @@ class NetworkManager(CoreSysAttributes):
 
     async def check_connectivity(self):
         """Check the internet connection."""
-
         if not self.sys_dbus.network.connectivity_enabled:
             return
 
@@ -98,6 +97,28 @@ class NetworkManager(CoreSysAttributes):
 
         return Interface.from_dbus_interface(
             self.sys_dbus.network.interfaces[inet_name]
+        )
+
+    def _check_dbus(self):
+        """Check available dbus connection."""
+        if not self.sys_dbus.network.is_connected:
+            raise HostNotSupportedError(
+                "No systemd D-Bus connection available", _LOGGER.error
+            )
+
+    async def load(self):
+        """Load network information and reapply defaults over dbus."""
+        self._check_dbus()
+
+        await self.update()
+
+        # Apply current settings on each interface so OS can update any out of date defaults
+        interfaces = self.sys_dbus.network.interfaces
+        await asyncio.gather(
+            *[
+                self.apply_changes(Interface.from_dbus_interface(interfaces[i]))
+                for i in interfaces
+            ]
         )
 
     async def update(self):
