@@ -1,6 +1,5 @@
 """Fetch last versions from webserver."""
 import logging
-from typing import Awaitable
 
 from .const import (
     ATTR_CONTENT_TRUST,
@@ -71,9 +70,11 @@ class Security(FileConfiguration, CoreSysAttributes):
                 raise
             return
 
-    def verify_own_content(self, checksum: str) -> Awaitable[None]:
+    async def verify_own_content(self, checksum: str) -> None:
         """Verify content from HA org."""
-        return self.verify_content("notary@home-assistant.io", checksum)
+        return
+        # pylint: disable=unreachable
+        return await self.verify_content("notary@home-assistant.io", checksum)
 
     async def verify_secret(self, pwned_hash: str) -> None:
         """Verify pwned state of a secret."""
