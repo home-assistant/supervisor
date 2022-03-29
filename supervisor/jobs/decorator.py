@@ -181,6 +181,14 @@ class Job(CoreSysAttributes):
                 f"'{self._method.__qualname__}' blocked from execution, no Home Assistant OS-Agent available"
             )
 
+        if (
+            JobCondition.HOST_NETWORK in self.conditions
+            and not self.sys_dbus.network.is_connected
+        ):
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, host Network Manager not available"
+            )
+
     async def _acquire_exection_limit(self) -> None:
         """Process exection limits."""
         if self.limit not in (
