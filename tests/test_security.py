@@ -16,7 +16,6 @@ async def test_content_trust(coresys: CoreSys):
         cas_validate.assert_called_once_with("test@mail.com", "ffffffffffffff")
 
 
-
 async def test_disabled_content_trust(coresys: CoreSys):
     """Test Content-Trust."""
     coresys.security.content_trust = False
@@ -24,7 +23,6 @@ async def test_disabled_content_trust(coresys: CoreSys):
     with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
         await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
         assert not cas_validate.called
-
 
 
 async def test_force_content_trust(coresys: CoreSys):
