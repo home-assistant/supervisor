@@ -18,8 +18,13 @@ from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.const import REQUEST_FROM
 from supervisor.coresys import CoreSys
+from supervisor.dbus.agent import OSAgent
 from supervisor.dbus.const import DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
+from supervisor.dbus.hostname import Hostname
+from supervisor.dbus.interface import DBusInterface
 from supervisor.dbus.network import NetworkManager
+from supervisor.dbus.systemd import Systemd
+from supervisor.dbus.timedate import TimeDate
 from supervisor.docker import DockerAPI
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
@@ -145,6 +150,37 @@ async def network_manager(dbus) -> NetworkManager:
     await nm_obj.update()
 
     yield nm_obj
+
+
+async def mock_dbus_interface(dbus: DBus, instance: DBusInterface) -> DBusInterface:
+    """Mock dbus for a DBusInterface instance."""
+    instance.dbus = dbus
+    await instance.connect()
+    return instance
+
+
+@pytest.fixture
+async def hostname(dbus: DBus) -> Hostname:
+    """Mock Hostname."""
+    yield await mock_dbus_interface(dbus, Hostname())
+
+
+@pytest.fixture
+async def timedate(dbus: DBus) -> TimeDate:
+    """Mock Timedate."""
+    yield await mock_dbus_interface(dbus, TimeDate())
+
+
+@pytest.fixture
+async def systemd(dbus: DBus) -> Systemd:
+    """Mock Systemd."""
+    yield await mock_dbus_interface(dbus, Systemd())
+
+
+@pytest.fixture
+async def os_agent(dbus: DBus) -> Systemd:
+    """Mock OSAgent."""
+    yield await mock_dbus_interface(dbus, OSAgent())
 
 
 @pytest.fixture
