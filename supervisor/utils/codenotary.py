@@ -44,8 +44,6 @@ async def cas_validate(
     checksum: str,
 ) -> None:
     """Validate data against CodeNotary."""
-    return
-    # pylint: disable=unreachable
     if (checksum, signer) in _CACHE:
         return
 

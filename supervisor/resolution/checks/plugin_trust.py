@@ -4,7 +4,7 @@ from typing import Optional
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ...exceptions import CodeNotaryBackendError, CodeNotaryError, CodeNotaryUntrusted
+from ...exceptions import CodeNotaryError, CodeNotaryUntrusted
 from ..const import ContextType, IssueType, UnhealthyReason
 from .base import CheckBase
 
@@ -35,9 +35,6 @@ class CheckPluginTrust(CheckBase):
                 self.sys_resolution.create_issue(
                     IssueType.TRUST, ContextType.PLUGIN, reference=plugin.slug
                 )
-            except CodeNotaryBackendError:
-                _LOGGER.warning("CAS backend issue, skipping check")
-                return
             except CodeNotaryError:
                 pass
 
