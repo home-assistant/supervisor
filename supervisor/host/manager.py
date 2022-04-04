@@ -68,7 +68,7 @@ class HostManager(CoreSysAttributes):
         """Return a list of host features."""
         return self.supported_features()
 
-    @lru_cache
+    @lru_cache(maxsize=128)
     def supported_features(self) -> list[HostFeature]:
         """Return a list of supported host features."""
         features = []
