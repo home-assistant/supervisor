@@ -14,6 +14,8 @@ from awesomeversion import AwesomeVersion
 import jinja2
 import voluptuous as vol
 
+from supervisor.dbus.const import MulticastProtocolEnabled
+
 from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys
 from ..docker.dns import DockerDNS
@@ -97,6 +99,22 @@ class PluginDns(PluginBase):
     def latest_version(self) -> Optional[AwesomeVersion]:
         """Return latest version of CoreDNS."""
         return self.sys_updater.version_dns
+
+    @property
+    def mdns(self) -> bool:
+        """MDNS hostnames can be resolved."""
+        return self.sys_dbus.resolved.multicast_dns in [
+            MulticastProtocolEnabled.YES,
+            MulticastProtocolEnabled.RESOLVE,
+        ]
+
+    @property
+    def llmnr(self) -> bool:
+        """LLMNR hostnames can be resolved."""
+        return self.sys_dbus.resolved.llmnr in [
+            MulticastProtocolEnabled.YES,
+            MulticastProtocolEnabled.RESOLVE,
+        ]
 
     async def load(self) -> None:
         """Load DNS setup."""

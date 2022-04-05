@@ -11,7 +11,9 @@ from ..const import (
     ATTR_BLK_WRITE,
     ATTR_CPU_PERCENT,
     ATTR_HOST,
+    ATTR_LLMNR,
     ATTR_LOCALS,
+    ATTR_MDNS,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
@@ -49,6 +51,8 @@ class APICoreDNS(CoreSysAttributes):
             ATTR_HOST: str(self.sys_docker.network.dns),
             ATTR_SERVERS: self.sys_plugins.dns.servers,
             ATTR_LOCALS: self.sys_plugins.dns.locals,
+            ATTR_MDNS: self.sys_plugins.dns.mdns,
+            ATTR_LLMNR: self.sys_plugins.dns.llmnr,
         }
 
     @api_process

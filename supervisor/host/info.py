@@ -23,6 +23,11 @@ class InfoCenter(CoreSysAttributes):
         return self.sys_dbus.hostname.hostname
 
     @property
+    def llmnr_hostname(self) -> Optional[bool]:
+        """Return local llmnr hostname."""
+        return self.sys_dbus.resolved.llmnr_hostname
+
+    @property
     def chassis(self) -> Optional[str]:
         """Return local chassis type."""
         return self.sys_dbus.hostname.chassis
