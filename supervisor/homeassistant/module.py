@@ -34,6 +34,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     ConfigurationFileError,
+    HomeAssistantBackupError,
     HomeAssistantError,
     HomeAssistantWSError,
 )
@@ -351,6 +352,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 _LOGGER.info("Backing up Home Assistant Core config folder")
                 await self.sys_run_in_executor(_write_tarfile)
                 _LOGGER.info("Backup Home Assistant Core config folder done")
+            except (tarfile.TarError, OSError) as err:
+                raise HomeAssistantBackupError(
+                    f"Can't backup Home Assistant Core config folder: {str(err)}",
+                    _LOGGER.error,
+                ) from err
             finally:
                 try:
                     await self.sys_homeassistant.websocket.async_send_command(
