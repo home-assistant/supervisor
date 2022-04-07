@@ -6,14 +6,13 @@ from typing import Any, Awaitable
 from aiohttp import web
 import voluptuous as vol
 
+from .const import ATTR_LLMNR, ATTR_MDNS
 from ..const import (
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_CPU_PERCENT,
     ATTR_HOST,
-    ATTR_LLMNR,
     ATTR_LOCALS,
-    ATTR_MDNS,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,

@@ -93,14 +93,16 @@ async def test_api_host_features(api_client, coresys_disk_info: CoreSys):
     assert "resolved" in result["data"]["features"]
 
 
-async def test_api_llmnr_hostname(api_client, coresys_disk_info: CoreSys):
-    """Test LLMNR hostname in info."""
+async def test_api_llmnr_mdns_info(api_client, coresys_disk_info: CoreSys):
+    """Test llmnr and mdns details in info."""
     coresys = coresys_disk_info
 
     coresys.host.sys_dbus.resolved.is_connected = False
 
     resp = await api_client.get("/host/info")
     result = await resp.json()
+    assert result["data"]["broadcast_llmnr"] is None
+    assert result["data"]["broadcast_mdns"] is None
     assert result["data"]["llmnr_hostname"] is None
 
     coresys.host.sys_dbus.resolved.is_connected = True
@@ -109,4 +111,6 @@ async def test_api_llmnr_hostname(api_client, coresys_disk_info: CoreSys):
 
     resp = await api_client.get("/host/info")
     result = await resp.json()
+    assert result["data"]["broadcast_llmnr"] is True
+    assert result["data"]["broadcast_mdns"] is True
     assert result["data"]["llmnr_hostname"] == "homeassistant"

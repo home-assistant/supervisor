@@ -5,6 +5,7 @@ from typing import Awaitable
 from aiohttp import web
 import voluptuous as vol
 
+from .const import ATTR_BROADCAST_LLMNR, ATTR_BROADCAST_MDNS, ATTR_LLMNR_HOSTNAME
 from ..const import (
     ATTR_CHASSIS,
     ATTR_CPE,
@@ -17,7 +18,6 @@ from ..const import (
     ATTR_FEATURES,
     ATTR_HOSTNAME,
     ATTR_KERNEL,
-    ATTR_LLMNR_HOSTNAME,
     ATTR_NAME,
     ATTR_OPERATING_SYSTEM,
     ATTR_SERVICES,
@@ -71,6 +71,8 @@ class APIHost(CoreSysAttributes):
             ATTR_USE_RTC: self.sys_host.info.use_rtc,
             ATTR_STARTUP_TIME: self.sys_host.info.startup_time,
             ATTR_BOOT_TIMESTAMP: self.sys_host.info.boot_timestamp,
+            ATTR_BROADCAST_LLMNR: self.sys_host.info.broadcast_llmnr,
+            ATTR_BROADCAST_MDNS: self.sys_host.info.broadcast_mdns,
         }
 
     @api_process
