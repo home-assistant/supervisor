@@ -441,7 +441,7 @@ class Backup(CoreSysAttributes):
                 except (tarfile.TarError, OSError) as err:
                     _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
-            await self.sys_run_in_executor(_restore, name)
+            await self.sys_run_in_executor(_restore)
 
         # Restore folder sequential
         # avoid issue on slow IO

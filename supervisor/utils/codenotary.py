@@ -1,11 +1,13 @@
 """Small wrapper for CodeNotary."""
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import json
 import logging
 from pathlib import Path
 import shlex
-from typing import Final, Union
+from typing import Final
 
 import async_timeout
 from dirhash import dirhash
@@ -21,10 +23,11 @@ _CAS_CMD: str = (
 _CACHE: set[tuple[str, str]] = set()
 
 
+_ATTR_ERROR: Final = "error"
 _ATTR_STATUS: Final = "status"
 
 
-def calc_checksum(data: Union[str, bytes]) -> str:
+def calc_checksum(data: str | bytes) -> str:
     """Generate checksum for CodeNotary."""
     if isinstance(data, str):
         return hashlib.sha256(data.encode()).hexdigest()
@@ -58,15 +61,15 @@ async def cas_validate(
             env=clean_env(),
         )
 
-        async with async_timeout.timeout(10):
+        async with async_timeout.timeout(15):
             data, error = await proc.communicate()
     except OSError as err:
         raise CodeNotaryError(
             f"CodeNotary fatal error: {err!s}", _LOGGER.critical
         ) from err
     except asyncio.TimeoutError:
-        raise CodeNotaryError(
-            "Timeout while processing CodeNotary", _LOGGER.error
+        raise CodeNotaryBackendError(
+            "Timeout while processing CodeNotary", _LOGGER.warning
         ) from None
 
     # Check if Notarized
@@ -87,6 +90,9 @@ async def cas_validate(
         raise CodeNotaryError(
             f"Can't parse CodeNotary output: {data!s} - {err!s}", _LOGGER.error
         ) from err
+
+    if _ATTR_ERROR in data_json:
+        raise CodeNotaryBackendError(data_json[_ATTR_ERROR], _LOGGER.warning)
 
     if data_json[_ATTR_STATUS] == 0:
         _CACHE.add((checksum, signer))

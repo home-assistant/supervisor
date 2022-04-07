@@ -50,7 +50,7 @@ jobs:
       requirements: ${{ steps.requirements.outputs.changed }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3.0.0
         with:
           fetch-depth: 0
 
@@ -85,7 +85,7 @@ jobs:
         arch: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3.0.0
         with:
           fetch-depth: 0
 
@@ -110,14 +110,14 @@ jobs:
 
       - name: Login to DockerHub
         if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@v1.13.0
+        uses: docker/login-action@v1.14.1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
         if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@v1.13.0
+        uses: docker/login-action@v1.14.1
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -128,7 +128,7 @@ jobs:
         run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
 
       - name: Build supervisor
-        uses: home-assistant/builder@2022.01.0
+        uses: home-assistant/builder@2022.03.1
         with:
           args: |
             $BUILD_ARGS \
@@ -145,13 +145,13 @@ jobs:
     steps:
       - name: Checkout the repository
         if: needs.init.outputs.publish == 'true'
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3.0.0
         with:
           fetch-depth: 0
 
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         if: needs.init.outputs.publish == 'true'
-        uses: actions/setup-python@v2.3.2
+        uses: actions/setup-python@v3.1.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
@@ -184,7 +184,7 @@ jobs:
     steps:
       - name: Checkout the repository
         if: needs.init.outputs.publish == 'true'
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3.0.0
 
       - name: Initialize git
         if: needs.init.outputs.publish == 'true'
@@ -209,11 +209,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3.0.0
 
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2022.01.0
+        uses: home-assistant/builder@2022.03.1
         with:
           args: |
             --test \
@@ -260,13 +260,13 @@ jobs:
         run: |
           echo "Checking supervisor info"
           test=$(docker exec hassio_cli ha supervisor info --no-progress --raw-json | jq -r '.result')
-          if [ "$test" != "ok" ];then
+          if [ "$test" != "ok" ]; then
             exit 1
           fi
 
           echo "Checking supervisor network info"
           test=$(docker exec hassio_cli ha network info --no-progress --raw-json | jq -r '.result')
-          if [ "$test" != "ok" ];then
+          if [ "$test" != "ok" ]; then
             exit 1
           fi
 
@@ -274,13 +274,19 @@ jobs:
         run: |
           echo "Install Core SSH Add-on"
           test=$(docker exec hassio_cli ha addons install core_ssh --no-progress --raw-json | jq -r '.result')
-          if [ "$test" != "ok" ];then
+          if [ "$test" != "ok" ]; then
+            exit 1
+          fi
+
+          # Make sure it actually installed
+          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
+          if [[ "$test" == "null" ]]; then
             exit 1
           fi
 
           echo "Start Core SSH Add-on"
           test=$(docker exec hassio_cli ha addons start core_ssh --no-progress --raw-json | jq -r '.result')
-          if [ "$test" != "ok" ];then
+          if [ "$test" != "ok" ]; then
             exit 1
           fi
 
@@ -289,25 +295,77 @@ jobs:
         run: |
           echo "Enable Content-Trust"
           test=$(docker exec hassio_cli ha security options --content-trust=true --no-progress --raw-json | jq -r '.result')
-          if [ "$test" != "ok" ];then
+          if [ "$test" != "ok" ]; then
             exit 1
           fi
 
           echo "Run supervisor health check"
           test=$(docker exec hassio_cli ha resolution healthcheck --no-progress --raw-json | jq -r '.result')
-          if [ "$test" != "ok" ];then
+          if [ "$test" != "ok" ]; then
             exit 1
           fi
 
           echo "Check supervisor unhealthy"
           test=$(docker exec hassio_cli ha resolution info --no-progress --raw-json | jq -r '.data.unhealthy[]')
-          if [ "$test" != "" ];then
+          if [ "$test" != "" ]; then
             exit 1
           fi
 
           echo "Check supervisor supported"
           test=$(docker exec hassio_cli ha resolution info --no-progress --raw-json | jq -r '.data.unsupported[]')
-          if [ "$test" =~ source_mods ];then
+          if [[ "$test" =~ source_mods ]]; then
+            exit 1
+          fi
+
+      - name: Create full backup
+        id: backup
+        run: |
+          test=$(docker exec hassio_cli ha backups new --no-progress --raw-json)
+          if [ "$(echo $test | jq -r '.result')" != "ok" ]; then
+            exit 1
+          fi
+          echo "::set-output name=slug::$(echo $test | jq -r '.data.slug')"
+
+      - name: Uninstall SSH add-on
+        run: |
+          test=$(docker exec hassio_cli ha addons uninstall core_ssh --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ]; then
+            exit 1
+          fi
+
+      - name: Restart supervisor
+        run: |
+          test=$(docker exec hassio_cli ha supervisor restart --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ]; then
+            exit 1
+          fi
+
+      - name: Wait for Supervisor to come up
+        run: |
+          SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
+          ping="error"
+          while [ "$ping" != "ok" ]; do
+            ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r '.result')
+            sleep 5
+          done
+
+      - name: Restore SSH add-on from backup
+        run: |
+          test=$(docker exec hassio_cli ha backups restore ${{ steps.backup.outputs.slug }} --addons core_ssh --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ]; then
+            exit 1
+          fi
+
+          # Make sure it actually installed
+          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
+          if [[ "$test" == "null" ]]; then
+            exit 1
+          fi
+
+      - name: Restore SSL directory from backup
+        run: |
+          test=$(docker exec hassio_cli ha backups restore ${{ steps.backup.outputs.slug }} --folders ssl --no-progress --raw-json | jq -r '.result')
+          if [ "$test" != "ok" ]; then
             exit 1
           fi
 

@@ -41,3 +41,18 @@ def test_v1_folder_migration():
     )
 
     assert data[validate.ATTR_FOLDERS] == [validate.FOLDER_ADDONS]
+
+
+def test_v1_protected():
+    """Test v1 protection migration."""
+    data = validate.SCHEMA_BACKUP(
+        {
+            **VALID_DEFAULT,
+            **{
+                validate.ATTR_PROTECTED: "8",
+                validate.ATTR_TYPE: validate.BackupType.FULL,
+            },
+        }
+    )
+
+    assert data[validate.ATTR_PROTECTED] is True

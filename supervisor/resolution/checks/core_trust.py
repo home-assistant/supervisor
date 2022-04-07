@@ -56,4 +56,4 @@ class CheckCoreTrust(CheckBase):
     @property
     def states(self) -> list[CoreState]:
         """Return a list of valid states when this check can run."""
-        return [CoreState.RUNNING, CoreState.STARTUP]
+        return [CoreState.RUNNING]

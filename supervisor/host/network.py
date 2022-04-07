@@ -2,10 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 import logging
 
 import attr
+
+from supervisor.jobs.const import JobCondition
+from supervisor.jobs.decorator import Job
 
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
@@ -79,7 +83,6 @@ class NetworkManager(CoreSysAttributes):
 
     async def check_connectivity(self):
         """Check the internet connection."""
-
         if not self.sys_dbus.network.connectivity_enabled:
             return
 
@@ -100,6 +103,25 @@ class NetworkManager(CoreSysAttributes):
             self.sys_dbus.network.interfaces[inet_name]
         )
 
+    @Job(conditions=JobCondition.HOST_NETWORK)
+    async def load(self):
+        """Load network information and reapply defaults over dbus."""
+        await self.update()
+
+        # Apply current settings on each interface so OS can update any out of date defaults
+        interfaces = [
+            Interface.from_dbus_interface(self.sys_dbus.network.interfaces[i])
+            for i in self.sys_dbus.network.interfaces
+        ]
+        with suppress(HostNetworkNotFound):
+            await asyncio.gather(
+                *[
+                    self.apply_changes(interface, update_only=True)
+                    for interface in interfaces
+                    if interface.enabled
+                ]
+            )
+
     async def update(self):
         """Update properties over dbus."""
         _LOGGER.info("Updating local network information")
@@ -114,7 +136,9 @@ class NetworkManager(CoreSysAttributes):
 
         await self.check_connectivity()
 
-    async def apply_changes(self, interface: Interface) -> None:
+    async def apply_changes(
+        self, interface: Interface, *, update_only: bool = False
+    ) -> None:
         """Apply Interface changes to host."""
         inet = self.sys_dbus.network.interfaces.get(interface.name)
         con: NetworkConnection = None
@@ -146,6 +170,13 @@ class NetworkManager(CoreSysAttributes):
                 raise HostNetworkError(
                     f"Can't update config on {interface.name}: {err}", _LOGGER.error
                 ) from err
+
+        # Stop if only updates are allowed as other paths create/delete interfaces
+        elif update_only:
+            raise HostNetworkNotFound(
+                f"Requested to update interface {interface.name} which does not exist or is disabled.",
+                _LOGGER.warning,
+            )
 
         # Create new configuration and activate interface
         elif inet and interface.enabled:

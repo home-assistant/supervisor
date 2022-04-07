@@ -15,13 +15,6 @@ async def test_content_trust(coresys: CoreSys):
         assert cas_validate.called
         cas_validate.assert_called_once_with("test@mail.com", "ffffffffffffff")
 
-    with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
-        await coresys.security.verify_own_content("ffffffffffffff")
-        assert cas_validate.called
-        cas_validate.assert_called_once_with(
-            "notary@home-assistant.io", "ffffffffffffff"
-        )
-
 
 async def test_disabled_content_trust(coresys: CoreSys):
     """Test Content-Trust."""
@@ -29,10 +22,6 @@ async def test_disabled_content_trust(coresys: CoreSys):
 
     with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
         await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
-        assert not cas_validate.called
-
-    with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
-        await coresys.security.verify_own_content("ffffffffffffff")
         assert not cas_validate.called
 
 

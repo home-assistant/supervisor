@@ -504,6 +504,14 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data.get(ATTR_MACHINE, [])
 
     @property
+    def arch(self) -> str:
+        """Return architecture to use for the addon's image."""
+        if ATTR_IMAGE in self.data:
+            return self.sys_arch.match(self.data[ATTR_ARCH])
+
+        return self.sys_arch.default
+
+    @property
     def image(self) -> Optional[str]:
         """Generate image name from data."""
         return self._image(self.data)

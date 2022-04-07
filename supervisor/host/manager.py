@@ -68,7 +68,7 @@ class HostManager(CoreSysAttributes):
         """Return a list of host features."""
         return self.supported_features()
 
-    @lru_cache
+    @lru_cache(maxsize=128)
     def supported_features(self) -> list[HostFeature]:
         """Return a list of supported host features."""
         features = []
@@ -95,21 +95,29 @@ class HostManager(CoreSysAttributes):
 
         return features
 
-    async def reload(self):
+    async def reload(
+        self,
+        *,
+        services: bool = True,
+        network: bool = True,
+        agent: bool = True,
+        audio: bool = True,
+    ):
         """Reload host functions."""
         await self.info.update()
 
-        if self.sys_dbus.systemd.is_connected:
+        if services and self.sys_dbus.systemd.is_connected:
             await self.services.update()
 
-        if self.sys_dbus.network.is_connected:
+        if network and self.sys_dbus.network.is_connected:
             await self.network.update()
 
-        if self.sys_dbus.agent.is_connected:
+        if agent and self.sys_dbus.agent.is_connected:
             await self.sys_dbus.agent.update()
 
-        with suppress(PulseAudioError):
-            await self.sound.update()
+        if audio:
+            with suppress(PulseAudioError):
+                await self.sound.update()
 
         _LOGGER.info("Host information reload completed")
         self.supported_features.cache_clear()  # pylint: disable=no-member
@@ -117,7 +125,8 @@ class HostManager(CoreSysAttributes):
     async def load(self):
         """Load host information."""
         with suppress(HassioError):
-            await self.reload()
+            await self.reload(network=False)
+            await self.network.load()
 
         # Register for events
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
