@@ -6,7 +6,6 @@ from typing import Any, Awaitable
 from aiohttp import web
 import voluptuous as vol
 
-from .const import ATTR_LLMNR, ATTR_MDNS
 from ..const import (
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
@@ -27,6 +26,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import dns_server_list, version_tag
+from .const import ATTR_LLMNR, ATTR_MDNS
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

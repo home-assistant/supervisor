@@ -112,5 +112,5 @@ async def test_api_llmnr_mdns_info(api_client, coresys_disk_info: CoreSys):
     resp = await api_client.get("/host/info")
     result = await resp.json()
     assert result["data"]["broadcast_llmnr"] is True
-    assert result["data"]["broadcast_mdns"] is True
+    assert result["data"]["broadcast_mdns"] is False
     assert result["data"]["llmnr_hostname"] == "homeassistant"

@@ -5,7 +5,6 @@ from typing import Awaitable
 from aiohttp import web
 import voluptuous as vol
 
-from .const import ATTR_BROADCAST_LLMNR, ATTR_BROADCAST_MDNS, ATTR_LLMNR_HOSTNAME
 from ..const import (
     ATTR_CHASSIS,
     ATTR_CPE,
@@ -30,8 +29,11 @@ from .const import (
     ATTR_AGENT_VERSION,
     ATTR_APPARMOR_VERSION,
     ATTR_BOOT_TIMESTAMP,
+    ATTR_BROADCAST_LLMNR,
+    ATTR_BROADCAST_MDNS,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
+    ATTR_LLMNR_HOSTNAME,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
     ATTR_USE_RTC,
