@@ -93,6 +93,9 @@ class HostManager(CoreSysAttributes):
         if self.sys_os.available:
             features.append(HostFeature.HAOS)
 
+        if self.sys_dbus.resolved.is_connected:
+            features.append(HostFeature.RESOLVED)
+
         return features
 
     async def reload(

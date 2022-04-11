@@ -4,6 +4,8 @@ from datetime import datetime
 import logging
 from typing import Optional
 
+from supervisor.dbus.const import MulticastProtocolEnabled
+
 from ..coresys import CoreSysAttributes
 from ..exceptions import DBusError, HostError
 
@@ -21,6 +23,25 @@ class InfoCenter(CoreSysAttributes):
     def hostname(self) -> Optional[str]:
         """Return local hostname."""
         return self.sys_dbus.hostname.hostname
+
+    @property
+    def llmnr_hostname(self) -> Optional[str]:
+        """Return local llmnr hostname."""
+        return self.sys_dbus.resolved.llmnr_hostname
+
+    @property
+    def broadcast_llmnr(self) -> Optional[bool]:
+        """Host is broadcasting llmnr name."""
+        if self.sys_dbus.resolved.llmnr:
+            return self.sys_dbus.resolved.llmnr == MulticastProtocolEnabled.YES
+        return None
+
+    @property
+    def broadcast_mdns(self) -> Optional[bool]:
+        """Host is broadcasting mdns name."""
+        if self.sys_dbus.resolved.multicast_dns:
+            return self.sys_dbus.resolved.multicast_dns == MulticastProtocolEnabled.YES
+        return None
 
     @property
     def chassis(self) -> Optional[str]:

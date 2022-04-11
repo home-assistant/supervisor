@@ -29,8 +29,11 @@ from .const import (
     ATTR_AGENT_VERSION,
     ATTR_APPARMOR_VERSION,
     ATTR_BOOT_TIMESTAMP,
+    ATTR_BROADCAST_LLMNR,
+    ATTR_BROADCAST_MDNS,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
+    ATTR_LLMNR_HOSTNAME,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
     ATTR_USE_RTC,
@@ -60,6 +63,7 @@ class APIHost(CoreSysAttributes):
             ATTR_DISK_LIFE_TIME: self.sys_host.info.disk_life_time,
             ATTR_FEATURES: self.sys_host.features,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
+            ATTR_LLMNR_HOSTNAME: self.sys_host.info.llmnr_hostname,
             ATTR_KERNEL: self.sys_host.info.kernel,
             ATTR_OPERATING_SYSTEM: self.sys_host.info.operating_system,
             ATTR_TIMEZONE: self.sys_host.info.timezone,
@@ -69,6 +73,8 @@ class APIHost(CoreSysAttributes):
             ATTR_USE_RTC: self.sys_host.info.use_rtc,
             ATTR_STARTUP_TIME: self.sys_host.info.startup_time,
             ATTR_BOOT_TIMESTAMP: self.sys_host.info.boot_timestamp,
+            ATTR_BROADCAST_LLMNR: self.sys_host.info.broadcast_llmnr,
+            ATTR_BROADCAST_MDNS: self.sys_host.info.broadcast_mdns,
         }
 
     @api_process

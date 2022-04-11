@@ -26,6 +26,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import dns_server_list, version_tag
+from .const import ATTR_LLMNR, ATTR_MDNS
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -49,6 +50,8 @@ class APICoreDNS(CoreSysAttributes):
             ATTR_HOST: str(self.sys_docker.network.dns),
             ATTR_SERVERS: self.sys_plugins.dns.servers,
             ATTR_LOCALS: self.sys_plugins.dns.locals,
+            ATTR_MDNS: self.sys_plugins.dns.mdns,
+            ATTR_LLMNR: self.sys_plugins.dns.llmnr,
         }
 
     @api_process

@@ -42,6 +42,7 @@ class HostFeature(str, Enum):
     HOSTNAME = "hostname"
     NETWORK = "network"
     REBOOT = "reboot"
+    RESOLVED = "resolved"
     SERVICES = "services"
     SHUTDOWN = "shutdown"
     OS_AGENT = "os_agent"
