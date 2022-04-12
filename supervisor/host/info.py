@@ -155,5 +155,7 @@ class InfoCenter(CoreSysAttributes):
                 await self.sys_dbus.timedate.update()
             if self.sys_dbus.systemd.is_connected:
                 await self.sys_dbus.systemd.update()
+            if self.sys_dbus.resolved.is_connected:
+                await self.sys_dbus.resolved.update()
         except DBusError:
             _LOGGER.warning("Can't update host system information!")

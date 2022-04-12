@@ -23,6 +23,7 @@ from supervisor.dbus.const import DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
 from supervisor.dbus.hostname import Hostname
 from supervisor.dbus.interface import DBusInterface
 from supervisor.dbus.network import NetworkManager
+from supervisor.dbus.resolved import Resolved
 from supervisor.dbus.systemd import Systemd
 from supervisor.dbus.timedate import TimeDate
 from supervisor.docker import DockerAPI
@@ -178,9 +179,15 @@ async def systemd(dbus: DBus) -> Systemd:
 
 
 @pytest.fixture
-async def os_agent(dbus: DBus) -> Systemd:
+async def os_agent(dbus: DBus) -> OSAgent:
     """Mock OSAgent."""
     yield await mock_dbus_interface(dbus, OSAgent())
+
+
+@pytest.fixture
+async def resolved(dbus: DBus) -> Resolved:
+    """Mock REsolved."""
+    yield await mock_dbus_interface(dbus, Resolved())
 
 
 @pytest.fixture
