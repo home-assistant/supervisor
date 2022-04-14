@@ -143,7 +143,9 @@ class DBus:
 
         return signature, arg_list
 
-    async def call_dbus(self, method: str, *args: list[Any], remove_signature: bool = True) -> str:
+    async def call_dbus(
+        self, method: str, *args: list[Any], remove_signature: bool = True
+    ) -> str:
         """Call a dbus method."""
         method_parts = method.split(".")
 
@@ -171,7 +173,7 @@ class DBus:
             if reply.body and len(reply.body) > 0:
                 raise DBusFatalError(reply.body[0])
             raise DBusFatalError()
-        
+
         if remove_signature:
             return _remove_dbus_signature(reply.body)
         return reply.body
@@ -227,12 +229,14 @@ class DBusCallWrapper:
         if interface not in self.dbus.methods:
             return DBusCallWrapper(self.dbus, interface)
 
-        def _method_wrapper(*args):
+        def _method_wrapper(*args, remove_signature: bool = True):
             """Wrap method.
 
             Return a coroutine
             """
-            return self.dbus.call_dbus(interface, *args)
+            return self.dbus.call_dbus(
+                interface, *args, remove_signature=remove_signature
+            )
 
         return _method_wrapper
 

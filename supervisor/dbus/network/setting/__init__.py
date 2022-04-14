@@ -37,7 +37,9 @@ ATTR_INTERFACE_NAME = "interface-name"
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def _merge_settings_attribute(base_settings: Any, new_settings: Any, attribute: str) -> None:
+def _merge_settings_attribute(
+    base_settings: Any, new_settings: Any, attribute: str
+) -> None:
     """Merge settings attribute if present."""
     if attribute in new_settings:
         if attribute in base_settings:
@@ -108,17 +110,21 @@ class NetworkSetting(DBusInterfaceProxy):
     @dbus_connected
     async def update(self, settings: Any) -> None:
         """Update connection settings."""
-        new_settings = (await self.dbus.Settings.Connection.GetSettings(remove_signature=True))[0]
+        new_settings = (
+            await self.dbus.Settings.Connection.GetSettings(remove_signature=False)
+        )[0]
 
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_CONNECTION)
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_802_ETHERNET)
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_802_WIRELESS)
-        _merge_settings_attribute(new_settings, settings, CONF_ATTR_802_WIRELESS_SECURITY)
+        _merge_settings_attribute(
+            new_settings, settings, CONF_ATTR_802_WIRELESS_SECURITY
+        )
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_VLAN)
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_IPV4)
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_IPV6)
 
-        return self.dbus.Settings.Connection.Update(("a{sa{sv}}", new_settings))
+        return await self.dbus.Settings.Connection.Update(("a{sa{sv}}", new_settings))
 
     @dbus_connected
     def delete(self) -> Awaitable[None]:
