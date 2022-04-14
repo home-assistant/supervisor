@@ -143,7 +143,7 @@ class DBus:
 
         return signature, arg_list
 
-    async def call_dbus(self, method: str, *args: list[Any]) -> str:
+    async def call_dbus(self, method: str, *args: list[Any], remove_signature: bool = True) -> str:
         """Call a dbus method."""
         method_parts = method.split(".")
 
@@ -171,8 +171,10 @@ class DBus:
             if reply.body and len(reply.body) > 0:
                 raise DBusFatalError(reply.body[0])
             raise DBusFatalError()
-
-        return _remove_dbus_signature(reply.body)
+        
+        if remove_signature:
+            return _remove_dbus_signature(reply.body)
+        return reply.body
 
     async def get_properties(self, interface: str) -> dict[str, Any]:
         """Read all properties from interface."""
