@@ -17,6 +17,7 @@ class ContextType(str, Enum):
 
     ADDON = "addon"
     CORE = "core"
+    DNS_SERVER = "dns_server"
     OS = "os"
     PLUGIN = "plugin"
     SUPERVISOR = "supervisor"
@@ -57,18 +58,20 @@ class UnhealthyReason(str, Enum):
 class IssueType(str, Enum):
     """Issue type."""
 
-    FREE_SPACE = "free_space"
-    DOCKER_RATELIMIT = "docker_ratelimit"
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
-    SECURITY = "security"
+    DNS_LOOP = "dns_loop"
+    DNS_SERVER_FAILED = "dns_server_failed"
+    DNS_SERVER_IPV6_ERROR = "dns_server_ipv6_error"
+    DOCKER_RATELIMIT = "docker_ratelimit"
+    FATAL_ERROR = "fatal_error"
+    FREE_SPACE = "free_space"
     MISSING_IMAGE = "missing_image"
+    PWNED = "pwned"
+    SECURITY = "security"
+    TRUST = "trust"
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"
-    FATAL_ERROR = "fatal_error"
-    DNS_LOOP = "dns_loop"
-    PWNED = "pwned"
-    TRUST = "trust"
 
 
 class SuggestionType(str, Enum):

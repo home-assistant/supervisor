@@ -9,6 +9,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+import aiodns
+from aiodns.error import DNSError
 import attr
 from awesomeversion import AwesomeVersion
 import jinja2
@@ -30,7 +32,7 @@ from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
 from ..validate import dns_url
 from .base import PluginBase
-from .const import FILE_HASSIO_DNS
+from .const import DNS_CHECK_HOST, DNS_ERROR_NO_DATA, FILE_HASSIO_DNS
 from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -211,7 +213,7 @@ class PluginDns(PluginBase):
 
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""
-        self._write_config()
+        await self._write_config()
         _LOGGER.info("Restarting CoreDNS plugin")
         try:
             await self.instance.restart()
@@ -220,7 +222,7 @@ class PluginDns(PluginBase):
 
     async def start(self) -> None:
         """Run CoreDNS."""
-        self._write_config()
+        await self._write_config()
 
         # Start Instance
         _LOGGER.info("Starting CoreDNS plugin")
@@ -270,7 +272,7 @@ class PluginDns(PluginBase):
         else:
             self._loop = False
 
-    def _write_config(self) -> None:
+    async def _write_config(self) -> None:
         """Write CoreDNS config."""
         debug: bool = self.sys_config.logging == LogLevel.DEBUG
         dns_servers: list[str] = []
@@ -280,6 +282,17 @@ class PluginDns(PluginBase):
         if not self._loop:
             dns_servers = self.servers
             dns_locals = self.locals
+            # Allow a DNS server with an issue, just tell user about it
+            # Also aiodns only supports plain dns so we only check those
+            # Most likely a DNS-over-TLS server is public and works correctly anyway
+            await asyncio.gather(
+                *[
+                    self._check_server(server)
+                    for server in self.servers + self.locals
+                    if not server.startswith("tls://")
+                ],
+                return_exceptions=True,
+            )
         else:
             _LOGGER.warning("Ignoring user DNS settings because of loop")
 
@@ -305,6 +318,32 @@ class PluginDns(PluginBase):
             raise CoreDNSError(
                 f"Can't update coredns config: {err}", _LOGGER.error
             ) from err
+
+    async def _check_server(self, server: str):
+        """Check DNS servers and report issues found."""
+        ip_addr = server[6:] if server.startswith("dns://") else server
+
+        resolver = aiodns.DNSResolver(nameservers=[ip_addr])
+        try:
+            await resolver.query(DNS_CHECK_HOST, "A")
+        except DNSError as dns_error:
+            self.sys_resolution.create_issue(
+                IssueType.DNS_SERVER_FAILED,
+                ContextType.DNS_SERVER,
+                reference=server,
+            )
+            self.sys_capture_exception(dns_error)
+        else:
+            try:
+                await resolver.query(DNS_CHECK_HOST, "AAAA")
+            except DNSError as dns_error:
+                if dns_error.args[0] != DNS_ERROR_NO_DATA:
+                    self.sys_resolution.create_issue(
+                        IssueType.DNS_SERVER_IPV6_ERROR,
+                        ContextType.DNS_SERVER,
+                        reference=server,
+                    )
+                    self.sys_capture_exception(dns_error)
 
     def _init_hosts(self) -> None:
         """Import hosts entry."""
