@@ -283,14 +283,8 @@ class PluginDns(PluginBase):
             dns_servers = self.servers
             dns_locals = self.locals
             # Allow a DNS server with an issue, just tell user about it
-            # Also aiodns only supports plain dns so we only check those
-            # Most likely a DNS-over-TLS server is public and works correctly anyway
             await asyncio.gather(
-                *[
-                    self._check_server(server)
-                    for server in self.servers + self.locals
-                    if not server.startswith("tls://")
-                ],
+                *[self._check_server(server) for server in self.servers + self.locals],
                 return_exceptions=True,
             )
         else:
