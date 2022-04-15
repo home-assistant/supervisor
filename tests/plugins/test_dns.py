@@ -36,18 +36,27 @@ async def fixture_dns_query() -> AsyncMock:
         yield dns_query
 
 
-async def test_start(
+@pytest.mark.parametrize("start", [True, False])
+async def test_config_write(
     coresys: CoreSys,
     docker_interface: tuple[AsyncMock, AsyncMock],
     write_json: Mock,
     dns_query: AsyncMock,
+    start: bool,
 ):
-    """Test DNS start."""
+    """Test config write on DNS start and restart."""
     assert len(coresys.resolution.issues) == 0
     assert coresys.plugins.dns.locals == ["dns://192.168.30.1"]
     coresys.plugins.dns.servers = ["dns://1.1.1.1", "dns://8.8.8.8"]
 
-    await coresys.plugins.dns.start()
+    if start:
+        await coresys.plugins.dns.start()
+        docker_interface[0].assert_called_once()
+        docker_interface[1].assert_not_called()
+    else:
+        await coresys.plugins.dns.restart()
+        docker_interface[0].assert_not_called()
+        docker_interface[1].assert_called_once()
 
     write_json.assert_called_once_with(
         Path("/data/dns/coredns.json"),
@@ -57,8 +66,6 @@ async def test_start(
             "debug": False,
         },
     )
-    docker_interface[0].assert_called_once()
-    docker_interface[1].assert_not_called()
     assert dns_query.call_count == 6
     assert len(coresys.resolution.issues) == 0
 
@@ -75,6 +82,8 @@ async def test_dns_server_failure(
 
     dns_query.side_effect = DNSError()
     await coresys.plugins.dns.start()
+    docker_interface[0].assert_called_once()
+    docker_interface[1].assert_not_called()
 
     write_json.assert_called_once_with(
         Path("/data/dns/coredns.json"),
@@ -84,10 +93,18 @@ async def test_dns_server_failure(
             "debug": False,
         },
     )
-    docker_interface[0].assert_called_once()
-    docker_interface[1].assert_not_called()
     dns_query.assert_called_once_with("_checkdns.home-assistant.io", "A")
 
+    assert len(coresys.resolution.issues) == 1
+    assert coresys.resolution.issues[0].type == IssueType.DNS_SERVER_FAILED
+    assert coresys.resolution.issues[0].context == ContextType.DNS_SERVER
+    assert coresys.resolution.issues[0].reference == "dns://192.168.30.1"
+
+    # Ensure restart does not duplicate the issue
+    dns_query.reset_mock()
+    await coresys.plugins.dns.restart()
+
+    dns_query.assert_called_once_with("_checkdns.home-assistant.io", "A")
     assert len(coresys.resolution.issues) == 1
     assert coresys.resolution.issues[0].type == IssueType.DNS_SERVER_FAILED
     assert coresys.resolution.issues[0].context == ContextType.DNS_SERVER
