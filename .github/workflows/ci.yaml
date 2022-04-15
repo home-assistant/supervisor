@@ -23,7 +23,7 @@ jobs:
     name: Prepare Python ${{ matrix.python-version }} dependencies
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ matrix.python-version }}
         id: python
         uses: actions/setup-python@v3.1.2
@@ -64,7 +64,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v3.1.2
         id: python
@@ -93,7 +93,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Register hadolint problem matcher
         run: |
           echo "::add-matcher::.github/workflows/matchers/hadolint.json"
@@ -108,7 +108,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v3.1.2
         id: python
@@ -152,7 +152,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v3.1.2
         id: python
@@ -184,7 +184,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v3.1.2
         id: python
@@ -225,7 +225,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v3.1.2
         id: python
@@ -269,7 +269,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v3.1.2
         id: python
@@ -301,7 +301,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v3.1.2
         id: python
@@ -345,7 +345,7 @@ jobs:
     name: Run tests Python ${{ matrix.python-version }}
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v3.1.2
         id: python
@@ -403,7 +403,7 @@ jobs:
     needs: pytest
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.0
+        uses: actions/checkout@v3.0.1
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v3.1.2
         id: python
