@@ -15,8 +15,10 @@
       "dns-search": [],
       "gateway": "192.168.2.1",
       "method": "auto",
-      "route-data": [],
-      "routes": []
+      "route-data": [
+        { "dest": "192.168.122.0", "prefix": 24, "next-hop": "10.10.10.1" }
+      ],
+      "routes": [[8038592, 24, 17435146, 0]]
     },
     "ipv6": {
       "address-data": [],
@@ -25,7 +27,8 @@
       "dns-search": [],
       "method": "auto",
       "route-data": [],
-      "routes": []
+      "routes": [],
+      "addr-gen-mode": 0
     },
     "proxy": {},
     "802-3-ethernet": {

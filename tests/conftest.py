@@ -114,7 +114,9 @@ def dbus() -> DBus:
         node = intr.Node.parse(load_fixture(f"{fixture}.{filetype}"))
         self._add_interfaces(node)
 
-    async def mock_call_dbus(self, method: str, *args: list[Any]):
+    async def mock_call_dbus(
+        self, method: str, *args: list[Any], remove_signature: bool = True
+    ):
 
         fixture = self.object_path.replace("/", "_")[1:]
         fixture = f"{fixture}-{method.split('.')[-1]}"
