@@ -11,6 +11,9 @@ SCHEDULED_HEALTHCHECK = 3600
 MINIMUM_FREE_SPACE_THRESHOLD = 1
 MINIMUM_FULL_BACKUPS = 2
 
+DNS_CHECK_HOST = "_checkdns.home-assistant.io"
+DNS_ERROR_NO_DATA = 1
+
 
 class ContextType(str, Enum):
     """Place where somethings was happening."""

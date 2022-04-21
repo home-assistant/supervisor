@@ -8,6 +8,3 @@ FILE_HASSIO_CLI = Path(SUPERVISOR_DATA, "cli.json")
 FILE_HASSIO_DNS = Path(SUPERVISOR_DATA, "dns.json")
 FILE_HASSIO_OBSERVER = Path(SUPERVISOR_DATA, "observer.json")
 FILE_HASSIO_MULTICAST = Path(SUPERVISOR_DATA, "multicast.json")
-
-DNS_CHECK_HOST = "_checkdns.home-assistant.io"
-DNS_ERROR_NO_DATA = 1
