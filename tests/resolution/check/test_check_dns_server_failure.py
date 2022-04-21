@@ -104,3 +104,25 @@ async def test_did_run(coresys: CoreSys):
             await dns_server_failures()
             check.assert_not_called()
             check.reset_mock()
+
+
+async def test_check_if_affected(coresys: CoreSys):
+    """Test that check is still executed even if already affected."""
+    dns_server_failures = CheckDNSServerFailures(coresys)
+    coresys.core.state = CoreState.RUNNING
+
+    coresys.resolution.create_issue(
+        IssueType.DNS_SERVER_FAILED,
+        ContextType.DNS_SERVER,
+        reference="dns://192.168.30.1",
+    )
+    assert len(coresys.resolution.issues) == 1
+
+    with patch.object(
+        CheckDNSServerFailures, "approve_check", return_value=True
+    ) as approve, patch.object(
+        CheckDNSServerFailures, "run_check", return_value=None
+    ) as check:
+        await dns_server_failures()
+        approve.assert_called_once()
+        check.assert_called_once()
