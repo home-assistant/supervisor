@@ -211,7 +211,7 @@ class PluginDns(PluginBase):
 
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""
-        await self._write_config()
+        self._write_config()
         _LOGGER.info("Restarting CoreDNS plugin")
         try:
             await self.instance.restart()
@@ -220,7 +220,7 @@ class PluginDns(PluginBase):
 
     async def start(self) -> None:
         """Run CoreDNS."""
-        await self._write_config()
+        self._write_config()
 
         # Start Instance
         _LOGGER.info("Starting CoreDNS plugin")
@@ -270,7 +270,7 @@ class PluginDns(PluginBase):
         else:
             self._loop = False
 
-    async def _write_config(self) -> None:
+    def _write_config(self) -> None:
         """Write CoreDNS config."""
         debug: bool = self.sys_config.logging == LogLevel.DEBUG
         dns_servers: list[str] = []
