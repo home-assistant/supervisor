@@ -1,6 +1,6 @@
 """Test check."""
 # pylint: disable=import-error,protected-access
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -9,6 +9,19 @@ from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionNotFound
 from supervisor.resolution.const import IssueType
 from supervisor.resolution.validate import get_valid_modules
+
+
+@pytest.fixture(autouse=True)
+def fixture_mock_dns_query():
+    """Mock aiodns query."""
+    with patch(
+        "supervisor.resolution.checks.dns_server_failure.DNSResolver.query",
+        new_callable=AsyncMock,
+    ), patch(
+        "supervisor.resolution.checks.dns_server_ipv6_error.DNSResolver.query",
+        new_callable=AsyncMock,
+    ):
+        yield
 
 
 async def test_check_setup(coresys: CoreSys):
