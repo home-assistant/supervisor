@@ -26,13 +26,18 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import dns_server_list, version_tag
-from .const import ATTR_LLMNR, ATTR_MDNS
+from .const import ATTR_FALLBACK, ATTR_LLMNR, ATTR_MDNS
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_SERVERS): dns_server_list})
+SCHEMA_OPTIONS = vol.Schema(
+    {
+        vol.Optional(ATTR_SERVERS): dns_server_list,
+        vol.Optional(ATTR_FALLBACK): vol.Boolean(),
+    }
+)
 
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 
@@ -52,15 +57,24 @@ class APICoreDNS(CoreSysAttributes):
             ATTR_LOCALS: self.sys_plugins.dns.locals,
             ATTR_MDNS: self.sys_plugins.dns.mdns,
             ATTR_LLMNR: self.sys_plugins.dns.llmnr,
+            ATTR_FALLBACK: self.sys_plugins.dns.fallback,
         }
 
     @api_process
     async def options(self, request: web.Request) -> None:
         """Set DNS options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
+        restart_required = False
 
         if ATTR_SERVERS in body:
             self.sys_plugins.dns.servers = body[ATTR_SERVERS]
+            restart_required = True
+
+        if ATTR_FALLBACK in body:
+            self.sys_plugins.dns.fallback = body[ATTR_FALLBACK]
+            restart_required = True
+
+        if restart_required:
             self.sys_create_task(self.sys_plugins.dns.restart())
 
         self.sys_plugins.dns.save_data()

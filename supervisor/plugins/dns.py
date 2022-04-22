@@ -30,7 +30,7 @@ from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
 from ..validate import dns_url
 from .base import PluginBase
-from .const import FILE_HASSIO_DNS
+from .const import ATTR_FALLBACK, FILE_HASSIO_DNS
 from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -115,6 +115,16 @@ class PluginDns(PluginBase):
             MulticastProtocolEnabled.YES,
             MulticastProtocolEnabled.RESOLVE,
         ]
+
+    @property
+    def fallback(self) -> bool:
+        """Fallback DNS enabled."""
+        return self._data[ATTR_FALLBACK]
+
+    @fallback.setter
+    def fallback(self, value: bool) -> None:
+        """Set fallback DNS enabled."""
+        self._data[ATTR_FALLBACK] = value
 
     async def load(self) -> None:
         """Load DNS setup."""
@@ -241,6 +251,7 @@ class PluginDns(PluginBase):
         """Reset DNS and hosts."""
         # Reset manually defined DNS
         self.servers.clear()
+        self.fallback = True
         self.save_data()
 
         # Resets hosts
@@ -285,9 +296,10 @@ class PluginDns(PluginBase):
 
         # Print some usefully debug data
         _LOGGER.debug(
-            "config-dns = %s, local-dns = %s , backup-dns = CloudFlare DoT / debug: %s",
+            "config-dns = %s, local-dns = %s , backup-dns = %s / debug: %s",
             dns_servers,
             dns_locals,
+            "CloudFlare DoT" if self.fallback else "DISABLED",
             debug,
         )
 
@@ -298,6 +310,7 @@ class PluginDns(PluginBase):
                 {
                     "servers": dns_servers,
                     "locals": dns_locals,
+                    "fallback": self.fallback,
                     "debug": debug,
                 },
             )
