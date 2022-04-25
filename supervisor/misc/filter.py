@@ -79,6 +79,9 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 ],
                 "unhealthy": coresys.resolution.unhealthy,
             },
+            "misc": {
+                "fallback_dns": coresys.plugins.dns.fallback,
+            },
         }
     )
 

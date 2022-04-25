@@ -36,3 +36,25 @@ async def test_llmnr_mdns_info(api_client, coresys: CoreSys):
     result = await resp.json()
     assert result["data"]["llmnr"] is True
     assert result["data"]["mdns"] is True
+
+
+async def test_options(api_client, coresys: CoreSys):
+    """Test options api."""
+    assert coresys.plugins.dns.servers == []
+    assert coresys.plugins.dns.fallback is True
+
+    with patch.object(type(coresys.plugins.dns), "restart") as restart:
+        await api_client.post(
+            "/dns/options", json={"servers": ["dns://8.8.8.8"], "fallback": False}
+        )
+
+        assert coresys.plugins.dns.servers == ["dns://8.8.8.8"]
+        assert coresys.plugins.dns.fallback is False
+        restart.assert_called_once()
+
+        restart.reset_mock()
+        await api_client.post("/dns/options", json={"fallback": True})
+
+        assert coresys.plugins.dns.servers == ["dns://8.8.8.8"]
+        assert coresys.plugins.dns.fallback is True
+        restart.assert_called_once()

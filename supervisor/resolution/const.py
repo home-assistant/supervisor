@@ -34,6 +34,7 @@ class UnsupportedReason(str, Enum):
     APPARMOR = "apparmor"
     CONTENT_TRUST = "content_trust"
     DBUS = "dbus"
+    DNS_SERVER = "dns_server"
     DOCKER_CONFIGURATION = "docker_configuration"
     DOCKER_VERSION = "docker_version"
     JOB_CONDITIONS = "job_conditions"
