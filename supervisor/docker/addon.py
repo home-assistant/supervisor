@@ -257,6 +257,13 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
+    def uts_mode(self) -> str | None:
+        """Return UTS mode for add-on."""
+        if self.addon.host_uts:
+            return "host"
+        return None
+
+    @property
     def capabilities(self) -> list[str] | None:
         """Generate needed capabilities."""
         capabilities: set[Capabilities] = set(self.addon.privileged)
@@ -469,12 +476,13 @@ class DockerAddon(DockerInterface):
                 self.image,
                 tag=str(self.addon.version),
                 name=self.name,
-                hostname=self.addon.hostname,
+                hostname=None if self.uts_mode else self.addon.hostname,
                 detach=True,
                 init=self.addon.default_init,
                 stdin_open=self.addon.with_stdin,
                 network_mode=self.network_mode,
                 pid_mode=self.pid_mode,
+                uts_mode=self.uts_mode,
                 ports=self.ports,
                 extra_hosts=self.network_mapping,
                 device_cgroup_rules=self.cgroups_rules,

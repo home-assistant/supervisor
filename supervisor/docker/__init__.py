@@ -142,7 +142,8 @@ class DockerAPI:
         if dns:
             kwargs["dns"] = [str(self.network.dns)]
             kwargs["dns_search"] = [DNS_SUFFIX]
-            kwargs["domainname"] = DNS_SUFFIX
+            if hostname:
+                kwargs["domainname"] = DNS_SUFFIX
 
         # Setup network
         if not network_mode:

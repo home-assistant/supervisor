@@ -33,6 +33,7 @@ from ..const import (
     ATTR_HOST_IPC,
     ATTR_HOST_NETWORK,
     ATTR_HOST_PID,
+    ATTR_HOST_UTS,
     ATTR_IMAGE,
     ATTR_INGRESS,
     ATTR_INGRESS_STREAM,
@@ -303,6 +304,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def host_ipc(self) -> bool:
         """Return True if add-on run on host IPC namespace."""
         return self.data[ATTR_HOST_IPC]
+
+    @property
+    def host_uts(self) -> bool:
+        """Return True if add-on run on host UTS namespace."""
+        return self.data[ATTR_HOST_UTS]
 
     @property
     def host_dbus(self) -> bool:
