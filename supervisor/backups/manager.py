@@ -4,9 +4,22 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
+from typing import Any
 
 from ..addons.addon import Addon
-from ..const import FOLDER_HOMEASSISTANT, CoreState
+from ..const import (
+    ATTR_BACKUP_FULL,
+    ATTR_BACKUP_PARTIAL,
+    ATTR_BACKUP_POST,
+    ATTR_BACKUP_PRE,
+    ATTR_BACKUPS,
+    ATTR_DATE,
+    ATTR_EVENT,
+    ATTR_NAME,
+    ATTR_SLUG,
+    FOLDER_HOMEASSISTANT,
+    CoreState,
+)
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
 from ..jobs.decorator import Job, JobCondition
@@ -163,6 +176,14 @@ class BackupManager(CoreSysAttributes):
         finally:
             self.sys_core.state = CoreState.RUNNING
 
+    def _get_backup_event_data(self, backup: Backup) -> dict[str, Any]:
+        """Get backup data to be sent as supervisor update event."""
+        return {
+            ATTR_SLUG: backup.slug,
+            ATTR_NAME: backup.name,
+            ATTR_DATE: backup.date,
+        }
+
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_backup_full(self, name="", password=None, compressed=True):
         """Create a full backup."""
@@ -171,11 +192,32 @@ class BackupManager(CoreSysAttributes):
             return None
 
         backup = self._create_backup(name, BackupType.FULL, password, compressed)
+        event_data = self._get_backup_event_data(backup)
+        self.sys_homeassistant.websocket.supervisor_update_event(
+            "backup",
+            dict(
+                {
+                    ATTR_EVENT: ATTR_BACKUP_PRE,
+                    ATTR_BACKUPS: ATTR_BACKUP_FULL,
+                },
+                **event_data,
+            ),
+        )
 
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
         async with self.lock:
             backup = await self._do_backup(
                 backup, self.sys_addons.installed, ALL_FOLDERS, True
+            )
+            self.sys_homeassistant.websocket.supervisor_update_event(
+                "backup",
+                dict(
+                    {
+                        ATTR_EVENT: ATTR_BACKUP_POST,
+                        ATTR_BACKUPS: ATTR_BACKUP_FULL,
+                    },
+                    **event_data,
+                ),
             )
             if backup:
                 _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
@@ -208,6 +250,17 @@ class BackupManager(CoreSysAttributes):
             _LOGGER.error("Nothing to create backup for")
 
         backup = self._create_backup(name, BackupType.PARTIAL, password, compressed)
+        event_data = self._get_backup_event_data(backup)
+        self.sys_homeassistant.websocket.supervisor_update_event(
+            "backup",
+            dict(
+                {
+                    ATTR_EVENT: ATTR_BACKUP_PRE,
+                    ATTR_BACKUPS: ATTR_BACKUP_PARTIAL,
+                },
+                **event_data,
+            ),
+        )
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
         async with self.lock:
@@ -220,6 +273,16 @@ class BackupManager(CoreSysAttributes):
                 _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
             backup = await self._do_backup(backup, addon_list, folders, homeassistant)
+            self.sys_homeassistant.websocket.supervisor_update_event(
+                "backup",
+                dict(
+                    {
+                        ATTR_EVENT: ATTR_BACKUP_POST,
+                        ATTR_BACKUPS: ATTR_BACKUP_PARTIAL,
+                    },
+                    **event_data,
+                ),
+            )
             if backup:
                 _LOGGER.info(
                     "Creating partial backup with slug %s completed", backup.slug
