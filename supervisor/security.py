@@ -72,8 +72,6 @@ class Security(FileConfiguration, CoreSysAttributes):
 
     async def verify_own_content(self, checksum: str) -> None:
         """Verify content from HA org."""
-        return
-        # pylint: disable=unreachable
         return await self.verify_content("notary@home-assistant.io", checksum)
 
     async def verify_secret(self, pwned_hash: str) -> None:
