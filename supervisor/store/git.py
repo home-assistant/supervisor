@@ -127,6 +127,8 @@ class GitRepo(CoreSysAttributes):
                     suggestions=[
                         SuggestionType.EXECUTE_RELOAD
                         if self.builtin
+                        or self.path.stem
+                        in (addon.repository for addon in self.sys_addons.installed)
                         else SuggestionType.EXECUTE_REMOVE
                     ],
                 )
@@ -208,7 +210,7 @@ class GitRepo(CoreSysAttributes):
 class GitRepoHassIO(GitRepo):
     """Supervisor add-ons repository."""
 
-    builtin: bool = False
+    builtin: bool = True
 
     def __init__(self, coresys):
         """Initialize Git Supervisor add-on repository."""
