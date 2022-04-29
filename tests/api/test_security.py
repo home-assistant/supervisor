@@ -33,3 +33,15 @@ async def test_api_security_options_pwned(api_client, coresys: CoreSys):
     await api_client.post("/security/options", json={"pwned": False})
 
     assert not coresys.security.pwned
+
+
+@pytest.mark.asyncio
+async def test_api_integrity_check(api_client, coresys: CoreSys):
+    """Test security integrity check."""
+    coresys.security.content_trust = False
+
+    resp = await api_client.post("/security/integrity")
+    result = await resp.json()
+
+    result["data"]["core"] == "untested"
+    result["data"]["supervisor"] == "untested"
