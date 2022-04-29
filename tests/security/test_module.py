@@ -70,8 +70,50 @@ async def test_integrity_check_disabled(coresys: CoreSys):
     assert result.supervisor == ContentTrustResult.UNTESTED
 
 
-async def test_integrity_check(coresys: CoreSys):
+async def test_integrity_check(coresys: CoreSys, install_addon_ssh):
     """Test integrity check with content trust."""
+    coresys.homeassistant.core.check_trust = AsyncMock()
+    coresys.supervisor.check_trust = AsyncMock()
+    install_addon_ssh.check_trust = AsyncMock()
+    install_addon_ssh.data["codenotary"] = "test@example.com"
+
+    result = await coresys.security.integrity_check.__wrapped__(coresys.security)
+
+    assert result.core == ContentTrustResult.PASS
+    assert result.supervisor == ContentTrustResult.PASS
+    assert result.addons[install_addon_ssh.slug] == ContentTrustResult.PASS
+
+
+async def test_integrity_check_error(coresys: CoreSys, install_addon_ssh):
+    """Test integrity check with content trust issues."""
+    coresys.homeassistant.core.check_trust = AsyncMock(side_effect=CodeNotaryUntrusted)
+    coresys.supervisor.check_trust = AsyncMock(side_effect=CodeNotaryUntrusted)
+    install_addon_ssh.check_trust = AsyncMock(side_effect=CodeNotaryUntrusted)
+    install_addon_ssh.data["codenotary"] = "test@example.com"
+
+    result = await coresys.security.integrity_check.__wrapped__(coresys.security)
+
+    assert result.core == ContentTrustResult.ERROR
+    assert result.supervisor == ContentTrustResult.ERROR
+    assert result.addons[install_addon_ssh.slug] == ContentTrustResult.ERROR
+
+
+async def test_integrity_check_failed(coresys: CoreSys, install_addon_ssh):
+    """Test integrity check with content trust failed."""
+    coresys.homeassistant.core.check_trust = AsyncMock(side_effect=CodeNotaryError)
+    coresys.supervisor.check_trust = AsyncMock(side_effect=CodeNotaryError)
+    install_addon_ssh.check_trust = AsyncMock(side_effect=CodeNotaryError)
+    install_addon_ssh.data["codenotary"] = "test@example.com"
+
+    result = await coresys.security.integrity_check.__wrapped__(coresys.security)
+
+    assert result.core == ContentTrustResult.FAILED
+    assert result.supervisor == ContentTrustResult.FAILED
+    assert result.addons[install_addon_ssh.slug] == ContentTrustResult.FAILED
+
+
+async def test_integrity_check_addon(coresys: CoreSys, install_addon_ssh):
+    """Test integrity check with content trust but no signed add-ons."""
     coresys.homeassistant.core.check_trust = AsyncMock()
     coresys.supervisor.check_trust = AsyncMock()
 
@@ -79,25 +121,4 @@ async def test_integrity_check(coresys: CoreSys):
 
     assert result.core == ContentTrustResult.PASS
     assert result.supervisor == ContentTrustResult.PASS
-
-
-async def test_integrity_check_error(coresys: CoreSys):
-    """Test integrity check with content trust issues."""
-    coresys.homeassistant.core.check_trust = AsyncMock(side_effect=CodeNotaryUntrusted)
-    coresys.supervisor.check_trust = AsyncMock(side_effect=CodeNotaryUntrusted)
-
-    result = await coresys.security.integrity_check.__wrapped__(coresys.security)
-
-    assert result.core == ContentTrustResult.ERROR
-    assert result.supervisor == ContentTrustResult.ERROR
-
-
-async def test_integrity_check_failed(coresys: CoreSys):
-    """Test integrity check with content trust failed."""
-    coresys.homeassistant.core.check_trust = AsyncMock(side_effect=CodeNotaryError)
-    coresys.supervisor.check_trust = AsyncMock(side_effect=CodeNotaryError)
-
-    result = await coresys.security.integrity_check.__wrapped__(coresys.security)
-
-    assert result.core == ContentTrustResult.FAILED
-    assert result.supervisor == ContentTrustResult.FAILED
+    assert result.addons[install_addon_ssh.slug] == ContentTrustResult.UNTESTED
