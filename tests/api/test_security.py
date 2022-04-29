@@ -43,5 +43,5 @@ async def test_api_integrity_check(api_client, coresys: CoreSys):
     resp = await api_client.post("/security/integrity")
     result = await resp.json()
 
-    result["data"]["core"] == "untested"
-    result["data"]["supervisor"] == "untested"
+    assert result["data"]["core"] == "untested"
+    assert result["data"]["supervisor"] == "untested"

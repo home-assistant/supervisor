@@ -165,3 +165,5 @@ class Security(FileConfiguration, CoreSysAttributes):
                 )
             except CodeNotaryError:
                 result.addons[addon.slug] = ContentTrustResult.FAILED
+
+        return result
