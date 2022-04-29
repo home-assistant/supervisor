@@ -890,3 +890,10 @@ class Addon(AddonModel):
                 return await self.start()
 
         _LOGGER.info("Finished restore for add-on %s", self.slug)
+
+    def check_trust(self) -> Awaitable[None]:
+        """Calculate Addon docker content trust.
+
+        Return Coroutine.
+        """
+        return self.instance.check_trust()

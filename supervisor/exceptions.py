@@ -471,3 +471,14 @@ class BackupError(HassioError):
 
 class HomeAssistantBackupError(BackupError, HomeAssistantError):
     """Raise if an error during Home Assistant Core backup is happening."""
+
+
+# Security
+
+
+class SecurityError(HassioError):
+    """Raise if an error during security checks are happening."""
+
+
+class SecurityJobError(SecurityError, JobException):
+    """Raise on Security job error."""

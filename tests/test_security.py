@@ -10,12 +10,14 @@ from supervisor.exceptions import CodeNotaryError
 async def test_content_trust(coresys: CoreSys):
     """Test Content-Trust."""
 
-    with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
+    with patch("supervisor.security.module.cas_validate", AsyncMock()) as cas_validate:
         await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
         assert cas_validate.called
         cas_validate.assert_called_once_with("test@mail.com", "ffffffffffffff")
 
-        with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
+        with patch(
+            "supervisor.security.module.cas_validate", AsyncMock()
+        ) as cas_validate:
             await coresys.security.verify_own_content("ffffffffffffff")
             assert cas_validate.called
             cas_validate.assert_called_once_with(
@@ -27,11 +29,11 @@ async def test_disabled_content_trust(coresys: CoreSys):
     """Test Content-Trust."""
     coresys.security.content_trust = False
 
-    with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
+    with patch("supervisor.security.module.cas_validate", AsyncMock()) as cas_validate:
         await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
         assert not cas_validate.called
 
-    with patch("supervisor.security.cas_validate", AsyncMock()) as cas_validate:
+    with patch("supervisor.security.module.cas_validate", AsyncMock()) as cas_validate:
         await coresys.security.verify_own_content("ffffffffffffff")
         assert not cas_validate.called
 
@@ -40,7 +42,8 @@ async def test_force_content_trust(coresys: CoreSys):
     """Force Content-Trust tests."""
 
     with patch(
-        "supervisor.security.cas_validate", AsyncMock(side_effect=CodeNotaryError)
+        "supervisor.security.module.cas_validate",
+        AsyncMock(side_effect=CodeNotaryError),
     ) as cas_validate:
         await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
         assert cas_validate.called
@@ -49,7 +52,8 @@ async def test_force_content_trust(coresys: CoreSys):
     coresys.security.force = True
 
     with patch(
-        "supervisor.security.cas_validate", AsyncMock(side_effect=CodeNotaryError)
+        "supervisor.security.module.cas_validate",
+        AsyncMock(side_effect=CodeNotaryError),
     ) as cas_validate:
         with pytest.raises(CodeNotaryError):
             await coresys.security.verify_content("test@mail.com", "ffffffffffffff")

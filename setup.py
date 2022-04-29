@@ -49,6 +49,7 @@ setup(
         "supervisor.resolution.evaluations",
         "supervisor.resolution.fixups",
         "supervisor.resolution",
+        "supervisor.security",
         "supervisor.services.modules",
         "supervisor.services",
         "supervisor.store",

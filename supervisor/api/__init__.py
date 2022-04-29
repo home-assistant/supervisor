@@ -159,6 +159,7 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/security/info", api_security.info),
                 web.post("/security/options", api_security.options),
+                web.post("/security/integrity", api_security.integrity_check),
             ]
         )
 

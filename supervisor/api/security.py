@@ -1,8 +1,10 @@
 """Init file for Supervisor Security RESTful API."""
+import asyncio
 import logging
 from typing import Any
 
 from aiohttp import web
+import attr
 import voluptuous as vol
 
 from ..const import ATTR_CONTENT_TRUST, ATTR_FORCE_SECURITY, ATTR_PWNED
@@ -48,3 +50,9 @@ class APISecurity(CoreSysAttributes):
         self.sys_security.save_data()
 
         await self.sys_resolution.evaluate.evaluate_system()
+
+    @api_process
+    async def integrity_check(self, request: web.Request) -> dict[str, Any]:
+        """Run backend integrity check."""
+        result = await asyncio.shield(self.sys_security.integrity_check())
+        return attr.asdict(result)
