@@ -9,8 +9,6 @@ from typing import Optional
 import aiohttp
 from awesomeversion import AwesomeVersion
 
-from supervisor.jobs.const import JobExecutionLimit
-
 from .const import (
     ATTR_AUDIO,
     ATTR_CHANNEL,
@@ -34,7 +32,7 @@ from .exceptions import (
     UpdaterError,
     UpdaterJobError,
 )
-from .jobs.decorator import Job, JobCondition
+from .jobs.decorator import Job, JobCondition, JobExecutionLimit
 from .utils.codenotary import calc_checksum
 from .utils.common import FileConfiguration
 from .validate import SCHEMA_UPDATER_CONFIG

@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from .os.manager import OSManager
     from .plugins.manager import PluginManager
     from .resolution.module import ResolutionManager
-    from .security import Security
+    from .security.module import Security
     from .services import ServiceManager
     from .store import StoreManager
     from .supervisor import Supervisor
