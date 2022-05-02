@@ -3,13 +3,19 @@ import logging
 from typing import Optional
 
 from ...backups.const import BackupType
+from ...coresys import CoreSys
 from ..const import MINIMUM_FULL_BACKUPS, ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class FixupClearFullBackup(FixupBase):
+def setup(coresys: CoreSys) -> FixupBase:
+    """Check setup function."""
+    return FixupSystemClearFullBackup(coresys)
+
+
+class FixupSystemClearFullBackup(FixupBase):
     """Storage class for fixup."""
 
     async def process_fixup(self, reference: Optional[str] = None) -> None:

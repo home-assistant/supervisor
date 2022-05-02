@@ -17,7 +17,7 @@ from ..exceptions import (
     SecurityJobError,
 )
 from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
-from ..resolution.const import ContextType, IssueType
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.codenotary import cas_validate
 from ..utils.common import FileConfiguration
 from ..utils.pwned import check_pwned_password
@@ -78,6 +78,11 @@ class Security(FileConfiguration, CoreSysAttributes):
         except CodeNotaryError:
             if self.force:
                 raise
+            self.sys_resolution.create_issue(
+                IssueType.TRUST,
+                ContextType.SYSTEM,
+                suggestions=[SuggestionType.EXECUTE_INTEGRITY],
+            )
             return
 
     async def verify_own_content(self, checksum: str) -> None:

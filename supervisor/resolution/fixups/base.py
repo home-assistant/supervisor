@@ -71,3 +71,8 @@ class FixupBase(ABC, CoreSysAttributes):
     def auto(self) -> bool:
         """Return if a fixup can be apply as auto fix."""
         return False
+
+    @property
+    def slug(self) -> str:
+        """Return the check slug."""
+        return self.__class__.__module__.rsplit(".", maxsplit=1)[-1]
