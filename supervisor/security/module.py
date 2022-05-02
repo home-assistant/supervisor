@@ -1,7 +1,6 @@
 """Fetch last versions from webserver."""
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
 
 from ..const import (
@@ -101,8 +100,7 @@ class Security(FileConfiguration, CoreSysAttributes):
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=SecurityJobError,
-        limit=JobExecutionLimit.THROTTLE_WAIT,
-        throttle_period=timedelta(seconds=300),
+        limit=JobExecutionLimit.ONCE,
     )
     async def integrity_check(self) -> IntegrityResult:
         """Run a full system integrity check of the platform.
