@@ -20,6 +20,8 @@ class ResolutionFixup(CoreSysAttributes):
         self.coresys = coresys
         self._fixups: dict[str, FixupBase] = {}
 
+        self._load()
+
     def _load(self):
         """Load all checks."""
         package = f"{__package__}.fixups"

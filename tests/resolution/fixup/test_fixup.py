@@ -12,8 +12,6 @@ from supervisor.resolution.validate import get_valid_modules
 async def test_check_autofix(coresys: CoreSys):
     """Test check for setup."""
     coresys.core.state = CoreState.RUNNING
-    coresys.resolution.fixup._load()
-    print(coresys.resolution.fixup._fixups)
 
     coresys.resolution.fixup._fixups[
         "system_create_full_backup"
@@ -46,6 +44,5 @@ async def test_check_autofix(coresys: CoreSys):
 
 def test_dynamic_fixup_loader(coresys: CoreSys):
     """Test dynamic fixup loader, this ensures that all fixups have defined a setup function."""
-    coresys.resolution.fixup._load()
     for fixup in get_valid_modules("fixups"):
         assert fixup in coresys.resolution.fixup._fixups
