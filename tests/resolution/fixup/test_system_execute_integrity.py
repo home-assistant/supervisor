@@ -50,7 +50,7 @@ async def test_fixup_error(coresys: CoreSys):
 
     coresys.security.integrity_check = AsyncMock(
         return_value=IntegrityResult(
-            ContentTrustResult.ERROR,
+            ContentTrustResult.FAILED,
             ContentTrustResult.PASS,
             {"audio": ContentTrustResult.PASS},
         )
