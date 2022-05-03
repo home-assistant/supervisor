@@ -470,13 +470,16 @@ class DockerAddon(DockerInterface):
         # Cleanup
         self._stop()
 
+        # Don't set a hostname if no separate UTS namespace is used
+        hostname = None if self.uts_mode else self.addon.hostname
+
         # Create & Run container
         try:
             docker_container = self.sys_docker.run(
                 self.image,
                 tag=str(self.addon.version),
                 name=self.name,
-                hostname=None if self.uts_mode else self.addon.hostname,
+                hostname=hostname,
                 detach=True,
                 init=self.addon.default_init,
                 stdin_open=self.addon.with_stdin,
@@ -508,7 +511,7 @@ class DockerAddon(DockerInterface):
             "Starting Docker add-on %s with version %s", self.image, self.version
         )
 
-        if not self.uts_mode:
+        if hostname:
             # Add the add-ons hostname to DNS server
             try:
                 self.sys_plugins.dns.add_host(
