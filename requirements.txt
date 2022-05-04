@@ -9,7 +9,7 @@ cchardet==2.1.7
 ciso8601==2.2.0
 colorlog==6.6.0
 cpe==1.2.1
-cryptography==36.0.2
+cryptography==37.0.2
 debugpy==1.6.0
 deepmerge==1.0.1
 dirhash==0.2.1
