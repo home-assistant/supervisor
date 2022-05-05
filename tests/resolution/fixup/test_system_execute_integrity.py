@@ -1,6 +1,9 @@
 """Test evaluation base."""
 # pylint: disable=import-error,protected-access
+from datetime import timedelta
 from unittest.mock import AsyncMock
+
+import time_machine
 
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -9,6 +12,7 @@ from supervisor.resolution.fixups.system_execute_integrity import (
     FixupSystemExecuteIntegrity,
 )
 from supervisor.security.const import ContentTrustResult, IntegrityResult
+from supervisor.utils.dt import utcnow
 
 
 async def test_fixup(coresys: CoreSys):
@@ -56,7 +60,8 @@ async def test_fixup_error(coresys: CoreSys):
         )
     )
 
-    await system_execute_integrity()
+    with time_machine.travel(utcnow() + timedelta(hours=24)):
+        await system_execute_integrity()
 
     assert coresys.security.integrity_check.called
     assert len(coresys.resolution.suggestions) == 1

@@ -1,10 +1,11 @@
 """Helpers to check and fix issues with free space."""
+from datetime import timedelta
 import logging
 from typing import Optional
 
 from ...coresys import CoreSys
 from ...exceptions import ResolutionFixupError, ResolutionFixupJobError
-from ...jobs.const import JobCondition
+from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
 from ...security.const import ContentTrustResult
 from ..const import ContextType, IssueType, SuggestionType
@@ -24,6 +25,8 @@ class FixupSystemExecuteIntegrity(FixupBase):
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=ResolutionFixupJobError,
+        limit=JobExecutionLimit.THROTTLE,
+        throttle_period=timedelta(hours=8),
     )
     async def process_fixup(self, reference: Optional[str] = None) -> None:
         """Initialize the fixup class."""
