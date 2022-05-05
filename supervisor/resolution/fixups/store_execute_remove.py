@@ -2,12 +2,17 @@
 import logging
 from typing import Optional
 
-from supervisor.exceptions import ResolutionFixupError, StoreError, StoreNotFound
-
+from ...coresys import CoreSys
+from ...exceptions import ResolutionFixupError, StoreError, StoreNotFound
 from ..const import ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def setup(coresys: CoreSys) -> FixupBase:
+    """Check setup function."""
+    return FixupStoreExecuteRemove(coresys)
 
 
 class FixupStoreExecuteRemove(FixupBase):

@@ -10,13 +10,15 @@ from supervisor.const import ATTR_DATE, ATTR_SLUG, ATTR_TYPE
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, SuggestionType
 from supervisor.resolution.data import Suggestion
-from supervisor.resolution.fixups.clear_full_backup import FixupClearFullBackup
+from supervisor.resolution.fixups.system_clear_full_backup import (
+    FixupSystemClearFullBackup,
+)
 from supervisor.utils.dt import utcnow
 
 
 async def test_fixup(coresys: CoreSys, tmp_path):
     """Test fixup."""
-    clear_full_backup = FixupClearFullBackup(coresys)
+    clear_full_backup = FixupSystemClearFullBackup(coresys)
 
     assert not clear_full_backup.auto
 

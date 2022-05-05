@@ -2,6 +2,7 @@
 import logging
 from typing import Optional
 
+from ...coresys import CoreSys
 from ...exceptions import (
     ResolutionFixupError,
     ResolutionFixupJobError,
@@ -14,6 +15,11 @@ from ..const import ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def setup(coresys: CoreSys) -> FixupBase:
+    """Check setup function."""
+    return FixupStoreExecuteReload(coresys)
 
 
 class FixupStoreExecuteReload(FixupBase):
