@@ -122,7 +122,12 @@ class NetworkSetting(DBusInterfaceProxy):
         )
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_VLAN)
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_IPV4)
+        if "addresses" in new_settings[CONF_ATTR_IPV4]:
+            del new_settings[CONF_ATTR_IPV4]["addresses"]
+
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_IPV6)
+        if "addresses" in new_settings[CONF_ATTR_IPV6]:
+            del new_settings[CONF_ATTR_IPV6]["addresses"]
 
         return await self.dbus.Settings.Connection.Update(("a{sa{sv}}", new_settings))
 

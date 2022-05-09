@@ -97,6 +97,7 @@ async def mock_call_dbus_get_settings_signature(
             "s", "192.168.2.148"
         )
         assert settings["ipv4"]["address-data"].value[0]["prefix"] == Variant("u", 24)
+        assert "addresses" not in settings["ipv4"]
         assert len(settings["ipv4"]["route-data"].value) == 1
         assert settings["ipv4"]["route-data"].value[0]["dest"] == Variant(
             "s", "192.168.122.0"
@@ -112,6 +113,7 @@ async def mock_call_dbus_get_settings_signature(
         assert "ipv6" in settings
         assert settings["ipv6"]["method"] == Variant("s", "auto")
         assert settings["ipv6"]["addr-gen-mode"] == Variant("i", 0)
+        assert "addresses" not in settings["ipv6"]
 
         assert "proxy" in settings
 
