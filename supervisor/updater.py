@@ -243,6 +243,15 @@ class Updater(FileConfiguration, CoreSysAttributes):
                 self._data[ATTR_OTA] = data["ota"]
                 if version := data["hassos"].get(self.sys_os.board):
                     events.append("os")
+                    upgrade_map = data.get("hassos-upgrade", {})
+                    if last_in_major := upgrade_map.get(str(self.sys_os.version.major)):
+                        if self.sys_os.version != AwesomeVersion(last_in_major):
+                            version = last_in_major
+                        elif last_in_next_major := upgrade_map.get(
+                            str(int(self.sys_os.version.major) + 1)
+                        ):
+                            version = last_in_next_major
+
                     self._data[ATTR_HASSOS] = AwesomeVersion(version)
                 else:
                     _LOGGER.warning(
