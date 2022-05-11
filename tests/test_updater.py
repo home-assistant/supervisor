@@ -1,5 +1,4 @@
 """Test updater files."""
-
 from unittest.mock import patch
 
 from awesomeversion import AwesomeVersion
@@ -15,7 +14,7 @@ async def test_fetch_versions(coresys: CoreSys) -> None:
     """Test download and sync version."""
 
     coresys.security.force = True
-    await coresys.updater.fetch_data.__wrapped__(coresys.updater)
+    await coresys.updater.fetch_data()
 
     async with coresys.websession.get(URL_TEST) as request:
         data = await request.json()
@@ -68,6 +67,6 @@ async def test_os_update_path(coresys: CoreSys, version: str, expected: str):
     coresys.os._board = "rpi4"  # pylint: disable=protected-access
     coresys.os._version = AwesomeVersion(version)  # pylint: disable=protected-access
     with patch.object(type(coresys.security), "verify_own_content"):
-        await coresys.updater.fetch_data.__wrapped__(coresys.updater)
+        await coresys.updater.fetch_data()
 
         assert coresys.updater.version_hassos == AwesomeVersion(expected)
