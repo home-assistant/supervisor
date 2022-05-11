@@ -6,7 +6,6 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.const import UpdateChannel
 
 URL_TEST = "https://version.home-assistant.io/stable.json"
 
@@ -16,7 +15,7 @@ async def test_fetch_versions(coresys: CoreSys) -> None:
     """Test download and sync version."""
 
     coresys.security.force = True
-    await coresys.updater.fetch_data()
+    await coresys.updater.fetch_data.__wrapped__(coresys.updater)
 
     async with coresys.websession.get(URL_TEST) as request:
         data = await request.json()
@@ -68,8 +67,7 @@ async def test_os_update_path(coresys: CoreSys, version: str, expected: str):
     """Test OS upgrade path across major versions."""
     coresys.os._board = "rpi4"  # pylint: disable=protected-access
     coresys.os._version = AwesomeVersion(version)  # pylint: disable=protected-access
-    coresys.updater.channel = UpdateChannel.STABLE
     with patch.object(type(coresys.security), "verify_own_content"):
-        await coresys.updater.fetch_data()
+        await coresys.updater.fetch_data.__wrapped__(coresys.updater)
 
         assert coresys.updater.version_hassos == AwesomeVersion(expected)
