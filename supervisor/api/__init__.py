@@ -240,7 +240,7 @@ class RestAPI(CoreSysAttributes):
             [web.get("/available_updates", api_root.available_updates)]
         )
 
-        # Remove 2023
+        # Remove: 2023
         self.webapp.add_routes(
             [web.get("/supervisor/available_updates", api_root.available_updates)]
         )

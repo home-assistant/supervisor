@@ -36,7 +36,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
 
-# Backwards compatible / Remove 2022.08
+# Backwards compatible
+# Remove: 2022.08
 _ALL_FOLDERS = ALL_FOLDERS + [FOLDER_HOMEASSISTANT]
 
 # pylint: disable=no-value-for-parameter
