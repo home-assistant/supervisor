@@ -12,7 +12,6 @@ from voluptuous.humanize import humanize_error
 from ..const import (
     CONTENT_TYPE_BINARY,
     HEADER_TOKEN,
-    HEADER_TOKEN_OLD,
     JSON_DATA,
     JSON_MESSAGE,
     JSON_RESULT,
@@ -30,11 +29,6 @@ from ..utils.log_format import format_message
 def excract_supervisor_token(request: web.Request) -> Optional[str]:
     """Extract Supervisor token from request."""
     supervisor_token = request.headers.get(HEADER_TOKEN)
-    if supervisor_token:
-        return supervisor_token
-
-    # Remove with old Supervisor fallback
-    supervisor_token = request.headers.get(HEADER_TOKEN_OLD)
     if supervisor_token:
         return supervisor_token
 

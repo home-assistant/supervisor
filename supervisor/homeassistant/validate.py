@@ -14,7 +14,6 @@ from ..const import (
     ATTR_SSL,
     ATTR_UUID,
     ATTR_VERSION,
-    ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
 )
 from ..validate import docker_image, network_port, token, uuid_match, version_tag
@@ -31,9 +30,6 @@ SCHEMA_HASS_CONFIG = vol.Schema(
         vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(str),
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
-        vol.Optional(ATTR_WAIT_BOOT, default=600): vol.All(
-            vol.Coerce(int), vol.Range(min=60)
-        ),
         vol.Optional(ATTR_AUDIO_OUTPUT, default=None): vol.Maybe(str),
         vol.Optional(ATTR_AUDIO_INPUT, default=None): vol.Maybe(str),
     },

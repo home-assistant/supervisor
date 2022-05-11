@@ -29,7 +29,6 @@ from ..const import (
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
-    ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     CONTENT_TYPE_BINARY,
 )
@@ -48,7 +47,6 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_PORT): network_port,
         vol.Optional(ATTR_SSL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
-        vol.Optional(ATTR_WAIT_BOOT): vol.All(vol.Coerce(int), vol.Range(min=60)),
         vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(str),
         vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(str),
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
@@ -81,11 +79,8 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_PORT: self.sys_homeassistant.api_port,
             ATTR_SSL: self.sys_homeassistant.api_ssl,
             ATTR_WATCHDOG: self.sys_homeassistant.watchdog,
-            ATTR_WAIT_BOOT: self.sys_homeassistant.wait_boot,
             ATTR_AUDIO_INPUT: self.sys_homeassistant.audio_input,
             ATTR_AUDIO_OUTPUT: self.sys_homeassistant.audio_output,
-            # Remove end of Q3 2020
-            "last_version": self.sys_homeassistant.latest_version,
         }
 
     @api_process
@@ -107,9 +102,6 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_WATCHDOG in body:
             self.sys_homeassistant.watchdog = body[ATTR_WATCHDOG]
-
-        if ATTR_WAIT_BOOT in body:
-            self.sys_homeassistant.wait_boot = body[ATTR_WAIT_BOOT]
 
         if ATTR_REFRESH_TOKEN in body:
             self.sys_homeassistant.refresh_token = body[ATTR_REFRESH_TOKEN]
