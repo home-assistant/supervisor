@@ -5,7 +5,7 @@ import re
 from aiohttp import hdrs
 import attr
 
-from ..const import HEADER_TOKEN_OLD, CoreState
+from ..const import HEADER_TOKEN, CoreState
 from ..coresys import CoreSys
 from ..exceptions import AddonConfigurationError
 
@@ -113,7 +113,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
             if key == hdrs.REFERER:
                 event["request"]["headers"][i] = [key, sanitize_url(value)]
 
-            if key == HEADER_TOKEN_OLD:
+            if key == HEADER_TOKEN:
                 event["request"]["headers"][i] = [key, "XXXXXXXXXXXXXXXXXXX"]
 
             if key in [hdrs.HOST, hdrs.X_FORWARDED_HOST]:

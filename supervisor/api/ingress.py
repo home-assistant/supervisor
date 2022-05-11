@@ -24,7 +24,6 @@ from ..const import (
     ATTR_TITLE,
     COOKIE_INGRESS,
     HEADER_TOKEN,
-    HEADER_TOKEN_OLD,
 )
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_validate, require_home_assistant
@@ -235,7 +234,6 @@ def _init_header(
             hdrs.SEC_WEBSOCKET_VERSION,
             hdrs.SEC_WEBSOCKET_KEY,
             istr(HEADER_TOKEN),
-            istr(HEADER_TOKEN_OLD),
         ):
             continue
         headers[name] = value
