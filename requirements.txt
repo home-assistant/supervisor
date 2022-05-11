@@ -3,7 +3,7 @@ aiohttp==3.8.1
 async_timeout==4.0.2
 atomicwrites==1.4.0
 attrs==21.4.0
-awesomeversion==22.4.2
+awesomeversion==22.5.1
 brotli==1.0.9
 cchardet==2.1.7
 ciso8601==2.2.0
