@@ -36,7 +36,7 @@ jobs:
           echo "::set-output name=version::$datepre.$newpost"
 
       - name: Run Release Drafter
-        uses: release-drafter/release-drafter@v5.19.0
+        uses: release-drafter/release-drafter@v5.20.0
         with:
           tag: ${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.version }}
