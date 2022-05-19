@@ -142,6 +142,7 @@ class DockerHomeAssistant(DockerInterface):
             },
             environment={
                 "SUPERVISOR": self.sys_docker.network.supervisor,
+                "HASSIO": self.sys_docker.network.supervisor,
                 ENV_TIME: self.sys_timezone,
                 ENV_TOKEN: self.sys_homeassistant.supervisor_token,
             },
