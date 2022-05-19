@@ -521,9 +521,9 @@ class RestAPI(CoreSysAttributes):
         # Reroute from legacy
         self.webapp.add_routes(
             [
+                web.post("/addons/reload", api_store.reload),
                 web.post("/addons/{addon}/install", api_store.addons_addon_install),
                 web.post("/addons/{addon}/update", api_store.addons_addon_update),
-                web.post("/addons/reload", api_store.reload),
                 web.get("/addons/{addon}/icon", api_store.addons_addon_icon),
                 web.get("/addons/{addon}/logo", api_store.addons_addon_logo),
                 web.get("/addons/{addon}/changelog", api_store.addons_addon_changelog),
