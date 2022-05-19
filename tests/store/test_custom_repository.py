@@ -193,7 +193,6 @@ async def test_remove_repository(
 ):
     """Test removing a custom repository."""
     assert repository.url in coresys.config.addons_repositories
-    assert repository.slug in coresys.addons.store
     assert repository.slug in coresys.store.repositories
 
     if use_update:
@@ -218,7 +217,6 @@ async def test_remove_used_repository(
     addon = Addon(coresys, store_addon.slug)
     coresys.addons.local[addon.slug] = addon
 
-    assert store_addon.repository in coresys.addons.store
     assert store_addon.repository in coresys.store.repositories
 
     with pytest.raises(
@@ -261,7 +259,6 @@ async def test_error_adding_duplicate(
 ):
     """Test adding a duplicate repository causes an error."""
     assert repository.url in coresys.config.addons_repositories
-    assert repository.slug in coresys.addons.store
     with patch(
         "supervisor.store.repository.Repository.validate", return_value=True
     ), patch(

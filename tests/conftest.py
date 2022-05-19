@@ -325,7 +325,6 @@ async def repository(coresys: CoreSys):
     )
 
     coresys.store.repositories[repository_obj.slug] = repository_obj
-    coresys.addons.store[repository_obj.slug] = AddonStore(coresys, repository_obj.slug)
     coresys.config.add_addon_repository(
         "https://github.com/awesome-developer/awesome-repo"
     )

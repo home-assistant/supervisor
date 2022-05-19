@@ -83,7 +83,7 @@ class StoreManager(CoreSysAttributes):
         repository = Repository(self.coresys, url)
 
         if repository.slug in self.repositories:
-            raise StoreError("Can't add %s, already in the store", _LOGGER.error)
+            raise StoreError(f"Can't add {url}, already in the store", _LOGGER.error)
 
         # Load the repository
         try:
@@ -151,9 +151,7 @@ class StoreManager(CoreSysAttributes):
         # Persist changes
         if persist:
             await self.data.update()
-            self.sys_addons.store[repository.slug] = AddonStore(
-                self.coresys, repository.slug
-            )
+            self._read_addons()
 
     async def remove_repository(self, repository: Repository, *, persist: bool = True):
         """Remove a repository."""
@@ -172,7 +170,7 @@ class StoreManager(CoreSysAttributes):
 
         if persist:
             await self.data.update()
-            self.sys_addons.store.pop(repository.slug)
+            self._read_addons()
 
     @Job(conditions=[JobCondition.INTERNET_SYSTEM])
     async def update_repositories(
