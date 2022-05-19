@@ -6,8 +6,6 @@ from typing import Any, Awaitable
 from aiohttp import web
 import voluptuous as vol
 
-from supervisor.resolution.const import ContextType, SuggestionType
-
 from ..const import (
     ATTR_ADDONS,
     ATTR_ADDONS_REPOSITORIES,
@@ -155,26 +153,14 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_FORCE_SECURITY in body:
             self.sys_security.force = body[ATTR_FORCE_SECURITY]
 
-        if ATTR_ADDONS_REPOSITORIES in body:
-            new = set(body[ATTR_ADDONS_REPOSITORIES])
-            await asyncio.shield(self.sys_store.update_repositories(new))
-
-            # Fix invalid repository
-            found_invalid = False
-            for suggestion in self.sys_resolution.suggestions:
-                if (
-                    suggestion.type != SuggestionType.EXECUTE_REMOVE
-                    and suggestion.context != ContextType
-                ):
-                    continue
-                found_invalid = True
-                await self.sys_resolution.apply_suggestion(suggestion)
-
-            if found_invalid:
-                raise APIError("Invalid Add-on repository!")
-
+        # Save changes before processing addons in case of errors
         self.sys_updater.save_data()
         self.sys_config.save_data()
+
+        if ATTR_ADDONS_REPOSITORIES in body:
+            await asyncio.shield(
+                self.sys_store.update_repositories(set(body[ATTR_ADDONS_REPOSITORIES]))
+            )
 
         await self.sys_resolution.evaluate.evaluate_system()
 

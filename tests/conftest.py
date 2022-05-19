@@ -316,12 +316,19 @@ def store_addon(coresys: CoreSys, tmp_path, repository):
 async def repository(coresys: CoreSys):
     """Repository fixture."""
     coresys.config.drop_addon_repository("https://github.com/hassio-addons/repository")
+    coresys.config.drop_addon_repository(
+        "https://github.com/esphome/home-assistant-addon"
+    )
     await coresys.store.load()
     repository_obj = Repository(
         coresys, "https://github.com/awesome-developer/awesome-repo"
     )
 
     coresys.store.repositories[repository_obj.slug] = repository_obj
+    coresys.addons.store[repository_obj.slug] = AddonStore(coresys, repository_obj.slug)
+    coresys.config.add_addon_repository(
+        "https://github.com/awesome-developer/awesome-repo"
+    )
 
     yield repository_obj
 

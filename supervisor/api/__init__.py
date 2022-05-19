@@ -539,6 +539,10 @@ class RestAPI(CoreSysAttributes):
                     "/store/repositories/{repository}",
                     api_store.repositories_repository_info,
                 ),
+                web.post("/store/repositories", api_store.add_repository),
+                web.delete(
+                    "/store/repositories/{repository}", api_store.remove_repository
+                ),
             ]
         )
 

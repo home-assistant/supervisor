@@ -35,11 +35,16 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
 from ..store.addon import AddonStore
 from ..store.repository import Repository
+from ..validate import validate_repository
 
 SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_BACKUP): bool,
     }
+)
+
+SCHEMA_ADD_REPOSITORY = vol.Schema(
+    {vol.Required(ATTR_REPOSITORY): vol.All(str, validate_repository)}
 )
 
 
@@ -173,3 +178,15 @@ class APIStore(CoreSysAttributes):
         """Return repository information."""
         repository: Repository = self._extract_repository(request)
         return self._generate_repository_information(repository)
+
+    @api_process
+    async def add_repository(self, request: web.Request):
+        """Add repository to the store."""
+        body = await api_validate(SCHEMA_ADD_REPOSITORY, request)
+        await asyncio.shield(self.sys_store.add_repository(body[ATTR_REPOSITORY]))
+
+    @api_process
+    async def remove_repository(self, request: web.Request):
+        """Remove repository from the store."""
+        repository: Repository = self._extract_repository(request)
+        await asyncio.shield(self.sys_store.remove_repository(repository))
