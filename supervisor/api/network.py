@@ -141,9 +141,7 @@ class APINetwork(CoreSysAttributes):
 
     def _get_interface(self, name: str) -> Interface:
         """Get Interface by name or default."""
-        name = name.lower()
-
-        if name == "default":
+        if name.lower() == "default":
             for interface in self.sys_host.network.interfaces:
                 if not interface.primary:
                     continue
