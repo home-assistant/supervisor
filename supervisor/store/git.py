@@ -184,6 +184,7 @@ class GitRepo(CoreSysAttributes):
                 git.NoSuchPathError,
                 git.GitCommandError,
                 ValueError,
+                AssertionError,
             ) as err:
                 _LOGGER.error("Can't update %s repo: %s.", self.url, err)
                 self.sys_resolution.create_issue(
