@@ -454,12 +454,20 @@ class StoreGitError(StoreError):
     """Raise if something on git is happening."""
 
 
+class StoreGitCloneError(StoreGitError):
+    """Raise if error occurred while cloning repository."""
+
+
 class StoreNotFound(StoreError):
     """Raise if slug is not known."""
 
 
 class StoreJobError(StoreError, JobException):
     """Raise on job error with git."""
+
+
+class StoreInvalidAddonRepo(StoreError):
+    """Raise on invalid addon repo."""
 
 
 # Backup

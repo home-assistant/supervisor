@@ -10,7 +10,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError, StoreError
 from ..utils.common import read_json_or_yaml_file
 from .const import StoreType
-from .git import GitRepoCustom, GitRepoHassIO
+from .git import GitRepo, GitRepoCustom, GitRepoHassIO
 from .utils import get_hash_from_repository
 from .validate import SCHEMA_REPOSITORY_CONFIG
 
@@ -24,7 +24,7 @@ class Repository(CoreSysAttributes):
     def __init__(self, coresys: CoreSys, repository: str):
         """Initialize repository object."""
         self.coresys: CoreSys = coresys
-        self.git: Optional[str] = None
+        self.git: Optional[GitRepo] = None
 
         self.source: str = repository
         if repository == StoreType.LOCAL:

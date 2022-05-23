@@ -508,7 +508,7 @@ class Backup(CoreSysAttributes):
         if not replace:
             new_list.update(self.sys_config.addons_repositories)
 
-        await self.sys_store.update_repositories(list(new_list))
+        await self.sys_store.update_repositories(list(new_list), add_with_errors=True)
 
     def store_dockerconfig(self):
         """Store the configuration for Docker."""

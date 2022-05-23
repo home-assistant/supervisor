@@ -12,7 +12,7 @@ async def test_fixup(coresys: CoreSys):
     """Test fixup."""
     store_execute_remove = FixupStoreExecuteRemove(coresys)
 
-    assert store_execute_remove.auto
+    assert store_execute_remove.auto is False
 
     coresys.resolution.suggestions = Suggestion(
         SuggestionType.EXECUTE_REMOVE, ContextType.STORE, reference="test"

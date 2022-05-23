@@ -1,9 +1,14 @@
 """Test Store API."""
+from unittest.mock import patch
+
 from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.coresys import CoreSys
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
+
+REPO_URL = "https://github.com/awesome-developer/awesome-repo"
 
 
 @pytest.mark.asyncio
@@ -65,3 +70,28 @@ async def test_api_store_repositories_repository(
     result = await resp.json()
 
     assert result["data"]["slug"] == repository.slug
+
+
+async def test_api_store_add_repository(api_client: TestClient, coresys: CoreSys):
+    """Test POST /store/repositories REST API."""
+    with patch("supervisor.store.repository.Repository.load", return_value=None), patch(
+        "supervisor.store.repository.Repository.validate", return_value=True
+    ):
+        response = await api_client.post(
+            "/store/repositories", json={"repository": REPO_URL}
+        )
+
+    assert response.status == 200
+    assert REPO_URL in coresys.config.addons_repositories
+    assert isinstance(coresys.store.get_from_url(REPO_URL), Repository)
+
+
+async def test_api_store_remove_repository(
+    api_client: TestClient, coresys: CoreSys, repository: Repository
+):
+    """Test DELETE /store/repositories/{repository} REST API."""
+    response = await api_client.delete(f"/store/repositories/{repository.slug}")
+
+    assert response.status == 200
+    assert repository.url not in coresys.config.addons_repositories
+    assert repository.slug not in coresys.store.repositories

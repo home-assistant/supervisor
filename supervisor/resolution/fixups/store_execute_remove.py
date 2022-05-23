@@ -56,4 +56,4 @@ class FixupStoreExecuteRemove(FixupBase):
     @property
     def auto(self) -> bool:
         """Return if a fixup can be apply as auto fix."""
-        return True
+        return False

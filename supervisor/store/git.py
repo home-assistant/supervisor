@@ -9,7 +9,7 @@ import git
 
 from ..const import ATTR_BRANCH, ATTR_URL, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import StoreGitError, StoreJobError
+from ..exceptions import StoreGitCloneError, StoreGitError, StoreJobError
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import remove_folder
@@ -65,12 +65,6 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't load %s", self.path)
-                self.sys_resolution.create_issue(
-                    IssueType.FATAL_ERROR,
-                    ContextType.STORE,
-                    reference=self.path.stem,
-                    suggestions=[SuggestionType.EXECUTE_RESET],
-                )
                 raise StoreGitError() from err
 
         # Fix possible corruption
@@ -80,12 +74,6 @@ class GitRepo(CoreSysAttributes):
                 await self.sys_run_in_executor(self.repo.git.execute, ["git", "fsck"])
             except git.GitCommandError as err:
                 _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
-                self.sys_resolution.create_issue(
-                    IssueType.CORRUPT_REPOSITORY,
-                    ContextType.STORE,
-                    reference=self.path.stem,
-                    suggestions=[SuggestionType.EXECUTE_RESET],
-                )
                 raise StoreGitError() from err
 
     @Job(
@@ -120,17 +108,7 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
-                self.sys_resolution.create_issue(
-                    IssueType.FATAL_ERROR,
-                    ContextType.STORE,
-                    reference=self.path.stem,
-                    suggestions=[
-                        SuggestionType.EXECUTE_RELOAD
-                        if self.builtin
-                        else SuggestionType.EXECUTE_REMOVE
-                    ],
-                )
-                raise StoreGitError() from err
+                raise StoreGitCloneError() from err
 
     @Job(
         conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
