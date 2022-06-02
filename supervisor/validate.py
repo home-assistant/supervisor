@@ -148,13 +148,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.Schema(
             ATTR_VERSION, default=AwesomeVersion(SUPERVISOR_VERSION)
         ): version_tag,
         vol.Optional(ATTR_IMAGE): docker_image,
-        vol.Optional(
-            ATTR_ADDONS_CUSTOM_LIST,
-            default=[
-                "https://github.com/hassio-addons/repository",
-                "https://github.com/esphome/home-assistant-addon",
-            ],
-        ): repositories,
+        vol.Optional(ATTR_ADDONS_CUSTOM_LIST, default=[]): repositories,
         vol.Optional(ATTR_WAIT_BOOT, default=5): wait_boot,
         vol.Optional(ATTR_LOGGING, default=LogLevel.INFO): vol.Coerce(LogLevel),
         vol.Optional(ATTR_DEBUG, default=False): vol.Boolean(),
