@@ -41,6 +41,7 @@ from .const import (
 )
 from .utils.validate import validate_timezone
 
+# Move to store.validate when addons_repository config removed
 RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-]+))?$")
 RE_REGISTRY = re.compile(r"^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$")
 
@@ -84,6 +85,7 @@ def dns_url(url: str) -> str:
 dns_server_list = vol.All(vol.Length(max=8), [dns_url])
 
 
+# Remove with addons_repositories config
 def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
     data = RE_REPOSITORY.match(repository)

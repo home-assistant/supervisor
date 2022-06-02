@@ -26,7 +26,7 @@ async def test_api_supervisor_options_add_repository(
     api_client: TestClient, coresys: CoreSys
 ):
     """Test add a repository via POST /supervisor/options REST API."""
-    assert REPO_URL not in coresys.config.addons_repositories
+    assert REPO_URL not in coresys.store.repository_urls
     with pytest.raises(StoreNotFound):
         coresys.store.get_from_url(REPO_URL)
 
@@ -38,7 +38,7 @@ async def test_api_supervisor_options_add_repository(
         )
 
     assert response.status == 200
-    assert REPO_URL in coresys.config.addons_repositories
+    assert REPO_URL in coresys.store.repository_urls
     assert isinstance(coresys.store.get_from_url(REPO_URL), Repository)
 
 
@@ -46,7 +46,7 @@ async def test_api_supervisor_options_remove_repository(
     api_client: TestClient, coresys: CoreSys, repository: Repository
 ):
     """Test remove a repository via POST /supervisor/options REST API."""
-    assert repository.url in coresys.config.addons_repositories
+    assert repository.url in coresys.store.repository_urls
     assert repository.slug in coresys.store.repositories
 
     response = await api_client.post(
@@ -54,7 +54,7 @@ async def test_api_supervisor_options_remove_repository(
     )
 
     assert response.status == 200
-    assert repository.url not in coresys.config.addons_repositories
+    assert repository.url not in coresys.store.repository_urls
     assert repository.slug not in coresys.store.repositories
 
 
@@ -65,14 +65,18 @@ async def test_api_supervisor_options_repositories_skipped_on_error(
     """Test repositories skipped on error via POST /supervisor/options REST API."""
     with patch(
         "supervisor.store.repository.Repository.load", side_effect=git_error
-    ), patch("supervisor.store.repository.Repository.validate", return_value=False):
+    ), patch(
+        "supervisor.store.repository.Repository.validate", return_value=False
+    ), patch(
+        "supervisor.store.repository.Repository.remove"
+    ):
         response = await api_client.post(
             "/supervisor/options", json={"addons_repositories": [REPO_URL]}
         )
 
     assert response.status == 400
     assert len(coresys.resolution.suggestions) == 0
-    assert REPO_URL not in coresys.config.addons_repositories
+    assert REPO_URL not in coresys.store.repository_urls
     with pytest.raises(StoreNotFound):
         coresys.store.get_from_url(REPO_URL)
 
@@ -92,7 +96,7 @@ async def test_api_supervisor_options_repo_error_with_config_change(
         )
 
     assert response.status == 400
-    assert REPO_URL not in coresys.config.addons_repositories
+    assert REPO_URL not in coresys.store.repository_urls
 
     assert coresys.config.debug
     coresys.updater.save_data.assert_called_once()

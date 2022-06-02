@@ -36,7 +36,6 @@ class Repository(CoreSysAttributes):
             self._type = StoreType.CORE
         else:
             self.git = GitRepoCustom(coresys, repository)
-            self.source = repository
             self._slug = get_hash_from_repository(repository)
             self._type = StoreType.GIT
 

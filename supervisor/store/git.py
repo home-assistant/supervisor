@@ -13,8 +13,8 @@ from ..exceptions import StoreGitCloneError, StoreGitError, StoreJobError
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import remove_folder
-from ..validate import RE_REPOSITORY
 from .utils import get_hash_from_repository
+from .validate import RE_REPOSITORY
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

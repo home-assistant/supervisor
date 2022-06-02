@@ -46,8 +46,9 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
+from ..store.validate import repositories
 from ..utils.validate import validate_timezone
-from ..validate import repositories, version_tag, wait_boot
+from ..validate import version_tag, wait_boot
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -115,7 +116,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_ADDONS: list_addons,
-            ATTR_ADDONS_REPOSITORIES: self.sys_config.addons_repositories,
+            ATTR_ADDONS_REPOSITORIES: self.sys_store.repository_urls,
         }
 
     @api_process

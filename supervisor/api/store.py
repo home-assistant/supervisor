@@ -35,7 +35,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
 from ..store.addon import AddonStore
 from ..store.repository import Repository
-from ..validate import validate_repository
+from ..store.validate import validate_repository
 
 SCHEMA_UPDATE = vol.Schema(
     {

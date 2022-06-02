@@ -497,18 +497,16 @@ class Backup(CoreSysAttributes):
 
     def store_repositories(self):
         """Store repository list into backup."""
-        self.repositories = self.sys_config.addons_repositories
+        self.repositories = self.sys_store.repository_urls
 
     async def restore_repositories(self, replace: bool = False):
         """Restore repositories from backup.
 
         Return a coroutine.
         """
-        new_list: set[str] = set(self.repositories)
-        if not replace:
-            new_list.update(self.sys_config.addons_repositories)
-
-        await self.sys_store.update_repositories(list(new_list), add_with_errors=True)
+        await self.sys_store.update_repositories(
+            self.repositories, add_with_errors=True, replace=replace
+        )
 
     def store_dockerconfig(self):
         """Store the configuration for Docker."""
