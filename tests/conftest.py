@@ -324,7 +324,9 @@ async def repository(coresys: CoreSys):
     )
     coresys.config.clear_addons_repositories()
 
-    with patch("supervisor.store.validate.BUILTIN_REPOSITORIES", {"local", "core"}):
+    with patch(
+        "supervisor.store.validate.BUILTIN_REPOSITORIES", {"local", "core"}
+    ), patch("supervisor.store.git.GitRepo.load", return_value=None):
         await coresys.store.load()
 
         repository_obj = Repository(
