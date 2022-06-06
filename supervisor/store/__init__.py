@@ -80,14 +80,6 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             )
             self.sys_config.clear_addons_repositories()
 
-        self._repositories = {
-            repository.slug: repository
-            for repository in [
-                Repository(self.coresys, source)
-                for source in self._data[ATTR_REPOSITORIES]
-            ]
-        }
-
         # Init custom repositories and load add-ons
         await self.update_repositories(
             self._data[ATTR_REPOSITORIES], add_with_errors=True

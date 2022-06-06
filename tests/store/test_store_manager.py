@@ -47,6 +47,8 @@ async def test_load_with_custom_repository(coresys: CoreSys):
     ), patch.object(
         type(coresys.config), "addons_repositories", return_value=[]
     ), patch(
+        "supervisor.store.repository.Repository.validate", return_value=True
+    ), patch(
         "pathlib.Path.exists", return_value=True
     ):
         await store_manager.load()
@@ -75,8 +77,8 @@ async def test_load_from_core_config(coresys: CoreSys):
     assert coresys.config.addons_repositories == ["http://example.com"]
 
     with patch("supervisor.store.repository.Repository.load", return_value=None), patch(
-        "pathlib.Path.exists", return_value=True
-    ):
+        "supervisor.store.repository.Repository.validate", return_value=True
+    ), patch("pathlib.Path.exists", return_value=True):
         await store_manager.load()
 
     assert len(store_manager.all) == 5
