@@ -326,6 +326,19 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
+        # Reroute from legacy
+        self.webapp.add_routes(
+            [
+                web.get("/homeassistant/info", api_hass.info),
+                web.get("/homeassistant/logs", api_hass.logs),
+                web.get("/homeassistant/stats", api_hass.stats),
+                web.post("/homeassistant/options", api_hass.options),
+                web.post("/homeassistant/restart", api_hass.restart),
+                web.post("/homeassistant/stop", api_hass.restart),
+                web.post("/homeassistant/update", api_hass.update),
+            ]
+        )
+
     def _register_proxy(self) -> None:
         """Register Home Assistant API Proxy."""
         api_proxy = APIProxy()
