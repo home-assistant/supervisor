@@ -29,14 +29,9 @@ class FixupStoreExecuteRemove(FixupBase):
 
         # Remove repository
         try:
-            await repository.remove()
+            await self.sys_store.remove_repository(repository)
         except StoreError:
             raise ResolutionFixupError() from None
-        else:
-            self.sys_store.repositories.pop(repository.slug, None)
-
-        self.sys_config.drop_addon_repository(repository.source)
-        self.sys_config.save_data()
 
     @property
     def suggestion(self) -> SuggestionType:

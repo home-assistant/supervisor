@@ -52,7 +52,6 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
             "supervisor": {
                 "channel": coresys.updater.channel,
                 "installed_addons": installed_addons,
-                "repositories": coresys.config.addons_repositories,
             },
             "host": {
                 "arch": coresys.arch.default,
@@ -78,6 +77,9 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                     for suggestion in coresys.resolution.suggestions
                 ],
                 "unhealthy": coresys.resolution.unhealthy,
+            },
+            "store": {
+                "repositories": coresys.store.repository_urls,
             },
             "misc": {
                 "fallback_dns": coresys.plugins.dns.fallback,

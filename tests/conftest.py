@@ -16,7 +16,7 @@ from supervisor import config as su_config
 from supervisor.addons.addon import Addon
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
-from supervisor.const import REQUEST_FROM
+from supervisor.const import ATTR_REPOSITORIES, REQUEST_FROM
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent import OSAgent
 from supervisor.dbus.const import DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
@@ -39,7 +39,6 @@ from .const import TEST_ADDON_SLUG
 
 async def mock_async_return_true() -> bool:
     """Mock methods to return True."""
-
     return True
 
 
@@ -74,7 +73,6 @@ def docker() -> DockerAPI:
 @pytest.fixture
 def dbus() -> DBus:
     """Mock DBUS."""
-
     dbus_commands = []
 
     async def mock_get_properties(dbus_obj, interface):
@@ -208,6 +206,7 @@ async def coresys(loop, docker, network_manager, aiohttp_client, run_dir) -> Cor
     coresys_obj._jobs.save_data = MagicMock()
     coresys_obj._resolution.save_data = MagicMock()
     coresys_obj._addons.data.save_data = MagicMock()
+    coresys_obj._store.save_data = MagicMock()
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
@@ -246,7 +245,9 @@ async def coresys(loop, docker, network_manager, aiohttp_client, run_dir) -> Cor
         unwrap(coresys_obj.updater.fetch_data), coresys_obj.updater
     )
 
-    yield coresys_obj
+    # Don't remove files/folders related to addons and stores
+    with patch("supervisor.store.git.GitRepo._remove"):
+        yield coresys_obj
 
     await coresys_obj.websession.close()
 
@@ -315,21 +316,29 @@ def store_addon(coresys: CoreSys, tmp_path, repository):
 @pytest.fixture
 async def repository(coresys: CoreSys):
     """Repository fixture."""
-    coresys.config.drop_addon_repository("https://github.com/hassio-addons/repository")
-    coresys.config.drop_addon_repository(
+    coresys.store._data[ATTR_REPOSITORIES].remove(
+        "https://github.com/hassio-addons/repository"
+    )
+    coresys.store._data[ATTR_REPOSITORIES].remove(
         "https://github.com/esphome/home-assistant-addon"
     )
-    await coresys.store.load()
-    repository_obj = Repository(
-        coresys, "https://github.com/awesome-developer/awesome-repo"
-    )
+    coresys.config.clear_addons_repositories()
 
-    coresys.store.repositories[repository_obj.slug] = repository_obj
-    coresys.config.add_addon_repository(
-        "https://github.com/awesome-developer/awesome-repo"
-    )
+    with patch(
+        "supervisor.store.validate.BUILTIN_REPOSITORIES", {"local", "core"}
+    ), patch("supervisor.store.git.GitRepo.load", return_value=None):
+        await coresys.store.load()
 
-    yield repository_obj
+        repository_obj = Repository(
+            coresys, "https://github.com/awesome-developer/awesome-repo"
+        )
+
+        coresys.store.repositories[repository_obj.slug] = repository_obj
+        coresys.store._data[ATTR_REPOSITORIES].append(
+            "https://github.com/awesome-developer/awesome-repo"
+        )
+
+        yield repository_obj
 
 
 @pytest.fixture

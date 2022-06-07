@@ -82,7 +82,7 @@ async def test_api_store_add_repository(api_client: TestClient, coresys: CoreSys
         )
 
     assert response.status == 200
-    assert REPO_URL in coresys.config.addons_repositories
+    assert REPO_URL in coresys.store.repository_urls
     assert isinstance(coresys.store.get_from_url(REPO_URL), Repository)
 
 
@@ -93,5 +93,5 @@ async def test_api_store_remove_repository(
     response = await api_client.delete(f"/store/repositories/{repository.slug}")
 
     assert response.status == 200
-    assert repository.url not in coresys.config.addons_repositories
+    assert repository.url not in coresys.store.repository_urls
     assert repository.slug not in coresys.store.repositories

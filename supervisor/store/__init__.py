@@ -2,7 +2,10 @@
 import asyncio
 import logging
 
-from ..const import URL_HASSIO_ADDONS
+from supervisor.store.validate import SCHEMA_STORE_FILE
+from supervisor.utils.common import FileConfiguration
+
+from ..const import ATTR_REPOSITORIES, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     StoreError,
@@ -15,28 +18,42 @@ from ..exceptions import (
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from .addon import AddonStore
-from .const import StoreType
+from .const import FILE_HASSIO_STORE, StoreType
 from .data import StoreData
 from .repository import Repository
+from .validate import BUILTIN_REPOSITORIES, ensure_builtin_repositories
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-BUILTIN_REPOSITORIES = {StoreType.CORE.value, StoreType.LOCAL.value}
 
-
-class StoreManager(CoreSysAttributes):
+class StoreManager(CoreSysAttributes, FileConfiguration):
     """Manage add-ons inside Supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
+        super().__init__(FILE_HASSIO_STORE, SCHEMA_STORE_FILE)
         self.coresys: CoreSys = coresys
         self.data = StoreData(coresys)
-        self.repositories: dict[str, Repository] = {}
+        self._repositories: dict[str, Repository] = {}
 
     @property
     def all(self) -> list[Repository]:
         """Return list of add-on repositories."""
         return list(self.repositories.values())
+
+    @property
+    def repositories(self) -> dict[str, Repository]:
+        """Return repositories dictionary."""
+        return self._repositories
+
+    @property
+    def repository_urls(self) -> list[str]:
+        """Return source URL for all git repositories."""
+        return [
+            repository.url
+            for repository in self.all
+            if repository.type == StoreType.GIT
+        ]
 
     def get(self, slug: str) -> Repository:
         """Return Repository with slug."""
@@ -56,11 +73,17 @@ class StoreManager(CoreSysAttributes):
         """Start up add-on management."""
         await self.data.update()
 
-        # Init Supervisor built-in repositories
-        repositories = set(self.sys_config.addons_repositories) | BUILTIN_REPOSITORIES
+        # Backwards compatibility - Remove after 2022.9
+        if len(self.sys_config.addons_repositories) > 0:
+            self._data[ATTR_REPOSITORIES] = ensure_builtin_repositories(
+                self.sys_config.addons_repositories
+            )
+            self.sys_config.clear_addons_repositories()
 
         # Init custom repositories and load add-ons
-        await self.update_repositories(repositories, add_with_errors=True)
+        await self.update_repositories(
+            self._data[ATTR_REPOSITORIES], add_with_errors=True
+        )
 
     async def reload(self) -> None:
         """Update add-ons from repository and reload list."""
@@ -144,9 +167,9 @@ class StoreManager(CoreSysAttributes):
                     )
 
         # Add Repository to list
-        if repository.type == StoreType.GIT:
-            self.sys_config.add_addon_repository(repository.source)
+        self._data[ATTR_REPOSITORIES].append(url)
         self.repositories[repository.slug] = repository
+        self.save_data()
 
         # Persist changes
         if persist:
@@ -155,7 +178,7 @@ class StoreManager(CoreSysAttributes):
 
     async def remove_repository(self, repository: Repository, *, persist: bool = True):
         """Remove a repository."""
-        if repository.type != StoreType.GIT:
+        if repository.url in BUILTIN_REPOSITORIES:
             raise StoreInvalidAddonRepo(
                 "Can't remove built-in repositories!", logger=_LOGGER.error
             )
@@ -166,7 +189,8 @@ class StoreManager(CoreSysAttributes):
                 logger=_LOGGER.error,
             )
         await self.repositories.pop(repository.slug).remove()
-        self.sys_config.drop_addon_repository(repository.url)
+        self._data[ATTR_REPOSITORIES].remove(repository.url)
+        self.save_data()
 
         if persist:
             await self.data.update()
@@ -174,10 +198,18 @@ class StoreManager(CoreSysAttributes):
 
     @Job(conditions=[JobCondition.INTERNET_SYSTEM])
     async def update_repositories(
-        self, list_repositories, *, add_with_errors: bool = False
+        self,
+        list_repositories: list[str],
+        *,
+        add_with_errors: bool = False,
+        replace: bool = True,
     ):
         """Add a new custom repository."""
-        new_rep = set(list_repositories)
+        new_rep = set(
+            ensure_builtin_repositories(list_repositories)
+            if replace
+            else list_repositories + self.repository_urls
+        )
         old_rep = {repository.source for repository in self.all}
 
         # Add new repositories

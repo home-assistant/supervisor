@@ -28,7 +28,8 @@ from ..const import (
     FOLDER_SHARE,
     FOLDER_SSL,
 )
-from ..validate import SCHEMA_DOCKER_CONFIG, repositories, version_tag
+from ..store.validate import repositories
+from ..validate import SCHEMA_DOCKER_CONFIG, version_tag
 
 ALL_FOLDERS = [
     FOLDER_SHARE,
