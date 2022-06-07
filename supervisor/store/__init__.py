@@ -167,9 +167,12 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
                     )
 
         # Add Repository to list
-        self._data[ATTR_REPOSITORIES].append(url)
         self.repositories[repository.slug] = repository
-        self.save_data()
+
+        # On start-up we add the saved repos to force a load. But they're already in data
+        if url not in self._data[ATTR_REPOSITORIES]:
+            self._data[ATTR_REPOSITORIES].append(url)
+            self.save_data()
 
         # Persist changes
         if persist:
