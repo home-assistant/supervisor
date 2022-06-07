@@ -22,6 +22,8 @@ from .auth import Auth
 from .backups.manager import BackupManager
 from .bus import Bus
 from .const import (
+    ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_REPOSITORIES,
     ENV_HOMEASSISTANT_REPOSITORY,
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
@@ -49,6 +51,7 @@ from .resolution.module import ResolutionManager
 from .security.module import Security
 from .services import ServiceManager
 from .store import StoreManager
+from .store.validate import ensure_builtin_repositories
 from .supervisor import Supervisor
 from .updater import Updater
 
@@ -215,6 +218,14 @@ def migrate_system_env(coresys: CoreSys) -> None:
             old_build.rmdir()
         except OSError:
             _LOGGER.error("Can't cleanup old Add-on build directory at '%s'", old_build)
+
+    # Supervisor 2022.5 -> 2022.6. Can be removed after 2022.9
+    # pylint: disable=protected-access
+    if len(coresys.config.addons_repositories) > 0:
+        coresys.store._data[ATTR_REPOSITORIES] = ensure_builtin_repositories(
+            coresys.config.addons_repositories
+        )
+        coresys.config._data[ATTR_ADDONS_CUSTOM_LIST] = []
 
 
 def initialize_logging() -> None:

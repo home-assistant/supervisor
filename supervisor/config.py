@@ -327,7 +327,3 @@ class CoreConfig(FileConfiguration):
             return
 
         self._data[ATTR_ADDONS_CUSTOM_LIST].remove(repo)
-
-    def clear_addons_repositories(self) -> None:
-        """Clear custom repositories list from core config."""
-        self._data[ATTR_ADDONS_CUSTOM_LIST] = []
