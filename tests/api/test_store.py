@@ -93,5 +93,5 @@ async def test_api_store_remove_repository(
     response = await api_client.delete(f"/store/repositories/{repository.slug}")
 
     assert response.status == 200
-    assert repository.url not in coresys.store.repository_urls
+    assert repository.source not in coresys.store.repository_urls
     assert repository.slug not in coresys.store.repositories

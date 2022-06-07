@@ -194,7 +194,7 @@ async def test_remove_repository(
     use_update: bool,
 ):
     """Test removing a custom repository."""
-    assert repository.url in coresys.store.repository_urls
+    assert repository.source in coresys.store.repository_urls
     assert repository.slug in coresys.store.repositories
 
     if use_update:
@@ -202,7 +202,7 @@ async def test_remove_repository(
     else:
         await store_manager.remove_repository(repository)
 
-    assert repository.url not in coresys.store.repository_urls
+    assert repository.source not in coresys.store.repository_urls
     assert repository.slug not in coresys.addons.store
     assert repository.slug not in coresys.store.repositories
 
@@ -261,7 +261,7 @@ async def test_error_adding_duplicate(
     coresys: CoreSys, store_manager: StoreManager, repository: Repository
 ):
     """Test adding a duplicate repository causes an error."""
-    assert repository.url in coresys.store.repository_urls
+    assert repository.source in coresys.store.repository_urls
     with patch(
         "supervisor.store.repository.Repository.validate", return_value=True
     ), patch(
@@ -269,14 +269,14 @@ async def test_error_adding_duplicate(
     ), pytest.raises(
         StoreError
     ):
-        await store_manager.add_repository(repository.url)
+        await store_manager.add_repository(repository.source)
 
 
 async def test_add_with_update_repositories(
     coresys: CoreSys, store_manager: StoreManager, repository: Repository
 ):
     """Test adding repositories to existing ones using update."""
-    assert repository.url in coresys.store.repository_urls
+    assert repository.source in coresys.store.repository_urls
     assert "http://example.com" not in coresys.store.repository_urls
 
     with patch("supervisor.store.repository.Repository.load", return_value=None), patch(
@@ -285,5 +285,5 @@ async def test_add_with_update_repositories(
     ), patch("pathlib.Path.exists", return_value=True):
         await store_manager.update_repositories(["http://example.com"], replace=False)
 
-    assert repository.url in coresys.store.repository_urls
+    assert repository.source in coresys.store.repository_urls
     assert "http://example.com" in coresys.store.repository_urls

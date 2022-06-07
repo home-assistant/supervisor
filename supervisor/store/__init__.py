@@ -50,7 +50,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
     def repository_urls(self) -> list[str]:
         """Return source URL for all git repositories."""
         return [
-            repository.url
+            repository.source
             for repository in self.all
             if repository.type == StoreType.GIT
         ]
@@ -178,7 +178,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
     async def remove_repository(self, repository: Repository, *, persist: bool = True):
         """Remove a repository."""
-        if repository.url in BUILTIN_REPOSITORIES:
+        if repository.source in BUILTIN_REPOSITORIES:
             raise StoreInvalidAddonRepo(
                 "Can't remove built-in repositories!", logger=_LOGGER.error
             )
@@ -189,7 +189,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
                 logger=_LOGGER.error,
             )
         await self.repositories.pop(repository.slug).remove()
-        self._data[ATTR_REPOSITORIES].remove(repository.url)
+        self._data[ATTR_REPOSITORIES].remove(repository.source)
         self.save_data()
 
         if persist:
