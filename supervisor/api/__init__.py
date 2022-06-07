@@ -323,17 +323,6 @@ class RestAPI(CoreSysAttributes):
                 web.post("/core/start", api_hass.start),
                 web.post("/core/check", api_hass.check),
                 web.post("/core/rebuild", api_hass.rebuild),
-                # Remove with old Supervisor fallback
-                web.get("/homeassistant/info", api_hass.info),
-                web.get("/homeassistant/logs", api_hass.logs),
-                web.get("/homeassistant/stats", api_hass.stats),
-                web.post("/homeassistant/options", api_hass.options),
-                web.post("/homeassistant/update", api_hass.update),
-                web.post("/homeassistant/restart", api_hass.restart),
-                web.post("/homeassistant/stop", api_hass.stop),
-                web.post("/homeassistant/start", api_hass.start),
-                web.post("/homeassistant/check", api_hass.check),
-                web.post("/homeassistant/rebuild", api_hass.rebuild),
             ]
         )
 
@@ -350,13 +339,6 @@ class RestAPI(CoreSysAttributes):
                 web.post("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/", api_proxy.api),
-                # Remove with old Supervisor fallback
-                web.get("/homeassistant/api/websocket", api_proxy.websocket),
-                web.get("/homeassistant/websocket", api_proxy.websocket),
-                web.get("/homeassistant/api/stream", api_proxy.stream),
-                web.post("/homeassistant/api/{path:.+}", api_proxy.api),
-                web.get("/homeassistant/api/{path:.+}", api_proxy.api),
-                web.get("/homeassistant/api/", api_proxy.api),
             ]
         )
 
@@ -426,20 +408,6 @@ class RestAPI(CoreSysAttributes):
                 ),
                 web.get("/snapshots/{slug}/download", api_backups.download),
                 web.post("/snapshots/{slug}/remove", api_backups.remove),
-                # June 2021: /snapshots was renamed to /backups
-                web.get("/backups", api_backups.list),
-                web.post("/backups/reload", api_backups.reload),
-                web.post("/backups/new/full", api_backups.backup_full),
-                web.post("/backups/new/partial", api_backups.backup_partial),
-                web.post("/backups/new/upload", api_backups.upload),
-                web.get("/backups/{slug}/info", api_backups.info),
-                web.delete("/backups/{slug}", api_backups.remove),
-                web.post("/backups/{slug}/restore/full", api_backups.restore_full),
-                web.post(
-                    "/backups/{slug}/restore/partial",
-                    api_backups.restore_partial,
-                ),
-                web.get("/backups/{slug}/download", api_backups.download),
             ]
         )
 

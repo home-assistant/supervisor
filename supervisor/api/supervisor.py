@@ -17,23 +17,16 @@ from ..const import (
     ATTR_CPU_PERCENT,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
-    ATTR_DESCRIPTON,
     ATTR_DIAGNOSTICS,
     ATTR_FORCE_SECURITY,
     ATTR_HEALTHY,
-    ATTR_ICON,
     ATTR_IP_ADDRESS,
     ATTR_LOGGING,
-    ATTR_LOGO,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
-    ATTR_NAME,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
-    ATTR_REPOSITORY,
-    ATTR_SLUG,
-    ATTR_STATE,
     ATTR_SUPPORTED,
     ATTR_TIMEZONE,
     ATTR_UPDATE_AVAILABLE,
@@ -83,23 +76,6 @@ class APISupervisor(CoreSysAttributes):
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return host information."""
-        list_addons = []
-        for addon in self.sys_addons.installed:
-            list_addons.append(
-                {
-                    ATTR_NAME: addon.name,
-                    ATTR_SLUG: addon.slug,
-                    ATTR_DESCRIPTON: addon.description,
-                    ATTR_STATE: addon.state,
-                    ATTR_VERSION: addon.version,
-                    ATTR_VERSION_LATEST: addon.latest_version,
-                    ATTR_UPDATE_AVAILABLE: addon.need_update,
-                    ATTR_REPOSITORY: addon.repository,
-                    ATTR_ICON: addon.with_icon,
-                    ATTR_LOGO: addon.with_logo,
-                }
-            )
-
         return {
             ATTR_VERSION: self.sys_supervisor.version,
             ATTR_VERSION_LATEST: self.sys_supervisor.latest_version,
@@ -115,8 +91,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG: self.sys_config.debug,
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
-            ATTR_ADDONS: list_addons,
-            ATTR_ADDONS_REPOSITORIES: self.sys_store.repository_urls,
+            ATTR_ADDONS: list(self.sys_addons.local),
         }
 
     @api_process
@@ -146,18 +121,11 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]
 
-        # REMOVE: 2021.7
-        if ATTR_CONTENT_TRUST in body:
-            self.sys_security.content_trust = body[ATTR_CONTENT_TRUST]
-
-        # REMOVE: 2021.7
-        if ATTR_FORCE_SECURITY in body:
-            self.sys_security.force = body[ATTR_FORCE_SECURITY]
-
         # Save changes before processing addons in case of errors
         self.sys_updater.save_data()
         self.sys_config.save_data()
 
+        # Remove: 2022.9
         if ATTR_ADDONS_REPOSITORIES in body:
             await asyncio.shield(
                 self.sys_store.update_repositories(set(body[ATTR_ADDONS_REPOSITORIES]))
