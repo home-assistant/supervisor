@@ -92,6 +92,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_ADDONS: list(self.sys_addons.local),
+            ATTR_ADDONS_REPOSITORIES: self.sys_store.repository_urls,
         }
 
     @api_process
