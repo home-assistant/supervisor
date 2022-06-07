@@ -7,10 +7,11 @@ from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 import docker
 import requests
 
-from ..const import ENV_TIME, ENV_TOKEN, LABEL_MACHINE, MACHINE_ID
+from ..const import LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE
+from .const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_OLD
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -145,6 +146,7 @@ class DockerHomeAssistant(DockerInterface):
                 "HASSIO": self.sys_docker.network.supervisor,
                 ENV_TIME: self.sys_timezone,
                 ENV_TOKEN: self.sys_homeassistant.supervisor_token,
+                ENV_TOKEN_OLD: self.sys_homeassistant.supervisor_token,
             },
             tmpfs={"/tmp": ""},
         )

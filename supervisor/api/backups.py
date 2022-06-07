@@ -26,10 +26,10 @@ from ..const import (
     ATTR_SLUG,
     ATTR_TYPE,
     ATTR_VERSION,
-    CONTENT_TYPE_TAR,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
+from .const import CONTENT_TYPE_TAR
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

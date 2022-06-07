@@ -33,7 +33,6 @@ from ..const import (
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_WAIT_BOOT,
-    CONTENT_TYPE_BINARY,
     LogLevel,
     UpdateChannel,
 )
@@ -42,6 +41,7 @@ from ..exceptions import APIError
 from ..store.validate import repositories
 from ..utils.validate import validate_timezone
 from ..validate import version_tag, wait_boot
+from .const import CONTENT_TYPE_BINARY
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

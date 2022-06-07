@@ -22,7 +22,6 @@ from ..const import (
     ATTR_SERVICES,
     ATTR_STATE,
     ATTR_TIMEZONE,
-    CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
 from .const import (
@@ -36,6 +35,7 @@ from .const import (
     ATTR_LLMNR_HOSTNAME,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
+    CONTENT_TYPE_BINARY,
 )
 from .utils import api_process, api_process_raw, api_validate
 

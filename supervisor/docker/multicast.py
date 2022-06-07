@@ -1,9 +1,8 @@
 """HA Cli docker object."""
 import logging
 
-from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
-from .const import Capabilities
+from .const import ENV_TIME, Capabilities
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

@@ -30,11 +30,11 @@ from ..const import (
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_WATCHDOG,
-    CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import docker_image, network_port, version_tag
+from .const import CONTENT_TYPE_BINARY
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

@@ -17,8 +17,6 @@ from ..addons.build import AddonBuild
 from ..bus import EventListener
 from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
-    ENV_TIME,
-    ENV_TOKEN,
     MAP_ADDONS,
     MAP_BACKUP,
     MAP_CONFIG,
@@ -45,7 +43,7 @@ from ..hardware.data import Device
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
-from .const import DBUS_PATH, DBUS_VOLUME, Capabilities
+from .const import DBUS_PATH, DBUS_VOLUME, ENV_TIME, ENV_TOKEN, Capabilities
 from .interface import DockerInterface
 
 if TYPE_CHECKING:

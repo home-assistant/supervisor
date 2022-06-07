@@ -29,8 +29,6 @@ from ..const import (
     ATTR_URL,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
-    CONTENT_TYPE_PNG,
-    CONTENT_TYPE_TEXT,
     REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
@@ -38,6 +36,7 @@ from ..exceptions import APIError, APIForbidden
 from ..store.addon import AddonStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
+from .const import CONTENT_TYPE_PNG, CONTENT_TYPE_TEXT
 
 SCHEMA_UPDATE = vol.Schema(
     {

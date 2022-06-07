@@ -22,10 +22,9 @@ from ..const import (
     ATTR_PANELS,
     ATTR_SESSION,
     ATTR_TITLE,
-    COOKIE_INGRESS,
-    HEADER_TOKEN,
 )
 from ..coresys import CoreSysAttributes
+from .const import COOKIE_INGRESS, HEADER_TOKEN, HEADER_TOKEN_OLD
 from .utils import api_process, api_validate, require_home_assistant
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -234,6 +233,7 @@ def _init_header(
             hdrs.SEC_WEBSOCKET_VERSION,
             hdrs.SEC_WEBSOCKET_KEY,
             istr(HEADER_TOKEN),
+            istr(HEADER_TOKEN_OLD),
         ):
             continue
         headers[name] = value
