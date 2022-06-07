@@ -168,7 +168,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_ICON: addon.with_icon,
                 ATTR_LOGO: addon.with_logo,
             }
-            for addon in self.sys_addons.local
+            for addon in self.sys_addons.installed
         ]
 
         return {ATTR_ADDONS: data_addons}
