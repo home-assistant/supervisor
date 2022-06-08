@@ -334,7 +334,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/homeassistant/stats", api_hass.stats),
                 web.post("/homeassistant/options", api_hass.options),
                 web.post("/homeassistant/restart", api_hass.restart),
-                web.post("/homeassistant/stop", api_hass.restart),
+                web.post("/homeassistant/stop", api_hass.stop),
                 web.post("/homeassistant/start", api_hass.start),
                 web.post("/homeassistant/update", api_hass.update),
                 web.post("/homeassistant/rebuild", api_hass.rebuild),
