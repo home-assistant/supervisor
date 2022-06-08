@@ -416,20 +416,19 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                web.get("/snapshots", api_backups.list),
-                web.post("/snapshots/reload", api_backups.reload),
-                web.post("/snapshots/new/full", api_backups.backup_full),
-                web.post("/snapshots/new/partial", api_backups.backup_partial),
-                web.post("/snapshots/new/upload", api_backups.upload),
-                web.get("/snapshots/{slug}/info", api_backups.info),
-                web.delete("/snapshots/{slug}", api_backups.remove),
-                web.post("/snapshots/{slug}/restore/full", api_backups.restore_full),
+                web.get("/backups", api_backups.list),
+                web.post("/backups/reload", api_backups.reload),
+                web.post("/backups/new/full", api_backups.backup_full),
+                web.post("/backups/new/partial", api_backups.backup_partial),
+                web.post("/backups/new/upload", api_backups.upload),
+                web.get("/backups/{slug}/info", api_backups.info),
+                web.delete("/backups/{slug}", api_backups.remove),
+                web.post("/backups/{slug}/restore/full", api_backups.restore_full),
                 web.post(
-                    "/snapshots/{slug}/restore/partial",
+                    "/backups/{slug}/restore/partial",
                     api_backups.restore_partial,
                 ),
-                web.get("/snapshots/{slug}/download", api_backups.download),
-                web.post("/snapshots/{slug}/remove", api_backups.remove),
+                web.get("/backups/{slug}/download", api_backups.download),
             ]
         )
 
