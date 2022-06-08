@@ -336,6 +336,8 @@ class RestAPI(CoreSysAttributes):
                 web.post("/homeassistant/restart", api_hass.restart),
                 web.post("/homeassistant/stop", api_hass.restart),
                 web.post("/homeassistant/update", api_hass.update),
+                web.post("/homeassistant/rebuild", api_hass.rebuild),
+                web.post("/homeassistant/check", api_hass.check),
             ]
         )
 
@@ -352,6 +354,18 @@ class RestAPI(CoreSysAttributes):
                 web.post("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/", api_proxy.api),
+            ]
+        )
+
+        # Reroute from legacy
+        self.webapp.add_routes(
+            [
+                web.get("/homeassistant/api/websocket", api_proxy.websocket),
+                web.get("/homeassistant/websocket", api_proxy.websocket),
+                web.get("/homeassistant/api/stream", api_proxy.stream),
+                web.post("/homeassistant/api/{path:.+}", api_proxy.api),
+                web.get("/homeassistant/api/{path:.+}", api_proxy.api),
+                web.get("/homeassistant/api/", api_proxy.api),
             ]
         )
 
