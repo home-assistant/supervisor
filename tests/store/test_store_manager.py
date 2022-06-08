@@ -97,3 +97,6 @@ async def test_load_from_core_config(coresys: CoreSys):
     assert "http://example.com" in coresys.store.repository_urls
 
     assert coresys.config.addons_repositories == []
+
+    coresys.config.save_data.assert_called_once()
+    coresys.store.save_data.assert_called_once()

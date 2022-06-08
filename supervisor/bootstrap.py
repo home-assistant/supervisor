@@ -226,6 +226,8 @@ def migrate_system_env(coresys: CoreSys) -> None:
             coresys.config.addons_repositories
         )
         coresys.config._data[ATTR_ADDONS_CUSTOM_LIST] = []
+        coresys.store.save_data()
+        coresys.config.save_data()
 
 
 def initialize_logging() -> None:
