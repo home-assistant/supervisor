@@ -14,6 +14,7 @@ import pytest
 
 from supervisor import config as su_config
 from supervisor.addons.addon import Addon
+from supervisor.addons.validate import SCHEMA_ADDON_SYSTEM
 from supervisor.api import RestAPI
 from supervisor.bootstrap import initialize_coresys
 from supervisor.const import ATTR_ADDONS_CUSTOM_LIST, ATTR_REPOSITORIES, REQUEST_FROM
@@ -309,7 +310,9 @@ def store_addon(coresys: CoreSys, tmp_path, repository):
     addon_obj = AddonStore(coresys, "test_store_addon")
 
     coresys.addons.store[addon_obj.slug] = addon_obj
-    coresys.store.data.addons[addon_obj.slug] = load_json_fixture("add-on.json")
+    coresys.store.data.addons[addon_obj.slug] = SCHEMA_ADDON_SYSTEM(
+        load_json_fixture("add-on.json")
+    )
     yield addon_obj
 
 
