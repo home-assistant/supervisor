@@ -6,20 +6,36 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..addons import AnyAddon
+from ..addons.utils import rating_security
+from ..api.const import ATTR_SIGNED
 from ..api.utils import api_process, api_validate
 from ..const import (
     ATTR_ADDONS,
     ATTR_ADVANCED,
+    ATTR_APPARMOR,
+    ATTR_ARCH,
+    ATTR_AUTH_API,
     ATTR_AVAILABLE,
     ATTR_BACKUP,
     ATTR_BUILD,
     ATTR_DESCRIPTON,
+    ATTR_DETACHED,
+    ATTR_DOCKER_API,
+    ATTR_DOCUMENTATION,
+    ATTR_FULL_ACCESS,
+    ATTR_HASSIO_ROLE,
     ATTR_HOMEASSISTANT,
+    ATTR_HOMEASSISTANT_API,
+    ATTR_HOST_NETWORK,
+    ATTR_HOST_PID,
     ATTR_ICON,
+    ATTR_INGRESS,
     ATTR_INSTALLED,
     ATTR_LOGO,
+    ATTR_LONG_DESCRIPTION,
     ATTR_MAINTAINER,
     ATTR_NAME,
+    ATTR_RATING,
     ATTR_REPOSITORIES,
     ATTR_REPOSITORY,
     ATTR_SLUG,
@@ -80,13 +96,18 @@ class APIStore(CoreSysAttributes):
 
         return repository
 
-    def _generate_addon_information(self, addon: AddonStore) -> dict[str, Any]:
+    def _generate_addon_information(
+        self, addon: AddonStore, extended: bool = False
+    ) -> dict[str, Any]:
         """Generate addon information."""
-        return {
+
+        data = {
             ATTR_ADVANCED: addon.advanced,
+            ATTR_ARCH: addon.supported_arch,
             ATTR_AVAILABLE: addon.available,
             ATTR_BUILD: addon.need_build,
             ATTR_DESCRIPTON: addon.description,
+            ATTR_DOCUMENTATION: addon.with_documentation,
             ATTR_HOMEASSISTANT: addon.homeassistant_version,
             ATTR_ICON: addon.with_icon,
             ATTR_INSTALLED: addon.is_installed,
@@ -100,6 +121,26 @@ class APIStore(CoreSysAttributes):
             ATTR_VERSION_LATEST: addon.latest_version,
             ATTR_VERSION: addon.version if addon.is_installed else None,
         }
+        if extended:
+            data.update(
+                {
+                    ATTR_APPARMOR: addon.apparmor,
+                    ATTR_AUTH_API: addon.access_auth_api,
+                    ATTR_DETACHED: addon.is_detached,
+                    ATTR_DOCKER_API: addon.access_docker_api,
+                    ATTR_FULL_ACCESS: addon.with_full_access,
+                    ATTR_HASSIO_ROLE: addon.hassio_role,
+                    ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
+                    ATTR_HOST_NETWORK: addon.host_network,
+                    ATTR_HOST_PID: addon.host_pid,
+                    ATTR_INGRESS: addon.with_ingress,
+                    ATTR_LONG_DESCRIPTION: addon.long_description,
+                    ATTR_RATING: rating_security(addon),
+                    ATTR_SIGNED: addon.signed,
+                }
+            )
+
+        return data
 
     def _generate_repository_information(
         self, repository: Repository
@@ -161,7 +202,7 @@ class APIStore(CoreSysAttributes):
     async def addons_addon_info(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information."""
         addon: AddonStore = self._extract_addon(request)
-        return self._generate_addon_information(addon)
+        return self._generate_addon_information(addon, True)
 
     @api_process
     async def repositories_list(self, request: web.Request) -> list[dict[str, Any]]:
