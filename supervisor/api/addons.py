@@ -69,6 +69,7 @@ from ..const import (
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
     ATTR_OPTIONS,
+    ATTR_PREFER_DARK_ICON,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
     ATTR_PWNED,
@@ -112,6 +113,12 @@ from .utils import api_process, api_process_raw, api_validate, json_loads
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): str})
+
+SCHEMA_ICON = vol.Schema(
+    {
+        vol.Optional(ATTR_PREFER_DARK_ICON, default=False): bool,
+    }
+)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
@@ -462,6 +469,11 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon(request)
         if not addon.with_icon:
             raise APIError(f"No icon found for add-on {addon.slug}!")
+
+        body = await api_validate(SCHEMA_ICON, request)
+        if body[ATTR_PREFER_DARK_ICON] and addon.path_dark_icon.exists():
+            with addon.path_dark_icon.open("rb") as png:
+                return png.read()
 
         with addon.path_icon.open("rb") as png:
             return png.read()
