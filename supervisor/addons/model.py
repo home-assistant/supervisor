@@ -554,6 +554,11 @@ class AddonModel(CoreSysAttributes, ABC):
         return Path(self.path_location, "logo.png")
 
     @property
+    def path_dark_logo(self) -> Path:
+        """Return path to the dark variant of the add-on logo."""
+        return Path(self.path_location, "dark_logo.png")
+
+    @property
     def path_changelog(self) -> Path:
         """Return path to add-on changelog."""
         return Path(self.path_location, "CHANGELOG.md")
