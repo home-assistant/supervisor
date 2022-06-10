@@ -69,7 +69,6 @@ from ..const import (
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
     ATTR_OPTIONS,
-    ATTR_PREFER_DARK,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
     ATTR_PWNED,
@@ -113,12 +112,6 @@ from .utils import api_process, api_process_raw, api_validate, json_loads
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): str})
-
-SCHEMA_DARK = vol.Schema(
-    {
-        vol.Optional(ATTR_PREFER_DARK, default=False): bool,
-    }
-)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
@@ -470,8 +463,17 @@ class APIAddons(CoreSysAttributes):
         if not addon.with_icon:
             raise APIError(f"No icon found for add-on {addon.slug}!")
 
-        body = await api_validate(SCHEMA_DARK, request)
-        if body[ATTR_PREFER_DARK] and addon.path_dark_icon.exists():
+        with addon.path_icon.open("rb") as png:
+            return png.read()
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    async def dark_icon(self, request: web.Request) -> bytes:
+        """Return dark icon from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_icon:
+            raise APIError(f"No icon found for add-on {addon.slug}!")
+
+        if addon.with_dark_icon:
             with addon.path_dark_icon.open("rb") as png:
                 return png.read()
 
@@ -485,8 +487,17 @@ class APIAddons(CoreSysAttributes):
         if not addon.with_logo:
             raise APIError(f"No logo found for add-on {addon.slug}!")
 
-        body = await api_validate(SCHEMA_DARK, request)
-        if body[ATTR_PREFER_DARK] and addon.path_dark_logo.exists():
+        with addon.path_logo.open("rb") as png:
+            return png.read()
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    async def dark_logo(self, request: web.Request) -> bytes:
+        """Return dark logo from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_logo:
+            raise APIError(f"No logo found for add-on {addon.slug}!")
+
+        if addon.with_dark_logo:
             with addon.path_dark_logo.open("rb") as png:
                 return png.read()
 

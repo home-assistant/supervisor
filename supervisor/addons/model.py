@@ -479,9 +479,19 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.path_icon.exists()
 
     @property
+    def with_dark_icon(self) -> bool:
+        """Return True if an dark icon exists."""
+        return self.path_dark_icon.exists()
+
+    @property
     def with_logo(self) -> bool:
         """Return True if a logo exists."""
         return self.path_logo.exists()
+
+    @property
+    def with_dark_logo(self) -> bool:
+        """Return True if a dark logo exists."""
+        return self.path_dark_logo.exists()
 
     @property
     def with_changelog(self) -> bool:
