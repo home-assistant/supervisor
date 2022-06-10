@@ -119,6 +119,10 @@ class NetworkManager(CoreSysAttributes):
                     self.apply_changes(interface, update_only=True)
                     for interface in interfaces
                     if interface.enabled
+                    and (
+                        interface.ipv4.method != InterfaceMethod.DISABLED
+                        or interface.ipv6.method != InterfaceMethod.DISABLED
+                    )
                 ]
             )
 
