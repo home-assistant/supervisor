@@ -28,6 +28,7 @@ from ..const import (
     ATTR_NAME,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
+    ATTR_REPOSITORY,
     ATTR_SLUG,
     ATTR_STATE,
     ATTR_SUPPORTED,
@@ -100,6 +101,7 @@ class APISupervisor(CoreSysAttributes):
                     ATTR_SLUG: addon.slug,
                     ATTR_VERSION: addon.version,
                     ATTR_STATE: addon.state,
+                    ATTR_REPOSITORY: addon.repository,
                 }
                 for addon in self.sys_addons.local.values()
             ],
