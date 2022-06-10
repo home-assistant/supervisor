@@ -105,7 +105,10 @@ class APISupervisor(CoreSysAttributes):
                 }
                 for addon in self.sys_addons.local.values()
             ],
-            ATTR_ADDONS_REPOSITORIES: self.sys_store.repository_urls,
+            ATTR_ADDONS_REPOSITORIES: [
+                {ATTR_NAME: store.name, ATTR_SLUG: store.slug}
+                for store in self.sys_store.all
+            ],
         }
 
     @api_process
