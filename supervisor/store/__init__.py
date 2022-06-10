@@ -73,13 +73,6 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         """Start up add-on management."""
         await self.data.update()
 
-        # Backwards compatibility - Remove after 2022.9
-        if len(self.sys_config.addons_repositories) > 0:
-            self._data[ATTR_REPOSITORIES] = ensure_builtin_repositories(
-                self.sys_config.addons_repositories
-            )
-            self.sys_config.clear_addons_repositories()
-
         # Init custom repositories and load add-ons
         await self.update_repositories(
             self._data[ATTR_REPOSITORIES], add_with_errors=True
