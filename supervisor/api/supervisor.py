@@ -25,9 +25,11 @@ from ..const import (
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
+    ATTR_NAME,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
     ATTR_SLUG,
+    ATTR_STATE,
     ATTR_SUPPORTED,
     ATTR_TIMEZONE,
     ATTR_UPDATE_AVAILABLE,
@@ -93,7 +95,12 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_ADDONS: [
-                {ATTR_SLUG: addon.slug, ATTR_VERSION: addon.version}
+                {
+                    ATTR_NAME: addon.name,
+                    ATTR_SLUG: addon.slug,
+                    ATTR_VERSION: addon.version,
+                    ATTR_STATE: addon.state,
+                }
                 for addon in self.sys_addons.local.values()
             ],
             ATTR_ADDONS_REPOSITORIES: self.sys_store.repository_urls,
