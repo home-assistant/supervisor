@@ -20,6 +20,7 @@ from ..const import (
     ATTR_DIAGNOSTICS,
     ATTR_FORCE_SECURITY,
     ATTR_HEALTHY,
+    ATTR_ICON,
     ATTR_IP_ADDRESS,
     ATTR_LOGGING,
     ATTR_MEMORY_LIMIT,
@@ -95,6 +96,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG: self.sys_config.debug,
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
+            # Depricated
             ATTR_ADDONS: [
                 {
                     ATTR_NAME: addon.name,
@@ -104,6 +106,7 @@ class APISupervisor(CoreSysAttributes):
                     ATTR_UPDATE_AVAILABLE: addon.need_update,
                     ATTR_STATE: addon.state,
                     ATTR_REPOSITORY: addon.repository,
+                    ATTR_ICON: addon.with_icon,
                 }
                 for addon in self.sys_addons.local.values()
             ],
