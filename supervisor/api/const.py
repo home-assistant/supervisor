@@ -1,5 +1,17 @@
 """Const for API."""
 
+CONTENT_TYPE_BINARY = "application/octet-stream"
+CONTENT_TYPE_JSON = "application/json"
+CONTENT_TYPE_PNG = "image/png"
+CONTENT_TYPE_TAR = "application/tar"
+CONTENT_TYPE_TEXT = "text/plain"
+CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
+
+COOKIE_INGRESS = "ingress_session"
+
+HEADER_TOKEN_OLD = "X-Hassio-Key"
+HEADER_TOKEN = "X-Supervisor-Token"
+
 ATTR_APPARMOR_VERSION = "apparmor_version"
 ATTR_AGENT_VERSION = "agent_version"
 ATTR_AVAILABLE_UPDATES = "available_updates"
@@ -19,4 +31,3 @@ ATTR_SIGNED = "signed"
 ATTR_STARTUP_TIME = "startup_time"
 ATTR_UPDATE_TYPE = "update_type"
 ATTR_USE_NTP = "use_ntp"
-ATTR_USE_RTC = "use_rtc"

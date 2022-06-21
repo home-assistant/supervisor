@@ -8,15 +8,10 @@ from aiohttp.web_exceptions import HTTPUnauthorized
 import voluptuous as vol
 
 from ..addons.addon import Addon
-from ..const import (
-    ATTR_PASSWORD,
-    ATTR_USERNAME,
-    CONTENT_TYPE_JSON,
-    CONTENT_TYPE_URL,
-    REQUEST_FROM,
-)
+from ..const import ATTR_PASSWORD, ATTR_USERNAME, REQUEST_FROM
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIForbidden
+from .const import CONTENT_TYPE_JSON, CONTENT_TYPE_URL
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

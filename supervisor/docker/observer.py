@@ -1,8 +1,9 @@
 """Observer docker object."""
 import logging
 
-from ..const import DOCKER_NETWORK_MASK, ENV_TIME, ENV_TOKEN
+from ..const import DOCKER_NETWORK_MASK
 from ..coresys import CoreSysAttributes
+from .const import ENV_TIME, ENV_TOKEN
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

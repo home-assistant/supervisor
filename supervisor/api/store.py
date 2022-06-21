@@ -8,7 +8,7 @@ import voluptuous as vol
 from ..addons import AnyAddon
 from ..addons.utils import rating_security
 from ..api.const import ATTR_SIGNED
-from ..api.utils import api_process, api_validate
+from ..api.utils import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_ADDONS,
     ATTR_ADVANCED,
@@ -53,6 +53,7 @@ from ..exceptions import APIError, APIForbidden
 from ..store.addon import AddonStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
+from .const import CONTENT_TYPE_PNG, CONTENT_TYPE_TEXT
 
 SCHEMA_UPDATE = vol.Schema(
     {
@@ -205,6 +206,46 @@ class APIStore(CoreSysAttributes):
         """Return add-on information."""
         addon: AddonStore = self._extract_addon(request)
         return self._generate_addon_information(addon, True)
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    async def addons_addon_icon(self, request: web.Request) -> bytes:
+        """Return icon from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_icon:
+            raise APIError(f"No icon found for add-on {addon.slug}!")
+
+        with addon.path_icon.open("rb") as png:
+            return png.read()
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    async def addons_addon_logo(self, request: web.Request) -> bytes:
+        """Return logo from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_logo:
+            raise APIError(f"No logo found for add-on {addon.slug}!")
+
+        with addon.path_logo.open("rb") as png:
+            return png.read()
+
+    @api_process_raw(CONTENT_TYPE_TEXT)
+    async def addons_addon_changelog(self, request: web.Request) -> str:
+        """Return changelog from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_changelog:
+            raise APIError(f"No changelog found for add-on {addon.slug}!")
+
+        with addon.path_changelog.open("r") as changelog:
+            return changelog.read()
+
+    @api_process_raw(CONTENT_TYPE_TEXT)
+    async def addons_addon_documentation(self, request: web.Request) -> str:
+        """Return documentation from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_documentation:
+            raise APIError(f"No documentation found for add-on {addon.slug}!")
+
+        with addon.path_documentation.open("r") as documentation:
+            return documentation.read()
 
     @api_process
     async def repositories_list(self, request: web.Request) -> list[dict[str, Any]]:
