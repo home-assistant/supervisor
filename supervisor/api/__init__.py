@@ -379,6 +379,7 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/addons", api_addons.list),
                 web.get("/addons/{addon}/info", api_addons.info),
+                web.get("/addons/{addon}/icon", api_addons.icon),
                 web.get("/addons/{addon}/dark_icon", api_addons.dark_icon),
                 web.get("/addons/{addon}/logo", api_addons.logo),
                 web.get("/addons/{addon}/dark_logo", api_addons.dark_logo),
